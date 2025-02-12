@@ -1,3 +1,5 @@
+// GoogleClassroomManager.gs
+
 /**
 Manages Google Classroom operations and associated tasks.
 */
@@ -9,8 +11,9 @@ class GoogleClassroomManager {
     this.destinationFolderId = "" 
     this.progressTracker = ProgressTracker.getInstance();
 
+    // Only instantiate the ClassroomSheetManager class if this is being run from the Admin Sheet.
     if (Utils.validateIsAdminSheet(false)) {
-      
+      this.csm = new ClassroomSheetManager(); // Instantiate ClassroomSheetManager
     }
   }
 

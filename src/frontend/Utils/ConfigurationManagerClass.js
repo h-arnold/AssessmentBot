@@ -294,7 +294,8 @@ class ConfigurationManager {
   getImageUploadUrl() {
     const baseUrl = this.getLangflowUrl();
     const imageFlowUid = this.getImageFlowUid();
-    return `${baseUrl}/api/v1/files/upload/${imageFlowUid}`
+    //Note: This contradicts the swagger docs, which say that it should be {baseUrl}/api/v1/files/upload/{imageFlowUid} but this is incorrect for now. This could be the first port of call for an issue with image uploads when I get round to updating to the latest langflow backend.
+    return `${baseUrl}/api/v1/upload/${imageFlowUid}`  
   }
 
   getAssessmentRecordTemplateId() {

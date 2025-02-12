@@ -29,8 +29,6 @@ class UpdateManager {
     // These are the FileIds of the sheets that will be copied into the user's assessment record folder and populated with the values from the old versions.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
     this.adminSheetTemplateId = this.getLatestAdminSheetTemplateId;
-
-    this.progressTracker = {}  // Leave empty for now but useful to add as an attribute when updating the assessment records
   }
 
   getLatestAssessmentRecordTemplateId(versionNo = this.versionNo) {
@@ -55,12 +53,8 @@ class UpdateManager {
     assessmentRecordSheets,
     destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder(),
     templateSheetId = this.assessmentRecordTemplateId
-
   ) {
-    const step = this.progressTracker.getStepAsNumber();
     Object.keys(assessmentRecordSheets).forEach(className => {
-      this.progressTracker.updateProgress(step, `Cloning the assessment record for ${className}`)
-
 
       const newSheet = SheetCloner.cloneEverything({
         "templateSheetId": templateSheetId,
@@ -307,10 +301,8 @@ class UpdateManager {
 
     //Gets the Url of the new sheet and opens it in a new window.
     const newSheetUrl = SpreadsheetApp.openById(newSheetId).getUrl();
-    this.uiManager.openUrlInNewWindow(newSheetUrl);
 
-    // Deletes the `propertiesStore` sheet to ensure that secrets aren't preserved in the edit history of the document
-    propsCloner.clearPropertiesAndSheet();
+    this.uiManager.openUrlInNewWindow(newSheetUrl);
 
     // Returns the URL so that it can be fed to the GuiManager.ui.
 
@@ -332,39 +324,39 @@ class UpdateManager {
    * @throws {Error} If assessment record template ID is not set or if any step in the process fails
    */
   updateAssessmentRecords() {
-    this.progressTracker = new ProgressTracker();
+    const progressTracker = new ProgressTracker();
     const uiManager = new UIManager();
 
     uiManager.showProgressModal();
 
 
     let step = 0;
-    this.progressTracker.startTracking('Updating all Assessment Records. This may take a while...')
+    progressTracker.startTracking('Updating all Assessment Records. This may take a while...')
     //Gets the assessment record template file Id - this should have been set when the admin sheet was updated.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId()
 
 
 
-    this.progressTracker.updateProgress(++step, 'Fetching Assessment Record Details')
+    progressTracker.updateProgress(++step, 'Fetching Assessment Record Details')
     // Get the assessment record details
     this.getAssessmentRecordDetails();
 
     // Clones the assessment record sheets
-    this.progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
+    progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
     this.cloneSheets(this.assessmentRecordSheets);
 
     // Archives old assessment record sheets
-    this.progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
+    progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets)
       .map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
 
     // Updates the Classroom Sheet with the new Assessment Record File IDs
-    this.progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
+    progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
     this.updateClassroomSheetWithNewAssessmentRecords();
 
     // Marks the task as complete
-    this.progressTracker.complete();
+    progressTracker.complete();
     configurationManager.setUpdateStage(2); // Sets the update stage back to 2 (Up to date).
   }
 
@@ -395,6 +387,9 @@ class UpdateManager {
       this.assessmentRecordTemplateId = state.assessmentRecordTemplateId;
       this.adminSheetTemplateId = state.adminSheetTemplateId;
       console.log("UpdateManager state loaded: " + JSON.stringify(state));
+
+      //Removes state from Script Properties after loading.
+      PropertiesService.getScriptProperties().deleteProperty('updateManagerState')
     } else {
       console.warn("No saved state found for UpdateManager.");
     }
@@ -454,3 +449,24 @@ class UpdateManager {
 
 }
 
+// Code.gs
+
+/**
+ * Global function to launch the Update Assessment Records Wizard.
+ * Google Apps Script cannot call class methods directly so this function creates an instance
+ * of UpdateManager and then calls the runAssessmentRecordUpdateWizard method.
+ */
+function showUpdateAssessmentRecordWizard() {
+  const updateManager = new UpdateManager();
+  updateManager.runAssessmentRecordUpdateWizard();
+}
+
+/**
+ * Global function called from the wizard when the user clicks "Finish".
+ * This creates a new UpdateManager instance, loads the saved state, and then calls its updateAssessmentRecords method.
+ */
+function updateAssessmentRecordsFromWizard() {
+  const updateManager = new UpdateManager();
+  updateManager.loadState();
+  updateManager.updateAssessmentRecords();
+}
