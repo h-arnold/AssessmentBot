@@ -1,0 +1,20 @@
+{
+  "name": "googleslidesassessor",
+  "version": "1.0.0",
+  "description": "**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --config .eslint.config.js --fix src/frontend/**/*.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^9.19.0",
+    "eslint-plugin-googleappsscript": "^1.0.5"
+  }
+}
