@@ -21,7 +21,7 @@ class UpdateManager {
     this.classroomSheet = new ClassroomSheetManager('Classrooms', this.sheet.getId());
     this.versionDetails = this.fetchVersionDetails();
 
-    this.versionNo = '0.4.0'; //Hard-coded value that needs to be updated with each release.
+    this.versionNo = '0.4.1'; //Hard-coded value that needs to be updated with each release.
     this.assessmentRecordSheets = {};
     this.adminSheetsDetails = {};
     this.destinationFolderId = ""
@@ -358,6 +358,7 @@ class UpdateManager {
     // Marks the task as complete
     progressTracker.complete();
     configurationManager.setUpdateStage(2); // Sets the update stage back to 2 (Up to date).
+
   }
 
   /**
@@ -400,6 +401,10 @@ class UpdateManager {
    * This method prepares the necessary parameters, saves state, and then displays the wizard.
    */
   runAssessmentRecordUpdateWizard() {
+    // Deserialise Script and User Properties transferred from previous sheet.
+    const propertiesCloner = new PropertiesCloner();
+    propertiesCloner.deserialiseProperties(true);
+
     // Retrieve the destination folder ID from configuration.
     this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
 

@@ -584,5 +584,3 @@ class MainController {
     updateManager.runAssessmentRecordUpdateWizard();
   }
 }
-
-
