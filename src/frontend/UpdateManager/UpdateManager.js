@@ -29,6 +29,8 @@ class UpdateManager {
     // These are the FileIds of the sheets that will be copied into the user's assessment record folder and populated with the values from the old versions.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
     this.adminSheetTemplateId = this.getLatestAdminSheetTemplateId;
+     this.progressTracker = {}  // Leave empty for now but useful to add as an attribute when updating the assessment records
+
   }
 
   getLatestAssessmentRecordTemplateId(versionNo = this.versionNo) {
@@ -54,8 +56,9 @@ class UpdateManager {
     destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder(),
     templateSheetId = this.assessmentRecordTemplateId
   ) {
+     const step = this.progressTracker.getStepAsNumber();
     Object.keys(assessmentRecordSheets).forEach(className => {
-
+      this.progressTracker.updateProgress(step, `Cloning the assessment record for ${className}`)
       const newSheet = SheetCloner.cloneEverything({
         "templateSheetId": templateSheetId,
         "newSpreadsheetName": className,
@@ -324,41 +327,40 @@ class UpdateManager {
    * @throws {Error} If assessment record template ID is not set or if any step in the process fails
    */
   updateAssessmentRecords() {
-    const progressTracker = new ProgressTracker();
+    this.progressTracker = new ProgressTracker();
     const uiManager = new UIManager();
 
     uiManager.showProgressModal();
 
 
     let step = 0;
-    progressTracker.startTracking('Updating all Assessment Records. This may take a while...')
+    this.progressTracker.startTracking('Updating all Assessment Records. This may take a while...')
     //Gets the assessment record template file Id - this should have been set when the admin sheet was updated.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId()
 
 
 
-    progressTracker.updateProgress(++step, 'Fetching Assessment Record Details')
+    this.progressTracker.updateProgress(++step, 'Fetching Assessment Record Details')
     // Get the assessment record details
     this.getAssessmentRecordDetails();
 
     // Clones the assessment record sheets
-    progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
+    this.progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
     this.cloneSheets(this.assessmentRecordSheets);
 
     // Archives old assessment record sheets
-    progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
+    this.progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets)
       .map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
 
     // Updates the Classroom Sheet with the new Assessment Record File IDs
-    progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
+    this.progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
     this.updateClassroomSheetWithNewAssessmentRecords();
 
     // Marks the task as complete
-    progressTracker.complete();
+    this.progressTracker.complete();
     configurationManager.setUpdateStage(2); // Sets the update stage back to 2 (Up to date).
-
   }
 
   /**
