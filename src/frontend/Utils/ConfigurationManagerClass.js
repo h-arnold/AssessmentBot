@@ -27,7 +27,7 @@ class ConfigurationManager {
     let hasScriptProperties = null
 
     // If this is the admin sheet, we want to get the ScriptProperties length to avoid triggering the deserialisation process at startup, which adds a few seconds of delay to the opening. For the Assessment Records, this will always return a length because it's fetching the Script Properties associated with admin sheet, which we don't want. Adding this check here ensures that if this code is being run from an Assessment Record, the script properties value returns as null and so the deserialisation process happens if there are no document properties.
-    if (Utils.validateIsAdminSheet()) {
+    if (this.getIsAdminSheet()) {
       hasScriptProperties = this.scriptProperties.getKeys().length > 0;
     }
     
