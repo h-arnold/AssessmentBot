@@ -396,10 +396,18 @@ class ConfigurationManager {
 // Ensure singleton instance
 const configurationManager = new ConfigurationManager();
 
-/**
- * Retrieves all configuration properties.
- * @return {Object} - An object containing all configuration properties.
- */
 function getConfiguration() {
-  return configurationManager.getAllConfigurations();
+  return {
+    batchSize: configurationManager.getBatchSize(),
+    langflowApiKey: configurationManager.getLangflowApiKey(),
+    langflowUrl: configurationManager.getLangflowUrl(),
+    imageFlowUid: configurationManager.getImageFlowUid(),
+    textAssessmentTweakId: configurationManager.getTextAssessmentTweakId(),
+    tableAssessmentTweakId: configurationManager.getTableAssessmentTweakId(),
+    imageAssessmentTweakId: configurationManager.getImageAssessmentTweakId(),
+    assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
+    assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
+    updateDetailsUrl: configurationManager.getUpdateDetailsUrl()
+  };
 }
+

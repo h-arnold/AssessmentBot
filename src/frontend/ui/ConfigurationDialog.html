@@ -1,186 +1,172 @@
-<!--- ConfigurationDialog.html --->
 <!DOCTYPE html>
 <html>
-
-<head>
+  <head>
     <base target="_top">
     <!-- Materialize CSS for styling -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
     <style>
-        .container {
-            padding: 20px;
-            max-width: 800px;
-        }
-
-        h4 {
-            margin-bottom: 20px;
-        }
-
-        .button-group {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-
-        .button-group .btn {
-            margin-left: 10px;
-        }
+      html, body {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        max-width: 800px;
+        padding-bottom: 80px; /* Ensures content is not hidden behind the button bar */
+      }
+      h4, h5 {
+        margin-bottom: 20px;
+      }
+      .button-group {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        padding: 10px;
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: flex-end;
+      }
+      .button-group .btn {
+        margin-left: 10px;
+      }
     </style>
-</head>
-
-<body>
+  </head>
+  <body>
     <div class="container">
-        <form id="config-form">
-            <!-- Existing Configuration Fields -->
+      <form id="config-form">
+        <!-- Essential Settings Section -->
+        <h5>Settings</h5>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="langflowApiKey" name="langflowApiKey" type="text" required>
+            <label for="langflowApiKey">Langflow API Key</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <input id="langflowUrl" name="langflowUrl" type="url" required>
+            <label for="langflowUrl">Langflow URL</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="textAssessmentTweakId" name="textAssessmentTweakId" type="text" required>
+            <label for="textAssessmentTweakId">Text Assessment Tweak ID</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <input id="tableAssessmentTweakId" name="tableAssessmentTweakId" type="text" required>
+            <label for="tableAssessmentTweakId">Table Assessment Tweak ID</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="imageAssessmentTweakId" name="imageAssessmentTweakId" type="text" required>
+            <label for="imageAssessmentTweakId">Image Assessment Tweak ID</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12">
+            <input id="imageFlowUid" name="imageFlowUid" type="text" required>
+            <label for="imageFlowUid">Image Flow UID</label>
+          </div>
+        </div>
 
-            <div class="row">
-                <div class="input-field col s12 m6">
-                    <input id="batchSize" name="batchSize" type="number" min="1" required>
-                    <label for="batchSize">Batch Size</label>
-                </div>
-                <div class="input-field col s12 m6">
-                    <input id="langflowApiKey" name="langflowApiKey" type="text" required>
-                    <label for="langflowApiKey">Langflow API Key</label>
-                </div>
+        <!-- Advanced Settings Collapsible -->
+        <ul class="collapsible">
+          <li>
+            <div class="collapsible-header">
+              <i class="material-icons">expand_more</i> Advanced settings
             </div>
-
-            <div class="row">
+            <div class="collapsible-body">
+              <div class="row">
                 <div class="input-field col s12 m6">
-                    <input id="langflowUrl" name="langflowUrl" type="url" required>
-                    <label for="langflowUrl">Langflow URL</label>
-                </div>
-                <div class="input-field col s12 m6">
-                    <input id="imageFlowUid" name="imageFlowUid" type="text"
-                        placeholder="e.g., 3fa71f8c-d346-4eec-8094-d7349086bda4" required>
-                    <label for="imageFlowUid">Image Flow UID</label>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-            <h5 class="section">Tweak IDs</h5>
-
-            <div class="row">
-                <div class="input-field col s12 m4">
-                    <input id="textAssessmentTweakId" name="textAssessmentTweakId" type="text" required>
-                    <label for="textAssessmentTweakId">Text Assessment Tweak ID</label>
-                </div>
-                <div class="input-field col s12 m4">
-                    <input id="tableAssessmentTweakId" name="tableAssessmentTweakId" type="text" required>
-                    <label for="tableAssessmentTweakId">Table Assessment Tweak ID</label>
-                </div>
-                <div class="input-field col s12 m4">
-                    <input id="imageAssessmentTweakId" name="imageAssessmentTweakId" type="text" required>
-                    <label for="imageAssessmentTweakId">Image Assessment Tweak ID</label>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-            <h5 class="section">Assessment Record</h5>
-
-            <div class="row">
-                <div class="input-field col s12 m6">
-                    <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text" required>
-                    <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
+                  <input id="batchSize" name="batchSize" type="number" min="1">
+                  <label for="batchSize">Batch Size</label>
                 </div>
                 <div class="input-field col s12 m6">
-                    <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text" required>
-                    <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
+                  <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
+                  <label for="updateDetailsUrl">Update Details URL</label>
                 </div>
-            </div>
-
-            <div class="divider"></div>
-            <h5 class="section">Update Details</h5>
-
-            <div class="row">
+              </div>
+              <div class="row">
                 <div class="input-field col s12 m6">
-                    <input id="updateDetailsUrl" name="updateDetailsUrl" type="url" required>
-                    <label for="updateDetailsUrl">Update Details URL</label>
+                  <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text">
+                  <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
                 </div>
+                <div class="input-field col s12 m6">
+                  <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text">
+                  <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
+                </div>
+              </div>
             </div>
+          </li>
+        </ul>
+      </form>
+    </div>
 
-            <div class="button-group">
-                <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
-                <button class="btn blue waves-effect waves-light" type="submit">
-                    <i class="material-icons right">save</i>
-                </button>
-            </div>
-        </form>
+    <!-- Action Buttons (Always Visible) -->
+    <div class="button-group">
+      <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
+      <button class="btn blue waves-effect waves-light" type="submit" form="config-form">
+        <i class="material-icons right">save</i> Save
+      </button>
     </div>
 
     <!-- Materialize JS and initialization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script>
-        /**
-         * Populates the form with existing configuration data.
-         * @param {Object} data - The configuration data.
-         */
-        function populateForm(data) {
-            document.getElementById('batchSize').value = data.batchSize || 20;
-            document.getElementById('langflowApiKey').value = data.langflowApiKey || '';
-            document.getElementById('langflowUrl').value = data.langflowUrl || '';
-            document.getElementById('imageFlowUid').value = data.imageFlowUid || '';
-            document.getElementById('textAssessmentTweakId').value = data.textAssessmentTweakId || '';
-            document.getElementById('tableAssessmentTweakId').value = data.tableAssessmentTweakId || '';
-            document.getElementById('imageAssessmentTweakId').value = data.imageAssessmentTweakId || '';
-            document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
-            document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
-            document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
+      document.addEventListener('DOMContentLoaded', function() {
+        var elems = document.querySelectorAll('.collapsible');
+        M.Collapsible.init(elems);
+        M.updateTextFields();
 
-            // Re-initialize labels after setting values
-            M.updateTextFields();
-        }
+        google.script.run
+          .withSuccessHandler(populateForm)
+          .withFailureHandler(function(error) {
+            M.toast({ html: `Error loading configuration: ${error.message}`, classes: 'red' });
+          })
+          .getConfiguration();
+      });
 
-        /**
-         * Handles form submission to save configuration.
-         * @param {Event} event - The form submission event.
-         */
-        document.getElementById('config-form').addEventListener('submit', function (event) {
-            event.preventDefault();
+      function populateForm(data) {
+        document.getElementById('langflowApiKey').value = data.langflowApiKey || '';
+        document.getElementById('langflowUrl').value = data.langflowUrl || '';
+        document.getElementById('textAssessmentTweakId').value = data.textAssessmentTweakId || '';
+        document.getElementById('tableAssessmentTweakId').value = data.tableAssessmentTweakId || '';
+        document.getElementById('imageAssessmentTweakId').value = data.imageAssessmentTweakId || '';
+        document.getElementById('imageFlowUid').value = data.imageFlowUid || '';
 
-            const formData = {
-                batchSize: parseInt(document.getElementById('batchSize').value, 10),
-                langflowApiKey: document.getElementById('langflowApiKey').value.trim(),
-                langflowUrl: document.getElementById('langflowUrl').value.trim(),
-                imageFlowUid: document.getElementById('imageFlowUid').value.trim(),
-                textAssessmentTweakId: document.getElementById('textAssessmentTweakId').value.trim(),
-                tableAssessmentTweakId: document.getElementById('tableAssessmentTweakId').value.trim(),
-                imageAssessmentTweakId: document.getElementById('imageAssessmentTweakId').value.trim(),
-                assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
-                assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
-                updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim()
-            };
+        document.getElementById('batchSize').value = data.batchSize || 20;
+        document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
+        document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
+        document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
 
-            // Basic validation can be enhanced if needed
-            if (isNaN(formData.batchSize) || formData.batchSize < 1) {
-                M.toast({ html: 'Batch Size must be a positive number.', classes: 'red' });
-                return;
-            }
+        M.updateTextFields();
+      }
 
-            google.script.run
-                .withSuccessHandler(() => {
-                    M.toast({ html: 'Configuration saved successfully.', classes: 'green' });
-                    google.script.host.close();
-                })
-                .withFailureHandler(error => {
-                    M.toast({ html: `Error saving configuration: ${error.message}`, classes: 'red' });
-                })
-                .saveConfiguration(formData);
-        });
+      document.getElementById('config-form').addEventListener('submit', function(event) {
+        event.preventDefault();
 
-        // Initialize Materialize components and load existing configuration
-        document.addEventListener('DOMContentLoaded', function () {
-            // Initialize Materialize components
-            M.updateTextFields();
+        const formData = {
+          langflowApiKey: document.getElementById('langflowApiKey').value.trim(),
+          langflowUrl: document.getElementById('langflowUrl').value.trim(),
+          textAssessmentTweakId: document.getElementById('textAssessmentTweakId').value.trim(),
+          tableAssessmentTweakId: document.getElementById('tableAssessmentTweakId').value.trim(),
+          imageAssessmentTweakId: document.getElementById('imageAssessmentTweakId').value.trim(),
+          imageFlowUid: document.getElementById('imageFlowUid').value.trim(),
+          batchSize: parseInt(document.getElementById('batchSize').value, 10),
+          updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
+          assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
+          assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim()
+        };
 
-            // Load existing configuration
-            google.script.run
-                .withSuccessHandler(populateForm)
-                .withFailureHandler(error => {
-                    M.toast({ html: `Error loading configuration: ${error.message}`, classes: 'red' });
-                })
-                .getConfiguration();
-        });
+        google.script.run.saveConfiguration(formData);
+      });
     </script>
-</body>
-
+  </body>
 </html>
