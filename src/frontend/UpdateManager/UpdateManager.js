@@ -21,7 +21,7 @@ class UpdateManager {
     this.classroomSheet = new ClassroomSheetManager('Classrooms', this.sheet.getId());
     this.versionDetails = this.fetchVersionDetails();
 
-    this.versionNo = '0.4.1'; //Hard-coded value that needs to be updated with each release.
+    this.versionNo = '0.4.2'; //Hard-coded value that needs to be updated with each release.
     this.assessmentRecordSheets = {};
     this.adminSheetsDetails = {};
     this.destinationFolderId = ""
