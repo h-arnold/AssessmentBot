@@ -74,9 +74,8 @@ class UIManager {
 
     // Add a sub-menu for Settings
     const settingsSubMenu = ui.createMenu('Settings')
-      .addItem('Backend Settings', 'showConfigurationDialog')
-      .addItem('Change Classroom', 'showClassroomDropdown')
-      .addItem('Update Version', 'showVersionSelector');
+      .addItem('Settings', 'showConfigurationDialog')
+      .addItem('Update Assessment Bot', 'showVersionSelector');
     menu.addSubMenu(settingsSubMenu);
 
     // Add a sub-menu for Debug operations

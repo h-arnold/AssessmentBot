@@ -143,6 +143,12 @@ class MainController {
    */
   saveConfiguration(config) {
     try {
+      // Save classroom data if provided
+      if (config.classroom) {
+        this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
+        delete config.classroom; // Remove classroom data before saving other configs
+      }
+
       // Delegate configuration saving to ConfigurationManager
       if (config.batchSize !== undefined) {
         configurationManager.setBatchSize(config.batchSize);
@@ -184,6 +190,7 @@ class MainController {
       throw new Error("Failed to save configuration. Please check the inputs.");
     }
   }
+
 
 
   /** 
@@ -290,7 +297,6 @@ class MainController {
       sheet.getRange('B2').setValue(courseId);
 
       console.log(`Classroom saved: ${courseName} (${courseId})`);
-      this.utils.toastMessage("Classroom saved successfully.", "Success", 5);
     } catch (error) {
       console.error("Error saving classroom:", error);
       this.utils.toastMessage("Failed to save classroom: " + error.message, "Error", 5);
@@ -517,13 +523,13 @@ class MainController {
     }
   }
   /**
-* Handles the version update request from the UI
-* @param {Object} versionData - Contains version number and file IDs
-*/
+  * Handles the version update request from the UI
+  * @param {Object} versionData - Contains version number and file IDs
+  */
   updateAdminSheet(versionData) {
     let adminSheetUrl;
     console.log(JSON.stringify(versionData));
-    
+
     try {
       const updateManager = new UpdateManager();
       updateManager.versionNo = versionData.version;
@@ -540,22 +546,20 @@ class MainController {
     ui.alert(`Update Successful`, `Your new Admin Sheet has opened and you can access it at: ${adminSheetUrl}. Please close this window.`, ui.ButtonSet.OK)
   }
 
-   /**
-   * Handles the authorisation flow when user clicks authorise. This method ensures that the authorised menu appears after the auth process has taken place.
-   */
-  handleAuthorisation() { 
+  /**
+  * Handles the authorisation flow when user clicks authorise. This method ensures that the authorised menu appears after the auth process has taken place.
+  */
+  handleAuthorisation() {
     const scriptAppManager = new ScriptAppManager();
     const authResult = scriptAppManager.handleAuthFlow();
     const updateStage = configurationManager.getUpdateStage();
 
     // Checks if the update needs finishing.
-    if (updateStage == 1) 
-      {
+    if (updateStage == 1) {
 
-      if (authResult.needsAuth) 
-      {
-      //Get the script authorised.
-      this.uiManager.showAuthorisationModal(authResult.authUrl);
+      if (authResult.needsAuth) {
+        //Get the script authorised.
+        this.uiManager.showAuthorisationModal(authResult.authUrl);
       }
 
       // Finish the update
@@ -564,17 +568,15 @@ class MainController {
       //Create the regular authorised menu.
       this.uiManager.createAuthorisedMenu();
 
-    } 
-    else if (authResult.needsAuth) 
-    {
+    }
+    else if (authResult.needsAuth) {
       this.uiManager.showAuthorisationModal();
 
       //Update the menu after authorisation so that it give the user access to all functions without having to refresh the page.
       this.uiManager.createAuthorisedMenu();
-    
-    } 
-    else 
-    {
+
+    }
+    else {
       this.uiManager.createAuthorisedMenu()
     }
   }

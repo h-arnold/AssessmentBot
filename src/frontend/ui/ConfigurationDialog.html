@@ -1,172 +1,252 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-    <!-- Materialize CSS for styling -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-    <style>
-      html, body {
-        height: 100%;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .container {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        max-width: 800px;
-        padding-bottom: 80px; /* Ensures content is not hidden behind the button bar */
-      }
-      h4, h5 {
-        margin-bottom: 20px;
-      }
-      .button-group {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: white;
-        padding: 10px;
-        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
-        display: flex;
-        justify-content: flex-end;
-      }
-      .button-group .btn {
-        margin-left: 10px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <form id="config-form">
-        <!-- Essential Settings Section -->
-        <h5>Settings</h5>
-        <div class="row">
-          <div class="input-field col s12 m6">
-            <input id="langflowApiKey" name="langflowApiKey" type="text" required>
-            <label for="langflowApiKey">Langflow API Key</label>
-          </div>
-          <div class="input-field col s12 m6">
-            <input id="langflowUrl" name="langflowUrl" type="url" required>
-            <label for="langflowUrl">Langflow URL</label>
-          </div>
-        </div>
-        <div class="row">
-          <div class="input-field col s12 m6">
-            <input id="textAssessmentTweakId" name="textAssessmentTweakId" type="text" required>
-            <label for="textAssessmentTweakId">Text Assessment Tweak ID</label>
-          </div>
-          <div class="input-field col s12 m6">
-            <input id="tableAssessmentTweakId" name="tableAssessmentTweakId" type="text" required>
-            <label for="tableAssessmentTweakId">Table Assessment Tweak ID</label>
-          </div>
-        </div>
-        <div class="row">
-          <div class="input-field col s12">
-            <input id="imageAssessmentTweakId" name="imageAssessmentTweakId" type="text" required>
-            <label for="imageAssessmentTweakId">Image Assessment Tweak ID</label>
-          </div>
-        </div>
-        <div class="row">
-          <div class="input-field col s12">
-            <input id="imageFlowUid" name="imageFlowUid" type="text" required>
-            <label for="imageFlowUid">Image Flow UID</label>
-          </div>
+
+<head>
+  <base target="_top">
+  <!-- Materialize CSS for styling -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      max-width: 800px;
+      padding-bottom: 80px;
+      /* Ensures content is not hidden behind the button bar */
+    }
+
+    /* Tabs styling */
+    .tabs .tab a {
+      color: #42a5f5;
+    }
+
+    .tabs .tab a.active {
+      background-color: #e3f2fd;
+    }
+
+    .tabs .indicator {
+      background-color: #42a5f5;
+    }
+
+    .button-group {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: white;
+      padding: 10px;
+      box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .button-group .btn {
+      margin-left: 10px;
+    }
+
+    /* Remove left padding from dropdown options */
+    .select-dropdown li {
+      padding-left: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- The entire tab content is wrapped inside one form for configuration -->
+    <form id="config-form">
+      <div class="row">
+        <div class="col s12">
+          <ul class="tabs">
+            <li class="tab col s4">
+              <a href="#langflowTab" class="active">Langflow</a>
+            </li>
+            <li class="tab col s4">
+              <a href="#advancedTab">Advanced</a>
+            </li>
+            <li class="tab col s4">
+              <a href="#debugTab">Debug</a>
+            </li>
+          </ul>
         </div>
 
-        <!-- Advanced Settings Collapsible -->
-        <ul class="collapsible">
-          <li>
-            <div class="collapsible-header">
-              <i class="material-icons">expand_more</i> Advanced settings
+        <!-- Tab 1: Langflow Configuration -->
+        <div id="langflowTab" class="col s12">
+          <h5>Settings</h5>
+          <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="langflowApiKey" name="langflowApiKey" type="text" required>
+              <label for="langflowApiKey">Langflow API Key</label>
             </div>
-            <div class="collapsible-body">
-              <div class="row">
-                <div class="input-field col s12 m6">
-                  <input id="batchSize" name="batchSize" type="number" min="1">
-                  <label for="batchSize">Batch Size</label>
-                </div>
-                <div class="input-field col s12 m6">
-                  <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
-                  <label for="updateDetailsUrl">Update Details URL</label>
-                </div>
-              </div>
-              <div class="row">
-                <div class="input-field col s12 m6">
-                  <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text">
-                  <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
-                </div>
-                <div class="input-field col s12 m6">
-                  <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text">
-                  <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
-                </div>
-              </div>
+            <div class="input-field col s12 m6">
+              <input id="langflowUrl" name="langflowUrl" type="url" required>
+              <label for="langflowUrl">Langflow URL</label>
             </div>
-          </li>
-        </ul>
-      </form>
-    </div>
+          </div>
+          <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="textAssessmentTweakId" name="textAssessmentTweakId" type="text" required>
+              <label for="textAssessmentTweakId">Text Assessment Tweak ID</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="tableAssessmentTweakId" name="tableAssessmentTweakId" type="text" required>
+              <label for="tableAssessmentTweakId">Table Assessment Tweak ID</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="input-field col s12">
+              <input id="imageAssessmentTweakId" name="imageAssessmentTweakId" type="text" required>
+              <label for="imageAssessmentTweakId">Image Assessment Tweak ID</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="input-field col s12">
+              <input id="imageFlowUid" name="imageFlowUid" type="text" required>
+              <label for="imageFlowUid">Image Flow UID</label>
+            </div>
+          </div>
+        </div>
 
-    <!-- Action Buttons (Always Visible) -->
-    <div class="button-group">
-      <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
-      <button class="btn blue waves-effect waves-light" type="submit" form="config-form">
-        <i class="material-icons right">save</i> Save
-      </button>
-    </div>
+        <!-- Tab 2: Advanced -->
+        <div id="advancedTab" class="col s12">
+          <h5>Advanced Settings</h5>
+          <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="batchSize" name="batchSize" type="number" min="1">
+              <label for="batchSize">Batch Size</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
+              <label for="updateDetailsUrl">Update Details URL</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text">
+              <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text">
+              <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
+            </div>
+          </div>
+        </div>
 
-    <!-- Materialize JS and initialization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var elems = document.querySelectorAll('.collapsible');
-        M.Collapsible.init(elems);
-        M.updateTextFields();
+        <!-- Tab 3: Debug (Classroom Selector) -->
+        <div id="debugTab" class="col s12">
+          <h5>Select Your Classroom</h5>
+          <div class="input-field">
+            <select id="classrooms" name="classrooms">
+              <option value="" disabled selected>Choose your classroom</option>
+              <? for (let i = 0; i < classrooms.length; i++) { ?>
+              <option value="<?= classrooms[i].id ?>" data-name="<?= classrooms[i].name ?>">
+                <?= classrooms[i].name ?>
+              </option>
+              <? } ?>
+            </select>
+            <label for="classrooms">Classroom</label>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
 
-        google.script.run
-          .withSuccessHandler(populateForm)
-          .withFailureHandler(function(error) {
-            M.toast({ html: `Error loading configuration: ${error.message}`, classes: 'red' });
-          })
-          .getConfiguration();
-      });
+  <!-- Fixed button group for configuration (applies to Langflow and Advanced tabs) -->
+  <div class="button-group">
+    <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
+    <button class="btn blue waves-effect waves-light" type="submit" form="config-form">
+      <i class="material-icons right">save</i> Save
+    </button>
+  </div>
 
-      function populateForm(data) {
-        document.getElementById('langflowApiKey').value = data.langflowApiKey || '';
-        document.getElementById('langflowUrl').value = data.langflowUrl || '';
-        document.getElementById('textAssessmentTweakId').value = data.textAssessmentTweakId || '';
-        document.getElementById('tableAssessmentTweakId').value = data.tableAssessmentTweakId || '';
-        document.getElementById('imageAssessmentTweakId').value = data.imageAssessmentTweakId || '';
-        document.getElementById('imageFlowUid').value = data.imageFlowUid || '';
+  <!-- Materialize JS and initialisation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var tabs = document.querySelectorAll('.tabs');
+      M.Tabs.init(tabs);
+      M.updateTextFields();
+      var selects = document.querySelectorAll('select');
+      M.FormSelect.init(selects);
 
-        document.getElementById('batchSize').value = data.batchSize || 20;
-        document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
-        document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
-        document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
+      // Load existing configuration
+      google.script.run
+        .withSuccessHandler(populateForm)
+        .withFailureHandler(function (error) {
+          M.toast({ html: `Error loading configuration: ${error.message}`, classes: 'red' });
+        })
+        .getConfiguration();
+    });
 
-        M.updateTextFields();
-      }
+    function populateForm(data) {
+      document.getElementById('langflowApiKey').value = data.langflowApiKey || '';
+      document.getElementById('langflowUrl').value = data.langflowUrl || '';
+      document.getElementById('textAssessmentTweakId').value = data.textAssessmentTweakId || '';
+      document.getElementById('tableAssessmentTweakId').value = data.tableAssessmentTweakId || '';
+      document.getElementById('imageAssessmentTweakId').value = data.imageAssessmentTweakId || '';
+      document.getElementById('imageFlowUid').value = data.imageFlowUid || '';
 
-      document.getElementById('config-form').addEventListener('submit', function(event) {
-        event.preventDefault();
+      document.getElementById('batchSize').value = data.batchSize || 20;
+      document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
+      document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
+      document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
 
-        const formData = {
-          langflowApiKey: document.getElementById('langflowApiKey').value.trim(),
-          langflowUrl: document.getElementById('langflowUrl').value.trim(),
-          textAssessmentTweakId: document.getElementById('textAssessmentTweakId').value.trim(),
-          tableAssessmentTweakId: document.getElementById('tableAssessmentTweakId').value.trim(),
-          imageAssessmentTweakId: document.getElementById('imageAssessmentTweakId').value.trim(),
-          imageFlowUid: document.getElementById('imageFlowUid').value.trim(),
-          batchSize: parseInt(document.getElementById('batchSize').value, 10),
-          updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
-          assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
-          assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim()
-        };
+      M.updateTextFields();
+    }
 
-        google.script.run.saveConfiguration(formData);
-      });
-    </script>
-  </body>
+    document.getElementById('config-form').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const select = document.getElementById('classrooms');
+      const classroom = select.value ? {
+        courseId: select.value,
+        courseName: select.options[select.selectedIndex].dataset.name
+      } : null;
+
+      const formData = {
+        langflowApiKey: document.getElementById('langflowApiKey').value.trim(),
+        langflowUrl: document.getElementById('langflowUrl').value.trim(),
+        textAssessmentTweakId: document.getElementById('textAssessmentTweakId').value.trim(),
+        tableAssessmentTweakId: document.getElementById('tableAssessmentTweakId').value.trim(),
+        imageAssessmentTweakId: document.getElementById('imageAssessmentTweakId').value.trim(),
+        imageFlowUid: document.getElementById('imageFlowUid').value.trim(),
+        batchSize: parseInt(document.getElementById('batchSize').value, 10),
+        updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
+        assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
+        assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
+        classroom: classroom
+      };
+
+      google.script.run
+        .withSuccessHandler(function () {
+          M.toast({ html: 'Configuration saved successfully.', classes: 'green' });
+          google.script.host.close();
+        })
+        .withFailureHandler(function (error) {
+          M.toast({ html: `Error saving configuration: ${error.message}`, classes: 'red' });
+        })
+        .saveConfiguration(formData);
+    });
+
+    google.script.run
+      .withSuccessHandler(function () {
+        M.toast({ html: 'Classroom saved successfully.', displayLength: 5000, classes: 'rounded' });
+        google.script.host.close();
+      })
+      .withFailureHandler(function (error) {
+        alert('Error: ' + error.message);
+      })
+      .saveClassroom(courseName, courseId);
+  </script>
+</body>
+
 </html>
