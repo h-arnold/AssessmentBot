@@ -27,6 +27,8 @@ class BaseRequestManager {
         const responseCode = response.getResponseCode();
         if (responseCode === 200 || responseCode === 201) {
           return response;
+        } else if (responseCode === 403) {
+          throw new Error(`Request to ${request.url} failed with status 403. Error message: ${response.getContentText()}`);
         } else {
           console.warn(`Request to ${request.url} failed with status ${response.getResponseCode()}. \n Returned message: ${response.getContentText()} \n Attempt ${attempt + 1} of ${maxRetries + 1}.`);
         }
