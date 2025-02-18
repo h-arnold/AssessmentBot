@@ -359,20 +359,4 @@ class ConfigurationManager {
 
 const configurationManager = new ConfigurationManager();
 
-function getConfiguration() {
-  return {
-    batchSize: configurationManager.getBatchSize(),
-    langflowApiKey: configurationManager.getLangflowApiKey(),
-    langflowUrl: configurationManager.getLangflowUrl(),
-    imageFlowUid: configurationManager.getImageFlowUid(),
-    textAssessmentTweakId: configurationManager.getTextAssessmentTweakId(),
-    tableAssessmentTweakId: configurationManager.getTableAssessmentTweakId(),
-    imageAssessmentTweakId: configurationManager.getImageAssessmentTweakId(),
-    assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
-    assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
-    updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
-    revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
-    daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
-    scriptAuthorised: configurationManager.getScriptAuthorised()
-  }
-}
+

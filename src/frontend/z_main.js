@@ -92,19 +92,6 @@ function showVersionSelector() {
   return mainController.showVersionSelector();
 }
 
-/**
- * Saves the provided configuration properties.
- * @param {Object} config - An object containing key-value pairs of configurations.
- */
-function saveConfiguration(config) {
-  try {
-    mainController.saveConfiguration(config);
-  } catch (error) {
-    console.error("Error saving configuration:", error);
-    mainController.utils.toastMessage("Failed to save configuration: " + error.message, "Error", 5);
-    throw new Error("Failed to save configuration. Please check the inputs.");
-  }
-}
 
 /**
  * Fetches Google Classrooms and populates them as needed.

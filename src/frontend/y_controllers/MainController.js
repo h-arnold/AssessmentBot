@@ -145,67 +145,6 @@ class MainController {
     this.uiManager.showVersionSelector();
   }
 
-  /**
-   * === Configuration Management ===
-   */
-  saveConfiguration(config) {
-    try {
-      // Save classroom data if provided
-      if (config.classroom) {
-        this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
-        delete config.classroom; // Remove classroom data before saving other configs
-      }
-
-      // Delegate configuration saving to ConfigurationManager
-      if (config.batchSize !== undefined) {
-        configurationManager.setBatchSize(config.batchSize);
-      }
-      if (config.langflowApiKey !== undefined) {
-        configurationManager.setLangflowApiKey(config.langflowApiKey);
-      }
-      if (config.langflowUrl !== undefined) {
-        configurationManager.setLangflowUrl(config.langflowUrl);
-      }
-      if (config.imageFlowUid !== undefined) {
-        configurationManager.setImageFlowUid(config.imageFlowUid);
-      }
-
-      // Handle Tweak IDs
-      if (config.textAssessmentTweakId !== undefined) {
-        configurationManager.setTextAssessmentTweakId(config.textAssessmentTweakId);
-      }
-      if (config.tableAssessmentTweakId !== undefined) {
-        configurationManager.setTableAssessmentTweakId(config.tableAssessmentTweakId);
-      }
-      if (config.imageAssessmentTweakId !== undefined) {
-        configurationManager.setImageAssessmentTweakId(config.imageAssessmentTweakId);
-      }
-
-      // Handle Assessment Record values
-      if (config.assessmentRecordTemplateId !== undefined) {
-        configurationManager.setAssessmentRecordTemplateId(config.assessmentRecordTemplateId);
-      }
-      if (config.assessmentRecordDestinationFolder !== undefined) {
-        configurationManager.setAssessmentRecordDestinationFolder(config.assessmentRecordDestinationFolder);
-      }
-
-      // Handle daysUntilAuthRevoke parameter
-      if (config.daysUntilAuthRevoke !== undefined) {
-        configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke);
-      }
-
-      this.utils.toastMessage("Configuration saved successfully.", "Success", 5);
-      console.log("Configuration saved successfully.");
-    } catch (error) {
-      console.error("Error saving configuration:", error);
-      this.utils.toastMessage("Failed to save configuration: " + error.message, "Error", 5);
-      throw new Error("Failed to save configuration. Please check the inputs.");
-    }
-  }
-
-
-
-
   /** 
    * === Classroom Management ===
    */
