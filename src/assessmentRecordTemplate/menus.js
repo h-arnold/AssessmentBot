@@ -21,33 +21,33 @@ function onOpen() {
 // Calls the function to generate the Assignment Chooser modal.
 
 function assessAssignment() {
-  return AIAssess.showAssignmentDropdown();
+  return AssessmentBot.showAssignmentDropdown();
 }
 
 // Gets a list of all assignments set in the Google Classroom associated with the Google Sheet.
 function getAssignments(courseId) {
-  return AIAssess.getAssignments(courseId)
+  return AssessmentBot.getAssignments(courseId)
 }
 
 // Helper function for the above
 function createAssignmentDropdownHtml(assignments) {
-  return AIAssess.createAssignmentDropdownHtml(assignments);
+  return AssessmentBot.createAssignmentDropdownHtml(assignments);
 }
 
 
 // Opens the reference slide modal which comes after the assignment selection
 function openReferenceSlideModal(assignmentId) {
-  return AIAssess.openReferenceSlideModal(assignmentId)
+  return AssessmentBot.openReferenceSlideModal(assignmentId)
 }
 
 // Helper function to generate and display html for the reference slide modal
 function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
-  return AIAssess.createReferenceSlideModalHtml(assignmentId, referenceSlideId) 
+  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId) 
 }
 
 // Saves the reference and empty slide Ids to avoid having to do it each assessment run.
 function saveSlideIdsForAssignment(assignmentId, slideIds) {
-  return AIAssess.saveSlideIdsForAssignment(assignmentId, slideIds)
+  return AssessmentBot.saveSlideIdsForAssignment(assignmentId, slideIds)
 }
 
 /**
@@ -59,7 +59,7 @@ function saveSlideIdsForAssignment(assignmentId, slideIds) {
  * @param {string} emptySlideId - The ID of the empty slide.
  */
 function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
-  AIAssess.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
+  AssessmentBot.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
 }
 
 /**
@@ -71,19 +71,19 @@ function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, refer
  * @returns {string} The unique process ID.
  */
 function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
-  return AIAssess.startProcessing(assignmentId, referenceSlideId, emptySlideId);
+  return AssessmentBot.startProcessing(assignmentId, referenceSlideId, emptySlideId);
 }
 
 /**
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-  AIAssess.showProgressModal();
+  AssessmentBot.showProgressModal();
 }
 
 // Needed to get the progress data for the progress modal.
 function requestStatus() {
-  return AIAssess.requestStatus();
+  return AssessmentBot.requestStatus();
 }
 // Place holder code for classroom changing menu option
 function showClassroomDropdown() {
@@ -91,23 +91,23 @@ function showClassroomDropdown() {
 }
 
 function saveClassroom(courseName, courseId) {
-  AIAssess.saveClassroom(courseName, courseId)
+  AssessmentBot.saveClassroom(courseName, courseId)
 }
 
 
 function removeTrigger(functionName){
-  AIAssess.removeTrigger(functionName);
+  AssessmentBot.removeTrigger(functionName);
 
 }
 
 // Is the function without parameters to call processSelectedAssignment. Retrieves assignment details from document properties.
 function triggerProcessSelectedAssignment() {
-  AIAssess.triggerProcessSelectedAssignment();
+  AssessmentBot.triggerProcessSelectedAssignment();
 }
 
 // Called by the above with the retrieved parameters.
 function processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId) {
-  return AIAssess.processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId)
+  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId)
 }
 
 //
@@ -115,16 +115,21 @@ function processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId)
 //
 
 function openConfigurationDialog() {
-  AIAssess.showConfigurationDialog();
+  AssessmentBot.showConfigurationDialog();
 }
 
 
 function saveConfiguration(formData) {
-  return AIAssess.saveConfiguration(formData);
+  return AssessmentBot.saveConfiguration(formData);
 }
 
 function getConfiguration() {
-  return AIAssess.getConfiguration();
+  return AssessmentBot.getConfiguration();
+}
+
+// Invalidates the authorisation to run the script. Runs on a time based trigger 60 days (dy default) after the some aspect of the script is first run. This is here to avoid the case where you've got a set of bound scripts which have significant permissions to do things on your Google Workspace accounts that are sitting there unused, after an update for example.
+function revokeAuthorisation() {
+  ScriptApp.invalidateAuth();
 }
 
 
