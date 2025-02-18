@@ -29,18 +29,27 @@ class UpdateManager {
     // These are the FileIds of the sheets that will be copied into the user's assessment record folder and populated with the values from the old versions.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
     this.adminSheetTemplateId = this.getLatestAdminSheetTemplateId;
-     this.progressTracker = {}  // Leave empty for now but useful to add as an attribute when updating the assessment records
+    this.progressTracker = {}  // Leave empty for now but useful to add as an attribute when updating the assessment records
 
   }
 
   getLatestAssessmentRecordTemplateId(versionNo = this.versionNo) {
+    const versionDetails = this.versionDetails[versionNo].assessmentRecordTemplateFileId;
+    if (!versionDetails) {
+      throw new Error(`Assessment Record template for v${this.versionNo} not found.`)
+    }
+
     return this.versionDetails[versionNo].assessmentRecordTemplateFileId;
   }
 
   getLatestAdminSheetTemplateId(versionNo = this.versionNo) {
-    return this.versionDetails[versionNo].adminSheetFileId;
-  }
+    const versionDetails = this.versionDetails[versionNo].adminSheetFileId;
+    if (!versionDetails) {
+      throw new Error(`Admin Sheet template for v${this.versionNo} not found.`) 
+    };
 
+    return versionDetails;
+  }
   /**
    * Clones assessment record sheets to a destination folder.
    * @param {Object} assessmentRecordSheets - Object containing assessment record sheets with className as keys.
@@ -56,7 +65,7 @@ class UpdateManager {
     destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder(),
     templateSheetId = this.assessmentRecordTemplateId
   ) {
-     const step = this.progressTracker.getStepAsNumber();
+    const step = this.progressTracker.getStepAsNumber();
     Object.keys(assessmentRecordSheets).forEach(className => {
       this.progressTracker.updateProgress(step, `Cloning the assessment record for ${className}`)
       const newSheet = SheetCloner.cloneEverything({
@@ -80,7 +89,7 @@ class UpdateManager {
    * 'Classrooms Sheet'
    */
   getAssessmentRecordDetails() {
-    const headerIndicies = this.classroomSheet.getColumnIndicesFromHeader([`Name`, `AR File ID`]);
+    const headerIndices = this.classroomSheet.getColumnIndicesFromHeader([`Name`, `AR File ID`]);
     const sheetsData = this.classroomSheet.getData()
     //Remove header rows
     sheetsData.shift()
@@ -89,9 +98,9 @@ class UpdateManager {
 
     sheetsData.forEach(row => {
       //Adds a element to the assessmentRecordsheet object if there's a file ID in the row.
-      if (row[headerIndicies.arfileid]) {
-        assessmentRecordSheets[row[headerIndicies.name]] = {
-          "originalSheetId": row[headerIndicies.arfileid],
+      if (row[headerIndices.arfileid]) {
+        assessmentRecordSheets[row[headerIndices.name]] = {
+          "originalSheetId": row[headerIndices.arfileid],
           "newSheetId": "" //leave this attribute blank for now
         }
       }
@@ -268,7 +277,7 @@ class UpdateManager {
    * 4. Opening the new sheet in a browser window
    * 
    * NOTE: the versionNo, assessmentRecordTemplateId and adminSheetTemplateId must be set before calling this method. 
-   * Currently this is handled by the MainController.updateAdminSheet() method which recieves the values from the uiManager.ui.
+   * Currently this is handled by the MainController.updateAdminSheet() method which receives the values from the uiManager.ui.
    * 
    * 
    * @returns {string} The URL of the newly created admin sheet
