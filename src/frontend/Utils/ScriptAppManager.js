@@ -6,7 +6,8 @@
 
 class ScriptAppManager {
     constructor() {
-        this.scriptApp = ScriptApp;
+        this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+        console.log(`Auth info at time of instantiation is: ${JSON.stringify(this.authInfo.getAuthorizationStatus())}`)
         this.scriptId = "";
     }
 
@@ -24,8 +25,8 @@ class ScriptAppManager {
      * @returns {string} The current authorization mode (NONE, LIMITED, or FULL)
      */
     checkAuthMode() {
-        const authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
-        return authInfo.getAuthorizationStatus();
+        console.log(`Authorisation Status is: ${JSON.stringify(this.authInfo.getAuthorizationStatus)}`)
+        return this.authInfo.getAuthorizationStatus();
     }
 
     /**
@@ -33,7 +34,7 @@ class ScriptAppManager {
      * @returns {string} The authorization URL
      */
     getAuthorisationUrl() {
-        return ScriptApp.getAuthorisationUrl();
+        return this.authInfo.getAuthorizationUrl();
     }
 
     /**

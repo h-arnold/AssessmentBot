@@ -40,14 +40,21 @@ class MainController {
   /**
    * Handles the open event of the Google Sheets document.
    * Adds custom menus to the UI when the document is opened.
-   * @param {GoogleAppsScript.Events.Sheets.OnOpen} e - The event object passed when the document is opened
-   * @throws {Error} Logs error if UIManager is not initialized
    */
-  onOpen(e) {
-    if (this.uiManager) {
-      this.uiManager.addCustomMenus(e);
-    } else {
+  onOpen() {
+    const isScriptAuthorised = configurationManager.getScriptAuthorised();
+    console.log(isScriptAuthorised)
+    if (this.uiManager && !isScriptAuthorised) {
+      this.uiManager.createUnauthorisedMenu();
+      console.log("Creating unauthorised menu.")
+    } else if (!this.uiMangager){
       console.error("UIManager is not available to add custom menus.");
+    }
+    else if (isScriptAuthorised) {
+      console.log(`Script is already authorised. Creating authorised menu.`)
+    }
+    else {
+      console.log("Who knows what's gone wrong?")
     }
   }
 
@@ -553,39 +560,55 @@ class MainController {
   }
 
   /**
-  * Handles the authorisation flow when user clicks authorise. This method ensures that the authorised menu appears after the auth process has taken place.
+  * Handles the authorisation flow when user clicks authorise or when the script is opened after it has been authorised. This includes finishing any updates.
   */
-  handleAuthorisation() {
-    const scriptAppManager = new ScriptAppManager();
-    const authResult = scriptAppManager.handleAuthFlow();
+  handleScriptInit() {
+
+    // Gets the update stage.
     const updateStage = configurationManager.getUpdateStage();
+
+    // We the authorisation status of a script as a config value because finding retrieving a script property is much quicker than checking the auth status each time. There is some error handling below for instances where the script has been deauthorised.
+    const scriptAuthorised = configurationManager.getScriptAuthorised();
+
+    // If the script hasn't been authorised, run the First Run Script Initialisation Process.
+    if (!scriptAuthorised) {
+      this.doFirstRunInit();
+    }
 
     // Checks if the update needs finishing.
     if (updateStage == 1) {
 
-      if (authResult.needsAuth) {
-        //Get the script authorised.
-        this.uiManager.showAuthorisationModal(authResult.authUrl);
-      }
-
-      // Finish the update
+      // Finish the update if so.
       this.finishUpdate();
 
-      //Create the regular authorised menu.
-      this.uiManager.createAuthorisedMenu();
-
     }
-    else if (authResult.needsAuth) {
-      this.uiManager.showAuthorisationModal();
 
-      //Update the menu after authorisation so that it give the user access to all functions without having to refresh the page.
-      this.uiManager.createAuthorisedMenu();
-
-    }
-    else {
-      this.uiManager.createAuthorisedMenu()
-    }
+    //Assuming all the above has happened, create the authorised menu.
+    this.uiManager.createAuthorisedMenu();
   }
+
+  /**
+   * This method does the first run init procedure of triggering the auth process, creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
+   */
+  doFirstRunInit() {
+    const sa = new ScriptAppManager()
+
+    // This should trigger the auth process if it hasn't been granted.
+    const authStatus = sa.handleAuthFlow();
+
+    // Trigger the authorisation process if needed
+    if (authStatus.needsAuth) {
+      this.uiManager.showAuthorisationModal(authStatus.authUrl)
+    }
+
+    // Assuming auth flow has taken place, add a trigger to call this method.
+    this.triggerController.createOnOpenTrigger(`handleScriptInit`)
+
+    // Set script authorised to true to avoid calling the auth process again.
+    configurationManager.setScriptAuthorised(true);
+  }
+
+
 
   finishUpdate() {
     const updateManager = new UpdateManager();

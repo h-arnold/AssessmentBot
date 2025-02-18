@@ -7,44 +7,18 @@ class UIManager {
   }
 
   /**
- * Adds custom menus to the Google Sheets UI when the spreadsheet is opened.
- * @param {Event} e - The event object that triggered the global onOpen function.
- */
-  addCustomMenus(e) {
-    const authMode = e.authMode
-    console.log(e.authMode);
-    const updateStatus = configurationManager.getUpdateStage();
-
-    // Check if the update needs to be completed. 
-    // Ordinarily this option shouldn't be necessary unless the user closes the tab containing the spreadsheet before they've completed the auth flow.
-    if  (authMode === ScriptApp.AuthMode.FULL && updateStatus == 1) {
-      this.createFinishUpdateMenu()
-    } 
-    //If not, get authorisation and then continue to either complete update or create authorised menu.
-    else if (authMode === ScriptApp.AuthMode.LIMITED) 
-      {
-        this.createUnauthorisedMenu();
-      } 
-    else 
-    { // Script is authorised and up-to-date.
-        this.createAuthorisedMenu()
-    }
-
-  }
-
-  /**
    * Creates a limited menu for unauthorized state
-   * @private
+   *
    */
   createUnauthorisedMenu() {
     const menu = this.ui.createMenu('Assessment Bot')
-      .addItem('Authorise App', 'handleAuthorisation');
+      .addItem('Authorise App', 'handleScriptInit');
     menu.addToUi();
   }
 
     /**
    * Creates a single menu option to complete update process.
-   * @private
+   * 
    */
     createFinishUpdateMenu() {
       const menu = this.ui.createMenu('Assessment Bot')
@@ -55,7 +29,7 @@ class UIManager {
 
   /**
    * Creates the full menu for authorized state
-   * @private
+   * 
    */
   createAuthorisedMenu() {
     const ui = this.ui;

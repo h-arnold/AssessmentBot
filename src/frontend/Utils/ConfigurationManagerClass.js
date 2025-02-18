@@ -13,8 +13,9 @@ class ConfigurationManager {
       UPDATE_DETAILS_URL: 'updateDetailsUrl',
       UPDATE_STAGE: 'updateStage',
       IS_ADMIN_SHEET: 'isAdminSheet',
-      REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',         // New configuration key for auth trigger
-      DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke'              // New configuration key for days until auth is revoked
+      REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
+      DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
+      SCRIPT_AUTHORISED: 'scriptAuthorised'
     };
   }
 
@@ -28,15 +29,12 @@ class ConfigurationManager {
 
     let hasScriptProperties = null;
 
-    // If this is the admin sheet, we want to get the ScriptProperties length to avoid triggering the deserialisation process at startup, 
-    // which adds a few seconds of delay to the opening. For the Assessment Records, this will always return a length because it's fetching the Script Properties associated with admin sheet, 
-    // which we don't want. Adding this check here ensures that if this code is being run from an Assessment Record, the script properties value returns as null and so the deserialisation process happens if there are no document properties.
     if (this.getIsAdminSheet()) {
       hasScriptProperties = this.scriptProperties.getKeys().length > 0;
     }
-    
+
     const hasDocumentProperties = this.documentProperties.getKeys().length > 0;
-    
+
     if (!hasScriptProperties && !hasDocumentProperties) {
       try {
         const propertiesCloner = new PropertiesCloner();
@@ -56,10 +54,6 @@ class ConfigurationManager {
     return this;
   }
 
-  /**
-   * Retrieves all configuration properties.
-   * @return {Object} - An object containing all configuration properties.
-   */
   getAllConfigurations() {
     if (!this.configCache) {
       this.configCache = this.scriptProperties.getProperties();
@@ -67,38 +61,24 @@ class ConfigurationManager {
     return this.configCache;
   }
 
-  /**
-   * Checks if a configuration property exists.
-   * @param {string} key - The configuration key.
-   * @return {boolean} - True if the property exists, false otherwise.
-   */
   hasProperty(key) {
     this.getAllConfigurations();
     return this.configCache.hasOwnProperty(key);
   }
 
-  /**
-   * Retrieves a single configuration property.
-   * @param {string} key - The configuration key.
-   * @return {string} - The value of the configuration property.
-   */
   getProperty(key) {
     if (!this.configCache) {
       this.getAllConfigurations();
     }
+
+    // All other config params are stored in the Script Properties but as the Admin Sheet IS a specific document, this particular one needs to be stored as a document property to avoid issues with the assessment records mistakenly being picked up as admin sheets.
     if (key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) {
       return this.documentProperties.getProperty(key) || false;
     }
     return this.configCache[key] || '';
   }
 
-  /**
-   * Sets a single configuration property.
-   * @param {string} key - The configuration key.
-   * @param {string|number|boolean} value - The value to set.
-   */
   setProperty(key, value) {
-    // Add validation based on key
     switch (key) {
       case ConfigurationManager.CONFIG_KEYS.BATCH_SIZE:
         if (!Number.isInteger(value) || value <= 0) {
@@ -106,7 +86,7 @@ class ConfigurationManager {
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.LANGFLOW_API_KEY:
-        if (typeof value !== 'string') { // Temporarily removed valid API validation check because the DataStax langflow instance uses a different format.
+        if (typeof value !== 'string') {
           throw new Error("LangFlow API Key must be a valid string starting with 'sk-' followed by alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
         }
         break;
@@ -149,9 +129,10 @@ class ConfigurationManager {
       case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
         this.documentProperties.setProperty(key, Boolean(value));
         return;
+      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED:
       case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
-        if (typeof value !== 'boolean') {
-          throw new Error("Revoke Auth Trigger Set must be a boolean.");
+        if (!this.isBoolean(value)) {
+          throw new Error(`${key} must be a boolean.`);
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE:
@@ -168,21 +149,19 @@ class ConfigurationManager {
     this.configCache = null; // Invalidate cache
   }
 
-  /**
-   * Validates if a string is a valid LangFlow API key.
-   * @param {string} apiKey - The API key string to validate.
-   * @return {boolean} - True if valid, false otherwise.
-   */
+  isBoolean(value) {
+    //See if this can be converted to a boolean
+    value = Boolean(value)
+    console.log(typeof value === 'boolean')
+    return typeof value === 'boolean';
+  }
+
+
   isValidApiKey(apiKey) {
     const apiKeyPattern = /^sk-(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
     return apiKeyPattern.test(apiKey.trim());
   }
 
-  /**
-   * Validates if a string is a valid Google Sheet ID.
-   * @param {string} sheetId - The Google Sheet ID to validate.
-   * @return {boolean} - True if valid, false otherwise.
-   */
   isValidGoogleSheetId(sheetId) {
     try {
       const file = DriveApp.getFileById(sheetId);
@@ -196,11 +175,6 @@ class ConfigurationManager {
     }
   }
 
-  /**
-   * Validates if a string is a valid Google Drive Folder ID.
-   * @param {string} folderId - The Google Drive Folder ID to validate.
-   * @return {boolean} - True if valid, false otherwise.
-   */
   isValidGoogleDriveFolderId(folderId) {
     try {
       const folder = DriveApp.getFolderById(folderId);
@@ -211,20 +185,11 @@ class ConfigurationManager {
     }
   }
 
-  /**
-   * Converts a configuration key to a more readable format for error messages.
-   * @param {string} key - The configuration key.
-   * @return {string} - Readable key.
-   */
   toReadableKey(key) {
-    // Convert camelCase or PascalCase to Regular Text
     return key.replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase());
   }
 
-  /**
-   * Getter Methods
-   */
   getBatchSize() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE), 10);
     return isNaN(value) ? 20 : value;
@@ -254,61 +219,37 @@ class ConfigurationManager {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.IMAGE_ASSESSMENT_TWEAK_ID);
   }
 
-  /**
-   * Retrieves the revoke auth trigger setting.
-   * @return {boolean} - True if the auth trigger is set, false otherwise.
-   */
   getRevokeAuthTriggerSet() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET);
     return value.toString().toLowerCase() === 'true';
   }
-  
-  /**
-   * Retrieves the days until auth revoke setting.
-   * @return {number} - The number of days until auth is revoked.
-   */
+
   getDaysUntilAuthRevoke() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE), 10);
     return isNaN(value) ? 60 : value;
   }
 
-  /**
-   * Dynamically constructs the Image Assessment URL based on the base Langflow URL.
-   * @return {string} - The constructed Image Assessment URL.
-   */
   getImageAssessmentUrl() {
     const baseUrl = this.getLangflowUrl();
     return `${baseUrl}/api/v1/run/imageAssessment?stream=false`;
   }
 
-  /**
-   * Dynamically constructs the Text Assessment URL based on the base Langflow URL.
-   * @return {string} - The constructed Text Assessment URL.
-   */
   getTextAssessmentUrl() {
     const baseUrl = this.getLangflowUrl();
     return `${baseUrl}/api/v1/run/textAssessment?stream=false`;
   }
 
-  /** 
-   * Gets the URL of the json file which holds the file IDs of the different Assessment Bot versions
-   */
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
     if (!value) {
-      return `https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateManager/assessmentBotVersions.json`
+      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateManager/assessmentBotVersions.json';
     } else {
       return value;
     }
   }
 
-  /**
-   * Gets the current update stage (0=finished/not started, 1=admin sheet updated, 2=updating records)
-   * @return {number} - The current update stage
-   */
   getUpdateStage() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE), 10);
-    // If value isn't set, return the default of 0 - finished/not started.
     if (isNaN(value)) {
       return 0;
     } else {
@@ -316,10 +257,6 @@ class ConfigurationManager {
     }
   }
 
-  /**
-   * Dynamically constructs the Table Assessment URL based on the base Langflow URL.
-   * @return {string} - The constructed Table Assessment URL.
-   */
   getTableAssessmentUrl() {
     const baseUrl = this.getLangflowUrl();
     return `${baseUrl}/api/v1/run/tableAssessment?stream=false`;
@@ -328,9 +265,7 @@ class ConfigurationManager {
   getImageUploadUrl() {
     const baseUrl = this.getLangflowUrl();
     const imageFlowUid = this.getImageFlowUid();
-    // Note: This contradicts the swagger docs, which say that it should be {baseUrl}/api/v1/files/upload/{imageFlowUid} but this is incorrect for now. 
-    // This could be the first port of call for an issue with image uploads when I get round to updating to the latest langflow backend.
-    return `${baseUrl}/api/v1/upload/${imageFlowUid}`;  
+    return `${baseUrl}/api/v1/upload/${imageFlowUid}`;
   }
 
   getAssessmentRecordTemplateId() {
@@ -338,10 +273,8 @@ class ConfigurationManager {
   }
 
   getAssessmentRecordDestinationFolder() {
-    // Getting the assessment record destination folder is unnecessary for the assessment record sheets and slows down initialisation so it will not run if the sheet is an assessment record.
     if (Utils.validateIsAdminSheet(false)) {
       let destinationFolder = this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER);
-      // If no destination folder is specified, a folder called 'Assessment Records' will be created in the parent folder of the current spreadsheet.
       if (!destinationFolder) {
         const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
         const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
@@ -356,9 +289,11 @@ class ConfigurationManager {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) || false;
   }
 
-  /**
-   * Setter Methods
-   */
+  // New getter for scriptAuthorised
+  getScriptAuthorised() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) || false;
+  }
+
   setBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE, batchSize);
   }
@@ -399,42 +334,29 @@ class ConfigurationManager {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL, url);
   }
 
-  /**
-   * Sets the current update stage
-   * @param {number} stage - The update stage (0=finished/not started, 1=admin sheet updated, 2=updating records)
-   */
   setUpdateStage(stage) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, stage);
   }
 
-  /**
-   * Sets the admin sheet status
-   * @param {boolean|any} isAdmin - Will be converted to boolean if non-boolean provided
-   * @returns {void}
-   */
   setIsAdminSheet(isAdmin) {
     const boolValue = Boolean(isAdmin);
     this.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, boolValue);
   }
 
-  /**
-   * Sets the revoke auth trigger setting.
-   * @param {boolean} flag - True to enable auth trigger, false otherwise.
-   */
   setRevokeAuthTriggerSet(flag) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, flag);
   }
-  
-  /**
-   * Sets the days until auth revoke setting.
-   * @param {number} days - The number of days until auth is revoked.
-   */
+
   setDaysUntilAuthRevoke(days) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE, days);
   }
+
+  // New setter for scriptAuthorised
+  setScriptAuthorised(flag) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
+  }
 }
 
-// Ensure singleton instance
 const configurationManager = new ConfigurationManager();
 
 function getConfiguration() {
@@ -450,6 +372,7 @@ function getConfiguration() {
     assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
     updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
     revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
-    daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke() 
-  };
+    daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
+    scriptAuthorised: configurationManager.getScriptAuthorised()
+  }
 }

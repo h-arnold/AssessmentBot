@@ -212,8 +212,8 @@ function clearAllCacheKeys() {
  * Used for initialisation and setting up the custom menus.
  * @param {Object} e - The event object passed by Google Apps Script runtime
  */
-function onOpen(e) {
-  mainController.onOpen(e);
+function onOpen() {
+  mainController.onOpen();
 }
 
 /**
@@ -240,8 +240,8 @@ function testWorkflow() {
   mainController.testWorkflow();
 }
 
-function handleAuthorisation() {
-  mainController.handleAuthorisation();
+function handleScriptInit() {
+  mainController.handleScriptInit();
 }
 
 function revokeAuthorisation() {
