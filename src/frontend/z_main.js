@@ -1,7 +1,7 @@
 // z_main.js
 // Global functions that bind UI actions and triggers to MainController methods.
 
-const mainController = new MainController();
+//const mainController = new MainController();
 
 /**
  * Initiates the processing of an assignment asynchronously by setting up a trigger
@@ -145,11 +145,11 @@ function saveClassroom(courseName, courseId) {
 }
 
 function getClassroomData() {
-  return mainController.getClasroomData();
+  return mainController.getClassroomData();
 }
 
-function saveClassromData(rows) {
-  mainController.saveClasroomData(rows)
+function saveClassroomData(rows) {
+  mainController.saveClassroomData(rows)
 }
 
 function showClassroomEditorModal() {

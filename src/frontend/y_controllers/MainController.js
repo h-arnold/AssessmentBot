@@ -100,7 +100,7 @@ class MainController {
     }
   }
 
-  getClasroomData() {
+  getClassroomData() {
     if (this.uiManager) {
       return this.uiManager.getClassroomData();
     } else {
@@ -109,7 +109,7 @@ class MainController {
     }
   }
 
-  saveClasroomData(rows) {
+  saveClassroomData(rows) {
     if (this.uiManager) {
       this.uiManager.saveClassroomData(rows);
     } else {

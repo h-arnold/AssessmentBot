@@ -68,6 +68,7 @@ class InitController {
    */
   doFirstRunInit() {
     const sa = new ScriptAppManager()
+    const triggerController = new TriggerController();
 
     // This should trigger the auth process if it hasn't been granted.
     const authStatus = sa.handleAuthFlow();
@@ -78,7 +79,7 @@ class InitController {
     }
 
     // Assuming auth flow has taken place, add a trigger to call this method.
-    this.triggerController.createOnOpenTrigger(`handleScriptInit`)
+    triggerController.createOnOpenTrigger(`handleScriptInit`)
 
     // Set script authorised to true to avoid calling the auth process again.
     configurationManager.setScriptAuthorised(true);
