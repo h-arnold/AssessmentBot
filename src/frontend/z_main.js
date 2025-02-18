@@ -191,17 +191,7 @@ function clearAllCacheKeys() {
 }
 
 /**
- * Adds custom menus when the spreadsheet is opened.
- */
-/**
- * Trigger function that runs when the Google Sheets document is opened.
- * Acts as an entry point wrapper for the main controller's onOpen functionality.
- * Used for initialisation and setting up the custom menus.
- * @param {Object} e - The event object passed by Google Apps Script runtime
- */
-function onOpen() {
-  mainController.onOpen();
-}
+
 
 /**
  * Starts the cohort analysis
@@ -212,24 +202,13 @@ function analyseCohorts() {
 }
 
 /**
- * Global function to handle version updates.
- * @param {Object} versionData Object containing version and file IDs
- * @return {Object} Result of the update operation
- */
-function handleVersionUpdate(versionData) {
-    return mainController.updateAdminSheet(versionData);
-}
-
-/**
  * Test workflow function for debugging purposes.
  */
 function testWorkflow() {
   mainController.testWorkflow();
 }
 
-function handleScriptInit() {
-  mainController.handleScriptInit();
-}
+
 
 function revokeAuthorisation() {
   const sa = new ScriptAppManager()

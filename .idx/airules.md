@@ -8,6 +8,7 @@
 
 ## Coding Standards
 - Language: Google App Script (concise, efficient, documented).
+- Lazy instantiation: instantiate minimum classes necessary
 - Naming:
   - Class: `PascalCase`.
   - Function/Variable: `camelCase`.
