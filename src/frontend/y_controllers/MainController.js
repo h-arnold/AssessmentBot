@@ -325,7 +325,7 @@ class MainController {
     let triggerId;
 
     try {
-      triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment', 1); // 1-minute delay
+      triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment'); 
       console.log(`Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`);
     } catch (error) {
       console.error(`Error creating trigger: ${error}`);
