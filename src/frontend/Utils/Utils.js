@@ -153,9 +153,9 @@ class Utils {
     return result; //True or False
   }
 
-    /**
-   * Gets the date in DD/MM/YYYY format for appending to various file names
-   */
+  /**
+ * Gets the date in DD/MM/YYYY format for appending to various file names
+ */
   static getDate() {
     const dateObj = new Date();
     const timeZone = Session.getScriptTimeZone();
@@ -182,7 +182,24 @@ class Utils {
     return isAdmin;
   }
 
-  
+  /**
+ * Converts a number of days into a future date.
+ *
+ * @param {number} days - The number of days into the future.
+ * @returns {Date} - A Date object representing the future date.
+ */
+  static getFutureDate(days) {
+    if (typeof days !== 'number' || days < 0) {
+      throw new Error("Days must be a non-negative number.");
+    }
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    return futureDate;
+  }
+
+
+
 
 }
 // Ensure singleton instance (if needed)

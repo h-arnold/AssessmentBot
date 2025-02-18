@@ -14,13 +14,19 @@ class TriggerController {
   * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
   *
   * @param {string} functionName - The name of the function to trigger.
+  * @param {integer} timeInDays - The time the trigger should be run
   * @returns {string} The unique ID of the created trigger.
   */
-  createTimeBasedTrigger(functionName) {
+  createTimeBasedTrigger(functionName, triggerTime) {
     try {
-      // Calculate the time 5 seconds from now
-      const triggerTime = new Date();
-      triggerTime.setSeconds(triggerTime.getSeconds() + 5);
+      // If triggerTime is undefined or null, assume that we're setting a trigger to start the trigger process as soon as possible.
+      if (!triggerTime) {
+        // Calculate the time 5 seconds from now
+        const triggerTime = new Date();
+        triggerTime.setSeconds(triggerTime.getSeconds() + 5);
+      }
+
+      
 
       // Create the trigger for the exact time
       const trigger = ScriptApp.newTrigger(functionName)
