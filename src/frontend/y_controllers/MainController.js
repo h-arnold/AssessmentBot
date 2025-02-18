@@ -182,6 +182,11 @@ class MainController {
         configurationManager.setAssessmentRecordDestinationFolder(config.assessmentRecordDestinationFolder);
       }
 
+      // Handle daysUntilAuthRevoke parameter
+      if (config.daysUntilAuthRevoke !== undefined) {
+        configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke);
+      }
+
       this.utils.toastMessage("Configuration saved successfully.", "Success", 5);
       console.log("Configuration saved successfully.");
     } catch (error) {
@@ -190,6 +195,7 @@ class MainController {
       throw new Error("Failed to save configuration. Please check the inputs.");
     }
   }
+
 
 
 
@@ -325,7 +331,7 @@ class MainController {
     let triggerId;
 
     try {
-      triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment'); 
+      triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
       console.log(`Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`);
     } catch (error) {
       console.error(`Error creating trigger: ${error}`);

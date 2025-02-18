@@ -20,8 +20,7 @@
       overflow-y: auto;
       padding: 20px;
       max-width: 800px;
-      padding-bottom: 80px;
-      /* Ensures content is not hidden behind the button bar */
+      padding-bottom: 80px; /* Ensures content is not hidden behind the button bar */
     }
 
     /* Tabs styling */
@@ -139,6 +138,13 @@
               <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
             </div>
           </div>
+          <!-- New field: Days Until Auth Revoke -->
+          <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="daysUntilAuthRevoke" name="daysUntilAuthRevoke" type="number" min="1">
+              <label for="daysUntilAuthRevoke">Days Until Auth Revoke (after this many days, authentication will be revoked)</label>
+            </div>
+          </div>
         </div>
 
         <!-- Tab 3: Debug (Classroom Selector) -->
@@ -199,6 +205,7 @@
       document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
       document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
+      document.getElementById('daysUntilAuthRevoke').value = data.daysUntilAuthRevoke || 60;
 
       M.updateTextFields();
     }
@@ -223,6 +230,7 @@
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
+        daysUntilAuthRevoke: parseInt(document.getElementById('daysUntilAuthRevoke').value, 10),
         classroom: classroom
       };
 
