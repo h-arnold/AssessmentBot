@@ -22,7 +22,7 @@ class TriggerController {
       // If triggerTime is undefined or null, assume that we're setting a trigger to start the trigger process as soon as possible.
       if (!triggerTime) {
         // Calculate the time 5 seconds from now
-        const triggerTime = new Date();
+        triggerTime = new Date();
         triggerTime.setSeconds(triggerTime.getSeconds() + 5);
       }
 
