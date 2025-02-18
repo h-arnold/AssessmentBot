@@ -27,6 +27,22 @@ class ConfigurationManager {
     this.scriptProperties = PropertiesService.getScriptProperties();
     this.documentProperties = PropertiesService.getDocumentProperties();
 
+    this.maybeDeserializeProperties();
+    
+    this.configCache = null; // Initialize cache
+
+    ConfigurationManager.instance = this;
+    return this;
+  }
+
+  /**
+   * Attempts to deserialize properties from a propertiesStore sheet if no script or document properties are found.
+   * This method checks if there are existing script or document properties. If neither is found, it attempts to
+   * initialize properties from a 'propertiesStore' sheet using the PropertiesCloner. If the sheet exists and the
+   * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
+   * logs an appropriate message. Any errors during the process are caught and logged.
+   */
+  maybeDeserializeProperties(){
     let hasScriptProperties = null;
 
     if (this.getIsAdminSheet()) {
@@ -48,10 +64,6 @@ class ConfigurationManager {
         console.error('Error initializing properties:', error);
       }
     }
-    this.configCache = null; // Initialize cache
-
-    ConfigurationManager.instance = this;
-    return this;
   }
 
   getAllConfigurations() {
@@ -356,7 +368,3 @@ class ConfigurationManager {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
   }
 }
-
-const configurationManager = new ConfigurationManager();
-
-
