@@ -46,123 +46,13 @@ function saveSlideIdsForAssignment(assignmentId, slideIds) {
   return mainController.saveSlideIdsForAssignment(assignmentId, slideIds);
 }
 
-/**
- * Opens the reference slide modal with assignment data.
- *
- * @param {string} assignmentData - The JSON string containing assignment data.
- */
-function openReferenceSlideModal(assignmentData) {
-  return mainController.openReferenceSlideModal(assignmentData);
-}
-
-/**
- * Opens the progress modal dialog.
- */
-function showProgressModal() {
-  mainController.showProgressModal();
-}
-
-/**
- * Shows the configuration dialog modal.
- */
-function showConfigurationDialog() {
-  return mainController.showConfigurationDialog();
-}
-
-/**
- * Shows the assignment dropdown modal.
- */
-function showAssignmentDropdown() {
-  return mainController.showAssignmentDropdown();
-}
-
-/**
- * Shows the classroom dropdown modal.
- */
-function showClassroomDropdown() {
-  return mainController.showClassroomDropdown();
-}
-
-/**
- * Displays the version selector interface by delegating to the main controller.
- * @returns {void}
- * @public
- */
-function showVersionSelector() {
-  return mainController.showVersionSelector();
-}
 
 
-/**
- * Fetches Google Classrooms and populates them as needed.
- */
-function handleFetchGoogleClassrooms() {
-  try {
-    mainController.fetchGoogleClassrooms();
-  } catch (error) {
-    console.error("Error fetching Google Classrooms:", error);
-    mainController.utils.toastMessage("Failed to fetch classrooms: " + error.message, "Error", 5);
-  }
-}
 
-/**
- * Creates Google Classrooms based on provided data.
- */
-function handleCreateGoogleClassrooms() {
-  try {
-    mainController.createGoogleClassrooms();
-  } catch (error) {
-    console.error("Error creating Google Classrooms:", error);
-    mainController.utils.toastMessage("Failed to create classrooms: " + error.message, "Error", 5);
-  }
-}
 
-/**
- * Sets up assessment documents in Google Classrooms.
- */
-function createAssessmentRecords() {
-  try {
-    mainController.createAssessmentRecords();
-  } catch (error) {
-    console.error("Error setting up assessment documents:", error);
-    mainController.utils.toastMessage("Failed to set up assessment documents: " + error.message, "Error", 5);
-  }
-}
 
-/**
- * Saves the selected classroom's name and ID to the 'ClassInfo' sheet.
- *
- * @param {string} courseName - The name of the selected classroom.
- * @param {string} courseId - The ID of the selected classroom.
- */
-function saveClassroom(courseName, courseId) {
-  try {
-    mainController.saveClassroom(courseName, courseId);
-  } catch (error) {
-    console.error('Error saving classroom:', error);
-    throw new Error('Failed to save classroom. Please try again.');
-  }
-}
 
-function getClassroomData() {
-  return mainController.getClassroomData();
-}
 
-function saveClassroomData(rows) {
-  mainController.saveClassroomData(rows)
-}
-
-function showClassroomEditorModal() {
-  mainController.showClassroomEditorModal()
-}
-/**
- * Gets the Google Classroom assignments for a given class.
- * @param {string} courseId 
- * @returns {object}
- */
-function getAssignments(courseId) {
-  return mainController.getAssignments(courseId);
-}
 
 /**
  * Removes a specific trigger by function name.

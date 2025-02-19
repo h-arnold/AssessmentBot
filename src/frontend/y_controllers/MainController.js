@@ -33,60 +33,8 @@ class MainController {
 
   }
 
-  /** 
-   * === UI Wrapper Methods ===
-   */
-
-
-
-  showConfigurationDialog() {
-    if (this.uiManager) {
-      this.uiManager.showConfigurationDialog();
-    } else {
-      this.utils.toastMessage("Configuration dialog cannot be displayed in this context.", "Error", 5);
-      console.error("UIManager is not available to show configuration dialog.");
-    }
-  }
-
-  showAssignmentDropdown() {
-    if (this.uiManager) {
-      return this.uiManager.showAssignmentDropdown();
-    } else {
-      this.utils.toastMessage("Assignment dropdown cannot be displayed in this context.", "Error", 5);
-      console.error("UIManager is not available to show assignment dropdown.");
-    }
-  }
-
-  openReferenceSlideModal(assignmentData) {
-    if (this.uiManager) {
-      return this.uiManager.openReferenceSlideModal(assignmentData);
-    } else {
-      this.utils.toastMessage("Reference slide modal cannot be displayed in this context.", "Error", 5);
-      console.error("UIManager is not available to open reference slide modal.");
-    }
-  }
-
   requestStatus() {
     return this.progressTracker.getStatus();
-  }
-
-  getAssignments(courseId) {
-    try {
-      return this.classroomManager.getAssignments(courseId);
-    } catch (error) {
-      this.utils.toastMessage("Failed to retrieve assignments: " + error.message, "Error", 5);
-      console.error("Error in getAssignments:", error);
-      return [];
-    }
-  }
-
-  showClassroomDropdown() {
-    if (this.uiManager) {
-      this.uiManager.showClassroomDropdown();
-    } else {
-      this.utils.toastMessage("Classroom dropdown cannot be displayed in this context.", "Error", 5);
-      console.error("UIManager is not available to show classroom dropdown.");
-    }
   }
 
   saveSlideIdsForAssignment(assignmentTitle, slideIds) {
@@ -100,142 +48,12 @@ class MainController {
     }
   }
 
-  getClassroomData() {
-    if (this.uiManager) {
-      return this.uiManager.getClassroomData();
-    } else {
-      this.utils.toastMessage('Failed to get classroom data', 'Error', 5);
-      console.error("Failed to get classroom data");
-    }
-  }
-
-  saveClassroomData(rows) {
-    if (this.uiManager) {
-      this.uiManager.saveClassroomData(rows);
-    } else {
-      this.utils.toastMessage('Failed to get classroom data', 'Error', 5);
-      console.error("Failed to get classroom data");
-    }
-  }
-
-  showClassroomEditorModal() {
-    this.uiManager.showClassroomEditorModal();
-  }
-
-  showVersionSelector() {
-    this.uiManager.showVersionSelector();
-  }
 
   /** 
    * === Classroom Management ===
    */
 
-  fetchGoogleClassrooms() {
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      let classroomSheet = spreadsheet.getSheetByName("Classrooms");
 
-      // If 'Classroom' sheet doesn't exist, create it
-      if (!classroomSheet) {
-        classroomSheet = spreadsheet.insertSheet("Classrooms");
-      }
-
-      // Ensure that the GoogleClassroomManager uses the 'Classroom' sheet
-      this.classroomManager.sheet = classroomSheet;
-
-      // Now call the manager's fetchGoogleClassrooms method, which writes data to the sheet
-      this.classroomManager.fetchGoogleClassrooms();
-
-      this.utils.toastMessage("Google Classrooms fetched and written to 'Classroom' sheet successfully.", "Success", 5);
-      console.log("Google Classrooms fetched successfully.");
-    } catch (error) {
-      console.error("Error fetching Google Classrooms:", error);
-      this.utils.toastMessage("Failed to fetch classrooms: " + error.message, "Error", 5);
-      throw error;
-    }
-  }
-
-
-  createGoogleClassrooms() {
-    try {
-      this.classroomManager.createGoogleClassrooms();
-      this.utils.toastMessage("Google Classrooms created successfully.", "Success", 5);
-      console.log("Google Classrooms created successfully.");
-    } catch (error) {
-      console.error("Error creating Google Classrooms:", error);
-      this.utils.toastMessage("Failed to create classrooms: " + error.message, "Error", 5);
-      throw error;
-    }
-  }
-
-  updateGoogleClassrooms() {
-    try {
-      // Assuming `updateClassrooms` was a method that might need to be implemented similarly to create.
-      this.classroomManager.updateClassrooms(); // This method is not defined in the snippet, consider implementing.
-      this.utils.toastMessage("Google Classrooms updated successfully.", "Success", 5);
-      console.log("Google Classrooms updated successfully.");
-    } catch (error) {
-      console.error("Error updating Google Classrooms:", error);
-      this.utils.toastMessage("Failed to update classrooms: " + error.message, "Error", 5);
-      throw error;
-    }
-  }
-
-  createAssessmentRecords() {
-    try {
-      // Start progress tracking
-      this.progressTracker.startTracking();
-
-      // Show the progress modal (if the UI is available)
-      if (this.uiManager) {
-        this.uiManager.showProgressModal();
-      } else {
-        console.warn("UIManager is not available; cannot show the progress modal.");
-      }
-
-      // Perform the actual record creation (in GoogleClassroomManager)
-      this.classroomManager.createAssessmentRecords();
-
-      // If everything went well, complete the progress
-      this.progressTracker.complete();
-      this.utils.toastMessage("Assessment documents set up successfully.", "Success", 5);
-      console.log("Assessment documents set up successfully.");
-    } catch (error) {
-      // Log and display any errors
-      console.error("Error setting up assessment documents:", error);
-      this.progressTracker.logError(error.message);
-      this.utils.toastMessage("Failed to set up assessment documents: " + error.message, "Error", 5);
-      throw error;
-    }
-  }
-
-
-  saveClassroom(courseName, courseId) {
-    try {
-      // Directly update ClassInfo sheet
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      let sheet = spreadsheet.getSheetByName('ClassInfo');
-
-      // If 'ClassInfo' sheet doesn't exist, create it
-      if (!sheet) {
-        sheet = spreadsheet.insertSheet('ClassInfo');
-      }
-
-      // Set headers in A1 and B1
-      sheet.getRange('A1').setValue('Class Name');
-      sheet.getRange('A2').setValue('Course ID');
-
-      // Write the selected classroom's name and ID to A2 and B2
-      sheet.getRange('B1').setValue(courseName);
-      sheet.getRange('B2').setValue(courseId);
-
-      console.log(`Classroom saved: ${courseName} (${courseId})`);
-    } catch (error) {
-      console.error("Error saving classroom:", error);
-      this.utils.toastMessage("Failed to save classroom: " + error.message, "Error", 5);
-      throw error;
-    }
-  }
 
   /** 
    * === Workflow Methods ===
