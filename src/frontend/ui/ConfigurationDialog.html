@@ -20,7 +20,8 @@
       overflow-y: auto;
       padding: 20px;
       max-width: 800px;
-      padding-bottom: 80px; /* Ensures content is not hidden behind the button bar */
+      padding-bottom: 80px;
+      /* Ensures content is not hidden behind the button bar */
     }
 
     /* Tabs styling */
@@ -175,7 +176,7 @@
   </div>
 
   <!-- Materialize JS and initialisation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var tabs = document.querySelectorAll('.tabs');
@@ -191,6 +192,15 @@
           M.toast({ html: `Error loading configuration: ${error.message}`, classes: 'red' });
         })
         .getConfiguration();
+
+        // Load classrooms
+      google.script.run
+        .withSuccessHandler(populateClassrooms)
+        .withFailureHandler(function (error) {
+          M.toast({ html: `Error loading classrooms: ${error.message}`, classes: 'red' });
+        })
+        .getClassrooms();
+
     });
 
     function populateForm(data) {
@@ -209,6 +219,30 @@
 
       M.updateTextFields();
     }
+
+    function populateClassrooms(classrooms) {
+      const select = document.getElementById('classrooms');
+      if (!classrooms || classrooms.length === 0) {
+        console.warn("No classrooms found.");
+        return;
+      }
+
+      // Clear existing options
+      select.innerHTML = '<option value="" disabled selected>Choose your classroom</option>';
+
+      // Add new options
+      classrooms.forEach(classroom => {
+        const option = document.createElement('option');
+        option.value = classroom.id;
+        option.dataset.name = classroom.name;
+        option.textContent = classroom.name;
+        select.appendChild(option);
+      });
+      // NO Materialize initialization here; it's done in the success handler
+      var selects = document.querySelectorAll('select');
+      M.FormSelect.init(selects);
+    }
+
 
     document.getElementById('config-form').addEventListener('submit', function (event) {
       event.preventDefault();
@@ -244,16 +278,6 @@
         })
         .saveConfiguration(formData);
     });
-
-    google.script.run
-      .withSuccessHandler(function () {
-        M.toast({ html: 'Classroom saved successfully.', displayLength: 5000, classes: 'rounded' });
-        google.script.host.close();
-      })
-      .withFailureHandler(function (error) {
-        alert('Error: ' + error.message);
-      })
-      .saveClassroom(courseName, courseId);
   </script>
 </body>
 

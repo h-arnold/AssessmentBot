@@ -66,3 +66,14 @@ function saveClassroom(courseName, courseId) {
     throw new Error('Failed to save classroom. Please try again.');
   }
 }
+
+function getClassrooms() {
+  const googleClassroomController = new GoogleClassroomController() 
+  try {  
+    return googleClassroomController.getClassrooms();
+  } catch (error) {
+    console.error('Error getting classrooms:', error);
+    throw new Error('Failed to get classrooms. Please try again.');
+  }
+  
+}

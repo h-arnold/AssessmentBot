@@ -74,11 +74,9 @@ function saveConfiguration(config) {
             configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke);
         }
 
-        this.utils.toastMessage("Configuration saved successfully.", "Success", 5);
         console.log("Configuration saved successfully.");
     } catch (error) {
         console.error("Error saving configuration:", error);
-        this.utils.toastMessage("Failed to save configuration: " + error.message, "Error", 5);
         throw new Error("Failed to save configuration. Please check the inputs.");
     }
 }

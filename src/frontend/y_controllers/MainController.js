@@ -48,13 +48,6 @@ class MainController {
     }
   }
 
-
-  /** 
-   * === Classroom Management ===
-   */
-
-
-
   /** 
    * === Workflow Methods ===
    */

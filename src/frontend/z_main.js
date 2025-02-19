@@ -69,7 +69,8 @@ function removeTrigger(functionName) {
  * @returns {Object} The current progress data.
  */
 function requestStatus() {
-  return mainController.requestStatus();
+  const progressTracker = new ProgressTracker();
+  return progressTracker.getStatus();
 }
 
 /**

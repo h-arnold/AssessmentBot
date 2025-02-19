@@ -89,6 +89,9 @@ class InitController {
 
         // Set script authorised to true to avoid calling the auth process again.
         configurationManager.setScriptAuthorised(true);
+
+        //If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
+        this.setDefaultAssessmentRecordTemplateId();
     }
 
     finishUpdate() {
@@ -96,7 +99,25 @@ class InitController {
         updateManager.runAssessmentRecordUpdateWizard();
     }
 
-}
+    /**
+     * Sets the default Assessment Record Template ID if it's not already set.
+     * It retrieves the latest template ID from `BaseUpdateAndInit` and updates
+     * the configuration.
+     * This avoids an infinite loop scenario in ConfigurationManager.getAssessmentRecordTemplateId() where if it's not set, it will instaniate BaseUpdateAndInit to use the getAssessmentRecordTemplateId() method, where the constructor for that class calls the Assessment Record Template ID from ConfigurationManager.
+     */
+    setDefaultAssessmentRecordTemplateId() {
+      if (!configurationManager.getAssessmentRecordTemplateId) {
+        const baseInitManager = new BaseUpdateAndInit();
+        const assessmentRecordTemplateId =
+          baseInitManager.getLatestAssessmentRecordTemplateId();
+        configurationManager.setAssessmentRecordTemplateId(
+          assessmentRecordTemplateId,
+        );
+      }
+    }
+
+
+    }
 
 
 

@@ -114,4 +114,8 @@ class GoogleClassroomController {
             throw error;
         }
     }
+
+    getClassrooms() {
+        return this.classroomManager.getActiveClassrooms()
+    }
 }
