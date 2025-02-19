@@ -37,22 +37,17 @@ Understanding the system's components will help you see how it all fits together
 
 - Langflow ([GitHub Repo](https://github.com/langflow-ai/langflow)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
-### 2️⃣ Google Slides Assessor Library
+### 2️⃣ Admin Sheet
 
-This is a standalone Google Apps Script file referenced by the Assessment Records. It performs most of the assessment and data analysis. Key benefits include:
+ - The Admin Sheet contains a bound script containing the frontend source code which is used as a library for the Assessment Records. It also allows you to:
 
-- **🔄 Ease of Updates:** Updates to the Assessor are made centrally by updating this library, rather than each individual Assessment Record.
-- **📦 Centralised Configuration:** Once assignment details (e.g., reference and template slide IDs) are entered, they are stored in the script's `ScriptProperties`, meaning they only need to be set up once for each assignment.
-- **🔒 Secure Settings:** You can make the library file view-only to prevent accidental modification of key settings by others on your team.
+  - Create and Manage Assessment Records for each class
+  - Handle updates
+  - Analyse whole-cohort data
 
 ### 3️⃣ Assessment Records
 
 - A separate Google Sheet for each class, where assessment data is stored. This will be the tool most commonly used by your team.
-
-### 4️⃣ Overview Sheet
-
-- A Google Sheet that collates data from all Assessment Records into a single place, allowing for further analysis and visualisation.
-
 ---
 
 ## 🚀 The Setup Process
@@ -87,17 +82,14 @@ Follow these steps to set up the system.
 
 This section is primarily for Heads of Department or administrators responsible for initial setup. Once configured, the system is straightforward for others to use.
 
-#### [1️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
+#### [1️⃣ Configuring Google Slides Assessor](./configOptions.md)
+
+- This step links the frontend (Google Apps Script) to the backend (Langflow instance). It ensures the system knows where to send and receive data during assessments. [Follow this guide](./configOptions.md) to configure it.
+
+#### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
 - Most assessment work takes place within these records, with one created per class. They serve as the main tool for day-to-day use. [Follow this guide](settingUpAssessmentRecords.md) to set them up with minimal fuss.
 
-#### [2️⃣ Configuring Google Slides Assessor](./configuringGoogleSlidesAssessor.md)
-
-- This step links the frontend (Google Apps Script) to the backend (Langflow instance). It ensures the system knows where to send and receive data during assessments. [Follow this guide](./configuringGoogleSlidesAssessor.md) to configure it.
-
-#### [3️⃣ Setting up the Overview Sheet](./settingUpOverviewSheet.md)
-
-- The Overview Sheet collects and collates data from all Assessment Records. This enables analysis at a glance, allowing you to monitor trends and performance across classes. [Follow this guide](./settingUpOverviewSheet.md) to set it up.
 
 #### [4️⃣ Getting started with your first assessment.](/docs/howTos/README.md)
 

@@ -1,5 +1,7 @@
 # 📚 Create Classroom Assessment Records in Google Drive
 
+## ⚠️IMPORTANT: This tutorial is out of date. Keep an eye out for an updated version!
+
 - [📚 Create Classroom Assessment Records in Google Drive](#-create-classroom-assessment-records-in-google-drive)
     - [❗ Important Note](#-important-note)
       - [📂 Copying the template files](#-copying-the-template-files)
