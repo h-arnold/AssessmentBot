@@ -8,7 +8,7 @@
  * 5. Creating the 'Classrooms' sheet.
  * 6. (Optionally) Prompting the user to fetch or create Google Classrooms.
  */
-class FirstRunManager extends BaseAdminManager {
+class FirstRunManager extends BaseUpdateAndInit {
     constructor() {
       super();
       // For the first run, ensure the admin sheet flag is set.
