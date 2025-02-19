@@ -1,4 +1,4 @@
-# Google Slides Assessor
+# Assessment Bot
 
 **A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**
 
@@ -6,7 +6,11 @@ Applying the **Pareto Principle** in spirit, this tool automates 80% of the effo
 
 This tool pulls Google Slides from Google Classroom assignments and evaluates them on **Completeness**, **Accuracy**, and **SPaG** (Spelling, Punctuation, and Grammar), scoring each out of 5.
 
-- [Google Slides Assessor](#google-slides-assessor)
+
+**[Read the Documentation Here](./docs/README.md)**
+
+
+- [Assessment Bot](#assessment-bot)
   - [🎯 Key Features](#-key-features)
   - [🛠️ How It Works](#%ef%b8%8f-how-it-works)
   - [🔒 Privacy and Security](#-privacy-and-security)
@@ -90,8 +94,9 @@ It’s still up to you to address misconceptions, motivate students, and do all 
 ---
 
 ## ⚙️ Setup
-Setting it up is a bit fiddly at the moment, but improvements are in progress. Once configured, it requires minimal upkeep.  
-- **Documentation**: Actively maintained—check out the [docs branch](https://github.com/h-arnold/googleSlidesAssessor/tree/docs/docs) for updates.
+Setting it up is a bit fiddly at the moment, but I'm actively working on changing that right now so keep an eye out.
+
+Check out the [docs](./docs/README.md) for more details.
 
 ---
 
