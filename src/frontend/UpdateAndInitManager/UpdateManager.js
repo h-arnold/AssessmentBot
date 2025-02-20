@@ -215,7 +215,7 @@ class UpdateManager extends BaseUpdateAndInit {
     this.saveState();
     
     // Create the HTML template for the wizard and pass in the template URL and script ID.
-    const template = HtmlService.createTemplateFromFile('UpdateManager/UpdateWizard');
+    const template = HtmlService.createTemplateFromFile('UpdateAndInitManager/UpdateWizard');
     template.assessmentRecordTemplateUrl = assessmentRecordTemplateUrl;
     template.adminScriptId = adminScriptId;
     
