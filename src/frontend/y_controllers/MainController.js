@@ -58,6 +58,11 @@ class MainController {
       this.startProcessing(assignmentId, referenceSlideId, emptySlideId);
       this.progressTracker.startTracking();
       this.showProgressModal();
+
+      //This is a hacky way of asynchronously 'warming up' the langflow backend which from a cold start takes around 60 seconds. 
+      // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
+      this.llmRequestManager.warmUpLLM();
+
     } catch (error) {
       this.utils.toastMessage("Failed to start processing: " + error.message, "Error", 5);
       console.error("Error in saveStartAndShowProgress:", error);
