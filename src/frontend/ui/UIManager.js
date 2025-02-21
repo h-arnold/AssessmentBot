@@ -178,7 +178,7 @@ class UIManager {
   showProgressModal() {
     const html = HtmlService.createHtmlOutputFromFile('ui/ProgressModal')
       .setWidth(400)
-      .setHeight(150);
+      .setHeight(160);
     this.ui.showModalDialog(html, 'Progress');
     console.log('Progress modal displayed.');
   }
