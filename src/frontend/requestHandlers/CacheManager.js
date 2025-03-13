@@ -20,7 +20,7 @@ class CacheManager {
         }
 
         //Hashing the hashes to ensure they stay within the character limit
-        return contentHashReference + contentHashResponse;
+        return Utils.generateHash(contentHashReference + contentHashResponse)
     }
 
     /**
@@ -50,6 +50,8 @@ class CacheManager {
      * @param {Object} assessmentData - The assessment data to cache.
      */
     setCachedAssessment(contentHashReference, contentHashResponse, assessmentData) {
+
+
         const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
         const serialized = JSON.stringify(assessmentData);
         const cacheExpirationInSeconds = 6 * 60 * 60; // 6 hours
