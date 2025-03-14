@@ -13,14 +13,13 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up Google Cloud SDK
+    - name: Set up Google Cloud SDK and configure Docker
       uses: google-github-actions/setup-gcloud@v1
       with:
         service_account_key: ${{ secrets.GCP_SA_KEY }}
         project_id: ${{ secrets.GCP_PROJECT }}
-
-    - name: Configure Docker for Artifact Registry
-      run: gcloud auth configure-docker --quiet
+        export_default_credentials: true
+        configure-docker: true
 
     - name: Build Docker image
       run: |
