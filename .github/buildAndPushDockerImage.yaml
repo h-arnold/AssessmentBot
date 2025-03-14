@@ -24,7 +24,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest .
+        docker build -f src/backend/Dockerfile -t <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest .
 
     - name: Push Docker image
       run: |
