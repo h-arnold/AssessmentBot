@@ -1,0 +1,31 @@
+name: Build and Push Docker Image to Artifact Registry
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT }}
+
+    - name: Configure Docker for Artifact Registry
+      run: gcloud auth configure-docker <LOCATION>-docker.pkg.dev --quiet
+
+    - name: Build Docker image
+      run: |
+        docker build -t <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest .
+
+    - name: Push Docker image
+      run: |
+        docker push <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest
