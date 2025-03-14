@@ -20,12 +20,12 @@ jobs:
         project_id: ${{ secrets.GCP_PROJECT }}
 
     - name: Configure Docker for Artifact Registry
-      run: gcloud auth configure-docker <LOCATION>-docker.pkg.dev --quiet
+      run: gcloud auth configure-docker ${{ secrets.GCP_LOCATION }}-docker.pkg.dev --quiet
 
     - name: Build Docker image
       run: |
-        docker build -f src/backend/Dockerfile -t <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest .
+        docker build -f src/backend/Dockerfile -t ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest .
 
     - name: Push Docker image
       run: |
-        docker push <LOCATION>-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/<REPOSITORY>/langflow-custom:latest
+        docker push ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest
