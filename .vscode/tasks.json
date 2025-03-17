@@ -1,0 +1,15 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Push to Google Apps Script",
+            "type": "shell",
+            "command": "clasp push"
+        },
+        {
+            "label": "Pull from Google Apps Script",
+            "type": "shell",
+            "command": "clasp pull"
+        }
+    ]
+}
