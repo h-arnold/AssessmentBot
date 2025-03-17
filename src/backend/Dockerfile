@@ -4,4 +4,4 @@ FROM langflowai/langflow:latest
 RUN mkdir -p /app/flows
 
 # Copy all JSON flow files from the local flows folder to the container
-COPY ./src/backend/flows/*.json /app/flows/
+COPY ./flows*.json /app/flows/
