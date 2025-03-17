@@ -65,7 +65,7 @@ class BaseRequestManager {
 
     //Gets the current step message before iterating
     const currentProgress = this.progressTracker.getCurrentProgress();
-    const currentMessage = currentProgress.message //Gets the current message before the loop so you don't end up concatenating all the previous updates.
+    const currentMessage = currentProgress.message //Gets the current message before the loop so you don't end up concatentating all the previous updates.
 
 
     batches.forEach((batch, index) => {
