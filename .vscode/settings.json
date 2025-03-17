@@ -8,7 +8,9 @@
         "plaintext",
         "javascript"
     ],
-    "files.associations": {
-        "*.yaml": "home-assistant"
-    }
+    "IDX.aI.enableInlineCompletion": true,
+    "IDX.aI.enableCodebaseIndexing": true,
+    },
+    "editor.wordWrap": "on",
+    "github.copilot.chat.generateTests.codeLens": true,
 }

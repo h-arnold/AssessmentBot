@@ -1,0 +1,199 @@
+<!-- UpdateWizard.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Materialise CSS for styling -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <style>
+      .wizard-step { display: none; }
+      .wizard-step.active { display: block; }
+      .button-group { margin-top: 20px; text-align: right; }
+      .copy-btn { margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h4>Update Assessment Records Wizard</h4>
+      <!-- Step 1: Inform the user that an update is required -->
+      <div id="step-1" class="wizard-step active">
+        <p>We need to update the assessment records before continuing.</p>
+        <div class="button-group">
+          <button class="btn" id="next-1">Next</button>
+        </div>
+      </div>
+      <!-- Step 2: Instruct the user to open the Assessment Record Template -->
+      <div id="step-2" class="wizard-step">
+        <p>Please open the Assessment Record Template by clicking the button below. Once opened, click 'Next' to continue.</p>
+        <div class="button-group">
+          <button class="btn" id="open-assessment">Open Assessment Record</button>
+          <button class="btn" id="next-2">Next</button>
+          <button class="btn grey" id="back-2">Back</button>
+        </div>
+      </div>
+      <!-- Step 3: Instruct the user to open the Apps Script editor -->
+      <div id="step-3" class="wizard-step">
+        <p>Now, in the opened template, click on <strong>Extensions &gt; App Script</strong>.</p>
+        <div class="button-group">
+          <button class="btn" id="next-3">Next</button>
+          <button class="btn grey" id="back-3">Back</button>
+        </div>
+      </div>
+      <!-- Step 4: Provide the Script ID with a copy-to-clipboard option -->
+      <div id="step-4" class="wizard-step">
+        <p><ol><li>Then click on the plus (➕) button in the Libraries section.</li><li>Copy the Script ID below and paste it in the 'Script' ID box.</li></ol></p>
+        <div class="input-field">
+          <input type="text" id="script-id" readonly value="<?= adminScriptId ?>">
+          <button class="btn copy-btn" id="copy-script-id">Copy Script ID</button>
+        </div>
+        <div class="button-group">
+          <button class="btn" id="next-4">Next</button>
+          <button class="btn grey" id="back-4">Back</button>
+        </div>
+      </div>
+      <!-- Step 5: Instruct the user to click 'Look Up' -->
+      <div id="step-5" class="wizard-step">
+        <p>Click <strong>'Look Up'</strong> to find the library.</p>
+        <div class="button-group">
+          <button class="btn" id="next-5">Next</button>
+          <button class="btn grey" id="back-5">Back</button>
+        </div>
+      </div>
+      <!-- Step 6: Instruct the user to select the version and identifier -->
+      <div id="step-6" class="wizard-step">
+        <p><ol><li>Select the version <strong>HEAD (Development Mode)</strong></li><li>Copy the identifier below and paste it into the <strong>identifier</strong> box.</li></ol>:</p>
+        <div class="input-field">
+          <input type="text" id="identifier" readonly value="AssessmentBot">
+          <button class="btn copy-btn" id="copy-identifier">Copy Identifier</button>
+        </div>
+        <p>Then click 'Add'.</p>
+        <div class="button-group">
+          <button class="btn" id="next-6">Next</button>
+          <button class="btn grey" id="back-6">Back</button>
+        </div>
+      </div>
+      <!-- Step 7: Instruct the user to save -->
+      <div id="step-7" class="wizard-step">
+        <p>Finally, click the save button <span role="img" aria-label="save">💾</span> to save your changes.</p>
+        <div class="button-group">
+          <button class="btn" id="finish">Finish</button>
+          <button class="btn grey" id="back-7">Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Clipboard.js for the copy-to-clipboard functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.10/clipboard.min.js"></script>
+    <script>
+      // Initialise global variables from the template.
+      var assessmentRecordTemplateUrl = "<?= assessmentRecordTemplateUrl ?>";
+      var adminScriptId = "<?= adminScriptId ?>";
+
+      document.addEventListener('DOMContentLoaded', function() {
+        var currentStep = 1;
+        function showStep(step) {
+          document.querySelectorAll('.wizard-step').forEach(function(el) {
+            el.classList.remove('active');
+          });
+          document.getElementById('step-' + step).classList.add('active');
+        }
+
+        // Navigation between wizard steps.
+        document.getElementById('next-1').addEventListener('click', function() {
+          currentStep = 2;
+          showStep(currentStep);
+        });
+        document.getElementById('back-2').addEventListener('click', function() {
+          currentStep = 1;
+          showStep(currentStep);
+        });
+        document.getElementById('next-2').addEventListener('click', function() {
+          currentStep = 3;
+          showStep(currentStep);
+        });
+        document.getElementById('back-3').addEventListener('click', function() {
+          currentStep = 2;
+          showStep(currentStep);
+        });
+        document.getElementById('next-3').addEventListener('click', function() {
+          currentStep = 4;
+          showStep(currentStep);
+        });
+        document.getElementById('back-4').addEventListener('click', function() {
+          currentStep = 3;
+          showStep(currentStep);
+        });
+        document.getElementById('next-4').addEventListener('click', function() {
+          currentStep = 5;
+          showStep(currentStep);
+        });
+        document.getElementById('back-5').addEventListener('click', function() {
+          currentStep = 4;
+          showStep(currentStep);
+        });
+        document.getElementById('next-5').addEventListener('click', function() {
+          currentStep = 6;
+          showStep(currentStep);
+        });
+        document.getElementById('back-6').addEventListener('click', function() {
+          currentStep = 5;
+          showStep(currentStep);
+        });
+        document.getElementById('next-6').addEventListener('click', function() {
+          currentStep = 7;
+          showStep(currentStep);
+        });
+        document.getElementById('back-7').addEventListener('click', function() {
+          currentStep = 6;
+          showStep(currentStep);
+        });
+
+        // Open the Assessment Record Template in a new window.
+        document.getElementById('open-assessment').addEventListener('click', function() {
+          window.open(assessmentRecordTemplateUrl, '_blank');
+        });
+
+        // When the user clicks Finish, call the updateAssessmentRecords method.
+        document.getElementById('finish').addEventListener('click', function() {
+          google.script.run
+            .withSuccessHandler(function() {
+              google.script.host.close();
+            })
+            .withFailureHandler(function(error) {
+              alert('Error: ' + error.message);
+            })
+            .updateAssessmentRecordsFromWizard();
+        });
+
+        // Initialise Clipboard.js for the "Copy Script ID" button.
+        var clipboard = new ClipboardJS('#copy-script-id', {
+          text: function() {
+            return adminScriptId;
+          }
+        });
+        clipboard.on('success', function(e) {
+          M.toast({html: 'Script ID copied to clipboard!', classes: 'green'});
+          e.clearSelection();
+        });
+        clipboard.on('error', function(e) {
+          M.toast({html: 'Failed to copy Script ID.', classes: 'red'});
+        });
+
+        // Initialise Clipboard.js for the "Copy Identifier" button.
+        var clipboardIdentifier = new ClipboardJS('#copy-identifier', {
+          text: function() {
+            return document.getElementById('identifier').value;
+          }
+        });
+        clipboardIdentifier.on('success', function(e) {
+          M.toast({html: 'Identifier copied to clipboard!', classes: 'green'});
+          e.clearSelection();
+        });
+        clipboardIdentifier.on('error', function(e) {
+          M.toast({html: 'Failed to copy Identifier.', classes: 'red'});
+        });
+      });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  </body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <style>
+    .modal-content {
+      padding: 24px;
+    }
+
+    .modal-footer {
+      padding: 4px 24px;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .updating-text {
+      margin-top: 15px;
+      font-size: 16px;
+      color: #333;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="updating-text">Updating...</div>
+  </div>
+
+  <div class="modal-content">
+    <div class="input-field">
+      <select id="versions" name="versions">
+        <? for (var version in versions) { ?>
+        <option value="<?= version ?>" data-assessment-id="<?= versions[version].assessmentRecordTemplateFileId ?>"
+          data-admin-id="<?= versions[version].adminSheetFileId ?>">
+          Version
+          <?= version ?>
+        </option>
+        <? } ?>
+      </select>
+      <label for="versions">Select Version to Update To</label>
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
+    <button class="btn waves-effect waves-light" onclick="updateVersion()">Update</button>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var elems = document.querySelectorAll('select');
+      M.FormSelect.init(elems);
+    });
+
+    function updateVersion() {
+      const select = document.getElementById('versions');
+      const selectedOption = select.options[select.selectedIndex];
+
+      const versionData = {
+        version: select.value,
+        assessmentRecordTemplateFileId: selectedOption.getAttribute('data-assessment-id'),
+        adminSheetFileId: selectedOption.getAttribute('data-admin-id')
+       };
+
+
+      document.getElementById('loadingOverlay').style.display = 'flex';
+
+      google.script.run
+        .withSuccessHandler(function () {
+          document.getElementById('loadingOverlay').style.display = 'none';
+          google.script.host.close();
+        })
+        .withFailureHandler(function (error) {
+          document.getElementById('loadingOverlay').style.display = 'none';
+          M.toast({ html: 'Error updating version: ' + error });
+        })
+        .handleVersionUpdate(versionData);
+    }
+  </script>
+</body>
+
+</html>

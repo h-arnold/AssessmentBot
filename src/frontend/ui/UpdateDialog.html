@@ -1,0 +1,77 @@
+<-- UpdateDialog.html -->
+
+    <!DOCTYPE html>
+    <html>
+
+    <head>
+        <base target="_top">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <style>
+            .modal-content {
+                padding: 20px;
+            }
+
+            .modal-footer {
+                text-align: right;
+                padding: 10px;
+            }
+
+            .modal-footer button {
+                margin-left: 10px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="modal-content">
+            <div class="input-field">
+                <select id="versions" name="versions">
+                    <? for (var version in versions) { ?>
+                    <option value="<?= version ?>"
+                        data-assessment-id="<?= versions[version].assessmentRecordTemplateFileId ?>"
+                        data-admin-id="<?= versions[version].adminSheetFileId ?>">
+                        Version
+                        <?= version ?>
+                    </option>
+                    <? } ?>
+                </select>
+                <label for="versions">Select Version to Update To</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
+            <button class="btn waves-effect waves-light" onclick="updateVersion()">Update</button>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var elems = document.querySelectorAll('select');
+                var instances = M.FormSelect.init(elems);
+            });
+
+            function updateVersion() {
+                const select = document.getElementById('versions');
+                const selectedOption = select.options[select.selectedIndex];
+
+                const versionData = {
+                    version: select.value,
+                    assessmentRecordTemplateFileId: selectedOption.getAttribute('data-assessment-id'),
+                    adminSheetFileId: selectedOption.getAttribute('data-admin-id')
+                };
+
+                google.script.run
+                    .withSuccessHandler(function () {
+                        google.script.host.close();
+                    })
+                    .withFailureHandler(function (error) {
+                        alert('Error: ' + error.message);
+                    })
+                    .handleVersionUpdate(versionData);
+            }
+        </script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    </body>
+
+    </html>

@@ -1,20 +1,21 @@
 # Google Slides Assessor
 
-**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**  
+**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**
+
+Applying the **Pareto Principle** in spirit, this tool automates 80% of the effort—checking and scoring student work—so teachers can focus on the most impactful 20%: acting on insights to improve learning.
 
 This tool pulls Google Slides from Google Classroom assignments and evaluates them on **Completeness**, **Accuracy**, and **SPaG** (Spelling, Punctuation, and Grammar), scoring each out of 5.
 
 - [Google Slides Assessor](#google-slides-assessor)
   - [🎯 Key Features](#-key-features)
-  - [🛠️ How It Works](#️-how-it-works)
+  - [🛠️ How It Works](#%ef%b8%8f-how-it-works)
   - [🔒 Privacy and Security](#-privacy-and-security)
   - [❓ What Can It Assess?](#-what-can-it-assess)
   - [🤔 Is It Perfect?](#-is-it-perfect)
   - [💸 Cost?](#-cost)
-  - [⚙️ Setup](#️-setup)
+  - [⚙️ Setup](#%ef%b8%8f-setup)
   - [🤝 Contributing](#-contributing)
   - [🚀 Why Use This Tool?](#-why-use-this-tool)
-
 
 ---
 
@@ -41,12 +42,10 @@ This tool pulls Google Slides from Google Classroom assignments and evaluates th
    - Compare submissions to the reference
    - Score based on Completeness, Accuracy, and SPaG
 4. **Reporting**:  
-   Results are compiled into a beautifully formatted spreadsheet (because SLT loves spreadsheets—admit it, so do you). The sheet includes:
+   Results are compiled into a beautifully formatted spreadsheet heatmap (because SLT loves spreadsheets—admit it, so do you). The sheet includes:
    - Individual scores
    - Work previews
    - Class-wide averages
-
-![Analysis sheet screenshot showing student scores and work previews](docs/image.png)
 
 ---
 

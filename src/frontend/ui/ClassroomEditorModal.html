@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <!-- Materialize CSS for styling -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <style>
+        .container {
+            padding: 10px;
+            max-width: 98%;
+            overflow: auto;
+        }
+
+        h4 {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            position: relative;
+        }
+
+        .sort-buttons {
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .sort-button {
+            cursor: pointer;
+            margin: 0 2px;
+            font-size: 14px;
+        }
+
+        .filter-input {
+            width: 100%;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .button-group .btn {
+            margin-left: 10px;
+        }
+
+        /* Ensure checkbox aligns nicely */
+        .centered-checkbox {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h4>Edit Classrooms</h4>
+        <p>You can sort, filter, and edit the classroom data below. When finished, click "Save" to persist the changes.</p>
+        
+        <table class="highlight striped" id="classroom-table">
+            <thead>
+                <tr>
+                    <!-- Headers with sort buttons -->
+                    <th>
+                        Name
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="Name" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="Name" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Name" data-column="Name">
+                    </th>
+                    <th>
+                        Teacher 1
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="Teacher1" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="Teacher1" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Teacher 1" data-column="Teacher1">
+                    </th>
+                    <th>
+                        Teacher 2
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="Teacher2" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="Teacher2" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Teacher 2" data-column="Teacher2">
+                    </th>
+                    <th>
+                        Teacher 3
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="Teacher3" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="Teacher3" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Teacher 3" data-column="Teacher3">
+                    </th>
+                    <th>
+                        Teacher 4
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="Teacher4" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="Teacher4" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Teacher 4" data-column="Teacher4">
+                    </th>
+                    <th>
+                        Enrollment Code
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="EnrollmentCode" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="EnrollmentCode" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter by Enrollment Code" data-column="EnrollmentCode">
+                    </th>
+                    <th class="centered-checkbox">
+                        createAssessmentRecord
+                        <span class="sort-buttons">
+                            <span class="sort-button" data-column="createAssessmentRecord" data-direction="asc">▲</span>
+                            <span class="sort-button" data-column="createAssessmentRecord" data-direction="desc">▼</span>
+                        </span>
+                        <input type="text" class="filter-input" placeholder="Filter (true/false)" data-column="createAssessmentRecord">
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows are populated dynamically -->
+            </tbody>
+        </table>
+
+        <div class="button-group">
+            <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
+            <button class="btn blue waves-effect waves-light" id="save-button">Save</button>
+        </div>
+    </div>
+
+    <!-- Materialize JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script>
+        let classroomData = [];
+        let filteredData = [];
+
+        // Populate table from retrieved data
+        function populateTable(data) {
+            classroomData = data; 
+            filteredData = data.slice(); // copy
+
+            const tbody = document.querySelector('#classroom-table tbody');
+            tbody.innerHTML = '';
+
+            filteredData.forEach((row, index) => {
+                const tr = document.createElement('tr');
+
+                // Hidden fields for Classroom ID and Template File Id
+                const classroomIdInput = document.createElement('input');
+                classroomIdInput.type = 'hidden';
+                classroomIdInput.name = 'ClassroomId';
+                classroomIdInput.value = row.ClassroomID || '';
+
+                const templateFileIdInput = document.createElement('input');
+                templateFileIdInput.type = 'hidden';
+                templateFileIdInput.name = 'TemplateFileId';
+                templateFileIdInput.value = row.TemplateFileId || '';
+
+                // Name
+                const tdName = document.createElement('td');
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'validate';
+                nameInput.name = 'Name';
+                nameInput.value = row.Name || '';
+                tdName.appendChild(nameInput);
+
+                // Teacher 1-4
+                const tdT1 = createTextCell(row.Teacher1, 'Teacher1');
+                const tdT2 = createTextCell(row.Teacher2, 'Teacher2');
+                const tdT3 = createTextCell(row.Teacher3, 'Teacher3');
+                const tdT4 = createTextCell(row.Teacher4, 'Teacher4');
+
+                // Enrollment Code
+                const tdEnrollment = createTextCell(row.EnrollmentCode, 'EnrollmentCode');
+
+                // createAssessmentRecord (checkbox)
+                const tdCAR = document.createElement('td');
+                tdCAR.className = 'centered-checkbox';
+                const carCheckbox = document.createElement('input');
+                carCheckbox.type = 'checkbox';
+                carCheckbox.name = 'createAssessmentRecord';
+                carCheckbox.checked = (row.createAssessmentRecord === true || row.createAssessmentRecord === 'true');
+                tdCAR.appendChild(carCheckbox);
+
+                tr.appendChild(classroomIdInput);
+                tr.appendChild(templateFileIdInput);
+                tr.appendChild(tdName);
+                tr.appendChild(tdT1);
+                tr.appendChild(tdT2);
+                tr.appendChild(tdT3);
+                tr.appendChild(tdT4);
+                tr.appendChild(tdEnrollment);
+                tr.appendChild(tdCAR);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function createTextCell(value, name) {
+            const td = document.createElement('td');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'validate';
+            input.name = name;
+            input.value = value || '';
+            td.appendChild(input);
+            return td;
+        }
+
+        // Sorting function
+        function sortData(column, direction) {
+            filteredData.sort((a, b) => {
+                let valA = a[column] || '';
+                let valB = b[column] || '';
+
+                // For boolean, treat true/false as well-known
+                if (column === 'createAssessmentRecord') {
+                    valA = (valA === true || valA === 'true') ? 1 : 0;
+                    valB = (valB === true || valB === 'true') ? 1 : 0;
+                } else {
+                    valA = valA.toString().toLowerCase();
+                    valB = valB.toString().toLowerCase();
+                }
+
+                if (valA < valB) return direction === 'asc' ? -1 : 1;
+                if (valA > valB) return direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            populateTable(filteredData);
+        }
+
+        // Filtering function
+        function filterData(filters) {
+            filteredData = classroomData.filter(row => {
+                return Object.keys(filters).every(col => {
+                    const filterVal = filters[col].toLowerCase();
+                    if (!filterVal) return true; // no filter applied on this column
+
+                    let cellVal = (row[col] || '').toString().toLowerCase();
+                    return cellVal.includes(filterVal);
+                });
+            });
+            populateTable(filteredData);
+        }
+
+        // Collect data from table for saving
+        function collectDataForSave() {
+            const rows = [];
+            const tbody = document.querySelector('#classroom-table tbody');
+            Array.from(tbody.querySelectorAll('tr')).forEach(tr => {
+                const rowData = {};
+                rowData.ClassroomID = tr.querySelector('input[name="ClassroomId"]').value;
+                rowData.TemplateFileId = tr.querySelector('input[name="TemplateFileId"]').value;
+                rowData.Name = tr.querySelector('input[name="Name"]').value;
+                rowData.Teacher1 = tr.querySelector('input[name="Teacher1"]').value;
+                rowData.Teacher2 = tr.querySelector('input[name="Teacher2"]').value;
+                rowData.Teacher3 = tr.querySelector('input[name="Teacher3"]').value;
+                rowData.Teacher4 = tr.querySelector('input[name="Teacher4"]').value;
+                rowData.EnrollmentCode = tr.querySelector('input[name="EnrollmentCode"]').value;
+                rowData.createAssessmentRecord = tr.querySelector('input[name="createAssessmentRecord"]').checked;
+                rows.push(rowData);
+            });
+            return rows;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Load existing classroom data
+            google.script.run
+                .withSuccessHandler(populateTable)
+                .withFailureHandler(error => {
+                    M.toast({ html: `Error loading classrooms: ${error.message}`, classes: 'red' });
+                })
+                .getClassroomData();
+
+            // Add event listeners for sorting
+            document.querySelectorAll('.sort-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    sortData(button.getAttribute('data-column'), button.getAttribute('data-direction'));
+                });
+            });
+
+            // Add event listeners for filtering
+            const filters = {};
+            document.querySelectorAll('.filter-input').forEach(input => {
+                input.addEventListener('input', () => {
+                    document.querySelectorAll('.filter-input').forEach(f => {
+                        filters[f.getAttribute('data-column')] = f.value;
+                    });
+                    filterData(filters);
+                });
+            });
+
+            // Save button
+            document.getElementById('save-button').addEventListener('click', () => {
+                const rows = collectDataForSave();
+                google.script.run
+                    .withSuccessHandler(() => {
+                        M.toast({ html: 'Classroom data saved successfully.', classes: 'green' });
+                        google.script.host.close();
+                    })
+                    .withFailureHandler(error => {
+                        M.toast({ html: `Error saving data: ${error.message}`, classes: 'red' });
+                    })
+                    .saveClassroomData(rows);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 # 🚀 **Contributing** 
 
-Thank you for considering contributing to the Google Slides AI Assessor project! As a one-man-band, I'm very grateful for any contributions and I'd be even more grateful if your contributions follow the style guide outlined here.
+Thank you for considering contributing to the Google Slides AI Assessor project! For an idea of what I'm currently working on, check out the [roadmap](./docs/roadmap.md).
+
+As a one-man-band, I'm very grateful for any contributions and I'd be even more grateful if your contributions follow the style guide outlined here.
 
 > 💡 **Tip**: Pasting your code/documentation and the style guide into ChatGPT or a similar tool can be a quick and easy way of updating your contribution to fit the style guide. If you have your own preferences, feel free to write your contribution in your style first and then use an LLM to match the rest of the codebase.
 

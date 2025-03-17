@@ -1,16 +1,13 @@
-# App Script Frontend Files
+# Google Slides Assessor
 
-This folder contains the Google App Script code for the three frontend components to the Google Slides Assessor:
+[*See the docs for more details*](/docs/setup/README.md)
 
-    -   The Assessment Record Creator
-    -   The Google Slides Assessor
-    -   The Department Overview Sheet
+This script handles the bulk of the client side grunt work. It:
 
-## The Assessment Record Creator
-This script gets or creates your existing Google Classroom and once that's done, it populates a folder with Assessment Record spreadsheets, one for each class. Each sheet contains a link to the library file containing the Google Slides Assessor Code.
+ - collates the student submissions for a given Google Classroom assignment
+ - collects and uses the reference and empty slide Ids for comparison with the student work
+ - parses all the data from said slides, converting them into distinct tasks based on how you tagged them in the reference and student slides.
+ - sends all that data off to the Langflow backend (while keeping any PII firmly within your work Google Account)
+ - creates an analysis sheet for you to see what the results of the assessment was.
+ - creates and or updates an overview sheet which averages out all the Completeness, Accuracy and SPaG scores from all their work.
 
-## The Google Slides Assessor
-This is the script that does the bulk for the work. It's held as a single library App Script file which is called by each of the Assessment Record sheets. It collates, and parses the data from the Google Classroom assignments, sends it to the langflow backend and then processes the results so you get a pretty spreadsheet.
-
-## The Department Overview Sheet
-As a Head of Department, this sheet is super useful for me. It pulls the contents of the 'Overview' sheets with in the Asessment Records for each year group, allowing me to analyse performance data for the whole year group.

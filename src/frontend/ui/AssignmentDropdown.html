@@ -1,0 +1,65 @@
+<!-- ui/AssignmentDropdown.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <style>
+      .modal-content {
+        padding: 20px;
+      }
+      .modal-footer {
+        text-align: right;
+        padding: 10px;
+      }
+      .modal-footer button {
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="modal-content">
+      <div class="input-field">
+        <select id="assignments" name="assignments">
+          <? for (var i = 0; i < assignments.length; i++) { ?>
+            <option value="<?= assignments[i].id ?>" data-name="<?= assignments[i].title ?>"><?= assignments[i].title ?></option>
+          <? } ?>
+        </select>
+        <label for="assignments">Select Assignment</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
+      <button class="btn waves-effect waves-light" onclick="go()">Go</button>
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialise Materialise select
+        var elems = document.querySelectorAll('select');
+        var instances = M.FormSelect.init(elems);
+      });
+
+      function go() {
+        const select = document.getElementById('assignments');
+        const assignmentId = select.value;
+        const selectedOption = select.options[select.selectedIndex];
+        const assignmentName = selectedOption.getAttribute('data-name');
+
+        const assignmentData = JSON.stringify({
+          id: assignmentId,
+          name: assignmentName
+        });
+
+        google.script.run
+          .withFailureHandler(function(error) {
+            alert('Error: ' + error.message);
+          })
+          .openReferenceSlideModal(assignmentData);
+      }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  </body>
+</html>
