@@ -10,21 +10,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Google Cloud SDK and configure Docker
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ secrets.GCP_PROJECT }}
-        export_default_credentials: true
-        configure-docker: true
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v0.7.0
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Build Docker image
-      run: |
-        docker build -f src/backend/Dockerfile -t ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest .
+      - name: Set up Google Cloud SDK and configure Docker
+        uses: google-github-actions/setup-gcloud@v1.16.0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+          export_default_credentials: true
+          configure-docker: true
 
-    - name: Push Docker image
-      run: |
-        docker push ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest
+      - name: Build Docker image
+        run: |
+          docker build -f src/backend/Dockerfile -t ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest
