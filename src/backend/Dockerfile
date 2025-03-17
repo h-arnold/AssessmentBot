@@ -29,17 +29,19 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone the Langflow repository at the tagged release into /app
-RUN git clone --branch 1.2.0 https://github.com/langflow-ai/langflow.git /app
+# Clone the Langflow repository at the 1.2.0 tag
+RUN git clone --branch 1.2.0 https://github.com/langflow-ai/langflow.git
 
-# Change directory to the backend project folder which contains the correct pyproject.toml defining `postgresql`
-WORKDIR /app/src/backend/base
+COPY ./src /app/src
 
-# First dependency synchronisation: prepare the virtual environment without installing the project code
+# First dependency sync (without installing the project itself)
+# This uses the uv.lock, pyproject.toml and README.md files from the cloned repo
+WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-editable --extra postgresql
 
 # Build the frontend assets
+# The frontend code is built in a temporary folder to avoid cluttering the source tree
 WORKDIR /app/src/frontend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci \
@@ -47,8 +49,8 @@ RUN --mount=type=cache,target=/root/.npm \
     && cp -r build /app/src/backend/langflow/frontend \
     && rm -rf /app/src/frontend
 
-# Final dependency synchronisation: install the project code
-WORKDIR /app/src/backend/base
+# Final dependency sync (this installs the project code into the virtual environment)
+WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --extra postgresql
 
@@ -67,8 +69,8 @@ RUN apt-get update \
 # Copy the entire /app folder from the builder stage into the runtime stage
 COPY --from=builder /app /app
 
-# Place executables in the environment at the front of the PATH (using the virtual environment from the backend folder)
-ENV PATH="/app/src/backend/base/.venv/bin:$PATH"
+# Place executables in the environment at the front of the PATH
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Metadata labels
 LABEL org.opencontainers.image.title=langflow
@@ -77,8 +79,7 @@ LABEL org.opencontainers.image.licenses=MIT
 LABEL org.opencontainers.image.url="https://github.com/langflow-ai/langflow"
 LABEL org.opencontainers.image.source="https://github.com/langflow-ai/langflow"
 
-# Set working directory to the backend folder
-WORKDIR /app/src/backend/base
+WORKDIR /app
 
 # Set environment variables for Langflow
 ENV LANGFLOW_HOST=0.0.0.0
