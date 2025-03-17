@@ -303,7 +303,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "ChatOutput-XbSgJ",
           "description": "Display a chat message in the Playground.",
@@ -361,7 +362,7 @@
                 "placeholder": "",
                 "show": true,
                 "name": "template",
-                "value": "## Reference Task\n### This task would score 5 across all criteria\n{referenceTask}\n\n## Empty Task\n### This task would score 0 across all criteria\n{emptyTask}\n\n## Student Task\n### This is the task you are assessing\n{studentTask}\n\n# Task\n\nScore the students work on a sliding scale from 0-5 on the criteria below:\n\n### 1. **Completeness** (0-5):  \n   - Score 0 for if it matches the empty task.\n   - Score 5 if as detailed as the reference task.\n\nFocus on the extent to which the student has **attempted** the work for this score, rather than the accuracy. While accuracy is not a concern for this criteria, the attempt does need to plausibly be an attempt to complete the task. Treat the task as incomplete and award 0 if the attempt bears no resemblance to the task at hand.\n\n### 2. **Accuracy** (0-5):  \n   - Score 0 if it matches the empty task.\n   - Score 5 if it matches the reference task in accuracy and detail.\n\nUse the reference task to gauge the expected level of response. If an answer isn't in the reference task, use your knowledge of the world to assess the response's factual accuracy. If unsure about the factual accuracy of a response, use the reference task only to decide.\n\n### 3. **Spelling, Punctuation, and Grammar (SPaG)** (0-5):  \n   - Score 0 if entirely incorrect or the task has not been attempted.\n   - Score 5 for flawless SPaG.\n\nProvide a short reasoning for each score, no longer than one sentence. Use the following JSON structure:\n\n{examples}\n\n*IMPORTANT*\n-  In all cases, assess only the content that differs from the empty slide. The empty slide contains the template that students will write on.\n- Only ever output a JSON object following the structure set out in the examples above exactly. {input_val}",
+                "value": "## Reference Task\n### This task would score 5 across all criteria\n{referenceTask}\n\n## Empty Task\n### This task would score 0 across all criteria\n{emptyTask}\n\n## Student Task\n### This is the task you are assessing\n{studentTask}\n\n# Task\n\n## Step 1:\n\nIdentify what the student is being asked to do by looking at the reference task and empty task. Explain it in no more than 2 sentences.\n\n## Step 2:\n\nIdentify the aspects of the work that the student has completed by comparing the difference between the student's slide and the empty task. Anything present in the empty task was not completed by the student.\n\n## Step 3:\n\nScore the students work on a sliding scale from 0-5 on the criteria below:\n\n### 1. **Completeness** (0-5):  \n   - Score 0 for if it matches the empty task.\n   - Score 5 if as detailed as the reference task.\n\nFocus on the extent to which the student has **attempted** the work for this score, rather than the accuracy. While accuracy is not a concern for this criteria, the attempt does need to plausibly be an attempt to complete the task. Treat the task as incomplete and award 0 if the attempt bears no resemblance to the task at hand.\n\n### 2. **Accuracy** (0-5):  \n   - Score 0 if it matches the empty task.\n   - Score 5 if it matches the reference task in accuracy and detail.\n\nUse the reference task to gauge the expected level of response. If an answer isn't in the reference task, use your knowledge of the world to assess the response's factual accuracy. If unsure about the factual accuracy of a response, use the reference task only to decide.\n\n### 3. **Spelling, Punctuation, and Grammar (SPaG)** (0-5):  \n   - Score 0 if entirely incorrect or the task has not been attempted.\n   - Score 5 for flawless SPaG.\n\n## Step 3:\n\nProvide a short reasoning for each score, no longer than one sentence. \n\n## Step 4: \n\nOutput your scores and reasoning using the following JSON structure:\n\n{examples}\n\n*IMPORTANT*\n-  Assess only the content that differs from the empty slide. The empty slide contains the template that students will write on.\n- Only ever output a JSON object following the structure set out in the examples above exactly.{input_val}",
                 "display_name": "Template",
                 "advanced": false,
                 "dynamic": false,
@@ -467,7 +468,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "",
+                "value": "## Examples:  ### Example 1: Partially correct student task  ```json {   \"completeness\": {     \"score\": 2,     \"reasoning\": \"Partially answered, missing key details.\"   },   \"accuracy\": {     \"score\": 3,     \"reasoning\": \"Mostly correct with minor errors.\"   },   \"spag\": {     \"score\": 4,     \"reasoning\": \"Good SPaG with few errors.\"   } } ```  ### Example 2: Student task as good or better than the reference task  ```json {   \"completeness\": {     \"score\": 5,     \"reasoning\": \"Thorough and complete.\"   },   \"accuracy\": {     \"score\": 5,     \"reasoning\": \"All details are accurate.\"   },   \"spag\": {     \"score\": 5,     \"reasoning\": \"Flawless SPaG.\"   } } ```  ### Example 3: No attempt made by the student  ```json {   \"completeness\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   },   \"accuracy\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   },   \"spag\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   } } ``` ",
                 "fileTypes": [],
                 "file_path": "",
                 "name": "examples",
@@ -507,9 +508,13 @@
             },
             "description": "Create a prompt template with dynamic variables.",
             "icon": "prompts",
+            "is_input": null,
+            "is_output": null,
+            "is_composition": null,
             "base_classes": [
               "Message"
             ],
+            "name": "",
             "display_name": "Prompt",
             "documentation": "",
             "minimized": false,
@@ -523,6 +528,7 @@
               ]
             },
             "output_types": [],
+            "full_path": null,
             "pinned": false,
             "conditional_paths": [],
             "frozen": false,
@@ -549,6 +555,7 @@
             ],
             "beta": false,
             "legacy": false,
+            "error": null,
             "edited": false,
             "metadata": {},
             "tool_mode": false
@@ -924,7 +931,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "GoogleGenerativeAIModel-Vpe6J",
           "description": "Generate text using Google Generative AI.",
@@ -1093,7 +1101,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "JSONCleaner-YXbve",
           "description": "Cleans the messy and sometimes incorrect JSON strings produced by LLMs so that they are fully compliant with the JSON spec.",
@@ -1405,7 +1414,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "ChatInput-xEp8z",
           "description": "Get chat inputs from the Playground.",
@@ -1423,6 +1433,109 @@
           "width": 320,
           "height": 233
         }
+      },
+      {
+        "id": "TextInput-k9K18",
+        "type": "genericNode",
+        "position": {
+          "x": -75,
+          "y": 690
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.base.io.text import TextComponent\nfrom langflow.io import MultilineInput, Output\nfrom langflow.schema.message import Message\n\n\nclass TextInputComponent(TextComponent):\n    display_name = \"Text Input\"\n    description = \"Get text inputs from the Playground.\"\n    icon = \"type\"\n    name = \"TextInput\"\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Text to be passed as input.\",\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Message\", name=\"text\", method=\"text_response\"),\n    ]\n\n    def text_response(self) -> Message:\n        return Message(\n            text=self.input_value,\n        )\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "input_value": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "multiline": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "```json\n{\n    \"completeness\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"accuracy\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"spag\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    }\n}\n```  \n\n---\n\n## Examples:  \n\n### Example 1: Partially correct student task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 2,\n        \"reasoning\": \"Partially answered, missing key details.\"\n    },\n    \"accuracy\": {\n        \"score\": 3,\n        \"reasoning\": \"Mostly correct with minor errors.\"\n    },\n    \"spag\": {\n        \"score\": 4,\n        \"reasoning\": \"Good SPaG with few errors.\"\n    }\n}\n```  \n\n### Example 2: Student task as good or better than the reference task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 5,\n        \"reasoning\": \"Thorough and complete.\"\n    },\n    \"accuracy\": {\n        \"score\": 5,\n        \"reasoning\": \"All details are accurate.\"\n    },\n    \"spag\": {\n        \"score\": 5,\n        \"reasoning\": \"Flawless SPaG.\"\n    }\n}\n```  \n\n### Example 3: No attempt made by the student  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"accuracy\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"spag\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    }\n}\n```  ",
+                "display_name": "Text",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Text to be passed as input.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MultilineInput"
+              }
+            },
+            "description": "Example JSON objects\n",
+            "icon": "type",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Text Input",
+            "documentation": "",
+            "minimized": false,
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "text",
+                "display_name": "Message",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "allows_loop": false,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "input_value"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.2.0"
+          },
+          "showNode": true,
+          "type": "TextInput",
+          "id": "TextInput-k9K18"
+        },
+        "selected": true,
+        "measured": {
+          "width": 320,
+          "height": 267
+        },
+        "dragging": false
       }
     ],
     "edges": [
@@ -1506,7 +1619,8 @@
           }
         },
         "id": "xy-edge__JSONCleaner-YXbve{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-YXbveœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}-ChatOutput-XbSgJ{œfieldNameœ:œinput_valueœ,œidœ:œChatOutput-XbSgJœ,œinputTypesœ:[œDataœ,œDataFrameœ,œMessageœ],œtypeœ:œotherœ}",
-        "className": ""
+        "className": "",
+        "animated": false
       },
       {
         "source": "ChatInput-xEp8z",
@@ -1532,16 +1646,43 @@
           }
         },
         "id": "xy-edge__ChatInput-xEp8z{œdataTypeœ:œChatInputœ,œidœ:œChatInput-xEp8zœ,œnameœ:œmessageœ,œoutput_typesœ:[œMessageœ]}-Prompt-PeMZv{œfieldNameœ:œinput_valœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "className": "",
+        "animated": false
+      },
+      {
+        "source": "TextInput-k9K18",
+        "sourceHandle": "{œdataTypeœ:œTextInputœ,œidœ:œTextInput-k9K18œ,œnameœ:œtextœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "Prompt-PeMZv",
+        "targetHandle": "{œfieldNameœ:œexamplesœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "examples",
+            "id": "Prompt-PeMZv",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "TextInput",
+            "id": "TextInput-k9K18",
+            "name": "text",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "xy-edge__TextInput-k9K18{œdataTypeœ:œTextInputœ,œidœ:œTextInput-k9K18œ,œnameœ:œtextœ,œoutput_typesœ:[œMessageœ]}-Prompt-PeMZv{œfieldNameœ:œexamplesœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
         "className": ""
       }
     ],
     "viewport": {
-      "x": 122.01835044607384,
-      "y": 130.47119141586109,
-      "zoom": 0.38922231891818504
+      "x": 85.02289578635967,
+      "y": -251.387341512494,
+      "zoom": 0.9856625943466355
     }
   },
-  "updated_at": "2025-03-17T15:42:26+00:00",
+  "updated_at": "2025-03-17T21:19:46+00:00",
   "icon": null,
   "name": "Table Assessor Flow",
   "description": "Empowering Communication, Enabling Opportunities.",
