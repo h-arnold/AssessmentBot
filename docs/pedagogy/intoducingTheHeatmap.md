@@ -1,5 +1,13 @@
 # Introducing the heatmap
 
+- [Introducing the heatmap](#introducing-the-heatmap)
+  - [Examples](#examples)
+    - [Clusters of inaccuacy](#clusters-of-inaccuacy)
+    - [Clusters of incompleteness](#clusters-of-incompleteness)
+    - [Clusters from specific groups](#clusters-from-specific-groups)
+  - [Key Points](#key-points)
+
+
 Fundamental to Assessment Bot's functionality is the heatmap - a visual method of representing a class or cohorts' performance on a given task. The premise behind it is simple: you are looking for clusters of 'heat' (red and orange) to identify areas of weakness that need to be addressed.
 
 In Assessment Bot, each task is rated from 1-5 for Completeness, Accuracy ans SPaG (spelling, punctuation and grammar). To arrive at a score, it compares a student's work on a given task with the 'reference task' that you supplied earlier. The reference task should score what you would award as '5' for all criteria. 1, therefore is highlighted in red, 3 amber and green for 5. You also have grey, which is accompanied by an 'N' for when a student hasn't attempted the work and a white 'E' when there's been an error in extracting the data for that task.
