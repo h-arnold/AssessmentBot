@@ -1,5 +1,10 @@
 {
-  "id": "ee01d564-56f2-4901-888f-f525d1014416",
+  "id": "1ec06090-4a3d-49d3-9e04-193e16c46f58",
+  "tags": null,
+  "locked": false,
+  "gradient": null,
+  "folder_id": "cce7ca07-b28f-4d42-9e36-5f86cca082d6",
+  "is_component": false,
   "data": {
     "nodes": [
       {
@@ -14,12 +19,35 @@
           "node": {
             "template": {
               "_type": "Component",
+              "input_value": {
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "",
+                "display_name": "Text",
+                "advanced": false,
+                "input_types": [
+                  "Data",
+                  "DataFrame",
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Message to be passed as output.",
+                "title_case": false,
+                "type": "other",
+                "_input_type": "HandleInput"
+              },
               "background_color": {
                 "tool_mode": false,
                 "trace_as_input": true,
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -42,6 +70,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -58,6 +87,24 @@
                 "type": "str",
                 "_input_type": "MessageTextInput"
               },
+              "clean_data": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "clean_data",
+                "value": true,
+                "display_name": "Basic Clean Data",
+                "advanced": true,
+                "dynamic": false,
+                "info": "Whether to clean the data",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
               "code": {
                 "type": "code",
                 "required": true,
@@ -65,7 +112,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "from langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.io import DropdownInput, MessageInput, MessageTextInput, Output\nfrom langflow.schema.message import Message\nfrom langflow.schema.properties import Source\nfrom langflow.utils.constants import MESSAGE_SENDER_AI, MESSAGE_SENDER_NAME_AI, MESSAGE_SENDER_USER\n\n\nclass ChatOutput(ChatComponent):\n    display_name = \"Chat Output\"\n    description = \"Display a chat message in the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatOutput\"\n\n    inputs = [\n        MessageInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Message to be passed as output.\",\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_AI,\n            advanced=True,\n            info=\"Type of sender.\",\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_AI,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"data_template\",\n            display_name=\"Data Template\",\n            value=\"{text}\",\n            advanced=True,\n            info=\"Template to convert Data to Text. If left empty, it will be dynamically set to the Data's text key.\",\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(\n            display_name=\"Message\",\n            name=\"message\",\n            method=\"message_response\",\n        ),\n    ]\n\n    def _build_source(self, id_: str | None, display_name: str | None, source: str | None) -> Source:\n        source_dict = {}\n        if id_:\n            source_dict[\"id\"] = id_\n        if display_name:\n            source_dict[\"display_name\"] = display_name\n        if source:\n            source_dict[\"source\"] = source\n        return Source(**source_dict)\n\n    async def message_response(self) -> Message:\n        source, icon, display_name, source_id = self.get_properties_from_source_component()\n        background_color = self.background_color\n        text_color = self.text_color\n        if self.chat_icon:\n            icon = self.chat_icon\n        message = self.input_value if isinstance(self.input_value, Message) else Message(text=self.input_value)\n        message.sender = self.sender\n        message.sender_name = self.sender_name\n        message.session_id = self.session_id\n        message.flow_id = self.graph.flow_id if hasattr(self, \"graph\") else None\n        message.properties.source = self._build_source(source_id, display_name, source)\n        message.properties.icon = icon\n        message.properties.background_color = background_color\n        message.properties.text_color = text_color\n        if self.session_id and isinstance(message, Message) and self.should_store_message:\n            stored_message = await self.send_message(\n                message,\n            )\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n",
+                "value": "from collections.abc import Generator\nfrom typing import Any\n\nfrom langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.inputs.inputs import HandleInput\nfrom langflow.io import DropdownInput, MessageTextInput, Output\nfrom langflow.schema.data import Data\nfrom langflow.schema.dataframe import DataFrame\nfrom langflow.schema.message import Message\nfrom langflow.schema.properties import Source\nfrom langflow.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_AI,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatOutput(ChatComponent):\n    display_name = \"Chat Output\"\n    description = \"Display a chat message in the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatOutput\"\n    minimized = True\n\n    inputs = [\n        HandleInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Message to be passed as output.\",\n            input_types=[\"Data\", \"DataFrame\", \"Message\"],\n            required=True,\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_AI,\n            advanced=True,\n            info=\"Type of sender.\",\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_AI,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"data_template\",\n            display_name=\"Data Template\",\n            value=\"{text}\",\n            advanced=True,\n            info=\"Template to convert Data to Text. If left empty, it will be dynamically set to the Data's text key.\",\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n        BoolInput(\n            name=\"clean_data\",\n            display_name=\"Basic Clean Data\",\n            value=True,\n            info=\"Whether to clean the data\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(\n            display_name=\"Message\",\n            name=\"message\",\n            method=\"message_response\",\n        ),\n    ]\n\n    def _build_source(self, id_: str | None, display_name: str | None, source: str | None) -> Source:\n        source_dict = {}\n        if id_:\n            source_dict[\"id\"] = id_\n        if display_name:\n            source_dict[\"display_name\"] = display_name\n        if source:\n            # Handle case where source is a ChatOpenAI object\n            if hasattr(source, \"model_name\"):\n                source_dict[\"source\"] = source.model_name\n            elif hasattr(source, \"model\"):\n                source_dict[\"source\"] = str(source.model)\n            else:\n                source_dict[\"source\"] = str(source)\n        return Source(**source_dict)\n\n    async def message_response(self) -> Message:\n        # First convert the input to string if needed\n        text = self.convert_to_string()\n        # Get source properties\n        source, icon, display_name, source_id = self.get_properties_from_source_component()\n        background_color = self.background_color\n        text_color = self.text_color\n        if self.chat_icon:\n            icon = self.chat_icon\n\n        # Create or use existing Message object\n        if isinstance(self.input_value, Message):\n            message = self.input_value\n            # Update message properties\n            message.text = text\n        else:\n            message = Message(text=text)\n\n        # Set message properties\n        message.sender = self.sender\n        message.sender_name = self.sender_name\n        message.session_id = self.session_id\n        message.flow_id = self.graph.flow_id if hasattr(self, \"graph\") else None\n        message.properties.source = self._build_source(source_id, display_name, source)\n        message.properties.icon = icon\n        message.properties.background_color = background_color\n        message.properties.text_color = text_color\n\n        # Store message if needed\n        if self.session_id and self.should_store_message:\n            stored_message = await self.send_message(message)\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n\n    def _validate_input(self) -> None:\n        \"\"\"Validate the input data and raise ValueError if invalid.\"\"\"\n        if self.input_value is None:\n            msg = \"Input data cannot be None\"\n            raise ValueError(msg)\n        if isinstance(self.input_value, list) and not all(\n            isinstance(item, Message | Data | DataFrame | str) for item in self.input_value\n        ):\n            invalid_types = [\n                type(item).__name__\n                for item in self.input_value\n                if not isinstance(item, Message | Data | DataFrame | str)\n            ]\n            msg = f\"Expected Data or DataFrame or Message or str, got {invalid_types}\"\n            raise TypeError(msg)\n        if not isinstance(\n            self.input_value,\n            Message | Data | DataFrame | str | list | Generator | type(None),\n        ):\n            type_name = type(self.input_value).__name__\n            msg = f\"Expected Data or DataFrame or Message or str, Generator or None, got {type_name}\"\n            raise TypeError(msg)\n\n    def _safe_convert(self, data: Any) -> str:\n        \"\"\"Safely convert input data to string.\"\"\"\n        try:\n            if isinstance(data, str):\n                return data\n            if isinstance(data, Message):\n                return data.get_text()\n            if isinstance(data, Data):\n                if data.get_text() is None:\n                    msg = \"Empty Data object\"\n                    raise ValueError(msg)\n                return data.get_text()\n            if isinstance(data, DataFrame):\n                if self.clean_data:\n                    # Remove empty rows\n                    data = data.dropna(how=\"all\")\n                    # Remove empty lines in each cell\n                    data = data.replace(r\"^\\s*$\", \"\", regex=True)\n                    # Replace multiple newlines with a single newline\n                    data = data.replace(r\"\\n+\", \"\\n\", regex=True)\n                return (\n                    data.replace(r\"\\|\", r\"\\\\|\", regex=True)\n                    .applymap(lambda x: (str(x).replace(\"\\n\", \"<br/>\") if isinstance(x, str) else x))\n                    .to_markdown(index=False)\n                )\n            return str(data)\n        except (ValueError, TypeError, AttributeError) as e:\n            msg = f\"Error converting data: {e!s}\"\n            raise ValueError(msg) from e\n\n    def convert_to_string(self) -> str | Generator[Any, None, None]:\n        \"\"\"Convert input data to string with proper error handling.\"\"\"\n        self._validate_input()\n        if isinstance(self.input_value, list):\n            return \"\\n\".join([self._safe_convert(item) for item in self.input_value])\n        if isinstance(self.input_value, Generator):\n            return self.input_value\n        return self._safe_convert(self.input_value)\n",
                 "fileTypes": [],
                 "file_path": "",
                 "password": false,
@@ -82,6 +129,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -98,27 +146,6 @@
                 "type": "str",
                 "_input_type": "MessageTextInput"
               },
-              "input_value": {
-                "trace_as_input": true,
-                "trace_as_metadata": true,
-                "load_from_db": false,
-                "list": false,
-                "required": false,
-                "placeholder": "",
-                "show": true,
-                "name": "input_value",
-                "value": "",
-                "display_name": "Text",
-                "advanced": false,
-                "input_types": [
-                  "Message"
-                ],
-                "dynamic": false,
-                "info": "Message to be passed as output.",
-                "title_case": false,
-                "type": "str",
-                "_input_type": "MessageInput"
-              },
               "sender": {
                 "tool_mode": false,
                 "trace_as_metadata": true,
@@ -126,7 +153,9 @@
                   "Machine",
                   "User"
                 ],
+                "options_metadata": [],
                 "combobox": false,
+                "dialog_inputs": {},
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -146,6 +175,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -168,6 +198,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -185,8 +216,10 @@
                 "_input_type": "MessageTextInput"
               },
               "should_store_message": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -206,6 +239,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -230,6 +264,7 @@
             ],
             "display_name": "Chat Output",
             "documentation": "",
+            "minimized": true,
             "custom_fields": {},
             "output_types": [],
             "pinned": false,
@@ -242,10 +277,14 @@
                 ],
                 "selected": "Message",
                 "name": "message",
+                "hidden": null,
                 "display_name": "Message",
                 "method": "message_response",
                 "value": "__UNDEFINED__",
-                "cache": true
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "tool_mode": true
               }
             ],
             "field_order": [
@@ -257,14 +296,14 @@
               "data_template",
               "background_color",
               "chat_icon",
-              "text_color"
+              "text_color",
+              "clean_data"
             ],
             "beta": false,
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false,
-            "lf_version": "1.1.1"
+            "tool_mode": false
           },
           "id": "ChatOutput-XbSgJ",
           "description": "Display a chat message in the Playground.",
@@ -277,7 +316,11 @@
           "x": 2103.433423469548,
           "y": 378.8351340317354
         },
-        "dragging": false
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 233
+        }
       },
       {
         "id": "Prompt-PeMZv",
@@ -298,7 +341,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "from langflow.base.prompts.api_utils import process_prompt_template\nfrom langflow.custom import Component\nfrom langflow.inputs.inputs import DefaultPromptField\nfrom langflow.io import MessageTextInput, Output, PromptInput\nfrom langflow.schema.message import Message\nfrom langflow.template.utils import update_template_values\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n        MessageTextInput(\n            name=\"tool_placeholder\",\n            display_name=\"Tool Placeholder\",\n            tool_mode=True,\n            advanced=True,\n            info=\"A placeholder input for tool mode.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt Message\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    async def build_prompt(self) -> Message:\n        prompt = Message.from_template(**self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        custom_fields = frontend_node[\"custom_fields\"]\n        frontend_node_template = frontend_node[\"template\"]\n        _ = process_prompt_template(\n            template=prompt_template,\n            name=\"template\",\n            custom_fields=custom_fields,\n            frontend_node_template=frontend_node_template,\n        )\n        return frontend_node\n\n    def post_code_processing(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = super().post_code_processing(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        # Kept it duplicated for backwards compatibility\n        _ = process_prompt_template(\n            template=template,\n            name=\"template\",\n            custom_fields=frontend_node[\"custom_fields\"],\n            frontend_node_template=frontend_node[\"template\"],\n        )\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n",
+                "value": "from langflow.base.prompts.api_utils import process_prompt_template\nfrom langflow.custom import Component\nfrom langflow.inputs.inputs import DefaultPromptField\nfrom langflow.io import MessageTextInput, Output, PromptInput\nfrom langflow.schema.message import Message\nfrom langflow.template.utils import update_template_values\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n        MessageTextInput(\n            name=\"tool_placeholder\",\n            display_name=\"Tool Placeholder\",\n            tool_mode=True,\n            advanced=True,\n            info=\"A placeholder input for tool mode.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt Message\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    async def build_prompt(self) -> Message:\n        prompt = Message.from_template(**self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        custom_fields = frontend_node[\"custom_fields\"]\n        frontend_node_template = frontend_node[\"template\"]\n        _ = process_prompt_template(\n            template=prompt_template,\n            name=\"template\",\n            custom_fields=custom_fields,\n            frontend_node_template=frontend_node_template,\n        )\n        return frontend_node\n\n    async def update_frontend_node(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = await super().update_frontend_node(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        # Kept it duplicated for backwards compatibility\n        _ = process_prompt_template(\n            template=template,\n            name=\"template\",\n            custom_fields=frontend_node[\"custom_fields\"],\n            frontend_node_template=frontend_node[\"template\"],\n        )\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n",
                 "fileTypes": [],
                 "file_path": "",
                 "password": false,
@@ -313,6 +356,7 @@
                 "tool_mode": false,
                 "trace_as_input": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -333,6 +377,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -356,15 +401,14 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "This is the tweakID you are looking for.",
+                "value": "",
                 "fileTypes": [],
                 "file_path": "",
                 "name": "referenceTask",
                 "display_name": "referenceTask",
                 "advanced": false,
                 "input_types": [
-                  "Message",
-                  "Text"
+                  "Message"
                 ],
                 "dynamic": false,
                 "info": "",
@@ -386,8 +430,7 @@
                 "display_name": "emptyTask",
                 "advanced": false,
                 "input_types": [
-                  "Message",
-                  "Text"
+                  "Message"
                 ],
                 "dynamic": false,
                 "info": "",
@@ -409,8 +452,7 @@
                 "display_name": "studentTask",
                 "advanced": false,
                 "input_types": [
-                  "Message",
-                  "Text"
+                  "Message"
                 ],
                 "dynamic": false,
                 "info": "",
@@ -425,15 +467,14 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "```json {     \"completeness\": {         \"score\": {score},         \"reasoning\": \"{reasoning}\"     },     \"accuracy\": {         \"score\": {score},         \"reasoning\": \"{reasoning}\"     },     \"spag\": {         \"score\": {score},         \"reasoning\": \"{reasoning}\"     } } ```  ## Examples:  ### Example 1: Partially correct student task  ```json {   \"completeness\": {     \"score\": 2,     \"reasoning\": \"Partially answered, missing key details.\"   },   \"accuracy\": {     \"score\": 3,     \"reasoning\": \"Mostly correct with minor errors.\"   },   \"spag\": {     \"score\": 4,     \"reasoning\": \"Good SPaG with few errors.\"   } } ```  ### Example 2: Student task as good or better than the reference task  ```json {   \"completeness\": {     \"score\": 5,     \"reasoning\": \"Thorough and complete.\"   },   \"accuracy\": {     \"score\": 5,     \"reasoning\": \"All details are accurate.\"   },   \"spag\": {     \"score\": 5,     \"reasoning\": \"Flawless SPaG.\"   } } ```  ### Example 3: No attempt made by the student  ```json {   \"completeness\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   },   \"accuracy\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   },   \"spag\": {     \"score\": 0,     \"reasoning\": \"No content provided.\"   } } ```",
+                "value": "",
                 "fileTypes": [],
                 "file_path": "",
                 "name": "examples",
                 "display_name": "examples",
                 "advanced": false,
                 "input_types": [
-                  "Message",
-                  "Text"
+                  "Message"
                 ],
                 "dynamic": false,
                 "info": "",
@@ -455,8 +496,7 @@
                 "display_name": "input_val",
                 "advanced": false,
                 "input_types": [
-                  "Message",
-                  "Text"
+                  "Message"
                 ],
                 "dynamic": false,
                 "info": "",
@@ -472,6 +512,7 @@
             ],
             "display_name": "Prompt",
             "documentation": "",
+            "minimized": false,
             "custom_fields": {
               "template": [
                 "referenceTask",
@@ -492,10 +533,14 @@
                 ],
                 "selected": "Message",
                 "name": "prompt",
+                "hidden": null,
                 "display_name": "Prompt Message",
                 "method": "build_prompt",
                 "value": "__UNDEFINED__",
-                "cache": true
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "tool_mode": true
               }
             ],
             "field_order": [
@@ -506,21 +551,24 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false,
-            "lf_version": "1.1.1"
+            "tool_mode": false
           },
           "id": "Prompt-PeMZv",
           "description": "Create a prompt template with dynamic variables.",
           "display_name": "Prompt"
         },
-        "selected": true,
+        "selected": false,
         "width": 320,
         "height": 689,
         "positionAbsolute": {
           "x": 394.1001341242294,
           "y": 82.41301980482388
         },
-        "dragging": false
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 689
+        }
       },
       {
         "id": "GoogleGenerativeAIModel-Vpe6J",
@@ -534,24 +582,25 @@
           "node": {
             "template": {
               "_type": "Component",
-              "output_parser": {
-                "trace_as_metadata": true,
-                "list": false,
-                "required": false,
+              "api_key": {
+                "load_from_db": true,
+                "required": true,
                 "placeholder": "",
                 "show": true,
-                "name": "output_parser",
-                "value": "",
-                "display_name": "Output Parser",
-                "advanced": true,
+                "name": "api_key",
+                "value": "GOOGLE_API_KEY",
+                "display_name": "Google API Key",
+                "advanced": false,
                 "input_types": [
-                  "OutputParser"
+                  "Message"
                 ],
                 "dynamic": false,
-                "info": "The parser to use to parse the output of the model",
+                "info": "The Google API Key to use for the Google Generative AI.",
+                "real_time_refresh": true,
                 "title_case": false,
-                "type": "other",
-                "_input_type": "HandleInput"
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
               },
               "code": {
                 "type": "code",
@@ -560,7 +609,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "from pydantic.v1 import SecretStr\n\nfrom langflow.base.models.google_generative_ai_constants import GOOGLE_GENERATIVE_AI_MODELS\nfrom langflow.base.models.model import LCModelComponent\nfrom langflow.field_typing import LanguageModel\nfrom langflow.inputs import DropdownInput, FloatInput, IntInput, SecretStrInput\nfrom langflow.inputs.inputs import HandleInput\n\n\nclass GoogleGenerativeAIComponent(LCModelComponent):\n    display_name = \"Google Generative AI\"\n    description = \"Generate text using Google Generative AI.\"\n    icon = \"GoogleGenerativeAI\"\n    name = \"GoogleGenerativeAIModel\"\n\n    inputs = [\n        *LCModelComponent._base_inputs,\n        IntInput(\n            name=\"max_output_tokens\", display_name=\"Max Output Tokens\", info=\"The maximum number of tokens to generate.\"\n        ),\n        DropdownInput(\n            name=\"model\",\n            display_name=\"Model\",\n            info=\"The name of the model to use.\",\n            options=GOOGLE_GENERATIVE_AI_MODELS,\n            value=\"gemini-1.5-pro\",\n        ),\n        SecretStrInput(\n            name=\"google_api_key\",\n            display_name=\"Google API Key\",\n            info=\"The Google API Key to use for the Google Generative AI.\",\n        ),\n        FloatInput(\n            name=\"top_p\",\n            display_name=\"Top P\",\n            info=\"The maximum cumulative probability of tokens to consider when sampling.\",\n            advanced=True,\n        ),\n        FloatInput(name=\"temperature\", display_name=\"Temperature\", value=0.1),\n        IntInput(\n            name=\"n\",\n            display_name=\"N\",\n            info=\"Number of chat completions to generate for each prompt. \"\n            \"Note that the API may not return the full n completions if duplicates are generated.\",\n            advanced=True,\n        ),\n        IntInput(\n            name=\"top_k\",\n            display_name=\"Top K\",\n            info=\"Decode using top-k sampling: consider the set of top_k most probable tokens. Must be positive.\",\n            advanced=True,\n        ),\n        HandleInput(\n            name=\"output_parser\",\n            display_name=\"Output Parser\",\n            info=\"The parser to use to parse the output of the model\",\n            advanced=True,\n            input_types=[\"OutputParser\"],\n        ),\n    ]\n\n    def build_model(self) -> LanguageModel:  # type: ignore[type-var]\n        try:\n            from langchain_google_genai import ChatGoogleGenerativeAI\n        except ImportError as e:\n            msg = \"The 'langchain_google_genai' package is required to use the Google Generative AI model.\"\n            raise ImportError(msg) from e\n\n        google_api_key = self.google_api_key\n        model = self.model\n        max_output_tokens = self.max_output_tokens\n        temperature = self.temperature\n        top_k = self.top_k\n        top_p = self.top_p\n        n = self.n\n\n        return ChatGoogleGenerativeAI(\n            model=model,\n            max_output_tokens=max_output_tokens or None,\n            temperature=temperature,\n            top_k=top_k or None,\n            top_p=top_p or None,\n            n=n or 1,\n            google_api_key=SecretStr(google_api_key).get_secret_value(),\n        )\n",
+                "value": "from typing import Any\n\nimport requests\nfrom loguru import logger\nfrom pydantic.v1 import SecretStr\n\nfrom langflow.base.models.google_generative_ai_constants import GOOGLE_GENERATIVE_AI_MODELS\nfrom langflow.base.models.model import LCModelComponent\nfrom langflow.field_typing import LanguageModel\nfrom langflow.field_typing.range_spec import RangeSpec\nfrom langflow.inputs import DropdownInput, FloatInput, IntInput, SecretStrInput, SliderInput\nfrom langflow.inputs.inputs import BoolInput\nfrom langflow.schema import dotdict\n\n\nclass GoogleGenerativeAIComponent(LCModelComponent):\n    display_name = \"Google Generative AI\"\n    description = \"Generate text using Google Generative AI.\"\n    icon = \"GoogleGenerativeAI\"\n    name = \"GoogleGenerativeAIModel\"\n\n    inputs = [\n        *LCModelComponent._base_inputs,\n        IntInput(\n            name=\"max_output_tokens\", display_name=\"Max Output Tokens\", info=\"The maximum number of tokens to generate.\"\n        ),\n        DropdownInput(\n            name=\"model_name\",\n            display_name=\"Model\",\n            info=\"The name of the model to use.\",\n            options=GOOGLE_GENERATIVE_AI_MODELS,\n            value=\"gemini-1.5-pro\",\n            refresh_button=True,\n            combobox=True,\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"Google API Key\",\n            info=\"The Google API Key to use for the Google Generative AI.\",\n            required=True,\n            real_time_refresh=True,\n        ),\n        FloatInput(\n            name=\"top_p\",\n            display_name=\"Top P\",\n            info=\"The maximum cumulative probability of tokens to consider when sampling.\",\n            advanced=True,\n        ),\n        SliderInput(\n            name=\"temperature\",\n            display_name=\"Temperature\",\n            value=0.1,\n            range_spec=RangeSpec(min=0, max=2, step=0.01),\n            info=\"Controls randomness. Lower values are more deterministic, higher values are more creative.\",\n        ),\n        IntInput(\n            name=\"n\",\n            display_name=\"N\",\n            info=\"Number of chat completions to generate for each prompt. \"\n            \"Note that the API may not return the full n completions if duplicates are generated.\",\n            advanced=True,\n        ),\n        IntInput(\n            name=\"top_k\",\n            display_name=\"Top K\",\n            info=\"Decode using top-k sampling: consider the set of top_k most probable tokens. Must be positive.\",\n            advanced=True,\n        ),\n        BoolInput(\n            name=\"tool_model_enabled\",\n            display_name=\"Tool Model Enabled\",\n            info=\"Whether to use the tool model.\",\n            value=False,\n        ),\n    ]\n\n    def build_model(self) -> LanguageModel:  # type: ignore[type-var]\n        try:\n            from langchain_google_genai import ChatGoogleGenerativeAI\n        except ImportError as e:\n            msg = \"The 'langchain_google_genai' package is required to use the Google Generative AI model.\"\n            raise ImportError(msg) from e\n\n        google_api_key = self.api_key\n        model = self.model_name\n        max_output_tokens = self.max_output_tokens\n        temperature = self.temperature\n        top_k = self.top_k\n        top_p = self.top_p\n        n = self.n\n\n        return ChatGoogleGenerativeAI(\n            model=model,\n            max_output_tokens=max_output_tokens or None,\n            temperature=temperature,\n            top_k=top_k or None,\n            top_p=top_p or None,\n            n=n or 1,\n            google_api_key=SecretStr(google_api_key).get_secret_value(),\n        )\n\n    def get_models(self, tool_model_enabled: bool | None = None) -> list[str]:\n        try:\n            import google.generativeai as genai\n\n            genai.configure(api_key=self.api_key)\n            model_ids = [\n                model.name.replace(\"models/\", \"\")\n                for model in genai.list_models()\n                if \"generateContent\" in model.supported_generation_methods\n            ]\n            model_ids.sort(reverse=True)\n        except (ImportError, ValueError) as e:\n            logger.exception(f\"Error getting model names: {e}\")\n            model_ids = GOOGLE_GENERATIVE_AI_MODELS\n        if tool_model_enabled:\n            try:\n                from langchain_google_genai.chat_models import ChatGoogleGenerativeAI\n            except ImportError as e:\n                msg = \"langchain_google_genai is not installed.\"\n                raise ImportError(msg) from e\n            for model in model_ids:\n                model_with_tool = ChatGoogleGenerativeAI(\n                    model=self.model_name,\n                    google_api_key=self.api_key,\n                )\n                if not self.supports_tool_calling(model_with_tool):\n                    model_ids.remove(model)\n        return model_ids\n\n    def update_build_config(self, build_config: dotdict, field_value: Any, field_name: str | None = None):\n        if field_name in (\"base_url\", \"model_name\", \"tool_model_enabled\", \"api_key\") and field_value:\n            try:\n                if len(self.api_key) == 0:\n                    ids = GOOGLE_GENERATIVE_AI_MODELS\n                else:\n                    try:\n                        ids = self.get_models(tool_model_enabled=self.tool_model_enabled)\n                    except (ImportError, ValueError, requests.exceptions.RequestException) as e:\n                        logger.exception(f\"Error getting model names: {e}\")\n                        ids = GOOGLE_GENERATIVE_AI_MODELS\n                build_config[\"model_name\"][\"options\"] = ids\n                build_config[\"model_name\"][\"value\"] = ids[0]\n            except Exception as e:\n                msg = f\"Error getting model names: {e}\"\n                raise ValueError(msg) from e\n        return build_config\n",
                 "fileTypes": [],
                 "file_path": "",
                 "password": false,
@@ -571,30 +620,13 @@
                 "load_from_db": false,
                 "title_case": false
               },
-              "google_api_key": {
-                "load_from_db": false,
-                "required": false,
-                "placeholder": "",
-                "show": true,
-                "name": "google_api_key",
-                "value": "",
-                "display_name": "Google API Key",
-                "advanced": false,
-                "input_types": [
-                  "Message"
-                ],
-                "dynamic": false,
-                "info": "The Google API Key to use for the Google Generative AI.",
-                "title_case": false,
-                "password": true,
-                "type": "str",
-                "_input_type": "SecretStrInput"
-              },
               "input_value": {
                 "trace_as_input": true,
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -612,8 +644,10 @@
                 "_input_type": "MessageInput"
               },
               "max_output_tokens": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -628,43 +662,65 @@
                 "_input_type": "IntInput",
                 "load_from_db": false
               },
-              "model": {
+              "model_name": {
                 "tool_mode": false,
                 "trace_as_metadata": true,
                 "options": [
-                  "gemini-1.5-pro",
-                  "gemini-1.5-flash",
-                  "gemini-1.5-flash-8b",
-                  "gemini-1.0-pro",
-                  "gemini-1.0-pro-vision",
-                  "gemini-1.5-pro-001",
+                  "learnlm-1.5-pro-experimental",
+                  "gemma-3-27b-it",
+                  "gemini-pro-vision",
+                  "gemini-exp-1206",
+                  "gemini-2.0-pro-exp-02-05",
+                  "gemini-2.0-pro-exp",
+                  "gemini-2.0-flash-thinking-exp-1219",
+                  "gemini-2.0-flash-thinking-exp-01-21",
+                  "gemini-2.0-flash-thinking-exp",
+                  "gemini-2.0-flash-lite-preview-02-05",
+                  "gemini-2.0-flash-lite-preview",
+                  "gemini-2.0-flash-lite-001",
+                  "gemini-2.0-flash-lite",
+                  "gemini-2.0-flash-exp-image-generation",
+                  "gemini-2.0-flash-exp",
+                  "gemini-2.0-flash-001",
+                  "gemini-2.0-flash",
+                  "gemini-1.5-pro-latest",
                   "gemini-1.5-pro-002",
-                  "gemini-1.5-flash-001",
-                  "gemini-1.5-flash-002",
-                  "gemini-1.5-pro-exp-0827",
-                  "gemini-1.5-flash-exp-0827",
-                  "gemini-1.5-flash-8b-exp-0827",
+                  "gemini-1.5-pro-001",
+                  "gemini-1.5-pro",
+                  "gemini-1.5-flash-latest",
+                  "gemini-1.5-flash-8b-latest",
                   "gemini-1.5-flash-8b-exp-0924",
-                  "gemini-exp-1114"
+                  "gemini-1.5-flash-8b-exp-0827",
+                  "gemini-1.5-flash-8b-001",
+                  "gemini-1.5-flash-8b",
+                  "gemini-1.5-flash-002",
+                  "gemini-1.5-flash-001-tuning",
+                  "gemini-1.5-flash-001",
+                  "gemini-1.5-flash",
+                  "gemini-1.0-pro-vision-latest"
                 ],
-                "combobox": false,
+                "options_metadata": [],
+                "combobox": true,
+                "dialog_inputs": {},
                 "required": false,
                 "placeholder": "",
                 "show": true,
-                "name": "model",
-                "value": "gemini-1.5-flash",
+                "name": "model_name",
+                "value": "learnlm-1.5-pro-experimental",
                 "display_name": "Model",
                 "advanced": false,
                 "dynamic": false,
                 "info": "The name of the model to use.",
+                "refresh_button": true,
                 "title_case": false,
                 "type": "str",
-                "_input_type": "DropdownInput",
-                "load_from_db": false
+                "_input_type": "DropdownInput"
               },
               "n": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -679,8 +735,10 @@
                 "_input_type": "IntInput"
               },
               "stream": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -697,9 +755,11 @@
               "system_message": {
                 "tool_mode": false,
                 "trace_as_input": true,
+                "multiline": true,
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -714,28 +774,59 @@
                 "info": "System message to pass to the model.",
                 "title_case": false,
                 "type": "str",
-                "_input_type": "MessageTextInput"
+                "_input_type": "MultilineInput"
               },
               "temperature": {
-                "trace_as_metadata": true,
-                "list": false,
+                "tool_mode": false,
+                "min_label": "",
+                "max_label": "",
+                "min_label_icon": "",
+                "max_label_icon": "",
+                "slider_buttons": false,
+                "slider_buttons_options": [],
+                "slider_input": false,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": 0,
+                  "max": 2,
+                  "step": 0.01
+                },
                 "required": false,
                 "placeholder": "",
                 "show": true,
                 "name": "temperature",
-                "value": "0",
+                "value": 0.1,
                 "display_name": "Temperature",
                 "advanced": false,
                 "dynamic": false,
-                "info": "",
+                "info": "Controls randomness. Lower values are more deterministic, higher values are more creative.",
                 "title_case": false,
-                "type": "float",
-                "_input_type": "FloatInput",
-                "load_from_db": false
+                "type": "slider",
+                "_input_type": "SliderInput"
               },
-              "top_k": {
+              "tool_model_enabled": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "tool_model_enabled",
+                "value": false,
+                "display_name": "Tool Model Enabled",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Whether to use the tool model.",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "top_k": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -750,8 +841,10 @@
                 "_input_type": "IntInput"
               },
               "top_p": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -774,6 +867,7 @@
             ],
             "display_name": "Google Generative AI",
             "documentation": "",
+            "minimized": false,
             "custom_fields": {},
             "output_types": [],
             "pinned": false,
@@ -786,11 +880,14 @@
                 ],
                 "selected": "Message",
                 "name": "text_output",
-                "display_name": "Text",
+                "hidden": null,
+                "display_name": "Message",
                 "method": "text_response",
                 "value": "__UNDEFINED__",
                 "cache": true,
-                "required_inputs": []
+                "required_inputs": [],
+                "allows_loop": false,
+                "tool_mode": true
               },
               {
                 "types": [
@@ -798,11 +895,16 @@
                 ],
                 "selected": "LanguageModel",
                 "name": "model_output",
+                "hidden": null,
                 "display_name": "Language Model",
                 "method": "build_model",
                 "value": "__UNDEFINED__",
                 "cache": true,
-                "required_inputs": []
+                "required_inputs": [
+                  "api_key"
+                ],
+                "allows_loop": false,
+                "tool_mode": true
               }
             ],
             "field_order": [
@@ -810,20 +912,19 @@
               "system_message",
               "stream",
               "max_output_tokens",
-              "model",
-              "google_api_key",
+              "model_name",
+              "api_key",
               "top_p",
               "temperature",
               "n",
               "top_k",
-              "output_parser"
+              "tool_model_enabled"
             ],
             "beta": false,
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false,
-            "lf_version": "1.1.1"
+            "tool_mode": false
           },
           "id": "GoogleGenerativeAIModel-Vpe6J",
           "description": "Generate text using Google Generative AI.",
@@ -836,7 +937,11 @@
           "x": 953.9872626634017,
           "y": 60.718640119246515
         },
-        "dragging": false
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 755
+        }
       },
       {
         "id": "JSONCleaner-YXbve",
@@ -857,7 +962,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "import json\nimport re\nimport unicodedata\n\nfrom langflow.custom import Component\nfrom langflow.inputs import BoolInput, MessageTextInput\nfrom langflow.schema.message import Message\nfrom langflow.template import Output\n\n\nclass JSONCleaner(Component):\n    icon = \"braces\"\n    display_name = \"JSON Cleaner\"\n    description = (\n        \"Cleans the messy and sometimes incorrect JSON strings produced by LLMs \"\n        \"so that they are fully compliant with the JSON spec.\"\n    )\n\n    inputs = [\n        MessageTextInput(\n            name=\"json_str\", display_name=\"JSON String\", info=\"The JSON string to be cleaned.\", required=True\n        ),\n        BoolInput(\n            name=\"remove_control_chars\",\n            display_name=\"Remove Control Characters\",\n            info=\"Remove control characters from the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"normalize_unicode\",\n            display_name=\"Normalize Unicode\",\n            info=\"Normalize Unicode characters in the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"validate_json\",\n            display_name=\"Validate JSON\",\n            info=\"Validate the JSON string to ensure it is well-formed.\",\n            required=False,\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Cleaned JSON String\", name=\"output\", method=\"clean_json\"),\n    ]\n\n    def clean_json(self) -> Message:\n        try:\n            from json_repair import repair_json\n        except ImportError as e:\n            msg = \"Could not import the json_repair package. Please install it with `pip install json_repair`.\"\n            raise ImportError(msg) from e\n\n        \"\"\"Clean the input JSON string based on provided options and return the cleaned JSON string.\"\"\"\n        json_str = self.json_str\n        remove_control_chars = self.remove_control_chars\n        normalize_unicode = self.normalize_unicode\n        validate_json = self.validate_json\n\n        start = json_str.find(\"{\")\n        end = json_str.rfind(\"}\")\n        if start == -1 or end == -1:\n            msg = \"Invalid JSON string: Missing '{' or '}'\"\n            raise ValueError(msg)\n        try:\n            json_str = json_str[start : end + 1]\n\n            if remove_control_chars:\n                json_str = self._remove_control_characters(json_str)\n            if normalize_unicode:\n                json_str = self._normalize_unicode(json_str)\n            if validate_json:\n                json_str = self._validate_json(json_str)\n\n            cleaned_json_str = repair_json(json_str)\n            result = str(cleaned_json_str)\n\n            self.status = result\n            return Message(text=result)\n        except Exception as e:\n            msg = f\"Error cleaning JSON string: {e}\"\n            raise ValueError(msg) from e\n\n    def _remove_control_characters(self, s: str) -> str:\n        \"\"\"Remove control characters from the string.\"\"\"\n        return re.sub(r\"[\\x00-\\x1F\\x7F]\", \"\", s)\n\n    def _normalize_unicode(self, s: str) -> str:\n        \"\"\"Normalize Unicode characters in the string.\"\"\"\n        return unicodedata.normalize(\"NFC\", s)\n\n    def _validate_json(self, s: str) -> str:\n        \"\"\"Validate the JSON string.\"\"\"\n        try:\n            json.loads(s)\n        except json.JSONDecodeError as e:\n            msg = f\"Invalid JSON string: {e}\"\n            raise ValueError(msg) from e\n        return s\n",
+                "value": "import json\nimport unicodedata\n\nfrom langflow.custom import Component\nfrom langflow.inputs import BoolInput, MessageTextInput\nfrom langflow.schema.message import Message\nfrom langflow.template import Output\n\n\nclass JSONCleaner(Component):\n    icon = \"braces\"\n    display_name = \"JSON Cleaner\"\n    description = (\n        \"Cleans the messy and sometimes incorrect JSON strings produced by LLMs \"\n        \"so that they are fully compliant with the JSON spec.\"\n    )\n\n    inputs = [\n        MessageTextInput(\n            name=\"json_str\", display_name=\"JSON String\", info=\"The JSON string to be cleaned.\", required=True\n        ),\n        BoolInput(\n            name=\"remove_control_chars\",\n            display_name=\"Remove Control Characters\",\n            info=\"Remove control characters from the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"normalize_unicode\",\n            display_name=\"Normalize Unicode\",\n            info=\"Normalize Unicode characters in the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"validate_json\",\n            display_name=\"Validate JSON\",\n            info=\"Validate the JSON string to ensure it is well-formed.\",\n            required=False,\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Cleaned JSON String\", name=\"output\", method=\"clean_json\"),\n    ]\n\n    def clean_json(self) -> Message:\n        try:\n            from json_repair import repair_json\n        except ImportError as e:\n            msg = \"Could not import the json_repair package. Please install it with `pip install json_repair`.\"\n            raise ImportError(msg) from e\n\n        \"\"\"Clean the input JSON string based on provided options and return the cleaned JSON string.\"\"\"\n        json_str = self.json_str\n        remove_control_chars = self.remove_control_chars\n        normalize_unicode = self.normalize_unicode\n        validate_json = self.validate_json\n\n        start = json_str.find(\"{\")\n        end = json_str.rfind(\"}\")\n        if start == -1 or end == -1:\n            msg = \"Invalid JSON string: Missing '{' or '}'\"\n            raise ValueError(msg)\n        try:\n            json_str = json_str[start : end + 1]\n\n            if remove_control_chars:\n                json_str = self._remove_control_characters(json_str)\n            if normalize_unicode:\n                json_str = self._normalize_unicode(json_str)\n            if validate_json:\n                json_str = self._validate_json(json_str)\n\n            cleaned_json_str = repair_json(json_str)\n            result = str(cleaned_json_str)\n\n            self.status = result\n            return Message(text=result)\n        except Exception as e:\n            msg = f\"Error cleaning JSON string: {e}\"\n            raise ValueError(msg) from e\n\n    def _remove_control_characters(self, s: str) -> str:\n        \"\"\"Remove control characters from the string.\"\"\"\n        return s.translate(self.translation_table)\n\n    def _normalize_unicode(self, s: str) -> str:\n        \"\"\"Normalize Unicode characters in the string.\"\"\"\n        return unicodedata.normalize(\"NFC\", s)\n\n    def _validate_json(self, s: str) -> str:\n        \"\"\"Validate the JSON string.\"\"\"\n        try:\n            json.loads(s)\n        except json.JSONDecodeError as e:\n            msg = f\"Invalid JSON string: {e}\"\n            raise ValueError(msg) from e\n        return s\n\n    def __init__(self, *args, **kwargs):\n        # Create a translation table that maps control characters to None\n        super().__init__(*args, **kwargs)\n        self.translation_table = str.maketrans(\"\", \"\", \"\".join(chr(i) for i in range(32)) + chr(127))\n",
                 "fileTypes": [],
                 "file_path": "",
                 "password": false,
@@ -874,6 +979,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": true,
                 "placeholder": "",
                 "show": true,
@@ -891,8 +997,10 @@
                 "_input_type": "MessageTextInput"
               },
               "normalize_unicode": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -908,8 +1016,10 @@
                 "load_from_db": false
               },
               "remove_control_chars": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -925,8 +1035,10 @@
                 "load_from_db": false
               },
               "validate_json": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -948,6 +1060,7 @@
             ],
             "display_name": "JSON Cleaner",
             "documentation": "",
+            "minimized": false,
             "custom_fields": {},
             "output_types": [],
             "pinned": false,
@@ -960,10 +1073,14 @@
                 ],
                 "selected": "Message",
                 "name": "output",
+                "hidden": null,
                 "display_name": "Cleaned JSON String",
                 "method": "clean_json",
                 "value": "__UNDEFINED__",
-                "cache": true
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "tool_mode": true
               }
             ],
             "field_order": [
@@ -976,8 +1093,7 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false,
-            "lf_version": "1.1.1"
+            "tool_mode": false
           },
           "id": "JSONCleaner-YXbve",
           "description": "Cleans the messy and sometimes incorrect JSON strings produced by LLMs so that they are fully compliant with the JSON spec.",
@@ -986,7 +1102,11 @@
         "selected": false,
         "width": 320,
         "height": 405,
-        "dragging": false
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 405
+        }
       },
       {
         "id": "ChatInput-xEp8z",
@@ -1029,6 +1149,7 @@
                   "image"
                 ],
                 "list": true,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1048,6 +1169,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1070,6 +1192,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1093,7 +1216,7 @@
                 "list": false,
                 "show": true,
                 "multiline": true,
-                "value": "from langflow.base.data.utils import IMG_FILE_TYPES, TEXT_FILE_TYPES\nfrom langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.io import DropdownInput, FileInput, MessageTextInput, MultilineInput, Output\nfrom langflow.schema.message import Message\nfrom langflow.utils.constants import MESSAGE_SENDER_AI, MESSAGE_SENDER_NAME_USER, MESSAGE_SENDER_USER\n\n\nclass ChatInput(ChatComponent):\n    display_name = \"Chat Input\"\n    description = \"Get chat inputs from the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatInput\"\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            value=\"\",\n            info=\"Message to be passed as input.\",\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_USER,\n            info=\"Type of sender.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_USER,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        FileInput(\n            name=\"files\",\n            display_name=\"Files\",\n            file_types=TEXT_FILE_TYPES + IMG_FILE_TYPES,\n            info=\"Files to be sent with the message.\",\n            advanced=True,\n            is_list=True,\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Message\", name=\"message\", method=\"message_response\"),\n    ]\n\n    async def message_response(self) -> Message:\n        background_color = self.background_color\n        text_color = self.text_color\n        icon = self.chat_icon\n\n        message = await Message.create(\n            text=self.input_value,\n            sender=self.sender,\n            sender_name=self.sender_name,\n            session_id=self.session_id,\n            files=self.files,\n            properties={\"background_color\": background_color, \"text_color\": text_color, \"icon\": icon},\n        )\n        if self.session_id and isinstance(message, Message) and self.should_store_message:\n            stored_message = await self.send_message(\n                message,\n            )\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n",
+                "value": "from langflow.base.data.utils import IMG_FILE_TYPES, TEXT_FILE_TYPES\nfrom langflow.base.io.chat import ChatComponent\nfrom langflow.inputs import BoolInput\nfrom langflow.io import (\n    DropdownInput,\n    FileInput,\n    MessageTextInput,\n    MultilineInput,\n    Output,\n)\nfrom langflow.schema.message import Message\nfrom langflow.utils.constants import (\n    MESSAGE_SENDER_AI,\n    MESSAGE_SENDER_NAME_USER,\n    MESSAGE_SENDER_USER,\n)\n\n\nclass ChatInput(ChatComponent):\n    display_name = \"Chat Input\"\n    description = \"Get chat inputs from the Playground.\"\n    icon = \"MessagesSquare\"\n    name = \"ChatInput\"\n    minimized = True\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            value=\"\",\n            info=\"Message to be passed as input.\",\n            input_types=[],\n        ),\n        BoolInput(\n            name=\"should_store_message\",\n            display_name=\"Store Messages\",\n            info=\"Store the message in the history.\",\n            value=True,\n            advanced=True,\n        ),\n        DropdownInput(\n            name=\"sender\",\n            display_name=\"Sender Type\",\n            options=[MESSAGE_SENDER_AI, MESSAGE_SENDER_USER],\n            value=MESSAGE_SENDER_USER,\n            info=\"Type of sender.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"sender_name\",\n            display_name=\"Sender Name\",\n            info=\"Name of the sender.\",\n            value=MESSAGE_SENDER_NAME_USER,\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"session_id\",\n            display_name=\"Session ID\",\n            info=\"The session ID of the chat. If empty, the current session ID parameter will be used.\",\n            advanced=True,\n        ),\n        FileInput(\n            name=\"files\",\n            display_name=\"Files\",\n            file_types=TEXT_FILE_TYPES + IMG_FILE_TYPES,\n            info=\"Files to be sent with the message.\",\n            advanced=True,\n            is_list=True,\n        ),\n        MessageTextInput(\n            name=\"background_color\",\n            display_name=\"Background Color\",\n            info=\"The background color of the icon.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"chat_icon\",\n            display_name=\"Icon\",\n            info=\"The icon of the message.\",\n            advanced=True,\n        ),\n        MessageTextInput(\n            name=\"text_color\",\n            display_name=\"Text Color\",\n            info=\"The text color of the name\",\n            advanced=True,\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Message\", name=\"message\", method=\"message_response\"),\n    ]\n\n    async def message_response(self) -> Message:\n        background_color = self.background_color\n        text_color = self.text_color\n        icon = self.chat_icon\n\n        message = await Message.create(\n            text=self.input_value,\n            sender=self.sender,\n            sender_name=self.sender_name,\n            session_id=self.session_id,\n            files=self.files,\n            properties={\n                \"background_color\": background_color,\n                \"text_color\": text_color,\n                \"icon\": icon,\n            },\n        )\n        if self.session_id and isinstance(message, Message) and self.should_store_message:\n            stored_message = await self.send_message(\n                message,\n            )\n            self.message.value = stored_message\n            message = stored_message\n\n        self.status = message\n        return message\n",
                 "fileTypes": [],
                 "file_path": "",
                 "password": false,
@@ -1111,6 +1234,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1118,9 +1242,7 @@
                 "value": "testing!",
                 "display_name": "Text",
                 "advanced": false,
-                "input_types": [
-                  "Message"
-                ],
+                "input_types": [],
                 "dynamic": false,
                 "info": "Message to be passed as input.",
                 "title_case": false,
@@ -1134,7 +1256,9 @@
                   "Machine",
                   "User"
                 ],
+                "options_metadata": [],
                 "combobox": false,
+                "dialog_inputs": {},
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1154,6 +1278,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1176,6 +1301,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1193,8 +1319,10 @@
                 "_input_type": "MessageTextInput"
               },
               "should_store_message": {
+                "tool_mode": false,
                 "trace_as_metadata": true,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1214,6 +1342,7 @@
                 "trace_as_metadata": true,
                 "load_from_db": false,
                 "list": false,
+                "list_add_label": "Add More",
                 "required": false,
                 "placeholder": "",
                 "show": true,
@@ -1238,6 +1367,7 @@
             ],
             "display_name": "Chat Input",
             "documentation": "",
+            "minimized": true,
             "custom_fields": {},
             "output_types": [],
             "pinned": false,
@@ -1250,10 +1380,14 @@
                 ],
                 "selected": "Message",
                 "name": "message",
+                "hidden": null,
                 "display_name": "Message",
                 "method": "message_response",
                 "value": "__UNDEFINED__",
-                "cache": true
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "tool_mode": true
               }
             ],
             "field_order": [
@@ -1271,8 +1405,7 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false,
-            "lf_version": "1.1.1"
+            "tool_mode": false
           },
           "id": "ChatInput-xEp8z",
           "description": "Get chat inputs from the Playground.",
@@ -1285,7 +1418,11 @@
           "x": -183.16287184391007,
           "y": 120.81166113950707
         },
-        "dragging": false
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 233
+        }
       }
     ],
     "edges": [
@@ -1317,33 +1454,6 @@
         "animated": false
       },
       {
-        "source": "JSONCleaner-YXbve",
-        "sourceHandle": "{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-YXbveœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}",
-        "target": "ChatOutput-XbSgJ",
-        "targetHandle": "{œfieldNameœ:œinput_valueœ,œidœ:œChatOutput-XbSgJœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
-        "data": {
-          "targetHandle": {
-            "fieldName": "input_value",
-            "id": "ChatOutput-XbSgJ",
-            "inputTypes": [
-              "Message"
-            ],
-            "type": "str"
-          },
-          "sourceHandle": {
-            "dataType": "JSONCleaner",
-            "id": "JSONCleaner-YXbve",
-            "name": "output",
-            "output_types": [
-              "Message"
-            ]
-          }
-        },
-        "id": "reactflow__edge-JSONCleaner-YXbve{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-YXbveœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}-ChatOutput-XbSgJ{œfieldNameœ:œinput_valueœ,œidœ:œChatOutput-XbSgJœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
-        "className": "",
-        "animated": false
-      },
-      {
         "source": "GoogleGenerativeAIModel-Vpe6J",
         "sourceHandle": "{œdataTypeœ:œGoogleGenerativeAIModelœ,œidœ:œGoogleGenerativeAIModel-Vpe6Jœ,œnameœ:œtext_outputœ,œoutput_typesœ:[œMessageœ]}",
         "target": "JSONCleaner-YXbve",
@@ -1371,17 +1481,44 @@
         "className": ""
       },
       {
+        "source": "JSONCleaner-YXbve",
+        "sourceHandle": "{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-YXbveœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "ChatOutput-XbSgJ",
+        "targetHandle": "{œfieldNameœ:œinput_valueœ,œidœ:œChatOutput-XbSgJœ,œinputTypesœ:[œDataœ,œDataFrameœ,œMessageœ],œtypeœ:œotherœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "ChatOutput-XbSgJ",
+            "inputTypes": [
+              "Data",
+              "DataFrame",
+              "Message"
+            ],
+            "type": "other"
+          },
+          "sourceHandle": {
+            "dataType": "JSONCleaner",
+            "id": "JSONCleaner-YXbve",
+            "name": "output",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "xy-edge__JSONCleaner-YXbve{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-YXbveœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}-ChatOutput-XbSgJ{œfieldNameœ:œinput_valueœ,œidœ:œChatOutput-XbSgJœ,œinputTypesœ:[œDataœ,œDataFrameœ,œMessageœ],œtypeœ:œotherœ}",
+        "className": ""
+      },
+      {
         "source": "ChatInput-xEp8z",
         "sourceHandle": "{œdataTypeœ:œChatInputœ,œidœ:œChatInput-xEp8zœ,œnameœ:œmessageœ,œoutput_typesœ:[œMessageœ]}",
         "target": "Prompt-PeMZv",
-        "targetHandle": "{œfieldNameœ:œinput_valœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
+        "targetHandle": "{œfieldNameœ:œinput_valœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
         "data": {
           "targetHandle": {
             "fieldName": "input_val",
             "id": "Prompt-PeMZv",
             "inputTypes": [
-              "Message",
-              "Text"
+              "Message"
             ],
             "type": "str"
           },
@@ -1394,20 +1531,22 @@
             ]
           }
         },
-        "id": "reactflow__edge-ChatInput-xEp8z{œdataTypeœ:œChatInputœ,œidœ:œChatInput-xEp8zœ,œnameœ:œmessageœ,œoutput_typesœ:[œMessageœ]}-Prompt-PeMZv{œfieldNameœ:œinput_valœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
-        "className": "",
-        "animated": false
+        "id": "xy-edge__ChatInput-xEp8z{œdataTypeœ:œChatInputœ,œidœ:œChatInput-xEp8zœ,œnameœ:œmessageœ,œoutput_typesœ:[œMessageœ]}-Prompt-PeMZv{œfieldNameœ:œinput_valœ,œidœ:œPrompt-PeMZvœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "className": ""
       }
     ],
     "viewport": {
-      "x": 179.31012072720523,
-      "y": 175.70885172494442,
-      "zoom": 0.5719754507399852
+      "x": 122.01835044607384,
+      "y": 130.47119141586109,
+      "zoom": 0.38922231891818504
     }
   },
-  "description": "Empowering Communication, Enabling Opportunities.",
+  "updated_at": "2025-03-17T15:42:26+00:00",
+  "icon": null,
   "name": "Table Assessor Flow",
-  "last_tested_version": "1.1.1",
-  "endpoint_name": "tableAssessment",
-  "is_component": false
+  "description": "Empowering Communication, Enabling Opportunities.",
+  "icon_bg_color": null,
+  "webhook": false,
+  "user_id": "39af12d5-346b-4d34-9f42-3988573667b2",
+  "endpoint_name": "tableAssessment"
 }
