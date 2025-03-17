@@ -42,8 +42,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-editable
 
 # Build the frontend assets:
-# Copy the frontend folder into a temporary directory
-RUN cp -r /app/src/frontend /tmp/src/frontend
+# Create the temporary directory and copy the frontend folder into it
+RUN mkdir -p /tmp/src && cp -r /app/src/frontend /tmp/src/frontend
 WORKDIR /tmp/src/frontend
 RUN --mount=type=cache,target=/root/.npm \
     npm ci \
@@ -60,11 +60,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # RUNTIME
 # Copy the virtual environment only and run as root
 ################################
+
 FROM python:3.12.3-slim AS runtime
 
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install git -y \
+    && apt-get install -y git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
