@@ -1,10 +1,5 @@
 {
   "id": "a7d56dca-7e79-4277-8b76-2d76d8e999f6",
-  "tags": null,
-  "locked": false,
-  "gradient": null,
-  "folder_id": "cce7ca07-b28f-4d42-9e36-5f86cca082d6",
-  "is_component": false,
   "data": {
     "nodes": [
       {
@@ -303,7 +298,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "ChatOutput-8DZct",
           "description": "Display a chat message in the Playground.",
@@ -340,7 +336,7 @@
                 "placeholder": "",
                 "show": true,
                 "name": "api_key",
-                "value": "GOOGLE_API_KEY",
+                "value": "",
                 "display_name": "Google API Key",
                 "advanced": false,
                 "input_types": [
@@ -676,7 +672,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "GoogleGenerativeAIModel-7uhHM",
           "description": "Generate text using Google Generative AI.",
@@ -845,7 +842,8 @@
             "legacy": false,
             "edited": false,
             "metadata": {},
-            "tool_mode": false
+            "tool_mode": false,
+            "lf_version": "1.2.0"
           },
           "id": "JSONCleaner-20rvL",
           "description": "Cleans the messy and sometimes incorrect JSON strings produced by LLMs so that they are fully compliant with the JSON spec.",
@@ -877,7 +875,7 @@
               "_type": "Component",
               "emptyTask": {
                 "trace_as_metadata": true,
-                "file_path": "f1113468-9af6-4672-89d9-b417e9218c9c/2024-12-11_08-47-33_test plan 1.png",
+                "file_path": "a7d56dca-7e79-4277-8b76-2d76d8e999f6/2025-03-17_20-33-11_Screenshot_20250201_055710.png",
                 "fileTypes": [
                   "txt",
                   "md",
@@ -920,7 +918,7 @@
               },
               "referenceTask": {
                 "trace_as_metadata": true,
-                "file_path": "f1113468-9af6-4672-89d9-b417e9218c9c/2024-12-11_08-47-39_test plan 2.png",
+                "file_path": "a7d56dca-7e79-4277-8b76-2d76d8e999f6/2025-03-17_20-32-33_Screenshot_20250201_060029.png",
                 "fileTypes": [
                   "txt",
                   "md",
@@ -963,7 +961,7 @@
               },
               "studentTask": {
                 "trace_as_metadata": true,
-                "file_path": "f1113468-9af6-4672-89d9-b417e9218c9c/2024-12-11_08-47-52_Lesson 4  - Addressing Task - Reference Slides.png",
+                "file_path": "a7d56dca-7e79-4277-8b76-2d76d8e999f6/2025-03-17_20-32-35_Screenshot_20250301_122447.png",
                 "fileTypes": [
                   "txt",
                   "md",
@@ -1226,7 +1224,7 @@
                 "placeholder": "",
                 "show": true,
                 "name": "input_value",
-                "value": "# The Images  \n\nYou have been given 2 - 3 images.  \n\n- **The first image**: This is the reference task. It would score 5 across all criteria.  \n- **The second image**: This is the student's work. This is the task you are assessing.  \n- **The third image**: This is an un-filled template that the students complete.  \n\n# Task \n\n## Step 1:\n\nDescribe the images you see. Format your descriptions as follows:\n\nReference Task: {description of the first image}\nStudent Submission: {description of the second image}\nTemplate: {description of the third image}\n\n## Step 2:\n\nBriefly describe the difference between the reference task, the template and the student's attempt.\n\n## Step 3:\n\nScore the student's work on a sliding scale from 0-5 on the criteria below:  \n\n### 1. **Completeness** (0-5):  \n- Score 0 if it matches the template.  \n- Score 5 if as detailed as the reference task.  \n\nFocus on the extent to which the student has **attempted** the work for this score, rather than the accuracy.  \n\nWhile accuracy is not a concern for this criterion, the attempt does need to plausibly be an attempt to complete the task. Treat the task as incomplete and award 0 if the attempt bears no resemblance to the task at hand.  \n\n### 2. **Accuracy** (0-5):  \n- Score 0 if it matches the template.  \n- Score 5 if it matches the reference task in accuracy and detail.  \n\nUse the reference task to gauge the expected level of response.  \n\n### 3. **Spelling, Punctuation, and Grammar (SPaG)** (0-5):  \n- Score 0 if entirely incorrect or the task has not been attempted.  \n- Score 5 for flawless SPaG.  \n\nProvide a short reasoning for each score, no longer than one sentence.  \n\n## Use the following JSON structure:  \n\n```json\n{\n    \"completeness\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"accuracy\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"spag\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    }\n}\n```  \n\n---\n\n## Examples:  \n\n### Example 1: Partially correct student task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 2,\n        \"reasoning\": \"Partially answered, missing key details.\"\n    },\n    \"accuracy\": {\n        \"score\": 3,\n        \"reasoning\": \"Mostly correct with minor errors.\"\n    },\n    \"spag\": {\n        \"score\": 4,\n        \"reasoning\": \"Good SPaG with few errors.\"\n    }\n}\n```  \n\n### Example 2: Student task as good or better than the reference task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 5,\n        \"reasoning\": \"Thorough and complete.\"\n    },\n    \"accuracy\": {\n        \"score\": 5,\n        \"reasoning\": \"All details are accurate.\"\n    },\n    \"spag\": {\n        \"score\": 5,\n        \"reasoning\": \"Flawless SPaG.\"\n    }\n}\n```  \n\n### Example 3: No attempt made by the student  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"accuracy\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"spag\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    }\n}\n```  \n\n### Example 4: Where you don't receive all the images you need or the quality is too low for you to determine whether the student has completed the task.\n\n```json\n{\n    \"completeness\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    },\n    \"accuracy\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    },\n    \"spag\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    }\n}\n```  \n\n*IMPORTANT*:  \n- In all cases, assess only the content that differs from the empty slide. The empty slide contains the template that students will write on.  \n- Always output your image descriptions in plain text and then output the scores in valid JSON.",
+                "value": "# The Images  \n\nYou have been given 2 - 3 images.  \n\n- **The first image**: This is the reference task. It would score 5 across all criteria.  \n- **The second image**: This is the student's work. This is the task you are assessing.  \n- **The third image**: This is an un-filled template that the students complete.  \n\n# Task \n\n## Step 1:\n\nDescribe the images you see. Format your descriptions as follows:\n\nReference Task: {description of the first image}\nStudent Submission: {description of the second image}\nTemplate: {description of the third image}\n\n## Step 2:\n\nIdentify the task the student is expected to do and explain it as briefly as possible - no more than 2 sentences.\n\n## Step 3:\n\nBriefly describe the difference between the reference task, the template and the student's attempt.\n\n## Step 4:\n\nScore the student's work on a sliding scale from 0-5 on the criteria below:  \n\n### 1. **Completeness** (0-5):  \n- Score 0 if it matches the template.  \n- Score 5 if as detailed as the reference task.  \n\nFocus on the extent to which the student has **attempted** the work for this score, rather than the accuracy.  \n\nWhile accuracy is not a concern for this criterion, the attempt does need to plausibly be an attempt to complete the task. Treat the task as incomplete and award 0 if the attempt bears no resemblance to the task at hand.  \n\n### 2. **Accuracy** (0-5):  \n- Score 0 if it matches the template.  \n- Score 5 if it matches the reference task in accuracy and detail.  \n\nUse the reference task to gauge the expected level of response.  \n\n### 3. **Spelling, Punctuation, and Grammar (SPaG)** (0-5):  \n- Score 0 if entirely incorrect or the task has not been attempted.  \n- Score 5 for flawless SPaG.  \n\nProvide a short reasoning for each score, no longer than one sentence.  \n\n## Use the following JSON structure:  \n\n```json\n{\n    \"completeness\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"accuracy\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    },\n    \"spag\" : {\n        \"score\": {score},\n        \"reasoning\": \"{reasoning}\"\n    }\n}\n```  \n\n---\n\n## Examples:  \n\n### Example 1: Partially correct student task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 2,\n        \"reasoning\": \"Partially answered, missing key details.\"\n    },\n    \"accuracy\": {\n        \"score\": 3,\n        \"reasoning\": \"Mostly correct with minor errors.\"\n    },\n    \"spag\": {\n        \"score\": 4,\n        \"reasoning\": \"Good SPaG with few errors.\"\n    }\n}\n```  \n\n### Example 2: Student task as good or better than the reference task  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 5,\n        \"reasoning\": \"Thorough and complete.\"\n    },\n    \"accuracy\": {\n        \"score\": 5,\n        \"reasoning\": \"All details are accurate.\"\n    },\n    \"spag\": {\n        \"score\": 5,\n        \"reasoning\": \"Flawless SPaG.\"\n    }\n}\n```  \n\n### Example 3: No attempt made by the student  \n\n```json\n{\n    \"completeness\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"accuracy\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    },\n    \"spag\": {\n        \"score\": 0,\n        \"reasoning\": \"No content provided.\"\n    }\n}\n```  \n\n### Example 4: Where you don't receive all the images you need or the quality is too low for you to determine whether the student has completed the task.\n\n```json\n{\n    \"completeness\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    },\n    \"accuracy\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    },\n    \"spag\": {\n        \"score\": 0,\n        \"reasoning\": \"Error in receiving images.\"\n    }\n}\n```  \n\n*IMPORTANT*:  \n- In all cases, assess only the content that differs from the empty slide. The empty slide contains the template that students will write on.  \n- Always output your image descriptions in plain text and then output the scores in valid JSON.",
                 "display_name": "Text",
                 "advanced": false,
                 "input_types": [
@@ -1282,7 +1280,7 @@
           "type": "TextInput",
           "id": "TextInput-zKujs"
         },
-        "selected": false,
+        "selected": true,
         "width": 320,
         "height": 235,
         "dragging": false,
@@ -1405,17 +1403,14 @@
       }
     ],
     "viewport": {
-      "x": 458.8235568201386,
-      "y": 684.1903837415075,
-      "zoom": 0.612722417776319
+      "x": 480.5884829220401,
+      "y": 677.0852091490932,
+      "zoom": 0.5070302789919808
     }
   },
-  "updated_at": "2025-03-17T20:16:18+00:00",
-  "icon": null,
-  "name": "General Image Assessor",
   "description": "This is the general image processing flow for the Google Slides Assessor. It can handle a single image each for the reference slides, empty (template) slides and the student response.",
-  "icon_bg_color": null,
-  "webhook": false,
-  "user_id": "39af12d5-346b-4d34-9f42-3988573667b2",
-  "endpoint_name": "imageAssessment"
+  "name": "General Image Assessor",
+  "last_tested_version": "1.2.0",
+  "endpoint_name": "imageAssessment",
+  "is_component": false
 }
