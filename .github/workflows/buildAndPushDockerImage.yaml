@@ -18,12 +18,14 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set up Google Cloud SDK and configure Docker
+      - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
-          export_default_credentials: true
-          configure-docker: true
+
+      - name: Configure Docker to use gcloud as a credential helper
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_LOCATION }}-docker.pkg.dev --quiet
 
       - name: Build Docker image
         run: |
