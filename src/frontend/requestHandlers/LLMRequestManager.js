@@ -8,7 +8,7 @@ class LLMRequestManager extends BaseRequestManager {
     super();
     this.progressTracker = ProgressTracker.getInstance();
     this.retryAttempts = {}; // Tracks retry attempts for each UID
-    this.maxValidationRetries = 3; // Maximum retries for data validation
+    this.maxValidationRetries = 1; // Maximum retries for data validation
     this.cacheManager = new CacheManager(); // Use the CacheManager
   }
 

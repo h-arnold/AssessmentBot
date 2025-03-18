@@ -126,7 +126,7 @@ class ImageManager extends BaseRequestManager {
             });
 
             // Use BaseRequestManager's sendRequestsInBatches method
-            const responses = this.sendRequestsInBatches(requests);
+            const responses = this.sendRequestsInBatches(requests, 1);
 
             responses.forEach((response, index) => {
                 const slide = batch[index];
