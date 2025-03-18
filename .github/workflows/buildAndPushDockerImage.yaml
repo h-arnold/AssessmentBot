@@ -29,7 +29,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -f src/backend/Dockerfile -t ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest .
+          docker build -f src/backend/docker/Dockerfile -t ${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT }}/langflow/langflow-custom:latest .
 
       - name: Push Docker image
         run: |
