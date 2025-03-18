@@ -265,7 +265,7 @@ class LLMRequestManager extends BaseRequestManager {
               const task = assignment.tasks[taskKey];
               if (task) {
                 const studentResponse = studentTask.responses[taskKey].response;
-                this.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
+                this.cacheManager.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
                 // console.log(`Cached assessment for UID: ${uid}.`); Uncomment for debug purposes
               }
             }
