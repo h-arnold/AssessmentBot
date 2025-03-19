@@ -1,110 +1,105 @@
 # 🔧 Deploying Langflow Server
 
-[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/h-arnold/AssessmentBot&dir=/src/backend/docker)
+These instructions guide you through deploying a Langflow server using Google Cloud Run. Adjustments may be required for different environments.
 
-**IMPORTANT**: I highly recommend setting your region closest to where you work. This will minimise the chances of falling foul of privacy laws such as GDPR.
+---
 
 ## ✨ Prerequisites
 
 ### ▪️ Google Cloud Project
-- Ensure you have an active Google Cloud project with billing enabled.
 
-### ▪️ Google Cloud CLI
-- Install the [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) and authenticate:
-  ```bash
-  gcloud auth login
-  gcloud config set project [PROJECT_ID]
-  ```
+- An active Google Cloud project with billing enabled.
 
-### ▪️ Enable Required APIs
-- Enable the following APIs:
-  ```bash
-  gcloud services enable run.googleapis.com container.googleapis.com secretmanager.googleapis.com
-  ```
+### 🔑 Google Cloud Service Account
 
-### ▪️ PostgreSQL Database
-- A PostgreSQL database is required for this deployment. [Supabase](https://supabase.com/) offers free PostgreSQL databases with GDPR-compliant data centres in Europe, making it a suitable choice. 
+Creating a service account is recommended for security and essential for accessing secrets later.
 
- **💡 Tip:** Use the `Transaction Pooler` option for connecting to your database. Using direct connections will cause you lots of issues if you go over 2 concurrent connections with Langflow.
-
-### ▪️ Setup Necessary Resources
-
-#### 🔑 Service Account
-- Ensure the service account `<SERVICE_ACCOUNT_NAME>` exists and has the following permissions:
+- Create a service account with these roles:
   - Cloud Run Invoker
   - Secret Manager Secret Accessor
-  - Storage Object Viewer (if accessing GCS bucket)
+  - Storage Object Viewer (if accessing a GCS bucket)
 
-#### 🔐 Secrets
-- Create the secrets referenced in the YAML file:
-  ```bash
-  gcloud secrets create <SUPERUSER_PASSWORD_SECRET> --replication-policy="automatic"
-  gcloud secrets create <DATABASE_URL_SECRET> --replication-policy="automatic"
-  gcloud secrets create <POSTGRES_CERT_SECRET> --replication-policy="automatic"
-  ```
+### ▪️ PostgreSQL Database
 
-- Store the required values in these secrets:
-  ```bash
-  echo -n "<SUPERUSER_PASSWORD>" | gcloud secrets versions add <SUPERUSER_PASSWORD_SECRET> --data-file=-
-  echo -n "<DATABASE_URL>" | gcloud secrets versions add <DATABASE_URL_SECRET> --data-file=-
-  echo -n "<CERT_CONTENT>" | gcloud secrets versions add <POSTGRES_CERT_SECRET> --data-file=-
-  ```
+- A PostgreSQL database is required. [Supabase](https://supabase.com/) provides free GDPR-compliant PostgreSQL databases hosted in Europe.
+
+---
 
 ## 🔄 Deployment Steps
 
-### ▪️ Prepare the YAML File
-- Get a copy of [this yaml file](./service.yaml).
-- Replace placeholders (`<SERVICE_NAME>`, `<REGION>`, etc.) with actual values. Ensure the YAML file is saved locally as `service.yaml`.
+### 📂 Set Up the Database
 
-### ▪️ Deploy the Service
-- Run the following command to deploy the service:
-  ```bash
-  gcloud run services replace service.yaml
-  ```
+1. Sign up and create a project in Supabase.
+2. Navigate to `Settings` ➡️ `Database`.
+3. Set your database password.
+4. Enable `Enforce SSL on incoming connections`.
+5. Download the SSL certificate.
+6. Click `Connect` at the top.
+7. Use the URL from the **Direct Connection** option. Replace `[DATABASE PASSWORD]` with your password.
 
-  This command will create or update the service based on the YAML configuration.
+### 🔐 Store Your Secrets
 
-### ▪️ Verify the Deployment
-- Check the status of the service:
-  ```bash
-  gcloud run services describe <SERVICE_NAME> --region=<REGION>
-  ```
-- Note the generated URL to access the service.
+Using Google Secret Manager, create and store:
+
+- Database URL from above.
+- SSL certificate from above.
+- Langflow superuser password (secure).
+- Fernet encryption key ([generate here](https://fernetkeygen.com/)).
+
+### 🚀 Deploy Langflow
+
+Follow these steps carefully after clicking the deployment button.
+
+#### 🖥️ Building the Image and Supplying Environment Variables
+
+1. Click the button below:
+
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/h-arnold/AssessmentBot&dir=/src/backend/docker)
+
+2. Provide the required environment variables. Use provided defaults where applicable.
+
+#### 📀 Adding Storage Mounts
+
+3. Go to Cloud Run and select your Langflow instance.
+4. Click `Edit and Deploy New Revision`.
+5. Navigate to the `Volumes` tab and create two volumes:
+
+- **Postgres SSL Cert:**
+
+  - **Volume Type:** Secret
+  - **Volume Name:** `postgresSSLCert`
+  - **Secret:** Name of your secret (e.g., `postgresSSLCert`)
+  - **Path:** `root.crt`
+
+- **Langflow Cache Directory:**
+
+  - **Volume Type:** In-memory
+  - **Volume Name:** `cache`
+  - **Size Limit:** `512M`
+
+#### 🧩 Mounting Storage Volumes
+
+6. Click the `Container(s)` tab.
+7. Find `Volume mounts` and click `+ Mount Volume`:
+
+- **Postgres SSL Cert:**
+
+  - **Mount Path:** `/app/data/.postgres`
+  - *(Verify: Should show as **`/app/data/.postgres/root.crt`**)*
+
+- **Langflow Cache Directory:**
+
+  - **Mount Path:** `/app/data/.cache`
+
+#### ✅ Deploying the Revision
+
+8. Scroll down, tick `Service this revision immediately`.
+9. Click `Deploy`.
+
+Your Langflow deployment should be live within approximately 30 seconds.
 
 ---
 
-## 📊 Post-Deployment Tasks
+## ✔️ Verify the Deployment
 
-### ▪️ Test the Service
-- Access the service using the provided URL and verify functionality.
-
-### ▪️ Monitor and Debug
-- Monitor logs to ensure the service is running as expected:
-  ```bash
-  gcloud logs read --service=<SERVICE_NAME> --region=<REGION>
-  ```
-
-### ▪️ Scaling and Autoscaling
-- The configuration allows up to 5 instances with 20 concurrent requests per instance. Adjust `autoscaling.knative.dev/maxScale` or `containerConcurrency` if needed.
-
-### ▪️ Secure Access (Optional)
-- Restrict access to authorised users or services by configuring IAM roles and policies:
-  ```bash
-  gcloud run services add-iam-policy-binding <SERVICE_NAME> \
-    --region=<REGION> \
-    --member="user:<EMAIL>" \
-    --role="roles/run.invoker"
-  ```
-
----
-
-## 🖊 Notes
-
-### ▪️ Execution Environment
-- The service is configured for `gen2`. Verify compatibility with your application requirements.
-
-### ▪️ Secrets Handling
-- Secrets are securely accessed using Secret Manager. Avoid embedding sensitive information directly in the YAML file.
-
-### ▪️ Volume Mounts
-- Ensure the bucket and `emptyDir` configurations meet your performance and security needs.
+On the Cloud Run page, copy and open the URL at the top. If successful, you'll be able to log into your new Langflow instance.
