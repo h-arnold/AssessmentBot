@@ -6,7 +6,6 @@ Applying the **Pareto Principle** in spirit, this tool automates 80% of the effo
 
 This tool pulls Google Slides from Google Classroom assignments and evaluates them on **Completeness**, **Accuracy**, and **SPaG** (Spelling, Punctuation, and Grammar), scoring each out of 5.
 
-
 **[Read the Documentation Here](./docs/README.md)**
 
 
