@@ -1194,7 +1194,7 @@
                 "placeholder": "",
                 "show": true,
                 "name": "model_name",
-                "value": "learnlm-1.5-pro-experimental",
+                "value": "gemini-2.0-flash-lite",
                 "display_name": "Model",
                 "advanced": false,
                 "dynamic": false,
