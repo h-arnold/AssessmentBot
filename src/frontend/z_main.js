@@ -84,13 +84,8 @@ function clearAllCacheKeys() {
 /**
 
 
-/**
- * Starts the cohort analysis
- */
-
-function analyseCohorts() {
-  mainController.analyseCohorts();
-}
+// The analyseCohorts function has been moved to CohortAnalysis/globals.js
+// Removed to avoid duplication
 
 /**
  * Test workflow function for debugging purposes.
@@ -98,8 +93,6 @@ function analyseCohorts() {
 function testWorkflow() {
   mainController.testWorkflow();
 }
-
-
 
 function revokeAuthorisation() {
   const sa = new ScriptAppManager()
