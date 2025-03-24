@@ -8,12 +8,11 @@ class LLMRequestManager extends BaseRequestManager {
     super();
     this.progressTracker = ProgressTracker.getInstance();
     this.retryAttempts = {}; // Tracks retry attempts for each UID
-    this.maxValidationRetries = 3; // Maximum retries for data validation
+    this.maxValidationRetries = 1; // Maximum retries for data validation
     this.cacheManager = new CacheManager(); // Use the CacheManager
   }
 
   /**
-   * DEPRECATED - shouldn't be needed any more.
  * Wakes up the LLM backend to ensure it's ready for processing.
  */
   warmUpLLM() {
@@ -265,7 +264,7 @@ class LLMRequestManager extends BaseRequestManager {
               const task = assignment.tasks[taskKey];
               if (task) {
                 const studentResponse = studentTask.responses[taskKey].response;
-                this.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
+                this.cacheManager.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
                 // console.log(`Cached assessment for UID: ${uid}.`); Uncomment for debug purposes
               }
             }

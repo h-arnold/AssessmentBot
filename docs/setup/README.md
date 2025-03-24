@@ -58,12 +58,7 @@ Follow these steps to set up the system.
 
 ### 🌐 Setting up the Langflow Backend
 
-#### ⚡ The Easy Way (For Testing)
-
-- Use the [Langflow Cloud Service](https://www.datastax.com/products/langflow) for quick setup.
-- **Important:** This method is suitable for **testing only**, as it may not comply with GDPR or other privacy regulations. Use cautiously.
-
-#### [✅ The GDPR-Compliant Way (For Production)](./langflowDeployment/langflowDeployment.md)
+#### [Deploy Langflow in Google Cloud Run](./langflowDeployment/langflowDeployment.md)
 
 - Setting up Langflow on **Google Cloud Run** is highly recommended for production use. This approach provides the following benefits:
 
@@ -76,19 +71,21 @@ Follow these steps to set up the system.
 
 - Follow [this guide](./langflowDeployment/langflowDeployment.md) to set up your own Google Cloud Run instance.
 
+**💡Tip: ** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else. 
+
 ---
 
 ### 🖥️ Setting up the Google Apps Script Frontend
 
 This section is primarily for Heads of Department or administrators responsible for initial setup. Once configured, the system is straightforward for others to use.
 
-#### [1️⃣ Configuring Google Slides Assessor](./configOptions.md)
+#### [1️⃣ Configuring Assessment Bot](./configOptions.md)
 
 - This step links the frontend (Google Apps Script) to the backend (Langflow instance). It ensures the system knows where to send and receive data during assessments. [Follow this guide](./configOptions.md) to configure it.
 
 #### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
-- Most assessment work takes place within these records, with one created per class. They serve as the main tool for day-to-day use. [Follow this guide](settingUpAssessmentRecords.md) to set them up with minimal fuss.
+- **Note**: Current docs are out of date. Check back later for updated versions¬
 
 
 #### [4️⃣ Getting started with your first assessment.](/docs/howTos/README.md)

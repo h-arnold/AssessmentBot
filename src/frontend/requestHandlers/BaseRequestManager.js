@@ -17,7 +17,7 @@ class BaseRequestManager {
    * @param {number} [maxRetries=3] - Maximum number of retries.
    * @return {HTTPResponse|null} - The HTTPResponse object or null if all retries fail.
    */
-  sendRequestWithRetries(request, maxRetries = 3) {
+  sendRequestWithRetries(request, maxRetries = 2) {
     let attempt = 0;
     let delay = 5000; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
 
