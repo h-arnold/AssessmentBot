@@ -17,9 +17,16 @@ function getConfiguration() {
         assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
         assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
         updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
+        updateStage: configurationManager.getUpdateStage(),
+        isAdminSheet: configurationManager.getIsAdminSheet(),
         revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
         daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
-        scriptAuthorised: configurationManager.getScriptAuthorised()
+        scriptAuthorised: configurationManager.getScriptAuthorised(),
+        imageAssessmentUrl: configurationManager.getImageAssessmentUrl(),
+        textAssessmentUrl: configurationManager.getTextAssessmentUrl(),
+        tableAssessmentUrl: configurationManager.getTableAssessmentUrl(),
+        imageUploadUrl: configurationManager.getImageUploadUrl(),
+        warmUpUrl: configurationManager.getWarmUpUrl()
     }
 }
 
