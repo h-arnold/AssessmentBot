@@ -1,11 +1,11 @@
-// MainController.js
+// AssignmentController.js
 
 /**
- * MainController Class
+ * AssignmentController Class
  *
- * Encapsulates global functions and coordinates various components.
+ * Encapsulates assignment-related functionality and coordinates various components.
  */
-class MainController {
+class AssignmentController {
   constructor() {
     // Retain Utils for general utility methods not related to Classroom
     this.utils = Utils;
@@ -30,16 +30,20 @@ class MainController {
       console.error("UIManager cannot be instantiated: " + error);
       this.uiManager = null; // UIManager is not available in this context
     }
-
   }
 
-
-}
-
-  /** 
-   * === Workflow Methods ===
+  
+  /**
+   * Initializes the assessment process by saving slide IDs and starting progress tracking.
+   * Also attempts to warm up the LLM backend asynchronously.
+   * 
+   * @param {string} assignmentTitle - The title of the assignment
+   * @param {string[]} slideIds - Array of Google Slides IDs to be processed
+   * @param {string} assignmentId - Unique identifier for the assignment
+   * @param {string} referenceSlideId - ID of the reference/master slide
+   * @param {string} emptySlideId - ID of the empty/template slide
+   * @throws {Error} If saving or initialization process fails
    */
-
   saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
     try {
       this.saveSlideIdsForAssignment(assignmentTitle, slideIds);
@@ -62,6 +66,16 @@ class MainController {
     }
   }
 
+  /**
+   * Initiates the Assignment Assessment Workflow by creating a time-based trigger and storing necessary properties.
+   * This method sets up `triggerProcessSelectedAssignment` by creating the trigger and storing assignment details 
+   * in document properties for access when the trigger executes.
+   *
+   * @param {string} assignmentId - The ID of the assignment to be processed
+   * @param {string} referenceSlideId - The ID of the reference/solution slide presentation
+   * @param {string} emptySlideId - The ID of the empty/template slide presentation
+   * @throws {Error} If trigger creation fails or if setting document properties fails
+   */
   startProcessing(assignmentId, referenceSlideId, emptySlideId) {
     const properties = PropertiesService.getDocumentProperties();
     let triggerId;
@@ -88,8 +102,29 @@ class MainController {
     }
   }
 
-  // showProgressModal() method removed as it was redundant
-
+  /**
+   * Processes and assesses a selected Google Classroom assignment.
+   * This is the main orchestration method that handles the complete assessment workflow:
+   * - Manages document locks to prevent concurrent processing
+   * - Retrieves and validates required parameters
+   * - Creates an Assignment instance with student data
+   * - Extracts and processes student submissions
+   * - Processes images from submissions
+   * - Assesses student responses
+   * - Generates analysis sheets and overview reports
+   * 
+   * The method includes progress tracking and error handling throughout the process.
+   * It cleans up resources (locks, properties) even if errors occur.
+   * 
+   * @throws {Error} If required parameters are missing or if processing fails
+   * @returns {void}
+   * 
+   * Dependencies:
+   * - Requires document properties: assignmentId, referenceSlideId, emptySlideId, triggerId
+   * - Uses services: LockService, PropertiesService
+   * - Relies on controllers: triggerController, progressTracker, classroomManager
+   * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
+   */
   processSelectedAssignment() {
     const lock = LockService.getDocumentLock();
 
@@ -192,5 +227,12 @@ class MainController {
       }
     }
   }
-
+  
+  /**
+   * Test workflow function for debugging purposes.
+   */
+  testWorkflow() {
+    console.log("Test workflow initiated");
+    // Implementation details would go here
+  }
 }
