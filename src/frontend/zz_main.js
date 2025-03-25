@@ -40,16 +40,7 @@ function triggerProcessSelectedAssignment() {
   return mainController.processSelectedAssignment();
 }
 
-/**
- * Saves slide IDs for a specific assignment.
- *
- * @param {string} assignmentId - The ID of the assignment.
- * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
- */
-function saveSlideIdsForAssignment(assignmentId, slideIds) {
-  const mainController = new MainController();
-  return mainController.saveSlideIdsForAssignment(assignmentId, slideIds);
-}
+
 
 
 

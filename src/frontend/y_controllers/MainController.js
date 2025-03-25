@@ -34,16 +34,7 @@ class MainController {
   }
 
 
-  saveSlideIdsForAssignment(assignmentTitle, slideIds) {
-    try {
-      AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
-      console.log(`Slide IDs saved for assignmentTitle: ${assignmentTitle}`);
-    } catch (error) {
-      this.progressTracker.logError(`Failed to save slide IDs for assignmentTitle ${assignmentTitle}: ${error.message}`);
-      console.error(`Error in saveSlideIdsForAssignment: ${error}`);
-      throw error;
-    }
-  }
+}
 
   /** 
    * === Workflow Methods ===

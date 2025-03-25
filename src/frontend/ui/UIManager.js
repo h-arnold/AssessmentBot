@@ -256,6 +256,25 @@ class UIManager {
   }
 
   /**
+   * Saves slide IDs associated with a specific assignment.
+   * 
+   * @param {string} assignmentTitle - The title of the assignment to save slide IDs for
+   * @param {string[]} slideIds - Array of slide IDs to be saved
+   * @throws {Error} If saving the slide IDs fails
+   */
+  saveSlideIdsForAssignment(assignmentTitle, slideIds) {
+    try {
+      
+      AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
+      console.log(`Slide IDs saved for assignmentTitle: ${assignmentTitle}`);
+    } catch (error) {
+      this.progressTracker.logError(`Failed to save slide IDs for assignmentTitle ${assignmentTitle}: ${error.message}`);
+      console.error(`Error in saveSlideIdsForAssignment: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
    * Opens the progress modal.
    */
   showProgressModal() {

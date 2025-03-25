@@ -7,50 +7,61 @@
  * @param {string} assignmentData - The JSON string containing assignment data.
  */
 function openReferenceSlideModal(assignmentData) {
-    const uiManagerController = new UIManagerController();
-  return uiManagerController.openReferenceSlideModal(assignmentData);
+    const uiManager = new UIManager();
+    return uiManager.openReferenceSlideModal(assignmentData);
 }
 
 /**
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-    const uiManagerController = new UIManagerController();
-  uiManagerController.showProgressModal();
+    const uiManager = new UIManager();
+    uiManager.showProgressModal();
 }
 
 /**
  * Shows the configuration dialog modal.
  */
 function showConfigurationDialog() {
-        const uiManagerController = new UIManagerController();
-  return uiManagerController.showConfigurationDialog();
+    const uiManager = new UIManager();
+    return uiManager.showConfigurationDialog();
 }
 
 /**
  * Shows the assignment dropdown modal.
  */
 function showAssignmentDropdown() {
-        const uiManagerController = new UIManagerController();
-  return uiManagerController.showAssignmentDropdown();
+    const uiManager = new UIManager();
+    return uiManager.showAssignmentDropdown();
 }
 
 /**
  * Shows the classroom dropdown modal.
  */
 function showClassroomDropdown() {
-        const uiManagerController = new UIManagerController();
-  return uiManagerController.showClassroomDropdown();
+    const uiManager = new UIManager();
+    return uiManager.showClassroomDropdown();
 }
 
 /**
- * Displays the version selector interface by delegating to the main controller.
+ * Saves slide IDs for a specific assignment.
+ *
+ * @param {string} assignmentId - The ID of the assignment.
+ * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
+ */
+function saveSlideIdsForAssignment(assignmentId, slideIds) {
+  const uiManager = new UIManager();
+  return uiManager.saveSlideIdsForAssignment(assignmentId, slideIds);
+}
+
+/**
+ * Displays the version selector interface by delegating to UIManager.
  * @returns {void}
  * @public
  */
 function showVersionSelector() {
-        const uiManagerController = new UIManagerController();
-  return uiManagerController.showVersionSelector();
+    const uiManager = new UIManager();
+    return uiManager.showVersionSelector();
 }
 
 /**
@@ -64,16 +75,16 @@ function showVersionSelector() {
  */
 
 function getClassroomData() {
-    const uiManagerController = new UIManagerController();
-    return uiManagerController.getClassroomData(); // Assuming this remains in MainController
-  }
+    const uiManager = new UIManager();
+    return uiManager.getClassroomData();
+}
 
 function saveClassroomData(rows) {
-    const uiManagerController = new UIManagerController();
-    uiManagerController.saveClassroomData(rows); // Assuming this remains in MainController
-  }
+    const uiManager = new UIManager();
+    uiManager.saveClassroomData(rows);
+}
 
 function showClassroomEditorModal() {
-    const uiManagerController = new UIManagerController();
-    uiManagerController.showClassroomEditorModal(); // Assuming this remains in MainController
-  }
+    const uiManager = new UIManager();
+    uiManager.showClassroomEditorModal();
+}
