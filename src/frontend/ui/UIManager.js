@@ -1,19 +1,95 @@
 // UIManager.gs
+/**
+ * @class UIManager
+ * @description Manages the user interface operations in Google Apps Script environment with robust error handling and context-aware UI operations.
+ * The class implements a "safe UI operation" pattern through encapsulation, where all UI operations are wrapped in safety checks.
+ * This ensures that UI operations only execute when the UI context is available, preventing runtime errors in contexts where UI operations are not possible
+ * (such as time-driven triggers or background operations).
+ * 
+ * Key features:
+ * - Automatic UI context detection and graceful degradation
+ * - Safe UI operation wrapper for all UI interactions
+ * - Comprehensive menu management for different authorization states
+ * - Modal dialog management for various user interactions
+ * - Classroom data management integration
+ * 
+ * @property {boolean} uiAvailable - Indicates whether UI operations are possible in current context
+ * @property {GoogleAppsScript.Base.Ui} ui - Reference to Google Apps Script UI instance, null if UI is unavailable
+ * @property {GoogleClassroomManager} classroomManager - Instance of GoogleClassroomManager for classroom operations
+ * 
+ * @example
+ * const uiManager = new UIManager();
+ * uiManager.safeUiOperation(() => {
+ *   // Your UI operation here
+ *   this.ui.alert('Hello World');
+ * }, "showAlert");
+ */
+
 
 class UIManager {
+  /**
+   * Static method to check if UI is available in the current execution context
+   * @returns {boolean} True if UI is available, false otherwise
+   */
+  static isUiAvailable() {
+    try {
+      const ui = SpreadsheetApp.getUi();
+      // Just getting UI object isn't sufficient - try a simple operation
+      // but don't actually add to UI in this check
+      ui.createMenu('Test');
+      return true;
+    } catch (error) {
+      console.log("UI operations are not available in this context: " + error.message);
+      return false;
+    }
+  }
+
   constructor() {
-    this.ui = SpreadsheetApp.getUi();
+    // Instead of throwing an error, set an availability flag
+    this.uiAvailable = UIManager.isUiAvailable();
+    
+    if (this.uiAvailable) {
+      this.ui = SpreadsheetApp.getUi();
+      console.log("UIManager instantiated with full UI capabilities.");
+    } else {
+      console.log("UIManager instantiated in limited mode (no UI capabilities available in this execution context).");
+      // Set ui to null to prevent accidental usage
+      this.ui = null;
+    }
+    
+    // Always initialize this regardless of UI availability
     this.classroomManager = new GoogleClassroomManager();
   }
 
   /**
+   * Safely executes UI operations only if UI is available
+   * @param {Function} operation - The UI operation to perform
+   * @param {string} operationName - Name of the operation for logging
+   * @returns {*} Result of the operation or null if UI is unavailable
+   */
+  safeUiOperation(operation, operationName = "UI operation") {
+    if (!this.uiAvailable) {
+      console.log(`Skipped ${operationName}: UI not available in this context`);
+      return null;
+    }
+    
+    try {
+      return operation();
+    } catch (error) {
+      console.error(`Error in ${operationName}: ${error}`);
+      return null;
+    }
+  }
+
+  /**
    * Creates a limited menu for unauthorized state
-   *
    */
   createUnauthorisedMenu() {
-    const menu = this.ui.createMenu('Assessment Bot')
-      .addItem('Authorise App', 'handleScriptInit');
-    menu.addToUi();
+    this.safeUiOperation(() => {
+      const menu = this.ui.createMenu('Assessment Bot')
+        .addItem('Authorise App', 'handleScriptInit');
+      menu.addToUi();
+    }, "createUnauthorisedMenu");
   }
 
     /**
@@ -21,9 +97,11 @@ class UIManager {
    * 
    */
     createFinishUpdateMenu() {
-      const menu = this.ui.createMenu('Assessment Bot')
-        .addItem('Finish Update', 'handleAuthorisation');
-      menu.addToUi();
+      this.safeUiOperation(() => {
+        const menu = this.ui.createMenu('Assessment Bot')
+          .addItem('Finish Update', 'handleAuthorisation');
+        menu.addToUi();
+      }, "createFinishUpdateMenu");
     }
 
 
@@ -32,53 +110,57 @@ class UIManager {
    * 
    */
   createAuthorisedMenu() {
-    const ui = this.ui;
+    this.safeUiOperation(() => {
+      const ui = this.ui;
 
-    // Create the root menu
-    const menu = ui.createMenu('Assessment Bot')
-      .addItem('Analyse Cohorts', 'analyseCohorts')
+      // Create the root menu
+      const menu = ui.createMenu('Assessment Bot')
+        .addItem('Analyse Cohorts', 'analyseCohorts')
 
-    // Add a sub-menu for Google Classrooms operations
-    const classroomsSubMenu = ui.createMenu('Google Classrooms')
-      .addItem('Fetch Classrooms', 'handleFetchGoogleClassrooms')
-      .addItem('Create Classrooms', 'handleCreateGoogleClassrooms')
-      //.addItem('Update Classrooms', 'handleUpdateGoogleClassrooms'); 
-      .addItem('Create Assessment Records', 'createAssessmentRecords')
-    menu.addSubMenu(classroomsSubMenu);
+      // Add a sub-menu for Google Classrooms operations
+      const classroomsSubMenu = ui.createMenu('Google Classrooms')
+        .addItem('Fetch Classrooms', 'handleFetchGoogleClassrooms')
+        .addItem('Create Classrooms', 'handleCreateGoogleClassrooms')
+        //.addItem('Update Classrooms', 'handleUpdateGoogleClassrooms'); 
+        .addItem('Create Assessment Records', 'createAssessmentRecords')
+      menu.addSubMenu(classroomsSubMenu);
 
-    // Add a sub-menu for Settings
-    const settingsSubMenu = ui.createMenu('Settings')
-      .addItem('Settings', 'showConfigurationDialog')
-      .addItem('Update Assessment Bot', 'showVersionSelector');
-    menu.addSubMenu(settingsSubMenu);
+      // Add a sub-menu for Settings
+      const settingsSubMenu = ui.createMenu('Settings')
+        .addItem('Settings', 'showConfigurationDialog')
+        .addItem('Update Assessment Bot', 'showVersionSelector');
+      menu.addSubMenu(settingsSubMenu);
 
-    // Add a sub-menu for Debug operations
-    const debugSubMenu = ui.createMenu('Debug')
-      .addItem('Assess Student Work', 'showAssignmentDropdown')
-      .addItem('Check Progress', 'showProgressModal');
-    menu.addSubMenu(debugSubMenu);
+      // Add a sub-menu for Debug operations
+      const debugSubMenu = ui.createMenu('Debug')
+        .addItem('Assess Student Work', 'showAssignmentDropdown')
+        .addItem('Check Progress', 'showProgressModal');
+      menu.addSubMenu(debugSubMenu);
 
-    // Add the menu to the UI
-    menu.addToUi();
+      // Add the menu to the UI
+      menu.addToUi();
+    }, "createAuthorisedMenu");
   }
 
   /**
    * Shows the configuration dialog modal.
    */
   showConfigurationDialog() {
-    const html = HtmlService.createHtmlOutputFromFile('ui/ConfigurationDialog')
-      .setWidth(500)
-      .setHeight(600); // Adjust the size as needed
+    this.safeUiOperation(() => {
+      const html = HtmlService.createHtmlOutputFromFile('ui/ConfigurationDialog')
+        .setWidth(500)
+        .setHeight(600); // Adjust the size as needed
 
-    this.ui.showModalDialog(html, 'Configure Script Properties');
-    console.log('Configuration dialog displayed.');
+      this.ui.showModalDialog(html, 'Configure Script Properties');
+      console.log('Configuration dialog displayed.');
+    }, "showConfigurationDialog");
   }
 
   /**
    * Shows a modal dialog with a dropdown of assignments to choose from.
    */
   showAssignmentDropdown() {
-    try {
+    this.safeUiOperation(() => {
       const courseId = this.classroomManager.getCourseId();
       const assignments = this.classroomManager.getAssignments(courseId);
       const maxTitleLength = this.getMaxTitleLength(assignments);
@@ -94,10 +176,7 @@ class UIManager {
 
       this.ui.showModalDialog(htmlOutput, 'Select Assignment');
       console.log('Assignment dropdown modal displayed.');
-    } catch (error) {
-      console.error('Error showing assignment dropdown:', error);
-      Utils.toastMessage('Failed to load assignments: ' + error.message, 'Error', 5);
-    }
+    }, "showAssignmentDropdown");
   }
 
   /**
@@ -122,65 +201,71 @@ class UIManager {
    * @param {string} assignmentData - The assignment data (JSON string).
    */
   openReferenceSlideModal(assignmentData) {
-    try {
-      const assignmentDataObj = JSON.parse(assignmentData);
-      const savedSlideIds = AssignmentPropertiesManager.getSlideIdsForAssignment(assignmentDataObj.name);
+    this.safeUiOperation(() => {
+      try {
+        const assignmentDataObj = JSON.parse(assignmentData);
+        const savedSlideIds = AssignmentPropertiesManager.getSlideIdsForAssignment(assignmentDataObj.name);
 
-      // Load templated HTML file instead of a string
-      const template = HtmlService.createTemplateFromFile('ui/SlideIdsModal');
-      template.assignmentDataObj = assignmentDataObj;
-      template.savedSlideIds = savedSlideIds;
+        // Load templated HTML file instead of a string
+        const template = HtmlService.createTemplateFromFile('ui/SlideIdsModal');
+        template.assignmentDataObj = assignmentDataObj;
+        template.savedSlideIds = savedSlideIds;
 
-      const htmlOutput = template.evaluate()
-        .setWidth(400)
-        .setHeight(350);
+        const htmlOutput = template.evaluate()
+          .setWidth(400)
+          .setHeight(350);
 
-      this.ui.showModalDialog(htmlOutput, 'Enter Slide IDs');
-      console.log('Reference slide IDs modal displayed.');
-    } catch (error) {
-      console.error('Error opening reference slide modal:', error);
-      Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
-    }
+        this.ui.showModalDialog(htmlOutput, 'Enter Slide IDs');
+        console.log('Reference slide IDs modal displayed.');
+      } catch (error) {
+        console.error('Error opening reference slide modal:', error);
+        Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
+      }
+    }, "openReferenceSlideModal");
   }
 
   /**
    * Shows a modal dialog with a dropdown list of active Google Classroom courses.
    */
   showClassroomDropdown() {
-    try {
-      // Retrieve active classrooms using GoogleClassroomManager
-      const classrooms = this.classroomManager.getActiveClassrooms();
+    this.safeUiOperation(() => {
+      try {
+        // Retrieve active classrooms using GoogleClassroomManager
+        const classrooms = this.classroomManager.getActiveClassrooms();
 
-      // Sort classrooms alphabetically by name
-      classrooms.sort((a, b) => a.name.localeCompare(b.name));
+        // Sort classrooms alphabetically by name
+        classrooms.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Create a template from the HTML file and pass the classrooms data
-      const htmlTemplate = HtmlService.createTemplateFromFile('ui/ClassroomDropdown');
-      htmlTemplate.classrooms = classrooms; // Pass data to the template
+        // Create a template from the HTML file and pass the classrooms data
+        const htmlTemplate = HtmlService.createTemplateFromFile('ui/ClassroomDropdown');
+        htmlTemplate.classrooms = classrooms; // Pass data to the template
 
-      // Evaluate the template to HTML
-      const htmlOutput = htmlTemplate.evaluate()
-        .setWidth(500)
-        .setHeight(300);
+        // Evaluate the template to HTML
+        const htmlOutput = htmlTemplate.evaluate()
+          .setWidth(500)
+          .setHeight(300);
 
-      // Display the modal dialog
-      this.ui.showModalDialog(htmlOutput, 'Select Classroom');
-      console.log('Classroom dropdown modal displayed.');
-    } catch (error) {
-      console.error('Error displaying classroom dropdown modal:', error);
-      Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
-    }
+        // Display the modal dialog
+        this.ui.showModalDialog(htmlOutput, 'Select Classroom');
+        console.log('Classroom dropdown modal displayed.');
+      } catch (error) {
+        console.error('Error displaying classroom dropdown modal:', error);
+        Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
+      }
+    }, "showClassroomDropdown");
   }
 
   /**
    * Opens the progress modal.
    */
   showProgressModal() {
-    const html = HtmlService.createHtmlOutputFromFile('ui/ProgressModal')
-      .setWidth(400)
-      .setHeight(160);
-    this.ui.showModalDialog(html, 'Progress');
-    console.log('Progress modal displayed.');
+    this.safeUiOperation(() => {
+      const html = HtmlService.createHtmlOutputFromFile('ui/ProgressModal')
+        .setWidth(400)
+        .setHeight(160);
+      this.ui.showModalDialog(html, 'Progress');
+      console.log('Progress modal displayed.');
+    }, "showProgressModal");
   }
 
   /**
@@ -290,12 +375,14 @@ class UIManager {
    * Shows a modal dialog for editing classroom data. 
    */
   showClassroomEditorModal() {
-    const html = HtmlService.createHtmlOutputFromFile('ui/ClassroomEditorModal')
-      .setWidth(900)
-      .setHeight(600); // Adjust width and height as needed
+    this.safeUiOperation(() => {
+      const html = HtmlService.createHtmlOutputFromFile('ui/ClassroomEditorModal')
+        .setWidth(900)
+        .setHeight(600); // Adjust width and height as needed
 
-    this.ui.showModalDialog(html, 'Edit Classrooms');
-    console.log('Classroom editor modal displayed.');
+      this.ui.showModalDialog(html, 'Edit Classrooms');
+      console.log('Classroom editor modal displayed.');
+    }, "showClassroomEditorModal");
   }
 
   /**
@@ -310,26 +397,28 @@ class UIManager {
    * uiManager.showVersionSelector();
    */
   showVersionSelector() {
-    try {
-      const updateManager = new UpdateManager();
-      const versions = updateManager.fetchVersionDetails();
+    this.safeUiOperation(() => {
+      try {
+        const updateManager = new UpdateManager();
+        const versions = updateManager.fetchVersionDetails();
 
-      if (!versions) {
-        throw new Error('Failed to fetch version details');
+        if (!versions) {
+          throw new Error('Failed to fetch version details');
+        }
+
+        const template = HtmlService.createTemplateFromFile('ui/VersionSelectorModal');
+        template.versions = versions;
+
+        const htmlOutput = template.evaluate()
+          .setWidth(400)
+          .setHeight(250);
+
+        this.ui.showModalDialog(htmlOutput, 'Select Version to Update To');
+      } catch (error) {
+        console.error('Error showing version selector:', error);
+        Utils.toastMessage('Failed to load versions: ' + error.message, 'Error', 5);
       }
-
-      const template = HtmlService.createTemplateFromFile('ui/VersionSelectorModal');
-      template.versions = versions;
-
-      const htmlOutput = template.evaluate()
-        .setWidth(400)
-        .setHeight(250);
-
-      this.ui.showModalDialog(htmlOutput, 'Select Version to Update To');
-    } catch (error) {
-      console.error('Error showing version selector:', error);
-      Utils.toastMessage('Failed to load versions: ' + error.message, 'Error', 5);
-    }
+    }, "showVersionSelector");
   }
 
   /**
@@ -345,23 +434,25 @@ class UIManager {
    * openUrlInNewWindow('https://www.google.com');
    */
   openUrlInNewWindow(url) {
-    try {
-      if (!url) {
-        throw new Error('URL is required');
+    this.safeUiOperation(() => {
+      try {
+        if (!url) {
+          throw new Error('URL is required');
+        }
+
+        const html = HtmlService.createHtmlOutput(
+          `<script>window.open('${url}', '_blank'); google.script.host.close();</script>`
+        )
+          .setWidth(1)
+          .setHeight(1);
+
+        this.ui.showModalDialog(html, 'Opening...');
+        console.log(`Opening URL in new window: ${url}`);
+      } catch (error) {
+        console.error(`Failed to open URL: ${error.message}`);
+        throw error;
       }
-
-      const html = HtmlService.createHtmlOutput(
-        `<script>window.open('${url}', '_blank'); google.script.host.close();</script>`
-      )
-        .setWidth(1)
-        .setHeight(1);
-
-      this.ui.showModalDialog(html, 'Opening...');
-      console.log(`Opening URL in new window: ${url}`);
-    } catch (error) {
-      console.error(`Failed to open URL: ${error.message}`);
-      throw error;
-    }
+    }, "openUrlInNewWindow");
   }
 
   /**
@@ -372,10 +463,12 @@ class UIManager {
    * @param {number} height - The height of the modal in pixels
    */
   showGenericModal(htmlContent, title, width = 400, height = 300) {
-    const html = HtmlService.createHtmlOutput(htmlContent)
-      .setWidth(width)
-      .setHeight(height);
-    this.ui.showModalDialog(html, title);
+    this.safeUiOperation(() => {
+      const html = HtmlService.createHtmlOutput(htmlContent)
+        .setWidth(width)
+        .setHeight(height);
+      this.ui.showModalDialog(html, title);
+    }, "showGenericModal");
   }
 
   /**
@@ -383,19 +476,21 @@ class UIManager {
    * @param {string} authUrl - The authorization URL to display
    */
   showAuthorisationModal(authUrl) {
-    const htmlContent = `
-                <div style="text-align: center; padding: 20px;">
-                    <h2>Authorization Required</h2>
-                    <p>This application needs authorization to access your Google services.</p>
-                    <p>Click the button below to authorize:</p>
-                    <button onclick="window.open('${authUrl}', '_blank'); google.script.host.close();" 
-                            style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
-                        Authorize Access
-                    </button>
-                </div>`;
+    this.safeUiOperation(() => {
+      const htmlContent = `
+                  <div style="text-align: center; padding: 20px;">
+                      <h2>Authorization Required</h2>
+                      <p>This application needs authorization to access your Google services.</p>
+                      <p>Click the button below to authorize:</p>
+                      <button onclick="window.open('${authUrl}', '_blank'); google.script.host.close();" 
+                              style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
+                          Authorize Access
+                      </button>
+                  </div>`;
 
-    this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
-    console.log('Authorization modal displayed.');
+      this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
+      console.log('Authorization modal displayed.');
+    }, "showAuthorisationModal");
   }
 
 }
