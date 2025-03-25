@@ -1,7 +1,7 @@
 // z_main.js
 // Global functions that bind UI actions and triggers to MainController methods.
 
-//const mainController = new MainController();
+//
 
 /**
  * Initiates the processing of an assignment asynchronously by setting up a trigger
@@ -14,6 +14,7 @@
  * @param {string} emptySlideId - The ID of the empty slide.
  */
 function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
+  const mainController = new MainController();
   return mainController.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
 }
 
@@ -26,6 +27,7 @@ function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, refer
  * @returns {string} The unique process ID.
  */
 function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
+  const mainController = new MainController();
   return mainController.startProcessing(assignmentId, referenceSlideId, emptySlideId);
 }
 
@@ -33,6 +35,7 @@ function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
  * Processes the selected assignment by retrieving parameters and executing the workflow.
  */
 function triggerProcessSelectedAssignment() {
+  const mainController = new MainController();
   return mainController.processSelectedAssignment();
 }
 
@@ -43,6 +46,7 @@ function triggerProcessSelectedAssignment() {
  * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
  */
 function saveSlideIdsForAssignment(assignmentId, slideIds) {
+  const mainController = new MainController();
   return mainController.saveSlideIdsForAssignment(assignmentId, slideIds);
 }
 
