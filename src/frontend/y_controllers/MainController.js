@@ -33,9 +33,6 @@ class MainController {
 
   }
 
-  requestStatus() {
-    return this.progressTracker.getStatus();
-  }
 
   saveSlideIdsForAssignment(assignmentTitle, slideIds) {
     try {

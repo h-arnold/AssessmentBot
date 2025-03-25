@@ -35,6 +35,7 @@ class InitController {
         }
         else {
             console.log("Who knows what's gone wrong?")
+            console.log("Hint: not me!")
         }
     }
 
