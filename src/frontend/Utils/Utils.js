@@ -202,6 +202,4 @@ class Utils {
 
 
 }
-// Ensure singleton instance (if needed)
-const utils = new Utils();
-Object.freeze(utils);
+
