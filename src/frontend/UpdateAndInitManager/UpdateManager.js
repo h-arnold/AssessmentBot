@@ -12,7 +12,6 @@ class UpdateManager extends BaseUpdateAndInit {
     
     // Additional initialization specific to UpdateManager.
     this.classroomSheet = new ClassroomSheetManager('Classrooms', this.sheet.getId());
-    this.progressTracker = new ProgressTracker();
     
     // Set the admin sheet template from version details.
     this.adminSheetTemplateId = this.getLatestAdminSheetTemplateId();
@@ -40,7 +39,7 @@ class UpdateManager extends BaseUpdateAndInit {
   /**
    * Updates the 'Classrooms' sheet in the new Admin Spreadsheet with new Assessment Record file IDs.
    */
-  updateClassroomSheetWithNewAssessmentRecords() {
+  updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets) {
     const newAdminSheetName = Object.keys(this.adminSheetsDetails)[0];
     const newClassroomSheet = new ClassroomSheetManager('Classrooms', this.adminSheetsDetails[newAdminSheetName].newSheetId);
     const currentValues = newClassroomSheet.getData();
@@ -49,7 +48,7 @@ class UpdateManager extends BaseUpdateAndInit {
     arFileIdColumnIndex = arFileIdColumnIndex.arfileid;
   
     // Update Classroom Sheet Array with new Sheet Values
-    Object.keys(this.assessmentRecordSheets).forEach(className => {
+    Object.keys(newAssessmentRecordSheets).forEach(className => {
       const sheetDetails = this.assessmentRecordSheets[className];
       for (const row of updatedValues) {
         if (row.includes(sheetDetails.originalSheetId)) {
@@ -172,7 +171,7 @@ class UpdateManager extends BaseUpdateAndInit {
     
     // Clone the assessment record sheets.
     this.progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
-    this.cloneSheets(this.assessmentRecordSheets);
+    const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
     
     // Archive old assessment record sheets.
     this.progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
@@ -181,7 +180,7 @@ class UpdateManager extends BaseUpdateAndInit {
     
     // Update the Classroom Sheet with the new Assessment Record file IDs.
     this.progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
-    this.updateClassroomSheetWithNewAssessmentRecords();
+    this.updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets);
     
     // Marks the task as complete.
     this.progressTracker.complete();
