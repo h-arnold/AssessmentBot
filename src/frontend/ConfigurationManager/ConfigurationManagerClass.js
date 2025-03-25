@@ -251,6 +251,11 @@ class ConfigurationManager {
     return `${baseUrl}/api/v1/run/textAssessment?stream=false`;
   }
 
+  getWarmUpUrl() {
+    const baseUrl = this.getLangflowUrl();
+    return `${baseUrl}/api/v1/run/warmUp?stream=false`;
+  }
+
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
     if (!value) {
