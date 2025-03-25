@@ -54,7 +54,12 @@ class MainController {
       this.saveSlideIdsForAssignment(assignmentTitle, slideIds);
       this.startProcessing(assignmentId, referenceSlideId, emptySlideId);
       this.progressTracker.startTracking();
-      this.showProgressModal();
+      
+      // Null check is necessary because UIManager may be null when running from time-based triggers
+      // or when executed in contexts where UI interactions are not available
+      if (this.uiManager) {
+        this.uiManager.showProgressModal();
+      }
 
       //This is a hacky way of asynchronously 'warming up' the langflow backend which from a cold start takes around 60 seconds. 
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
@@ -92,14 +97,7 @@ class MainController {
     }
   }
 
-  showProgressModal() {
-    if (this.uiManager) {
-      this.uiManager.showProgressModal();
-    } else {
-      this.utils.toastMessage("Progress modal cannot be displayed in this context.", "Error", 5);
-      console.error("UIManager is not available to show progress modal.");
-    }
-  }
+  // showProgressModal() method removed as it was redundant
 
   processSelectedAssignment() {
     const lock = LockService.getDocumentLock();
