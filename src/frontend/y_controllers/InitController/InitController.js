@@ -8,7 +8,14 @@
 
 class InitController {
     constructor() {
-        this.uiManager = new UIManager();
+        // Attempt to instantiate UIManager only in user context to avoid issues with triggers
+        try {
+            this.uiManager = new UIManager();
+            console.log("UIManager instantiated successfully.");
+        } catch (error) {
+            console.error("UIManager cannot be instantiated: " + error);
+            this.uiManager = null; // UIManager is not available in this context
+        }
     }
 
     /**
@@ -106,18 +113,18 @@ class InitController {
      * This avoids an infinite loop scenario in ConfigurationManager.getAssessmentRecordTemplateId() where if it's not set, it will instaniate BaseUpdateAndInit to use the getAssessmentRecordTemplateId() method, where the constructor for that class calls the Assessment Record Template ID from ConfigurationManager.
      */
     setDefaultAssessmentRecordTemplateId() {
-      if (!configurationManager.getAssessmentRecordTemplateId) {
-        const baseInitManager = new BaseUpdateAndInit();
-        const assessmentRecordTemplateId =
-          baseInitManager.getLatestAssessmentRecordTemplateId();
-        configurationManager.setAssessmentRecordTemplateId(
-          assessmentRecordTemplateId,
-        );
-      }
+        if (!configurationManager.getAssessmentRecordTemplateId) {
+            const baseInitManager = new BaseUpdateAndInit();
+            const assessmentRecordTemplateId =
+                baseInitManager.getLatestAssessmentRecordTemplateId();
+            configurationManager.setAssessmentRecordTemplateId(
+                assessmentRecordTemplateId,
+            );
+        }
     }
 
 
-    }
+}
 
 
 
