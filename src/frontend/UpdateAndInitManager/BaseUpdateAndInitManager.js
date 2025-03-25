@@ -17,7 +17,7 @@ class BaseUpdateAndInit {
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();
     this.uiManager = new UIManager(this.sheet);
     this.destinationFolderId = ""; // to be set later from configuration or during the process
-    this.versionNo = '0.4.2'; // default version; update as needed
+    this.versionNo = '0.4.3'; // default version; update as needed
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
     this.adminSheetTemplateId = null; // will be set from version details
     this.versionDetails = this.fetchVersionDetails();
