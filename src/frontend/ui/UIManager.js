@@ -44,7 +44,15 @@ class UIManager {
     }
   }
 
+  // Static instance property for singleton pattern
+  static instance = null;
+
   constructor() {
+    // Return existing instance if available
+    if (UIManager.instance) {
+      return UIManager.instance;
+    }
+    
     // Instead of throwing an error, set an availability flag
     this.uiAvailable = UIManager.isUiAvailable();
     
@@ -59,6 +67,9 @@ class UIManager {
     
     // Always initialize this regardless of UI availability
     this.classroomManager = new GoogleClassroomManager();
+    
+    // Store the instance
+    UIManager.instance = this;
   }
 
   /**

@@ -2,12 +2,20 @@
 // All functions use lazy instantiation so that we're not loading the UI if it's not needed.
 
 /**
+ * Get or create a singleton instance of UIManager
+ * @returns {UIManager} The singleton UIManager instance
+ */
+function getUIManager() {
+  return new UIManager(); // Constructor handles singleton pattern
+}
+
+/**
  * Opens the reference slide modal with assignment data.
  *
  * @param {string} assignmentData - The JSON string containing assignment data.
  */
 function openReferenceSlideModal(assignmentData) {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     return uiManager.openReferenceSlideModal(assignmentData);
 }
 
@@ -15,7 +23,7 @@ function openReferenceSlideModal(assignmentData) {
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     uiManager.showProgressModal();
 }
 
@@ -23,7 +31,7 @@ function showProgressModal() {
  * Shows the configuration dialog modal.
  */
 function showConfigurationDialog() {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     return uiManager.showConfigurationDialog();
 }
 
@@ -31,7 +39,7 @@ function showConfigurationDialog() {
  * Shows the assignment dropdown modal.
  */
 function showAssignmentDropdown() {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     return uiManager.showAssignmentDropdown();
 }
 
@@ -39,7 +47,7 @@ function showAssignmentDropdown() {
  * Shows the classroom dropdown modal.
  */
 function showClassroomDropdown() {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     return uiManager.showClassroomDropdown();
 }
 
@@ -50,7 +58,7 @@ function showClassroomDropdown() {
  * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
  */
 function saveSlideIdsForAssignment(assignmentId, slideIds) {
-  const uiManager = new UIManager();
+  const uiManager = getUIManager();
   return uiManager.saveSlideIdsForAssignment(assignmentId, slideIds);
 }
 
@@ -60,7 +68,7 @@ function saveSlideIdsForAssignment(assignmentId, slideIds) {
  * @public
  */
 function showVersionSelector() {
-    const uiManager = new UIManager();
+    const uiManager = getUIManager();
     return uiManager.showVersionSelector();
 }
 
