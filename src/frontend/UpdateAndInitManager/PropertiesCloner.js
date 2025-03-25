@@ -42,7 +42,11 @@ class PropertiesCloner extends BaseSheetManager {
     if (serialiseScriptProps) {
       const scriptKeys = this.scriptProperties.getKeys();
       scriptKeys.forEach(key => {
+      
+      // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
+      if (key !== 'scriptAuthorised') {
         data.push(['SCRIPT', key, this.scriptProperties.getProperty(key)]);
+      }
       });
     }
 
