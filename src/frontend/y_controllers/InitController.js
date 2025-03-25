@@ -24,18 +24,19 @@ class InitController {
      */
     onOpen() {
         const isScriptAuthorised = configurationManager.getScriptAuthorised();
-        if (this.uiManager && !isScriptAuthorised) {
-            this.uiManager.createUnauthorisedMenu();
-            console.log("Creating unauthorised menu.")
-        } else if (!this.uiManager) {
+        console.log("Script authorization status:", isScriptAuthorised);
+
+        if (!this.uiManager) {
             console.error("UIManager is not available to add custom menus.");
+            return;
         }
-        else if (isScriptAuthorised) {
-            console.log(`Script is already authorised. Creating authorised menu.`)
-        }
-        else {
-            console.log("Who knows what's gone wrong?")
-            console.log("Hint: not me!")
+
+        if (isScriptAuthorised) {
+            console.log("Script is already authorised. Creating authorised menu.");
+            this.uiManager.createAuthorisedMenu(); // Make sure to call the function to create the menu
+        } else {
+            console.log("Script not authorised. Creating unauthorised menu.");
+            this.uiManager.createUnauthorisedMenu();
         }
     }
 

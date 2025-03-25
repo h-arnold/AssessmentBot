@@ -306,9 +306,10 @@ class ConfigurationManager {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) || false;
   }
 
-  // New getter for scriptAuthorised
   getScriptAuthorised() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) || false;
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED);
+    // Explicitly convert string to boolean
+    return value.toString().toLowerCase() === 'true';
   }
 
   setBatchSize(batchSize) {
