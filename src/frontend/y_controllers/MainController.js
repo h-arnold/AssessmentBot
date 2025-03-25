@@ -207,10 +207,4 @@ class MainController {
     }
   }
 
-  testWorkflow() {
-    this.processSelectedAssignment();
-  }
-
-  // The analyseCohorts method has been moved to CohortAnalysisController
-  // and should be removed from here
 }
