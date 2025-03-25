@@ -1,4 +1,3 @@
-
 // InitController.js
 
 /**
@@ -125,7 +124,42 @@ class InitController {
         }
     }
 
-
+    /**
+     * Sets up a time-based trigger to revoke authorization after a specified number of days.
+     * Only creates the trigger if one doesn't already exist.
+     * @returns {boolean} Whether a new trigger was created
+     */
+    setupAuthRevokeTimer() {
+        // Check if trigger is already set
+        const triggerAlreadySet = configurationManager.getRevokeAuthTriggerSet();
+        
+        if (triggerAlreadySet) {
+            console.log("Auth revoke trigger already exists. No new trigger created.");
+            return false;
+        }
+        
+        try {
+            // Get the number of days until revocation
+            const daysUntilRevoke = configurationManager.getDaysUntilAuthRevoke();
+            
+            // Calculate the trigger time (current time + specified days)
+            const triggerTime = new Date();
+            triggerTime.setDate(triggerTime.getDate() + daysUntilRevoke);
+            
+            // Create the trigger using TriggerController
+            const triggerController = new TriggerController();
+            triggerController.createTimeBasedTrigger("revokeAuthorisation", triggerTime);
+            
+            // Update the flag to indicate the trigger has been set
+            configurationManager.setRevokeAuthTriggerSet(true);
+            
+            console.log(`Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`);
+            return true;
+        } catch (error) {
+            console.error(`Error setting up auth revoke timer: ${error}`);
+            return false;
+        }
+    }
 }
 
 
