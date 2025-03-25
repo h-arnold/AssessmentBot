@@ -69,6 +69,11 @@ function saveConfiguration(config) {
             configurationManager.setAssessmentRecordDestinationFolder(config.assessmentRecordDestinationFolder);
         }
 
+        // Handle updateDetailsUrl parameter
+        if (config.updateDetailsUrl !== undefined) {
+            configurationManager.setUpdateDetailsUrl(config.updateDetailsUrl);
+        }
+
         // Handle daysUntilAuthRevoke parameter
         if (config.daysUntilAuthRevoke !== undefined) {
             configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke);
