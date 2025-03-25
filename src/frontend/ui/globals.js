@@ -53,6 +53,15 @@ function showVersionSelector() {
   return uiManagerController.showVersionSelector();
 }
 
+/**
+ * NOTE: Classroom Editor Modal Functions
+ * --------------------------------------
+ * While the implementation exists, these functions are currently inactive.
+ * The current workflow uses direct editing in the 'Classrooms' sheet
+ * as it proved more efficient than the GUI implementation.
+ * 
+ * This code is preserved for future UI improvements.
+ */
 
 function getClassroomData() {
     const uiManagerController = new UIManagerController();
