@@ -31,19 +31,8 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_APP_SCRIPT_SA_KEY }}
           token_format: access_token
-          access_token_scopes: |
-            https://www.googleapis.com/auth/script.projects,
-            https://www.googleapis.com/auth/presentations,
-            https://www.googleapis.com/auth/classroom.courses,
-            https://www.googleapis.com/auth/classroom.rosters,
-            https://www.googleapis.com/auth/classroom.profile.emails,
-            https://www.googleapis.com/auth/classroom.profile.photos,
-            https://www.googleapis.com/auth/classroom.coursework.students,
-            https://www.googleapis.com/auth/spreadsheets,
-            https://www.googleapis.com/auth/drive,
-            https://www.googleapis.com/auth/script.external_request,
-            https://www.googleapis.com/auth/script.container.ui,
-            https://www.googleapis.com/auth/script.scriptapp
+          access_token_scopes: https://www.googleapis.com/auth/script.projects
+
 
       - name: Flatten file structure for Apps Script push
         run: |
