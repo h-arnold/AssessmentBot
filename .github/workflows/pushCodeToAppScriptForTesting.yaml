@@ -8,6 +8,8 @@ on:
 env:
   # Directory within your GitHub repository containing the script code
   SCRIPT_DIR: ./src/frontend
+  # Use a temporary directory provided by the runner for flattened files
+  FLATTENED_DIR: ${{ runner.temp }}/flattened
 
 jobs:
   push:
@@ -28,10 +30,16 @@ jobs:
           token_format: access_token
           access_token_scopes: "https://www.googleapis.com/auth/script.projects"
 
+      # Flatten file structure to emulate clasp functionality using a temporary directory
+      - name: Flatten file structure for Apps Script push
+        run: |
+          node flatten.js ${{ env.SCRIPT_DIR }} ${{ env.FLATTENED_DIR }}
+
+      # Push the flattened script files to Google Apps Script
       - name: Push script
         uses: shiftavenue/gas-action@v0
         with:
           command: push
           project-id: ${{ secrets.HEAD_APP_SCRIPT_ID }}
           access-token: ${{ steps.auth.outputs.access_token }}
-          script-dir: ${{ env.SCRIPT_DIR }}
+          script-dir: ${{ env.FLATTENED_DIR }}
