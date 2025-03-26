@@ -12,14 +12,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Push to Google Apps Script
-        uses: daikikatsuragawa/clasp-action@v1.1.0
+      - name: Push code to Google Apps Script        
+        uses: Mayu-mic/google-apps-script-action@v2
         with:
-          accessToken: ${{ secrets.CLASP_ACCESS_TOKEN }}
-          idToken: ${{ secrets.CLASP_ID_TOKEN }}
-          refreshToken: ${{ secrets.CLASP_REFRESH_TOKEN }}
-          clientId: ${{ secrets.CLASP_CLIENT_ID }}
-          clientSecret: ${{ secrets.CLASP_CLIENT_SECRET }}
+          clasprc: ${{ secrets.CLASPRC_JSON }}
           scriptId: ${{ secrets.HEAD_APP_SCRIPT_ID }}
-          rootDir: "src/frontend"
-          command: "push"
+          sourceRootDir: 'src/fontend'
+          command: 'push'
