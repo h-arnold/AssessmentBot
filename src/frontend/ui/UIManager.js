@@ -151,6 +151,24 @@ class UIManager {
   }
 
   /**
+   * Creates a menu for Assessment Record sheets.
+   * This menu is added to Assessment Record spreadsheets to provide functionality
+   * similar to the menu defined in menus.js for assessment record templates.
+   */
+  createAssessmentRecordMenu() {
+    this.safeUiOperation(() => {
+      const ui = SpreadsheetApp.getUi();
+      ui.createMenu('Assessment Bot')
+        .addItem('Assess Assignment', 'assessAssignment')
+        .addItem('Check Progress', 'showProgressModal')
+        .addItem('Change Class', 'showClassroomDropdown')
+        .addToUi();
+      
+      console.log('Assessment Record menu created.');
+    }, "createAssessmentRecordMenu");
+  }
+
+  /**
    * Shows the configuration dialog modal.
    */
   showConfigurationDialog() {
