@@ -1,61 +1,27 @@
-name: Push Apps Script
+name: Push to Google Apps Script
 
 on:
   push:
     branches:
-      - testingV.0.4.3
-
-env:
-  SCRIPT_DIR: ./src/frontend
-  FLATTENED_DIR: ./flattened
+      - '*'  # Trigger on push to any branch
 
 jobs:
-  push:
+  deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: "read"
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
+      
+      - name: Push to Google Apps Script
+        uses: daikikatsuragawa/clasp-action@v1
         with:
-          ref: testingV.0.4.3  # Ensure the correct branch is checked out
-
-      # Debug step to list files in the workflow directory
-      - name: List workflow directory contents
-        run: ls -la .github/workflows/
-
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_APP_SCRIPT_SA_KEY }}
-          access_token_subject: ${{ secrets.ACCESS_TOKEN_TOKEN_SUBJECT }}
-
-          token_format: access_token
-          access_token_scopes: |
-            https://www.googleapis.com/auth/script.projects,
-            https://www.googleapis.com/auth/presentations,
-            https://www.googleapis.com/auth/classroom.courses,
-            https://www.googleapis.com/auth/classroom.rosters,
-            https://www.googleapis.com/auth/classroom.profile.emails,
-            https://www.googleapis.com/auth/classroom.profile.photos,
-            https://www.googleapis.com/auth/classroom.coursework.students,
-            https://www.googleapis.com/auth/spreadsheets,
-            https://www.googleapis.com/auth/drive,
-            https://www.googleapis.com/auth/script.external_request,
-            https://www.googleapis.com/auth/script.container.ui,
-            https://www.googleapis.com/auth/script.scriptapp
-
-      - name: Flatten file structure for Apps Script push
-        run: |
-          chmod +x .github/workflows/flatten.sh
-          bash .github/workflows/flatten.sh ${{ env.SCRIPT_DIR }} ${{ env.FLATTENED_DIR }}
-
-      - name: Push script
-        uses: shiftavenue/gas-action@v0
-        with:
-          command: push
-          project-id: ${{ secrets.HEAD_APP_SCRIPT_ID }}
-          access-token: ${{ steps.auth.outputs.access_token }}
-          script-dir: ${{ env.FLATTENED_DIR }}
+          # Google service account credentials (JSON format)
+          # Create this secret in your repository settings
+          credentials: ${{ secrets.CLASP_CREDENTIALS }}
+          
+          # Google Apps Script project ID
+          # Create this secret in your repository settings
+          script_id: ${{ secrets.HEAD_APP_SCRIPT_ID}}
+          
+          # Command to execute (push is default)
+          command: 'push'
