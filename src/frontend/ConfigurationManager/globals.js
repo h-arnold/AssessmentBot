@@ -89,6 +89,6 @@ function saveConfiguration(config) {
         console.log("Configuration saved successfully.");
     } catch (error) {
         console.error("Error saving configuration:", error);
-        throw new Error("Failed to save configuration. Please check the inputs.");
+        throw new Error(`Failed to save configuration. ${error.message}`);
     }
 }
