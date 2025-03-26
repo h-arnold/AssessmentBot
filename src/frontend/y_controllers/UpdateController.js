@@ -6,6 +6,7 @@ class UpdateController {
   constructor() {
     this.updateManager = new UpdateManager();
     this.uiManager = new this.uiManager();
+    this.scriptAppManager = new ScriptAppManager();
   }
     /**
   * Handles the version update request from the UI
@@ -28,5 +29,6 @@ class UpdateController {
         }
         const ui = this.uiManager.ui
         ui.alert(`Update Successful`, `Your new Admin Sheet has opened and you can access it at: ${adminSheetUrl}. Please close this window.`, ui.ButtonSet.OK)
+        this.scriptAppManager.revokeAuthorisation();
       }
 }
