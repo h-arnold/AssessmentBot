@@ -9,7 +9,7 @@ env:
   # Directory within your GitHub repository containing the script code
   SCRIPT_DIR: ./src/frontend
   # Use a temporary directory provided by the runner for flattened files
-  FLATTENED_DIR: ${{ runner.temp }}/flattened
+  FLATTENED_DIR: ./flattened
 
 jobs:
   push:
