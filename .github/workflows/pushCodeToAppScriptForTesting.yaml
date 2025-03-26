@@ -21,5 +21,5 @@ jobs:
           clientId: ${{ secrets.CLASP_CLIENT_ID }}
           clientSecret: ${{ secrets.CLASP_CLIENT_SECRET }}
           scriptId: ${{ secrets.HEAD_APP_SCRIPT_ID }}
-          rootDir: "./src/frontend"
+          rootDir: "src/frontend"
           command: "push"
