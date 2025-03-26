@@ -96,6 +96,7 @@ class UpdateManager extends BaseUpdateAndInit {
     // Update configuration values prior to cloning.
     configurationManager.setUpdateStage(1);
     configurationManager.setIsAdminSheet(true);
+    configurationManager.setScriptAuthorised(false);
 
     // Serialise existing config
     const propsCloner = new PropertiesCloner();

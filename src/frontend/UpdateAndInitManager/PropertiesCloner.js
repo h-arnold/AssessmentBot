@@ -75,10 +75,13 @@ class PropertiesCloner extends BaseSheetManager {
 
     rows.forEach(row => {
       const [type, key, value] = row;
+      // Skip 'scriptAuthorised' property
+      if (key === 'scriptAuthorised') return;
+      
       if (type === 'DOCUMENT') {
-        this.docProperties.setProperty(key, value);
+      this.docProperties.setProperty(key, value);
       } else if (type === 'SCRIPT') {
-        this.scriptProperties.setProperty(key, value);
+      this.scriptProperties.setProperty(key, value);
       }
     });
 
