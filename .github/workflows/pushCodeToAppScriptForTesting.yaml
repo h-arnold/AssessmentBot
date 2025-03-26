@@ -3,7 +3,7 @@ name: Push to Google Apps Script
 on:
   push:
     branches:
-      - '*'  # Trigger on push to any branch
+      - "*" # Trigger on push to any branch
 
 jobs:
   deploy:
@@ -11,17 +11,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      
+
       - name: Push to Google Apps Script
         uses: daikikatsuragawa/clasp-action@v1
         with:
-          # Google service account credentials (JSON format)
-          # Create this secret in your repository settings
-          credentials: ${{ secrets.CLASP_CREDENTIALS }}
-          
-          # Google Apps Script project ID
-          # Create this secret in your repository settings
-          script_id: ${{ secrets.HEAD_APP_SCRIPT_ID}}
-          
-          # Command to execute (push is default)
-          command: 'push'
+          accessToken: ${{ secrets.CLASP_ACCESS_TOKEN }}
+          idToken: ${{ secrets.CLASP_ID_TOKEN }}
+          refreshToken: ${{ secrets.CLASP_REFRESH_TOKEN }}
+          clientId: ${{ secrets.CLASP_CLIENT_ID }}
+          clientSecret: ${{ secrets.CLASP_CLIENT_SECRET }}
+          scriptId: ${{ secrets.HEAD_APP_SCRIPT_ID }}
+          command: "push"
