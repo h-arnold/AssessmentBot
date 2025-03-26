@@ -1,0 +1,36 @@
+name: Push Apps Script
+
+on:
+  push:
+    branches:
+      - testingV.0.4.3
+
+env:
+  # Directory within your GitHub repository containing the script code
+  SCRIPT_DIR: ./src/frontend
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Authenticate to GCP using service account credentials
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_APP_SCRIPT_SA_KEY }}
+          token_format: access_token
+          access_token_scopes: "https://www.googleapis.com/auth/script.projects"
+
+      - name: Push script
+        uses: shiftavenue/gas-action@v0
+        with:
+          command: push
+          project-id: ${{ secrets.HEAD_APP_SCRIPT_ID }}
+          access-token: ${{ steps.auth.outputs.access_token }}
+          script-dir: ${{ env.SCRIPT_DIR }}
