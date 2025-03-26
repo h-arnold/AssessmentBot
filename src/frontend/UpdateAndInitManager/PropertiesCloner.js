@@ -34,7 +34,10 @@ class PropertiesCloner extends BaseSheetManager {
     if (serialiseDocProps) {
       const docKeys = this.docProperties.getKeys();
       docKeys.forEach(key => {
-        data.push(['DOCUMENT', key, this.docProperties.getProperty(key)]);
+        // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
+        if (key !== 'scriptAuthorised') {
+          data.push(['DOCUMENT', key, this.docProperties.getProperty(key)]);
+        }
       });
     }
 
