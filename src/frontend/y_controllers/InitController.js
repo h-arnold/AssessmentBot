@@ -23,6 +23,7 @@ class InitController {
      */
     onOpen() {
         const isScriptAuthorised = configurationManager.getScriptAuthorised();
+        const isAdminSheet = configurationManager.getIsAdminSheet();
         console.log("Script authorization status:", isScriptAuthorised);
 
         if (!this.uiManager) {
@@ -30,9 +31,13 @@ class InitController {
             return;
         }
 
-        if (isScriptAuthorised) {
+        if (isScriptAuthorised && isAdminSheet) {
             console.log("Script is already authorised. Creating authorised menu.");
-            this.uiManager.createAuthorisedMenu(); // Make sure to call the function to create the menu
+            this.uiManager.createAuthorisedMenu(); 
+        }
+        else if (isScriptAuthorised && !isAdminSheet) {
+            console.log("Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.");
+            this.uiManager.createAssessmentRecordMenu();
         } else {
             console.log("Script not authorised. Creating unauthorised menu.");
             this.uiManager.createUnauthorisedMenu();
@@ -40,40 +45,79 @@ class InitController {
     }
 
     /**
-  * Handles the authorisation flow when user clicks authorise or when the script is opened after it has been authorised. This includes finishing any updates.
-  */
+     * Handles the authorisation flow when user clicks authorise or when the script is opened after it has been authorised.
+     * Determines if this is an Admin Sheet or Assessment Record and calls the appropriate initialisation method.
+     */
     handleScriptInit() {
+        const scriptAuthorised = configurationManager.getScriptAuthorised();
+        const isAdminSheet = configurationManager.getIsAdminSheet();
+        
+        // If script isn't authorised, run the first run initialisation regardless of sheet type
+        if (!scriptAuthorised) {
+            this.doFirstRunInit();
+            // Create appropriate menu after first run init
+            if (isAdminSheet) {
+                this.uiManager.createAuthorisedMenu();
+            } else {
+                this.uiManager.createAssessmentRecordMenu();
+            }
+            return;
+        }
+        
+        // Route to the appropriate initialisation method based on sheet type
+        if (isAdminSheet) {
+            this.adminScriptInit();
+        } else {
+            this.assessmentRecordScriptInit();
+        }
+    }
+    
+    /**
+     * Handles initialisation specifically for Admin Sheets
+     * This includes finishing any updates and creating the proper menu.
+     */
+    adminScriptInit() {
         // Gets the update stage.
         const updateStage = configurationManager.getUpdateStage();
-        // We the authorisation status of a script as a config value because finding retrieving a script property is much quicker than checking the auth status each time. There is some error handling below for instances where the script has been deauthorised.
         const scriptAuthorised = configurationManager.getScriptAuthorised();
-
-
+        
         // If everything is up to date and the script is authorised, create the menu and finish.
         if (updateStage === 2 && scriptAuthorised) {
             this.uiManager.createAuthorisedMenu();
             return;
         }
-
-        // Encapsulate this logic in a try/catch block so if the firstRunInit or update isn't finished, ,the authorised menu is still created.
+        
+        // Encapsulate this logic in a try/catch block so if update isn't finished, the authorised menu is still created.
         try {
-            // If the script hasn't been authorised, run the First Run Script Initialisation Process.
-            if (!scriptAuthorised) {
-                this.doFirstRunInit();
-            }
-
             // Checks if the update needs finishing.
             if (updateStage == 1) {
                 // Finish the update if so.
                 this.finishUpdate();
-
             }
-
+            
             // Assuming the script didn't end early at any of the above points, create the authorised menu.
             this.uiManager.createAuthorisedMenu();
         } catch (error) {
             this.uiManager.createAuthorisedMenu();
-            throw new Error(`Error during script initialisation: ${error.message}`);
+            throw new Error(`Error during admin script initialisation: ${error.message}`);
+        }
+    }
+    
+    /**
+     * Handles initialisation specifically for Assessment Record sheets.
+     * Creates the assessment record menu and sets up the authorisation revocation timer.
+     */
+    assessmentRecordScriptInit() {
+        try {
+            // Create the assessment record menu
+            this.uiManager.createAssessmentRecordMenu();
+            
+            // Set up the authorisation revocation timer
+            this.setupAuthRevokeTimer();
+        } catch (error) {
+            // Ensure menu is created even if there's an error
+            this.uiManager.createAssessmentRecordMenu();
+            throw new Error(`Error during assessment record initialisation: ${error.message}`);
         }
     }
 
