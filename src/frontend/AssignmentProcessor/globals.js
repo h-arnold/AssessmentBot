@@ -1,6 +1,6 @@
 /**
  * Assignment-related global functions
- * These functions provide a global interface to the AssignmentController
+ * These functions provide a global interface to the Assignment
  */
 
 /**
@@ -14,8 +14,8 @@
  * @param {string} emptySlideId - The ID of the empty slide.
  */
 function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
-  const assignmentController = new AssignmentController();
-  return assignmentController.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
+  const assignment = new Assignment();
+  return assignment.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
 }
 
 /**
@@ -27,16 +27,16 @@ function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, refer
  * @returns {string} The unique process ID.
  */
 function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
-  const assignmentController = new AssignmentController();
-  return assignmentController.startProcessing(assignmentId, referenceSlideId, emptySlideId);
+  const assignment = new Assignment();
+  return assignment.startProcessing(assignmentId, referenceSlideId, emptySlideId);
 }
 
 /**
  * Processes the selected assignment by retrieving parameters and executing the workflow.
  */
 function triggerProcessSelectedAssignment() {
-  const assignmentController = new AssignmentController();
-  return assignmentController.processSelectedAssignment();
+  const assignment = new Assignment();
+  return assignment.processSelectedAssignment();
 }
 
 /**
@@ -45,14 +45,14 @@ function triggerProcessSelectedAssignment() {
  * @param {string} functionName - The name of the function whose triggers are to be removed.
  */
 function removeTrigger(functionName) {
-  const assignmentController = new AssignmentController();
-  assignmentController.triggerController.removeTriggers(functionName);
+  const assignment = new Assignment();
+  assignment.triggerController.removeTriggers(functionName);
 }
 
 /**
  * Test workflow function for debugging purposes.
  */
 function testWorkflow() {
-  const assignmentController = new AssignmentController();
-  assignmentController.testWorkflow();
+  const assignment = new Assignment();
+  assignment.testWorkflow();
 }
