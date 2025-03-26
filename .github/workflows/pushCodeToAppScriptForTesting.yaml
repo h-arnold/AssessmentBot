@@ -21,6 +21,7 @@ jobs:
 
       # Authenticate to GCP using service account credentials
       - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_APP_SCRIPT_SA_KEY }}
