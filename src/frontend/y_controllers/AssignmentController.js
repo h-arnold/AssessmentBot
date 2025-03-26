@@ -32,7 +32,7 @@ class AssignmentController {
     }
   }
 
-  
+
   /**
    * Initializes the assessment process by saving slide IDs and starting progress tracking.
    * Also attempts to warm up the LLM backend asynchronously.
@@ -46,10 +46,10 @@ class AssignmentController {
    */
   saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
     try {
-      this.saveSlideIdsForAssignment(assignmentTitle, slideIds);
+      AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
       this.startProcessing(assignmentId, referenceSlideId, emptySlideId);
       this.progressTracker.startTracking();
-      
+
       // Null check is necessary because UIManager may be null when running from time-based triggers
       // or when executed in contexts where UI interactions are not available
       if (this.uiManager) {
@@ -227,7 +227,7 @@ class AssignmentController {
       }
     }
   }
-  
+
   /**
    * Test workflow function for debugging purposes.
    */
