@@ -61,7 +61,7 @@ class InitController {
             } else {
                 this.uiManager.createAssessmentRecordMenu();
             }
-            return;
+            
         }
         
         // Route to the appropriate initialisation method based on sheet type
@@ -70,6 +70,7 @@ class InitController {
         } else {
             this.assessmentRecordScriptInit();
         }
+        return;
     }
     
     /**
