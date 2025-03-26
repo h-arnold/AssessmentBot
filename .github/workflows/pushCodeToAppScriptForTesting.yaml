@@ -30,6 +30,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_APP_SCRIPT_SA_KEY }}
+          access_token_subject: ${{ secrets.ACCESS_TOKEN_TOKEN_SUBJECT }}
+
           token_format: access_token
           access_token_scopes: |
             https://www.googleapis.com/auth/script.projects,
