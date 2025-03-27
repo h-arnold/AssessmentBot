@@ -16,6 +16,11 @@ function handleScriptInit() {
   AssessmentBot.handleScriptInit();
 }
 
+// Revokes authrosiation from a trigger to avoid having loads of old scripts with access
+
+function revokeAuthorisation() {
+  AssessmentBot.revokeAuthorisation()
+}
 // Placeholder functions for the 'Assess Assignment Menu Option
 
 // Calls the function to generate the Assignment Chooser modal.
@@ -126,5 +131,3 @@ function saveConfiguration(formData) {
 function getConfiguration() {
   return AssessmentBot.getConfiguration();
 }
-
-
