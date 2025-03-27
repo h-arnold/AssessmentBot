@@ -18,9 +18,11 @@ class BaseUpdateAndInit {
     this.uiManager = new UIManager(this.sheet);
     this.destinationFolderId = ""; // to be set later from configuration or during the process
     this.versionNo = '0.4.3'; // default version; update as needed
+    
+    // This needs to before getting the new template Ids otherwise they'll stay with whatever value was set before.
+    this.versionDetails = this.fetchVersionDetails();
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
     this.adminSheetTemplateId = null; // will be set from version details
-    this.versionDetails = this.fetchVersionDetails();
     this.progressTracker = new ProgressTracker(); // May be used during long-running tasks
   }
 
