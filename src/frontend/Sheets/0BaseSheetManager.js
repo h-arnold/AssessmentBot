@@ -103,6 +103,7 @@ class BaseSheetManager {
  *        Allowed options include:
  *          - wordWrap (boolean): true to wrap text; false for overflow.
  *          - horizontalAlignment (string): e.g. "CENTER", "LEFT", "RIGHT".
+ *          - verticalAlignment (string): e.g. "TOP", "MIDDLE", "BOTTOM"
  *          - autoResize (boolean): true to auto resize column widths.
  *          - textRotation (object): e.g. { angle: 45 } to rotate text.
  * @param {number} startColumnIndex - The starting column index for formatting.
@@ -110,42 +111,38 @@ class BaseSheetManager {
  * @returns {Array<Object>} - An array with one (or more) formatting request objects.
  */
 createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions = {}, startColumnIndex, endColumnIndex) {
-  // Default formatting settings (0° rotation by default).
-  const defaultFormat = {
-    backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
-    horizontalAlignment: "CENTER",
-    verticalAlignment: "MIDDLE",
-    textFormat: { bold: true },
-    textRotation: { angle: 0 }
-  };
 
-  // Helper function for deep merging two objects.
-  function deepMerge(target, source) {
-    Object.keys(source).forEach(key => {
-      const sourceValue = source[key];
-      if (sourceValue !== null && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
-        if (!target[key] || typeof target[key] !== 'object') {
-          target[key] = {};
-        }
-        deepMerge(target[key], sourceValue);
-      } else {
-        target[key] = sourceValue;
-      }
-    });
-    return target;
-  }
 
-  // Extract autoResize and wordWrap options from the provided formatOptions,
-  // and let any remaining options override the defaults.
-  const { autoResize, wordWrap, ...otherOptions } = formatOptions;
-  
-  // Merge the user-supplied options deeply with the default format.
-  const finalFormat = deepMerge({ ...defaultFormat }, otherOptions);
-  
+  // Set default formatting values except for column autoResize as that's a separate request
+
+  const backgroundColor =  { red: 0.9, green: 0.9, blue: 0.9 }
+  const horizontalAlignment = formatOptions.horizontalAlignment || "CENTER"
+  const verticalAlignment= formatOptions.verticalAlignment || "MIDDLE" 
+  const textFormat = { bold: true }
+  const textRotation =  formatOptions.textRotation || { angle: 0 }
+  let wrapStrategy;
+
   // Adjust the wrap strategy if wordWrap is provided.
-  if (typeof wordWrap !== 'undefined') {
-    finalFormat.wrapStrategy = wordWrap ? "WRAP" : "OVERFLOW_CELL";
+  if (!formatOptions.wordWrap) {
+    wrapStrategy = "OVERFLOW_CELL";
+  } else {
+    wrapStrategy = "WRAP";
   }
+  
+
+  // Create the formatting object
+
+  let finalFormat = {
+    backgroundColor: backgroundColor,
+    horizontalAlignment: horizontalAlignment,
+    verticalAlignment: verticalAlignment,
+    textFormat: textFormat,
+    textRotation: textRotation,
+    wrapStrategy: wrapStrategy
+  }
+
+
+
   
   // Build the main repeatCell request using the specified range.
   const repeatCellRequest = {
@@ -163,12 +160,12 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
       fields: "userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat,textRotation,wrapStrategy)"
     }
   };
-
+  
   // Initialise requests array with the repeatCell request.
   const requests = [repeatCellRequest];
   
   // If autoResize is true, add an additional request to auto-resize the columns.
-  if (autoResize) {
+  if (formatOptions.autoResize) {
     const autoResizeRequest = {
       autoResizeDimensions: {
         dimensions: {
@@ -184,7 +181,6 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
   
   return requests;
 }
-
 
 
 

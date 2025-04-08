@@ -26,28 +26,41 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       const headerRequest = this.createHeaderValuesRequest(sheetId, headers, 0);
 
       // Format the name column
-      const headerFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 0, 
+      const nameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
       {
         horizontalAlignment: "LEFT",
+        verticalAlignment: "BOTTOM",
         autoResize: true
       },
       0,
-      0);
+      1);
 
 
       // Format the criterion columns
-      const criterionFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 0, 
+      const criterionFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
       {
         horizontalAlignment: "CENTER",
         textRotation: {angle: 45}
       },
       1,
-      3);
+      5);
+
+      // Format the class name header
+      // Format the name column
+      const classNameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
+      {
+        horizontalAlignment: "CENTER",
+        verticalAlignment: "BOTTOM",
+        autoResize: true
+      },
+      5,
+      6);
 
       // Push the header requests to the main request array
 
       this.requests.push(headerRequest,
-        headerFormattingRequest,
+        nameHeaderFormattingRequest,
+        classNameHeaderFormattingRequest,
         criterionFormattingRequest);
 
 
