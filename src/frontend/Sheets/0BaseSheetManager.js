@@ -188,9 +188,10 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
    * Creates requests to set column widths in the sheet.
    * @param {number} sheetId - The ID of the sheet.
    * @param {Array<number>} columnWidths - The widths of the columns to set.
+   * @param {number} [startColumnIndex=0] - Optional index of the first column to start resizing from.
    * @returns {Array<Object>} - An array of requests to update column widths.
    */
-  createColumnWidthRequests(sheetId, columnWidths) {
+  createColumnWidthRequests(sheetId, columnWidths, startColumnIndex = 0) {
     const requests = [];
     columnWidths.forEach((width, index) => {
       requests.push({
@@ -198,8 +199,8 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
           range: {
             sheetId: sheetId,
             dimension: "COLUMNS",
-            startIndex: index,
-            endIndex: index + 1
+            startIndex: startColumnIndex + index,
+            endIndex: startColumnIndex + index + 1
           },
           properties: {
             pixelSize: width
@@ -210,6 +211,7 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
     });
     return requests;
   }
+
 
   /**
    * Creates a request to freeze rows and columns in the sheet.
