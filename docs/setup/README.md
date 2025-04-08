@@ -73,7 +73,7 @@ Follow these steps to set up the system.
 
 - Follow [this guide](./langflowDeployment/langflowDeployment.md) to set up your own Google Cloud Run instance.
 
-**💡Tip: ** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else.
+**💡Tip:** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else.
 
 ---
 
