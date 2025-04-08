@@ -58,6 +58,8 @@ Follow these steps to set up the system.
 
 ### 🌐 Setting up the Langflow Backend
 
+**⚠️Assessment Bot won't work with the [Langflow free cloud instance](https://www.datastax.com/products/langflow).** API requests via the cloud instance are slightly different to the self hosted verison and I haven't implemented this into Assessment Bot yet.  
+
 #### [Deploy Langflow in Google Cloud Run](./langflowDeployment/langflowDeployment.md)
 
 - Setting up Langflow on **Google Cloud Run** is highly recommended for production use. This approach provides the following benefits:
@@ -71,7 +73,7 @@ Follow these steps to set up the system.
 
 - Follow [this guide](./langflowDeployment/langflowDeployment.md) to set up your own Google Cloud Run instance.
 
-**💡Tip: ** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else. 
+**💡Tip: ** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else.
 
 ---
 
