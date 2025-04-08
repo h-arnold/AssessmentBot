@@ -94,14 +94,39 @@ class BaseSheetManager {
   }
 
   /**
-   * Creates a request to format header cells in the sheet.
+   * Creates a header formatting request with custom formatting options.
+   *
    * @param {number} sheetId - The ID of the sheet.
    * @param {number} headerLength - The number of header columns to format.
-   * @param {number} startRowIndex - The starting row index for formatting.
-   * @param {number} endRowIndex - The ending row index for formatting.
+   * @param {number} [startRowIndex=0] - The starting row index for formatting.
+   * @param {number} [endRowIndex=2] - The ending row index for formatting.
+   * @param {Object} [formatOptions={}] - Additional formatting options to override defaults.
+   *        For example: { textRotation: { angle: 45 } }
    * @returns {Object} - A request to format header cells.
    */
-  createHeaderFormattingRequest(sheetId, headerLength, startRowIndex = 0, endRowIndex = 2) {
+  createHeaderFormattingRequest(sheetId, headerLength, startRowIndex = 0, endRowIndex = 2, formatOptions = {}) {
+    // Default formatting settings (0° rotation by default).
+    const defaultFormat = {
+      backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
+      horizontalAlignment: "CENTER",
+      verticalAlignment: "MIDDLE",
+      textFormat: { bold: true },
+      textRotation: { angle: 0 }
+    };
+
+    // Merge the default format with any provided formatOptions.
+    // If a property is specified in formatOptions, it will override the default.
+    const finalFormat = {
+      ...defaultFormat,
+      ...formatOptions,
+      // Merge the nested textRotation object separately.
+      textRotation: {
+        ...defaultFormat.textRotation,
+        ...(formatOptions.textRotation || {})
+      }
+    };
+
+    // Construct and return the batch request using the final formatting.
     return {
       repeatCell: {
         range: {
@@ -112,22 +137,13 @@ class BaseSheetManager {
           endColumnIndex: headerLength
         },
         cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            textFormat: {
-              bold: true
-            },
-            textRotation: {
-              angle: 45
-            }
-          }
+          userEnteredFormat: finalFormat
         },
-        fields: "userEnteredFormat(backgroundColor, horizontalAlignment, verticalAlignment, textFormat, textRotation)"
+        fields: "userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat,textRotation)"
       }
     };
   }
+
 
   /**
    * Creates requests to set column widths in the sheet.
