@@ -1,25 +1,28 @@
-# Google Slides Assessor
+# Assessment Bot
 
 **A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**
+
+**[Read the Documentation Here](./docs/README.md)**
 
 Applying the **Pareto Principle** in spirit, this tool automates 80% of the effort—checking and scoring student work—so teachers can focus on the most impactful 20%: acting on insights to improve learning.
 
 This tool pulls Google Slides from Google Classroom assignments and evaluates them on **Completeness**, **Accuracy**, and **SPaG** (Spelling, Punctuation, and Grammar), scoring each out of 5.
 
-- [Google Slides Assessor](#google-slides-assessor)
+- [Assessment Bot](#assessment-bot)
   - [🎯 Key Features](#-key-features)
-  - [🛠️ How It Works](#%ef%b8%8f-how-it-works)
+  - [🛠️ How It Works](#️-how-it-works)
   - [🔒 Privacy and Security](#-privacy-and-security)
   - [❓ What Can It Assess?](#-what-can-it-assess)
   - [🤔 Is It Perfect?](#-is-it-perfect)
   - [💸 Cost?](#-cost)
-  - [⚙️ Setup](#%ef%b8%8f-setup)
+  - [⚙️ Setup](#️-setup)
   - [🤝 Contributing](#-contributing)
   - [🚀 Why Use This Tool?](#-why-use-this-tool)
 
 ---
 
 ## 🎯 Key Features
+
 - **Automated Assessment**: Quickly evaluates student submissions against a reference and template.
 - **Customisable Marking**: Identify key elements for assessment using Alt Text markers:  
   - `#` for text or tables  
@@ -33,12 +36,13 @@ This tool pulls Google Slides from Google Classroom assignments and evaluates th
 ---
 
 ## 🛠️ How It Works
+
 1. **Preparation**:
    - Create a **perfect reference** with all tasks completed correctly.  
    - Provide a **blank template** for students to complete.
 2. **Marking Tasks**: Use Alt Text markers (e.g. `Task 1 – Do this thing`) to identify the parts to assess.  
 3. **Assessment**:  
-   The tool pulls student submissions from Google Classroom and uses `Google Gemini Flash 1.5` via a [Langflow](https://github.com/langflow-ai/langflow) backend to:
+   The tool pulls student submissions from Google Classroom and uses `Google Gemini Flash 2.0` via a [Langflow](https://github.com/langflow-ai/langflow) backend to:
    - Compare submissions to the reference
    - Score based on Completeness, Accuracy, and SPaG
 4. **Reporting**:  
@@ -50,7 +54,9 @@ This tool pulls Google Slides from Google Classroom assignments and evaluates th
 ---
 
 ## 🔒 Privacy and Security
+
 Your students’ privacy is a top priority. Here's how their data is protected:  
+
 - **No intentional sharing of PII**: The tool only processes data within the user’s Google Workspace account, managed by the educational institution.  
 - **Mitigations against accidental PII submission**:
   - **Ephemeral image storage**: The Langflow cache folder is deployed on a **ramdisk**, ensuring uploaded images exist only temporarily.  
@@ -63,20 +69,26 @@ By design, this tool minimises any long-term storage of student data and maintai
 ---
 
 ## ❓ What Can It Assess?
+
 The tool works with:
+
 - **Text**
 - **Tables** (converted to Markdown for easier processing)
 - **Slide Images**
 
 It’s been tested successfully on:
+
 - **Factual content**
 - **Block code** (e.g., MakeCode for Microbit)
 - **Basic persuasive writing**
+- **Posters** (with a view to assessing the application of design  principles)
 
 ---
 
 ## 🤔 Is It Perfect?
+
 Not quite. While **LLMs aren’t infallible**, the tool is reliable enough to provide a snapshot of:
+
 - Who’s on track
 - Who needs extra support
 
@@ -85,21 +97,26 @@ It’s still up to you to address misconceptions, motivate students, and do all 
 ---
 
 ## 💸 Cost?
+
 **Surprisingly low.** Google Gemini Flash costs around **£2–3 per month**, which easily covers monitoring ~25 classes. Hosting the Langflow backend on Google Cloud Run is similarly affordable.
 
 ---
 
 ## ⚙️ Setup
-Setting it up is a bit fiddly at the moment, but improvements are in progress. Once configured, it requires minimal upkeep.  
-- **Documentation**: Actively maintained—check out the [docs branch](https://github.com/h-arnold/googleSlidesAssessor/tree/docs/docs) for updates.
+
+The inital set up should take no more than an hour, including deploying the backend and creating all the Assessment Records.
+
+Check out the [docs](./docs/README.md) for more details.
 
 ---
 
 ## 🤝 Contributing
+
 Contributions are very welcome!  
 If you have ideas, improvements, or bug fixes, feel free to open a **Pull Request (PR)**.  
 
 Some areas we’d particularly appreciate help with:  
+
 - Improving setup simplicity  
 - Expanding documentation  
 - Refining the Quality Assurance view  
@@ -107,6 +124,7 @@ Some areas we’d particularly appreciate help with:
 ---
 
 ## 🚀 Why Use This Tool?
+
 - Save time while managing hundreds of students.
 - Get actionable insights at a glance.
 - Use it for everything from basic content checks to QA-ready reporting.  

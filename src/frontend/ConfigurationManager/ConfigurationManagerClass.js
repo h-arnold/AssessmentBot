@@ -1,3 +1,19 @@
+/**
+ * @class ConfigurationManager
+ * @description A singleton class that manages configuration properties for the Google Slides Assessor application.
+ * It provides methods to get and set various configuration properties that control the behavior of the application.
+ * The class handles property validation, storage (using both script and document properties), and provides convenient
+ * accessor methods for all configuration values.
+ * 
+ * @property {Object} scriptProperties - Reference to PropertiesService.getScriptProperties()
+ * @property {Object} documentProperties - Reference to PropertiesService.getDocumentProperties()
+ * @property {Object|null} configCache - Cache of configuration properties
+ * 
+ * @example
+ * const config = new ConfigurationManager();
+ * const batchSize = config.getBatchSize();
+ * config.setLangflowApiKey('sk-abc123');
+ */
 class ConfigurationManager {
   static get CONFIG_KEYS() {
     return {
@@ -27,6 +43,22 @@ class ConfigurationManager {
     this.scriptProperties = PropertiesService.getScriptProperties();
     this.documentProperties = PropertiesService.getDocumentProperties();
 
+    this.maybeDeserializeProperties();
+    
+    this.configCache = null; // Initialize cache
+
+    ConfigurationManager.instance = this;
+    return this;
+  }
+
+  /**
+   * Attempts to deserialize properties from a propertiesStore sheet if no script or document properties are found.
+   * This method checks if there are existing script or document properties. If neither is found, it attempts to
+   * initialize properties from a 'propertiesStore' sheet using the PropertiesCloner. If the sheet exists and the
+   * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
+   * logs an appropriate message. Any errors during the process are caught and logged.
+   */
+  maybeDeserializeProperties(){
     let hasScriptProperties = null;
 
     if (this.getIsAdminSheet()) {
@@ -48,10 +80,6 @@ class ConfigurationManager {
         console.error('Error initializing properties:', error);
       }
     }
-    this.configCache = null; // Initialize cache
-
-    ConfigurationManager.instance = this;
-    return this;
   }
 
   getAllConfigurations() {
@@ -71,8 +99,10 @@ class ConfigurationManager {
       this.getAllConfigurations();
     }
 
-    // All other config params are stored in the Script Properties but as the Admin Sheet IS a specific document, this particular one needs to be stored as a document property to avoid issues with the assessment records mistakenly being picked up as admin sheets.
-    if (key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) {
+    // Properties that should be stored as document properties
+    if (key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
+        key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
+        key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) {
       return this.documentProperties.getProperty(key) || false;
     }
     return this.configCache[key] || '';
@@ -127,7 +157,12 @@ class ConfigurationManager {
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
-        this.documentProperties.setProperty(key, Boolean(value));
+      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED:
+      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
+        if (!this.isBoolean(value)) {
+          throw new Error(`${this.toReadableKey(key)} must be a boolean.`);
+        }
+        this.documentProperties.setProperty(key, value.toString());
         return;
       case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED:
       case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
@@ -150,12 +185,15 @@ class ConfigurationManager {
   }
 
   isBoolean(value) {
-    //See if this can be converted to a boolean
-    value = Boolean(value)
-    console.log(typeof value === 'boolean')
-    return typeof value === 'boolean';
+    if (typeof value === 'boolean') {
+      return true;
+    }
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase();
+      return lowerValue === 'true' || lowerValue === 'false';
+    }
+    return false;
   }
-
 
   isValidApiKey(apiKey) {
     const apiKeyPattern = /^sk-(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
@@ -239,10 +277,15 @@ class ConfigurationManager {
     return `${baseUrl}/api/v1/run/textAssessment?stream=false`;
   }
 
+  getWarmUpUrl() {
+    const baseUrl = this.getLangflowUrl();
+    return `${baseUrl}/api/v1/run/warmUp?stream=false`;
+  }
+
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
     if (!value) {
-      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateManager/assessmentBotVersions.json';
+      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateAndInitManager/assessmentBotVersions.json';
     } else {
       return value;
     }
@@ -289,9 +332,10 @@ class ConfigurationManager {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) || false;
   }
 
-  // New getter for scriptAuthorised
   getScriptAuthorised() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) || false;
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED);
+    // Explicitly convert string to boolean
+    return value.toString().toLowerCase() === 'true';
   }
 
   setBatchSize(batchSize) {
@@ -354,25 +398,5 @@ class ConfigurationManager {
   // New setter for scriptAuthorised
   setScriptAuthorised(flag) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
-  }
-}
-
-const configurationManager = new ConfigurationManager();
-
-function getConfiguration() {
-  return {
-    batchSize: configurationManager.getBatchSize(),
-    langflowApiKey: configurationManager.getLangflowApiKey(),
-    langflowUrl: configurationManager.getLangflowUrl(),
-    imageFlowUid: configurationManager.getImageFlowUid(),
-    textAssessmentTweakId: configurationManager.getTextAssessmentTweakId(),
-    tableAssessmentTweakId: configurationManager.getTableAssessmentTweakId(),
-    imageAssessmentTweakId: configurationManager.getImageAssessmentTweakId(),
-    assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
-    assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
-    updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
-    revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
-    daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
-    scriptAuthorised: configurationManager.getScriptAuthorised()
   }
 }

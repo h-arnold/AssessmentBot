@@ -63,6 +63,9 @@ class ScriptAppManager {
     revokeAuthorisation() {
         try {
             ScriptApp.invalidateAuth();
+
+            //Make sure we set the scriptAuthorised property to false so as not to break the init routine when the script next loads.
+            configurationManager.setScriptAuthorised(false);
             return {
                 success: true,
                 message: 'Authorization successfully revoked'

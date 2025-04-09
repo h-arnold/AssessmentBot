@@ -93,49 +93,105 @@ class BaseSheetManager {
     };
   }
 
-  /**
-   * Creates a request to format header cells in the sheet.
-   * @param {number} sheetId - The ID of the sheet.
-   * @param {number} headerLength - The number of header columns to format.
-   * @param {number} startRowIndex - The starting row index for formatting.
-   * @param {number} endRowIndex - The ending row index for formatting.
-   * @returns {Object} - A request to format header cells.
-   */
-  createHeaderFormattingRequest(sheetId, headerLength, startRowIndex = 0, endRowIndex = 2) {
-    return {
-      repeatCell: {
-        range: {
+/**
+ * Creates a header formatting request with custom formatting options and column range.
+ *
+ * @param {number} sheetId - The ID of the sheet.
+ * @param {number} startRowIndex - The starting row index for formatting.
+ * @param {number} endRowIndex - The ending row index for formatting.
+ * @param {Object} [formatOptions={}] - Additional formatting options to override defaults.
+ *        Allowed options include:
+ *          - wordWrap (boolean): true to wrap text; false for overflow.
+ *          - horizontalAlignment (string): e.g. "CENTER", "LEFT", "RIGHT".
+ *          - verticalAlignment (string): e.g. "TOP", "MIDDLE", "BOTTOM"
+ *          - autoResize (boolean): true to auto resize column widths.
+ *          - textRotation (object): e.g. { angle: 45 } to rotate text.
+ * @param {number} startColumnIndex - The starting column index for formatting.
+ * @param {number} endColumnIndex - The ending column index for formatting.
+ * @returns {Array<Object>} - An array with one (or more) formatting request objects.
+ */
+createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions = {}, startColumnIndex, endColumnIndex) {
+
+
+  // Set default formatting values except for column autoResize as that's a separate request
+
+  const backgroundColor =  { red: 0.9, green: 0.9, blue: 0.9 }
+  const horizontalAlignment = formatOptions.horizontalAlignment || "CENTER"
+  const verticalAlignment= formatOptions.verticalAlignment || "MIDDLE" 
+  const textFormat = { bold: true }
+  const textRotation =  formatOptions.textRotation || { angle: 0 }
+  let wrapStrategy;
+
+  // Adjust the wrap strategy if wordWrap is provided.
+  if (!formatOptions.wordWrap) {
+    wrapStrategy = "OVERFLOW_CELL";
+  } else {
+    wrapStrategy = "WRAP";
+  }
+  
+
+  // Create the formatting object
+
+  let finalFormat = {
+    backgroundColor: backgroundColor,
+    horizontalAlignment: horizontalAlignment,
+    verticalAlignment: verticalAlignment,
+    textFormat: textFormat,
+    textRotation: textRotation,
+    wrapStrategy: wrapStrategy
+  }
+
+
+
+  
+  // Build the main repeatCell request using the specified range.
+  const repeatCellRequest = {
+    repeatCell: {
+      range: {
+        sheetId: sheetId,
+        startRowIndex: startRowIndex,
+        endRowIndex: endRowIndex,
+        startColumnIndex: startColumnIndex,
+        endColumnIndex: endColumnIndex
+      },
+      cell: {
+        userEnteredFormat: finalFormat
+      },
+      fields: "userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat,textRotation,wrapStrategy)"
+    }
+  };
+  
+  // Initialise requests array with the repeatCell request.
+  const requests = [repeatCellRequest];
+  
+  // If autoResize is true, add an additional request to auto-resize the columns.
+  if (formatOptions.autoResize) {
+    const autoResizeRequest = {
+      autoResizeDimensions: {
+        dimensions: {
           sheetId: sheetId,
-          startRowIndex: startRowIndex,
-          endRowIndex: endRowIndex,
-          startColumnIndex: 0,
-          endColumnIndex: headerLength
-        },
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 },
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE",
-            textFormat: {
-              bold: true
-            },
-            textRotation: {
-              angle: 45
-            }
-          }
-        },
-        fields: "userEnteredFormat(backgroundColor, horizontalAlignment, verticalAlignment, textFormat, textRotation)"
+          dimension: "COLUMNS",
+          startIndex: startColumnIndex,
+          endIndex: endColumnIndex
+        }
       }
     };
+    requests.push(autoResizeRequest);
   }
+  
+  return requests;
+}
+
+
 
   /**
    * Creates requests to set column widths in the sheet.
    * @param {number} sheetId - The ID of the sheet.
    * @param {Array<number>} columnWidths - The widths of the columns to set.
+   * @param {number} [startColumnIndex=0] - Optional index of the first column to start resizing from.
    * @returns {Array<Object>} - An array of requests to update column widths.
    */
-  createColumnWidthRequests(sheetId, columnWidths) {
+  createColumnWidthRequests(sheetId, columnWidths, startColumnIndex = 0) {
     const requests = [];
     columnWidths.forEach((width, index) => {
       requests.push({
@@ -143,8 +199,8 @@ class BaseSheetManager {
           range: {
             sheetId: sheetId,
             dimension: "COLUMNS",
-            startIndex: index,
-            endIndex: index + 1
+            startIndex: startColumnIndex + index,
+            endIndex: startColumnIndex + index + 1
           },
           properties: {
             pixelSize: width
@@ -155,6 +211,7 @@ class BaseSheetManager {
     });
     return requests;
   }
+
 
   /**
    * Creates a request to freeze rows and columns in the sheet.

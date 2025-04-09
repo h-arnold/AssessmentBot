@@ -1,21 +1,26 @@
-// Creates the menu in Google Sheets
-
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('Assessment Bot')
-    .addItem('Assess Assignment', 'assessAssignment')
-    .addItem('Check Progress', 'showProgressModal')
-    .addItem('Change Class', 'showClassroomDropdown')
-    .addToUi();
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////////
 // Below are placeholder functions which call the respective global function from the library. 
 // Where you see a `return` it is because a value needs to be passed to the frontend HTML 
 // code.
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+// Initialisation functions
 
+// 
+
+function onOpen() {
+  AssessmentBot.onOpen();
+}
+
+function handleScriptInit() {
+  AssessmentBot.handleScriptInit();
+}
+
+// Revokes authrosiation from a trigger to avoid having loads of old scripts with access
+
+function revokeAuthorisation() {
+  AssessmentBot.revokeAuthorisation()
+}
 // Placeholder functions for the 'Assess Assignment Menu Option
 
 // Calls the function to generate the Assignment Chooser modal.
@@ -42,7 +47,7 @@ function openReferenceSlideModal(assignmentId) {
 
 // Helper function to generate and display html for the reference slide modal
 function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
-  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId) 
+  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId)
 }
 
 // Saves the reference and empty slide Ids to avoid having to do it each assessment run.
@@ -95,7 +100,7 @@ function saveClassroom(courseName, courseId) {
 }
 
 
-function removeTrigger(functionName){
+function removeTrigger(functionName) {
   AssessmentBot.removeTrigger(functionName);
 
 }
@@ -126,10 +131,3 @@ function saveConfiguration(formData) {
 function getConfiguration() {
   return AssessmentBot.getConfiguration();
 }
-
-// Invalidates the authorisation to run the script. Runs on a time based trigger 60 days (dy default) after the some aspect of the script is first run. This is here to avoid the case where you've got a set of bound scripts which have significant permissions to do things on your Google Workspace accounts that are sitting there unused, after an update for example.
-function revokeAuthorisation() {
-  ScriptApp.invalidateAuth();
-}
-
-

@@ -11,13 +11,19 @@ class ClassroomSheetManager extends BaseSheetManager {
    * @param {string} sheetName - The name of the sheet to manage.
    * @param {string} spreadsheetId - The spreadsheet attached to the sheet to manage
    */
-  constructor() {
+  constructor(sheetName, spreadsheetId) {
     // This class should only be run from an admin sheet. 
     // As this sheet can be instantiated from the configuration manager, it's set to silently fail to instantiate rather than throw an error.
-    if (Utils.validateIsAdminSheet(false)) {
-      super('Classrooms');
+    if (!Utils.validateIsAdminSheet(false)) {
+      return;      
+   // If the sheetName and spreadsheetId parameters have been supplied, we're creating a class info sheet in another spreadsheet. Otherwise, we're working with the 'Classrooms sheet in the admin page.   
+   } else if (sheetName && spreadsheetId) {
+    super(sheetName, spreadsheetId)
+   } else {
+    super('Classrooms')
    }
   }
+
 
   /**
    * Retrieves all data from the sheet.

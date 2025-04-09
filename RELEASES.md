@@ -1,3 +1,87 @@
+# 🚀 v0.4.3
+
+## ✨ Enhancements
+
+*   **Performance Improvements:** Optimised code for better performance when handling large classes.
+*   **UI Refinements:** Enhanced user interface elements for improved usability.
+*   **Documentation Updates:** Expanded documentation with clearer instructions and examples.
+*   **Configuration Dialog Improvements:** Reorganised with tabs for menu settings and reduced compulsory settings.
+*   **Auth Flow Improvements:** Changed authorisation and initialisation flow using installable `onOpen` trigger.
+*   **Error Handling:** Added improved error handling for 403/404 responses in API requests.
+*   **AI Model Updates:** Updated flows to use `gemini-2.0-flash` and `gemini-2.0-flash-lite` models.
+*   **Docker Integration:** Added Docker build action and Cloud Run support for Langflow backend.
+
+## 🐛 Bug Fixes
+
+*   **Assessment Record Deserialisation:** Fixed issue with ensuring that assessment records reliably deserialise data after update.
+*   **Properties Store Check:** Fixed properties store check to ensure that data is reliably deserialised upon update.
+*   **Progress Tracker Updates:** Re-added lost `progressTracker` updates when cloning individual assessment records.
+*   **Typos:** Fixed typos that were causing the update mechanism to fail.
+*   **Cache Hashing:** Fixed caching mechanism to hash reference and content hashes rather than concatenating them.
+*   **Auth Revocation:** Improved handling of authorisation revocation for better script update flow.
+
+## 🔄 Refactoring
+
+*   **Code Organisation:** Significantly refactored code into more logical components:
+    * Created `InitController` class and moved global functions to dedicated files
+    * Refactored `MainController` functionality into `Assignment` and `AssignmentController` classes
+    * Implemented improved singleton pattern for `UIManager` and other classes
+    * Added 'safe UI operation' pattern to avoid issues with UI calls in trigger contexts
+*   **Cohort Analysis:** Refactored cohort analysis functionality to avoid duplication
+*   **Backend Organisation:** Reorganised backend folder structure and removed outdated files
+
+## 📄 New Documentation
+
+*   **AI Rules:** Added `airules.md` guidelines
+*   **Configuration Options:** Added `configOptions.md` explaining all configuration options
+*   **Code Structure:** Started code structure diagram for better documentation
+
+## 📚 Sheet Copies
+
+You can find copies of the sheets with the latest code in this Google Drive folder: [Google Drive Folder](https://drive.google.com/drive/folders/1Ah-hUohthVpk_D2b4e9d0s7dsSaae7tN?usp=sharing)
+
+## ⬆️ Updating to v0.4.3
+
+If you already have Assessment Bot running, you can update to v0.4.3 by following these steps:
+
+1.  Open your existing Admin Sheet.
+2.  Click on **Assessment Bot** -> **Settings** -> **Update Version**.
+3.  Select the **v0.4.3** option and follow the instructions.
+
+## 📋 Detailed Commit History
+
+*   Reorganised `ConfigurationDialog.html` to have tabs for each menu settings
+*   Added error handling for 403 status in `BaseRequestManager`
+*   Added a `revokeAuthorisation` function to the assessment record
+*   Modified `createTimeBasedTrigger` to add the `triggerTime` parameter
+*   Fixed typos in `TriggerController` affecting method calls
+*   Added authentication revocation parameters and supporting code
+*   Changed auth and init flow with installable `onOpen` trigger
+*   Created `InitController` class and moved global functions
+*   Implemented initialisation of `ConfigurationManager` from properties store
+*   Added `airules.md` documentation
+*   Begun refactoring singleton instantiation to `singletons.js`
+*   Enhanced `UpdateManager` with error handling and cloning functionality
+*   Refactored `UpdateManager` into a `BaseUpdateAndInit` class
+*   Added `configOptions.md` explaining configuration options
+*   Updated README and fixed URLs
+*   Added extra error handling to `InitController`
+*   Encapsulated UI and Google Classroom logic
+*   Improved Google Classroom integration and initialisation
+*   Reintroduced the `warmUpLLM` method
+*   Modified `ProgressModal` UI elements
+*   Started code structure diagram
+*   Made the grammar assessment harsher
+*   Fixed caching mechanism to hash reference and content hashes
+*   Added Docker build action for Langflow image
+*   Updated flows to use newer Gemini models
+*   Added 'Deploy with Cloud Run' button
+*   Refactored cohort analysis functionality
+*   Fixed bugs with Assessment Record Sheet IDs
+*   Implemented 'safe UI operation' pattern
+*   Added handling for authorisation parameters
+*   Updated GitHub Actions workflow for testing and deployment
+
 # 🚀 v0.4.2
 
 ## ✨ Enhancements
@@ -8,7 +92,7 @@
 
 ## 🐛 Bug Fixes
 
-*   **Assessment Record Deserialization:** Fixed issue with ensuring that assessment records reliably deserialise data after update.
+*   **Assessment Record Deserialisation:** Fixed issue with ensuring that assessment records reliably deserialise data after update.
 *   **Properties Store Check:** Fixed properties store check to ensure that data is reliably deserialised upon update.
 *   **Progress Tracker Updates**: Re-added lost `progressTracker` updates when cloning individual assessment records.
 *   **Typos**: Fixed typos that were causing the update mechanism to fail.
@@ -35,7 +119,7 @@ If you already have Assessment Bot running, you can update to v0.4.2 by followin
 ## ✨ Enhancements
 
 *   **Improved Student Fetching:** Added a loop to `fetchAllStudents` method to ensure all students are added, even in classes larger than 30 students. (Closes #21)
-*   **Explicit Auth Scopes:**  Added explicit auth scopes in `appscript.json` to address potential authorization issues. (#17)
+*   **Explicit Auth Scopes:**  Added explicit auth scopes in `appscript.json` to address potential authorisation issues. (#17)
 *   **Repo Rename Updates**: Updated update URLs after repository rename.
 *   **Version Bump**: Bumped version to v0.4.1
 

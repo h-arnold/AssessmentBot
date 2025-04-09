@@ -1,4 +1,7 @@
 /node_modules
 .clasp.json
 .publicTemplateFiles
-/.VSCodeCounter
+.VSCodeCounter
+*.clasprc.json
+*credentials.json
+

@@ -34,7 +34,10 @@ class PropertiesCloner extends BaseSheetManager {
     if (serialiseDocProps) {
       const docKeys = this.docProperties.getKeys();
       docKeys.forEach(key => {
-        data.push(['DOCUMENT', key, this.docProperties.getProperty(key)]);
+        // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
+        if (key !== 'scriptAuthorised') {
+          data.push(['DOCUMENT', key, this.docProperties.getProperty(key)]);
+        }
       });
     }
 
@@ -42,7 +45,11 @@ class PropertiesCloner extends BaseSheetManager {
     if (serialiseScriptProps) {
       const scriptKeys = this.scriptProperties.getKeys();
       scriptKeys.forEach(key => {
+      
+      // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
+      if (key !== 'scriptAuthorised') {
         data.push(['SCRIPT', key, this.scriptProperties.getProperty(key)]);
+      }
       });
     }
 
@@ -68,10 +75,13 @@ class PropertiesCloner extends BaseSheetManager {
 
     rows.forEach(row => {
       const [type, key, value] = row;
+      // Skip 'scriptAuthorised' property
+      if (key === 'scriptAuthorised') return;
+      
       if (type === 'DOCUMENT') {
-        this.docProperties.setProperty(key, value);
+      this.docProperties.setProperty(key, value);
       } else if (type === 'SCRIPT') {
-        this.scriptProperties.setProperty(key, value);
+      this.scriptProperties.setProperty(key, value);
       }
     });
 

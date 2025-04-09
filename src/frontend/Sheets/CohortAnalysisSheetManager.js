@@ -24,8 +24,46 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       // 4. Write headers via batch update
       this.ensureSheetHasEnoughColumns(headers.length);
       const headerRequest = this.createHeaderValuesRequest(sheetId, headers, 0);
-      const headerFormattingRequest = this.createHeaderFormattingRequest(sheetId, headers.length, 0, 1);
-      this.requests.push(headerRequest, headerFormattingRequest);
+
+      // Format the name column
+      const nameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
+      {
+        horizontalAlignment: "LEFT",
+        verticalAlignment: "BOTTOM",
+        autoResize: true
+      },
+      0,
+      1);
+
+
+      // Format the criterion columns
+      const criterionFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
+      {
+        horizontalAlignment: "CENTER",
+        textRotation: {angle: 45}
+      },
+      1,
+      5);
+
+      // Format the class name header
+      // Format the name column
+      const classNameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
+      {
+        horizontalAlignment: "CENTER",
+        verticalAlignment: "BOTTOM",
+        autoResize: true
+      },
+      5,
+      6);
+
+      // Push the header requests to the main request array
+
+      this.requests.push(headerRequest,
+        nameHeaderFormattingRequest,
+        classNameHeaderFormattingRequest,
+        criterionFormattingRequest);
+
+
 
       // 5. Identify which columns should be numeric - this enables us to work out which columns to conditionally format
       const numericColumnIndices = this._identifyNumericColumns(headers);

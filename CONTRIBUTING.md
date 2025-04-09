@@ -38,6 +38,26 @@ Please modify my code/documentation to match with the style guide provided. Ensu
 
 # 🖥️ Contributing Code 
 
+## 🌲Folder and Code Structure
+
+``` bash
+.
+└── src
+    └── frontend
+        ├── BaseClassFolder
+        │   ├── BaseClass.js
+        │   ├── Subclass(es).js
+        │   └── globals.js 
+        ├── UIManager
+        │   ├── appScriptFrontendHTML.html
+        │   └── UIManager.js
+        └── z_Controllers
+            └── BaseClassController.js
+    
+```
+
+
+
 ## 🛠️ Formatting Style Guide
 
 ### File and Class Naming

@@ -67,7 +67,7 @@ class GoogleClassroomManager {
       console.log('Classrooms fetched and written to sheet successfully with createAssessmentRecord column.');
     } catch (error) {
       console.error(`Failed to fetch Google Classrooms: ${error.message}`);
-      throw error;
+      throw new Error(`${error.message} \n ${error.stack}`);
     }
   }
 
@@ -133,7 +133,7 @@ class GoogleClassroomManager {
    * Finally, shares the destination folder with all teacher emails found in the sheet.
    */
   createAssessmentRecords() {
-    this.templateSheetIds = configurationManager.getAssessmentRecordTemplateId();
+    this.templateSheetId = configurationManager.getAssessmentRecordTemplateId();
     this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
 
     // 0) Initialise progress tracker
@@ -241,7 +241,7 @@ class GoogleClassroomManager {
           const errMsg = `Failed to copy template for row ${i + 1}: ${error.message}`;
           this.progressTracker.logError(errMsg);
           console.error(errMsg);
-          throw new error(errMsg);
+          throw new Error(errMsg);
         }
       }
     }
