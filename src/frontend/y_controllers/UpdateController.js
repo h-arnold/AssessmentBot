@@ -1,11 +1,10 @@
-
 /**
  * Controller methods for the UpdateManager class.
  */
 class UpdateController {
   constructor() {
     this.updateManager = new UpdateManager();
-    this.uiManager = new UIManager();
+    this.uiManager = UIManager.getInstance();
     this.scriptAppManager = new ScriptAppManager();
   }
   /**

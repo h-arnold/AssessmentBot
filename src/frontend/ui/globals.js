@@ -6,7 +6,7 @@
  * @returns {UIManager} The singleton UIManager instance
  */
 function getUIManager() {
-  return new UIManager(); // Constructor handles singleton pattern
+  return UIManager.getInstance(); 
 }
 
 /**
@@ -23,7 +23,7 @@ function openReferenceSlideModal(assignmentData) {
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-    const uiManager = getUIManager();
+    const uiManager = UIManager.getInstance();
     uiManager.showProgressModal();
 }
 
@@ -31,7 +31,7 @@ function showProgressModal() {
  * Shows the configuration dialog modal.
  */
 function showConfigurationDialog() {
-    const uiManager = getUIManager();
+    const uiManager = UIManager.getInstance();
     return uiManager.showConfigurationDialog();
 }
 
@@ -39,7 +39,7 @@ function showConfigurationDialog() {
  * Shows the assignment dropdown modal.
  */
 function showAssignmentDropdown() {
-    const uiManager = getUIManager();
+    const uiManager = UIManager.getInstance();
     return uiManager.showAssignmentDropdown();
 }
 
@@ -83,16 +83,16 @@ function showVersionSelector() {
  */
 
 function getClassroomData() {
-    const uiManager = new UIManager();
+    const uiManager = UIManager.getInstance();
     return uiManager.getClassroomData();
 }
 
 function saveClassroomData(rows) {
-    const uiManager = new UIManager();
+    const uiManager = UIManager.getInstance();
     uiManager.saveClassroomData(rows);
 }
 
 function showClassroomEditorModal() {
-    const uiManager = new UIManager();
+    const uiManager = UIManager.getInstance();
     uiManager.showClassroomEditorModal();
 }

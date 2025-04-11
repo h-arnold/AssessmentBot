@@ -9,7 +9,7 @@ class InitController {
     constructor() {
         // Attempt to instantiate UIManager only in user context to avoid issues with triggers
         try {
-            this.uiManager = new UIManager();
+            this.uiManager = UIManager.getInstance();
             console.log("UIManager instantiated successfully.");
         } catch (error) {
             console.error("UIManager cannot be instantiated: " + error);

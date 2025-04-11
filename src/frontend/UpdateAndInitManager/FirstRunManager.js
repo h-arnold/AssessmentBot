@@ -15,7 +15,7 @@ class FirstRunManager extends BaseUpdateAndInit {
       configurationManager.setIsAdminSheet(true);
       
       // (Optionally) re-instantiate the UI manager for first-run dialogs.
-      this.uiManager = new UIManager(this.sheet);
+      this.uiManager = UIManager.getInstance();
     }
     
     /**
@@ -53,4 +53,3 @@ class FirstRunManager extends BaseUpdateAndInit {
       // Step 5: Additional prompting for Google Classroom setup can be handled via the wizard or further dialogs.
     }
   }
-  

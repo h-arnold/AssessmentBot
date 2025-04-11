@@ -28,6 +28,17 @@
 
 class UIManager {
   /**
+   * Static method to get the UIManager instance
+   * @returns {UIManager} The singleton UIManager instance
+   */
+  static getInstance() {
+    if (!UIManager.instance) {
+      UIManager.instance = new UIManager(true);
+    }
+    return UIManager.instance;
+  }
+
+  /**
    * Static method to check if UI is available in the current execution context
    * @returns {boolean} True if UI is available, false otherwise
    */
@@ -44,10 +55,13 @@ class UIManager {
     }
   }
 
-  constructor() {
-    // Return existing instance if available
-    if (UIManager.instance) {
-      return UIManager.instance;
+  constructor(isSingletonCreator = false) {
+    // The constructor return pattern doesn't work in JavaScript
+    // Instead we use a more reliable approach with a private parameter
+    if (!isSingletonCreator && UIManager.instance) {
+      console.log("UIManager already exists - returning existing instance via getInstance()");
+      // We can't actually return the instance here, that's why we need the static method
+      return;
     }
 
     // Instead of throwing an error, set an availability flag
@@ -65,8 +79,10 @@ class UIManager {
     // Always initialize this regardless of UI availability
     this.classroomManager = new GoogleClassroomManager();
 
-    // Store the instance
-    UIManager.instance = this;
+    // Store the instance only if we don't already have one
+    if (!UIManager.instance) {
+      UIManager.instance = this;
+    }
   }
 
   /**

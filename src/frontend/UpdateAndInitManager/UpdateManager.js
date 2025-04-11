@@ -162,7 +162,7 @@ class UpdateManager extends BaseUpdateAndInit {
    */
   updateAssessmentRecords() {
     this.progressTracker = new ProgressTracker();
-    const uiManager = new UIManager();
+    const uiManager = UIManager.getInstance();
     uiManager.showProgressModal();
 
     let step = 0;

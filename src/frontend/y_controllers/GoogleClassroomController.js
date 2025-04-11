@@ -58,7 +58,7 @@ class GoogleClassroomController {
         // Lazy isntantiation of ProgressTracker and UIManager as they're only needed for this method.
         // TODO: Potentially move this method elsewhere - this would probably be better in the BaseUpdateAndInit class I think
         const progressTracker = new ProgressTracker();
-        const uiManager = new UIManager();
+        const uiManager = UIManager.getInstance();
 
         try {
             // Start progress tracking
