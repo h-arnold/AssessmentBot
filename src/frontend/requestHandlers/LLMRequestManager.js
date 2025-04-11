@@ -53,7 +53,7 @@ class LLMRequestManager extends BaseRequestManager {
     assignment.studentTasks.forEach(studentTask => {
       Object.keys(studentTask.responses).forEach(taskKey => {
         const response = studentTask.responses[taskKey];
-        const { uid, slideId, response: rawStudentResponse, contentHash: contentHashResponse } = response;
+        const { uid, response: rawStudentResponse, contentHash: contentHashResponse } = response;
 
         const studentResponse = rawStudentResponse ?? '';
 
@@ -87,7 +87,7 @@ class LLMRequestManager extends BaseRequestManager {
           
           // Assign not attempted assessment
           this.assignAssessmentToStudentTask(uid, notAttemptedAssessment, assignment);
-          console.log(`Task not attempted for UID: ${uid}. Assigned default assessment.`);
+          console.log(`Task not attempted for UID: ${uid}. Assigned 'N' for all criteria'.`);
           return; // Skip adding to requests
         }
 
