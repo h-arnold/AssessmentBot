@@ -78,6 +78,7 @@ class LLMRequestManager extends BaseRequestManager {
         }
 
         const contentHashReference = task.contentHash;
+        const contentHashEmpty = task.emptyContentHash;
 
         // Use CacheManager to check for cached assessments
         const cachedAssessment = this.cacheManager.getCachedAssessment(contentHashReference, contentHashResponse);
@@ -85,6 +86,17 @@ class LLMRequestManager extends BaseRequestManager {
           // Assign assessment directly from cache
           this.assignAssessmentToStudentTask(uid, cachedAssessment, assignment);
           console.log(`Cache hit for UID: ${uid}. Assigned assessment from cache.`);
+          return; // Skip adding to requests
+        }
+
+// Check for unattempted tasks (empty task matches student response)
+        if (contentHashEmpty === contentHashResponse) {
+          // Create default "Not Attempted" assessment
+          const notAttemptedAssessment = this.createNotAttemptedAssessment();
+          
+          // Assign not attempted assessment
+          this.assignAssessmentToStudentTask(uid, notAttemptedAssessment, assignment);
+          console.log(`Task not attempted for UID: ${uid}. Assigned default assessment.`);
           return; // Skip adding to requests
         }
 
@@ -387,5 +399,20 @@ class LLMRequestManager extends BaseRequestManager {
       }
     }
     return null;
+  }
+
+  /**
+   * Creates a default assessment for unattempted tasks.
+   * @return {Object} - An object with default assessments for each criterion.
+   */
+  createNotAttemptedAssessment() {
+    const criteria = ['completeness', 'accuracy', 'spag'];
+    const assessments = {};
+    
+    criteria.forEach(criterion => {
+      assessments[criterion] = new Assessment("N", "Task not attempted");
+    });
+    
+    return assessments;
   }
 }
