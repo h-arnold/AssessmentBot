@@ -24,6 +24,20 @@
       .input-field input[type="text"] {
         margin-bottom: 20px;
       }
+      .error-message {
+        color: #F44336;
+        font-size: 12px;
+        margin-top: -15px;
+        margin-bottom: 15px;
+        display: none;
+      }
+      input.invalid {
+        border-bottom: 1px solid #F44336 !important;
+        box-shadow: 0 1px 0 0 #F44336 !important;
+      }
+      input.invalid + label {
+        color: #F44336 !important;
+      }
     </style>
   </head>
   <body>
@@ -35,6 +49,7 @@
           id="referenceSlideId" 
           placeholder="Reference Slide ID" 
           value="<?= savedSlideIds.referenceSlideId || '' ?>"
+          onkeyup="validateSlideIds()"
         >
         <label for="referenceSlideId" class="active">Reference Slide ID</label>
       </div>
@@ -44,22 +59,52 @@
           id="emptySlideId" 
           placeholder="Empty Slide ID" 
           value="<?= savedSlideIds.emptySlideId || '' ?>"
+          onkeyup="validateSlideIds()"
         >
         <label for="emptySlideId" class="active">Empty Slide ID</label>
+      </div>
+      <div id="idMatchError" class="error-message">
+        Reference and empty slide IDs must be different
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
-      <button class="btn waves-effect waves-light" onclick="saveAndRun()">Go</button>
+      <button class="btn waves-effect waves-light" id="submitButton" onclick="saveAndRun()">Go</button>
     </div>
 
     <script>
+      function validateSlideIds() {
+        const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
+        const emptySlideId = document.getElementById('emptySlideId').value.trim();
+        const errorMessage = document.getElementById('idMatchError');
+        const inputs = [document.getElementById('referenceSlideId'), document.getElementById('emptySlideId')];
+        
+        // Check if both fields have values and if they match
+        if (referenceSlideId && emptySlideId && referenceSlideId === emptySlideId) {
+          // Show error
+          errorMessage.style.display = 'block';
+          inputs.forEach(input => input.classList.add('invalid'));
+          return false;
+        } else {
+          // Clear error
+          errorMessage.style.display = 'none';
+          inputs.forEach(input => input.classList.remove('invalid'));
+          return true;
+        }
+      }
+
       function saveAndRun() {
         const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
         const emptySlideId = document.getElementById('emptySlideId').value.trim();
 
         if (!referenceSlideId || !emptySlideId) {
           alert('Please enter both Reference Slide ID and Empty Slide ID.');
+          return;
+        }
+        
+        // Validate IDs don't match
+        if (!validateSlideIds()) {
+          M.toast({html: 'Reference and empty slide IDs cannot be the same.', classes: 'red'});
           return;
         }
 
@@ -86,9 +131,10 @@
         google.script.host.close();
       }
 
-      // Initialise Materialise text fields
+      // Initialise Materialise text fields and run initial validation
       document.addEventListener('DOMContentLoaded', function() {
         M.updateTextFields();
+        validateSlideIds();
       });
     </script>
 

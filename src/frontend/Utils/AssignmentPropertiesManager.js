@@ -10,8 +10,22 @@ class AssignmentPropertiesManager {
      * Saves slide IDs for a specific assignment.
      * @param {string} assignmentTitle - The title of the assignment.
      * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
+     * @throws {Error} When reference and empty slide IDs are the same.
      */
     static saveSlideIdsForAssignment(assignmentTitle, slideIds) {
+        // Validate that the slide IDs aren't the same
+        if (slideIds.referenceSlideId && slideIds.emptySlideId && 
+            slideIds.referenceSlideId === slideIds.emptySlideId) {
+            
+            const errorMessage = 'Reference slide ID and empty slide ID cannot be the same.';
+            
+            // Log error using ProgressTracker
+            const progressTracker = ProgressTracker.getInstance();
+            progressTracker.logError(errorMessage);
+            
+            throw new Error(errorMessage);
+        }
+        
         const scriptProperties = PropertiesService.getScriptProperties();
         // Use the assignment ID as a key
         const key = `assignment_${assignmentTitle}`;
