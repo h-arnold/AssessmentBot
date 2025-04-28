@@ -22,12 +22,12 @@
     "github.copilot.chat.agent.thinkingTool": true,
     "github.copilot.chat.codeGeneration.instructions": [
         {
-            "file": "./vscode/.copilot-codeGeneration-instructions.md"
+            "file": ".github/.copilot-codeGeneration-instructions.md"
         }
     ],
     "github.copilot.chat.commitMessageGeneration.instructions": [
         {
-            "file": "./vscode/.copilot-commit-message-instructions.md"
+            "file": ".github/.copilot-commit-message-instructions.md"
         }
     ],
     "[markdown]": {
