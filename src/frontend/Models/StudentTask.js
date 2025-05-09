@@ -133,12 +133,12 @@ class StudentTask {
 
   /**
    * Extracts and assigns responses from the student's submission document.
-   * @param {SlideContentManager} slideContentManager - An instance of SlideContentManager.
+   * @param {SlidesParser} slidesParser - An instance of SlidesParser.
    * @param {Object} tasks - An object of Task instances from the Assignment, keyed by taskTitle.
    */
-  extractAndAssignResponses(slideContentManager, tasks) {
+  extractAndAssignResponses(slidesParser, tasks) {
     // Extract tasks from the student's submission document
-    const studentTasks = slideContentManager.extractTasksFromSlides(this.documentId);
+    const studentTasks = slidesParser.extractTasksFromSlides(this.documentId);
 
     // Create a map of taskTitle to task data (slideId and response)
     const submissionMap = {};

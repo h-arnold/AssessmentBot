@@ -1,13 +1,13 @@
 /**
- * SlideContentManager Class
+ * SlidesParser Class
  * 
  * Handles extraction and processing of content from Google Slides presentations.
  * Generates slide export URLs.
  * Handles per-document rate limiting.
  */
-class SlideContentManager {
+class SlidesParser {
   /**
-   * Constructs a SlideContentManager instance.
+   * Constructs a SlidesParser instance.
    */
   constructor() {
     // No need for requestManager since we're not fetching images here

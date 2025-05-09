@@ -61,12 +61,12 @@ class Assignment {
    * Combines reference and empty content based on task keys.
    */
   populateTasksFromSlides() {
-    const slideContentManager = new SlideContentManager();
+    const slidesParser = new SlidesParser();
 
     // Extract reference tasks
-    const referenceTasks = slideContentManager.extractTasksFromSlides(this.referenceDocumentId, "reference");
+    const referenceTasks = slidesParser.extractTasksFromSlides(this.referenceDocumentId, "reference");
     // Extract empty tasks
-    const emptyTasks = slideContentManager.extractTasksFromSlides(this.emptyDocumentId, "empty");
+    const emptyTasks = slidesParser.extractTasksFromSlides(this.emptyDocumentId, "empty");
 
     // Create a map of tasks from referenceTasks
     const tasksMap = {};
@@ -167,11 +167,11 @@ class Assignment {
     * Processes all student submissions by extracting responses.
     */
   processAllSubmissions() {
-    const slideContentManager = new SlideContentManager();
+    const slidesParser = new SlidesParser();
 
     this.studentTasks.forEach(studentTask => {
       if (studentTask.documentId) {
-        studentTask.extractAndAssignResponses(slideContentManager, this.tasks);
+        studentTask.extractAndAssignResponses(slidesParser, this.tasks);
       } else {
         console.warn(`No document ID for student: ${studentTask.student.email}. Skipping response extraction.`);
       }
