@@ -45,9 +45,14 @@ function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
   return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId)
 }
 
-// Saves the reference and template slide Ids to avoid having to do it each assessment run.
-function saveSlideIdsForAssignment(assignmentId, slideIds) {
-  return AssessmentBot.saveSlideIdsForAssignment(assignmentId, slideIds)
+/**
+ * Saves slide IDs for a specific assignment by calling the main script's function.
+ * @param {string} assignmentId The ID of the assignment.
+ * @param {Object} documentIds An object containing reference and template document IDs.
+ * @return {void}
+ */
+function saveSlideIdsForAssignment(assignmentId, documentIds) {
+  return AssessmentBot.saveDocumentIdsForAssignment(assignmentId, documentIds)
 }
 
 /**

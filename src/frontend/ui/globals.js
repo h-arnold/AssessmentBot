@@ -52,14 +52,14 @@ function showClassroomDropdown() {
 }
 
 /**
- * Saves slide IDs for a specific assignment.
- *
- * @param {string} assignmentId - The ID of the assignment.
- * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
+ * Saves document IDs for a specific assignment by calling the UIManager's method.
+ * @param {string} assignmentId The ID of the assignment.
+ * @param {Object} documentIds An object containing reference and template document IDs.
+ * @return {void}
  */
-function saveSlideIdsForAssignment(assignmentId, slideIds) {
+function saveDocumentIdsForAssignment(assignmentId, documentIds) {
   const uiManager = getUIManager();
-  return uiManager.saveSlideIdsForAssignment(assignmentId, slideIds);
+  return uiManager.saveDocumentIdsForAssignment(assignmentId, documentIds);
 }
 
 /**

@@ -38,15 +38,15 @@ class AssignmentController {
    * Also attempts to warm up the LLM backend asynchronously.
    * 
    * @param {string} assignmentTitle - The title of the assignment
-   * @param {string[]} slideIds - Array of Google Slides IDs to be processed
+   * @param {Object} documentIds - Array of Google Slides IDs to be processed. Changed from slideIds
    * @param {string} assignmentId - Unique identifier for the assignment
    * @param {string} referenceSlideId - ID of the reference/master slide
    * @param {string} templateSlideId - ID of the template slide
    * @throws {Error} If saving or initialization process fails
    */
-  saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId) {
+  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, referenceSlideId, templateSlideId) {
     try {
-      AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
+      AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
       this.startProcessing(assignmentId, referenceSlideId, templateSlideId);
       this.progressTracker.startTracking();
 
