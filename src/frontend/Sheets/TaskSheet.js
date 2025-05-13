@@ -10,6 +10,7 @@
  * @extends BaseSheetManager
  * @property {GoogleAppsScript.Spreadsheet.Sheet} sheet - The underlying Google Sheet object (inherited from BaseSheetManager).
  * @property {string} sheetName - The name of the Google Sheet.
+ * @property {string} sheetId - The ID of the Google Sheet.
  * @property {ProgressTracker} progressTracker - An instance of the ProgressTracker singleton for logging progress and errors.
  * @property {Array<Array<string>> | null} formulaArray - A 2D array storing all formulae from the sheet. Null if not yet populated or if an error occurred.
  * @property {string | null} type - The type of the sheet, can be 'reference', 'template', or 'studentTask'. Null if not set or invalid.
@@ -27,6 +28,7 @@ class TaskSheet extends BaseSheetManager {
     }
     super(sheet); // Initializes this.sheet via BaseSheetManager
     this.sheetName = sheet.getName();
+    this.sheetId = sheet.getSheetId(); // Add and populate sheetId
     this.progressTracker = ProgressTracker.getInstance();
     this.formulaArray = null; // Initialize formulaArray
     this.type = null; // Initialize type

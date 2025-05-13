@@ -19,40 +19,82 @@ class SheetsParser extends DocumentParser {
    * @param {string} documentId - The ID of the spreadsheet document
    * @param {string} type - 'reference' or 'template'
    * @return {Object} Map of sheet names to TaskSheet objects
+   * @private
    */
   _extractFormulaeFromTaskSheets(documentId, type) {
     const tasks = {};
     if (!documentId) return tasks;
     const spreadsheet = SpreadsheetApp.openById(documentId);
     const sheets = spreadsheet.getSheets();
-    for (let i = 0; i < sheets.length; i++) {
-      const sheet = sheets[i];
+    sheets.forEach(sheet => {
       const taskSheet = new TaskSheet(sheet, type);
       if (typeof taskSheet.getAllFormulae === 'function') {
         taskSheet.getAllFormulae();
       }
       const taskName = taskSheet.sheetName;
       tasks[taskName] = taskSheet;
-    }
+    });
     return tasks;
   }
   
   /**
-   * Extracts tasks from Google Sheets documents.
+   * Extracts raw formulae data from Google Sheets documents.
    * 
    * @param {string} referenceDocumentId - The ID of the reference document
-   * @param {string} templateDocumentId - An array of template document IDs
-   * @return {Object} An object containing referenceTasks and templateTasks
+   * @param {string} templateDocumentId - The ID of the template document
+   * @return {Object} An object containing referenceTasks and templateTasks with raw formula data
+   * @private
    */
-  extractTasksFromSheet(referenceDocumentId, templateDocumentId) {
+  _extractRawSheetData(referenceDocumentId, templateDocumentId) {
     try {
       const referenceTasks = this._extractFormulaeFromTaskSheets(referenceDocumentId, 'reference');
       const templateTasks = this._extractFormulaeFromTaskSheets(templateDocumentId, 'template');
       return { referenceTasks, templateTasks };
     } catch (error) {
-      console.error('Error in extractTasksFromSheet:', error);
+      console.error('Error in _extractRawSheetData:', error);
       this.progressTracker?.logError('Failed to extract tasks from sheets');
       return { referenceTasks: {}, templateTasks: {} };
+    }
+  }
+  
+  /**
+   * Extracts Task instances from Google Sheets documents.
+   * Implementation of the abstract method from DocumentParser.
+   * @param {string} referenceDocumentId - The ID of the reference document.
+   * @param {string} templateDocumentId - The ID of the template document.
+   * @return {Task[]} - An array of Task instances extracted from the sheets.
+   */
+  extractTasks(referenceDocumentId, templateDocumentId) {
+    try {
+      // Get formula differences directly
+      const formulaDifferences = this.processAndCompareSheets(referenceDocumentId, templateDocumentId);
+      const tasks = [];
+      
+      // Iterate through each sheet/challenge
+      for (const sheetName in formulaDifferences) {
+        const sheetData = formulaDifferences[sheetName];
+        
+        // Create a Task object for each sheet with formula differences
+        const task = new Task(
+          sheetName,                // key (sheet name like "Challenge 1")
+          "spreadsheet",            // taskType always "spreadsheet"
+          sheetData.sheetId,        // pageId is the sheetId
+          null,                     // imageCategory is null
+          sheetData.formulas,       // taskReference is the array of formulae and locations
+          null,                     // taskNotes is null
+          null,                     // templateContent is null
+          Utils.generateHash(JSON.stringify(sheetData.formulas)), // contentHash
+          null                      // templateContentHash is null
+        );
+        
+        tasks.push(task);
+      }
+      
+      return tasks;
+    } catch (error) {
+      console.error('Error in extractTasks:', error);
+      this.progressTracker?.logError('Failed to extract tasks from sheets');
+      return [];
     }
   }
   
@@ -87,8 +129,9 @@ class SheetsParser extends DocumentParser {
         );
         
         if (differences.length > 0) {
-          // Create a nested structure with formulas inside each taskName
+          // Add sheetId to each taskName entry
           results[taskName] = {
+            sheetId: referenceSheet.sheetId,
             formulas: differences
           };
         }
@@ -147,7 +190,7 @@ class SheetsParser extends DocumentParser {
    */
   processAndCompareSheets(referenceDocumentId, templateDocumentId) {
     try {
-      const extractedTasks = this.extractTasksFromSheet(referenceDocumentId, templateDocumentId);
+      const extractedTasks = this._extractRawSheetData(referenceDocumentId, templateDocumentId);
       return this.compareFormulae(extractedTasks);
     } catch (error) {
       console.error('Error in processAndCompareSheets:', error);
