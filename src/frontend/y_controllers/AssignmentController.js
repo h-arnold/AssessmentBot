@@ -41,13 +41,13 @@ class AssignmentController {
    * @param {string[]} slideIds - Array of Google Slides IDs to be processed
    * @param {string} assignmentId - Unique identifier for the assignment
    * @param {string} referenceSlideId - ID of the reference/master slide
-   * @param {string} emptySlideId - ID of the empty/template slide
+   * @param {string} templateSlideId - ID of the template slide
    * @throws {Error} If saving or initialization process fails
    */
-  saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
+  saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId) {
     try {
       AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
-      this.startProcessing(assignmentId, referenceSlideId, emptySlideId);
+      this.startProcessing(assignmentId, referenceSlideId, templateSlideId);
       this.progressTracker.startTracking();
 
       // Null check is necessary because UIManager may be null when running from time-based triggers
@@ -73,10 +73,10 @@ class AssignmentController {
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} referenceSlideId - The ID of the reference/solution slide presentation
-   * @param {string} emptySlideId - The ID of the empty/template slide presentation
+   * @param {string} templateSlideId - The ID of the template slide presentation
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
-  startProcessing(assignmentId, referenceSlideId, emptySlideId) {
+  startProcessing(assignmentId, referenceSlideId, templateSlideId) {
     const properties = PropertiesService.getDocumentProperties();
     let triggerId;
 
@@ -92,7 +92,7 @@ class AssignmentController {
     try {
       properties.setProperty('assignmentId', assignmentId);
       properties.setProperty('referenceSlideId', referenceSlideId);
-      properties.setProperty('emptySlideId', emptySlideId);
+      properties.setProperty('templateSlideId', templateSlideId);
       properties.setProperty('triggerId', triggerId);
       console.log("Properties set for processing.");
     } catch (error) {
@@ -120,7 +120,7 @@ class AssignmentController {
    * @returns {void}
    * 
    * Dependencies:
-   * - Requires document properties: assignmentId, referenceSlideId, emptySlideId, triggerId
+   * - Requires document properties: assignmentId, referenceSlideId, templateSlideId, triggerId
    * - Uses services: LockService, PropertiesService
    * - Relies on controllers: triggerController, progressTracker, classroomManager
    * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
@@ -138,11 +138,11 @@ class AssignmentController {
       const properties = PropertiesService.getDocumentProperties();
       const assignmentId = properties.getProperty('assignmentId');
       const referenceSlideId = properties.getProperty('referenceSlideId');
-      const emptySlideId = properties.getProperty('emptySlideId');
+      const templateSlideId = properties.getProperty('templateSlideId');
       const triggerId = properties.getProperty('triggerId');
       let step = 1;
 
-      if (!assignmentId || !referenceSlideId || !emptySlideId || !triggerId) {
+      if (!assignmentId || !referenceSlideId || !templateSlideId || !triggerId) {
         this.triggerController.removeTriggers('triggerProcessSelectedAssignment');
         throw new Error("Missing parameters for processing.");
       }
@@ -158,7 +158,7 @@ class AssignmentController {
       this.progressTracker.updateProgress(step++, `Course ID retrieved: ${courseId}`);
 
       this.progressTracker.updateProgress(step++, "Creating Assignment instance.");
-      const assignment = new Assignment(courseId, assignmentId, referenceSlideId, emptySlideId);
+      const assignment = new Assignment(courseId, assignmentId, referenceSlideId, templateSlideId);
       this.progressTracker.updateProgress(null, "Assignment instance created.");
 
       this.progressTracker.updateProgress(step++, "Fetching all students.");
@@ -218,7 +218,7 @@ class AssignmentController {
         const properties = PropertiesService.getDocumentProperties();
         properties.deleteProperty('assignmentId');
         properties.deleteProperty('referenceSlideId');
-        properties.deleteProperty('emptySlideId');
+        properties.deleteProperty('templateSlideId');
         properties.deleteProperty('triggerId');
         console.log("Document properties cleaned up.");
       } catch (cleanupError) {

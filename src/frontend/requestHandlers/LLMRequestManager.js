@@ -70,18 +70,18 @@ class LLMRequestManager extends BaseRequestManager {
           throw new Error(errorMessage);
         }
 
-        if (task.emptyContent === null || task.emptyContent === undefined) {
-          const errorMessage = `Missing emptyContent for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
+        if (task.templateContent === null || task.templateContent === undefined) {
+          const errorMessage = `Missing templateContent for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
           console.error(errorMessage);
-          Utils.toastMessage(errorMessage, "Empty Task Error", 5);
+          Utils.toastMessage(errorMessage, "Template Task Error", 5);
           throw new Error(errorMessage);
         }
 
         const contentHashReference = task.contentHash;
-        const contentHashEmpty = task.emptyContentHash;
+        const contentHashTemplate = task.templateContentHash;
 
-        // Check for unattempted tasks (empty task matches student response)
-        if (contentHashEmpty === contentHashResponse) {
+        // Check for unattempted tasks (template task matches student response)
+        if (contentHashTemplate === contentHashResponse) {
           // Create default "Not Attempted" assessment
           const notAttemptedAssessment = this.createNotAttemptedAssessment();
           
@@ -144,7 +144,7 @@ class LLMRequestManager extends BaseRequestManager {
         const tweaks = {};
         tweaks[tweakId] = {
           referenceTask: task.taskReference,
-          emptyTask: task.emptyContent,
+          templateTask: task.templateContent,
           studentTask: studentResponse
           // uid is stored separately for easy access
         };

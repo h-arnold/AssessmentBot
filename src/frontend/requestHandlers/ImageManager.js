@@ -28,11 +28,11 @@ class ImageManager extends BaseRequestManager {
                         uid: task.uid + '-reference'  // Append 'reference' to distinguish
                     });
                 }
-                if (task.emptyContent) {
+                if (task.templateContent) {
                     slideUrls.push({
-                        documentId: assignment.emptyDocumentId,
-                        slideURL: task.emptyContent,
-                        uid: task.uid + '-empty'  // Append 'empty' to distinguish
+                        documentId: assignment.templateDocumentId,
+                        slideURL: task.templateContent,
+                        uid: task.uid + '-template'  // Append 'template' to distinguish
                     });
                 }
             }
@@ -254,11 +254,11 @@ class ImageManager extends BaseRequestManager {
                     task.taskReference = imageUrl;
                     task.contentHash = contentHashMapping[uidReference]; // Assign contentHash
                 }
-                if (task.emptyContent) {
-                    const uidEmpty = task.uid + '-empty';
-                    const imageUrl = urlMappings[uidEmpty];
-                    task.emptyContent = imageUrl;
-                    task.emptyContentHash = contentHashMapping[uidEmpty];
+                if (task.templateContent) {
+                    const uidTemplate = task.uid + '-template';
+                    const imageUrl = urlMappings[uidTemplate];
+                    task.templateContent = imageUrl;
+                    task.templateContentHash = contentHashMapping[uidTemplate];
                     // Assign contentHash if needed
                 }
             }

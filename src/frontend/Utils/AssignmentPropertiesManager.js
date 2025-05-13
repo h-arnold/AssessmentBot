@@ -9,15 +9,15 @@ class AssignmentPropertiesManager {
     /**
      * Saves slide IDs for a specific assignment.
      * @param {string} assignmentTitle - The title of the assignment.
-     * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
-     * @throws {Error} When reference and empty slide IDs are the same.
+     * @param {Object} slideIds - An object containing referenceSlideId and templateSlideId.
+     * @throws {Error} When reference and template slide IDs are the same.
      */
     static saveSlideIdsForAssignment(assignmentTitle, slideIds) {
         // Validate that the slide IDs aren't the same
-        if (slideIds.referenceSlideId && slideIds.emptySlideId && 
-            slideIds.referenceSlideId === slideIds.emptySlideId) {
+        if (slideIds.referenceSlideId && slideIds.templateSlideId && 
+            slideIds.referenceSlideId === slideIds.templateSlideId) {
             
-            const errorMessage = 'Reference slide ID and empty slide ID cannot be the same.';
+            const errorMessage = 'Reference slide ID and template slide ID cannot be the same.';
             
             // Log error using ProgressTracker
             const progressTracker = ProgressTracker.getInstance();
@@ -36,7 +36,7 @@ class AssignmentPropertiesManager {
     /**
      * Retrieves slide IDs for a specific assignment.
      * @param {string} assignmentTitle - The title of the assignment.
-     * @returns {Object} An object containing referenceSlideId and emptySlideId, or empty object if not found.
+     * @returns {Object} An object containing referenceSlideId and templateSlideId, or empty object if not found.
      */
     static getSlideIdsForAssignment(assignmentTitle) {
         const scriptProperties = PropertiesService.getScriptProperties();

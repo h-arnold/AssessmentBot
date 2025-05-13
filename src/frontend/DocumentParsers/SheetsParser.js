@@ -16,7 +16,7 @@ class SheetsParser extends DocumentParser {
   /**
    * Extracts Task instances from a Google Sheets document.
    * @param {string} documentId - The ID of the Google Sheets document.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the sheets.
    */
   extractTasks(documentId, contentType = "reference") {
@@ -26,7 +26,7 @@ class SheetsParser extends DocumentParser {
   /**
    * Extracts Task instances from a Google Sheets document.
    * @param {string} documentId - The ID of the Google Sheets document.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the sheets.
    * @deprecated Use extractTasks() instead
    */
@@ -51,52 +51,9 @@ class SheetsParser extends DocumentParser {
     return tasks;
   }
 
-  /**
-   * Retrieves all data from a sheet.
-   * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - The sheet to extract data from.
-   * @return {Array<Array<string>>} - 2D array containing the sheet data.
-   */
-  getSheetData(sheet) {
-    const dataRange = sheet.getDataRange();
-    return dataRange.getValues();
-  }
+  
 
-  /**
-   * Processes sheet data to extract tasks.
-   * @param {Array<Array<string>>} data - 2D array containing the sheet data.
-   * @param {string} sheetName - Name of the sheet being processed.
-   * @param {string} contentType - Type of content: "reference", "empty", or null.
-   * @return {Task[]} - Array of Task instances extracted from the sheet data.
-   */
-  processSheetData(data, sheetName, contentType) {
-    const tasks = [];
-    
-    // Find rows with task markers (# for text, ~| for images)
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      
-      // Check if this row contains a task marker
-      for (let j = 0; j < row.length; j++) {
-        const cell = String(row[j]).trim();
-        
-        // Process text tasks (marked with #)
-        if (cell.startsWith('#')) {
-          const key = cell.substring(1).trim();
-          const task = this.createTextTask(key, data, i, j, sheetName, contentType);
-          if (task) tasks.push(task);
-        }
-        
-        // Process image tasks (marked with ~| or |)
-        else if (cell.startsWith('~') || cell.startsWith('|')) {
-          const key = cell.substring(1).trim();
-          const task = this.createImageTask(key, data, i, j, sheetName, contentType);
-          if (task) tasks.push(task);
-        }
-      }
-    }
-    
-    return tasks;
-  }
+
 
   /**
    * Creates a text-based task from sheet data.
@@ -105,7 +62,7 @@ class SheetsParser extends DocumentParser {
    * @param {number} row - Row index of the task marker.
    * @param {number} col - Column index of the task marker.
    * @param {string} sheetName - Name of the sheet.
-   * @param {string} contentType - Type of content: "reference", "empty", or null.
+   * @param {string} contentType - Type of content: "reference", "template", or null.
    * @return {Task|null} - The Task instance or null if creation fails.
    */
   createTextTask(key, data, row, col, sheetName, contentType) {
@@ -131,7 +88,7 @@ class SheetsParser extends DocumentParser {
    * @param {number} row - Row index of the task marker.
    * @param {number} col - Column index of the task marker.
    * @param {string} sheetName - Name of the sheet.
-   * @param {string} contentType - Type of content: "reference", "empty", or null.
+   * @param {string} contentType - Type of content: "reference", "template", or null.
    * @return {Task|null} - The Task instance or null if creation fails.
    */
   createImageTask(key, data, row, col, sheetName, contentType) {
@@ -156,23 +113,23 @@ class SheetsParser extends DocumentParser {
    * @param {string} content - The raw content of the task (string or URL).
    * @param {string} identifier - The unique identifier for the task location.
    * @param {string} taskType - The type of the task: "Text", "Table", "Image".
-   * @param {string|null} contentType - Type of content: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
    * @param {string|null} taskNotes - Optional notes for the task.
    * @return {Task|null} - The Task instance or null if parsing fails.
    * @deprecated Use the superclass parseTask() method instead
    */
   parseTask(key, content, identifier, taskType, contentType, taskNotes = null) {
     let taskReference = null;
-    let emptyContent = null;
+    let templateContent = null;
     let contentHash = null;
-    let emptyContentHash = null;
+    let templateContentHash = null;
 
     if (contentType === "reference") {
       taskReference = content;
       contentHash = Utils.generateHash(content);
-    } else if (contentType === "empty") {
-      emptyContent = content;
-      emptyContentHash = Utils.generateHash(content);
+    } else if (contentType === "template") {
+      templateContent = content;
+      templateContentHash = Utils.generateHash(content);
     } else {
       taskReference = content;
       contentHash = Utils.generateHash(content);
@@ -185,9 +142,9 @@ class SheetsParser extends DocumentParser {
       null,            // imageCategory
       taskReference,
       taskNotes,
-      emptyContent,
+      templateContent,
       contentHash,
-      emptyContentHash
+      templateContentHash
     );
   }
 

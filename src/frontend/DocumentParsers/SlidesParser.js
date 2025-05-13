@@ -35,7 +35,7 @@ class SlidesParser extends DocumentParser {
    * Extracts Task instances from a Google Slides presentation.
    * Implementation of the abstract method from DocumentParser.
    * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the slides.
    */
   extractTasks(documentId, contentType = "reference") {
@@ -46,7 +46,7 @@ class SlidesParser extends DocumentParser {
    * Extracts Task instances from a Google Slides presentation.
    * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
    * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the slides.
    * @deprecated Use extractTasks() instead
    */
@@ -135,23 +135,23 @@ class SlidesParser extends DocumentParser {
   * @param {string} content - The raw content of the task (string or URL).
   * @param {string} slideId - The ID of the slide where the task is located.
   * @param {string} taskType - The type of the task: "Text", "Table", "Image".
-  * @param {string|null} contentType - Type of content: "reference", "empty", or null for default.
+  * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
   * @return {Task|null} - The Task instance or null if parsing fails.
   * @deprecated Use the superclass parseTask() method instead
   */
   parseTask(key, content, slideId, taskType, contentType) {
     let taskReference = null;
-    let emptyContent = null;
+    let templateContent = null;
     let taskNotes = null;
     let contentHash = null;
-    let emptyContentHash = null;
+    let templateContentHash = null;
 
     if (contentType === "reference") {
       taskReference = content;
       contentHash = Utils.generateHash(content);
-    } else if (contentType === "empty") {
-      emptyContent = content;
-      emptyContentHash = Utils.generateHash(content);
+    } else if (contentType === "template") {
+      templateContent = content;
+      templateContentHash = Utils.generateHash(content);
     } else {
       taskReference = content;
       contentHash = Utils.generateHash(content);
@@ -164,9 +164,9 @@ class SlidesParser extends DocumentParser {
       null,          // imageCategory
       taskReference,
       taskNotes,     // Will be assigned separately if present
-      emptyContent,
+      templateContent,
       contentHash,
-      emptyContentHash
+      templateContentHash
     );
   }
 

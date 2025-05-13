@@ -9,9 +9,9 @@ class Task {
      * @param {string|null} imageCategory - Applicable only for images (e.g., "diagram", "block code"). Null otherwise.
      * @param {string|string[]} taskReference - Reference content for assessment (string for Text/Table, array of URLs for Image).
      * @param {string|null} taskNotes - Additional notes for LLM assessment. Can be null.
-     * @param {string|string[]} emptyContent - Blank template content for the task (string or array of URLs).
+     * @param {string|string[]} templateContent - Blank template content for the task (string or array of URLs).
      * @param {string|null} contentHash - Hash of the task content for caching purposes.
-     * @param {string|null} emptyContentHash - Hash of the empty content for caching purposes.
+     * @param {string|null} templateContentHash - Hash of the template content for caching purposes.
      */
     constructor(
         taskTitle,
@@ -20,9 +20,9 @@ class Task {
         imageCategory,
         taskReference = null,
         taskNotes = null,
-        emptyContent = null,
+        templateContent = null,
         contentHash = null,
-        emptyContentHash = null
+        templateContentHash = null
     ) {
         this.taskTitle = taskTitle;          // string
         this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
@@ -30,9 +30,9 @@ class Task {
         this.imageCategory = imageCategory;  // string or null
         this.taskReference = taskReference;  // string or array of URLs (for Image tasks)
         this.taskNotes = taskNotes;          // string or null
-        this.emptyContent = emptyContent;    // string or array of URLs (for Image tasks)
+        this.templateContent = templateContent;    // string or array of URLs (for Image tasks)
         this.contentHash = contentHash;      // string or null
-        this.emptyContentHash = emptyContentHash; // string or null
+        this.templateContentHash = templateContentHash; // string or null
         this.uid = Task.generateUID(taskTitle, slideId);
     }
 
@@ -59,9 +59,9 @@ class Task {
             imageCategory: this.imageCategory,
             taskReference: this.taskReference,
             taskNotes: this.taskNotes,
-            emptyContent: this.emptyContent,
+            templateContent: this.templateContent,
             contentHash: this.contentHash,
-            emptyContentHash: this.emptyContentHash
+            templateContentHash: this.templateContentHash
         };
     }
 
@@ -78,9 +78,9 @@ class Task {
             imageCategory,
             taskReference,
             taskNotes,
-            emptyContent,
+            templateContent,
             contentHash,
-            emptyContentHash
+            templateContentHash
         } = json;
         return new Task(
             taskTitle,
@@ -89,9 +89,9 @@ class Task {
             imageCategory,
             taskReference,
             taskNotes,
-            emptyContent,
+            templateContent,
             contentHash,
-            emptyContentHash
+            templateContentHash
         );
     }
 }

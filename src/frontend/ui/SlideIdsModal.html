@@ -56,15 +56,15 @@
       <div class="input-field">
         <input 
           type="text" 
-          id="emptySlideId" 
-          placeholder="Empty Slide ID" 
-          value="<?= savedSlideIds.emptySlideId || '' ?>"
+          id="templateSlideId" 
+          placeholder="Template Slide ID" 
+          value="<?= savedSlideIds.templateSlideId || '' ?>"
           onkeyup="validateSlideIds()"
         >
-        <label for="emptySlideId" class="active">Empty Slide ID</label>
+        <label for="templateSlideId" class="active">Template Slide ID</label>
       </div>
       <div id="idMatchError" class="error-message">
-        Reference and empty slide IDs must be different
+        Reference and template slide IDs must be different
       </div>
     </div>
     <div class="modal-footer">
@@ -75,12 +75,12 @@
     <script>
       function validateSlideIds() {
         const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
-        const emptySlideId = document.getElementById('emptySlideId').value.trim();
+        const templateSlideId = document.getElementById('templateSlideId').value.trim();
         const errorMessage = document.getElementById('idMatchError');
-        const inputs = [document.getElementById('referenceSlideId'), document.getElementById('emptySlideId')];
+        const inputs = [document.getElementById('referenceSlideId'), document.getElementById('templateSlideId')];
         
         // Check if both fields have values and if they match
-        if (referenceSlideId && emptySlideId && referenceSlideId === emptySlideId) {
+        if (referenceSlideId && templateSlideId && referenceSlideId === templateSlideId) {
           // Show error
           errorMessage.style.display = 'block';
           inputs.forEach(input => input.classList.add('invalid'));
@@ -95,16 +95,16 @@
 
       function saveAndRun() {
         const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
-        const emptySlideId = document.getElementById('emptySlideId').value.trim();
+        const templateSlideId = document.getElementById('templateSlideId').value.trim();
 
-        if (!referenceSlideId || !emptySlideId) {
-          alert('Please enter both Reference Slide ID and Empty Slide ID.');
+        if (!referenceSlideId || !templateSlideId) {
+          alert('Please enter both Reference Slide ID and Template Slide ID.');
           return;
         }
         
         // Validate IDs don't match
         if (!validateSlideIds()) {
-          M.toast({html: 'Reference and empty slide IDs cannot be the same.', classes: 'red'});
+          M.toast({html: 'Reference and template slide IDs cannot be the same.', classes: 'red'});
           return;
         }
 
@@ -113,7 +113,7 @@
 
         const slideIds = {
           referenceSlideId: referenceSlideId,
-          emptySlideId: emptySlideId
+          templateSlideId: templateSlideId
         };
 
         google.script.run
@@ -125,7 +125,7 @@
             slideIds,
             assignmentId,
             referenceSlideId,
-            emptySlideId
+            templateSlideId
           );
 
         google.script.host.close();

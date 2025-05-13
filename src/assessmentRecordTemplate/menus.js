@@ -45,7 +45,7 @@ function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
   return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId)
 }
 
-// Saves the reference and empty slide Ids to avoid having to do it each assessment run.
+// Saves the reference and template slide Ids to avoid having to do it each assessment run.
 function saveSlideIdsForAssignment(assignmentId, slideIds) {
   return AssessmentBot.saveSlideIdsForAssignment(assignmentId, slideIds)
 }
@@ -53,13 +53,13 @@ function saveSlideIdsForAssignment(assignmentId, slideIds) {
 /**
  * Sets the trigger and stores the revelant parameters to process the selected assignment.
  * @param {string} assignmentTitle - The title of the assignment.
- * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
+ * @param {Object} slideIds - An object containing referenceSlideId and templateSlideId.
  * @param {string} assignmentId - The ID of the assignment.
  * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} emptySlideId - The ID of the empty slide.
+ * @param {string} templateSlideId - The ID of the template slide.
  */
-function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
-  AssessmentBot.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
+function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId) {
+  AssessmentBot.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId);
 }
 
 /**
@@ -67,11 +67,11 @@ function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, refer
  *
  * @param {string} assignmentId - The ID of the assignment.
  * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} emptySlideId - The ID of the empty slide.
+ * @param {string} templateSlideId - The ID of the template slide.
  * @returns {string} The unique process ID.
  */
-function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
-  return AssessmentBot.startProcessing(assignmentId, referenceSlideId, emptySlideId);
+function startProcessing(assignmentId, referenceSlideId, templateSlideId) {
+  return AssessmentBot.startProcessing(assignmentId, referenceSlideId, templateSlideId);
 }
 
 /**
@@ -106,8 +106,8 @@ function triggerProcessSelectedAssignment() {
 }
 
 // Called by the above with the retrieved parameters.
-function processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId) {
-  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, emptySlideId)
+function processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId) {
+  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId)
 }
 
 //

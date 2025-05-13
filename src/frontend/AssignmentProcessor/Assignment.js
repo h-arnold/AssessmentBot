@@ -9,14 +9,14 @@ class Assignment {
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
    * @param {string} referenceDocumentId - The ID of the reference slides document.
-   * @param {string} emptyDocumentId - The ID of the empty slides document.
+   * @param {string} templateDocumentId - The ID of the template slides document.
    */
-  constructor(courseId, assignmentId, referenceDocumentId, emptyDocumentId) {
+  constructor(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
     this.referenceDocumentId = referenceDocumentId;
-    this.emptyDocumentId = emptyDocumentId;
+    this.templateDocumentId = templateDocumentId;
     this.tasks = {};           // { taskKey: Task }
     this.studentTasks = [];    // Array of StudentTask instances
   }
@@ -57,16 +57,16 @@ class Assignment {
   }
 
   /**
-   * Populates tasks from the reference and empty slides.
-   * Combines reference and empty content based on task keys.
+   * Populates tasks from the reference and template slides.
+   * Combines reference and template content based on task keys.
    */
   populateTasksFromSlides() {
     const slidesParser = new SlidesParser();
 
     // Extract reference tasks
     const referenceTasks = slidesParser.extractTasksFromSlides(this.referenceDocumentId, "reference");
-    // Extract empty tasks
-    const emptyTasks = slidesParser.extractTasksFromSlides(this.emptyDocumentId, "empty");
+    // Extract template tasks
+    const templateTasks = slidesParser.extractTasksFromSlides(this.templateDocumentId, "template");
 
     // Create a map of tasks from referenceTasks
     const tasksMap = {};
@@ -75,14 +75,14 @@ class Assignment {
       tasksMap[key] = refTask; // Add the task to the map
     });
 
-    // Update tasks with emptyContent from emptyTasks
-    emptyTasks.forEach(emptyTask => {
-      const key = emptyTask.taskTitle;
+    // Update tasks with templateContent from templateTasks
+    templateTasks.forEach(templateTask => {
+      const key = templateTask.taskTitle;
       if (tasksMap[key]) {
-        tasksMap[key].emptyContent = emptyTask.emptyContent;
-        tasksMap[key].emptyContentHash = emptyTask.emptyContentHash;
+        tasksMap[key].templateContent = templateTask.templateContent;
+        tasksMap[key].templateContentHash = templateTask.templateContentHash;
       } else {
-        console.warn(`No matching reference task for empty task with key: ${key}`);
+        console.warn(`No matching reference task for template task with key: ${key}`);
         // Optionally, you can decide to add this task or handle it differently
       }
     });

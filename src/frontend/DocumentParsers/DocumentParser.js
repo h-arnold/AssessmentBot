@@ -18,22 +18,22 @@ class DocumentParser {
    * @param {string} content - The raw content of the task (string or URL).
    * @param {string} identifier - The unique identifier for the task location.
    * @param {string} taskType - The type of the task: "Text", "Table", "Image".
-   * @param {string|null} contentType - Type of content: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
    * @param {string|null} taskNotes - Optional notes for the task.
    * @return {Task|null} - The Task instance or null if parsing fails.
    */
   parseTask(key, content, identifier, taskType, contentType, taskNotes = null) {
     let taskReference = null;
-    let emptyContent = null;
+    let templateContent = null;
     let contentHash = null;
-    let emptyContentHash = null;
+    let templateContentHash = null;
 
     if (contentType === "reference") {
       taskReference = content;
       contentHash = Utils.generateHash(content);
-    } else if (contentType === "empty") {
-      emptyContent = content;
-      emptyContentHash = Utils.generateHash(content);
+    } else if (contentType === "template") {
+      templateContent = content;
+      templateContentHash = Utils.generateHash(content);
     } else {
       taskReference = content;
       contentHash = Utils.generateHash(content);
@@ -46,9 +46,9 @@ class DocumentParser {
       null,            // imageCategory
       taskReference,
       taskNotes,
-      emptyContent,
+      templateContent,
       contentHash,
-      emptyContentHash
+      templateContentHash
     );
   }
 
@@ -56,7 +56,7 @@ class DocumentParser {
    * Extracts Task instances from a Google document.
    * This is an abstract method that must be implemented by subclasses.
    * @param {string} documentId - The ID of the Google document.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the document.
    */
   extractTasks(documentId, contentType = "reference") {
