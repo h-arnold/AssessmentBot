@@ -46,8 +46,10 @@ class AssignmentController {
    */
   saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, referenceDocumentId, templateDocumentId) {
     try {
-      AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
-      this.startProcessing(assignmentId, referenceDocumentId, templateDocumentId);
+      // Save and immediately get the stored assignment properties (including documentType)
+      const assignmentProps = AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
+      const documentType = assignmentProps.documentType;
+      this.startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType);
       this.progressTracker.startTracking();
 
       // Null check is necessary because UIManager may be null when running from time-based triggers
@@ -74,9 +76,10 @@ class AssignmentController {
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} referenceDocumentId - The ID of the reference/solution document
    * @param {string} templateDocumentId - The ID of the template document
+   * @param {string} documentType - The type of the document (e.g., "SLIDES" or "SHEETS")
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
-  startProcessing(assignmentId, referenceDocumentId, templateDocumentId) {
+  startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType) {
     const properties = PropertiesService.getDocumentProperties();
     let triggerId;
 
@@ -94,6 +97,7 @@ class AssignmentController {
       properties.setProperty('referenceDocumentId', referenceDocumentId);
       properties.setProperty('templateDocumentId', templateDocumentId);
       properties.setProperty('triggerId', triggerId);
+      properties.setProperty('documentType', documentType); // Store documentType for downstream use
       console.log("Properties set for processing.");
     } catch (error) {
       console.error(`Error setting properties: ${error}`);
@@ -220,6 +224,7 @@ class AssignmentController {
         properties.deleteProperty('referenceDocumentId');
         properties.deleteProperty('templateDocumentId');
         properties.deleteProperty('triggerId');
+        properties.deleteProperty('documentType'); // Clean up documentType property as well
         console.log("Document properties cleaned up.");
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`);

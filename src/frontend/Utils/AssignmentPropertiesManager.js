@@ -83,6 +83,7 @@ class AssignmentPropertiesManager {
             documentType: referenceDocType // Since they are the same
         };
         scriptProperties.setProperty(key, JSON.stringify(valueToStore));
+        return valueToStore; // Return the stored object for immediate downstream use
     }
 
     /**
