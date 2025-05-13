@@ -104,4 +104,67 @@ class TaskSheet extends BaseSheetManager {
       throw e; // Re-throwing for now, as the caller might need to know about the failure.
     }
   }
+
+  /**
+   * Retrieves data from a specific range in the sheet.
+   * @param {string|object} range - The range to fetch, either as A1 notation string (e.g., "A1:B5") 
+   *                                or as {startRow, startColumn, numRows, numColumns} object.
+   * @param {string} valueType - Type of data to return: 'values', 'formulas', or 'displayValues'. Defaults to 'values'.
+   * @returns {Array<Array<any>>} A 2D array of values from the specified range.
+   * @throws {Error} If an invalid range or valueType is provided or if an error occurs.
+   */
+  getRange(range, valueType = 'values') {
+    try {
+      if (!this.sheet) {
+        const noSheetError = `Sheet object is not available for sheet "${this.sheetName || 'Unknown Sheet'}".`;
+        this.progressTracker.logError(noSheetError);
+        console.error(`Dev Info: ${noSheetError} (getRange)`);
+        throw new Error(noSheetError);
+      }
+
+      // Determine the range to fetch
+      let sheetRange;
+      if (typeof range === 'string') {
+        // A1 notation, e.g., "A1:B5"
+        sheetRange = this.sheet.getRange(range);
+      } else if (typeof range === 'object' && 
+                 'startRow' in range && 
+                 'startColumn' in range && 
+                 'numRows' in range && 
+                 'numColumns' in range) {
+        // Object notation, e.g., {startRow: 1, startColumn: 1, numRows: 5, numColumns: 2}
+        sheetRange = this.sheet.getRange(
+          range.startRow, 
+          range.startColumn, 
+          range.numRows, 
+          range.numColumns
+        );
+      } else {
+        const invalidRangeError = 'Invalid range specification. Use A1 notation or {startRow, startColumn, numRows, numColumns} object.';
+        this.progressTracker.logError(invalidRangeError);
+        console.error(`Dev Info: ${invalidRangeError} (getRange for sheet "${this.sheetName}")`);
+        throw new Error(invalidRangeError);
+      }
+
+      // Get the requested data type
+      switch(valueType.toLowerCase()) {
+        case 'values':
+          return sheetRange.getValues();
+        case 'formulas':
+          return sheetRange.getFormulas();
+        case 'displayvalues':
+          return sheetRange.getDisplayValues();
+        default:
+          const invalidTypeError = `Invalid valueType: "${valueType}". Must be 'values', 'formulas', or 'displayValues'.`;
+          this.progressTracker.logError(invalidTypeError);
+          console.error(`Dev Info: ${invalidTypeError} (getRange for sheet "${this.sheetName}")`);
+          throw new Error(invalidTypeError);
+      }
+    } catch (e) {
+      const errorMessage = `Error retrieving range from sheet "${this.sheetName}": ${e.message}`;
+      this.progressTracker.logError(errorMessage);
+      console.error(`Dev Info: ${errorMessage}\nStack: ${e.stack} (getRange)`);
+      throw e;
+    }
+  }
 }

@@ -66,13 +66,19 @@ class SheetsParser extends DocumentParser {
    */
   extractTasks(referenceDocumentId, templateDocumentId) {
     try {
-      // Get formula differences directly
-      const formulaDifferences = this.processAndCompareSheets(referenceDocumentId, templateDocumentId);
+      // Get formula differences with bounding boxes
+      const formulaDifferences = this.processAndCompareSheetsWithBoundingBox(referenceDocumentId, templateDocumentId);
       const tasks = [];
       
       // Iterate through each sheet/challenge
       for (const sheetName in formulaDifferences) {
         const sheetData = formulaDifferences[sheetName];
+        
+        // Create task metadata with bounding box information
+        const taskMetadata = {
+          boundingBox: sheetData.boundingBox,
+          totalFormulas: sheetData.formulas.length
+        };
         
         // Create a Task object for each sheet with formula differences
         const task = new Task(
@@ -84,7 +90,8 @@ class SheetsParser extends DocumentParser {
           null,                     // taskNotes is null
           null,                     // templateContent is null
           Utils.generateHash(JSON.stringify(sheetData.formulas)), // contentHash
-          null                      // templateContentHash is null
+          null,                     // templateContentHash is null
+          taskMetadata              // Add the taskMetadata with bounding box
         );
         
         tasks.push(task);
@@ -195,6 +202,90 @@ class SheetsParser extends DocumentParser {
     } catch (error) {
       console.error('Error in processAndCompareSheets:', error);
       this.progressTracker?.logError('Failed to process and compare sheets');
+      return {};
+    }
+  }
+
+  /**
+   * Calculates the bounding box for a collection of formula differences.
+   * The bounding box represents the smallest rectangular area that contains all differences.
+   * 
+   * @param {Array} differences - Array of formula differences with location information
+   * @return {Object} Bounding box as {startRow, startColumn, endRow, endColumn, numRows, numColumns}
+   * @private
+   */
+  _calculateBoundingBox(differences) {
+    if (!differences || differences.length === 0) {
+      return null;
+    }
+    
+    // Initialize with extreme values
+    let startRow = Infinity;
+    let startColumn = Infinity;
+    let endRow = -1;
+    let endColumn = -1;
+    
+    // Find minimum and maximum row/column indices
+    differences.forEach(diff => {
+      const [row, col] = diff.location;
+      startRow = Math.min(startRow, row);
+      startColumn = Math.min(startColumn, col);
+      endRow = Math.max(endRow, row);
+      endColumn = Math.max(endColumn, col);
+    });
+    
+    // Calculate dimensions
+    const numRows = endRow - startRow + 1;
+    const numColumns = endColumn - startColumn + 1;
+    
+    return {
+      startRow: startRow + 1, // Add 1 to convert from 0-based to 1-based indexing (for Sheets API)
+      startColumn: startColumn + 1,
+      endRow: endRow + 1,
+      endColumn: endColumn + 1,
+      numRows,
+      numColumns
+    };
+  }
+  
+  /**
+   * Enhanced version of compareFormulae that includes bounding box calculations.
+   * 
+   * @param {Object} taskData - Object containing referenceTasks and templateTasks
+   * @return {Object} Object with differences organised by taskName, including bounding boxes
+   */
+  compareFormulaeWithBoundingBox(taskData) {
+    try {
+      const differences = this.compareFormulae(taskData);
+      
+      // Add bounding box calculations
+      for (const taskName in differences) {
+        const sheetDifferences = differences[taskName];
+        sheetDifferences.boundingBox = this._calculateBoundingBox(sheetDifferences.formulas);
+      }
+      
+      return differences;
+    } catch (error) {
+      console.error('Error in compareFormulaeWithBoundingBox:', error);
+      this.progressTracker?.logError('Failed to calculate formula difference bounding boxes');
+      return {};
+    }
+  }
+  
+  /**
+   * Enhanced version of processAndCompareSheets that includes bounding box calculations.
+   * 
+   * @param {string} referenceDocumentId - The ID of the reference document
+   * @param {string} templateDocumentId - The ID of the template document
+   * @return {Object} Object containing formulae differences by sheet name with bounding boxes
+   */
+  processAndCompareSheetsWithBoundingBox(referenceDocumentId, templateDocumentId) {
+    try {
+      const extractedTasks = this._extractRawSheetData(referenceDocumentId, templateDocumentId);
+      return this.compareFormulaeWithBoundingBox(extractedTasks);
+    } catch (error) {
+      console.error('Error in processAndCompareSheetsWithBoundingBox:', error);
+      this.progressTracker?.logError('Failed to process and compare sheets with bounding box');
       return {};
     }
   }

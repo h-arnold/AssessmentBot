@@ -12,6 +12,7 @@ class Task {
      * @param {string|string[]} templateContent - Blank template content for the task (string or array of URLs).
      * @param {string|null} contentHash - Hash of the task content for caching purposes.
      * @param {string|null} templateContentHash - Hash of the template content for caching purposes.
+     * @param {Object|null} taskMetadata - Additional metadata for the task (e.g., boundingBox for spreadsheet tasks).
      */
     constructor(
         taskTitle,
@@ -22,7 +23,8 @@ class Task {
         taskNotes = null,
         templateContent = null,
         contentHash = null,
-        templateContentHash = null
+        templateContentHash = null,
+        taskMetadata = null
     ) {
         this.taskTitle = taskTitle;          // string
         this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
@@ -33,6 +35,7 @@ class Task {
         this.templateContent = templateContent;    // string or array of URLs (for Image tasks)
         this.contentHash = contentHash;      // string or null
         this.templateContentHash = templateContentHash; // string or null
+        this.taskMetadata = taskMetadata || {}; // Object or empty object if null
         this.uid = Task.generateUID(taskTitle, pageId);
     }
 
@@ -61,7 +64,8 @@ class Task {
             taskNotes: this.taskNotes,
             templateContent: this.templateContent,
             contentHash: this.contentHash,
-            templateContentHash: this.templateContentHash
+            templateContentHash: this.templateContentHash,
+            taskMetadata: this.taskMetadata
         };
     }
 
@@ -80,7 +84,8 @@ class Task {
             taskNotes,
             templateContent,
             contentHash,
-            templateContentHash
+            templateContentHash,
+            taskMetadata
         } = json;
         return new Task(
             taskTitle,
@@ -91,7 +96,8 @@ class Task {
             taskNotes,
             templateContent,
             contentHash,
-            templateContentHash
+            templateContentHash,
+            taskMetadata
         );
     }
 }
