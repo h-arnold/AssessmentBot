@@ -158,7 +158,7 @@ class AssignmentController {
       this.progressTracker.updateProgress(step++, `Course ID retrieved: ${courseId}`);
 
       this.progressTracker.updateProgress(step++, "Creating Assignment instance.");
-      const assignment = new Assignment(courseId, assignmentId, referenceSlideId, templateSlideId);
+      const assignment = new SlidesAssignment(courseId, assignmentId, referenceSlideId, templateSlideId);
       this.progressTracker.updateProgress(null, "Assignment instance created.");
 
       this.progressTracker.updateProgress(step++, "Fetching all students.");
