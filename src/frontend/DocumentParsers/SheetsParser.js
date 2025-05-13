@@ -249,5 +249,105 @@ class SheetsParser extends DocumentParser {
       numColumns
     };
   }
+
+  /**
+   * Extracts student Task instances from a student's Google Sheets document based on reference tasks.
+   * 
+   * @param {string} studentDocumentId - The ID of the student's document.
+   * @param {Task[]} referenceTasks - Array of reference Task instances to compare against.
+   * @return {Task[]} - An array of Task instances extracted from the student's sheets.
+   */
+  extractStudentTasks(studentDocumentId, referenceTasks) {
+    try {
+      this.progressTracker?.logProgress('Extracting student tasks from sheets');
+      const studentTasks = [];
+      
+      if (!studentDocumentId) {
+        this.progressTracker?.logError('No student document ID provided');
+        return studentTasks;
+      }
+      
+      // Create a map of task titles to reference tasks for quick lookup
+      const taskTitleMap = {};
+      referenceTasks.forEach(task => {
+        taskTitleMap[task.taskTitle] = task;
+      });
+      
+      // Open the student's spreadsheet
+      const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
+      const sheets = spreadsheet.getSheets();
+      
+      // Process each sheet in the student document
+      sheets.forEach(sheet => {
+        const sheetName = sheet.getName();
+        
+        // Check if this sheet matches any reference task
+        if (taskTitleMap[sheetName]) {
+          const referenceTask = taskTitleMap[sheetName];
+          
+          // Create a TaskSheet object for the student's sheet
+          const taskSheet = new TaskSheet(sheet, 'studentTask');
+          
+          // Extract the bounding box from the reference task metadata
+          const boundingBox = referenceTask.taskMetadata.boundingBox;
+          if (!boundingBox) {
+            console.error(`No bounding box found for task: ${sheetName}`);
+            return; // Skip this task
+          }
+          
+          // Extract student formulas from the bounding box region
+          const studentFormulas = [];
+          try {
+            // Get formulas from the specific bounding box region
+            const rangeFormulas = taskSheet.getRange(boundingBox, 'formulas');
+            
+            // Convert to the format used by reference tasks
+            for (let r = 0; r < rangeFormulas.length; r++) {
+              for (let c = 0; c < rangeFormulas[r].length; c++) {
+                const formula = rangeFormulas[r][c];
+                if (formula) { // Only include non-empty formulas
+                  studentFormulas.push({
+                    referenceFormula: formula,
+                    location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error extracting formulas from ${sheetName}: ${error}`);
+            this.progressTracker?.logError(`Failed to extract formulas from ${sheetName}`);
+          }
+          
+          // Create a Task object for this student submission
+          if (studentFormulas.length > 0) {
+            const studentTask = new Task(
+              sheetName,                     // taskTitle (same as reference)
+              "spreadsheet",                 // taskType
+              sheet.getSheetId(),            // pageId
+              null,                          // imageCategory
+              studentFormulas,               // taskReference contains the student's formulas
+              null,                          // taskNotes
+              null,                          // templateContent
+              Utils.generateHash(JSON.stringify(studentFormulas)), // contentHash
+              null,                          // templateContentHash
+              {                              // taskMetadata
+                boundingBox: boundingBox,    // Use same boundingBox as reference
+                totalFormulas: studentFormulas.length
+              }
+            );
+            
+            studentTasks.push(studentTask);
+          }
+        }
+      });
+      
+      this.progressTracker?.logProgress(`Extracted ${studentTasks.length} student tasks from sheets`);
+      return studentTasks;
+    } catch (error) {
+      console.error('Error in extractStudentTasks:', error);
+      this.progressTracker?.logError('Failed to extract student tasks from sheets');
+      return [];
+    }
+  }
 }
 
