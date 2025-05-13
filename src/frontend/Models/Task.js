@@ -4,7 +4,7 @@ class Task {
     /**
      * Constructs a Task instance.
      * @param {string} taskTitle - Title or description of the task.
-     * @param {string} taskType - Type of the task: "Text", "Table", or "Image".
+     * @param {string} taskType - Type of the task: "Text", "Table", "Image" or "Spreadsheet".
      * @param {string} slideId - The ID of the slide where the task is located in the reference document.
      * @param {string|null} imageCategory - Applicable only for images (e.g., "diagram", "block code"). Null otherwise.
      * @param {string|string[]} taskReference - Reference content for assessment (string for Text/Table, array of URLs for Image).
@@ -25,7 +25,7 @@ class Task {
         emptyContentHash = null
     ) {
         this.taskTitle = taskTitle;          // string
-        this.taskType = taskType;            // "Text", "Table", or "Image"
+        this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
         this.slideId = slideId;              // string
         this.imageCategory = imageCategory;  // string or null
         this.taskReference = taskReference;  // string or array of URLs (for Image tasks)

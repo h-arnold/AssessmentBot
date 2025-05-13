@@ -5,11 +5,12 @@
  * Generates slide export URLs.
  * Handles per-document rate limiting.
  */
-class SlidesParser {
+class SlidesParser extends DocumentParser {
   /**
    * Constructs a SlidesParser instance.
    */
   constructor() {
+    super(); // Call parent constructor
     // No need for requestManager since we're not fetching images here
   }
 
@@ -32,10 +33,22 @@ class SlidesParser {
 
   /**
    * Extracts Task instances from a Google Slides presentation.
+   * Implementation of the abstract method from DocumentParser.
+   * @param {string} documentId - The ID of the Google Slides presentation.
+   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @return {Task[]} - An array of Task instances extracted from the slides.
+   */
+  extractTasks(documentId, contentType = "reference") {
+    return this.extractTasksFromSlides(documentId, contentType);
+  }
+
+  /**
+   * Extracts Task instances from a Google Slides presentation.
    * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
    * @param {string} documentId - The ID of the Google Slides presentation.
    * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the slides.
+   * @deprecated Use extractTasks() instead
    */
   extractTasksFromSlides(documentId, contentType = "reference") { // Default to "reference"
     const presentation = SlidesApp.openById(documentId);
@@ -124,6 +137,7 @@ class SlidesParser {
   * @param {string} taskType - The type of the task: "Text", "Table", "Image".
   * @param {string|null} contentType - Type of content: "reference", "empty", or null for default.
   * @return {Task|null} - The Task instance or null if parsing fails.
+  * @deprecated Use the superclass parseTask() method instead
   */
   parseTask(key, content, slideId, taskType, contentType) {
     let taskReference = null;
@@ -184,6 +198,7 @@ class SlidesParser {
    * Converts a Google Slides Table to a Markdown-formatted string.
    * @param {GoogleAppsScript.Slides.Table} table - The table element to convert.
    * @return {string} - The Markdown-formatted table.
+   * @deprecated Use the superclass convertToMarkdownTable() method instead
    */
   convertTableToMarkdown(table) {
     if (!table || !(table.getNumRows() && table.getNumColumns())) {
