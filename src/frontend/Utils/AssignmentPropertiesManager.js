@@ -53,4 +53,38 @@ class AssignmentPropertiesManager {
             return {};
         }
     }
+
+    /**
+     * Migrates all assignment properties by renaming 'emptySlideId' to 'templateSlideId' in stored JSON objects.
+     * If you have used Assessment Bot prior to v0.4.5, this function is necessary to update your stored properties.
+     * Updates the property only if the old key exists and the new key does not.
+     * Logs migration actions using ProgressTracker.
+     */
+    static migrateEmptyTaskToTemplateTask() {
+        const scriptProperties = PropertiesService.getScriptProperties();
+        const allKeys = scriptProperties.getKeys();
+        const progressTracker = ProgressTracker.getInstance();
+        let migratedCount = 0;
+
+        allKeys.forEach(key => {
+            if (key.startsWith('assignment_')) {
+                const value = scriptProperties.getProperty(key);
+                if (!value) return;
+                let parsed;
+                try {
+                    parsed = JSON.parse(value);
+                } catch (e) {
+                    progressTracker.logError(`Failed to parse assignment property for key: ${key}`);
+                    return;
+                }
+                if (parsed && parsed.emptySlideId && !parsed.templateSlideId) {
+                    parsed.templateSlideId = parsed.emptySlideId;
+                    delete parsed.emptySlideId;
+                    scriptProperties.setProperty(key, JSON.stringify(parsed));
+                    migratedCount++;
+                }
+            }
+        });
+        progressTracker.logInfo(`AssignmentPropertiesManager: Migrated ${migratedCount} assignment(s) from 'emptySlideId' to 'templateSlideId'.`);
+    }
 }
