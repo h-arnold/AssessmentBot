@@ -246,12 +246,12 @@ class UIManager {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const savedSlideIds = AssignmentPropertiesManager.getSlideIdsForAssignment(assignmentDataObj.name);
+        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(assignmentDataObj.name);
 
         // Load templated HTML file instead of a string
         const template = HtmlService.createTemplateFromFile('ui/SlideIdsModal');
         template.assignmentDataObj = assignmentDataObj;
-        template.savedSlideIds = savedSlideIds;
+        template.savedDocumentIds = savedDocumentIds;
 
         const htmlOutput = template.evaluate()
           .setWidth(400)
