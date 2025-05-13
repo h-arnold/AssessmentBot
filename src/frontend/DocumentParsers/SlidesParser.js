@@ -17,12 +17,12 @@ class SlidesParser extends DocumentParser {
   /**
    * Generates a slide export URL for a given slide in a Google Slides presentation.
    * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string} slideId - The ID of the specific slide within the presentation.
+   * @param {string} pageId - The ID of the specific slide within the presentation.
    * @return {string} - The URL to export the slide as an image.
    */
-  generateSlideImageUrl(documentId, slideId) {
+  generateSlideImageUrl(documentId, pageId) {
 
-    const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${slideId}`;
+    const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
 
     if (Utils.isValidUrl(url)) {
       return url;
@@ -58,7 +58,7 @@ class SlidesParser extends DocumentParser {
 
     slides.forEach((slide) => {
       const pageElements = slide.getPageElements();
-      const currentSlideId = this.getSlideId(slide); // Retrieve slideId using helper
+      const currentPageId = this.getPageId(slide); // Retrieve page ID using helper
 
       pageElements.forEach(pageElement => {
         const description = pageElement.getDescription();
@@ -89,7 +89,7 @@ class SlidesParser extends DocumentParser {
             }
 
             // Parse the task and add to the tasks array
-            const task = this.parseTask(key, content, currentSlideId, taskType, contentType);
+            const task = this.parseTask(key, content, currentPageId, taskType, contentType);
             if (task) {
               tasks.push(task);
               lastTask = task; // Update the lastTask reference
@@ -108,13 +108,13 @@ class SlidesParser extends DocumentParser {
           case '~': //Quick workaround - see details above.
           case '|': // Entire Slide Image
             // For slide images, generate the slide export URL instead of fetching the image Blob
-            const slideImageUrl = this.generateSlideImageUrl(documentId, currentSlideId);
-            const slideImageTask = this.parseTask(key, slideImageUrl, currentSlideId, "Image", contentType);
+            const slideImageUrl = this.generateSlideImageUrl(documentId, currentPageId);
+            const slideImageTask = this.parseTask(key, slideImageUrl, currentPageId, "Image", contentType);
             if (slideImageTask) {
               tasks.push(slideImageTask);
               lastTask = slideImageTask; // Update the lastTask reference
             } else {
-              console.log(`Failed to create task for slide ID ${currentSlideId}`);
+              console.log(`Failed to create task for page ID ${currentPageId}`);
             }
             break;
 
@@ -133,13 +133,13 @@ class SlidesParser extends DocumentParser {
   * Parses raw task content to create a Task instance.
   * @param {string} key - The task key extracted from the slide.
   * @param {string} content - The raw content of the task (string or URL).
-  * @param {string} slideId - The ID of the slide where the task is located.
+  * @param {string} pageId - The ID of the page where the task is located (slide ID for presentations or sheet tab ID for spreadsheets).
   * @param {string} taskType - The type of the task: "Text", "Table", "Image".
   * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
   * @return {Task|null} - The Task instance or null if parsing fails.
   * @deprecated Use the superclass parseTask() method instead
   */
-  parseTask(key, content, slideId, taskType, contentType) {
+  parseTask(key, content, pageId, taskType, contentType) {
     let taskReference = null;
     let templateContent = null;
     let taskNotes = null;
@@ -160,7 +160,7 @@ class SlidesParser extends DocumentParser {
     return new Task(
       key,
       taskType,
-      slideId,
+      pageId,
       null,          // imageCategory
       taskReference,
       taskNotes,     // Will be assigned separately if present
@@ -175,8 +175,9 @@ class SlidesParser extends DocumentParser {
    * @param {GoogleAppsScript.Slides.Slide} slide - The slide object.
    * @return {string} - The unique ID of the slide.
    */
-  getSlideId(slide) {
-    return slide.getObjectId();
+  // Returns the pageId (slide ID for presentations or sheet tab ID for spreadsheets)
+  getPageId(slide) {
+    return slide.getObjectId(); // For Slides, this is the slide ID; for Sheets, this would be the tab ID
   }
 
   /**

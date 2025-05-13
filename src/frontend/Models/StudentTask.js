@@ -14,21 +14,21 @@ class StudentTask {
     this.student = student;           // Student: Associated student
     this.assignmentId = assignmentId; // string: ID of the assignment
     this.documentId = documentId;     // string: Document ID of the student's submission
-    this.responses = {};              // Object: Mapping of taskIndex to { uid, slideId, response, contentHash, assessments }
+    this.responses = {};              // Object: Mapping of taskIndex to { uid, pageId, response, contentHash, assessments }
   }
 
   /**
    * Adds a response to a specific task.
    * @param {string|null} taskIndex - The index of the task.
    * @param {string} uid - The unique ID of this response.
-   * @param {string} slideId - The ID of the slide where the task is located.
+   * @param {string} pageId - The ID of the page where the task is located (slide ID for presentations or sheet tab ID for spreadsheets).
    * @param {string|string[]} response - The student's response to the task (string or array of URLs).
    * @param {string|null} contentHash - Hash of the response content for caching purposes.
    */
-  addResponse(taskIndex, uid, slideId, response, contentHash = null) {
+  addResponse(taskIndex, uid, pageId, response, contentHash = null) {
     this.responses[taskIndex] = {
       uid: uid,
-      slideId: slideId,
+      pageId: pageId,
       response: response,       // String for Text/Table, array of URLs for Image
       contentHash: contentHash, // New property
       assessments: null         // To be filled after LLM assessment
@@ -38,7 +38,7 @@ class StudentTask {
   /**
    * Retrieves a response for a specific task.
    * @param {string} taskIndex - The index of the task.
-   * @return {Object|null} - An object containing uid, slideId, response, and assessments, or null if not found.
+   * @return {Object|null} - An object containing uid, pageId, response, and assessments, or null if not found.
    */
   getResponse(taskIndex) {
     return this.responses.hasOwnProperty(taskIndex) ? this.responses[taskIndex] : null;
@@ -88,7 +88,7 @@ class StudentTask {
           key,
           {
             uid: value.uid,
-            slideId: value.slideId,
+            pageId: value.pageId,
             response: value.response,
             contentHash: value.contentHash, // Include contentHash
             assessments: value.assessments ? value.assessments : null
@@ -110,7 +110,7 @@ class StudentTask {
     for (const [taskKey, responseObj] of Object.entries(responses)) {
       studentTask.responses[taskKey] = {
         uid: responseObj.uid,
-        slideId: responseObj.slideId,
+        pageId: responseObj.pageId,
         response: responseObj.response,
         contentHash: responseObj.contentHash, // Include contentHash
         assessments: responseObj.assessments ? responseObj.assessments : null
@@ -122,12 +122,12 @@ class StudentTask {
   /**
    * Generates a unique UID for the StudentTask instance.
    * Utilizes the Utils class to generate a hash based on student ID and timestamp.
-   * @param {string} slideId - The ID of the slide.
+   * @param {string} pageId - The ID of the page (slide ID for presentations or sheet tab ID for spreadsheets).
    * @return {string} - The generated UID.
    */
-  static generateUID(slideId) {
+  static generateUID(pageId) {
     const timestamp = new Date().getTime();
-    const uniqueString = `${slideId}-${timestamp}`;
+    const uniqueString = `${pageId}-${timestamp}`;
     return Utils.generateHash(uniqueString);
   }
 
@@ -140,11 +140,11 @@ class StudentTask {
     // Extract tasks from the student's submission document
     const studentTasks = slidesParser.extractTasksFromSlides(this.documentId);
 
-    // Create a map of taskTitle to task data (slideId and response)
+    // Create a map of taskTitle to task data (pageId and response)
     const submissionMap = {};
     studentTasks.forEach(task => {
       submissionMap[task.taskTitle] = {
-        slideId: task.slideId,         // Slide ID within the student's submission document
+        pageId: task.pageId,         // Page ID within the student's submission document
         response: task.taskReference   // For Image tasks, this will be a slide URL
       };
     });
@@ -154,8 +154,8 @@ class StudentTask {
       const task = tasks[taskKey];
       const taskTitle = task.taskTitle;
       if (submissionMap.hasOwnProperty(taskTitle)) {
-        const { slideId, response } = submissionMap[taskTitle];
-        const uid = StudentTask.generateUID(slideId);
+        const { pageId, response } = submissionMap[taskTitle];
+        const uid = StudentTask.generateUID(pageId);
 
         let contentHash = null;
         if (task.taskType.toLowerCase() === 'text' || task.taskType.toLowerCase() === 'table') {
@@ -164,7 +164,7 @@ class StudentTask {
         }
         // For Image tasks, contentHash will be assigned after image fetching
 
-        this.addResponse(taskKey, uid, slideId, response, contentHash);
+        this.addResponse(taskKey, uid, pageId, response, contentHash);
       } else {
         this.addResponse(taskKey, null, null, null);
       }

@@ -5,7 +5,7 @@ class Task {
      * Constructs a Task instance.
      * @param {string} taskTitle - Title or description of the task.
      * @param {string} taskType - Type of the task: "Text", "Table", "Image" or "Spreadsheet".
-     * @param {string} slideId - The ID of the slide where the task is located in the reference document.
+     * @param {string} pageId - The ID of the page where the task is located in the reference document (slide ID for presentations or sheet tab ID for spreadsheets).
      * @param {string|null} imageCategory - Applicable only for images (e.g., "diagram", "block code"). Null otherwise.
      * @param {string|string[]} taskReference - Reference content for assessment (string for Text/Table, array of URLs for Image).
      * @param {string|null} taskNotes - Additional notes for LLM assessment. Can be null.
@@ -16,7 +16,7 @@ class Task {
     constructor(
         taskTitle,
         taskType,
-        slideId,
+        pageId,
         imageCategory,
         taskReference = null,
         taskNotes = null,
@@ -26,24 +26,24 @@ class Task {
     ) {
         this.taskTitle = taskTitle;          // string
         this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
-        this.slideId = slideId;              // string
+        this.pageId = pageId;                // string - slide ID or spreadsheet tab ID
         this.imageCategory = imageCategory;  // string or null
         this.taskReference = taskReference;  // string or array of URLs (for Image tasks)
         this.taskNotes = taskNotes;          // string or null
         this.templateContent = templateContent;    // string or array of URLs (for Image tasks)
         this.contentHash = contentHash;      // string or null
         this.templateContentHash = templateContentHash; // string or null
-        this.uid = Task.generateUID(taskTitle, slideId);
+        this.uid = Task.generateUID(taskTitle, pageId);
     }
 
     /**
      * Generates a unique UID for the Task instance.
      * @param {string} taskTitle - The task title.
-     * @param {string} slideId - The slide ID.
+     * @param {string} pageId - The page ID (slide ID or spreadsheet tab ID).
      * @return {string} - The generated UID.
      */
-    static generateUID(taskTitle, slideId) {
-        const uniqueString = `${taskTitle}-${slideId}`;
+    static generateUID(taskTitle, pageId) {
+        const uniqueString = `${taskTitle}-${pageId}`;
         return Utils.generateHash(uniqueString);
     }
 
@@ -55,7 +55,7 @@ class Task {
         return {
             taskTitle: this.taskTitle,
             taskType: this.taskType,
-            slideId: this.slideId,
+            pageId: this.pageId,
             imageCategory: this.imageCategory,
             taskReference: this.taskReference,
             taskNotes: this.taskNotes,
@@ -74,7 +74,7 @@ class Task {
         const {
             taskTitle,
             taskType,
-            slideId,
+            pageId,
             imageCategory,
             taskReference,
             taskNotes,
@@ -85,7 +85,7 @@ class Task {
         return new Task(
             taskTitle,
             taskType,
-            slideId,
+            pageId,
             imageCategory,
             taskReference,
             taskNotes,
