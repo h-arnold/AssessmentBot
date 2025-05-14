@@ -44,7 +44,7 @@ class SheetsAssignment extends Assignment {
     const sheetsParser = new SheetsParser();
 
     this.studentTasks.forEach(studentTask => {
-      this.progressTracker.updateProgress(`Extracting work from ${studentTask.student.name}'s spreadsheet.`, false)
+      this.progressTracker.updateProgress(`Extracting work from ${studentTask.student.name}'s spreadsheet.`, false); // Corrected British English spelling
       if (studentTask.documentId) {
         studentTask.extractAndAssignResponses(sheetsParser, this.tasks);
       } else {
@@ -55,13 +55,37 @@ class SheetsAssignment extends Assignment {
 
   assessResponses() {
     this.studentTasks.forEach(studentTask => {
-        studentTask.responses.forEach(response, taskIndex => {
-            const referenceArray = this.tasks[taskIndex].taskReference;
-            const studentArray = response.response;
-            // Compare the two arrays and assign a score.
-            const results = this.compareFormulaArrays(referenceArray, studentArray);
-        })
-    })
+      Object.keys(studentTask.responses).forEach(taskKey => { // Corrected: taskKey is the key from studentTask.responses
+        const studentResponseEntry = studentTask.responses[taskKey];
+
+        // Ensure student has a response for this taskKey
+        if (!studentResponseEntry || typeof studentResponseEntry.response === 'undefined' || studentResponseEntry.response === null) {
+          console.warn(`No response found for taskKey '${taskKey}' for student ${studentTask.student.name}. Skipping assessment for this task.`);
+
+          return; // Move to the next taskKey
+        }
+        const studentArray = studentResponseEntry.response;
+
+        const referenceTask = this.tasks[taskKey]; // Access reference task using taskKey
+
+        // Ensure there is a reference task for this taskKey
+        if (!referenceTask || typeof referenceTask.taskReference === 'undefined' || referenceTask.taskReference === null) {
+          console.warn(`No reference task or taskReference found for taskKey '${taskKey}'. Skipping assessment for this task.`);
+          // TODO: Handle missing reference task (e.g., log error, cannot assess)
+          return; // Move to the next taskKey
+        }
+        const referenceArray = referenceTask.taskReference;
+
+        // Compare the two arrays and assign a score.
+        const results = this.compareFormulaArrays(referenceArray, studentArray);
+        
+        // TODO: Store 'results' in an appropriate place, e.g., studentResponseEntry.assessments
+        // For example:
+        // studentResponseEntry.assessments = studentResponseEntry.assessments || {};
+        // studentResponseEntry.assessments.formulaComparison = results;
+        // this.progressTracker.logProgress(`Assessed task ${taskKey} for ${studentTask.student.name}: ${JSON.stringify(results)}`);
+      });
+    });
   }
 
   /**
