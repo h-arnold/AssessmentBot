@@ -11,10 +11,10 @@ class StudentTask {
    * @param {string} documentId - The ID of the student's submission document.
    */
   constructor(student, assignmentId, documentId) {
-    this.student = student;           // Student: Associated student
+    this.student = student; // Student: Associated student
     this.assignmentId = assignmentId; // string: ID of the assignment
-    this.documentId = documentId;     // string: Document ID of the student's submission
-    this.responses = {};              // Object: Mapping of taskIndex to { uid, pageId, response, contentHash, assessments }
+    this.documentId = documentId; // string: Document ID of the student's submission
+    this.responses = {}; // Object: Mapping of taskIndex to { uid, pageId, response, contentHash, assessments }
   }
 
   /**
@@ -29,9 +29,9 @@ class StudentTask {
     this.responses[taskIndex] = {
       uid: uid,
       pageId: pageId,
-      response: response,       // String for Text/Table, array of URLs for Image
+      response: response, // String for Text/Table, array of URLs for Image
       contentHash: contentHash, // New property
-      assessments: null         // To be filled after LLM assessment
+      assessments: null, // To be filled after LLM assessment
     };
   }
 
@@ -41,7 +41,9 @@ class StudentTask {
    * @return {Object|null} - An object containing uid, pageId, response, and assessments, or null if not found.
    */
   getResponse(taskIndex) {
-    return this.responses.hasOwnProperty(taskIndex) ? this.responses[taskIndex] : null;
+    return this.responses.hasOwnProperty(taskIndex)
+      ? this.responses[taskIndex]
+      : null;
   }
 
   /**
@@ -57,8 +59,8 @@ class StudentTask {
         this.responses[taskKey].assessments = {};
       }
       this.responses[taskKey].assessments[criterion] = {
-        "score": assessment.score,
-        "reasoning": assessment.reasoning
+        score: assessment.score,
+        reasoning: assessment.reasoning,
       };
     } else {
       console.warn(`No response found for taskKey: ${taskKey}`);
@@ -91,10 +93,10 @@ class StudentTask {
             pageId: value.pageId,
             response: value.response,
             contentHash: value.contentHash, // Include contentHash
-            assessments: value.assessments ? value.assessments : null
-          }
+            assessments: value.assessments ? value.assessments : null,
+          },
         ])
-      )
+      ),
     };
   }
 
@@ -106,14 +108,18 @@ class StudentTask {
   static fromJSON(json) {
     const { student, assignmentId, documentId, responses } = json;
     const studentInstance = Student.fromJSON(student);
-    const studentTask = new StudentTask(studentInstance, assignmentId, documentId);
+    const studentTask = new StudentTask(
+      studentInstance,
+      assignmentId,
+      documentId
+    );
     for (const [taskKey, responseObj] of Object.entries(responses)) {
       studentTask.responses[taskKey] = {
         uid: responseObj.uid,
         pageId: responseObj.pageId,
         response: responseObj.response,
         contentHash: responseObj.contentHash, // Include contentHash
-        assessments: responseObj.assessments ? responseObj.assessments : null
+        assessments: responseObj.assessments ? responseObj.assessments : null,
       };
     }
     return studentTask;
@@ -131,87 +137,88 @@ class StudentTask {
     return Utils.generateHash(uniqueString);
   }
 
-
   // TODO: Sort out this mess of a method to create Student Task instances. I think in the long run, the Document Parsers should create student tasks rather thn having this method here.
   /**
    * Extracts and assigns responses from the student's submission document.
    * @param {DocumentParser} parser - An instance of a DocumentParser (SlidesParser or SheetsParser).
    * @param {Object} tasks - An object of Task instances from the Assignment, keyed by taskTitle.
-   * @param {string} documentType - The type of document: 'slides' or 'sheets'.
    */
-  extractAndAssignResponses(parser, tasks, documentType) {
+  extractAndAssignResponses(parser, tasks) {
     try {
       if (!this.documentId) {
-        console.error('No document ID provided for student task extraction');
-        this.progressTracker?.logError('Missing student document ID');
+        console.error("No document ID provided for student task extraction");
+        this.progressTracker?.logError("Missing student document ID");
         return;
       }
 
       // Convert tasks object to array if needed for SheetsParser
       const tasksArray = Object.values(tasks);
-      
+
       let studentTasks = [];
-      
-      // Extract tasks based on document type
-      if (documentType === 'sheets') {
+
+      // Extract tasks based on parser type
+      if (
+        typeof SheetsParser !== "undefined" &&
+        parser instanceof SheetsParser
+      ) {
         // Use the SheetsParser to extract student tasks from a spreadsheet
-        if (!(parser instanceof SheetsParser)) {
-          console.error('SheetsParser required for sheets document type');
-          this.progressTracker?.logError('Incorrect parser type for sheets document');
-          return;
-        }
         studentTasks = parser.extractStudentTasks(this.documentId, tasksArray);
-      } else if (documentType === 'slides') {
+      } else if (
+        typeof SlidesParser !== "undefined" &&
+        parser instanceof SlidesParser
+      ) {
         // Use the SlidesParser to extract student tasks from slides
-        if (!(parser instanceof SlidesParser)) {
-          console.error('SlidesParser required for slides document type');
-          this.progressTracker?.logError('Incorrect parser type for slides document');
-          return;
-        }
-        studentTasks = parser.extractTasksFromSlides(this.documentId);
+        studentTasks = parser.extractTasks(this.documentId);
       } else {
-        console.error(`Unsupported document type: ${documentType}`);
-        this.progressTracker?.logError(`Unsupported document type: ${documentType}`);
+        console.error(
+          "Unsupported or incorrect parser type for student document extraction"
+        );
+        this.progressTracker?.logError(
+          "Unsupported or incorrect parser type for student document extraction"
+        );
         return;
       }
 
       // Create a map of taskTitle to task data (pageId and response)
       const submissionMap = {};
-      studentTasks.forEach(task => {
+      studentTasks.forEach((task) => {
         submissionMap[task.taskTitle] = {
-          pageId: task.pageId,           // Page ID within student's document (slide ID or sheet ID)
-          response: task.taskReference,   // For spreadsheets, this will be formula objects
-          contentHash: task.contentHash   // Use the content hash from the extracted task
+          pageId: task.pageId, // Page ID within student's document (slide ID or sheet ID)
+          response: task.taskReference, // For spreadsheets, this will be formula objects
+          contentHash: task.contentHash, // Use the content hash from the extracted task
         };
       });
 
       // Assign responses ensuring consistency with Assignment's tasks
-      Object.keys(tasks).forEach(taskKey => {
+      Object.keys(tasks).forEach((taskKey) => {
         const task = tasks[taskKey];
         const taskTitle = task.taskTitle;
-        
+
         if (submissionMap.hasOwnProperty(taskTitle)) {
           const { pageId, response, contentHash } = submissionMap[taskTitle];
           const uid = StudentTask.generateUID(pageId);
-          
+
           // Use the content hash from the extracted task or generate one if not available
           let responseHash = contentHash;
           if (!responseHash) {
-            if (task.taskType.toLowerCase() === 'text' || task.taskType.toLowerCase() === 'table') {
+            if (
+              task.taskType.toLowerCase() === "text" ||
+              task.taskType.toLowerCase() === "table"
+            ) {
               // Generate contentHash for Text and Table tasks
               responseHash = Utils.generateHash(response);
             }
             // For Image tasks, contentHash will be assigned after image fetching
           }
-          
+
           this.addResponse(taskKey, uid, pageId, response, responseHash);
         } else {
           this.addResponse(taskKey, null, null, null);
         }
       });
     } catch (error) {
-      console.error('Error extracting and assigning responses:', error);
-      this.progressTracker?.logError('Failed to extract student responses');
+      console.error("Error extracting and assigning responses:", error);
+      this.progressTracker?.logError("Failed to extract student responses");
     }
   }
 }

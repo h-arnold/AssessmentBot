@@ -50,7 +50,7 @@ class SlidesParser extends DocumentParser {
    * @return {Task[]} - An array of Task instances extracted from the slides.
    * @deprecated Use extractTasks() instead
    */
-  extractTasksFromSlides(documentId, contentType = "reference") { // Default to "reference"
+  extractTasksFromSlides(documentId, contentType = null) { // Default to null
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     let tasks = [];
