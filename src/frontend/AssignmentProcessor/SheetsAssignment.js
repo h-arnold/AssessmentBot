@@ -53,13 +53,39 @@ class SheetsAssignment extends Assignment {
     });
   }
 
+  /**
+   * Helper to determine if a student response entry is valid (not undefined/null and has a response).
+   * @param {Object} studentResponseEntry
+   * @return {boolean}
+   */
+  hasValidStudentResponse(studentResponseEntry) {
+    return !!(
+      studentResponseEntry &&
+      typeof studentResponseEntry.response !== 'undefined' &&
+      studentResponseEntry.response !== null
+    );
+  }
+
+  /**
+   * Helper to determine if a reference task entry is valid (not undefined/null and has a taskReference).
+   * @param {Object} referenceTask
+   * @return {boolean}
+   */
+  hasValidReferenceTask(referenceTask) {
+    return !!(
+      referenceTask &&
+      typeof referenceTask.taskReference !== 'undefined' &&
+      referenceTask.taskReference !== null
+    );
+  }
+
   assessResponses() {
     this.studentTasks.forEach(studentTask => {
       Object.keys(studentTask.responses).forEach(taskKey => { // Corrected: taskKey is the key from studentTask.responses
         const studentResponseEntry = studentTask.responses[taskKey];
 
-        // Ensure student has a response for this taskKey
-        if (!studentResponseEntry || typeof studentResponseEntry.response === 'undefined' || studentResponseEntry.response === null) {
+        // Use helper method to check for valid response
+        if (!this.hasValidStudentResponse(studentResponseEntry)) {
           console.warn(`No response found for taskKey '${taskKey}' for student ${studentTask.student.name}. Skipping assessment for this task.`);
 
           return; // Move to the next taskKey
@@ -68,8 +94,8 @@ class SheetsAssignment extends Assignment {
 
         const referenceTask = this.tasks[taskKey]; // Access reference task using taskKey
 
-        // Ensure there is a reference task for this taskKey
-        if (!referenceTask || typeof referenceTask.taskReference === 'undefined' || referenceTask.taskReference === null) {
+        // Use helper method to check for valid reference task
+        if (!this.hasValidReferenceTask(referenceTask)) {
           console.warn(`No reference task or taskReference found for taskKey '${taskKey}'. Skipping assessment for this task.`);
           // TODO: Handle missing reference task (e.g., log error, cannot assess)
           return; // Move to the next taskKey
