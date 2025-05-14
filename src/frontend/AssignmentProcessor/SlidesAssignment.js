@@ -94,6 +94,8 @@ class SlidesAssignment extends Assignment {
 
     this.studentTasks.forEach(studentTask => {
       if (studentTask.documentId) {
+        this.progressTracker.updateProgress(
+          `Extracting responses from ${studentTask.student.name}...`, false       );
         studentTask.extractAndAssignResponses(slidesParser, this.tasks);
       } else {
         console.warn(`No document ID for student: ${studentTask.student.email}. Skipping response extraction.`);

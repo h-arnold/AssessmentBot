@@ -38,19 +38,7 @@ class SlidesParser extends DocumentParser {
    * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the slides.
    */
-  extractTasks(documentId, contentType = "reference") {
-    return this.extractTasksFromSlides(documentId, contentType);
-  }
-
-  /**
-   * Extracts Task instances from a Google Slides presentation.
-   * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
-   * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
-   * @return {Task[]} - An array of Task instances extracted from the slides.
-   * @deprecated Use extractTasks() instead
-   */
-  extractTasksFromSlides(documentId, contentType = null) { // Default to null
+  extractTasks(documentId, contentType = null) {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     let tasks = [];
@@ -128,6 +116,19 @@ class SlidesParser extends DocumentParser {
 
     return tasks;
   }
+
+  /**
+   * Extracts Task instances from a Google Slides presentation.
+   * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
+   * @param {string} documentId - The ID of the Google Slides presentation.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
+   * @return {Task[]} - An array of Task instances extracted from the slides.
+   * @deprecated Use extractTasks() instead
+   */
+  extractTasksFromSlides(documentId, contentType = null) { // Default to null
+    this.extractTasks(documentId, contentType);
+  }
+
 
   /**
   * Parses raw task content to create a Task instance.

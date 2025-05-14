@@ -190,14 +190,14 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance containing StudentTasks.
    */
   processResponses(responses, requests, assignment) {
-    let step = this.progressTracker.getStepAsNumber();
-    step++;
+
+    this.progressTracker.updateProgress(`Double-checking all assessments.`,true);
 
     responses.forEach((response, index) => {
       const request = requests[index];
       const uid = request.uid;
 
-      this.progressTracker.updateProgress(step, `Double-checking all assessments.`);
+
 
       if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
         try {
@@ -239,7 +239,7 @@ class LLMRequestManager extends BaseRequestManager {
         if (response) {
           console.log(`Response text is: ${response.getContentText()}`);
         }
-        this.progressTracker.updateProgress(null, `Failed to process assessment for UID: ${uid}`);
+        this.progressTracker.updateProgress(`Failed to process assessment for UID: ${uid}`, false);
       }
     });
   }
