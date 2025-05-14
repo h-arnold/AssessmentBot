@@ -307,7 +307,7 @@ class SheetsParser extends DocumentParser {
                 const formula = rangeFormulas[r][c];
                 // Include all formulas (empty or not)
                 studentFormulas.push({
-                  referenceFormula: formula || "", // Store empty string if formula is null/undefined
+                  formula: formula || "", // Store empty string if formula is null/undefined
                   location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
                 });
               }

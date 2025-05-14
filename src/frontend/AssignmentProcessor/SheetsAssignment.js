@@ -59,13 +59,37 @@ class SheetsAssignment extends Assignment {
             const referenceArray = this.tasks[taskIndex].taskReference;
             const studentArray = response.response;
             // Compare the two arrays and assign a score.
+            const results = this.compareFormulaArrays(referenceArray, studentArray);
         })
     })
-            
+  }
 
+  /**
+   * Compares two arrays of formula objects and counts correct, incorrect, and not attempted responses.
+   * @param {Array} referenceArray - Array of reference formula objects ({referenceFormula, location} or similar).
+   * @param {Array} studentArray - Array of student formula objects ({formula, location} or similar).
+   * @return {Object} Object with counts: {correct, incorrect, notAttempted}
+   */
+  compareFormulaArrays(referenceArray, studentArray) {
+    let correct = 0;
+    let incorrect = 0;
+    let notAttempted = 0;
 
+    for (let i = 0; i < referenceArray.length; i++) {
+      const ref = referenceArray[i];
+      const student = studentArray[i] || {};
+      const refFormula = ref.referenceFormula || ref.formula || "";
+      const studentFormula = student.formula || "";
 
+      if (studentFormula === refFormula) {
+        correct++;
+      } else if (studentFormula === "") {
+        notAttempted++;
+      } else {
+        incorrect++;
+      }
+    }
 
-
-}
+    return { correct, incorrect, notAttempted };
+  }
 }
