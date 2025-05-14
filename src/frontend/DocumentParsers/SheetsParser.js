@@ -359,8 +359,11 @@ class SheetsParser extends DocumentParser {
                 const formula = rangeFormulas[r][c];
                 // Include all formulas (empty or not)
 
+                let normalisedStudentFormula = formula; // Default to the original formula
+                
+                // If the formula isn't empty, normalise it.
                 if (formula) {
-                  const normalisedStudentFormula = this._normaliseFormulaCase(formula); // If the formula isn't empty, normalise it.
+                  normalisedStudentFormula = this._normaliseFormulaCase(formula); 
                 }
 
                 studentFormulas.push({

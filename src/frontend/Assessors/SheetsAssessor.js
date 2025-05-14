@@ -7,7 +7,7 @@ class SheetsAssessor {
   constructor(tasks, studentTasks) {
     this.tasks = tasks;
     this.studentTasks = studentTasks;
-    this.progressTracker = progressTracker.getInstance();
+    this.progressTracker = ProgressTracker.getInstance();
   }
 
   /**
@@ -22,6 +22,8 @@ class SheetsAssessor {
         console.warn(`Student task or responses missing for student: ${studentTask?.student?.name || 'Unknown'}`);
         return;
       }
+
+      this.progressTracker.updateProgress(`Assessing ${studentTask.student.name}'s spreadsheet.`, false);
 
       Object.entries(studentTask.responses).forEach(([taskKey, studentResponseEntry]) => {
         // Skip null responses (intentionally not attempted tasks)
@@ -99,7 +101,7 @@ class SheetsAssessor {
     const accuracyAssessment = new Assessment(scores.accuracyScore, accuracyReasoning);
     const spagAssessment = new Assessment(scores.spagScore, "SPaG is not assessed for formulae tasks.");
 
-    this.progressTracker.logProgress(`Assessed formulae task ${taskKey} for ${studentName}: ${JSON.stringify(comparisonResults)}`);
+    console.log(`Assessed formulae task ${taskKey} for ${studentName}: ${JSON.stringify(comparisonResults)}`, false);
 
     return {
       completenessAssessment: completenessAssessment,
@@ -176,7 +178,7 @@ class SheetsAssessor {
   _generateAccuracyReasoning(comparisonResults, totalFormulae) {
     let reasoning = `Attempted ${totalFormulae - comparisonResults.notAttempted} formulae.\n${comparisonResults.correct} correct, ${comparisonResults.incorrect} incorrect.`;
     if (comparisonResults.incorrect > 0) {
-      reasoning += `\n\n===\nIncorrect Formulae:\n${this._formatIncorrectFormulaeList(comparisonResults.incorrectFormulae)}`;
+      reasoning += `\n\n==================\nIncorrect Formulae:\n==================\n\n${this._formatIncorrectFormulaeList(comparisonResults.incorrectFormulae)}`;
     }
     return reasoning;
   }
