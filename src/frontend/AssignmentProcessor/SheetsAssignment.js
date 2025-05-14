@@ -52,4 +52,20 @@ class SheetsAssignment extends Assignment {
       }
     });
   }
+
+  assessResponses() {
+    this.studentTasks.forEach(studentTask => {
+        studentTask.responses.forEach(response, taskIndex => {
+            const referenceArray = this.tasks[taskIndex].taskReference;
+            const studentArray = response.response;
+            // Compare the two arrays and assign a score.
+        })
+    })
+            
+
+
+
+
+
+}
 }

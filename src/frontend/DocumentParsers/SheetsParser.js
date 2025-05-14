@@ -36,7 +36,7 @@ class SheetsParser extends DocumentParser {
     });
     return tasks;
   }
-  
+
   /**
    * Extracts raw formulae data from Google Sheets documents.
    * 
@@ -56,7 +56,7 @@ class SheetsParser extends DocumentParser {
       return { referenceTasks: {}, templateTasks: {} };
     }
   }
-  
+
   /**
    * Extracts Task instances from Google Sheets documents.
    * Implementation of the abstract method from DocumentParser.
@@ -69,17 +69,17 @@ class SheetsParser extends DocumentParser {
       // Get formula differences with bounding boxes
       const formulaDifferences = this.processAndCompareSheets(referenceDocumentId, templateDocumentId);
       const tasks = [];
-      
+
       // Iterate through each sheet/challenge
       for (const sheetName in formulaDifferences) {
         const sheetData = formulaDifferences[sheetName];
-        
+
         // Create task metadata with bounding box information
         const taskMetadata = {
           boundingBox: sheetData.boundingBox,
           totalFormulas: sheetData.formulas.length
         };
-        
+
         // Create a Task object for each sheet with formula differences
         const task = new Task(
           sheetName,                // key (sheet name like "Challenge 1")
@@ -93,10 +93,10 @@ class SheetsParser extends DocumentParser {
           null,                     // templateContentHash is null
           taskMetadata              // Add the taskMetadata with bounding box
         );
-        
+
         tasks.push(task);
       }
-      
+
       return tasks;
     } catch (error) {
       console.error('Error in extractTasks:', error);
@@ -104,7 +104,7 @@ class SheetsParser extends DocumentParser {
       return [];
     }
   }
-  
+
   /**
    * Compares formulae between reference and template sheets, including bounding box calculations.
    * 
@@ -153,7 +153,7 @@ class SheetsParser extends DocumentParser {
       return {};
     }
   }
-  
+
   /**
    * Compares two formula arrays and identifies differences.
    * 
@@ -165,18 +165,18 @@ class SheetsParser extends DocumentParser {
    */
   _compareFormulaArrays(referenceArray, templateArray, taskName) {
     const differences = [];
-    
+
     // Use reference array dimensions as the bounds for comparison
     for (let row = 0; row < referenceArray.length; row++) {
       const refRow = referenceArray[row] || [];
       // Template row might not exist if template has fewer rows
       const tempRow = row < templateArray.length ? templateArray[row] : [];
-      
+
       for (let col = 0; col < refRow.length; col++) {
         const refFormula = refRow[col] || '';
         // Template cell might not exist if template row is shorter
         const tempFormula = tempRow[col] || '';
-        
+
         // Check if there's a non-empty reference formula and it doesn't match the template
         if (refFormula && refFormula !== tempFormula) {
           differences.push({
@@ -186,10 +186,10 @@ class SheetsParser extends DocumentParser {
         }
       }
     }
-    
+
     return differences;
   }
-  
+
   /**
    * Processes extracted tasks and compares formulae between reference and template sheets, including bounding box calculations.
    * 
@@ -220,13 +220,13 @@ class SheetsParser extends DocumentParser {
     if (!differences || differences.length === 0) {
       return null;
     }
-    
+
     // Initialize with extreme values
     let startRow = Infinity;
     let startColumn = Infinity;
     let endRow = -1;
     let endColumn = -1;
-    
+
     // Find minimum and maximum row/column indices
     differences.forEach(diff => {
       const [row, col] = diff.location;
@@ -235,11 +235,11 @@ class SheetsParser extends DocumentParser {
       endRow = Math.max(endRow, row);
       endColumn = Math.max(endColumn, col);
     });
-    
+
     // Calculate dimensions
     const numRows = endRow - startRow + 1;
     const numColumns = endColumn - startColumn + 1;
-    
+
     return {
       startRow: startRow + 1, // Add 1 to convert from 0-based to 1-based indexing (for Sheets API)
       startColumn: startColumn + 1,
@@ -261,86 +261,84 @@ class SheetsParser extends DocumentParser {
     try {
       this.progressTracker?.logProgress('Extracting student tasks from sheets');
       const studentTasks = [];
-      
+
       if (!studentDocumentId) {
         this.progressTracker?.logError('No student document ID provided');
         return studentTasks;
       }
-      
+
       // Create a map of task titles to reference tasks for quick lookup
       const taskTitleMap = {};
       referenceTasks.forEach(task => {
         taskTitleMap[task.taskTitle] = task;
       });
-      
+
       // Open the student's spreadsheet
       const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
       const sheets = spreadsheet.getSheets();
-      
+
       // Process each sheet in the student document
       sheets.forEach(sheet => {
         const sheetName = sheet.getName();
-        
+
         // Check if this sheet matches any reference task
         if (taskTitleMap[sheetName]) {
           const referenceTask = taskTitleMap[sheetName];
-          
+
           // Create a TaskSheet object for the student's sheet
           const taskSheet = new TaskSheet(sheet, 'studentTask');
-          
+
           // Extract the bounding box from the reference task metadata
           const boundingBox = referenceTask.taskMetadata.boundingBox;
           if (!boundingBox) {
             console.error(`No bounding box found for task: ${sheetName}`);
             return; // Skip this task
           }
-          
+
           // Extract student formulas from the bounding box region
           const studentFormulas = [];
           try {
             // Get formulas from the specific bounding box region
             const rangeFormulas = taskSheet.getRange(boundingBox, 'formulas');
-            
+
             // Convert to the format used by reference tasks
             for (let r = 0; r < rangeFormulas.length; r++) {
               for (let c = 0; c < rangeFormulas[r].length; c++) {
                 const formula = rangeFormulas[r][c];
-                if (formula) { // Only include non-empty formulas
-                  studentFormulas.push({
-                    referenceFormula: formula,
-                    location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
-                  });
-                }
+                // Include all formulas (empty or not)
+                studentFormulas.push({
+                  referenceFormula: formula || "", // Store empty string if formula is null/undefined
+                  location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
+                });
               }
             }
           } catch (error) {
             console.error(`Error extracting formulas from ${sheetName}: ${error}`);
             this.progressTracker?.logError(`Failed to extract formulas from ${sheetName}`);
           }
-          
+
           // Create a Task object for this student submission
-          if (studentFormulas.length > 0) {
-            const studentTask = new Task(
-              sheetName,                     // taskTitle (same as reference)
-              "spreadsheet",                 // taskType
-              sheet.getSheetId(),            // pageId
-              null,                          // imageCategory
-              studentFormulas,               // taskReference contains the student's formulas
-              null,                          // taskNotes
-              null,                          // templateContent
-              Utils.generateHash(JSON.stringify(studentFormulas)), // contentHash
-              null,                          // templateContentHash
-              {                              // taskMetadata
-                boundingBox: boundingBox,    // Use same boundingBox as reference
-                totalFormulas: studentFormulas.length
-              }
-            );
-            
-            studentTasks.push(studentTask);
-          }
+          const studentTask = new Task(
+            sheetName,                     // taskTitle (same as reference)
+            "spreadsheet",                 // taskType
+            sheet.getSheetId(),            // pageId
+            null,                          // imageCategory
+            studentFormulas,               // taskReference contains the student's formulas
+            null,                          // taskNotes
+            null,                          // templateContent
+            Utils.generateHash(JSON.stringify(studentFormulas)), // contentHash
+            null,                          // templateContentHash
+            {                              // taskMetadata
+              boundingBox: boundingBox,    // Use same boundingBox as reference
+              totalFormulas: studentFormulas.length
+            }
+          );
+
+          studentTasks.push(studentTask);
         }
-      });
-      
+      }
+      );
+
       this.progressTracker?.logProgress(`Extracted ${studentTasks.length} student tasks from sheets`);
       return studentTasks;
     } catch (error) {
