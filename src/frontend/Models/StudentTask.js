@@ -14,19 +14,19 @@ class StudentTask {
     this.student = student; // Student: Associated student
     this.assignmentId = assignmentId; // string: ID of the assignment
     this.documentId = documentId; // string: Document ID of the student's submission
-    this.responses = {}; // Object: Mapping of taskIndex to { uid, pageId, response, contentHash, assessments }
+    this.responses = {}; // Object: Mapping of taskKey to { uid, pageId, response, contentHash, assessments }
   }
 
   /**
    * Adds a response to a specific task.
-   * @param {string|null} taskIndex - The index of the task.
+   * @param {string|null} taskKey - The key of the task (typically the task title).
    * @param {string} uid - The unique ID of this response.
    * @param {string} pageId - The ID of the page where the task is located (slide ID for presentations or sheet tab ID for spreadsheets).
    * @param {string|string[]} response - The student's response to the task (string or array of URLs).
    * @param {string|null} contentHash - Hash of the response content for caching purposes.
    */
-  addResponse(taskIndex, uid, pageId, response, contentHash = null) {
-    this.responses[taskIndex] = {
+  addResponse(taskKey, uid, pageId, response, contentHash = null) {
+    this.responses[taskKey] = {
       uid: uid,
       pageId: pageId,
       response: response, // String for Text/Table, array of URLs for Image
@@ -37,18 +37,18 @@ class StudentTask {
 
   /**
    * Retrieves a response for a specific task.
-   * @param {string} taskIndex - The index of the task.
+   * @param {string} taskKey - The key of the task.
    * @return {Object|null} - An object containing uid, pageId, response, and assessments, or null if not found.
    */
-  getResponse(taskIndex) {
-    return this.responses.hasOwnProperty(taskIndex)
-      ? this.responses[taskIndex]
+  getResponse(taskKey) {
+    return this.responses.hasOwnProperty(taskKey)
+      ? this.responses[taskKey]
       : null;
   }
 
   /**
    * Adds an assessment to a specific task response.
-   * @param {string} taskKey - The index/key of the task.
+   * @param {string} taskKey - The key of the task.
    * @param {string} criterion - The assessment criterion (e.g., 'completeness').
    * @param {Assessment} assessment - The Assessment instance to add.
    */
@@ -69,11 +69,11 @@ class StudentTask {
 
   /**
    * Retrieves an assessment for a specific task.
-   * @param {string} taskIndex - The index/key of the task.
+   * @param {string} taskKey - The key of the task.
    * @return {Object|null} - The assessment object or null if not found.
    */
-  getAssessment(taskIndex) {
-    return this.responses[taskIndex]?.assessments || null;
+  getAssessment(taskKey) {
+    return this.responses[taskKey]?.assessments || null;
   }
 
   /**
