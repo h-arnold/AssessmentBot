@@ -127,8 +127,9 @@ class ProgressTracker {
    * Logs an error encountered during the process.
    *
    * @param {string} errorMessage - The error message to log.
+   * @param {string} [extraErrorDetails] - Additional error details for developer logs.
    */
-  logError(errorMessage) {
+  logError(errorMessage, extraErrorDetails) {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
@@ -139,6 +140,9 @@ class ProgressTracker {
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.error(`Error logged: ${errorMessage}`);
+    if (extraErrorDetails) {
+      console.error(`Extra error details: ${extraErrorDetails}`);
+    }
   }
 
   /**

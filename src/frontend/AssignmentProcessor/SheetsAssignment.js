@@ -80,4 +80,6 @@ class SheetsAssignment extends Assignment {
   }
 
   assessResponses() {
+  }
+}
     

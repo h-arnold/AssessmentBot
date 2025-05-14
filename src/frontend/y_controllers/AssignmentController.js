@@ -290,8 +290,7 @@ class AssignmentController {
       console.log("Assessment run completed successfully.");
 
     } catch (error) {
-      this.progressTracker.logError(error.message);
-      console.error("Error during assessment process:", error);
+      this.progressTracker.logError(error.message, error);
       this.utils.toastMessage("An error occurred: " + error.message, "Error", 5);
       throw error;
     } finally {
@@ -307,8 +306,7 @@ class AssignmentController {
         properties.deleteProperty('documentType'); // Clean up documentType property as well
         console.log("Document properties cleaned up.");
       } catch (cleanupError) {
-        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`);
-        console.error(`Error during property cleanup: ${cleanupError}`);
+        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, cleanupError);
       }
     }
   }

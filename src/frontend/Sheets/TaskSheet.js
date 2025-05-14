@@ -36,7 +36,6 @@ class TaskSheet extends BaseSheetManager {
     if (!type) {
       const noTypeError = `A type must be provided for sheet "${this.sheetName}". Valid types are 'reference', 'template', 'studentTask'.`;
       this.progressTracker.logError(noTypeError);
-      console.error(`Dev Info: ${noTypeError} (constructor for sheet "${this.sheetName}")`);
       throw new Error(noTypeError);
     }
     
@@ -45,7 +44,6 @@ class TaskSheet extends BaseSheetManager {
     if (!this.type) { // Check if setType resulted in a null type (due to invalid input)
       const invalidTypeError = `Invalid type "${type}" provided for sheet "${this.sheetName}" during construction. Valid types are 'reference', 'template', 'studentTask'.`;
       // setType already logs an error, so we might not need to log again, but throwing is important.
-      console.error(`Dev Info: ${invalidTypeError} (constructor for sheet "${this.sheetName}")`);
       throw new Error(invalidTypeError);
     }
   }
@@ -141,8 +139,7 @@ class TaskSheet extends BaseSheetManager {
         );
       } else {
         const invalidRangeError = 'Invalid range specification. Use A1 notation or {startRow, startColumn, numRows, numColumns} object.';
-        this.progressTracker.logError(invalidRangeError);
-        console.error(`Dev Info: ${invalidRangeError} (getRange for sheet "${this.sheetName}")`);
+        this.progressTracker.logError(invalidRangeError, `Dev Info: ${invalidRangeError} (getRange for sheet "${this.sheetName}")`);
         throw new Error(invalidRangeError);
       }
 
@@ -156,14 +153,12 @@ class TaskSheet extends BaseSheetManager {
           return sheetRange.getDisplayValues();
         default:
           const invalidTypeError = `Invalid valueType: "${valueType}". Must be 'values', 'formulas', or 'displayValues'.`;
-          this.progressTracker.logError(invalidTypeError);
-          console.error(`Dev Info: ${invalidTypeError} (getRange for sheet "${this.sheetName}")`);
+          this.progressTracker.logError(invalidTypeError, `Dev Info: ${invalidTypeError} (getRange for sheet "${this.sheetName}")`);
           throw new Error(invalidTypeError);
       }
     } catch (e) {
       const errorMessage = `Error retrieving range from sheet "${this.sheetName}": ${e.message}`;
-      this.progressTracker.logError(errorMessage);
-      console.error(`Dev Info: ${errorMessage}\nStack: ${e.stack} (getRange)`);
+      this.progressTracker.logError(errorMessage, `Dev Info: ${errorMessage}\nStack: ${e.stack} (getRange)`);
       throw e;
     }
   }

@@ -58,8 +58,10 @@ class SheetsAssessor {
 
     // Basic validation
     if (!Array.isArray(studentArray) || !Array.isArray(referenceArray)) {
-      console.error(`Invalid data for formula comparison for task ${taskKey}, student ${studentName}. StudentArray or ReferenceArray is not an array.`);
-      this.progressTracker.logError(`Invalid data for formula comparison for task ${taskKey}, student ${studentName}.`);
+      this.progressTracker.logError(
+        `Invalid data for formula comparison for task ${taskKey}, student ${studentName}.`,
+        `StudentArray: ${Array.isArray(studentArray)}, ReferenceArray: ${Array.isArray(referenceArray)}`
+      );
       studentResponseEntry.assessments = studentResponseEntry.assessments || {};
       studentResponseEntry.assessments.formulaComparison = { 
         error: "Invalid data provided for comparison.", 
@@ -104,5 +106,11 @@ class SheetsAssessor {
     }
 
     return { correct, incorrect, notAttempted };
+  }
+
+  calculateFormulaeAssessmentScores(scores, countOfFormulae) {
+    const completenessScore = (countOfFormulae - scores.notAttempted) 
+
+
   }
 }

@@ -239,8 +239,7 @@ class GoogleClassroomManager {
           }
         } catch (error) {
           const errMsg = `Failed to copy template for row ${i + 1}: ${error.message}`;
-          this.progressTracker.logError(errMsg);
-          console.error(errMsg);
+          this.progressTracker.logError(errMsg, error);
           throw new Error(errMsg);
         }
       }
@@ -300,8 +299,7 @@ class GoogleClassroomManager {
         console.log(shareResult.message);
       } catch (error) {
         // If we throw on an error (folder not found, etc.)
-        this.progressTracker.logError(`Failed to share folder: ${error.message}`);
-        console.error(`Failed to share folder: ${error.message}`);
+        this.progressTracker.logError(`Failed to share folder: ${error.message}`, error);
       }
     } else {
       console.log('No teacher emails were found. Folder not shared with anyone.');
