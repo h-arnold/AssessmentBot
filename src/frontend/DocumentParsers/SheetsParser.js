@@ -157,6 +157,7 @@ class SheetsParser extends DocumentParser {
   /**
    * Normalises the case of a spreadsheet formula by converting all characters to upper case
    * except for those within double quotes (string literals). Handles escaped quotes.
+   * Also handles formulas returned by Google Apps Script which are wrapped in quotes.
    *
    * @param {string} formula - The formula to normalise
    * @return {string} The normalised formula
@@ -164,6 +165,21 @@ class SheetsParser extends DocumentParser {
    */
   _normaliseFormulaCase(formula) {
     if (!formula) return formula;
+    
+    // Remove surrounding quotes if they exist (as returned by getFormulas in GAS)
+    if (formula.length >= 2 && formula.charAt(0) === '"' && formula.charAt(formula.length - 1) === '"') {
+      // Extract the content between quotes, handling escape sequences
+      try {
+        // Use a safe way to remove the surrounding quotes
+        formula = formula.substring(1, formula.length - 1);
+        // Un-escape any doubled quotes within the formula
+        formula = formula.replace(/""/g, '"');
+      } catch (error) {
+        console.error('Error preprocessing formula:', error);
+      }
+    }
+    
+    // Now process the formula normally
     let result = '';
     let inQuotes = false;
     for (let i = 0; i < formula.length; i++) {
@@ -344,11 +360,11 @@ class SheetsParser extends DocumentParser {
                 // Include all formulas (empty or not)
 
                 if (formula) {
-                  this._normaliseFormulaCase(formula); // If the formula isn't empty, normalise it.
+                  const normalisedStudentFormula = this._normaliseFormulaCase(formula); // If the formula isn't empty, normalise it.
                 }
 
                 studentFormulas.push({
-                  formula: formula || "", // Store empty string if formula is null/undefined
+                  formula: normalisedStudentFormula || "", // Store empty string if formula is null/undefined
                   location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
                 });
               }
