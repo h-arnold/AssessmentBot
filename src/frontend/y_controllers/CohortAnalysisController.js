@@ -43,7 +43,7 @@ class CohortAnalysisController {
       }
 
       // Extract data from the 'Overview' sheet in each assessment record and aggregate into a JSON object
-      this.progressTracker.updateProgress(step++, "Extracting data from all assessment records.");
+      this.progressTracker.updateProgress("Extracting data from all assessment records.");
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const classroomsSheet = spreadsheet.getSheetByName('Classrooms');
@@ -52,13 +52,13 @@ class CohortAnalysisController {
       const overviewData = sheetExtractor.processAllOverviewSheets();
 
       // Create aggregated sheets for each year group
-      this.progressTracker.updateProgress(step++, "Creating year group sheets.");
+      this.progressTracker.updateProgress("Creating year group sheets.");
 
       const cohortAnalysis = new CohortAnalysisSheetManager();
       cohortAnalysis.createYearGroupSheets(overviewData, spreadsheet.getId());
 
       // Create the 'Summary' sheet to display year group averages
-      this.progressTracker.updateProgress(step++, "Creating the summary sheet.");
+      this.progressTracker.updateProgress("Creating the summary sheet.");
 
       const summarySheet = new SummarySheetManager();
       summarySheet.createSummarySheet(overviewData, spreadsheet.getId());

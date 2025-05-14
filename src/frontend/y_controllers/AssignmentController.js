@@ -106,47 +106,90 @@ class AssignmentController {
     }
   }
 
+    /**
+   * Processes a Google Slides assignment: fetches students, adds them, populates tasks, fetches and processes submissions, images, and assesses responses.
+   * @param {string} courseId - The Classroom course ID
+   * @param {string} assignmentId - The assignment ID
+   * @param {string} referenceDocumentId - The reference Slides document ID
+   * @param {string} templateDocumentId - The template Slides document ID
+   * @return {SheetsAssignment} The populated SlidesAssignment instance
+   */
+  processSheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
+    this.progressTracker.updateProgress("Creating Assignment instance.");
+    const assignment = new SheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+    this.progressTracker.updateProgress("Assignment instance created.", false);
+
+    this.progressTracker.updateProgress("Fetching all students.");
+    const students = Student.fetchAllStudents(courseId);
+    this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
+
+    this.progressTracker.updateProgress("Adding students to the assignment.");
+    students.forEach(student => assignment.addStudent(student));
+    this.progressTracker.updateProgress("All students added to the assignment.", false);
+
+    this.progressTracker.updateProgress("Getting the tasks from the reference document.");
+    assignment.populateTasks();
+    this.progressTracker.updateProgress("Tasks populated from reference document.", false);
+
+    this.progressTracker.updateProgress("Fetching submitted documents from students.");
+    assignment.fetchSubmittedDocuments();
+    this.progressTracker.updateProgress("Submitted documents fetched.", false);
+
+    this.progressTracker.updateProgress("Extracting student work from documents.");
+    assignment.processAllSubmissions();
+    this.progressTracker.updateProgress("All student work extracted.", false);
+
+    this.progressTracker.updateProgress("Processing Images.");
+    assignment.processImages();
+    this.progressTracker.updateProgress("Images uploaded.", false);
+
+    this.progressTracker.updateProgress("Assessing student responses.");
+    assignment.assessResponses();
+    this.progressTracker.updateProgress("Responses assessed.", false);
+
+    return assignment;
+  }
+
   /**
    * Processes a Google Slides assignment: fetches students, adds them, populates tasks, fetches and processes submissions, images, and assesses responses.
    * @param {string} courseId - The Classroom course ID
    * @param {string} assignmentId - The assignment ID
    * @param {string} referenceDocumentId - The reference Slides document ID
    * @param {string} templateDocumentId - The template Slides document ID
-   * @param {string} documentType - The type of the document (e.g., "SLIDES")
    * @return {SlidesAssignment} The populated SlidesAssignment instance
    */
-  processSlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId, documentType) {
-    this.progressTracker.updateProgress(step++, "Creating Assignment instance.");
+  processSlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
+    this.progressTracker.updateProgress("Creating Assignment instance.");
     const assignment = new SlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
-    this.progressTracker.updateProgress(null, "Assignment instance created.");
+    this.progressTracker.updateProgress("Assignment instance created.", false);
 
-    this.progressTracker.updateProgress(step++, "Fetching all students.");
+    this.progressTracker.updateProgress("Fetching all students.");
     const students = Student.fetchAllStudents(courseId);
-    this.progressTracker.updateProgress(null, `${students.length} students fetched.`);
+    this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
 
-    this.progressTracker.updateProgress(step++, "Adding students to the assignment.");
+    this.progressTracker.updateProgress("Adding students to the assignment.");
     students.forEach(student => assignment.addStudent(student));
-    this.progressTracker.updateProgress(null, "All students added to the assignment.");
+    this.progressTracker.updateProgress("All students added to the assignment.", false);
 
-    this.progressTracker.updateProgress(step++, "Getting the tasks from the reference document.");
-    assignment.populateTasksFromSlides();
-    this.progressTracker.updateProgress(null, "Tasks populated from reference document.");
+    this.progressTracker.updateProgress("Getting the tasks from the reference document.");
+    assignment.populateTasks();
+    this.progressTracker.updateProgress("Tasks populated from reference document.", false);
 
-    this.progressTracker.updateProgress(step++, "Fetching submitted documents from students.");
-    assignment.fetchSubmittedSlides();
-    this.progressTracker.updateProgress(null, "Submitted documents fetched.");
+    this.progressTracker.updateProgress("Fetching submitted documents from students.");
+    assignment.fetchSubmittedDocuments();
+    this.progressTracker.updateProgress("Submitted documents fetched.", false);
 
-    this.progressTracker.updateProgress(step++, "Extracting student work from documents.");
+    this.progressTracker.updateProgress("Extracting student work from documents.");
     assignment.processAllSubmissions();
-    this.progressTracker.updateProgress(null, "All student work extracted.");
+    this.progressTracker.updateProgress("All student work extracted.", false);
 
-    this.progressTracker.updateProgress(step++, "Processing Images.");
+    this.progressTracker.updateProgress("Processing Images.");
     assignment.processImages();
-    this.progressTracker.updateProgress(null, "Images uploaded.");
+    this.progressTracker.updateProgress("Images uploaded.", false);
 
-    this.progressTracker.updateProgress(step++, "Assessing student responses.");
+    this.progressTracker.updateProgress("Assessing student responses.");
     assignment.assessResponses();
-    this.progressTracker.updateProgress(null, "Responses assessed.");
+    this.progressTracker.updateProgress("Responses assessed.", false);
 
     return assignment;
   }
@@ -156,15 +199,15 @@ class AssignmentController {
    * @param {SlidesAssignment} assignment - The processed SlidesAssignment instance
    */
   analyseAssignmentData(assignment) {
-    this.progressTracker.updateProgress(step++, "Creating the analysis sheet.");
+    this.progressTracker.updateProgress("Creating the analysis sheet.");
     const analysisSheet = new AnalysisSheetManager(assignment);
     analysisSheet.createAnalysisSheet();
-    this.progressTracker.updateProgress(null, "Analysis sheet created.");
+    this.progressTracker.updateProgress("Analysis sheet created.", false);
 
-    this.progressTracker.updateProgress(step++, "Updating the overview sheet.");
+    this.progressTracker.updateProgress("Updating the overview sheet.");
     const overviewSheetManager = new OverviewSheetManager();
     overviewSheetManager.createOverviewSheet();
-    this.progressTracker.updateProgress(null, "Overview sheet updated.");
+    this.progressTracker.updateProgress("Overview sheet updated.", false);
   }
 
   /**
@@ -215,17 +258,23 @@ class AssignmentController {
 
       this.triggerController.deleteTriggerById(triggerId);
       console.log("Trigger deleted after processing.");this.progressTracker.startTracking();
-      this.progressTracker.updateProgress(step++, "Assessment run starting.");
+      this.progressTracker.updateProgress("Assessment run starting.");
 
       const courseId = this.classroomManager.getCourseId();
       console.log('Course ID retrieved: ' + courseId);
-      this.progressTracker.updateProgress(step++, `Course ID retrieved: ${courseId}`);
+      this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
-      // Process Slides assignment only if documentType is SLIDES
+      // Process the assignment based on its type.
       let assignment;
-      if (documentType === 'SLIDES') {
+      if (documentType === 'SLIDES') 
+        {
         assignment = this.processSlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId, documentType);
-      } else {
+        } 
+      else if (documentType === 'SHEETS') 
+        {
+        assignment = this.processSheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+        } 
+      else {
         const errorMsg = `Document type '${documentType}' is not supported.`;
         this.progressTracker.logError(errorMsg);
         throw new Error(errorMsg);
@@ -234,7 +283,7 @@ class AssignmentController {
       // Analyse assignment data
       this.analyseAssignmentData(assignment);
 
-      this.progressTracker.updateProgress(null, "Assessment run completed successfully.");
+      this.progressTracker.updateProgress("Assessment run completed successfully.", false);
       this.progressTracker.complete();
 
       this.utils.toastMessage("Assessment run completed successfully.", "Success", 5);
