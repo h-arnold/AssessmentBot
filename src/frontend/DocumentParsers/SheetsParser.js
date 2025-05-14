@@ -155,6 +155,38 @@ class SheetsParser extends DocumentParser {
   }
 
   /**
+   * Normalises the case of a spreadsheet formula by converting all characters to upper case
+   * except for those within double quotes (string literals). Handles escaped quotes.
+   *
+   * @param {string} formula - The formula to normalise
+   * @return {string} The normalised formula
+   * @private
+   */
+  _normaliseFormulaCase(formula) {
+    if (!formula) return formula;
+    let result = '';
+    let inQuotes = false;
+    for (let i = 0; i < formula.length; i++) {
+      const char = formula.charAt(i);
+      if (char === '"') {
+        // Handle escaped quotes inside string literals
+        if (inQuotes && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
+          result += '""';
+          i++; // Skip next char
+        } else {
+          inQuotes = !inQuotes;
+          result += char;
+        }
+      } else if (inQuotes) {
+        result += char;
+      } else {
+        result += char.toUpperCase();
+      }
+    }
+    return result;
+  }
+
+  /**
    * Compares two formula arrays and identifies differences.
    * 
    * @param {Array<Array<string>>} referenceArray - The reference formula array
@@ -163,8 +195,8 @@ class SheetsParser extends DocumentParser {
    * @return {Array} Array of differences with formula and location info
    * @private
    */
-  _compareFormulaArrays(referenceArray, templateArray, taskName) {
-    const differences = [];
+  _compareFormulaArrays(referenceArray, templateArray) {
+    const referenceFormulaeArray = [];
 
     // Use reference array dimensions as the bounds for comparison
     for (let row = 0; row < referenceArray.length; row++) {
@@ -179,15 +211,19 @@ class SheetsParser extends DocumentParser {
 
         // Check if there's a non-empty reference formula and it doesn't match the template
         if (refFormula && refFormula !== tempFormula) {
-          differences.push({
-            referenceFormula: refFormula,
+
+          // Normalise the formulae that are going to make it into the reference tasks.
+
+          const normalisedRefFormula = this._normaliseFormulaCase(refFormula);
+          referenceFormulaeArray.push({
+            referenceFormula: normalisedRefFormula,
             location: [row, col]
           });
         }
       }
     }
 
-    return differences;
+    return referenceFormulaeArray;
   }
 
   /**
@@ -306,6 +342,11 @@ class SheetsParser extends DocumentParser {
               for (let c = 0; c < rangeFormulas[r].length; c++) {
                 const formula = rangeFormulas[r][c];
                 // Include all formulas (empty or not)
+
+                if (formula) {
+                  this._normaliseFormulaCase(formula); // If the formula isn't empty, normalise it.
+                }
+
                 studentFormulas.push({
                   formula: formula || "", // Store empty string if formula is null/undefined
                   location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
