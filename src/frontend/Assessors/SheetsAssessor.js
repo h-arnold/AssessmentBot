@@ -178,7 +178,7 @@ class SheetsAssessor {
   _generateAccuracyReasoning(comparisonResults, totalFormulae) {
     let reasoning = `Attempted ${totalFormulae - comparisonResults.notAttempted} formulae.\n${comparisonResults.correct} correct, ${comparisonResults.incorrect} incorrect.`;
     if (comparisonResults.incorrect > 0) {
-      reasoning += `\n\n==================\nIncorrect Formulae:\n==================\n\n${this._formatIncorrectFormulaeList(comparisonResults.incorrectFormulae)}`;
+      reasoning += `\n\n===============\nIncorrect Formulae:\n===============\n\n${this._formatIncorrectFormulaeList(comparisonResults.incorrectFormulae)}`;
     }
     return reasoning;
   }
@@ -262,7 +262,7 @@ class SheetsAssessor {
     // and the total number of formulae
     // Scale the score to a range of 0 to 5
     // and round to 2 decimal places
-    const accuracyScore = (scores.correct / countOfFormulae) * 5;
+    const accuracyScore = (scores.correct / (countOfFormulae - scores.notAttempted)) * 5;
     return Number(accuracyScore.toFixed(2)); // Round score to 2 decimal places
   }
 }

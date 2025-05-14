@@ -443,11 +443,18 @@ class AnalysisSheetManager extends BaseSheetManager {
   /**
    * Formats the note content with the specified reasoning and student response.
    * @param {string} reasoning - The reasoning text.
-   * @param {string} studentResponse - The student's response text.
+   * @param {string|any} studentResponse - The student's response text or other data.
    * @return {string} - The formatted note content.
    */
   formatNote(reasoning, studentResponse) {
-    return `Reasoning\n========\n${reasoning}\n\nStudent Response\n===============\n${studentResponse}`;
+    let noteContent = `Reasoning\n========\n${reasoning}`;
+    
+    // Only include student response if it's a string
+    if (typeof studentResponse === 'string') {
+      noteContent += `\n\nStudent Response\n===============\n${studentResponse}`;
+    }
+    
+    return noteContent;
   }
 
   /**
