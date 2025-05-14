@@ -6,7 +6,7 @@
  */
 class SheetsAssignment extends Assignment {
   /**
-   * Constructs a SlidesAssignment instance.
+   * Constructs a SheetsAsignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
    * @param {string} referenceDocumentId - The ID of the reference slides document.
@@ -80,6 +80,10 @@ class SheetsAssignment extends Assignment {
   }
 
   assessResponses() {
+    //Construct a sheets assessor instance with the reference and student tasks.
+    const sheetsAssesor = new SheetsAssessor(this.tasks, this.studentTasks);
+
+    const assessments = sheetsAssesor.assessResponses();
   }
 }
     

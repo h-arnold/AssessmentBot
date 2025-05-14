@@ -139,10 +139,6 @@ class AssignmentController {
     assignment.processAllSubmissions();
     this.progressTracker.updateProgress("All student work extracted.", false);
 
-    this.progressTracker.updateProgress("Processing Images.");
-    assignment.processImages();
-    this.progressTracker.updateProgress("Images uploaded.", false);
-
     this.progressTracker.updateProgress("Assessing student responses.");
     assignment.assessResponses();
     this.progressTracker.updateProgress("Responses assessed.", false);
