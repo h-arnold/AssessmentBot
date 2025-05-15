@@ -73,10 +73,11 @@ class BaseUpdateAndInit {
    * based on the template and copies all properties from the source sheet.
    */
   cloneSheets(sheetsObject, destinationFolderId = this.destinationFolderId, templateSheetId = this.assessmentRecordTemplateId) {
-    const step = this.progressTracker ? this.progressTracker.getStepAsNumber() : 0;
+    const numberOfSheets = sheetsObject.length
+    let sheetsCount = 0
     Object.keys(sheetsObject).forEach(className => {
       if (this.progressTracker) {
-        this.progressTracker.updateProgress(step, `Cloning the assessment record for ${className}`);
+        this.progressTracker.updateProgress(`Cloning the assessment record for ${className}. ( ${sheetsCount} of ${numberOfSheets} )`, false);
       }
       
       const newSheet = SheetCloner.cloneEverything({
