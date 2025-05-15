@@ -52,7 +52,7 @@ class SheetsParser extends DocumentParser {
       return { referenceTasks, templateTasks };
     } catch (error) {
       console.error('Error in _extractRawSheetData:', error);
-      this.progressTracker?.logError('Failed to extract tasks from sheets');
+      this.progressTracker.logError('Failed to extract tasks from sheets');
       return { referenceTasks: {}, templateTasks: {} };
     }
   }
@@ -104,7 +104,7 @@ class SheetsParser extends DocumentParser {
       return tasks;
     } catch (error) {
       console.error('Error in extractTasks:', error);
-      this.progressTracker?.logError('Failed to extract tasks from sheets');
+      this.progressTracker.logError('Failed to extract tasks from sheets');
       return [];
     }
   }
@@ -177,7 +177,7 @@ class SheetsParser extends DocumentParser {
       return results;
     } catch (error) {
       console.error('Error in compareFormulae:', error);
-      this.progressTracker?.logError('Failed to compare formulae between sheets');
+      this.progressTracker.logError('Failed to compare formulae between sheets');
       return {};
     }
   }
@@ -283,7 +283,7 @@ class SheetsParser extends DocumentParser {
       return this.compareFormulae(extractedTasks);
     } catch (error) {
       console.error('Error in processAndCompareSheets:', error);
-      this.progressTracker?.logError('Failed to process and compare sheets');
+      this.progressTracker.logError('Failed to process and compare sheets');
       return {};
     }
   }
@@ -339,11 +339,10 @@ class SheetsParser extends DocumentParser {
    */
   extractStudentTasks(studentDocumentId, referenceTasks) {
     try {
-      this.progressTracker.updateProgress('Extracting student tasks from sheets', false);
       const studentTasks = [];
 
       if (!studentDocumentId) {
-        this.progressTracker?.logError('No student document ID provided');
+        this.progressTracker.logError('No student document ID provided');
         return studentTasks;
       }
 
@@ -410,7 +409,7 @@ class SheetsParser extends DocumentParser {
 
           } catch (error) {
             console.error(`Error extracting formulas from ${sheetName}: ${error}`);
-            this.progressTracker?.logError(`Failed to extract formulas from ${sheetName}`);
+            this.progressTracker.logError(`Failed to extract formulas from ${sheetName}`);
           }
 
           // Create a Task object for this student submission
@@ -435,7 +434,7 @@ class SheetsParser extends DocumentParser {
       }
       );
 
-      this.progressTracker.updateProgress(`Extracted ${studentTasks.length} student tasks from sheets`);
+      this.progressTracker.updateProgress(`Extracted ${studentTasks.length} student tasks from sheets`, false);
       return studentTasks;
     } catch (error) {
       console.error('Error in extractStudentTasks:', error);
