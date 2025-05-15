@@ -12,7 +12,7 @@ There's no LLM related cleverness in this release, but you still get a breakdown
 
 * **Progress Tracking:** Updated and improved `ProgressTracker` to give more detailed progress information and be easier to code into the workflow.
 
-* **Update Handling: ** A few tweaks and bug fixes to the update handling process. I'm hoping that this will be the last time I need to fiddle with things to get a clean update.
+* **Update Handling:** A few tweaks and bug fixes to the update handling process. I'm hoping that this will be the last time I need to fiddle with things to get a clean update.
 
 #### 🔄 Refactoring
 
@@ -41,8 +41,6 @@ If you already have Assessment Bot running, you can update to v0.5.0 by followin
 2. Click on **Assessment Bot** -> **Settings** -> **Update Version**.
 3. Select the **v0.5.0** option and follow the instructions.
 
-
-
 # 🚀 v0.4.3
 
 ## ✨ Enhancements
@@ -68,10 +66,10 @@ If you already have Assessment Bot running, you can update to v0.5.0 by followin
 ## 🔄 Refactoring
 
 * **Code Organisation:** Significantly refactored code into more logical components:
-    * Created `InitController` class and moved global functions to dedicated files
-    * Refactored `MainController` functionality into `Assignment` and `AssignmentController` classes
-    * Implemented improved singleton pattern for `UIManager` and other classes
-    * Added 'safe UI operation' pattern to avoid issues with UI calls in trigger contexts
+  * Created `InitController` class and moved global functions to dedicated files
+  * Refactored `MainController` functionality into `Assignment` and `AssignmentController` classes
+  * Implemented improved singleton pattern for `UIManager` and other classes
+  * Added 'safe UI operation' pattern to avoid issues with UI calls in trigger contexts
 * **Cohort Analysis:** Refactored cohort analysis functionality to avoid duplication
 * **Backend Organisation:** Reorganised backend folder structure and removed outdated files
 
