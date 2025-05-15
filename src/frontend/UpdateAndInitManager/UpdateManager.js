@@ -95,8 +95,9 @@ class UpdateManager extends BaseUpdateAndInit {
   updateAdminSheet() {
     // Update configuration values prior to cloning.
     configurationManager.setUpdateStage(1);
-    configurationManager.setIsAdminSheet(true);
-    configurationManager.setScriptAuthorised(false);
+    configurationManager.setIsAdminSheet(true); // Esnures that you can continue the update process in the new sheet.
+    configurationManager.setScriptAuthorised(false); //Makes sure that the appropriate menu is displayed as the new sheet won't be authorised.
+    configurationManager.revokeAuthTriggerSet(false) //Makes surethat the new sheet gets a new revoke auth trigger set.
 
     // Serialise existing config
     const propsCloner = new PropertiesCloner();
