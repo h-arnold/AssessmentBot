@@ -1,27 +1,28 @@
 /**
- * SlideContentManager Class
+ * SlidesParser Class
  * 
  * Handles extraction and processing of content from Google Slides presentations.
  * Generates slide export URLs.
  * Handles per-document rate limiting.
  */
-class SlideContentManager {
+class SlidesParser extends DocumentParser {
   /**
-   * Constructs a SlideContentManager instance.
+   * Constructs a SlidesParser instance.
    */
   constructor() {
+    super(); // Call parent constructor
     // No need for requestManager since we're not fetching images here
   }
 
   /**
    * Generates a slide export URL for a given slide in a Google Slides presentation.
    * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string} slideId - The ID of the specific slide within the presentation.
+   * @param {string} pageId - The ID of the specific slide within the presentation.
    * @return {string} - The URL to export the slide as an image.
    */
-  generateSlideImageUrl(documentId, slideId) {
+  generateSlideImageUrl(documentId, pageId) {
 
-    const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${slideId}`;
+    const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
 
     if (Utils.isValidUrl(url)) {
       return url;
@@ -32,12 +33,12 @@ class SlideContentManager {
 
   /**
    * Extracts Task instances from a Google Slides presentation.
-   * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
+   * Implementation of the abstract method from DocumentParser.
    * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "empty", or null for default.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the slides.
    */
-  extractTasksFromSlides(documentId, contentType = "reference") { // Default to "reference"
+  extractTasks(documentId, contentType = null) {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     let tasks = [];
@@ -45,7 +46,7 @@ class SlideContentManager {
 
     slides.forEach((slide) => {
       const pageElements = slide.getPageElements();
-      const currentSlideId = this.getSlideId(slide); // Retrieve slideId using helper
+      const currentPageId = this.getPageId(slide); // Retrieve page ID using helper
 
       pageElements.forEach(pageElement => {
         const description = pageElement.getDescription();
@@ -76,7 +77,7 @@ class SlideContentManager {
             }
 
             // Parse the task and add to the tasks array
-            const task = this.parseTask(key, content, currentSlideId, taskType, contentType);
+            const task = this.parseTask(key, content, currentPageId, taskType, contentType);
             if (task) {
               tasks.push(task);
               lastTask = task; // Update the lastTask reference
@@ -95,13 +96,13 @@ class SlideContentManager {
           case '~': //Quick workaround - see details above.
           case '|': // Entire Slide Image
             // For slide images, generate the slide export URL instead of fetching the image Blob
-            const slideImageUrl = this.generateSlideImageUrl(documentId, currentSlideId);
-            const slideImageTask = this.parseTask(key, slideImageUrl, currentSlideId, "Image", contentType);
+            const slideImageUrl = this.generateSlideImageUrl(documentId, currentPageId);
+            const slideImageTask = this.parseTask(key, slideImageUrl, currentPageId, "Image", contentType);
             if (slideImageTask) {
               tasks.push(slideImageTask);
               lastTask = slideImageTask; // Update the lastTask reference
             } else {
-              console.log(`Failed to create task for slide ID ${currentSlideId}`);
+              console.log(`Failed to create task for page ID ${currentPageId}`);
             }
             break;
 
@@ -117,27 +118,41 @@ class SlideContentManager {
   }
 
   /**
+   * Extracts Task instances from a Google Slides presentation.
+   * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
+   * @param {string} documentId - The ID of the Google Slides presentation.
+   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
+   * @return {Task[]} - An array of Task instances extracted from the slides.
+   * @deprecated Use extractTasks() instead
+   */
+  extractTasksFromSlides(documentId, contentType = null) { // Default to null
+    this.extractTasks(documentId, contentType);
+  }
+
+
+  /**
   * Parses raw task content to create a Task instance.
   * @param {string} key - The task key extracted from the slide.
   * @param {string} content - The raw content of the task (string or URL).
-  * @param {string} slideId - The ID of the slide where the task is located.
+  * @param {string} pageId - The ID of the page where the task is located (slide ID for presentations or sheet tab ID for spreadsheets).
   * @param {string} taskType - The type of the task: "Text", "Table", "Image".
-  * @param {string|null} contentType - Type of content: "reference", "empty", or null for default.
+  * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
   * @return {Task|null} - The Task instance or null if parsing fails.
+  * @deprecated Use the superclass parseTask() method instead
   */
-  parseTask(key, content, slideId, taskType, contentType) {
+  parseTask(key, content, pageId, taskType, contentType) {
     let taskReference = null;
-    let emptyContent = null;
+    let templateContent = null;
     let taskNotes = null;
     let contentHash = null;
-    let emptyContentHash = null;
+    let templateContentHash = null;
 
     if (contentType === "reference") {
       taskReference = content;
       contentHash = Utils.generateHash(content);
-    } else if (contentType === "empty") {
-      emptyContent = content;
-      emptyContentHash = Utils.generateHash(content);
+    } else if (contentType === "template") {
+      templateContent = content;
+      templateContentHash = Utils.generateHash(content);
     } else {
       taskReference = content;
       contentHash = Utils.generateHash(content);
@@ -146,13 +161,13 @@ class SlideContentManager {
     return new Task(
       key,
       taskType,
-      slideId,
+      pageId,
       null,          // imageCategory
       taskReference,
       taskNotes,     // Will be assigned separately if present
-      emptyContent,
+      templateContent,
       contentHash,
-      emptyContentHash
+      templateContentHash
     );
   }
 
@@ -161,8 +176,9 @@ class SlideContentManager {
    * @param {GoogleAppsScript.Slides.Slide} slide - The slide object.
    * @return {string} - The unique ID of the slide.
    */
-  getSlideId(slide) {
-    return slide.getObjectId();
+  // Returns the pageId (slide ID for presentations or sheet tab ID for spreadsheets)
+  getPageId(slide) {
+    return slide.getObjectId(); // For Slides, this is the slide ID; for Sheets, this would be the tab ID
   }
 
   /**
@@ -184,6 +200,7 @@ class SlideContentManager {
    * Converts a Google Slides Table to a Markdown-formatted string.
    * @param {GoogleAppsScript.Slides.Table} table - The table element to convert.
    * @return {string} - The Markdown-formatted table.
+   * @deprecated Use the superclass convertToMarkdownTable() method instead
    */
   convertTableToMarkdown(table) {
     if (!table || !(table.getNumRows() && table.getNumColumns())) {

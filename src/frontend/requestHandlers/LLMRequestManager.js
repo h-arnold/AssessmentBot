@@ -70,18 +70,18 @@ class LLMRequestManager extends BaseRequestManager {
           throw new Error(errorMessage);
         }
 
-        if (task.emptyContent === null || task.emptyContent === undefined) {
-          const errorMessage = `Missing emptyContent for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
+        if (task.templateContent === null || task.templateContent === undefined) {
+          const errorMessage = `Missing templateContent for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
           console.error(errorMessage);
-          Utils.toastMessage(errorMessage, "Empty Task Error", 5);
+          Utils.toastMessage(errorMessage, "Template Task Error", 5);
           throw new Error(errorMessage);
         }
 
         const contentHashReference = task.contentHash;
-        const contentHashEmpty = task.emptyContentHash;
+        const contentHashTemplate = task.templateContentHash;
 
-        // Check for unattempted tasks (empty task matches student response)
-        if (contentHashEmpty === contentHashResponse) {
+        // Check for unattempted tasks (template task matches student response)
+        if (contentHashTemplate === contentHashResponse) {
           // Create default "Not Attempted" assessment
           const notAttemptedAssessment = this.createNotAttemptedAssessment();
           
@@ -144,7 +144,7 @@ class LLMRequestManager extends BaseRequestManager {
         const tweaks = {};
         tweaks[tweakId] = {
           referenceTask: task.taskReference,
-          emptyTask: task.emptyContent,
+          templateTask: task.templateContent,
           studentTask: studentResponse
           // uid is stored separately for easy access
         };
@@ -190,14 +190,14 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance containing StudentTasks.
    */
   processResponses(responses, requests, assignment) {
-    let step = this.progressTracker.getStepAsNumber();
-    step++;
+
+    this.progressTracker.updateProgress(`Double-checking all assessments.`,true);
 
     responses.forEach((response, index) => {
       const request = requests[index];
       const uid = request.uid;
 
-      this.progressTracker.updateProgress(step, `Double-checking all assessments.`);
+
 
       if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
         try {
@@ -239,7 +239,7 @@ class LLMRequestManager extends BaseRequestManager {
         if (response) {
           console.log(`Response text is: ${response.getContentText()}`);
         }
-        this.progressTracker.updateProgress(null, `Failed to process assessment for UID: ${uid}`);
+        this.progressTracker.updateProgress(`Failed to process assessment for UID: ${uid}`, false);
       }
     });
   }

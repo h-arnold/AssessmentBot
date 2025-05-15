@@ -246,12 +246,12 @@ class UIManager {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const savedSlideIds = AssignmentPropertiesManager.getSlideIdsForAssignment(assignmentDataObj.name);
+        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(assignmentDataObj.name);
 
         // Load templated HTML file instead of a string
         const template = HtmlService.createTemplateFromFile('ui/SlideIdsModal');
         template.assignmentDataObj = assignmentDataObj;
-        template.savedSlideIds = savedSlideIds;
+        template.savedDocumentIds = savedDocumentIds;
 
         const htmlOutput = template.evaluate()
           .setWidth(400)
@@ -298,21 +298,20 @@ class UIManager {
   }
 
   /**
-   * Saves slide IDs associated with a specific assignment.
+   * Saves the reference and template slide/document IDs for a given assignment title.
+   * This method now calls the updated static method in AssignmentPropertiesManager.
    * 
-   * @param {string} assignmentTitle - The title of the assignment to save slide IDs for
-   * @param {string[]} slideIds - Array of slide IDs to be saved
-   * @throws {Error} If saving the slide IDs fails
+   * @param {string} assignmentTitle The title of the assignment.
+   * @param {Object} documentIds An object containing referenceDocumentId and templateDocumentId.
    */
-  saveSlideIdsForAssignment(assignmentTitle, slideIds) {
+  saveDocumentIdsForAssignment(assignmentTitle, documentIds) {
     try {
-      
-      AssignmentPropertiesManager.saveSlideIdsForAssignment(assignmentTitle, slideIds);
-      console.log(`Slide IDs saved for assignmentTitle: ${assignmentTitle}`);
+      // Directly call the static method from AssignmentPropertiesManager
+      AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
+      this.utils.toastMessage("Document IDs saved successfully.", "Success", 3);
     } catch (error) {
-      this.progressTracker.logError(`Failed to save slide IDs for assignmentTitle ${assignmentTitle}: ${error.message}`);
-      console.error(`Error in saveSlideIdsForAssignment: ${error}`);
-      throw error;
+      console.error(`Error in saveDocumentIdsForAssignment: ${error}`);
+      this.utils.toastMessage(`Failed to save document IDs: ${error.message}`, "Error", 5);
     }
   }
 

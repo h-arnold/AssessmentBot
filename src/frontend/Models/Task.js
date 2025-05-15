@@ -4,46 +4,49 @@ class Task {
     /**
      * Constructs a Task instance.
      * @param {string} taskTitle - Title or description of the task.
-     * @param {string} taskType - Type of the task: "Text", "Table", or "Image".
-     * @param {string} slideId - The ID of the slide where the task is located in the reference document.
+     * @param {string} taskType - Type of the task: "Text", "Table", "Image" or "Spreadsheet".
+     * @param {string} pageId - The ID of the page where the task is located in the reference document (slide ID for presentations or sheet tab ID for spreadsheets).
      * @param {string|null} imageCategory - Applicable only for images (e.g., "diagram", "block code"). Null otherwise.
      * @param {string|string[]} taskReference - Reference content for assessment (string for Text/Table, array of URLs for Image).
      * @param {string|null} taskNotes - Additional notes for LLM assessment. Can be null.
-     * @param {string|string[]} emptyContent - Blank template content for the task (string or array of URLs).
+     * @param {string|string[]} templateContent - Blank template content for the task (string or array of URLs).
      * @param {string|null} contentHash - Hash of the task content for caching purposes.
-     * @param {string|null} emptyContentHash - Hash of the empty content for caching purposes.
+     * @param {string|null} templateContentHash - Hash of the template content for caching purposes.
+     * @param {Object|null} taskMetadata - Additional metadata for the task (e.g., boundingBox for spreadsheet tasks).
      */
     constructor(
         taskTitle,
         taskType,
-        slideId,
+        pageId,
         imageCategory,
         taskReference = null,
         taskNotes = null,
-        emptyContent = null,
+        templateContent = null,
         contentHash = null,
-        emptyContentHash = null
+        templateContentHash = null,
+        taskMetadata = null
     ) {
         this.taskTitle = taskTitle;          // string
-        this.taskType = taskType;            // "Text", "Table", or "Image"
-        this.slideId = slideId;              // string
+        this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
+        this.pageId = pageId;                // string - slide ID or spreadsheet tab ID
         this.imageCategory = imageCategory;  // string or null
         this.taskReference = taskReference;  // string or array of URLs (for Image tasks)
         this.taskNotes = taskNotes;          // string or null
-        this.emptyContent = emptyContent;    // string or array of URLs (for Image tasks)
+        this.templateContent = templateContent;    // string or array of URLs (for Image tasks)
         this.contentHash = contentHash;      // string or null
-        this.emptyContentHash = emptyContentHash; // string or null
-        this.uid = Task.generateUID(taskTitle, slideId);
+        this.templateContentHash = templateContentHash; // string or null
+        this.taskMetadata = taskMetadata || {}; // Object or empty object if null
+        this.uid = Task.generateUID(taskTitle, pageId);
     }
 
     /**
      * Generates a unique UID for the Task instance.
      * @param {string} taskTitle - The task title.
-     * @param {string} slideId - The slide ID.
+     * @param {string} pageId - The page ID (slide ID or spreadsheet tab ID).
      * @return {string} - The generated UID.
      */
-    static generateUID(taskTitle, slideId) {
-        const uniqueString = `${taskTitle}-${slideId}`;
+    static generateUID(taskTitle, pageId) {
+        const uniqueString = `${taskTitle}-${pageId}`;
         return Utils.generateHash(uniqueString);
     }
 
@@ -55,13 +58,14 @@ class Task {
         return {
             taskTitle: this.taskTitle,
             taskType: this.taskType,
-            slideId: this.slideId,
+            pageId: this.pageId,
             imageCategory: this.imageCategory,
             taskReference: this.taskReference,
             taskNotes: this.taskNotes,
-            emptyContent: this.emptyContent,
+            templateContent: this.templateContent,
             contentHash: this.contentHash,
-            emptyContentHash: this.emptyContentHash
+            templateContentHash: this.templateContentHash,
+            taskMetadata: this.taskMetadata
         };
     }
 
@@ -74,24 +78,26 @@ class Task {
         const {
             taskTitle,
             taskType,
-            slideId,
+            pageId,
             imageCategory,
             taskReference,
             taskNotes,
-            emptyContent,
+            templateContent,
             contentHash,
-            emptyContentHash
+            templateContentHash,
+            taskMetadata
         } = json;
         return new Task(
             taskTitle,
             taskType,
-            slideId,
+            pageId,
             imageCategory,
             taskReference,
             taskNotes,
-            emptyContent,
+            templateContent,
             contentHash,
-            emptyContentHash
+            templateContentHash,
+            taskMetadata
         );
     }
 }

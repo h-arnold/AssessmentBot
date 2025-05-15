@@ -12,6 +12,7 @@ class ProgressTracker {
     // Initialize properties
     this.properties = PropertiesService.getDocumentProperties();
     this.propertyKey = 'ProgressTracker';
+    this.step = 0; // Add step as class attribute
 
     // Store the instance
     ProgressTracker._instance = this;
@@ -35,8 +36,9 @@ class ProgressTracker {
    * Initializes the progress tracking by resetting any existing progress data.
    */
   startTracking() {
+    this.resetSteps();
     const initialData = {
-      step: 0,
+      step: this.step,
       message: 'Starting the assessment. This may take up to a minute...',
       completed: false,
       error: null,
@@ -48,21 +50,48 @@ class ProgressTracker {
 
   /**
    * Updates the current progress with the given step number and message.
-   *
-   * @param {number|string} step - The current step number (can be a string with numbers).
    * @param {string} message - A descriptive message for the current step.
+   * @param {boolean} incrementStep - Whether to increment the step by 1. Defaults to true.
    */
-  updateProgress(step, message) {
-    const currentData = this.getCurrentProgress() || {};
+  updateProgress(message, incrementStep = true) {
+
+    if (incrementStep) {
+      // Increment the step if no specific step is provided and incrementStep is true
+      this.incrementStep()
+    }
+    
     const updatedData = {
-      step: step ?? currentData.step,
+      step: this.step,
       message: message,
       completed: false,
       error: null,
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
-    console.log(`Progress updated: Step ${step} - ${message}`);
+    console.log(`Progress updated: Step ${this.step} - ${message}`);
+  }
+
+  /**
+   * Increments the step counter by 1 and updates the progress.
+    current step.
+   */
+  incrementStep() {
+    this.step++;
+  }
+
+  /**
+   * Resets the step counter to 0.
+   */
+  resetSteps() {
+    this.step = 0;
+    const currentData = this.getCurrentProgress() || {};
+    const updatedData = {
+      ...currentData,
+      step: this.step,
+      timestamp: new Date().toISOString(),
+    };
+    this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
+    console.log('Steps reset to 0.');
   }
 
   /**
@@ -71,7 +100,7 @@ class ProgressTracker {
   complete() {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
-      step: currentData.step,
+      step: this.step,
       completed: true,
       message: 'Task completed successfully.',
       timestamp: new Date().toISOString(),
@@ -98,17 +127,22 @@ class ProgressTracker {
    * Logs an error encountered during the process.
    *
    * @param {string} errorMessage - The error message to log.
+   * @param {string} [extraErrorDetails] - Additional error details for developer logs.
    */
-  logError(errorMessage) {
+  logError(errorMessage, extraErrorDetails) {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
+      step: this.step,
       error: errorMessage,
       message: 'An error occurred.',
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.error(`Error logged: ${errorMessage}`);
+    if (extraErrorDetails) {
+      console.error(`Extra error details: ${extraErrorDetails}`);
+    }
   }
 
   /**
@@ -153,6 +187,12 @@ class ProgressTracker {
    * @returns {number|null} The extracted step number or null if not found.
    */
   getStepAsNumber() {
+    // First check if we have it locally
+    if (this.step !== undefined) {
+      return typeof this.step === 'number' ? this.step : parseInt(this.step.toString(), 10);
+    }
+    
+    // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
     if (!progress || !progress.step) {
       console.log('No step data available.');

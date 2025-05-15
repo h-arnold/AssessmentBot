@@ -81,6 +81,7 @@ class InitController {
         // Gets the update stage.
         const updateStage = configurationManager.getUpdateStage();
         const scriptAuthorised = configurationManager.getScriptAuthorised();
+        this.setupAuthRevokeTimer()
         
         // If everything is up to date and the script is authorised, create the menu and finish.
         if (updateStage === 2 && scriptAuthorised) {

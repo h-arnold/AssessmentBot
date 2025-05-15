@@ -1,43 +1,21 @@
 /**
  * Assignment Class
  * 
- * Represents a specific assignment within a course, managing tasks and student submissions.
+ * Base class representing an assignment within a course, managing tasks and student submissions.
  */
 class Assignment {
   /**
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference slides document.
-   * @param {string} emptyDocumentId - The ID of the empty slides document.
    */
-  constructor(courseId, assignmentId, referenceDocumentId, emptyDocumentId) {
+  constructor(courseId, assignmentId) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.referenceDocumentId = referenceDocumentId;
-    this.emptyDocumentId = emptyDocumentId;
     this.tasks = {};           // { taskKey: Task }
     this.studentTasks = [];    // Array of StudentTask instances
-  }
-
-  /**
-       * Processes all images in tasks and student responses by fetching and uploading them.
-       */
-  processImages() {
-    const imageManager = new ImageManager();
-
-    // Collect all slide URLs
-    const slideUrls = imageManager.collectAllSlideUrls(this);
-
-    // Fetch images
-    const imageBlobs = imageManager.batchFetchImages(slideUrls);
-
-    // Upload images
-    const urlMappings = imageManager.batchUploadImages(imageBlobs);
-
-    // Update assignment with uploaded image URLs
-    imageManager.updateAssignmentWithImageUrls(this, urlMappings, imageBlobs);
+    this.progressTracker = ProgressTracker.getInstance();
   }
 
   /**
@@ -57,44 +35,6 @@ class Assignment {
   }
 
   /**
-   * Populates tasks from the reference and empty slides.
-   * Combines reference and empty content based on task keys.
-   */
-  populateTasksFromSlides() {
-    const slideContentManager = new SlideContentManager();
-
-    // Extract reference tasks
-    const referenceTasks = slideContentManager.extractTasksFromSlides(this.referenceDocumentId, "reference");
-    // Extract empty tasks
-    const emptyTasks = slideContentManager.extractTasksFromSlides(this.emptyDocumentId, "empty");
-
-    // Create a map of tasks from referenceTasks
-    const tasksMap = {};
-    referenceTasks.forEach(refTask => {
-      const key = refTask.taskTitle;
-      tasksMap[key] = refTask; // Add the task to the map
-    });
-
-    // Update tasks with emptyContent from emptyTasks
-    emptyTasks.forEach(emptyTask => {
-      const key = emptyTask.taskTitle;
-      if (tasksMap[key]) {
-        tasksMap[key].emptyContent = emptyTask.emptyContent;
-        tasksMap[key].emptyContentHash = emptyTask.emptyContentHash;
-      } else {
-        console.warn(`No matching reference task for empty task with key: ${key}`);
-        // Optionally, you can decide to add this task or handle it differently
-      }
-    });
-
-    // Assign the tasksMap to this.tasks
-    this.tasks = tasksMap;
-
-    console.log(`Populated ${Object.keys(this.tasks).length} tasks from slides.`);
-  }
-
-
-  /**
    * Adds a student to the assignment.
    * @param {Student} student - The Student instance to add.
    */
@@ -104,10 +44,10 @@ class Assignment {
   }
 
   /**
-   * Fetches and assigns submitted Google Slides documents for each student.
-   * Accurately detects Google Slides attachments by verifying MIME types.
+   * Fetches and assigns submitted Google Drive documents for each student, filtered by the provided MIME type.
+   * @param {string} mimeType - The Google Drive MIME type to filter for (e.g., MimeType.GOOGLE_SLIDES, MimeType.GOOGLE_SHEETS).
    */
-  fetchSubmittedSlides() {
+  fetchSubmittedDocumentsByMimeType(mimeType) {
     try {
       // Fetch all student submissions for the specific assignment
       const response = Classroom.Courses.CourseWork.StudentSubmissions.list(this.courseId, this.assignmentId);
@@ -126,26 +66,21 @@ class Assignment {
           attachments.forEach(attachment => {
             if (attachment.driveFile && attachment.driveFile.id) {
               const driveFileId = attachment.driveFile.id;
-
               try {
                 // Fetch the Drive file using DriveApp
                 const file = DriveApp.getFileById(driveFileId);
-                const mimeType = file.getMimeType();
-
-                // Check if the MIME type matches Google Slides
-                if (mimeType === MimeType.GOOGLE_SLIDES) {
+                const fileMimeType = file.getMimeType();
+                if (this.isValidMimeType(fileMimeType, mimeType)) {
                   const documentId = driveFileId;
-
                   // Find the corresponding StudentTask instance
                   const studentTask = this.studentTasks.find(st => st.student.id === studentId);
                   if (studentTask) {
                     studentTask.documentId = documentId;
-                    // console.log(`Assigned Document ID ${documentId} to student ${studentTask.student.name} (${studentTask.student.email})`);
                   } else {
                     console.log(`No matching student found for student ID: ${studentId}`);
                   }
                 } else {
-                  console.log(`Attachment with Drive File ID ${driveFileId} is not a Google Slides document (MIME type: ${mimeType}).`);
+                  console.log(`Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`);
                 }
               } catch (fileError) {
                 console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
@@ -164,18 +99,37 @@ class Assignment {
   }
 
   /**
-    * Processes all student submissions by extracting responses.
-    */
-  processAllSubmissions() {
-    const slideContentManager = new SlideContentManager();
+   * Helper to validate if the file's MIME type matches the expected type (Google Docs or Google Sheets).
+   * @param {string} fileMimeType - The MIME type of the file from Drive.
+   * @param {string} expectedMimeType - The expected Google MIME type.
+   * @return {boolean} True if valid, false otherwise.
+   */
+  isValidMimeType(fileMimeType, expectedMimeType) {
+    return fileMimeType === expectedMimeType;
+  }
 
-    this.studentTasks.forEach(studentTask => {
-      if (studentTask.documentId) {
-        studentTask.extractAndAssignResponses(slideContentManager, this.tasks);
-      } else {
-        console.warn(`No document ID for student: ${studentTask.student.email}. Skipping response extraction.`);
-      }
-    });
+  /**
+   * Fetches and assigns submitted documents for each student.
+   * This is a base method that should be implemented by subclasses.
+   */
+  fetchSubmittedDocuments() {
+    throw new Error('fetchSubmittedDocuments must be implemented by subclasses');
+  }
+
+  /**
+   * Populates tasks from reference documents.
+   * This is a base method that should be implemented by subclasses.
+   */
+  populateTasks() {
+    throw new Error('populateTasks must be implemented by subclasses');
+  }
+
+  /**
+   * Processes all student submissions by extracting responses.
+   * This is a base method that should be implemented by subclasses.
+   */
+  processAllSubmissions() {
+    throw new Error('processAllSubmissions must be implemented by subclasses');
   }
 
   /**
@@ -195,9 +149,6 @@ class Assignment {
     // Utilize the singleton instance of LLMRequestManager
     const llmRequestManager = new LLMRequestManager();
 
-    // Warm up LLM - Deprecated as the LLM is usually warmed up by the image uploader now anyway.
-    //llmRequestManager.warmUpLLM();
-
     // Generate LLM Requests
     const requests = llmRequestManager.generateRequestObjects(this);
     if (requests.length === 0) {
@@ -206,27 +157,6 @@ class Assignment {
     }
 
     // Send Requests in Batches and adds the responses to the assignment instance
-    llmRequestManager.processStudentResponses(requests, this)
-  }
-
-  /**
-       * Uploads all image blobs in tasks and student responses to the image service.
-       * Replaces blobs with the returned URLs.
-       */
-  uploadAllImages() {
-    const imageRequestManager = new ImageRequestManager();
-
-    // Upload images in tasks
-    for (const taskKey in this.tasks) {
-      const task = this.tasks[taskKey];
-      task.uploadImages(imageRequestManager);
-    }
-
-    // Upload images in student responses
-    for (const studentTask of this.studentTasks) {
-      studentTask.uploadResponsesImages(imageRequestManager);
-    }
-
-    console.log("All images have been uploaded and URLs have been updated.");
+    llmRequestManager.processStudentResponses(requests, this);
   }
 }

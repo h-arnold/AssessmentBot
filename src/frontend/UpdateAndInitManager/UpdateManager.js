@@ -171,21 +171,21 @@ class UpdateManager extends BaseUpdateAndInit {
     // Gets the assessment record template file Id - should have been set when the admin sheet was updated.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
 
-    this.progressTracker.updateProgress(++step, 'Fetching Assessment Record Details');
+    this.progressTracker.updateProgress('Fetching Assessment Record Details');
     // Get the assessment record details.
     this.getAssessmentRecordDetails();
 
     // Clone the assessment record sheets.
-    this.progressTracker.updateProgress(++step, 'Cloning Assessment Record sheets into latest template');
+    this.progressTracker.updateProgress('Cloning Assessment Record sheets into latest template');
     const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
 
     // Archive old assessment record sheets.
-    this.progressTracker.updateProgress(++step, 'Archiving old Assessment Record sheets');
+    this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
 
     // Update the Classroom Sheet with the new Assessment Record file IDs.
-    this.progressTracker.updateProgress(++step, 'Updating Classroom Sheet with new Assessment Record File IDs');
+    this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
     this.updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets);
 
     // Marks the task as complete.

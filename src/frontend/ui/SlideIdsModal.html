@@ -42,29 +42,29 @@
   </head>
   <body>
     <div class="modal-content">
-      <h5>Enter Slide IDs for "<?= assignmentDataObj.name ?>"</h5>
+      <h5>Enter Document IDs for "<?= assignmentDataObj.name ?>"</h5>
       <div class="input-field">
         <input 
           type="text" 
-          id="referenceSlideId" 
-          placeholder="Reference Slide ID" 
-          value="<?= savedSlideIds.referenceSlideId || '' ?>"
-          onkeyup="validateSlideIds()"
+          id="referenceDocumentId" 
+          placeholder="Reference Document ID" 
+          value="<?= savedDocumentIds.referenceDocumentId || '' ?>"
+          onkeyup="validateDocumentIds()"
         >
-        <label for="referenceSlideId" class="active">Reference Slide ID</label>
+        <label for="referenceDocumentId" class="active">Reference Document ID</label>
       </div>
       <div class="input-field">
         <input 
           type="text" 
-          id="emptySlideId" 
-          placeholder="Empty Slide ID" 
-          value="<?= savedSlideIds.emptySlideId || '' ?>"
-          onkeyup="validateSlideIds()"
+          id="templateDocumentId" 
+          placeholder="Template Document ID" 
+          value="<?= savedDocumentIds.templateDocumentId || '' ?>"
+          onkeyup="validateDocumentIds()"
         >
-        <label for="emptySlideId" class="active">Empty Slide ID</label>
+        <label for="templateDocumentId" class="active">Template Document ID</label>
       </div>
       <div id="idMatchError" class="error-message">
-        Reference and empty slide IDs must be different
+        Reference and template document IDs must be different.
       </div>
     </div>
     <div class="modal-footer">
@@ -73,20 +73,17 @@
     </div>
 
     <script>
-      function validateSlideIds() {
-        const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
-        const emptySlideId = document.getElementById('emptySlideId').value.trim();
+      function validateDocumentIds() {
+        const referenceDocumentId = document.getElementById('referenceDocumentId').value.trim();
+        const templateDocumentId = document.getElementById('templateDocumentId').value.trim();
         const errorMessage = document.getElementById('idMatchError');
-        const inputs = [document.getElementById('referenceSlideId'), document.getElementById('emptySlideId')];
+        const inputs = [document.getElementById('referenceDocumentId'), document.getElementById('templateDocumentId')];
         
-        // Check if both fields have values and if they match
-        if (referenceSlideId && emptySlideId && referenceSlideId === emptySlideId) {
-          // Show error
+        if (referenceDocumentId && templateDocumentId && referenceDocumentId === templateDocumentId) {
           errorMessage.style.display = 'block';
           inputs.forEach(input => input.classList.add('invalid'));
           return false;
         } else {
-          // Clear error
           errorMessage.style.display = 'none';
           inputs.forEach(input => input.classList.remove('invalid'));
           return true;
@@ -94,26 +91,25 @@
       }
 
       function saveAndRun() {
-        const referenceSlideId = document.getElementById('referenceSlideId').value.trim();
-        const emptySlideId = document.getElementById('emptySlideId').value.trim();
+        const referenceDocumentId = document.getElementById('referenceDocumentId').value.trim();
+        const templateDocumentId = document.getElementById('templateDocumentId').value.trim();
 
-        if (!referenceSlideId || !emptySlideId) {
-          alert('Please enter both Reference Slide ID and Empty Slide ID.');
+        if (!referenceDocumentId || !templateDocumentId) {
+          alert('Please enter both Reference Document ID and Template Document ID.');
           return;
         }
         
-        // Validate IDs don't match
-        if (!validateSlideIds()) {
-          M.toast({html: 'Reference and empty slide IDs cannot be the same.', classes: 'red'});
+        if (!validateDocumentIds()) {
+          M.toast({html: 'Reference and template document IDs cannot be the same.', classes: 'red'});
           return;
         }
 
         const assignmentTitle = "<?= assignmentDataObj.name ?>";
         const assignmentId = "<?= assignmentDataObj.id ?>";
 
-        const slideIds = {
-          referenceSlideId: referenceSlideId,
-          emptySlideId: emptySlideId
+        const documentIds = {
+          referenceDocumentId: referenceDocumentId,
+          templateDocumentId: templateDocumentId
         };
 
         google.script.run
@@ -122,19 +118,18 @@
           })
           .saveStartAndShowProgress(
             assignmentTitle,
-            slideIds,
+            documentIds,
             assignmentId,
-            referenceSlideId,
-            emptySlideId
+            referenceDocumentId,
+            templateDocumentId
           );
 
         google.script.host.close();
       }
 
-      // Initialise Materialise text fields and run initial validation
       document.addEventListener('DOMContentLoaded', function() {
         M.updateTextFields();
-        validateSlideIds();
+        validateDocumentIds();
       });
     </script>
 
