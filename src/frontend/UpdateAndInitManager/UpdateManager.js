@@ -176,14 +176,14 @@ class UpdateManager extends BaseUpdateAndInit {
     // Get the assessment record details.
     this.getAssessmentRecordDetails();
 
-    // Clone the assessment record sheets.
-    this.progressTracker.updateProgress('Cloning Assessment Record sheets into latest template');
-    const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
-
     // Archive old assessment record sheets.
     this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
+
+    // Clone the assessment record sheets.
+    this.progressTracker.updateProgress('Cloning Assessment Record sheets into latest template');
+    const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
 
     // Update the Classroom Sheet with the new Assessment Record file IDs.
     this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
