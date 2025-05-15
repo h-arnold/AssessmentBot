@@ -77,6 +77,38 @@ class StudentTask {
   }
 
   /**
+   * Adds feedback to a specific task response.
+   * @param {string} taskKey - The key of the task.
+   * @param {Feedback} feedbackObject - The feedback object to add.
+   */
+  addFeedback(taskKey, feedbackObject) {
+    if (this.responses[taskKey]) {
+      if (!this.responses[taskKey].feedback) {
+        this.responses[taskKey].feedback = {};
+      }
+      this.responses[taskKey].feedback[feedbackObject.getType()] = feedbackObject;
+    } else {
+      console.warn(`No response found for taskKey: ${taskKey}`);
+    }
+  }
+
+  /**
+   * Retrieves feedback for a specific task.
+   * @param {string} taskKey - The key of the task.
+   * @param {string} [feedbackType] - Optional: specific feedback type to retrieve.
+   * @return {Feedback|Object|null} - The feedback object, all feedback, or null if not found.
+   */
+  getFeedback(taskKey, feedbackType = null) {
+    if (!this.responses[taskKey]?.feedback) {
+      return null;
+    }
+    if (feedbackType) {
+      return this.responses[taskKey].feedback[feedbackType] || null;
+    }
+    return this.responses[taskKey].feedback;
+  }
+
+  /**
    * Serializes the StudentTask instance to a JSON object.
    * @return {Object} - The JSON representation of the StudentTask.
    */
@@ -94,6 +126,12 @@ class StudentTask {
             response: value.response,
             contentHash: value.contentHash, // Include contentHash
             assessments: value.assessments ? value.assessments : null,
+            feedback: value.feedback ? 
+              Object.fromEntries(
+                Object.entries(value.feedback).map(([fbType, fbObj]) => 
+                  [fbType, fbObj.toJSON()]
+                )
+              ) : {},
           },
         ])
       ),
@@ -120,7 +158,13 @@ class StudentTask {
         response: responseObj.response,
         contentHash: responseObj.contentHash, // Include contentHash
         assessments: responseObj.assessments ? responseObj.assessments : null,
+        feedback: {},
       };
+      if (responseObj.feedback) {
+        for (const [fbType, fbJson] of Object.entries(responseObj.feedback)) {
+          studentTask.responses[taskKey].feedback[fbType] = Feedback.fromJSON(fbJson);
+        }
+      }
     }
     return studentTask;
   }

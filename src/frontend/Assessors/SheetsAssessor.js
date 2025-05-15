@@ -62,6 +62,11 @@ class SheetsAssessor {
 
         // Add formula comparison results directly - addAssessment ensures assessments object exists
         studentResponseEntry.assessments.formulaComparison = assessmentResults.formulaComparisonResults;
+
+        // Add cell reference feedback to the response using the feedback model
+        if (assessmentResults.formulaComparisonResults.cellReferenceFeedback) {
+          studentTask.addFeedback(taskKey, assessmentResults.formulaComparisonResults.cellReferenceFeedback);
+        }
       });
     });
   }
@@ -116,12 +121,13 @@ class SheetsAssessor {
    * Also outputs a list of incorrect formulae with student and reference formulae.
    * @param {Array} referenceArray - Array of reference formula objects ({referenceFormula, location} or similar).
    * @param {Array} studentArray - Array of student formula objects ({formula, location} or similar).
-   * @return {Object} Object with counts: {correct, incorrect, notAttempted, incorrectFormulae}
+   * @return {Object} Object with counts and feedback objects.
    */
   _compareFormulaArrays(referenceArray, studentArray) {
     let correct = 0;
     let incorrect = 0;
     let notAttempted = 0;
+    const cellReferenceFeedback = new CellReferenceFeedback();
     let incorrectFormulae = [];
 
     for (let i = 0; i < referenceArray.length; i++) {
@@ -131,15 +137,15 @@ class SheetsAssessor {
       const studentFormula = student.formula || "";
 
       if (studentFormula === refFormula) {
+        cellReferenceFeedback.addItem(student.location, "correct");
         correct++;
       } else if (studentFormula === "") {
+        cellReferenceFeedback.addItem(student.location, "notAttempted");
         notAttempted++;
       } else {
+        cellReferenceFeedback.addItem(student.location, "incorrect");
         incorrect++;
 
-        // This stores the incorrect formulae with their respective student and reference formulae.
-        // For now, it'll only be converted to a string to be added as a the accuracy reasoning in the UI.
-        // However, I'll keep it as an array because it might be useful to pass to an LLM to generate feedback.
         incorrectFormulae.push({
           studentFormula: studentFormula,
           referenceFormula: refFormula
@@ -147,7 +153,13 @@ class SheetsAssessor {
       }
     }
 
-    return { correct, incorrect, notAttempted, incorrectFormulae };
+    return { 
+      correct, 
+      incorrect, 
+      notAttempted, 
+      incorrectFormulae, 
+      cellReferenceFeedback 
+    };
   }
 
   /**
