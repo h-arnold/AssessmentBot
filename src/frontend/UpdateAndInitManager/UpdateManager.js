@@ -173,10 +173,12 @@ class UpdateManager extends BaseUpdateAndInit {
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
 
     this.progressTracker.updateProgress('Fetching Assessment Record Details');
+    this.progressTracker.updateProgress('Fetching Assessment Record Details');
     // Get the assessment record details.
     this.getAssessmentRecordDetails();
 
     // Archive old assessment record sheets.
+    this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
@@ -186,6 +188,7 @@ class UpdateManager extends BaseUpdateAndInit {
     const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
 
     // Update the Classroom Sheet with the new Assessment Record file IDs.
+    this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
     this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
     this.updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets);
 
