@@ -2,14 +2,24 @@
 
 ## ✨ Enhancements
 
-* **Spreadsheet Formula Assessment:** Introduced comprehensive support for assessing Google Sheets formulae. Student spreadsheet submissions are now automatically evaluated for Completeness, Accuracy, and SPaG, with detailed reasoning and scoring.
-* **New Assessment Classes:** Added `SheetsAssessor`, `SheetsParser`, and related classes to handle extraction, comparison, and assessment of spreadsheet tasks and student responses.
-* **Progress Tracking:** Enhanced progress logging throughout the spreadsheet assessment workflow, including during formula extraction, response processing, and image uploads.
-* **Formula Normalisation:** Implemented robust formula normalisation to ensure accurate comparison, including handling of case, quotes, and Google Apps Script formula output quirks.
-* **Batch Operations:** Optimised Google Sheets API usage with batch operations for improved performance and reduced rate limiting.
-* **Improved Error Handling:** Expanded error logging with user-facing and developer-facing details, and integrated error tracking into the progress tracker for spreadsheet workflows.
-* **Assignment Workflow Improvements:** Refined assignment and response extraction logic for both slides and sheets, improving reliability and clarity.
-* **UI and Logging Updates:** Updated UI and logging to reflect new spreadsheet assessment features and provide clearer feedback during processing.
+### 🔢Spreadsheet Assessment
+
+Assessment Bot can now assess spreadsheet tasks. At present, this is limited to checking the correctness of formulae in student responses compared with the reference task.
+
+There's no LLM related cleverness in this release, but you still get a breakdown of a student's accuracy and completeness with regards to their forumlae. Where their formulae are incorrect, you will see a breakdown of the errors in the assessment record.
+
+### Under the hood updates
+
+* **Progress Tracking:** Updated and improved `ProgressTracker` to give more detailed progress information and be easier to code into the workflow.
+
+* **Update Handling: ** A few tweaks and bug fixes to the update handling process. I'm hoping that this will be the last time I need to fiddle with things to get a clean update.
+
+#### 🔄 Refactoring
+
+* **Class Structure:** Refactored and streamlined task, assignment, and parser classes to support both slides and sheets workflows.
+* **Singleton Pattern:** Improved singleton instantiation for progress tracking and UI management.
+* **Method Optimisation:** Split large methods into smaller, focused units for better maintainability and clarity.
+* **Naming Consistency:** Updated class and method names for consistency and clarity across the codebase.
 
 ## 🐛 Bug Fixes
 
@@ -19,21 +29,9 @@
 * **Assignment Data Handling:** Addressed issues with missing or mismatched student responses and reference tasks.
 * **Task Extraction:** Fixed bugs in task extraction and response assignment for both slides and sheets.
 
-## 🔄 Refactoring
-
-* **Class Structure:** Refactored and streamlined task, assignment, and parser classes to support both slides and sheets workflows.
-* **Singleton Pattern:** Improved singleton instantiation for progress tracking and UI management.
-* **Method Optimisation:** Split large methods into smaller, focused units for better maintainability and clarity.
-* **Naming Consistency:** Updated class and method names for consistency and clarity across the codebase.
-
-## 📄 New Documentation
-
-* **Spreadsheet Assessment:** Added documentation and inline comments for new spreadsheet assessment features and formula handling.
-* **Error Handling:** Expanded JSDoc and inline documentation for error handling and progress tracking.
-
 ## 📚 Sheet Copies
 
-You can find copies of the sheets with the latest code in this Google Drive folder: [Google Drive Folder](https://drive.google.com/drive/folders/1Ah-hUohthVpk_D2b4e9d0s7dsSaae7tN?usp=sharing)
+You can find copies of the sheets with the latest code in this Google Drive folder: [Google Drive Folder](https://drive.google.com/drive/folders/1aFkxGpG4pp59cjei-fDOMbCXnC9gTswL?usp=drive_link)
 
 ## ⬆️ Updating to v0.5.0
 
@@ -43,9 +41,7 @@ If you already have Assessment Bot running, you can update to v0.5.0 by followin
 2. Click on **Assessment Bot** -> **Settings** -> **Update Version**.
 3. Select the **v0.5.0** option and follow the instructions.
 
-## 📋 Detailed Commit History
 
-* See `commitHistory.txt` for a full list of changes included in this release, with detailed commit messages for all spreadsheet assessment features and supporting updates.
 
 # 🚀 v0.4.3
 
