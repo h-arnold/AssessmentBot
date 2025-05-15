@@ -9,7 +9,7 @@ class DocumentParser {
    * Constructs a DocumentParser instance.
    */
   constructor() {
-    this.progressTracker = this.progressTracker.getInstance();
+    this.progressTracker = ProgressTracker.getInstance();
     // Base initialization
   }
 
