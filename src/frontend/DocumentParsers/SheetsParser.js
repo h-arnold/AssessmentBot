@@ -74,10 +74,14 @@ class SheetsParser extends DocumentParser {
       for (const sheetName in formulaDifferences) {
         const sheetData = formulaDifferences[sheetName];
 
+        // Create reference locations map for faster lookup during student task extraction
+        const referenceLocationsMap = this._createReferenceLocationsMap(sheetData.formulas);
+
         // Create task metadata with bounding box information
         const taskMetadata = {
           boundingBox: sheetData.boundingBox,
-          totalFormulas: sheetData.formulas.length
+          totalFormulas: sheetData.formulas.length,
+          referenceLocationsMap: referenceLocationsMap
         };
 
         // Create a Task object for each sheet with formula differences
@@ -91,7 +95,7 @@ class SheetsParser extends DocumentParser {
           null,                     // templateContent is null
           Utils.generateHash(JSON.stringify(sheetData.formulas)), // contentHash
           null,                     // templateContentHash is null
-          taskMetadata              // Add the taskMetadata with bounding box
+          taskMetadata              // Add the taskMetadata with bounding box and reference locations map
         );
 
         tasks.push(task);
@@ -103,6 +107,30 @@ class SheetsParser extends DocumentParser {
       this.progressTracker?.logError('Failed to extract tasks from sheets');
       return [];
     }
+  }
+
+  /**
+   * Creates a map of reference formula locations for efficient lookup.
+   * Maps location keys to the corresponding formula index in the array.
+   * 
+   * Note: We store the array indices rather than simple boolean values to allow direct access
+   * to the full formula objects when needed. This approach maintains efficient lookup while
+   * providing more utility than a simple presence check. The combination of this map and 
+   * the original location data in the formula objects gives us flexibility for both random
+   * access and iteration scenarios without duplicating the full formula objects.
+   * 
+   * @param {Array} formulas - Array of formula differences with location information
+   * @return {Object} Map with location keys and formula indices as values
+   * @private
+   */
+  _createReferenceLocationsMap(formulas) {
+    const locationsMap = {};
+    formulas.forEach((item, index) => {
+      const [row, col] = item.location;
+      const key = `${row},${col}`;
+      locationsMap[key] = index; // Store the index instead of just true
+    });
+    return locationsMap;
   }
 
   /**
@@ -352,26 +380,38 @@ class SheetsParser extends DocumentParser {
           try {
             // Get formulas from the specific bounding box region
             const rangeFormulas = taskSheet.getRange(boundingBox, 'formulas');
-
-            // Convert to the format used by reference tasks
-            for (let r = 0; r < rangeFormulas.length; r++) {
-              for (let c = 0; c < rangeFormulas[r].length; c++) {
-                const formula = rangeFormulas[r][c];
-                // Include all formulas (empty or not)
-
-                let normalisedStudentFormula = formula; // Default to the original formula
-                
-                // If the formula isn't empty, normalise it.
-                if (formula) {
-                  normalisedStudentFormula = this._normaliseFormulaCase(formula); 
-                }
-
-                studentFormulas.push({
-                  formula: normalisedStudentFormula || "", // Store empty string if formula is null/undefined
-                  location: [boundingBox.startRow - 1 + r, boundingBox.startColumn - 1 + c]
-                });
+            
+            // Use the pre-computed reference locations map from the reference task
+            const referenceLocationsMap = referenceTask.taskMetadata.referenceLocationsMap || 
+                                          this._createReferenceLocationsMap(referenceTask.taskReference);
+            
+            // Only extract formulas from locations that exist in the reference task
+            referenceTask.taskReference.forEach(refItem => {
+              const [refRow, refCol] = refItem.location;
+              
+              // Calculate the relative position within our extracted range
+              const rangeRow = refRow - (boundingBox.startRow - 1);
+              const rangeCol = refCol - (boundingBox.startColumn - 1);
+              
+              // Check if this position is within our extracted range
+              let formula = "";
+              if (rangeRow >= 0 && rangeRow < rangeFormulas.length &&
+                  rangeCol >= 0 && rangeCol < (rangeFormulas[rangeRow] || []).length) {
+                formula = rangeFormulas[rangeRow][rangeCol] || "";
               }
-            }
+              
+              // Normalise if needed
+              let normalisedStudentFormula = formula;
+              if (formula) {
+                normalisedStudentFormula = this._normaliseFormulaCase(formula);
+              }
+              
+              studentFormulas.push({
+                formula: normalisedStudentFormula || "", // Store empty string if formula is null/undefined
+                location: [refRow, refCol] // Use the original reference location
+              });
+            });
+
           } catch (error) {
             console.error(`Error extracting formulas from ${sheetName}: ${error}`);
             this.progressTracker?.logError(`Failed to extract formulas from ${sheetName}`);
