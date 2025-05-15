@@ -380,11 +380,7 @@ class SheetsParser extends DocumentParser {
           try {
             // Get formulas from the specific bounding box region
             const rangeFormulas = taskSheet.getRange(boundingBox, 'formulas');
-            
-            // Use the pre-computed reference locations map from the reference task
-            const referenceLocationsMap = referenceTask.taskMetadata.referenceLocationsMap || 
-                                          this._createReferenceLocationsMap(referenceTask.taskReference);
-            
+                    
             // Only extract formulas from locations that exist in the reference task
             referenceTask.taskReference.forEach(refItem => {
               const [refRow, refCol] = refItem.location;
