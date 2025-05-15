@@ -176,7 +176,7 @@ class ImageManager extends BaseRequestManager {
     // Incrementing the step number and updating the message.
 
     this.progressTracker.updateProgress(
-      `Uploading ${imageBlobs.length} images in ${batches.length} batches`,true)
+      `Uploading ${imageBlobs.length} images in ${batches.length} batches`,false)
 
     batches.forEach((batch, batchIndex) => {
       this.progressTracker.updateProgress(

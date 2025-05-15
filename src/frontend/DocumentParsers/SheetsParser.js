@@ -339,7 +339,7 @@ class SheetsParser extends DocumentParser {
    */
   extractStudentTasks(studentDocumentId, referenceTasks) {
     try {
-      this.progressTracker?.logProgress('Extracting student tasks from sheets');
+      this.progressTracker.updateProgress('Extracting student tasks from sheets');
       const studentTasks = [];
 
       if (!studentDocumentId) {
@@ -439,11 +439,11 @@ class SheetsParser extends DocumentParser {
       }
       );
 
-      this.progressTracker?.logProgress(`Extracted ${studentTasks.length} student tasks from sheets`);
+      this.progressTracker.updateProgress(`Extracted ${studentTasks.length} student tasks from sheets`);
       return studentTasks;
     } catch (error) {
       console.error('Error in extractStudentTasks:', error);
-      this.progressTracker?.logError('Failed to extract student tasks from sheets');
+      this.progressTracker.logError('Failed to extract student tasks from sheets');
       return [];
     }
   }

@@ -138,7 +138,7 @@ class GoogleClassroomManager {
 
     // 0) Initialise progress tracker
     let step = 0 //initialise step variable for the Progress Tracker
-    this.progressTracker.updateProgress(step, 'Creating Assessment Records');
+    this.progressTracker.updateProgress('Creating Assessment Records');
 
     // 1) Retrieve all rows
     const data = this.csm.getData(); 
@@ -284,17 +284,11 @@ class GoogleClassroomManager {
         const shareResult = DriveManager.shareFolder(this.destinationFolderId, teacherEmailsSet);
         // Use the shareResult status to update progress or log a message
         if (shareResult.status === 'complete') {
-          this.progressTracker.updateProgress(++step,
-            `Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`
-          );
+          this.progressTracker.updateProgress(`Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`,true);
         } else if (shareResult.status === 'partial') {
-          this.progressTracker.updateProgress(null,
-            `Some teachers shared, some failed. Check logs.`
-          );
+          this.progressTracker.updateProgress(`Some teachers shared, some failed. Check logs.`, false);
         } else if (shareResult.status === 'none') {
-          this.progressTracker.updateProgress(null,
-            `No teacher emails provided; folder sharing skipped.`
-          );
+          this.progressTracker.updateProgress(`No teacher emails provided; folder sharing skipped.`, false);
         }
         console.log(shareResult.message);
       } catch (error) {
