@@ -339,7 +339,7 @@ class SheetsParser extends DocumentParser {
    */
   extractStudentTasks(studentDocumentId, referenceTasks) {
     try {
-      this.progressTracker.updateProgress('Extracting student tasks from sheets');
+      this.progressTracker.updateProgress('Extracting student tasks from sheets', false);
       const studentTasks = [];
 
       if (!studentDocumentId) {
