@@ -187,6 +187,9 @@ class AssignmentController {
     assignment.assessResponses();
     this.progressTracker.updateProgress("Responses assessed.", false);
 
+    const feedback = new SheetsFeedback(assignment.studentTasks)
+    feedback.applyFeedback();
+
     return assignment;
   }
 
