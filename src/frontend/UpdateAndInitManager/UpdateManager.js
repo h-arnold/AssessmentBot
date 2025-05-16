@@ -78,9 +78,39 @@ class UpdateManager extends BaseUpdateAndInit {
     if (!assessmentRecordFileIds) {
       assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
     }
-
-    // Move all the files to the archive folder
-    DriveManager.moveFiles(archiveFolder.newFolderId, assessmentRecordFileIds, ` - ARCHIVED - ${date}`);
+    
+    // Filter files that don't already have "ARCHIVED" in their names
+    // This avoids an issue where if the update process is run multiple times, for whatever reason, the template files
+    // end up getting multiple `ARCHIVED - {date}` suffixes which eventually leads to errors with the Drive API when 
+    // the file names get too long.
+    const filesToRename = [];
+    const filesToMoveOnly = [];
+    
+    assessmentRecordFileIds.forEach(fileId => {
+      try {
+        const file = DriveApp.getFileById(fileId);
+        const fileName = file.getName();
+        
+        if (fileName.includes('ARCHIVED')) {
+          // If already archived, just move without renaming
+          filesToMoveOnly.push(fileId);
+        } else {
+          // If not archived, move and rename
+          filesToRename.push(fileId);
+        }
+      } catch (error) {
+        console.error(`Error checking file ${fileId}: ${error.message}`);
+      }
+    });
+    
+    // Move all files to the archive folder
+    if (filesToMoveOnly.length > 0) {
+      DriveManager.moveFiles(archiveFolder.newFolderId, filesToMoveOnly, ''); // Move without renaming
+    }
+    
+    if (filesToRename.length > 0) {
+      DriveManager.moveFiles(archiveFolder.newFolderId, filesToRename, ` - ARCHIVED - ${date}`);
+    }
   }
 
   /**
