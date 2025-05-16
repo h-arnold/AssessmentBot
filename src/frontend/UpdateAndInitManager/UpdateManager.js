@@ -96,8 +96,6 @@ class UpdateManager extends BaseUpdateAndInit {
     // Update configuration values prior to cloning.
     configurationManager.setUpdateStage(1);
     configurationManager.setIsAdminSheet(true); // Esnures that you can continue the update process in the new sheet.
-    configurationManager.setScriptAuthorised(false); //Makes sure that the appropriate menu is displayed as the new sheet won't be authorised.
-    configurationManager.revokeAuthTriggerSet(false) //Makes surethat the new sheet gets a new revoke auth trigger set.
 
     // Serialise existing config
     const propsCloner = new PropertiesCloner();
@@ -166,19 +164,16 @@ class UpdateManager extends BaseUpdateAndInit {
     const uiManager = UIManager.getInstance();
     uiManager.showProgressModal();
 
-    let step = 0;
     this.progressTracker.startTracking('Updating all Assessment Records. This may take a while...');
 
     // Gets the assessment record template file Id - should have been set when the admin sheet was updated.
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
 
     this.progressTracker.updateProgress('Fetching Assessment Record Details');
-    this.progressTracker.updateProgress('Fetching Assessment Record Details');
     // Get the assessment record details.
     this.getAssessmentRecordDetails();
 
     // Archive old assessment record sheets.
-    this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
     const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
     this.archiveOldVersions(assessmentRecordFileIds);
@@ -188,7 +183,6 @@ class UpdateManager extends BaseUpdateAndInit {
     const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
 
     // Update the Classroom Sheet with the new Assessment Record file IDs.
-    this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
     this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
     this.updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets);
 

@@ -35,7 +35,8 @@ class PropertiesCloner extends BaseSheetManager {
       const docKeys = this.docProperties.getKeys();
       docKeys.forEach(key => {
         // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
-        if (key !== 'scriptAuthorised') {
+        // Skip 'revokeAuthTriggerSet' for the same reason. Otherwise an auth revocation trigger won't be created.
+        if (key !== 'scriptAuthorised' || key !== 'revokeAuthTriggerSet') {
           data.push(['DOCUMENT', key, this.docProperties.getProperty(key)]);
         }
       });
@@ -75,8 +76,8 @@ class PropertiesCloner extends BaseSheetManager {
 
     rows.forEach(row => {
       const [type, key, value] = row;
-      // Skip 'scriptAuthorised' property
-      if (key === 'scriptAuthorised') return;
+      // Skip 'scriptAuthorised' property and 'revokeAuthTriggerSet'.
+      if (key === 'scriptAuthorised' || key === 'revokeAuthTriggerSet') return;
       
       if (type === 'DOCUMENT') {
       this.docProperties.setProperty(key, value);
