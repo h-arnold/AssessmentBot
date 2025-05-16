@@ -30,7 +30,7 @@ class SheetsFeedback {
           return;
         }
 
-        this.progressTracker.updateProgress(`Applying feedback to ${studentTask.student.name}'s spreadsheet.`, false);
+        this.progressTracker.updateProgress(`Generating feedback for ${studentTask.student.name}'s spreadsheet.`, false);
         
         // Generate batch update requests for this student's spreadsheet
         const requests = this.generateBatchRequestsForStudent(studentTask);
@@ -44,6 +44,9 @@ class SheetsFeedback {
       });
       
       // Execute all batch updates
+      this.progressTracker.updateProgress(`Applying feedback to student sheets`)
+
+
       if (batchUpdates.length > 0) {
         BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
         this.progressTracker.updateProgress(`Applied cell colour feedback to ${batchUpdates.length} student sheets.`, false);
@@ -65,11 +68,14 @@ class SheetsFeedback {
     const requests = [];
     
     Object.entries(studentTask.responses).forEach(([taskKey, response]) => {
-      // Skip if no response or no feedback
-      if (!response || !response.feedback) {
+      // Skip if no response, no feedback or no sheedId
+      if (!response || !response.feedback || !response.pageId) {
         return;
       }
       
+      // Get the sheetId for the response
+      const sheetId = response.pageId
+
       // Look for cell reference feedback
       const cellFeedback = response.feedback.cellReference;
       if (cellFeedback && cellFeedback.getItems) {
@@ -77,9 +83,8 @@ class SheetsFeedback {
         
         feedbackItems.forEach(item => {
           // Create cell format request based on row and column indices
-          const rowIndex = item.rowIndex || 0;
-          const colIndex = item.colIndex || 0;
-          const sheetId = item.sheetId || 0;
+          const rowIndex = item.location[0] || 0; //First entry in `location` is the row
+          const colIndex = item.location[1] || 0; //First entry in `location` is the column
           
           const cellRequest = this.createCellFormatRequest(
             rowIndex, 
