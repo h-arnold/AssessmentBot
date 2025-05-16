@@ -434,7 +434,6 @@ class SheetsParser extends DocumentParser {
       }
       );
 
-      this.progressTracker.updateProgress(`Extracted ${studentTasks.length} student tasks from sheets`, false);
       return studentTasks;
     } catch (error) {
       console.error('Error in extractStudentTasks:', error);
