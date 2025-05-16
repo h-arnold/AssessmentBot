@@ -189,7 +189,7 @@ class UIManager {
    */
   showConfigurationDialog() {
     this.safeUiOperation(() => {
-      const html = HtmlService.createHtmlOutputFromFile('ui/ConfigurationDialog')
+      const html = HtmlService.createHtmlOutputFromFile('UI/ConfigurationDialog')
         .setWidth(500)
         .setHeight(600); // Adjust the size as needed
 
@@ -209,7 +209,7 @@ class UIManager {
       const modalWidth = Math.max(300, maxTitleLength * 10); // Minimum width 300px, approx 10px per character
 
       // Instead of embedded HTML, load the templated HTML file:
-      const template = HtmlService.createTemplateFromFile('ui/AssignmentDropdown');
+      const template = HtmlService.createTemplateFromFile('UI/AssignmentDropdown');
       template.assignments = assignments; // Pass data to the HTML template
 
       const htmlOutput = template.evaluate()
@@ -249,7 +249,7 @@ class UIManager {
         const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(assignmentDataObj.name);
 
         // Load templated HTML file instead of a string
-        const template = HtmlService.createTemplateFromFile('ui/SlideIdsModal');
+        const template = HtmlService.createTemplateFromFile('UI/SlideIdsModal');
         template.assignmentDataObj = assignmentDataObj;
         template.savedDocumentIds = savedDocumentIds;
 
@@ -279,7 +279,7 @@ class UIManager {
         classrooms.sort((a, b) => a.name.localeCompare(b.name));
 
         // Create a template from the HTML file and pass the classrooms data
-        const htmlTemplate = HtmlService.createTemplateFromFile('ui/ClassroomDropdown');
+        const htmlTemplate = HtmlService.createTemplateFromFile('UI/ClassroomDropdown');
         htmlTemplate.classrooms = classrooms; // Pass data to the template
 
         // Evaluate the template to HTML
@@ -320,7 +320,7 @@ class UIManager {
    */
   showProgressModal() {
     this.safeUiOperation(() => {
-      const html = HtmlService.createHtmlOutputFromFile('ui/ProgressModal')
+      const html = HtmlService.createHtmlOutputFromFile('UI/ProgressModal')
         .setWidth(400)
         .setHeight(160);
       this.ui.showModalDialog(html, 'Progress');
@@ -436,7 +436,7 @@ class UIManager {
    */
   showClassroomEditorModal() {
     this.safeUiOperation(() => {
-      const html = HtmlService.createHtmlOutputFromFile('ui/ClassroomEditorModal')
+      const html = HtmlService.createHtmlOutputFromFile('UI/ClassroomEditorModal')
         .setWidth(900)
         .setHeight(600); // Adjust width and height as needed
 
@@ -466,7 +466,7 @@ class UIManager {
           throw new Error('Failed to fetch version details');
         }
 
-        const template = HtmlService.createTemplateFromFile('ui/VersionSelectorModal');
+        const template = HtmlService.createTemplateFromFile('UI/VersionSelectorModal');
         template.versions = versions;
 
         const htmlOutput = template.evaluate()
