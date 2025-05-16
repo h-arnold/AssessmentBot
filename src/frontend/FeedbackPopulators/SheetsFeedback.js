@@ -68,8 +68,9 @@ class SheetsFeedback {
     const requests = [];
     
     Object.entries(studentTask.responses).forEach(([taskKey, response]) => {
-      // Skip if no response, no feedback or no sheedId
-      if (!response || !response.feedback || !response.pageId) {
+      // Skip if no response, or no feedback
+      if (!response || !response.feedback || response.pageId === undefined || response.pageId === null) { //pageId needs to be not null or undefined because the first sheetId is 0 which is falsy
+        console.warn(`No response or feedback for task ${taskKey} for student ${studentTask.student.name}`);
         return;
       }
       
