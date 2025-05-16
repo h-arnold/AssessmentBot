@@ -577,6 +577,6 @@ class OverviewSheetManager extends BaseSheetManager {
         if (this.requests.length === 0) return;
 
         const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        Sheets.Spreadsheets.batchUpdate({ requests: this.requests }, spreadsheetId);
+        BatchUpdateUtility.executeBatchUpdate(this.requests, spreadsheetId);
     }
 }

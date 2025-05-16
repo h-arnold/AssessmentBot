@@ -5,9 +5,10 @@
  * @class SheetsFeedback
  */
 
-class SheetsFeedback {
+class SheetsFeedback(studentTasks) {
   constructor() {
     this.feedback = [];
     this.feedbackType = 'sheets';
+    this.studentTasks = 
   }
 }

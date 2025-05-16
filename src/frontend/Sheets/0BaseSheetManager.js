@@ -237,7 +237,7 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
 
   /**
    * Executes all batchUpdate requests collected.
-   * @param spreadsheetId {string} - Optional - the ID of the spreadsheet you'd like to perform the batch update on.
+   * @param {string} spreadsheetId - Optional - the ID of the spreadsheet you'd like to perform the batch update on.
    */
   executeBatchUpdate(spreadsheetId) {
     if (this.requests.length === 0) {
@@ -250,8 +250,7 @@ createHeaderFormattingRequest(sheetId, startRowIndex, endRowIndex, formatOptions
     }
 
     try {
-      Sheets.Spreadsheets.batchUpdate({ requests: this.requests }, spreadsheetId);
-      console.log("Batch update executed successfully.");
+      BatchUpdateUtility.executeBatchUpdate(this.requests, spreadsheetId);
       // Clear requests after successful execution
       this.requests = [];
     } catch (e) {

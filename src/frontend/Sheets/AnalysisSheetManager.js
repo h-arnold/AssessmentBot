@@ -499,7 +499,7 @@ class AnalysisSheetManager extends BaseSheetManager {
   createAnalysisSheet() {
     this.createOrGetSheet();
     this.prepareData();
-    this.executeBatchUpdate();
+    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
     // After creating the sheet, store the average ranges
     this.storeAverageRanges();
   }

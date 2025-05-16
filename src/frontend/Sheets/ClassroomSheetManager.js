@@ -60,7 +60,7 @@ class ClassroomSheetManager extends BaseSheetManager {
     this.requests.push(headerValuesRequest, headerFormattingRequest);
 
     // Execute all batch requests
-    this.executeBatchUpdate();
+    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
   }
 
   /**
@@ -87,7 +87,7 @@ class ClassroomSheetManager extends BaseSheetManager {
     };
 
     this.requests.push(appendRowsRequest);
-    this.executeBatchUpdate();
+    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
   }
 
   /**
@@ -126,7 +126,7 @@ class ClassroomSheetManager extends BaseSheetManager {
       ];
 
       assessmentRecordSheet.requests.push(...requests);
-      assessmentRecordSheet.executeBatchUpdate(spreadsheetId);
+      BatchUpdateUtility.executeBatchUpdate(assessmentRecordSheet.requests, spreadsheetId);
 
       console.log('Appended class info values successfully.');
     } catch (error) {
@@ -210,6 +210,6 @@ class ClassroomSheetManager extends BaseSheetManager {
     this.requests.push(freezeRequest);
 
     // Execute all batch requests
-    this.executeBatchUpdate();
+    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
   }
 }

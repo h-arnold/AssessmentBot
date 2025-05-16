@@ -71,7 +71,7 @@ class SummarySheetManager extends BaseSheetManager {
     );
 
     // 9. Execute batch update
-    this.executeBatchUpdate(masterSpreadsheetId);
+    BatchUpdateUtility.executeBatchUpdate(this.requests, masterSpreadsheetId);
   }
 
   /**
