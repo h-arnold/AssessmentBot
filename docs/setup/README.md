@@ -6,19 +6,17 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
     - [1️⃣ Langflow Backend](#1️⃣-langflow-backend)
-    - [2️⃣ Google Slides Assessor Library](#2️⃣-google-slides-assessor-library)
+    - [2️⃣ Admin Sheet](#2️⃣-admin-sheet)
     - [3️⃣ Assessment Records](#3️⃣-assessment-records)
-    - [4️⃣ Overview Sheet](#4️⃣-overview-sheet)
   - [🚀 The Setup Process](#-the-setup-process)
     - [🌐 Setting up the Langflow Backend](#-setting-up-the-langflow-backend)
-      - [⚡ The Easy Way (For Testing)](#-the-easy-way-for-testing)
-      - [✅ The GDPR-Compliant Way (For Production)](#-the-gdpr-compliant-way-for-production)
+      - [Deploy Langflow in Google Cloud Run](#deploy-langflow-in-google-cloud-run)
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
-      - [1️⃣ Creating the Assessment Records](#1️⃣-creating-the-assessment-records)
-      - [2️⃣ Configuring Google Slides Assessor](#2️⃣-configuring-google-slides-assessor)
-      - [3️⃣ Setting up the Overview Sheet](#3️⃣-setting-up-the-overview-sheet)
+      - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
+      - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
       - [4️⃣ Getting started with your first assessment.](#4️⃣-getting-started-with-your-first-assessment)
   - [🌟 Final Thoughts](#-final-thoughts)
+
 
 ## 📝 Prerequisites
 

@@ -2,6 +2,21 @@
 
 These instructions guide you through deploying a Langflow server using Google Cloud Run. Adjustments may be required for different environments.
 
+- [🔧 Deploying Langflow Server](#-deploying-langflow-server)
+  - [✨ Prerequisites](#-prerequisites)
+    - [▪️ Google Cloud Project](#️-google-cloud-project)
+    - [🔑 Google Cloud Service Account](#-google-cloud-service-account)
+    - [▪️ PostgreSQL Database](#️-postgresql-database)
+  - [🔄 Deployment Steps](#-deployment-steps)
+    - [📂 Set Up the Database](#-set-up-the-database)
+    - [🔐 Store Your Secrets](#-store-your-secrets)
+    - [🚀 Deploy Langflow](#-deploy-langflow)
+      - [🖥️ Building the Image and Supplying Environment Variables](#️-building-the-image-and-supplying-environment-variables)
+      - [📀 Adding Storage Mounts](#-adding-storage-mounts)
+      - [🧩 Mounting Storage Volumes](#-mounting-storage-volumes)
+      - [✅ Deploying the Revision](#-deploying-the-revision)
+  - [✔️ Verify the Deployment](#️-verify-the-deployment)
+
 ---
 
 ## ✨ Prerequisites

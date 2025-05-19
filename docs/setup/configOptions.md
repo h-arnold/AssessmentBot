@@ -1,5 +1,26 @@
 # 📝 Assessment Bot Configuration Options
 
+- [📝 Assessment Bot Configuration Options](#-assessment-bot-configuration-options)
+  - [📂 Where to Find the Settings](#-where-to-find-the-settings)
+  - [⚙️ The Options](#️-the-options)
+    - [🌐 Langflow Tab](#-langflow-tab)
+      - [🔑 Langflow API Key](#-langflow-api-key)
+      - [🌍 Langflow URL](#-langflow-url)
+    - [🧩 Tweak IDs](#-tweak-ids)
+      - [📝 Text Assessment Tweak ID](#-text-assessment-tweak-id)
+      - [📊 Table Assessment Tweak ID](#-table-assessment-tweak-id)
+      - [🖼️ Image Assessment Tweak ID](#️-image-assessment-tweak-id)
+      - [🏷️ Image Flow UID](#️-image-flow-uid)
+  - [🧩 Advanced Options Tab](#-advanced-options-tab)
+    - [📦 Batch Size](#-batch-size)
+    - [🔗 Update Details URL](#-update-details-url)
+    - [🗂️ Assessment Record Template ID](#️-assessment-record-template-id)
+    - [📁 Assessment Record Destination Folder](#-assessment-record-destination-folder)
+    - [⏳ Days Until Auth Revoke](#-days-until-auth-revoke)
+  - [🐞 Debug Tab](#-debug-tab)
+    - [🏫 Classroom](#-classroom)
+
+
 ## 📂 Where to Find the Settings
 
 1. Open your **Admin sheet**.
