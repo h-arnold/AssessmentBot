@@ -62,7 +62,7 @@ class AssignmentController {
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
       
       // Spreadsheets don't currently use LLMs so we don't need to warm up the backend for them.
-      if (doccumentType === 'SLIDES') {
+      if (documentType === 'SLIDES') {
         this.llmRequestManager.warmUpLLM();
       }
 
@@ -147,6 +147,10 @@ class AssignmentController {
     assignment.assessResponses();
     this.progressTracker.updateProgress("Responses assessed.", false);
 
+    const feedback = new SheetsFeedback(assignment.studentTasks)
+    feedback.applyFeedback();
+
+
     return assignment;
   }
 
@@ -191,8 +195,6 @@ class AssignmentController {
     assignment.assessResponses();
     this.progressTracker.updateProgress("Responses assessed.", false);
 
-    const feedback = new SheetsFeedback(assignment.studentTasks)
-    feedback.applyFeedback();
 
     return assignment;
   }
