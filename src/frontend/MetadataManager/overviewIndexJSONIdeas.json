@@ -1,0 +1,22 @@
+{
+    "assignmentMetadata": {
+    "assignmentId": {
+        "topic": "Assignment 1",
+        "assignmentNames": ["assignmentName1", "assignmentName2"],
+        "documentIds": [
+            { "referenceDocumentId": "1234567890", "templateDocumentID": "Assignment 1", "documentType": "SHEETS/SLIDES" },
+        ]
+    }
+    },
+    "assessmentRecords": {
+        "yearGroup": {
+            "assessmentRecords": [
+                {"assessmentRecordDocumentId" : {
+                    "ClassName": "Class 1",
+                }
+            }
+            ]
+        } 
+    }
+    }
+}

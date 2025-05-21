@@ -1,0 +1,28 @@
+{
+    "assessmentRecordMetadata": {
+        "documentId": "1234567890",
+        "yearGroup": "Year 10",
+        "ClassName": "10A",
+        "gcCourseId": "1234567890",
+        "assignments": {
+            "assignmentId": {
+                "gcAssignmentId": "1234567890",
+                "created": "2023-10-01",
+                "lastUpdated": "2023-10-01",
+                "lastAssessed": "2023-10-01",
+                "assignmentType": "SHEETS/SLIDES",
+                "sheetId": "1234567890",
+                "assignmentObj": {
+                    "assignmentObject that is generated during the assignment process goes here."
+                }
+            }
+        }
+        "students" : 
+            "studentId": {
+            "lastUpdated":"2023-10-01",
+            "studentName": "John Doe",
+            "studentEmail": "email@email.com",
+            "targetGrade": "A"
+        }
+    }
+}
