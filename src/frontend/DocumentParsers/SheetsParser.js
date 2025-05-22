@@ -57,8 +57,7 @@ class SheetsParser extends DocumentParser {
       );
       return { referenceTasks, templateTasks };
     } catch (error) {
-      console.error("Error in _extractRawSheetData:", error);
-      this.progressTracker.logError("Failed to extract tasks from sheets");
+      this.progressTracker.captureError(error, "Failed to extract tasks from sheets");
       return { referenceTasks: {}, templateTasks: {} };
     }
   }
@@ -114,8 +113,7 @@ class SheetsParser extends DocumentParser {
 
       return tasks;
     } catch (error) {
-      console.error("Error in extractTasks:", error);
-      this.progressTracker.logError("Failed to extract tasks from sheets");
+      this.progressTracker.captureError(error, "Failed to extract tasks from sheets");
       return [];
     }
   }
@@ -190,10 +188,7 @@ class SheetsParser extends DocumentParser {
 
       return results;
     } catch (error) {
-      console.error("Error in compareFormulae:", error);
-      this.progressTracker.logError(
-        "Failed to compare formulae between sheets"
-      );
+      this.progressTracker.captureError(error, "Failed to compare formulae between sheets");
       return {};
     }
   }
@@ -224,7 +219,7 @@ class SheetsParser extends DocumentParser {
         // Un-escape any doubled quotes within the formula
         formula = formula.replace(/""/g, '"');
       } catch (error) {
-        console.error("Error preprocessing formula:", error);
+        this.progressTracker.captureError(error, "Error preprocessing formula");
       }
     }
 
@@ -312,8 +307,7 @@ class SheetsParser extends DocumentParser {
       );
       return this.compareFormulae(extractedTasks);
     } catch (error) {
-      console.error("Error in processAndCompareSheets:", error);
-      this.progressTracker.logError("Failed to process and compare sheets");
+      this.progressTracker.captureError(error, "Failed to process and compare sheets");
       return {};
     }
   }
@@ -372,7 +366,7 @@ class SheetsParser extends DocumentParser {
       const studentTasks = [];
 
       if (!studentDocumentId) {
-        this.progressTracker.logError("No student document ID provided");
+        this.progressTracker.logAndThrowError("No student document ID provided");
         return studentTasks;
       }
 
@@ -400,7 +394,7 @@ class SheetsParser extends DocumentParser {
           // Extract the bounding box from the reference task metadata
           const boundingBox = referenceTask.taskMetadata.boundingBox;
           if (!boundingBox) {
-            console.error(`No bounding box found for task: ${sheetName}`);
+            this.progressTracker.logError(`No bounding box found for task: ${sheetName}`);
             return; // Skip this task
           }
 
@@ -441,10 +435,8 @@ class SheetsParser extends DocumentParser {
               });
             });
           } catch (error) {
-            console.error(
-              `Error extracting formulas from ${sheetName}: ${error}`
-            );
-            this.progressTracker.logError(
+            this.progressTracker.captureError(
+              error,
               `Failed to extract formulas from ${sheetName}`
             );
           }
@@ -473,10 +465,7 @@ class SheetsParser extends DocumentParser {
 
       return studentTasks;
     } catch (error) {
-      console.error("Error in extractStudentTasks:", error);
-      this.progressTracker.logError(
-        "Failed to extract student tasks from sheets"
-      );
+      this.progressTracker.captureError(error, "Failed to extract student tasks from sheets");
       return [];
     }
   }

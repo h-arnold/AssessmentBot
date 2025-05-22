@@ -16,6 +16,7 @@ class ClassroomApiClient {
      * @returns {GoogleAppsScript.Classroom.Schema.Course} The created course object.
      */
     static createClassroom(name, ownerId, teacherEmails = []) {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             const course = {
                 name: name,
@@ -34,8 +35,7 @@ class ClassroomApiClient {
 
             return newCourse;
         } catch (error) {
-            console.error(`Failed to create classroom '${name}': ${error.message}`);
-            throw error;
+            progressTracker.logAndThrowError(`Failed to create classroom '${name}': ${error.message}`, error);
         }
     }
 
@@ -45,6 +45,7 @@ class ClassroomApiClient {
      * @param {string} teacherEmail - The email of the teacher to invite.
      */
     static inviteTeacher(courseId, teacherEmail) {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             // Check if the teacher is already part of the course
             const existingTeachers = Classroom.Courses.Teachers.list(courseId).teachers || [];
@@ -63,7 +64,7 @@ class ClassroomApiClient {
             Classroom.Invitations.create(invitation);
             console.log(`Sent invitation to teacher: ${teacherEmail} for course: ${courseId}`);
         } catch (error) {
-            console.error(`Failed to invite teacher (${teacherEmail}) to course (${courseId}): ${error.message}`);
+            progressTracker.logError(`Failed to invite teacher (${teacherEmail}) to course (${courseId}): ${error.message}`, error);
         }
     }
 
@@ -75,6 +76,7 @@ class ClassroomApiClient {
      * @param {Array<string>} newTeacherEmails - The updated list of teacher emails.
      */
     static updateClassroom(courseId, newName, newOwnerId, newTeacherEmails = []) {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             const course = Classroom.Courses.get(courseId);
 
@@ -105,8 +107,7 @@ class ClassroomApiClient {
 
             console.log(`Updated classroom (${courseId}) successfully.`);
         } catch (error) {
-            console.error(`Failed to update classroom (${courseId}): ${error.message}`);
-            throw error;
+            progressTracker.logAndThrowError(`Failed to update classroom (${courseId}): ${error.message}`, error);
         }
     }
 
@@ -115,14 +116,14 @@ class ClassroomApiClient {
      * @returns {Array<GoogleAppsScript.Classroom.Schema.Course>} An array of classroom objects.
      */
     static fetchClassrooms() {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             const response = Classroom.Courses.list({ teacherId: 'me', courseStates: ['ACTIVE'] });
             const courses = response.courses || [];
             console.log(`Fetched ${courses.length} classrooms.`);
             return courses;
         } catch (error) {
-            console.error(`Failed to fetch classrooms: ${error.message}`);
-            throw error;
+            progressTracker.logAndThrowError(`Failed to fetch classrooms: ${error.message}`, error);
         }
     }
 }

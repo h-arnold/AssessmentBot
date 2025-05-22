@@ -20,8 +20,8 @@ function handleFetchGoogleClassrooms() {
   try {
     googleClassroomController.fetchGoogleClassrooms();
   } catch (error) {
-    console.error("Error fetching Google Classrooms:", error);
-    Utils.toastMessage("Failed to fetch classrooms: " + error.message, "Error", 5);
+    const progressTracker = ProgressTracker.getInstance();
+    progressTracker.captureError(error, "Error fetching Google Classrooms");
   }
 }
 
@@ -33,7 +33,8 @@ function handleCreateGoogleClassrooms() {
   try {
     googleClassroomController.createGoogleClassrooms();
   } catch (error) {
-    console.error("Error creating Google Classrooms:", error);
+    const progressTracker = ProgressTracker.getInstance();
+    progressTracker.captureError(error, "Error creating Google Classrooms");
     Utils.toastMessage("Failed to create classrooms: " + error.message, "Error", 5);
   }
 }
@@ -46,7 +47,8 @@ function createAssessmentRecords() {
   try {
     googleClassroomController.createAssessmentRecords();
   } catch (error) {
-    console.error("Error setting up assessment documents:", error);
+    const progressTracker = ProgressTracker.getInstance();
+    progressTracker.captureError(error, "Error setting up assessment documents");
     Utils.toastMessage("Failed to set up assessment documents: " + error.message, "Error", 5);
   }
 }
@@ -62,8 +64,8 @@ function saveClassroom(courseName, courseId) {
   try {
     googleClassroomController.saveClassroom(courseName, courseId);
   } catch (error) {
-    console.error('Error saving classroom:', error);
-    throw new Error('Failed to save classroom. Please try again.');
+    const progressTracker = ProgressTracker.getInstance();
+    progressTracker.logAndThrowError('Failed to save classroom. Please try again.', error);
   }
 }
 
@@ -72,8 +74,8 @@ function getClassrooms() {
   try {  
     return googleClassroomController.getClassrooms();
   } catch (error) {
-    console.error('Error getting classrooms:', error);
-    throw new Error('Failed to get classrooms. Please try again.');
+    const progressTracker = ProgressTracker.getInstance();
+    progressTracker.logAndThrowError('Failed to get classrooms. Please try again.', error);
   }
   
 }

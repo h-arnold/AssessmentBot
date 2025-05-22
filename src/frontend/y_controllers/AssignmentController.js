@@ -68,7 +68,7 @@ class AssignmentController {
 
     } catch (error) {
       this.utils.toastMessage("Failed to start processing: " + error.message, "Error", 5);
-      console.error("Error in saveStartAndShowProgress:", error);
+      this.progressTracker.logAndThrowError("Error in saveStartAndShowProgress: " + error.message, error);
     }
   }
 
@@ -91,9 +91,8 @@ class AssignmentController {
       triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
       console.log(`Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`);
     } catch (error) {
-      console.error(`Error creating trigger: ${error}`);
+      this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
       this.utils.toastMessage("Failed to create trigger: " + error.message, "Error", 5);
-      throw error;
     }
 
     try {
@@ -104,9 +103,8 @@ class AssignmentController {
       properties.setProperty('documentType', documentType); // Store documentType for downstream use
       console.log("Properties set for processing.");
     } catch (error) {
-      console.error(`Error setting properties: ${error}`);
+      this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
       this.utils.toastMessage("Failed to set processing properties: " + error.message, "Error", 5);
-      throw error;
     }
   }
 
@@ -258,7 +256,7 @@ class AssignmentController {
 
       if (!assignmentId || !referenceDocumentId || !templateDocumentId || !triggerId || !documentType) {
         this.triggerController.removeTriggers('triggerProcessSelectedAssignment');
-        throw new Error("Missing parameters for processing.");
+        this.progressTracker.logAndThrowError("Missing parameters for processing.");
       }
 
       this.triggerController.deleteTriggerById(triggerId);
@@ -281,8 +279,7 @@ class AssignmentController {
         } 
       else {
         const errorMsg = `Document type '${documentType}' is not supported.`;
-        this.progressTracker.logError(errorMsg);
-        throw new Error(errorMsg);
+        this.progressTracker.logAndThrowError(errorMsg);
       }
 
       // Analyse assignment data
@@ -295,13 +292,10 @@ class AssignmentController {
       console.log("Assessment run completed successfully.");
 
     } catch (error) {
-      this.progressTracker.logError(error.message, error);
-      this.utils.toastMessage("An error occurred: " + error.message, "Error", 5);
-      throw error;
+      this.progressTracker.logAndThrowError(error.message, error);
     } finally {
       lock.releaseLock();
       console.log("Lock released.");
-
       try {
         const properties = PropertiesService.getDocumentProperties();
         properties.deleteProperty('assignmentId');
