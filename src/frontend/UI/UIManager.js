@@ -530,6 +530,36 @@ class UIManager {
       this.ui.showModalDialog(html, title);
     }, "showGenericModal");
   }
+  
+  /**
+   * Prompts the user when a classroom selection is missing or ClassInfo sheet doesn't exist.
+   * Shows a dialog asking if they want to select a classroom now, and if confirmed,
+   * opens the classroom selector dialog.
+   * 
+   * @returns {boolean} True if the user chose to select a classroom, false otherwise
+   */
+  promptMissingClassroomSelection() {
+    return this.safeUiOperation(() => {
+      try {
+        const response = this.ui.alert(
+          "No Classroom Selected", 
+          "No classroom has been selected for this assessment record. Would you like to select a classroom now?", 
+          this.ui.ButtonSet.YES_NO
+        );
+        
+        if (response === this.ui.Button.YES) {
+          // Use the existing classroom dropdown method
+          this.showClassroomDropdown();
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Error showing classroom selection prompt:", error);
+        Utils.toastMessage("Could not show classroom selection dialog. Please use the 'Change Class' menu option instead.", "Warning", 5);
+        return false;
+      }
+    }, "promptMissingClassroomSelection");
+  }
 
   /**
    * Shows the authorization modal with the provided authorisation URL
