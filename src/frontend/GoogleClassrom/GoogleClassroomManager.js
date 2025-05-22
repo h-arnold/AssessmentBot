@@ -368,23 +368,40 @@ class GoogleClassroomManager {
 
   /**
    * Retrieves the course ID from the 'ClassInfo' sheet.
+   * If the sheet doesn't exist or is missing course ID, prompts the user to select a classroom
+   * using the UIManager's methods.
    * @returns {string} The course ID.
    */
   getCourseId() {
-    // Before: const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    // Before: const sheet = spreadsheet.getSheetByName("ClassInfo");
-    // After:  Consider if ClassroomSheetManager should handle this, but for now, keep it simple.
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getSheetByName("ClassInfo");
-    if (!sheet) {
-      console.error("ClassInfo sheet not found.");
-      throw new Error("ClassInfo sheet not found.");
+    
+    // If ClassInfo sheet doesn't exist or course ID is missing
+    if (!sheet || !sheet.getRange("B2").getValue()) {
+      console.error("ClassInfo sheet not found or missing course ID.");
+      
+      // Create a detailed error message for logging
+      const errorMessage = "Cannot assess assignments: No classroom is selected or the ClassInfo sheet is missing.";
+      const detailedError = "The Assessment Bot requires a classroom to be selected before assessing assignments. " +
+                            "The ClassInfo sheet which contains this information is missing or incomplete.";
+      
+      this.progressTracker.logError(errorMessage, detailedError);
+      
+      // Use UIManager to handle the classroom selection prompt
+      try {
+        // Get the UIManager instance
+        const uiManager = UIManager.getInstance();
+        
+        // Prompt the user about missing classroom selection
+        uiManager.promptMissingClassroomSelection();
+      } catch (e) {
+        console.error("Cannot show UI prompt using UIManager:", e);
+      }
+      
+      throw new Error(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.");
     }
+    
     const courseId = sheet.getRange("B2").getValue();
-    if (!courseId) {
-      console.error("Course ID not found in ClassInfo sheet.");
-      throw new Error("Course ID not found in ClassInfo sheet.");
-    }
     return courseId.toString();
   }
 }
