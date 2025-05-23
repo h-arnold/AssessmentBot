@@ -378,6 +378,8 @@ class GoogleClassroomManager {
       const errorMessage = "Cannot assess assignments: No classroom is selected or the ClassInfo sheet is missing.";
       const detailedError = "The Assessment Bot requires a classroom to be selected before assessing assignments. " +
                             "The ClassInfo sheet which contains this information is missing or incomplete.";
+
+      this.progressTracker.logError(errorMessage, detailedError);
       
       // Use UIManager to handle the classroom selection prompt
       try {
@@ -391,6 +393,7 @@ class GoogleClassroomManager {
       }
       
       this.progressTracker.logAndThrowError(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.", detailedError);
+
     }
     
     const courseId = sheet.getRange("B2").getValue();
