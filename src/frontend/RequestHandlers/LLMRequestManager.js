@@ -308,7 +308,7 @@ class LLMRequestManager extends BaseRequestManager {
     let isError = false;
     try {
       const text = response && response.getContentText ? response.getContentText() : '';
-      isError = text && text.indexOf('Error running graph: Error building Component') !== -1;
+      isError = text && text.includes('Error running graph: Error building Component');
     } catch (e) {
       // Ignore parsing errors
     }
