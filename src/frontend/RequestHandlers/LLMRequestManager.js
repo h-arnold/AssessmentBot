@@ -241,6 +241,7 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance.
    */
   handleValidationFailure(uid, request, assignment) {
+    // Abort flag prevents further processing if critical backend errors have occurred
     if (this.abortOnComponentBuildError) {
       // If abort flag is set, do not process further
       return;
