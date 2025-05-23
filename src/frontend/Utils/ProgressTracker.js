@@ -125,24 +125,115 @@ class ProgressTracker {
 
   /**
    * Logs an error encountered during the process.
+   * This method is intended for user-facing errors that should be displayed in the UI.
+   * It automatically logs to the console, so no need for additional console.error calls.
    *
-   * @param {string} errorMessage - The error message to log.
-   * @param {string} [extraErrorDetails] - Additional error details for developer logs.
+   * @param {string} errorMessage - The user-facing error message to log in the UI.
+   * @param {string|Error|Object} [extraErrorDetails] - Additional error details for developer logs only.
+   * @returns {void}
    */
   logError(errorMessage, extraErrorDetails) {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
       step: this.step,
-      error: errorMessage,
+      error: errorMessage,  // This is what users will see in the UI
       message: 'An error occurred.',
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.error(`Error logged: ${errorMessage}`);
+    
     if (extraErrorDetails) {
-      console.error(`Extra error details: ${extraErrorDetails}`);
+      this._logDeveloperDetails(extraErrorDetails);
     }
+  }
+  
+  /**
+   * Helper method to log developer-only error details.
+   * This method formats different types of error details appropriately for console logging.
+   * 
+   * @private
+   * @param {string|Error|Object} extraErrorDetails - The error details to log for developers
+   * @returns {void}
+   */
+  _logDeveloperDetails(extraErrorDetails) {
+    // These details are only for developers, not exposed in the UI
+    // Format details as strings to avoid serialization issues
+    if (typeof extraErrorDetails === 'object') {
+      // If it's an Error object or has a stack property
+      if (extraErrorDetails.stack) {
+        console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
+      }
+      // If it's our custom developer details object
+      else if (extraErrorDetails.message && extraErrorDetails.stack) {
+        console.error(`Developer details - Message: ${extraErrorDetails.message}`);
+        console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
+        if (extraErrorDetails.name) {
+          console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
+        }
+      } 
+      // For other objects, try to stringify them
+      else {
+        try {
+          console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
+        } catch (e) {
+          console.error(`Developer details: [Object could not be stringified]`);
+        }
+      }
+    } else {
+      // For strings or other primitive types
+      console.error(`Developer details: ${extraErrorDetails}`);
+    }
+  }
+
+  /**
+   * Captures error information from an Error object and logs it appropriately.
+   * Use this method when you have an Error object and want to log it for the user.
+   *
+   * @param {Error} error - The error object to capture
+   * @param {string} [contextMessage] - Optional context message to provide more information
+   * @param {boolean} [includeStackTrace=true] - Whether to include stack trace in developer logs
+   * @returns {string} - The formatted error message that was logged
+   */
+  captureError(error, contextMessage = '', includeStackTrace = true) {
+    // Create a user-friendly error message
+    const userFacingMessage = contextMessage 
+      ? `${contextMessage}: ${error.message || 'Unknown error'}`
+      : `${error.message || 'Unknown error'}`;
+    
+    // Prepare detailed developer information
+    let developerDetails;
+    if (includeStackTrace && error) {
+      developerDetails = {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        originalError: error
+      };
+    } else if (error) {
+      developerDetails = error;
+    }
+    
+    // Log the error with appropriate separation of concerns
+    this.logError(userFacingMessage, developerDetails);
+    
+    return userFacingMessage;
+  }
+
+  /**
+   * Logs an error and then throws it.
+   * Use this when you need to log an error for the user but also need to propagate 
+   * the error up the call stack.
+   *
+   * @param {string} errorMessage - The message to log and include in the thrown error
+   * @param {string|Error|Object} [extraErrorDetails] - Additional error details for developer logs
+   * @throws {Error} - Always throws an error with the errorMessage
+   * @returns {never}
+   */
+  logAndThrowError(errorMessage, extraErrorDetails) {
+    this.logError(errorMessage, extraErrorDetails);
+    throw new Error(errorMessage);
   }
 
   /**

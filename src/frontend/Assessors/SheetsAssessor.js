@@ -39,8 +39,7 @@ class SheetsAssessor {
         // Get reference task
         const referenceTask = this.tasks[taskKey];
         if (!referenceTask) {
-          this.progressTracker.logError(`Reference task missing for ${taskKey}, student ${studentTask.student.name}`);
-          throw new Error(`Reference task missing for ${taskKey}, student ${studentTask.student.name}`);
+          this.progressTracker.logAndThrowError(`Reference task missing for ${taskKey}, student ${studentTask.student.name}`);
         }
 
         // Assess formulas

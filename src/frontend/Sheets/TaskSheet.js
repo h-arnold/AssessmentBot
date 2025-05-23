@@ -34,17 +34,15 @@ class TaskSheet extends BaseSheetManager {
     this.type = null; // Initialize type
 
     if (!type) {
-      const noTypeError = `A type must be provided for sheet "${this.sheetName}". Valid types are 'reference', 'template', 'studentTask'.`;
-      this.progressTracker.logError(noTypeError);
-      throw new Error(noTypeError);
+      const noTypeError = `A type must be provided for sheet \"${this.sheetName}\". Valid types are 'reference', 'template', 'studentTask'.`;
+      this.progressTracker.logAndThrowError(noTypeError);
     }
     
     this.setType(type);
 
     if (!this.type) { // Check if setType resulted in a null type (due to invalid input)
-      const invalidTypeError = `Invalid type "${type}" provided for sheet "${this.sheetName}" during construction. Valid types are 'reference', 'template', 'studentTask'.`;
-      // setType already logs an error, so we might not need to log again, but throwing is important.
-      throw new Error(invalidTypeError);
+      const invalidTypeError = `Invalid type \"${type}\" provided for sheet \"${this.sheetName}\" during construction. Valid types are 'reference', 'template', 'studentTask'.`;
+      this.progressTracker.logAndThrowError(invalidTypeError);
     }
   }
 
@@ -59,11 +57,10 @@ class TaskSheet extends BaseSheetManager {
     if (validTypes.includes(type)) {
       this.type = type;
     } else {
-      const errorMessage = `Invalid sheet type: "${type}". Must be one of ${validTypes.join(', ')}.`;
+      const errorMessage = `Invalid sheet type: \"${type}\". Must be one of ${validTypes.join(', ')}.`;
       this.progressTracker.logError(errorMessage);
-      console.error(`Dev Info: ${errorMessage} (setType for sheet "${this.sheetName}")`);
       // Optionally, throw an error to halt execution if an invalid type is critical
-      // throw new Error(errorMessage);
+      // this.progressTracker.logAndThrowError(errorMessage);
       // Or set to null / default if preferred
       this.type = null;
     }
@@ -85,21 +82,17 @@ class TaskSheet extends BaseSheetManager {
   getAllFormulae() {
     try {
       if (!this.sheet) {
-        const noSheetError = `Sheet object is not available for sheet "${this.sheetName || 'Unknown Sheet'}".`;
-        this.progressTracker.logError(noSheetError);
-        console.error(`Dev Info: ${noSheetError} (getAllFormulae)`);
-        throw new Error(noSheetError);
+        const noSheetError = `Sheet object is not available for sheet \"${this.sheetName || 'Unknown Sheet'}\".`;
+        this.progressTracker.logAndThrowError(noSheetError);
       }
       const formulae = this.sheet.getDataRange().getFormulas();
       this.formulaArray = formulae; // Populate the attribute
       return formulae;
     } catch (e) {
-      const errorMessage = `Error retrieving formulae from sheet "${this.sheetName}": ${e.message}`;
-      this.progressTracker.logError(errorMessage);
-      console.error(`Dev Info: ${errorMessage}\nStack: ${e.stack} (getAllFormulae)`);
-      // Depending on requirements, you might re-throw, return an empty array, or handle differently.
+      const errorMessage = `Error retrieving formulae from sheet \"${this.sheetName}\": ${e.message}`;
+      this.progressTracker.logError(errorMessage, e);
       this.formulaArray = null; // Ensure formulaArray is reset or cleared on error
-      throw e; // Re-throwing for now, as the caller might need to know about the failure.
+      return [];
     }
   }
 
@@ -114,10 +107,8 @@ class TaskSheet extends BaseSheetManager {
   getRange(range, valueType = 'values') {
     try {
       if (!this.sheet) {
-        const noSheetError = `Sheet object is not available for sheet "${this.sheetName || 'Unknown Sheet'}".`;
-        this.progressTracker.logError(noSheetError);
-        console.error(`Dev Info: ${noSheetError} (getRange)`);
-        throw new Error(noSheetError);
+        const noSheetError = `Sheet object is not available for sheet \"${this.sheetName || 'Unknown Sheet'}\".`;
+        this.progressTracker.logAndThrowError(noSheetError);
       }
 
       // Determine the range to fetch

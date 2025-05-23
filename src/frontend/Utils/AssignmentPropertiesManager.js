@@ -13,9 +13,12 @@ class AssignmentPropertiesManager {
      * @throws {Error} If the document type is not supported or the file cannot be accessed.
      */
     static getDocumentTypeById(documentId) {
+        const progressTracker = ProgressTracker.getInstance();
+        
         if (!documentId) {
-            throw new Error("Document ID cannot be null or empty.");
+            progressTracker.logAndThrowError("Document ID cannot be null or empty.");
         }
+        
         try {
             const file = DriveApp.getFileById(documentId);
             const mimeType = file.getMimeType();
@@ -25,12 +28,11 @@ class AssignmentPropertiesManager {
             } else if (mimeType === MimeType.GOOGLE_SHEETS) {
                 return "SHEETS";
             } else {
-                throw new Error(`Unsupported document type: ${mimeType} for document ID ${documentId}. Only Google Slides and Sheets are supported.`);
+                progressTracker.logAndThrowError(`Unsupported document type: ${mimeType} for document ID ${documentId}. Only Google Slides and Sheets are supported.`);
             }
         } catch (e) {
-            // Log the error for debugging, then rethrow a more specific error or handle as appropriate
-            console.error(`Error accessing or determining type for document ID ${documentId}: ${e.message}`);
-            throw new Error(`Failed to determine document type for ID ${documentId}. Ensure the ID is correct and you have permissions. Original error: ${e.message}`);
+            // Capture the error with more specific details
+            progressTracker.logAndThrowError(`Failed to determine document type for ID ${documentId}. Ensure the ID is correct and you have permissions.`, e);
         }
     }
 
@@ -41,18 +43,14 @@ class AssignmentPropertiesManager {
      * @throws {Error} When reference and template document IDs are the same, or types differ/are unsupported.
      */
     static saveDocumentIdsForAssignment(assignmentTitle, documentIds) {
+        const progressTracker = ProgressTracker.getInstance();
+        
         if (!documentIds || !documentIds.referenceDocumentId || !documentIds.templateDocumentId) {
-            const errorMessage = 'Reference and template document IDs must be provided.';
-            const progressTracker = ProgressTracker.getInstance();
-            progressTracker.logError(errorMessage);
-            throw new Error(errorMessage);
+            progressTracker.logAndThrowError('Reference and template document IDs must be provided.');
         }
 
         if (documentIds.referenceDocumentId === documentIds.templateDocumentId) {
-            const errorMessage = 'Reference document ID and template document ID cannot be the same.';
-            const progressTracker = ProgressTracker.getInstance();
-            progressTracker.logError(errorMessage);
-            throw new Error(errorMessage);
+            progressTracker.logAndThrowError('Reference document ID and template document ID cannot be the same.');
         }
 
         let referenceDocType;
@@ -64,15 +62,13 @@ class AssignmentPropertiesManager {
         } catch (error) {
             // Error already logged by getDocumentTypeById, rethrow to stop execution
             const progressTracker = ProgressTracker.getInstance();
-            progressTracker.logError(`Error determining document types: ${error.message}`);
-            throw error;
+            progressTracker.logAndThrowError(`Error determining document types: ${error.message}`, error);
         }
 
         if (referenceDocType !== templateDocType) {
             const errorMessage = `Reference document type (${referenceDocType}) and template document type (${templateDocType}) must match.`;
             const progressTracker = ProgressTracker.getInstance();
-            progressTracker.logError(errorMessage);
-            throw new Error(errorMessage);
+            progressTracker.logAndThrowError(errorMessage);
         }
         
         const scriptProperties = PropertiesService.getScriptProperties();
@@ -128,7 +124,8 @@ class AssignmentPropertiesManager {
                 };
 
             } catch (e) {
-                console.error(`Error parsing properties for assignment "${assignmentTitle}": ${e.message}`);
+                const progressTracker = ProgressTracker.getInstance();
+                progressTracker.captureError(e, `Error parsing properties for assignment "${assignmentTitle}"`);
                 // If parsing fails, return an empty object or a default structure
                 return {}; 
             }
@@ -157,7 +154,7 @@ class AssignmentPropertiesManager {
                 try {
                     parsed = JSON.parse(value);
                 } catch (e) {
-                    progressTracker.logError(`Failed to parse assignment property for key: ${key}`);
+                    progressTracker.logError(`Failed to parse assignment property for key: ${key}`, e);
                     return;
                 }
                 if (parsed && parsed.emptySlideId && !parsed.templateSlideId) {

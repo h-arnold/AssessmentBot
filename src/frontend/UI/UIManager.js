@@ -554,8 +554,8 @@ class UIManager {
         }
         return false;
       } catch (error) {
-        console.error("Error showing classroom selection prompt:", error);
-        Utils.toastMessage("Could not show classroom selection dialog. Please use the 'Change Class' menu option instead.", "Warning", 5);
+        const progressTracker = ProgressTracker.getInstance();
+        progressTracker.logError("Error showing classroom selection prompt:", error);      
         return false;
       }
     }, "promptMissingClassroomSelection");

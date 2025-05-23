@@ -66,8 +66,7 @@ class GoogleClassroomManager {
 
       console.log('Classrooms fetched and written to sheet successfully with createAssessmentRecord column.');
     } catch (error) {
-      console.error(`Failed to fetch Google Classrooms: ${error.message}`);
-      throw new Error(`${error.message} \n ${error.stack}`);
+      this.progressTracker.logAndThrowError('Failed to fetch Google Classrooms', error);
     }
   }
 
@@ -145,9 +144,8 @@ class GoogleClassroomManager {
 
     // 2) Quick check that there's something to process
     if (data.length < 2) {
-      const errorMessage = "`No classrooms in the classroom sheet. Please fetch or create them first.`";
-      this.progressTracker.logError(errorMessage);
-      throw new Error(errorMessage);
+      const errorMessage = "No classrooms in the classroom sheet. Please fetch or create them first.";
+      this.progressTracker.logAndThrowError(errorMessage);
     }
 
     // 3) Identify the header row and find createAssessmentRecord column
@@ -155,8 +153,7 @@ class GoogleClassroomManager {
     const createARIndex = headers.indexOf('createAssessmentRecord');
     if (createARIndex === -1) {
       const errorMessage = "No 'createAssessmentRecord' column found. Please ensure it exists.";
-      this.progressTracker.logError(errorMessage);
-      throw new Error(errorMessage);
+      this.progressTracker.logAndThrowError(errorMessage);
     }
 
     // 4) Check if 'Template File Id' column exists
@@ -239,8 +236,7 @@ class GoogleClassroomManager {
           }
         } catch (error) {
           const errMsg = `Failed to copy template for row ${i + 1}: ${error.message}`;
-          this.progressTracker.logError(errMsg, error);
-          throw new Error(errMsg);
+          this.progressTracker.logAndThrowError(errMsg, error);
         }
       }
     }
@@ -328,10 +324,8 @@ class GoogleClassroomManager {
       );
       return assignments;
     } catch (error) {
-      console.error(
-        `Error retrieving assignments for courseId ${courseId}: ${error}`
-      );
-      throw error;
+      const errorMessage = `Error retrieving assignments for courseId ${courseId}`;
+      this.progressTracker.logAndThrowError(errorMessage, error);
     }
   }
 
@@ -361,8 +355,8 @@ class GoogleClassroomManager {
       console.log(`${courses.length} active classrooms retrieved.`);
       return courses;
     } catch (error) {
-      console.error('Error fetching active classrooms:', error);
-      throw new Error('Failed to retrieve active classrooms. Please ensure that the Classroom API is enabled and you have the necessary permissions.');
+      const userMessage = 'Failed to retrieve active classrooms. Please ensure that the Classroom API is enabled and you have the necessary permissions.';
+      this.progressTracker.logAndThrowError(userMessage, error);
     }
   }
 
@@ -384,7 +378,7 @@ class GoogleClassroomManager {
       const errorMessage = "Cannot assess assignments: No classroom is selected or the ClassInfo sheet is missing.";
       const detailedError = "The Assessment Bot requires a classroom to be selected before assessing assignments. " +
                             "The ClassInfo sheet which contains this information is missing or incomplete.";
-      
+
       this.progressTracker.logError(errorMessage, detailedError);
       
       // Use UIManager to handle the classroom selection prompt
@@ -395,10 +389,11 @@ class GoogleClassroomManager {
         // Prompt the user about missing classroom selection
         uiManager.promptMissingClassroomSelection();
       } catch (e) {
-        console.error("Cannot show UI prompt using UIManager:", e);
+        this.progressTracker.captureError(e, "Cannot show UI prompt using UIManager");
       }
       
-      throw new Error(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.");
+      this.progressTracker.logAndThrowError(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.", e);
+
     }
     
     const courseId = sheet.getRange("B2").getValue();

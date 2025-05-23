@@ -4,6 +4,7 @@ class GoogleClassroomController {
     }
 
     fetchGoogleClassrooms() {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
             let classroomSheet = spreadsheet.getSheetByName("Classrooms");
@@ -22,42 +23,39 @@ class GoogleClassroomController {
             Utils.toastMessage("Google Classrooms fetched and written to 'Classroom' sheet successfully.", "Success", 5);
             console.log("Google Classrooms fetched successfully.");
         } catch (error) {
-            console.error("Error fetching Google Classrooms:", error);
+            progressTracker.logAndThrowError("Error fetching Google Classrooms: " + error.message, error);
             Utils.toastMessage("Failed to fetch classrooms: " + error.message, "Error", 5);
-            throw error;
         }
     }
 
 
     createGoogleClassrooms() {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             this.classroomManager.createGoogleClassrooms();
             Utils.toastMessage("Google Classrooms created successfully.", "Success", 5);
             console.log("Google Classrooms created successfully.");
         } catch (error) {
-            console.error("Error creating Google Classrooms:", error);
+            progressTracker.logAndThrowError("Error creating Google Classrooms: " + error.message, error);
             Utils.toastMessage("Failed to create classrooms: " + error.message, "Error", 5);
-            throw error;
         }
     }
 
     updateGoogleClassrooms() {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             // Assuming `updateClassrooms` was a method that might need to be implemented similarly to create.
             this.classroomManager.updateClassrooms(); // This method is not defined in the snippet, consider implementing.
             Utils.toastMessage("Google Classrooms updated successfully.", "Success", 5);
             console.log("Google Classrooms updated successfully.");
         } catch (error) {
-            console.error("Error updating Google Classrooms:", error);
+            progressTracker.logAndThrowError("Error updating Google Classrooms: " + error.message, error);
             Utils.toastMessage("Failed to update classrooms: " + error.message, "Error", 5);
-            throw error;
         }
     }
 
     createAssessmentRecords() {
-        // Lazy isntantiation of ProgressTracker and UIManager as they're only needed for this method.
-        // TODO: Potentially move this method elsewhere - this would probably be better in the BaseUpdateAndInit class I think
-        const progressTracker = new ProgressTracker();
+        const progressTracker = ProgressTracker.getInstance();
         const uiManager = UIManager.getInstance();
 
         try {
@@ -79,16 +77,13 @@ class GoogleClassroomController {
             Utils.toastMessage("Assessment documents set up successfully.", "Success", 5);
             console.log("Assessment documents set up successfully.");
         } catch (error) {
-            // Log and display any errors
-            console.error("Error setting up assessment documents:", error);
-            progressTracker.logError(error.message);
-            Utils.toastMessage(`Failed to set up assessment documents: ${error.message} \n ${error.stack}`, "Error", 5);
-            throw error;
+            progressTracker.logAndThrowError(error.message, error);
         }
     }
 
 
     saveClassroom(courseName, courseId) {
+        const progressTracker = ProgressTracker.getInstance();
         try {
             // Directly update ClassInfo sheet
             const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -109,9 +104,8 @@ class GoogleClassroomController {
 
             console.log(`Classroom saved: ${courseName} (${courseId})`);
         } catch (error) {
-            console.error("Error saving classroom:", error);
+            progressTracker.logAndThrowError("Error saving classroom: " + error.message, error);
             Utils.toastMessage("Failed to save classroom: " + error.message, "Error", 5);
-            throw error;
         }
     }
 

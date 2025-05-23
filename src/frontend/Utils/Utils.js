@@ -25,8 +25,8 @@ class Utils {
     }).join("");
 
     if (hash == null) {
-      console.error("Hash is null. Please check debugger to find out why.");
-      throw new Error("Hash is null. Please check debugger to find out why.");
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.logAndThrowError("Hash is null. Please check debugger to find out why.");
     } else {
       return hash;
     }
@@ -97,11 +97,12 @@ class Utils {
           `Toast message displayed: "${message}" with title "${title}" for ${timeoutSeconds} seconds.`
         );
       } else {
-        throw new Error("No active spreadsheet found.");
+        const progressTracker = ProgressTracker.getInstance();
+        progressTracker.logError("No active spreadsheet found for toast message.");
       }
     } catch (error) {
-      console.error("Error displaying toast message:", error);
-      // Optionally, handle the error or provide alternative feedback
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.captureError(error, "Error displaying toast message");
     }
   }
 
@@ -147,7 +148,8 @@ class Utils {
     const result = urlPattern.test(url);
 
     if (!result) {
-      console.error(`Invalid slide URL found: ${url}`)
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.logError(`Invalid slide URL found: ${url}`);
     }
 
     return result; //True or False
@@ -174,12 +176,14 @@ class Utils {
     if (!isAdmin) {
       const message = 'This operation can only be performed from the admin sheet.';
       if (throwError) {
-        throw new Error(message);
+        const progressTracker = ProgressTracker.getInstance();
+        progressTracker.logAndThrowError(message);
       } else {
         console.warn(message);
       }
+      return false;
     }
-    return isAdmin;
+    return true;
   }
 
   /**
@@ -190,7 +194,8 @@ class Utils {
  */
   static getFutureDate(days) {
     if (typeof days !== 'number' || days < 0) {
-      throw new Error("Days must be a non-negative number.");
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.logAndThrowError("Days must be a non-negative number.");
     }
 
     const futureDate = new Date();

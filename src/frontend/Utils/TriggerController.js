@@ -32,8 +32,8 @@ class TriggerController {
         console.log("Removed all triggers for 'triggerProcessSelectedAssignment'. Retrying trigger creation...");
         return this.createTimeBasedTrigger(functionName);
       } else {
-        console.error(`Error creating trigger for ${functionName}: ${error}`);
-        throw error;
+        const progressTracker = ProgressTracker.getInstance();
+        progressTracker.logAndThrowError(`Error creating trigger for ${functionName}: ${error.message}`, error);
       }
     }
   }
@@ -69,8 +69,8 @@ class TriggerController {
       console.log(`OnOpen trigger created for ${functionName}.`);
       return trigger.getUniqueId();
     } catch (error) {
-      console.error(`Error creating onOpen trigger for ${functionName}: ${error}`);
-      throw error;
+      const progressTracker = ProgressTracker.getInstance();
+      progressTracker.logAndThrowError(`Error creating onOpen trigger for ${functionName}: ${error.message}`, error);
     }
   }
 

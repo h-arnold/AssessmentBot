@@ -65,12 +65,9 @@ class CohortAnalysisController {
 
       // If everything went well, complete the progress
       this.progressTracker.complete();
-
       console.log("Cohort analysis completed successfully.");
     } catch (error) {
-      // Log and display any errors
-      this.progressTracker.logError(error.message, error);
-      throw error;
+      this.progressTracker.logAndThrowError(error.message, error);
     }
   }
 }
