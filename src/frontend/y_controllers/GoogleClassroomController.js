@@ -55,7 +55,7 @@ class GoogleClassroomController {
     }
 
     createAssessmentRecords() {
-        const progressTracker = new ProgressTracker();
+        const progressTracker = new ProgressTracker.getInstance();
         const uiManager = UIManager.getInstance();
 
         try {

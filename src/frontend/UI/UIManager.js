@@ -554,7 +554,7 @@ class UIManager {
         }
         return false;
       } catch (error) {
-        ProgressTracker.logError("Error showing classroom selection prompt:", error);      
+        progressTracker.logError("Error showing classroom selection prompt:", error);      
         return false;
       }
     }, "promptMissingClassroomSelection");
