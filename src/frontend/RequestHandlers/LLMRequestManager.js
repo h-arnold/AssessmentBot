@@ -124,7 +124,7 @@ class LLMRequestManager extends BaseRequestManager {
 
         // Validate that tweakId is present
         if (!tweakId) {
-          const errorMessage = 'Missing Tweak ID for taskType: ' + taskType + ' in task key: ' + taskKey + ', assignment: ' + assignment.id;
+          const errorMessage = 'Missing Tweak ID for taskType: ' + taskType + ' in task key: ' + taskKey + ', assignment: ' + assignment.assignmentId;
           this.progressTracker.logAndThrowError(errorMessage);
         }
 
