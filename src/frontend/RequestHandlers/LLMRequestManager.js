@@ -198,6 +198,7 @@ class LLMRequestManager extends BaseRequestManager {
           const responseData = JSON.parse(response.getContentText());
           const assessmentDataRaw = JSON.parse(responseData.outputs[0].outputs[0].messages[0].message);
           const assessmentData = Utils.normaliseKeysToLowerCase(assessmentDataRaw);
+          this.componentBuildErrorCount = 0; // Reset error count on successful response
 
           if (this.validateAssessmentData(assessmentData)) {
             const assessment = this.createAssessmentFromData(assessmentData);
