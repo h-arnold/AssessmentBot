@@ -554,6 +554,7 @@ class UIManager {
         }
         return false;
       } catch (error) {
+        const progressTracker = ProgressTracker.getInstance();
         progressTracker.logError("Error showing classroom selection prompt:", error);      
         return false;
       }

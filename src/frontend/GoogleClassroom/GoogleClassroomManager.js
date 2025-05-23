@@ -392,7 +392,7 @@ class GoogleClassroomManager {
         this.progressTracker.captureError(e, "Cannot show UI prompt using UIManager");
       }
       
-      this.progressTracker.logAndThrowError(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.", detailedError);
+      this.progressTracker.logAndThrowError(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.", e);
 
     }
     
