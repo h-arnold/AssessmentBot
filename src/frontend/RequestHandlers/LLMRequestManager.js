@@ -10,6 +10,9 @@ class LLMRequestManager extends BaseRequestManager {
     this.retryAttempts = {}; // Tracks retry attempts for each UID
     this.maxValidationRetries = 1; // Maximum retries for data validation
     this.cacheManager = new CacheManager(); // Use the CacheManager
+    this.componentBuildErrorCount = 0; // Track repeated Langflow component build errors
+    this.maxComponentBuildErrors = 2; // Threshold for aborting on backend errors
+    this.abortOnComponentBuildError = false; // Flag to abort further processing
   }
 
   /**
@@ -33,11 +36,10 @@ class LLMRequestManager extends BaseRequestManager {
       if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
         Utils.toastMessage("AI backend warmed up and ready to go...", "Warm-Up", 5);
       } else {
-        throw new Error("No successful response received.");
+        this.progressTracker.logAndThrowError("No successful response received from AI backend during warm-up.");
       }
     } catch (e) {
-      console.error("Error warming up LLM:", e);
-      Utils.toastMessage("Failed to warm up AI backend.", "Error", 5);
+      this.progressTracker.logAndThrowError("Failed to warm up AI backend.", e);
     }
   }
 
@@ -59,22 +61,18 @@ class LLMRequestManager extends BaseRequestManager {
 
         const task = assignment.tasks[taskKey];
         if (!task) {
-          console.warn(`No corresponding task found for task key: ${taskKey}`);
+          this.progressTracker.logError('No corresponding task found for task key: ' + taskKey);
           return;
         }
 
         if (!task.taskReference) {
-          const errorMessage = `Missing taskReference for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
-          console.error(errorMessage);
-          Utils.toastMessage(errorMessage, "Task Reference Error", 5);
-          throw new Error(errorMessage);
+          const errorMessage = 'Missing taskReference for task key: ' + taskKey + ' in assignment: ' + assignment.assignmentId;
+          this.progressTracker.logAndThrowError(errorMessage);
         }
 
         if (task.templateContent === null || task.templateContent === undefined) {
-          const errorMessage = `Missing templateContent for task key: ${taskKey} in assignment: ${assignment.assignmentId}`;
-          console.error(errorMessage);
-          Utils.toastMessage(errorMessage, "Template Task Error", 5);
-          throw new Error(errorMessage);
+          const errorMessage = 'Missing templateContent for task key: ' + taskKey + ' in assignment: ' + assignment.assignmentId;
+          this.progressTracker.logAndThrowError(errorMessage);
         }
 
         const contentHashReference = task.contentHash;
@@ -126,10 +124,8 @@ class LLMRequestManager extends BaseRequestManager {
 
         // Validate that tweakId is present
         if (!tweakId) {
-          const errorMessage = `Missing Tweak ID for taskType: ${taskType} in task key: ${taskKey}, assignment: ${assignment.id}`;
-          console.warn(errorMessage);
-          Utils.toastMessage(errorMessage, "Tweak ID Error", 5);
-          throw new Error(errorMessage);
+          const errorMessage = 'Missing Tweak ID for taskType: ' + taskType + ' in task key: ' + taskKey + ', assignment: ' + assignment.assignmentId;
+          this.progressTracker.logAndThrowError(errorMessage);
         }
 
         // Enhanced null and type check for studentResponse
@@ -197,15 +193,12 @@ class LLMRequestManager extends BaseRequestManager {
       const request = requests[index];
       const uid = request.uid;
 
-
-
       if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
         try {
           const responseData = JSON.parse(response.getContentText());
-
           const assessmentDataRaw = JSON.parse(responseData.outputs[0].outputs[0].messages[0].message);
-
           const assessmentData = Utils.normaliseKeysToLowerCase(assessmentDataRaw);
+          this.componentBuildErrorCount = 0; // Reset error count on successful response
 
           if (this.validateAssessmentData(assessmentData)) {
             const assessment = this.createAssessmentFromData(assessmentData);
@@ -231,15 +224,12 @@ class LLMRequestManager extends BaseRequestManager {
             this.handleValidationFailure(uid, request, assignment);
           }
         } catch (e) {
-          console.error(`Error parsing response for UID: ${uid} - ${e.message}`);
+          this.progressTracker.logError('Error parsing response for UID: ' + uid + ' - ' + e.message, e);
           this.handleValidationFailure(uid, request, assignment);
         }
       } else {
-        console.error(`Non-200/201 response for UID: ${uid} - Code: ${response ? response.getResponseCode() : 'No Response'}`);
-        if (response) {
-          console.log(`Response text is: ${response.getContentText()}`);
-        }
-        this.progressTracker.updateProgress(`Failed to process assessment for UID: ${uid}`, false);
+        this.progressTracker.logError('Non-200/201 response for UID: ' + uid + ' - Code: ' + (response ? response.getResponseCode() : 'No Response'), response ? response.getContentText() : 'No response');
+        this.progressTracker.updateProgress('Failed to process assessment for UID: ' + uid, false);
       }
     });
   }
@@ -251,15 +241,25 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance.
    */
   handleValidationFailure(uid, request, assignment) {
+    // Abort flag prevents further processing if critical backend errors have occurred
+    if (this.abortOnComponentBuildError) {
+      // If abort flag is set, do not process further
+      return;
+    }
     if (!this.retryAttempts[uid]) {
       this.retryAttempts[uid] = 0;
     }
 
     if (this.retryAttempts[uid] < this.maxValidationRetries) {
       this.retryAttempts[uid]++;
-      console.warn(`Validation failed for UID: ${uid}. Retrying attempt ${this.retryAttempts[uid]} of ${this.maxValidationRetries}.`);
+      this.progressTracker.logError('Validation failed for UID: ' + uid + '. Retrying attempt ' + this.retryAttempts[uid] + ' of ' + this.maxValidationRetries + '.');
 
       const retryResponse = this.sendRequestWithRetries(request, 3);
+
+      // Use helper for repeated backend error
+      if (this._handleComponentBuildError(retryResponse, uid)) {
+        return;
+      }
 
       if (retryResponse && (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)) {
         try {
@@ -277,26 +277,53 @@ class LLMRequestManager extends BaseRequestManager {
               if (task) {
                 const studentResponse = studentTask.responses[taskKey].response;
                 this.cacheManager.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
-                // console.log(`Cached assessment for UID: ${uid}.`); Uncomment for debug purposes
               }
             }
             this.retryAttempts[uid] = 0; // Reset after successful retry
           } else {
-            console.log(`Invalid assessment data for UID: ${uid}. \n Assessment data object: \n ${JSON.stringify(assessmentData)}`)
+            this.progressTracker.logError('Invalid assessment data for UID: ' + uid + '. Assessment data object: ' + JSON.stringify(assessmentData));
             this.handleValidationFailure(uid, request, assignment);
           }
         } catch (e) {
-          console.error(`Error parsing retry response for UID: ${uid} - ${e.message}`);
+          this.progressTracker.logError('Error parsing retry response for UID: ' + uid + ' - ' + e.message, e);
           this.handleValidationFailure(uid, request, assignment);
         }
       } else {
-        console.error(`Retry failed for UID: ${uid}`);
-        Utils.toastMessage(`Failed to process assessment for UID: ${uid}`, "Error", 5);
+        this.progressTracker.logError('Retry failed for UID: ' + uid);
+        Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
       }
     } else {
-      console.error(`Max validation retries reached for UID: ${uid}.`);
-      Utils.toastMessage(`Failed to process assessment for UID: ${uid}`, "Error", 5);
+      this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
+      Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
     }
+  }
+
+  /**
+   * Checks and handles repeated Langflow component build errors.
+   * Increments the error count and aborts if threshold is exceeded.
+   * @param {Object} response - The HTTP response object from Langflow
+   * @param {string} uid - The unique identifier for the request
+   * @return {boolean} - True if abort triggered, false otherwise
+   */
+  _handleComponentBuildError(response, uid) {
+    let isError = false;
+    try {
+      const text = response && response.getContentText ? response.getContentText() : '';
+      isError = text && text.includes('Error running graph: Error building Component');
+    } catch (e) {
+      // Ignore parsing errors
+    }
+    if (isError) {
+      this.componentBuildErrorCount++;
+      if (this.componentBuildErrorCount > this.maxComponentBuildErrors) {
+        this.abortOnComponentBuildError = true;
+        this.progressTracker.logAndThrowError(
+          'Critical backend error: Langflow failed to build a required component multiple times. Please check the backend server and try again later.',
+          { count: this.componentBuildErrorCount, lastUid: uid }
+        );
+      }
+    }
+    return this.abortOnComponentBuildError;
   }
 
   /**
