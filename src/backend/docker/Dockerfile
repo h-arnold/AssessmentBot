@@ -24,30 +24,26 @@ RUN apt-get update && apt-get upgrade -y && \
        curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download, extract and copy only necessary files from the Langflow 1.2.0 release,
+# Download, extract and copy necessary files from the Langflow 1.4.2 release,
 # and run the initial uv sync (single layer)
-RUN set -e && \
-    curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.2.0.tar.gz -o /tmp/langflow.tar.gz && \
+RUN curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.4.2.tar.gz -o /tmp/langflow.tar.gz && \
     mkdir -p /tmp/langflow && \
-    tar -xzf /tmp/langflow.tar.gz -C /tmp/langflow --strip 1 && \
-    cp -r /tmp/langflow/src /app/ && \
-    cp /tmp/langflow/{pyproject.toml,uv.lock,README.md} /app/ && \
-    rm -rf /tmp/langflow.tar.gz /tmp/langflow && \
-    uv sync --frozen --no-install-project --no-editable
+    tar -xzvf /tmp/langflow.tar.gz -C /tmp/langflow --strip 1 && \
+    cp -r /tmp/langflow/src /app/src && \
+    cp /tmp/langflow/pyproject.toml /app/pyproject.toml && \
+    cp /tmp/langflow/uv.lock /app/uv.lock && \
+    cp /tmp/langflow/README.md /app/README.md && \
+    uv sync --frozen --no-install-project --no-editable --extra postgresql
 
 # Build the frontend assets in one RUN command
-RUN set -e && \
-    mkdir -p /tmp/src && \
-    cp -r /app/src/frontend /tmp/src/ && \
+RUN mkdir -p /tmp/src && cp -r /app/src/frontend /tmp/src/frontend && \
     cd /tmp/src/frontend && \
-    npm ci --no-audit --no-fund && \
-    npm run build && \
-    mkdir -p /app/src/backend/langflow/frontend && \
-    cp -r build /app/src/backend/langflow/frontend/ && \
-    rm -rf /tmp/src
+    npm ci && npm run build && \
+    cp -r build /app/src/backend/langflow/frontend && \
+    rm -rf /tmp/src/frontend
 
 # Finalise backend dependency installation (single layer)
-RUN uv sync --frozen --no-editable
+RUN uv sync --frozen --no-editable --extra postgresql
 
 ################################
 # RUNTIME
@@ -57,7 +53,9 @@ RUN uv sync --frozen --no-editable
 FROM python:3.12.3-slim AS runtime
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y git && \
+    apt-get install -y git libpq5 curl gnupg && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
     
 # Copy the virtual environment built in the builder stage
@@ -79,5 +77,5 @@ WORKDIR /app
 ENV LANGFLOW_HOST=0.0.0.0
 ENV LANGFLOW_PORT=7860
 
-# Run Langflow (running as root for compatibility with Cloud Run’s in-memory file system)
+# Run Langflow (running as root for compatibility with Cloud Run's in-memory file system)
 CMD ["langflow", "run"]
