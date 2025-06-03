@@ -70,7 +70,6 @@ Follow these steps carefully after clicking the deployment button.
 1. Click the button below:
 
 [![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/h-arnold/AssessmentBot&dir=/src/backend/docker)
-
 2. Provide the required environment variables. Use provided defaults where applicable.
 
 #### 📀 Adding Storage Mounts

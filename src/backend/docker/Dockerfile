@@ -26,21 +26,25 @@ RUN apt-get update && apt-get upgrade -y && \
 
 # Download, extract and copy only necessary files from the Langflow 1.2.0 release,
 # and run the initial uv sync (single layer)
-RUN curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.2.0.tar.gz -o /tmp/langflow.tar.gz && \
+RUN set -e && \
+    curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.2.0.tar.gz -o /tmp/langflow.tar.gz && \
     mkdir -p /tmp/langflow && \
-    tar -xzvf /tmp/langflow.tar.gz -C /tmp/langflow --strip 1 && \
-    cp -r /tmp/langflow/src /app/src && \
-    cp /tmp/langflow/pyproject.toml /app/pyproject.toml && \
-    cp /tmp/langflow/uv.lock /app/uv.lock && \
-    cp /tmp/langflow/README.md /app/README.md && \
+    tar -xzf /tmp/langflow.tar.gz -C /tmp/langflow --strip 1 && \
+    cp -r /tmp/langflow/src /app/ && \
+    cp /tmp/langflow/{pyproject.toml,uv.lock,README.md} /app/ && \
+    rm -rf /tmp/langflow.tar.gz /tmp/langflow && \
     uv sync --frozen --no-install-project --no-editable
 
 # Build the frontend assets in one RUN command
-RUN mkdir -p /tmp/src && cp -r /app/src/frontend /tmp/src/frontend && \
+RUN set -e && \
+    mkdir -p /tmp/src && \
+    cp -r /app/src/frontend /tmp/src/ && \
     cd /tmp/src/frontend && \
-    npm ci && npm run build && \
-    cp -r build /app/src/backend/langflow/frontend && \
-    rm -rf /tmp/src/frontend
+    npm ci --no-audit --no-fund && \
+    npm run build && \
+    mkdir -p /app/src/backend/langflow/frontend && \
+    cp -r build /app/src/backend/langflow/frontend/ && \
+    rm -rf /tmp/src
 
 # Finalise backend dependency installation (single layer)
 RUN uv sync --frozen --no-editable
