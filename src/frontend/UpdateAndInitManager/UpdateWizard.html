@@ -8,8 +8,24 @@
     <style>
       .wizard-step { display: none; }
       .wizard-step.active { display: block; }
-      .button-group { margin-top: 20px; text-align: right; }
+      .button-group { 
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        padding: 10px;
+        box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: flex-end;
+      }
+      .button-group .btn {
+        margin-left: 10px;
+      }
       .copy-btn { margin-top: 10px; }
+      .container {
+        padding-bottom: 80px; /* Ensure content is not hidden behind fixed buttons */
+      }
     </style>
   </head>
   <body>
