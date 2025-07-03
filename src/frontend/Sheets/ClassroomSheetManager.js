@@ -54,10 +54,10 @@ class ClassroomSheetManager extends BaseSheetManager {
 
     // Create header value and formatting requests
     const headerValuesRequest = this.createHeaderValuesRequest(sheetId, headers, headerRowIndex);
-    const headerFormattingRequest = this.createHeaderFormattingRequest(sheetId, headers.length, headerRowIndex, headerRowIndex + 1);
+    const headerFormattingRequest = this.createHeaderFormattingRequest(sheetId, headerRowIndex, headerRowIndex + 1, {}, 0, headers.length);
 
     // Add requests to the queue
-    this.requests.push(headerValuesRequest, headerFormattingRequest);
+    this.requests.push(headerValuesRequest, ...headerFormattingRequest);
 
     // Execute all batch requests
     BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());

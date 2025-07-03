@@ -46,7 +46,6 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       5);
 
       // Format the class name header
-      // Format the name column
       const classNameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
       {
         horizontalAlignment: "CENTER",
@@ -59,9 +58,9 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       // Push the header requests to the main request array
 
       this.requests.push(headerRequest,
-        nameHeaderFormattingRequest,
-        classNameHeaderFormattingRequest,
-        criterionFormattingRequest);
+        ...nameHeaderFormattingRequest,
+        ...classNameHeaderFormattingRequest,
+        ...criterionFormattingRequest);
 
 
 
