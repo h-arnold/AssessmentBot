@@ -221,11 +221,12 @@ class ImageManager extends BaseRequestManager {
       responses.forEach((response, index) => {
         const request = requests[index];
         const uid = request.uid;
-        if ((response && response.getResponseCode() === 200) || 201) {
+        if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
           try {
             const responseData = JSON.parse(response.getContentText());
             if (responseData && responseData.file_path) {
-              urlMappings[uid] = responseData.file_path;
+              // Trim the file path to flowId/filename format for Langflow compatibility
+              urlMappings[uid] = this.trimFilePathForLangflow(responseData.file_path);
             } else {
               console.warn(`Invalid response for UID: ${uid}`);
             }
@@ -288,5 +289,29 @@ class ImageManager extends BaseRequestManager {
         }
       }
     }
+  }
+
+  /**
+   * Trims the file path to include only the flowId and filename for Langflow compatibility.
+   * Converts full paths like "/root/.cache/langflow/a430cc57-06bb-4c11-be39-d3d4de68d2c4/2024-11-27_14-47-50_image-file.png"
+   * to "a430cc57-06bb-4c11-be39-d3d4de68d2c4/2024-11-27_14-47-50_image-file.png"
+   * @param {string} filePath - The full file path returned from the upload service
+   * @return {string} - The trimmed file path in flowId/filename format
+   */
+  trimFilePathForLangflow(filePath) {
+    if (!filePath || typeof filePath !== 'string') {
+      return filePath;
+    }
+
+    // Split the path by '/' and take the last two segments (flowId/filename)
+    const pathSegments = filePath.split('/').filter(segment => segment.length > 0);
+    
+    // Return the last two segments joined with '/'
+    if (pathSegments.length >= 2) {
+      return pathSegments.slice(-2).join('/');
+    }
+    
+    // If less than 2 segments, return the original path
+    return filePath;
   }
 }
