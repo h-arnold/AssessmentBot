@@ -24,9 +24,9 @@ RUN apt-get update && apt-get upgrade -y && \
        curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Download, extract and copy necessary files from the Langflow 1.4.2 release,
+# Download, extract and copy necessary files from the Langflow 1.5.0 release,
 # and run the initial uv sync (single layer)
-RUN curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.4.2.tar.gz -o /tmp/langflow.tar.gz && \
+RUN curl -L https://github.com/langflow-ai/langflow/archive/refs/tags/1.5.0.tar.gz -o /tmp/langflow.tar.gz && \
     mkdir -p /tmp/langflow && \
     tar -xzvf /tmp/langflow.tar.gz -C /tmp/langflow --strip 1 && \
     cp -r /tmp/langflow/src /app/src && \
