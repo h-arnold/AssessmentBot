@@ -128,11 +128,14 @@ Details on error handling and common error codes will be provided here as the AP
   - [ ] Retain only: backend URL, batch size, and API key.
     - [ ] Ensure only `LANGFLOW_URL` (rename to backend URL if needed), `BATCH_SIZE`, and `LANGFLOW_API_KEY` are present.
   - [ ] Update `ConfigurationManager` to reflect new config requirements.
-    - [ ] Remove unused config keys: - [ ] Remove `TEXT_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` - [ ] Remove `TABLE_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` - [ ] Remove `IMAGE_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` 
+    - [ ] Remove unused config keys: 
+    - [ ] Remove `TEXT_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` 
+    - [ ] Remove `TABLE_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` 
+    - [ ] Remove `IMAGE_ASSESSMENT_TWEAK_ID` from `ConfigurationManagerClass.js` 
      - [ ] Update validation logic: 
         - [ ] Update `validateConfig()` based on the remaining config keys.
         - [ ] Remove validation for tweak IDs 
-        - [ ] Update any config validation in setup/onboarding scripts (`FirstRunManager.js`, `UpdateWizard.html`) - [ ] Update documentation and JSDoc: - [ ] Update JSDoc for all config-related methods in `ConfigurationManagerClass.js` - [ ] Update inline documentation in `FirstRunManager.js` and `UpdateWizard.html` for config prompts - [ ] Update any config documentation in `README.md` and `docs/`
+
   - [ ] Update any UI or setup flows that reference removed config options.
     - [ ] Update setup scripts:
       - [ ] src/frontend/UpdateAndInitManager/FirstRunManager.js
