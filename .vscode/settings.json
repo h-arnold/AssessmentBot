@@ -31,7 +31,7 @@
         }
     ],
     "[markdown]": {
-        "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "github.copilot.chat.edits.temporalContext.enabled": true,
     "github.copilot.chat.languageContext.fix.typescript.enabled": true
