@@ -1,38 +1,27 @@
 {
-    "spellright.language": [
-        "en-GB-10-1."
-    ],
-    "spellright.documentTypes": [
-        "markdown",
-        "latex",
-        "plaintext",
-        "javascript"
-    ],
-    "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true,
-    "editor.wordWrap": "on",
-    "github.copilot.chat.generateTests.codeLens": true,
-    "co-pilot.codeGenerationPath": "./.vscode/.copilot-codeGeneration-instructions.md",
-    "co-pilot.commitMessageInstructionsPath": "./.vscode/.copilot-commit-message-instructions.md",
-    "git.autofetch": true,
-    "git.enableSmartCommit": true,
-    "keyboard.layout": "gb",
-    "github.copilot.chat.localeOverride": "en",
-    "github.copilot.chat.codesearch.enabled": true,
-    "github.copilot.chat.agent.thinkingTool": true,
-    "github.copilot.chat.codeGeneration.instructions": [
-        {
-            "file": ".github/.copilot-codeGeneration-instructions.md"
-        }
-    ],
-    "github.copilot.chat.commitMessageGeneration.instructions": [
-        {
-            "file": ".github/.copilot-commit-message-instructions.md"
-        }
-    ],
-    "[markdown]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
-    },
-    "github.copilot.chat.edits.temporalContext.enabled": true,
-    "github.copilot.chat.languageContext.fix.typescript.enabled": true
+  "spellright.language": ["en-GB-10-1."],
+  "spellright.documentTypes": ["markdown", "latex", "plaintext", "javascript"],
+  "IDX.aI.enableInlineCompletion": true,
+  "IDX.aI.enableCodebaseIndexing": true,
+  "editor.wordWrap": "on",
+  "github.copilot.chat.generateTests.codeLens": true,
+  "co-pilot.codeGenerationPath": "./.vscode/.copilot-codeGeneration-instructions.md",
+  "co-pilot.commitMessageInstructionsPath": "./.vscode/.copilot-commit-message-instructions.md",
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  "keyboard.layout": "gb",
+  "github.copilot.chat.localeOverride": "en",
+  "github.copilot.chat.codesearch.enabled": true,
+  "github.copilot.chat.agent.thinkingTool": true,
+  "github.copilot.chat.codeGeneration.instructionsPath": "./.vscode/.copilot-codeGeneration-instructions.md",
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "file": ".github/.copilot-commit-message-instructions.md"
+    }
+  ],
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "github.copilot.chat.edits.temporalContext.enabled": true,
+  "github.copilot.chat.languageContext.fix.typescript.enabled": true
 }
