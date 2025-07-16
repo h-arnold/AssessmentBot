@@ -19,22 +19,44 @@ class SlidesAssignment extends Assignment {
   }
 
   /**
-   * Processes all images in tasks and student responses by fetching and uploading them.
+   * Fetches every slide URL (task refs/templates + student responses),
+   * pulls down each batch as base64, and re‐writes either
+   * taskReference/templateContent or studentTask.responses[x].response.
    */
   processImages() {
     const imageManager = new ImageManager();
 
-    // Collect all slide URLs
+    // 1) collect all the URLs
     const slideUrls = imageManager.collectAllSlideUrls(this);
+    // 2) fetch them as base64 in batches of 30
+    const base64Images = imageManager.fetchImagesAsBase64(slideUrls, 30);
 
-    // Fetch images
-    const imageBlobs = imageManager.batchFetchImages(slideUrls);
+    // 3) re‐assign back into your tasks & student responses
+    base64Images.forEach(({ uid, base64 }) => {
+      const [taskUid, suffix] = uid.split('-', 2);
 
-    // Upload images
-    const urlMappings = imageManager.batchUploadImages(imageBlobs);
+      // 3a) is this one of your Task refs/templates?
+      const taskKey = Object.keys(this.tasks)
+        .find(k => this.tasks[k].uid === taskUid);
 
-    // Update assignment with uploaded image URLs
-    imageManager.updateAssignmentWithImageUrls(this, urlMappings, imageBlobs);
+      if (taskKey) {
+        if (suffix === 'reference') {
+          this.tasks[taskKey].taskReference = base64;
+        } else if (suffix === 'template') {
+          this.tasks[taskKey].templateContent = base64;
+        }
+        return;
+      }
+
+      // 3b) otherwise it must be a student response
+      this.studentTasks.forEach(st =>
+        Object.values(st.responses).forEach(resp => {
+          if (resp.uid === uid) {
+            resp.response = base64;
+          }
+        })
+      );
+    });
   }
 
   /**
@@ -103,24 +125,5 @@ class SlidesAssignment extends Assignment {
     });
   }
 
-  /**
-   * Uploads all image blobs in tasks and student responses to the image service.
-   * Replaces blobs with the returned URLs.
-   */
-  uploadAllImages() {
-    const imageRequestManager = new ImageRequestManager();
 
-    // Upload images in tasks
-    for (const taskKey in this.tasks) {
-      const task = this.tasks[taskKey];
-      task.uploadImages(imageRequestManager);
-    }
-
-    // Upload images in student responses
-    for (const studentTask of this.studentTasks) {
-      studentTask.uploadResponsesImages(imageRequestManager);
-    }
-
-    console.log("All images have been uploaded and URLs have been updated.");
-  }
 }

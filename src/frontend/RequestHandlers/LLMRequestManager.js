@@ -98,78 +98,25 @@ class LLMRequestManager extends BaseRequestManager {
           return; // Skip adding to requests
         }
 
-        const taskType = task.taskType.toLowerCase();
-
-        // Determine the assessment type based on taskType
-        let assessmentUrl = '';
-        let tweakId = '';
-
-        switch (taskType) {
-          case 'text':
-            assessmentUrl = this.configManager.getTextAssessmentUrl();
-            tweakId = this.configManager.getTextAssessmentTweakId();
-            break;
-          case 'table':
-            assessmentUrl = this.configManager.getTableAssessmentUrl();
-            tweakId = this.configManager.getTableAssessmentTweakId();
-            break;
-          case 'image':
-            assessmentUrl = this.configManager.getImageAssessmentUrl();
-            tweakId = this.configManager.getImageAssessmentTweakId();
-            break;
-          default:
-            console.warn(`Unsupported taskType: ${taskType}. Skipping response with UID: ${uid}`);
-            return; // Skip unsupported task types
-        }
-
-        // Validate that tweakId is present
-        if (!tweakId) {
-          const errorMessage = 'Missing Tweak ID for taskType: ' + taskType + ' in task key: ' + taskKey + ', assignment: ' + assignment.assignmentId;
-          this.progressTracker.logAndThrowError(errorMessage);
-        }
-
-        // Enhanced null and type check for studentResponse
-        if (studentResponse.trim() === '') {
-          console.warn(`Invalid or empty student response for UID ${uid}. Skipping.`);
-          return; // Skip invalid or empty student responses.
-        }
-
-        //console.log(`Student response with UID ${uid} object is: ${JSON.stringify(studentResponse)}`); For debug purposes only
-
-        // Construct the tweaks object with the uid
-        const tweaks = {};
-        tweaks[tweakId] = {
-          referenceTask: task.taskReference,
-          templateTask: task.templateContent,
-          studentTask: studentResponse
-          // uid is stored separately for easy access
-        };
-
-        // Include notes if available
-        if (task.taskNotes && task.taskNotes.trim() !== '') {
-          tweaks[tweakId]['notes'] = task.taskNotes;
-        }
-
-        // Prepare the final request payload structure
-        const requestPayload = {
-          input_value: ".", // a placeholder input value as Langflow likes to have one in order to work. The actual work goes into the studentTask tweak.
-          tweaks: tweaks
-        };
-
-        // Construct the request object
-        const request = {
-          uid: uid, // Include uid at the top level for easy access
-          url: assessmentUrl,
-          method: "post",
-          contentType: "application/json",
-          payload: JSON.stringify(requestPayload),
+        // Build request for new backend /v1/assessor API
+        const baseUrl = this.configManager.getBackendUrl();
+        const apiKey  = this.configManager.getApiKey();
+        requests.push({
+          uid: uid,
+          url: `${baseUrl}/v1/assessor`,
+          method: 'post',
+          contentType: 'application/json',
+          payload: JSON.stringify({
+            taskType:       task.taskType.toUpperCase(),
+            reference:      task.taskReference,
+            template:       task.templateContent,
+            studentResponse: studentResponse
+          }),
           headers: {
-            "x-api-key": this.configManager.getLangflowApiKey()
+            Authorization: `Bearer ${apiKey}`
           },
           muteHttpExceptions: true
-        };
-
-        requests.push(request);
+        });
       });
     });
 
@@ -190,47 +137,7 @@ class LLMRequestManager extends BaseRequestManager {
     this.progressTracker.updateProgress(`Double-checking all assessments.`,true);
 
     responses.forEach((response, index) => {
-      const request = requests[index];
-      const uid = request.uid;
-
-      if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
-        try {
-          const responseData = JSON.parse(response.getContentText());
-          const assessmentDataRaw = JSON.parse(responseData.outputs[0].outputs[0].messages[0].message);
-          const assessmentData = Utils.normaliseKeysToLowerCase(assessmentDataRaw);
-          this.componentBuildErrorCount = 0; // Reset error count on successful response
-
-          if (this.validateAssessmentData(assessmentData)) {
-            const assessment = this.createAssessmentFromData(assessmentData);
-
-            // Find the StudentTask and assign the assessment
-            this.assignAssessmentToStudentTask(uid, assessment, assignment);
-
-            // Cache the successful assessment
-            const studentTask = this.findStudentTaskByUid(uid, assignment);
-            if (studentTask) {
-              const taskKey = this.findTaskKeyByUid(uid, studentTask);
-              const task = assignment.tasks[taskKey];
-              if (task) {
-                const contentHashReference = task.contentHash;
-                const contentHashResponse = studentTask.responses[taskKey].contentHash;
-                this.cacheManager.setCachedAssessment(contentHashReference, contentHashResponse, assessmentData);
-              }
-            }
-
-            // Reset retry attempts on successful processing
-            this.retryAttempts[uid] = 0;
-          } else {
-            this.handleValidationFailure(uid, request, assignment);
-          }
-        } catch (e) {
-          this.progressTracker.logError('Error parsing response for UID: ' + uid + ' - ' + e.message, e);
-          this.handleValidationFailure(uid, request, assignment);
-        }
-      } else {
-        this.progressTracker.logError('Non-200/201 response for UID: ' + uid + ' - Code: ' + (response ? response.getResponseCode() : 'No Response'), response ? response.getContentText() : 'No response');
-        this.progressTracker.updateProgress('Failed to process assessment for UID: ' + uid, false);
-      }
+      this._processSingleResponse(response, requests[index], assignment);
     });
   }
 
@@ -242,10 +149,7 @@ class LLMRequestManager extends BaseRequestManager {
    */
   handleValidationFailure(uid, request, assignment) {
     // Abort flag prevents further processing if critical backend errors have occurred
-    if (this.abortOnComponentBuildError) {
-      // If abort flag is set, do not process further
-      return;
-    }
+
     if (!this.retryAttempts[uid]) {
       this.retryAttempts[uid] = 0;
     }
@@ -256,10 +160,6 @@ class LLMRequestManager extends BaseRequestManager {
 
       const retryResponse = this.sendRequestWithRetries(request, 3);
 
-      // Use helper for repeated backend error
-      if (this._handleComponentBuildError(retryResponse, uid)) {
-        return;
-      }
 
       if (retryResponse && (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)) {
         try {
@@ -298,33 +198,6 @@ class LLMRequestManager extends BaseRequestManager {
     }
   }
 
-  /**
-   * Checks and handles repeated Langflow component build errors.
-   * Increments the error count and aborts if threshold is exceeded.
-   * @param {Object} response - The HTTP response object from Langflow
-   * @param {string} uid - The unique identifier for the request
-   * @return {boolean} - True if abort triggered, false otherwise
-   */
-  _handleComponentBuildError(response, uid) {
-    let isError = false;
-    try {
-      const text = response && response.getContentText ? response.getContentText() : '';
-      isError = text && text.includes('Error running graph: Error building Component');
-    } catch (e) {
-      // Ignore parsing errors
-    }
-    if (isError) {
-      this.componentBuildErrorCount++;
-      if (this.componentBuildErrorCount > this.maxComponentBuildErrors) {
-        this.abortOnComponentBuildError = true;
-        this.progressTracker.logAndThrowError(
-          'Critical backend error: Langflow failed to build a required component multiple times. Please check the backend server and try again later.',
-          { count: this.componentBuildErrorCount, lastUid: uid }
-        );
-      }
-    }
-    return this.abortOnComponentBuildError;
-  }
 
   /**
    * Validates the structure of the assessment data returned by the LLM.
@@ -441,5 +314,113 @@ class LLMRequestManager extends BaseRequestManager {
     });
     
     return assessments;
+  }
+
+  /**
+   * Handle HTTP errors from backend, including 400 and 401 cases.
+   * @param {HTTPResponse} response - The HTTP response object.
+   * @param {string} uid - The UID of the request for logging.
+   */
+  _handleHttpError(response, uid) {
+    const code = response ? response.getResponseCode() : null;
+    const text = response ? response.getContentText() : 'No response';
+    if (code === 401) {
+      // Unauthorized: invalid API key, abort script
+      this.progressTracker.logAndThrowError(
+        `Unauthorized (401) for UID: ${uid}. Invalid API key. Aborting script.`,
+        text
+      );
+      return;
+    }
+    if (code === 400) {
+      // Bad request: skip and log
+      console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
+      this.progressTracker.logError(
+        `Bad Request (400) for UID: ${uid}. Payload invalid.`,
+        text
+      );
+      return;
+    }
+    // Other errors: log and continue
+    this.progressTracker.logError(
+      `HTTP error for UID: ${uid} - Code: ${code}`,
+      text
+    );
+    this.progressTracker.updateProgress(
+      `Failed to process assessment for UID: ${uid}`,
+      false
+    );
+  }
+
+  /**
+   * Process a single HTTP response, handling success or passing errors to _handleHttpError.
+   * @param {HTTPResponse|null} response - The HTTP response object.
+   * @param {Object} request - The original request object.
+   * @param {Assignment} assignment - The Assignment instance.
+   */
+  _processSingleResponse(response, request, assignment) {
+    const uid = request.uid;
+    const code = response ? response.getResponseCode() : null;
+    if (code === 200 || code === 201) {
+      // Successful response
+      this.componentBuildErrorCount = 0;
+      try {
+        const assessmentData = this._extractAssessmentData(response);
+        if (this.validateAssessmentData(assessmentData)) {
+          this._assignAndCacheAssessment(uid, assessmentData, request, assignment);
+          this.retryAttempts[uid] = 0;
+        } else {
+          this.handleValidationFailure(uid, request, assignment);
+        }
+      } catch (e) {
+        this.progressTracker.logError(
+          `Error parsing response for UID: ${uid} - ${e.message}`,
+          e
+        );
+        this.handleValidationFailure(uid, request, assignment);
+      }
+    } else {
+      // HTTP error or no response
+      this._handleHttpError(response, uid);
+    }
+  }
+
+  /**
+   * Extracts and parses assessment data from an HTTPResponse.
+   * @param {HTTPResponse} response
+   * @return {Object} Normalized assessment data.
+   */
+  _extractAssessmentData(response) {
+    // Parse direct JSON payload from new /v1/assessor API
+    const text = response.getContentText();
+    const data = JSON.parse(text);
+    return Utils.normaliseKeysToLowerCase(data);
+  }
+
+  /**
+   * Assigns assessments to StudentTask and caches the result.
+   * @param {string} uid
+   * @param {Object} assessmentData
+   * @param {Object} request
+   * @param {Assignment} assignment
+   */
+  _assignAndCacheAssessment(uid, assessmentData, request, assignment) {
+    // Assign to StudentTask
+    this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData), assignment);
+    // Cache lookup and store
+    const studentTask = this.findStudentTaskByUid(uid, assignment);
+    if (studentTask) {
+      const taskKey = this.findTaskKeyByUid(uid, studentTask);
+      const task = assignment.tasks[taskKey];
+      if (task) {
+        const referenceHash = task.contentHash;
+        const responseHash  = studentTask.responses[taskKey].contentHash;
+        this.cacheManager.setCachedAssessment(
+          referenceHash,
+          responseHash,
+          assessmentData
+        );
+      }
+    }
   }
 }
