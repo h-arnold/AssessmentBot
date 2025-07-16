@@ -30,11 +30,13 @@ class SummarySheetManager extends BaseSheetManager {
     const headerRequest = this.createHeaderValuesRequest(sheetId, headers, 0);
     const headerFormattingRequest = this.createHeaderFormattingRequest(
       sheetId, 
-      headers.length, 
       0,  // startRowIndex
-      1   // endRowIndex (exclusive; 1 means just the first row)
+      1,  // endRowIndex (exclusive; 1 means just the first row)
+      {}, // formatOptions
+      0,  // startColumnIndex
+      headers.length  // endColumnIndex
     );
-    this.requests.push(headerRequest, headerFormattingRequest);
+    this.requests.push(headerRequest, ...headerFormattingRequest);
 
     // 4. Build row data for all Year Groups
     const summaryRows = this._buildSummaryRowData(overviewData);
