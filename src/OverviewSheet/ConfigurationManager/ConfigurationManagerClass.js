@@ -25,7 +25,7 @@ class ConfigurationManager {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, apiKey);
   }
 
-getBackendUrl() {
+  getBackendUrl() {
     let url = this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL) || '';
     url = url.replace(/\/+$/, ''); // Remove trailing slashes
     return url;
