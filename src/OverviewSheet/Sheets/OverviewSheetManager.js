@@ -264,7 +264,7 @@ class OverviewSheetManager extends BaseSheetManager {
         this.requests.push(this.createHeaderValuesRequest(sheetId, this.headers, 0));
 
         // Format headers
-        this.requests.push(this.createHeaderFormattingRequest(sheetId, this.headers.length, 0, 1));
+        this.requests.push(...this.createHeaderFormattingRequest(sheetId, 0, 1, {}, 0, this.headers.length));
 
         // Set column widths
         const columnWidths = [200, 75, 75, 75, 75];
@@ -463,120 +463,5 @@ class OverviewSheetManager extends BaseSheetManager {
         });
 
         return requests;
-    }
-
-    /**
-     * Ensures the sheet has enough columns.
-     * @param {number} requiredColumns - The number of required columns.
-     */
-    ensureSheetHasEnoughColumns(requiredColumns) {
-        const currentColumns = this.sheet.getMaxColumns();
-        if (currentColumns < requiredColumns) {
-            this.sheet.insertColumnsAfter(currentColumns, requiredColumns - currentColumns);
-        }
-    }
-
-    /**
-     * Creates a request to set header values.
-     * @param {number} sheetId - The ID of the sheet.
-     * @param {Array<string>} headers - The header titles.
-     * @param {number} rowIndex - The row index for setting headers.
-     * @returns {Object} - The request for updating header values.
-     */
-    createHeaderValuesRequest(sheetId, headers, rowIndex) {
-        return {
-            updateCells: {
-                rows: [{
-                    values: headers.map(header => ({
-                        userEnteredValue: { stringValue: header }
-                    }))
-                }],
-                fields: 'userEnteredValue',
-                start: { sheetId, rowIndex, columnIndex: 0 }
-            }
-        };
-    }
-
-    /**
-     * Creates a request to format headers.
-     * @param {number} sheetId - The ID of the sheet.
-     * @param {number} numColumns - Number of columns to format.
-     * @param {number} rowIndex - The row index of headers.
-     * @param {number} numRows - Number of rows to format.
-     * @returns {Object} - The request for header formatting.
-     */
-    createHeaderFormattingRequest(sheetId, numColumns, rowIndex, numRows) {
-        return {
-            repeatCell: {
-                range: {
-                    sheetId,
-                    startRowIndex: rowIndex,
-                    endRowIndex: rowIndex + numRows,
-                    startColumnIndex: 0,
-                    endColumnIndex: numColumns
-                },
-                cell: {
-                    userEnteredFormat: {
-                        textFormat: { bold: true },
-                        horizontalAlignment: "CENTER",
-                        verticalAlignment: "MIDDLE"
-                    }
-                },
-                fields: "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment)"
-            }
-        };
-    }
-
-    /**
-     * Creates requests to set column widths.
-     * @param {number} sheetId - The ID of the sheet.
-     * @param {Array<number>} widths - Array of widths for each column.
-     * @returns {Array<Object>} - Array of requests to set column widths.
-     */
-    createColumnWidthRequests(sheetId, widths) {
-        return widths.map((width, index) => ({
-            updateDimensionProperties: {
-                range: {
-                    sheetId,
-                    dimension: "COLUMNS",
-                    startIndex: index,
-                    endIndex: index + 1
-                },
-                properties: { pixelSize: width },
-                fields: "pixelSize"
-            }
-        }));
-    }
-
-    /**
-     * Creates a request to freeze rows or columns.
-     * @param {number} sheetId - The ID of the sheet.
-     * @param {number} frozenRowCount - Number of rows to freeze.
-     * @param {number} frozenColumnCount - Number of columns to freeze.
-     * @returns {Object} - The request for freezing row/column.
-     */
-    createFreezeRequest(sheetId, frozenRowCount, frozenColumnCount) {
-        return {
-            updateSheetProperties: {
-                properties: {
-                    sheetId,
-                    gridProperties: {
-                        frozenRowCount,
-                        frozenColumnCount
-                    }
-                },
-                fields: "gridProperties.frozenRowCount, gridProperties.frozenColumnCount"
-            }
-        };
-    }
-
-    /**
-     * Executes all batch update requests.
-     */
-    executeBatchUpdate() {
-        if (this.requests.length === 0) return;
-
-        const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        BatchUpdateUtility.executeBatchUpdate(this.requests, spreadsheetId);
     }
 }
