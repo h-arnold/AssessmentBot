@@ -68,7 +68,7 @@
         <div class="col s12">
           <ul class="tabs">
             <li class="tab col s4">
-              <a href="#langflowTab" class="active">Langflow</a>
+              <a href="#backendTab" class="active">Backend</a>
             </li>
             <li class="tab col s4">
               <a href="#advancedTab">Advanced</a>
@@ -79,41 +79,20 @@
           </ul>
         </div>
 
-        <!-- Tab 1: Langflow Configuration -->
-        <div id="langflowTab" class="col s12">
+        <!-- Tab 1: Backend Configuration -->
+        <div id="backendTab" class="col s12">
           <h5>Settings</h5>
           <div class="row">
             <div class="input-field col s12 m6">
-              <input id="langflowApiKey" name="langflowApiKey" type="text" required>
-              <label for="langflowApiKey">Langflow API Key</label>
+              <input id="apiKey" name="apiKey" type="text" required>
+              <label for="apiKey">API Key</label>
             </div>
             <div class="input-field col s12 m6">
-              <input id="langflowUrl" name="langflowUrl" type="url" required>
-              <label for="langflowUrl">Langflow URL</label>
+              <input id="backendUrl" name="backendUrl" type="url" required>
+              <label for="backendUrl">Backend URL</label>
             </div>
           </div>
-          <div class="row">
-            <div class="input-field col s12 m6">
-              <input id="textAssessmentTweakId" name="textAssessmentTweakId" type="text" required>
-              <label for="textAssessmentTweakId">Text Assessment Tweak ID</label>
-            </div>
-            <div class="input-field col s12 m6">
-              <input id="tableAssessmentTweakId" name="tableAssessmentTweakId" type="text" required>
-              <label for="tableAssessmentTweakId">Table Assessment Tweak ID</label>
-            </div>
-          </div>
-          <div class="row">
-            <div class="input-field col s12">
-              <input id="imageAssessmentTweakId" name="imageAssessmentTweakId" type="text" required>
-              <label for="imageAssessmentTweakId">Image Assessment Tweak ID</label>
-            </div>
-          </div>
-          <div class="row">
-            <div class="input-field col s12">
-              <input id="imageFlowUid" name="imageFlowUid" type="text" required>
-              <label for="imageFlowUid">Image Flow UID</label>
-            </div>
-          </div>
+        </div>
         </div>
 
         <!-- Tab 2: Advanced -->
@@ -204,19 +183,13 @@
     });
 
     function populateForm(data) {
-      document.getElementById('langflowApiKey').value = data.langflowApiKey || '';
-      document.getElementById('langflowUrl').value = data.langflowUrl || '';
-      document.getElementById('textAssessmentTweakId').value = data.textAssessmentTweakId || '';
-      document.getElementById('tableAssessmentTweakId').value = data.tableAssessmentTweakId || '';
-      document.getElementById('imageAssessmentTweakId').value = data.imageAssessmentTweakId || '';
-      document.getElementById('imageFlowUid').value = data.imageFlowUid || '';
-
+      document.getElementById('apiKey').value = data.apiKey || '';
+      document.getElementById('backendUrl').value = data.backendUrl || '';
       document.getElementById('batchSize').value = data.batchSize || 20;
       document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
       document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
       document.getElementById('daysUntilAuthRevoke').value = data.daysUntilAuthRevoke || 60;
-
       M.updateTextFields();
     }
 
@@ -254,12 +227,8 @@
       } : null;
 
       const formData = {
-        langflowApiKey: document.getElementById('langflowApiKey').value.trim(),
-        langflowUrl: document.getElementById('langflowUrl').value.trim(),
-        textAssessmentTweakId: document.getElementById('textAssessmentTweakId').value.trim(),
-        tableAssessmentTweakId: document.getElementById('tableAssessmentTweakId').value.trim(),
-        imageAssessmentTweakId: document.getElementById('imageAssessmentTweakId').value.trim(),
-        imageFlowUid: document.getElementById('imageFlowUid').value.trim(),
+        apiKey: document.getElementById('apiKey').value.trim(),
+        backendUrl: document.getElementById('backendUrl').value.trim(),
         batchSize: parseInt(document.getElementById('batchSize').value, 10),
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),

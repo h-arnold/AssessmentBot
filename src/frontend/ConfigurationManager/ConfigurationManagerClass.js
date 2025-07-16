@@ -15,15 +15,28 @@
  * config.setLangflowApiKey('sk-abc123');
  */
 class ConfigurationManager {
+  // ...existing code...
+
+  getApiKey() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY);
+  }
+
+  setApiKey(apiKey) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, apiKey);
+  }
+
+  getBackendUrl() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL);
+  }
+
+  setBackendUrl(url) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
+  }
   static get CONFIG_KEYS() {
     return {
       BATCH_SIZE: 'batchSize',
-      LANGFLOW_API_KEY: 'langflowApiKey',
-      LANGFLOW_URL: 'langflowUrl',
-      TEXT_ASSESSMENT_TWEAK_ID: 'textAssessmentTweakId',
-      TABLE_ASSESSMENT_TWEAK_ID: 'tableAssessmentTweakId',
-      IMAGE_ASSESSMENT_TWEAK_ID: 'imageAssessmentTweakId',
-      IMAGE_FLOW_UID: 'imageFlowUid',
+      API_KEY: 'apiKey',
+      BACKEND_URL: 'backendUrl',
       ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
       ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
       UPDATE_DETAILS_URL: 'updateDetailsUrl',
@@ -115,25 +128,17 @@ class ConfigurationManager {
           throw new Error("Batch Size must be a positive integer.");
         }
         break;
-      case ConfigurationManager.CONFIG_KEYS.LANGFLOW_API_KEY:
+      case ConfigurationManager.CONFIG_KEYS.API_KEY:
         if (typeof value !== 'string') {
-          throw new Error("LangFlow API Key must be a valid string starting with 'sk-' followed by alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
+          throw new Error("API Key must be a valid string starting with 'sk-' followed by alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
         }
         break;
-      case ConfigurationManager.CONFIG_KEYS.LANGFLOW_URL:
+      case ConfigurationManager.CONFIG_KEYS.BACKEND_URL:
       case ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL:
         if (typeof value !== 'string' || !Utils.isValidUrl(value)) {
           throw new Error(`${this.toReadableKey(key)} must be a valid URL string.`);
         }
         break;
-      case ConfigurationManager.CONFIG_KEYS.IMAGE_FLOW_UID:
-        if (typeof value !== 'string' || value.trim() === '') {
-          throw new Error("Image Flow UID must be a non-empty string.");
-        }
-        break;
-      case ConfigurationManager.CONFIG_KEYS.TEXT_ASSESSMENT_TWEAK_ID:
-      case ConfigurationManager.CONFIG_KEYS.TABLE_ASSESSMENT_TWEAK_ID:
-      case ConfigurationManager.CONFIG_KEYS.IMAGE_ASSESSMENT_TWEAK_ID:
       case ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID:
         if (typeof value !== 'string' || value.trim() === '') {
           throw new Error(`${this.toReadableKey(key)} must be a non-empty string.`);
@@ -233,29 +238,14 @@ class ConfigurationManager {
     return isNaN(value) ? 20 : value;
   }
 
-  getLangflowApiKey() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.LANGFLOW_API_KEY);
+  getApiKey() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY);
   }
 
-  getLangflowUrl() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.LANGFLOW_URL);
+  getBackendUrl() {
+    return this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL);
   }
 
-  getImageFlowUid() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.IMAGE_FLOW_UID);
-  }
-
-  getTextAssessmentTweakId() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.TEXT_ASSESSMENT_TWEAK_ID);
-  }
-
-  getTableAssessmentTweakId() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.TABLE_ASSESSMENT_TWEAK_ID);
-  }
-
-  getImageAssessmentTweakId() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.IMAGE_ASSESSMENT_TWEAK_ID);
-  }
 
   getRevokeAuthTriggerSet() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET);
@@ -267,20 +257,7 @@ class ConfigurationManager {
     return isNaN(value) ? 60 : value;
   }
 
-  getImageAssessmentUrl() {
-    const baseUrl = this.getLangflowUrl();
-    return `${baseUrl}/api/v1/run/imageAssessment?stream=false`;
-  }
 
-  getTextAssessmentUrl() {
-    const baseUrl = this.getLangflowUrl();
-    return `${baseUrl}/api/v1/run/textAssessment?stream=false`;
-  }
-
-  getWarmUpUrl() {
-    const baseUrl = this.getLangflowUrl();
-    return `${baseUrl}/api/v1/run/warmUp?stream=false`;
-  }
 
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
@@ -300,16 +277,8 @@ class ConfigurationManager {
     }
   }
 
-  getTableAssessmentUrl() {
-    const baseUrl = this.getLangflowUrl();
-    return `${baseUrl}/api/v1/run/tableAssessment?stream=false`;
-  }
 
-  getImageUploadUrl() {
-    const baseUrl = this.getLangflowUrl();
-    const imageFlowUid = this.getImageFlowUid();
-    return `${baseUrl}/api/v1/upload/${imageFlowUid}`;
-  }
+  // getImageUploadUrl removed (IMAGE_FLOW_UID no longer used)
 
   getAssessmentRecordTemplateId() {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
@@ -342,29 +311,15 @@ class ConfigurationManager {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE, batchSize);
   }
 
-  setLangflowApiKey(apiKey) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.LANGFLOW_API_KEY, apiKey);
+  setApiKey(apiKey) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, apiKey);
   }
 
-  setLangflowUrl(url) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.LANGFLOW_URL, url);
+  setBackendUrl(url) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
   }
 
-  setImageFlowUid(uid) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.IMAGE_FLOW_UID, uid);
-  }
 
-  setTextAssessmentTweakId(tweakId) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.TEXT_ASSESSMENT_TWEAK_ID, tweakId);
-  }
-
-  setTableAssessmentTweakId(tweakId) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.TABLE_ASSESSMENT_TWEAK_ID, tweakId);
-  }
-
-  setImageAssessmentTweakId(tweakId) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.IMAGE_ASSESSMENT_TWEAK_ID, tweakId);
-  }
 
   setAssessmentRecordTemplateId(templateId) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID, templateId);

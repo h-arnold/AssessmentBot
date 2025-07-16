@@ -8,12 +8,8 @@
 function getConfiguration() {
     return {
         batchSize: configurationManager.getBatchSize(),
-        langflowApiKey: configurationManager.getLangflowApiKey(),
-        langflowUrl: configurationManager.getLangflowUrl(),
-        imageFlowUid: configurationManager.getImageFlowUid(),
-        textAssessmentTweakId: configurationManager.getTextAssessmentTweakId(),
-        tableAssessmentTweakId: configurationManager.getTableAssessmentTweakId(),
-        imageAssessmentTweakId: configurationManager.getImageAssessmentTweakId(),
+        apiKey: configurationManager.getApiKey(),
+        backendUrl: configurationManager.getBackendUrl(),
         assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
         assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
         updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
@@ -22,11 +18,7 @@ function getConfiguration() {
         revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
         daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
         scriptAuthorised: configurationManager.getScriptAuthorised(),
-        imageAssessmentUrl: configurationManager.getImageAssessmentUrl(),
-        textAssessmentUrl: configurationManager.getTextAssessmentUrl(),
-        tableAssessmentUrl: configurationManager.getTableAssessmentUrl(),
-        imageUploadUrl: configurationManager.getImageUploadUrl(),
-        warmUpUrl: configurationManager.getWarmUpUrl()
+        // Removed imageAssessmentUrl, textAssessmentUrl, tableAssessmentUrl
     }
 }
 
@@ -47,25 +39,11 @@ function saveConfiguration(config) {
         if (config.batchSize !== undefined) {
             configurationManager.setBatchSize(config.batchSize);
         }
-        if (config.langflowApiKey !== undefined) {
-            configurationManager.setLangflowApiKey(config.langflowApiKey);
+        if (config.apiKey !== undefined) {
+            configurationManager.setApiKey(config.apiKey);
         }
-        if (config.langflowUrl !== undefined) {
-            configurationManager.setLangflowUrl(config.langflowUrl);
-        }
-        if (config.imageFlowUid !== undefined) {
-            configurationManager.setImageFlowUid(config.imageFlowUid);
-        }
-
-        // Handle Tweak IDs
-        if (config.textAssessmentTweakId !== undefined) {
-            configurationManager.setTextAssessmentTweakId(config.textAssessmentTweakId);
-        }
-        if (config.tableAssessmentTweakId !== undefined) {
-            configurationManager.setTableAssessmentTweakId(config.tableAssessmentTweakId);
-        }
-        if (config.imageAssessmentTweakId !== undefined) {
-            configurationManager.setImageAssessmentTweakId(config.imageAssessmentTweakId);
+        if (config.backendUrl !== undefined) {
+            configurationManager.setBackendUrl(config.backendUrl);
         }
 
         // Handle Assessment Record values
