@@ -99,7 +99,7 @@ class ImageManager extends BaseRequestManager {
           const blob = resp.getBlob();
           images.push({
             uid: slide.uid,
-            base64: Utilities.base64Encode(blob.getBytes()),
+            base64: `data:image/png;base64,${Utilities.base64Encode(blob.getBytes())}`,
           });
         } else {
           console.warn(`Failed to fetch image for UID ${slide.uid}`);
