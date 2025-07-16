@@ -71,7 +71,7 @@ class BaseRequestManager {
 
     batches.forEach((batch, index) => {
 
-      this.progressTracker.updateProgress(currentProgress.step, `${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`)
+      this.progressTracker.updateProgress(`${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`, false)
       const fetchAllRequests = batch.map(req => ({
         url: req.url,
         method: req.method || "get",

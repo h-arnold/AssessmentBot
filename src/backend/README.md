@@ -1,2 +1,0 @@
-# Langflow Backend
-The Google Slides Assessor depends on (https://github.com/langflow-ai/langflow)[Langflow] to do the AI processing of the Google Slides. Initially, you will find the flow files you'll need to upload. Later, I hope to provide a Dockerfile that will build an immutable langflow docker container which will have copies of the flow installed and nothing else. Any temporary files will go in a ramdisk so as soon as the instance goes down, any data stored in it goes down too.
