@@ -1,8 +1,7 @@
 class ImageManager extends BaseRequestManager {
   constructor() {
     super();
-    this.uploadUrl = this.configManager.getImageUploadUrl();
-    this.apiKey = this.configManager.getLangflowApiKey();
+    this.apiKey = this.configManager.getApiKey();
     this.progressTracker = ProgressTracker.getInstance();
   }
 
