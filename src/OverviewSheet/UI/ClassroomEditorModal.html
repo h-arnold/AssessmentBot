@@ -3,8 +3,8 @@
 
 <head>
     <base target="_top">
-    <!-- Materialize CSS for styling -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <!-- Material Web CSS for styling -->
+    <link href="../ui/assets/material-web.css" rel="stylesheet">
     <style>
         .container {
             padding: 10px;
@@ -19,10 +19,22 @@
         table {
             width: 100%;
             border-collapse: collapse;
+            border: 1px solid var(--md-sys-color-outline);
         }
 
-        thead th {
+        th, td {
+            border: 1px solid var(--md-sys-color-outline);
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--md-sys-color-primary-container);
             position: relative;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: var(--md-sys-color-surface-variant);
         }
 
         .sort-buttons {
@@ -35,22 +47,27 @@
             cursor: pointer;
             margin: 0 2px;
             font-size: 14px;
+            color: var(--md-sys-color-primary);
+        }
+
+        .sort-button:hover {
+            color: var(--md-sys-color-secondary);
         }
 
         .filter-input {
             width: 100%;
             margin-top: 5px;
             font-size: 12px;
+            padding: 4px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 4px;
         }
 
         .button-group {
             display: flex;
             justify-content: flex-end;
             margin-top: 20px;
-        }
-
-        .button-group .btn {
-            margin-left: 10px;
+            gap: 10px;
         }
 
         /* Ensure checkbox aligns nicely */
@@ -58,6 +75,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .centered-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .table-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 4px;
+        }
+
+        .table-input:focus {
+            outline: 2px solid var(--md-sys-color-primary);
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -67,7 +101,7 @@
         <h4>Edit Classrooms</h4>
         <p>You can sort, filter, and edit the classroom data below. When finished, click "Save" to persist the changes.</p>
         
-        <table class="highlight striped" id="classroom-table">
+        <table id="classroom-table">
             <thead>
                 <tr>
                     <!-- Headers with sort buttons -->
@@ -135,17 +169,38 @@
         </table>
 
         <div class="button-group">
-            <a href="#!" class="btn grey lighten-1" onclick="google.script.host.close()">Cancel</a>
-            <button class="btn blue waves-effect waves-light" id="save-button">Save</button>
+            <md-outlined-button onclick="google.script.host.close()">Cancel</md-outlined-button>
+            <md-filled-button id="save-button">Save</md-filled-button>
         </div>
     </div>
 
-    <!-- Materialize JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!-- Material Web JavaScript -->
+    <script src="../ui/assets/material-web.js"></script>
 
     <script>
         let classroomData = [];
         let filteredData = [];
+
+        // Simple toast notification function
+        function showToast(message, type = 'info') {
+          const toast = document.createElement('div');
+          toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: white;
+            z-index: 10000;
+            background-color: ${type === 'error' ? '#f44336' : type === 'success' ? '#4caf50' : '#2196f3'};
+          `;
+          toast.textContent = message;
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.remove();
+          }, 3000);
+        }
 
         // Populate table from retrieved data
         function populateTable(data) {
@@ -173,7 +228,7 @@
                 const tdName = document.createElement('td');
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
-                nameInput.className = 'validate';
+                nameInput.className = 'table-input';
                 nameInput.name = 'Name';
                 nameInput.value = row.Name || '';
                 tdName.appendChild(nameInput);
@@ -214,7 +269,7 @@
             const td = document.createElement('td');
             const input = document.createElement('input');
             input.type = 'text';
-            input.className = 'validate';
+            input.className = 'table-input';
             input.name = name;
             input.value = value || '';
             td.appendChild(input);
@@ -283,7 +338,7 @@
             google.script.run
                 .withSuccessHandler(populateTable)
                 .withFailureHandler(error => {
-                    M.toast({ html: `Error loading classrooms: ${error.message}`, classes: 'red' });
+                    showToast(`Error loading classrooms: ${error.message}`, 'error');
                 })
                 .getClassroomData();
 
@@ -310,11 +365,11 @@
                 const rows = collectDataForSave();
                 google.script.run
                     .withSuccessHandler(() => {
-                        M.toast({ html: 'Classroom data saved successfully.', classes: 'green' });
+                        showToast('Classroom data saved successfully.', 'success');
                         google.script.host.close();
                     })
                     .withFailureHandler(error => {
-                        M.toast({ html: `Error saving data: ${error.message}`, classes: 'red' });
+                        showToast(`Error saving data: ${error.message}`, 'error');
                     })
                     .saveClassroomData(rows);
             });

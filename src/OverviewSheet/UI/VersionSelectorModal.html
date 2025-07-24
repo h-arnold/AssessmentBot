@@ -3,8 +3,7 @@
 
 <head>
   <base target="_top">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <link rel="stylesheet" href="../ui/assets/material-web.css">
   <style>
     .modal-content {
       padding: 24px;
@@ -63,40 +62,54 @@
 
   <div class="modal-content">
     <div class="input-field">
-      <select id="versions" name="versions">
+      <md-outlined-select id="versions" name="versions" label="Select Version to Update To">
         <? for (var version in versions) { ?>
-        <option value="<?= version ?>" data-assessment-id="<?= versions[version].assessmentRecordTemplateFileId ?>"
+        <md-select-option value="<?= version ?>" data-assessment-id="<?= versions[version].assessmentRecordTemplateFileId ?>"
           data-admin-id="<?= versions[version].adminSheetFileId ?>">
-          Version
-          <?= version ?>
-        </option>
+          <div slot="headline">Version <?= version ?></div>
+        </md-select-option>
         <? } ?>
-      </select>
-      <label for="versions">Select Version to Update To</label>
+      </md-outlined-select>
     </div>
   </div>
 
   <div class="modal-footer">
-    <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
-    <button class="btn waves-effect waves-light" onclick="updateVersion()">Update</button>
+    <md-outlined-button onclick="google.script.host.close()">Cancel</md-outlined-button>
+    <md-filled-button onclick="updateVersion()">Update</md-filled-button>
   </div>
 
+  <script src="../ui/assets/material-web.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      var elems = document.querySelectorAll('select');
-      M.FormSelect.init(elems);
-    });
+    // Simple toast notification function
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 24px;
+        border-radius: 4px;
+        color: white;
+        z-index: 10000;
+        background-color: ${type === 'error' ? '#f44336' : type === 'success' ? '#4caf50' : '#2196f3'};
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
 
     function updateVersion() {
       const select = document.getElementById('versions');
-      const selectedOption = select.options[select.selectedIndex];
+      const selectedOption = select.querySelector(`md-select-option[value="${select.value}"]`);
 
       const versionData = {
         version: select.value,
         assessmentRecordTemplateFileId: selectedOption.getAttribute('data-assessment-id'),
         adminSheetFileId: selectedOption.getAttribute('data-admin-id')
        };
-
 
       document.getElementById('loadingOverlay').style.display = 'flex';
 
@@ -107,7 +120,7 @@
         })
         .withFailureHandler(function (error) {
           document.getElementById('loadingOverlay').style.display = 'none';
-          M.toast({ html: 'Error updating version: ' + error });
+          showToast('Error updating version: ' + error, 'error');
         })
         .handleVersionUpdate(versionData);
     }

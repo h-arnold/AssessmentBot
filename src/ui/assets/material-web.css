@@ -1,0 +1,259 @@
+/**
+ * Material Web Custom Styles
+ * Custom CSS to replace Materialize CSS functionality using Material Design principles
+ */
+
+/* Material Design Color Tokens */
+:root {
+  --md-sys-color-primary: #1976d2;
+  --md-sys-color-primary-container: #e3f2fd;
+  --md-sys-color-secondary: #42a5f5;
+  --md-sys-color-error: #f44336;
+  --md-sys-color-success: #4caf50;
+  --md-sys-color-warning: #ff9800;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #000000;
+  --md-sys-color-surface-variant: #f5f5f5;
+  --md-sys-color-outline: #9e9e9e;
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.2);
+}
+
+/* Base HTML and Body styling */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* Container styling (replaces Materialize container) */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Grid system (simplified version of Materialize grid) */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -12px;
+}
+
+.col {
+  flex: 1;
+  padding: 0 12px;
+}
+
+.col.s12 { flex: 0 0 100%; max-width: 100%; }
+.col.s6 { flex: 0 0 50%; max-width: 50%; }
+.col.s4 { flex: 0 0 33.333333%; max-width: 33.333333%; }
+.col.m6 { flex: 0 0 50%; max-width: 50%; }
+
+@media (max-width: 600px) {
+  .col.s12, .col.s6, .col.s4 { flex: 0 0 100%; max-width: 100%; }
+}
+
+/* Tab styling (custom implementation to match Material Web tabs) */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--md-sys-color-outline);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tab {
+  flex: 1;
+}
+
+.tab a {
+  display: block;
+  padding: 12px 16px;
+  text-decoration: none;
+  color: var(--md-sys-color-secondary);
+  border-bottom: 2px solid transparent;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.tab a.active,
+.tab a:hover {
+  background-color: var(--md-sys-color-primary-container);
+  border-bottom-color: var(--md-sys-color-secondary);
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+/* Button group styling */
+.button-group {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: var(--md-sys-color-surface);
+  padding: 16px;
+  box-shadow: 0 -2px 8px var(--md-sys-color-shadow);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  z-index: 1000;
+}
+
+/* Input field container styling */
+.input-field {
+  margin: 16px 0;
+  position: relative;
+}
+
+.input-field label {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background: var(--md-sys-color-surface);
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--md-sys-color-secondary);
+}
+
+/* Progress bar styling */
+.progress {
+  height: 4px;
+  background-color: var(--md-sys-color-surface-variant);
+  border-radius: 2px;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.progress md-linear-progress {
+  width: 100%;
+}
+
+/* Modal content styling */
+.modal-content {
+  padding: 24px;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--md-sys-color-outline);
+}
+
+/* Wizard step styling */
+.wizard-step {
+  display: none;
+  padding: 20px 0;
+}
+
+.wizard-step.active {
+  display: block;
+}
+
+/* Copy button styling */
+.copy-btn {
+  margin-top: 8px;
+}
+
+/* Utility classes */
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.pb-80 {
+  padding-bottom: 80px;
+}
+
+/* Status message styling */
+#status-message {
+  margin-top: 16px;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* Material Web component customization */
+md-filled-button {
+  --md-filled-button-container-color: var(--md-sys-color-primary);
+}
+
+md-outlined-button {
+  --md-outlined-button-outline-color: var(--md-sys-color-outline);
+}
+
+md-outlined-text-field {
+  width: 100%;
+  margin: 8px 0;
+}
+
+md-filled-text-field {
+  width: 100%;
+  margin: 8px 0;
+}
+
+md-outlined-select {
+  width: 100%;
+  margin: 8px 0;
+}
+
+md-tabs {
+  width: 100%;
+  border-bottom: 1px solid var(--md-sys-color-outline);
+}
+
+/* Color utility classes */
+.green { color: var(--md-sys-color-success); }
+.red { color: var(--md-sys-color-error); }
+.blue { color: var(--md-sys-color-primary); }
+.grey { color: var(--md-sys-color-outline); }
+
+/* Background color utilities */
+.green-bg { background-color: var(--md-sys-color-success); }
+.red-bg { background-color: var(--md-sys-color-error); }
+.blue-bg { background-color: var(--md-sys-color-primary); }
+.grey-bg { background-color: var(--md-sys-color-outline); }
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .button-group {
+    flex-direction: column;
+  }
+  
+  .modal-content {
+    padding: 16px;
+  }
+}

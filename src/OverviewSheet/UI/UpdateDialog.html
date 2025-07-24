@@ -5,8 +5,7 @@
 
     <head>
         <base target="_top">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+        <link rel="stylesheet" href="../ui/assets/material-web.css">
         <style>
             .modal-content {
                 padding: 20px;
@@ -17,7 +16,8 @@
                 padding: 10px;
             }
 
-            .modal-footer button {
+            .modal-footer md-filled-button,
+            .modal-footer md-outlined-button {
                 margin-left: 10px;
             }
         </style>
@@ -26,33 +26,27 @@
     <body>
         <div class="modal-content">
             <div class="input-field">
-                <select id="versions" name="versions">
+                <md-outlined-select id="versions" name="versions" label="Select Version to Update To">
                     <? for (var version in versions) { ?>
-                    <option value="<?= version ?>"
+                    <md-select-option value="<?= version ?>"
                         data-assessment-id="<?= versions[version].assessmentRecordTemplateFileId ?>"
                         data-admin-id="<?= versions[version].adminSheetFileId ?>">
-                        Version
-                        <?= version ?>
-                    </option>
+                        <div slot="headline">Version <?= version ?></div>
+                    </md-select-option>
                     <? } ?>
-                </select>
-                <label for="versions">Select Version to Update To</label>
+                </md-outlined-select>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
-            <button class="btn waves-effect waves-light" onclick="updateVersion()">Update</button>
+            <md-outlined-button onclick="google.script.host.close()">Cancel</md-outlined-button>
+            <md-filled-button onclick="updateVersion()">Update</md-filled-button>
         </div>
 
+        <script src="../ui/assets/material-web.js"></script>
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                var elems = document.querySelectorAll('select');
-                var instances = M.FormSelect.init(elems);
-            });
-
             function updateVersion() {
                 const select = document.getElementById('versions');
-                const selectedOption = select.options[select.selectedIndex];
+                const selectedOption = select.querySelector(`md-select-option[value="${select.value}"]`);
 
                 const versionData = {
                     version: select.value,
@@ -70,8 +64,6 @@
                     .handleVersionUpdate(versionData);
             }
         </script>
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     </body>
 
     </html>
