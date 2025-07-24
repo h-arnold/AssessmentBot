@@ -3,8 +3,8 @@
 <html>
   <head>
     <base target="_top">
-    <!-- Materialise CSS for styling -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <!-- Material Web CSS for styling -->
+    <link rel="stylesheet" href="../ui/assets/material-web.css">
     <style>
       .wizard-step { display: none; }
       .wizard-step.active { display: block; }
@@ -19,7 +19,8 @@
         display: flex;
         justify-content: flex-end;
       }
-      .button-group .btn {
+      .button-group md-filled-button,
+      .button-group md-outlined-button {
         margin-left: 10px;
       }
       .copy-btn { margin-top: 10px; }
@@ -35,69 +36,71 @@
       <div id="step-1" class="wizard-step active">
         <p>We need to update the assessment records before continuing.</p>
         <div class="button-group">
-          <button class="btn" id="next-1">Next</button>
+          <md-filled-button id="next-1">Next</md-filled-button>
         </div>
       </div>
       <!-- Step 2: Instruct the user to open the Assessment Record Template -->
       <div id="step-2" class="wizard-step">
         <p>Please open the Assessment Record Template by clicking the button below. Once opened, click 'Next' to continue.</p>
         <div class="button-group">
-          <button class="btn" id="open-assessment">Open Assessment Record</button>
-          <button class="btn" id="next-2">Next</button>
-          <button class="btn grey" id="back-2">Back</button>
+          <md-outlined-button id="open-assessment">Open Assessment Record</md-outlined-button>
+          <md-filled-button id="next-2">Next</md-filled-button>
+          <md-outlined-button id="back-2">Back</md-outlined-button>
         </div>
       </div>
       <!-- Step 3: Instruct the user to open the Apps Script editor -->
       <div id="step-3" class="wizard-step">
         <p>Now, in the opened template, click on <strong>Extensions &gt; App Script</strong>.</p>
         <div class="button-group">
-          <button class="btn" id="next-3">Next</button>
-          <button class="btn grey" id="back-3">Back</button>
+          <md-filled-button id="next-3">Next</md-filled-button>
+          <md-outlined-button id="back-3">Back</md-outlined-button>
         </div>
       </div>
       <!-- Step 4: Provide the Script ID with a copy-to-clipboard option -->
       <div id="step-4" class="wizard-step">
         <p><ol><li>Then click on the plus (➕) button in the Libraries section.</li><li>Copy the Script ID below and paste it in the 'Script' ID box.</li></ol></p>
         <div class="input-field">
-          <input type="text" id="script-id" readonly value="<?= adminScriptId ?>">
-          <button class="btn copy-btn" id="copy-script-id">Copy Script ID</button>
+          <md-outlined-text-field id="script-id" readonly value="<?= adminScriptId ?>" label="Script ID"></md-outlined-text-field>
+          <md-outlined-button class="copy-btn" id="copy-script-id">Copy Script ID</md-outlined-button>
         </div>
         <div class="button-group">
-          <button class="btn" id="next-4">Next</button>
-          <button class="btn grey" id="back-4">Back</button>
+          <md-filled-button id="next-4">Next</md-filled-button>
+          <md-outlined-button id="back-4">Back</md-outlined-button>
         </div>
       </div>
       <!-- Step 5: Instruct the user to click 'Look Up' -->
       <div id="step-5" class="wizard-step">
         <p>Click <strong>'Look Up'</strong> to find the library.</p>
         <div class="button-group">
-          <button class="btn" id="next-5">Next</button>
-          <button class="btn grey" id="back-5">Back</button>
+          <md-filled-button id="next-5">Next</md-filled-button>
+          <md-outlined-button id="back-5">Back</md-outlined-button>
         </div>
       </div>
       <!-- Step 6: Instruct the user to select the version and identifier -->
       <div id="step-6" class="wizard-step">
         <p><ol><li>Select the version <strong>HEAD (Development Mode)</strong></li><li>Copy the identifier below and paste it into the <strong>identifier</strong> box.</li></ol>:</p>
         <div class="input-field">
-          <input type="text" id="identifier" readonly value="AssessmentBot">
-          <button class="btn copy-btn" id="copy-identifier">Copy Identifier</button>
+          <md-outlined-text-field id="identifier" readonly value="AssessmentBot" label="Identifier"></md-outlined-text-field>
+          <md-outlined-button class="copy-btn" id="copy-identifier">Copy Identifier</md-outlined-button>
         </div>
         <p>Then click 'Add'.</p>
         <div class="button-group">
-          <button class="btn" id="next-6">Next</button>
-          <button class="btn grey" id="back-6">Back</button>
+          <md-filled-button id="next-6">Next</md-filled-button>
+          <md-outlined-button id="back-6">Back</md-outlined-button>
         </div>
       </div>
       <!-- Step 7: Instruct the user to save -->
       <div id="step-7" class="wizard-step">
         <p>Finally, click the save button <span role="img" aria-label="save">💾</span> to save your changes.</p>
         <div class="button-group">
-          <button class="btn" id="finish">Finish</button>
-          <button class="btn grey" id="back-7">Back</button>
+          <md-filled-button id="finish">Finish</md-filled-button>
+          <md-outlined-button id="back-7">Back</md-outlined-button>
         </div>
       </div>
     </div>
 
+    <!-- Material Web JavaScript -->
+    <script src="../ui/assets/material-web.js"></script>
     <!-- Clipboard.js for the copy-to-clipboard functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.10/clipboard.min.js"></script>
     <script>
@@ -181,6 +184,27 @@
             .updateAssessmentRecordsFromWizard();
         });
 
+        // Simple toast notification function
+        function showToast(message, type = 'info') {
+          const toast = document.createElement('div');
+          toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: white;
+            z-index: 10000;
+            background-color: ${type === 'error' ? '#f44336' : type === 'success' ? '#4caf50' : '#2196f3'};
+          `;
+          toast.textContent = message;
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.remove();
+          }, 3000);
+        }
+
         // Initialise Clipboard.js for the "Copy Script ID" button.
         var clipboard = new ClipboardJS('#copy-script-id', {
           text: function() {
@@ -188,11 +212,11 @@
           }
         });
         clipboard.on('success', function(e) {
-          M.toast({html: 'Script ID copied to clipboard!', classes: 'green'});
+          showToast('Script ID copied to clipboard!', 'success');
           e.clearSelection();
         });
         clipboard.on('error', function(e) {
-          M.toast({html: 'Failed to copy Script ID.', classes: 'red'});
+          showToast('Failed to copy Script ID.', 'error');
         });
 
         // Initialise Clipboard.js for the "Copy Identifier" button.
@@ -202,14 +226,13 @@
           }
         });
         clipboardIdentifier.on('success', function(e) {
-          M.toast({html: 'Identifier copied to clipboard!', classes: 'green'});
+          showToast('Identifier copied to clipboard!', 'success');
           e.clearSelection();
         });
         clipboardIdentifier.on('error', function(e) {
-          M.toast({html: 'Failed to copy Identifier.', classes: 'red'});
+          showToast('Failed to copy Identifier.', 'error');
         });
       });
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   </body>
 </html>

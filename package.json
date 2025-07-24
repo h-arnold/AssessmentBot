@@ -8,12 +8,16 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint --config .eslint.config.js --fix src/frontend/**/*.js"
+    "lint": "eslint --config eslint.config.js --fix src/frontend/**/*.js",
+    "build:material-web": "esbuild material-web-bundle.js --bundle --outfile=src/ui/assets/material-web.js --format=iife",
+    "build": "npm run build:material-web"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@material/web": "^2.3.0",
+    "esbuild": "^0.25.8",
     "eslint": "^9.19.0",
     "eslint-plugin-googleappsscript": "^1.0.5"
   },

@@ -1,0 +1,63 @@
+name: Build Material Web Components
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'material-web-bundle.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-material-web.yaml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'material-web-bundle.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-material-web.yaml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Material Web components
+        run: npm run build
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.changes == 'true' && github.event_name == 'push'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/ui/assets/material-web.js
+          git commit -m "Auto-build Material Web components [skip ci]" || exit 0
+          git push
+
+      - name: Verify build artifacts
+        run: |
+          echo "Checking Material Web assets..."
+          ls -la src/ui/assets/
+          echo "Material Web bundle size:"
+          du -h src/ui/assets/material-web.js

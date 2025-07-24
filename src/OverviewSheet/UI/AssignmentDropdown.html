@@ -3,8 +3,7 @@
 <html>
   <head>
     <base target="_top">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="../ui/assets/material-web.css">
     <style>
       .modal-content {
         padding: 20px;
@@ -13,7 +12,8 @@
         text-align: right;
         padding: 10px;
       }
-      .modal-footer button {
+      .modal-footer md-filled-button,
+      .modal-footer md-outlined-button {
         margin-left: 10px;
       }
     </style>
@@ -21,31 +21,27 @@
   <body>
     <div class="modal-content">
       <div class="input-field">
-        <select id="assignments" name="assignments">
+        <md-outlined-select id="assignments" name="assignments" label="Select Assignment">
           <? for (var i = 0; i < assignments.length; i++) { ?>
-            <option value="<?= assignments[i].id ?>" data-name="<?= assignments[i].title ?>"><?= assignments[i].title ?></option>
+            <md-select-option value="<?= assignments[i].id ?>" data-name="<?= assignments[i].title ?>">
+              <div slot="headline"><?= assignments[i].title ?></div>
+            </md-select-option>
           <? } ?>
-        </select>
-        <label for="assignments">Select Assignment</label>
+        </md-outlined-select>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
-      <button class="btn waves-effect waves-light" onclick="go()">Go</button>
+      <md-outlined-button onclick="google.script.host.close()">Cancel</md-outlined-button>
+      <md-filled-button onclick="go()">Go</md-filled-button>
     </div>
 
+    <script src="../ui/assets/material-web.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        // Initialise Materialise select
-        var elems = document.querySelectorAll('select');
-        var instances = M.FormSelect.init(elems);
-      });
-
       function go() {
         const select = document.getElementById('assignments');
         const assignmentId = select.value;
-        const selectedOption = select.options[select.selectedIndex];
-        const assignmentName = selectedOption.getAttribute('data-name');
+        const selectedOption = select.querySelector(`md-select-option[value="${assignmentId}"]`);
+        const assignmentName = selectedOption ? selectedOption.getAttribute('data-name') : '';
 
         const assignmentData = JSON.stringify({
           id: assignmentId,
@@ -59,7 +55,5 @@
           .openReferenceSlideModal(assignmentData);
       }
     </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   </body>
 </html>

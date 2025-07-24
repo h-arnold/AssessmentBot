@@ -5,3 +5,7 @@
 *.clasprc.json
 *credentials.json
 
+# Backup files from Material Web migration
+*-original.html
+*-new.html
+

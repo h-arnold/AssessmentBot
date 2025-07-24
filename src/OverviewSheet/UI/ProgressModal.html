@@ -4,7 +4,7 @@
 
 <head>
     <base target="_top">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link rel="stylesheet" href="../ui/assets/material-web.css">
     <style>
         body {
             padding: 20px;
@@ -23,11 +23,12 @@
 
 <body>
     
-    <div class="progress" id="progress-bar">
-        <div class="indeterminate"></div>
+    <div id="progress-bar">
+        <md-linear-progress indeterminate></md-linear-progress>
     </div>
     <div id="status-message">Initialising...</div>
 
+    <script src="../ui/assets/material-web.js"></script>
     <script>
         /**
          * Polls the server for progress updates every 2 seconds.
@@ -56,14 +57,14 @@
          */
         function updateProgress(progress) {
             const statusMessage = document.getElementById('status-message');
-            const progressBar = document.getElementById('progress-bar');
+            const progressBar = document.querySelector('#progress-bar md-linear-progress');
 
             if (progress.error) {
                 clearInterval(window.pollingInterval);
                 statusMessage.textContent = `Error: ${progress.error}`;
-                progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-                progressBar.classList.remove('indeterminate');
-                progressBar.classList.add('red');
+                statusMessage.className = 'red';
+                progressBar.removeAttribute('indeterminate');
+                progressBar.value = 1;
                 return;
             }
 
@@ -72,9 +73,9 @@
             if (progress.completed) {
                 clearInterval(window.pollingInterval);
                 statusMessage.textContent += ' (Completed)';
-                progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-                progressBar.classList.remove('indeterminate');
-                progressBar.classList.add('green');
+                statusMessage.className = 'green';
+                progressBar.removeAttribute('indeterminate');
+                progressBar.value = 1;
 
                 // Optionally, close the modal after a short delay
                 setTimeout(() => {
@@ -92,16 +93,15 @@
             clearInterval(window.pollingInterval);
             const statusMessage = document.getElementById('status-message');
             statusMessage.textContent = `Error fetching progress: ${error.message}`;
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-            progressBar.classList.remove('indeterminate');
-            progressBar.classList.add('red');
+            statusMessage.className = 'red';
+            const progressBar = document.querySelector('#progress-bar md-linear-progress');
+            progressBar.removeAttribute('indeterminate');
+            progressBar.value = 1;
         }
 
         // Start polling when the modal loads
         document.addEventListener('DOMContentLoaded', startPolling);
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 </body>
 
 </html>
