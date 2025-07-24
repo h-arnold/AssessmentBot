@@ -13,10 +13,15 @@ class Student {
      * @param {string} id - Unique ID of the student from Google Classroom.
      */
     constructor(name, email, id) {
-      this.name = name;         // string: Full name
+      this.name = name;         // string: Full name (maintained for backward compatibility)
       this.email = email;       // string: Email address
       this.id = id;             // string: Unique ID from Google Classroom
       this.documentId = null;   // string: Slide ID of the student's submission (to be assigned)
+      
+      // Split the name into first name and surname
+      const nameParts = Utils.splitName(name);
+      this.firstName = nameParts.firstName;
+      this.surname = nameParts.surname;
     }
   
     /**
@@ -26,6 +31,8 @@ class Student {
     toJSON() {
       return {
         name: this.name,
+        firstName: this.firstName,
+        surname: this.surname,
         email: this.email,
         id: this.id,
         documentId: this.documentId
@@ -38,9 +45,17 @@ class Student {
      * @return {Student} - The Student instance.
      */
     static fromJSON(json) {
-      const { name, email, id, documentId } = json;
+      const { name, firstName, surname, email, id, documentId } = json;
       const student = new Student(name, email, id);
       student.documentId = documentId || null;
+      
+      // If firstName and surname are provided in JSON, use them
+      // Otherwise, the constructor will have already split the name
+      if (firstName !== undefined && surname !== undefined) {
+        student.firstName = firstName;
+        student.surname = surname;
+      }
+      
       return student;
     }
   
