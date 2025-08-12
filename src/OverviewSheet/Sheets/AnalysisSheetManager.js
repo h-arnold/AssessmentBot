@@ -37,9 +37,9 @@ class AnalysisSheetManager extends BaseSheetManager {
    * Extracts headers based on the tasks in the assignment.
    */
   extractHeaders() {
-    // Initialize headers
-    this.headers.topHeaders = ['']; // First cell empty
-    this.headers.subHeaders = ['Name']; // First subheader is 'Name'
+    // Initialize headers with separate columns for first name and surname
+    this.headers.topHeaders = ['', '']; // Two empty cells for name columns
+    this.headers.subHeaders = ['First Name', 'Surname']; // Separate name columns
 
     // Loop through tasks to build headers
     const taskKeys = Object.keys(this.assignment.tasks);
@@ -78,15 +78,14 @@ class AnalysisSheetManager extends BaseSheetManager {
     0,
     this.headers.topHeaders.length));
 
-    // Second row of headers focussing on just the 'Name' column, formatted in bold, left aligned and auto resized.
-
+    // Second row of headers for name columns (First Name and Surname), formatted in bold, left aligned and auto resized.
     this.requests.push(this.createHeaderFormattingRequest(sheetId, 1, 2, {
       wordWrap: false,
       horizontalAlignment: "LEFT",
       autoResize: true
     },
       0,
-      1));
+      2)); // Now covers both First Name and Surname columns
 
     // Second row of headers containing 'Completeness', 'Accuracy' and 'SPaG' headers, rotated 45 degrees
     this.requests.push(this.createHeaderFormattingRequest(sheetId, 1, 2, {
@@ -94,7 +93,7 @@ class AnalysisSheetManager extends BaseSheetManager {
       horizontalAlignment: "CENTER",
       textRotation: { angle: 45 }
     },
-      1,
+      2, // Start from column 2 (after First Name and Surname)
       this.headers.subHeaders.length));
 
 
@@ -110,8 +109,8 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   createMergeRequests(sheetId, topHeaders) {
     let mergeRequests = [];
-    let columnIndex = 1; // Start after the first column (Name)
-    for (let i = 1; i < topHeaders.length - 3; i += 3) {
+    let columnIndex = 2; // Start after the two name columns (First Name and Surname)
+    for (let i = 2; i < topHeaders.length - 3; i += 3) {
       mergeRequests.push({
         mergeCells: {
           range: {
@@ -158,11 +157,12 @@ class AnalysisSheetManager extends BaseSheetManager {
       const accuracyCells = [];
       const spagCells = [];
 
-      // First cell is student name
-      rowData.push({ userEnteredValue: { stringValue: studentTask.student.name } });
+      // First cells are student first name and surname
+      rowData.push({ userEnteredValue: { stringValue: studentTask.student.firstName || '' } });
+      rowData.push({ userEnteredValue: { stringValue: studentTask.student.surname || '' } });
 
-      // Initialize column index
-      let currentColumnIndex = 1;
+      // Initialize column index (now starting from column 2 after first name and surname)
+      let currentColumnIndex = 2;
 
       // For each task
       Object.keys(this.assignment.tasks).forEach(taskKey => {
@@ -285,7 +285,7 @@ class AnalysisSheetManager extends BaseSheetManager {
           sheetId: sheetId,
           startRowIndex: 2, // After headers
           endRowIndex: numRows,
-          startColumnIndex: 1,
+          startColumnIndex: 2, // Start after the name columns
           endColumnIndex: numColumns
         },
         cell: {
@@ -305,8 +305,11 @@ class AnalysisSheetManager extends BaseSheetManager {
     const columnWidths = this.calculateColumnWidths();
     this.requests.push(...this.createColumnWidthRequests(sheetId, columnWidths));
 
-    // Freeze headers and name column
+    // Freeze headers and name columns
     this.requests.push(this.createFreezeRequest(sheetId));
+    
+    // Add auto-filter for sorting functionality
+    this.requests.push(this.createAutoFilterRequest(sheetId, numRows, numColumns));
   }
 
   /**
@@ -323,7 +326,7 @@ class AnalysisSheetManager extends BaseSheetManager {
     const classAverageRowCount = 1;
     const startRowIndex = dataStartRowIndex;
     const endRowIndex = startRowIndex + dataRowCount + blankRowCount + classAverageRowCount;
-    const startColumnIndex = 1; // Assuming the first column is for names
+    const startColumnIndex = 2; // Start after the two name columns
     const endColumnIndex = numColumns;
 
     const range = {
@@ -389,12 +392,14 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   calculateColumnWidths() {
     const columnWidths = [];
-    // First column (Name) width
-    columnWidths.push(200);
+    // First Name column width
+    columnWidths.push(120);
+    // Surname column width  
+    columnWidths.push(120);
 
     // Other columns
     const numColumns = this.headers.subHeaders.length;
-    for (let i = 1; i < numColumns; i++) {
+    for (let i = 2; i < numColumns; i++) {
       columnWidths.push(75);
     }
 
@@ -420,12 +425,13 @@ class AnalysisSheetManager extends BaseSheetManager {
 
     // Prepare Class Average row
     const rowData = [
-      { userEnteredValue: { stringValue: 'Class Average' }, userEnteredFormat: { textFormat: { bold: true } } }
+      { userEnteredValue: { stringValue: 'Class Average' }, userEnteredFormat: { textFormat: { bold: true } } },
+      { userEnteredValue: { stringValue: '' } } // Empty cell for surname column
     ];
 
     const numColumns = this.headers.subHeaders.length;
-    for (let col = 1; col < numColumns; col++) {
-      const columnLetter = Utils.getColumnLetter(col); // Adjust to start from Column B
+    for (let col = 2; col < numColumns; col++) {
+      const columnLetter = Utils.getColumnLetter(col); // Start from Column C (after First Name and Surname)
       const formula = `=IFERROR(ROUND(AVERAGE(${columnLetter}3:${columnLetter}${lastRowIndex}),1),0)`;
       rowData.push({ userEnteredValue: { formulaValue: formula } });
     }
@@ -480,7 +486,7 @@ class AnalysisSheetManager extends BaseSheetManager {
     const accuracyColIndex = this.headers.subHeaders.length - 2;
     const spagColIndex = this.headers.subHeaders.length - 1;
 
-    const studentNameRange = `${sheetName}!A${firstDataRow + 1}:A${lastDataRow + 1}`;
+    const studentNameRange = `${sheetName}!A${firstDataRow + 1}:B${lastDataRow + 1}`; // Now includes both First Name and Surname columns
     const completenessRange = `${sheetName}!${Utils.getColumnLetter(completenessColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(completenessColIndex)}${lastDataRow + 1}`;
     const accuracyRange = `${sheetName}!${Utils.getColumnLetter(accuracyColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(accuracyColIndex)}${lastDataRow + 1}`;
     const spagRange = `${sheetName}!${Utils.getColumnLetter(spagColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(spagColIndex)}${lastDataRow + 1}`;
@@ -499,6 +505,29 @@ class AnalysisSheetManager extends BaseSheetManager {
 
     // Store updated ranges
     documentProperties.setProperty('averagesRanges', JSON.stringify(ranges));
+  }
+
+  /**
+   * Creates an auto-filter request to enable sorting on the data range.
+   * @param {number} sheetId - The ID of the sheet.
+   * @param {number} numRows - The total number of rows including headers.
+   * @param {number} numColumns - The number of columns.
+   * @returns {Object} - The auto-filter request.
+   */
+  createAutoFilterRequest(sheetId, numRows, numColumns) {
+    return {
+      setBasicFilter: {
+        filter: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 1, // Start from the second header row (after task titles)
+            endRowIndex: numRows - 2, // Exclude the blank row and class average row
+            startColumnIndex: 0,
+            endColumnIndex: numColumns
+          }
+        }
+      }
+    };
   }
 
   /**

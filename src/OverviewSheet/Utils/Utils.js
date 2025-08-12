@@ -203,8 +203,39 @@ class Utils {
     return futureDate;
   }
 
+  /**
+   * Splits a full name into first name and surname.
+   * Handles various name formats and edge cases.
+   *
+   * @param {string} fullName - The full name to split.
+   * @returns {Object} - An object with firstName and surname properties.
+   */
+  static splitName(fullName) {
+    if (!fullName || typeof fullName !== 'string') {
+      return { firstName: '', surname: '' };
+    }
 
+    const trimmedName = fullName.trim();
+    if (trimmedName === '') {
+      return { firstName: '', surname: '' };
+    }
 
+    const nameParts = trimmedName.split(/\s+/);
+    
+    if (nameParts.length === 1) {
+      // Single name - treat as first name
+      return { firstName: nameParts[0], surname: '' };
+    } else if (nameParts.length === 2) {
+      // Two parts - first name and surname
+      return { firstName: nameParts[0], surname: nameParts[1] };
+    } else {
+      // Multiple parts - first part is first name, rest are surname
+      return { 
+        firstName: nameParts[0], 
+        surname: nameParts.slice(1).join(' ') 
+      };
+    }
+  }
 
 }
 
