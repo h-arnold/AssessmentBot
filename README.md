@@ -128,6 +128,18 @@ The inital set up should take no more than an hour, including deploying the back
 
 Check out the [docs](./docs/README.md) for more details.
 
+### Development Setup
+
+For developers working on the UI components:
+
+1. **Install dependencies**: `npm install`
+2. **Build Material Web components**: `npm run build`
+
+The project uses Material Web components for the UI, which are bundled locally for security and performance:
+- The GitHub Action automatically builds components when changes are pushed
+- Built assets are located in `src/ui/assets/material-web.js` (388KB)
+- Source bundle configuration is in `material-web-bundle.js`
+
 ---
 
 ## 🤝 Contributing

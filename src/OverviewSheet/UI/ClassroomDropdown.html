@@ -3,8 +3,8 @@
 <html>
 <head>
     <base target="_top">
-    <!-- Materialize CSS for styling -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <!-- Material Web CSS for styling -->
+    <link href="../ui/assets/material-web.css" rel="stylesheet">
     <style>
         .modal-content {
             padding: 20px;
@@ -13,7 +13,8 @@
             padding: 10px;
             text-align: right;
         }
-        .modal-footer .btn {
+        .modal-footer md-filled-button,
+        .modal-footer md-outlined-button {
             margin-left: 10px;
         }
     </style>
@@ -22,27 +23,46 @@
     <div class="modal-content">
         <h5>Select Your Classroom</h5>
         <div class="input-field">
-            <select id="classrooms" name="classrooms">
-                <option value="" disabled selected>Choose your classroom</option>
+            <md-outlined-select id="classrooms" name="classrooms" label="Classroom">
+                <md-select-option value="" disabled selected>
+                    <div slot="headline">Choose your classroom</div>
+                </md-select-option>
                 <? for (let i = 0; i < classrooms.length; i++) { ?>
-                    <option value="<?= classrooms[i].id ?>"><?= classrooms[i].name ?></option>
+                    <md-select-option value="<?= classrooms[i].id ?>">
+                        <div slot="headline"><?= classrooms[i].name ?></div>
+                    </md-select-option>
                 <? } ?>
-            </select>
-            <label for="classrooms">Classroom</label>
+            </md-outlined-select>
         </div>
     </div>
     <div class="modal-footer">
-        <button class="btn grey lighten-1 waves-effect waves-light" onclick="google.script.host.close()">Cancel</button>
-        <button class="btn blue waves-effect waves-light" onclick="saveClassroom()">Save</button>
+        <md-outlined-button onclick="google.script.host.close()">Cancel</md-outlined-button>
+        <md-filled-button onclick="saveClassroom()">Save</md-filled-button>
     </div>
 
-    <!-- Materialize JS and initialization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!-- Material Web JavaScript -->
+    <script src="../ui/assets/material-web.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var elems = document.querySelectorAll('select');
-            M.FormSelect.init(elems);
-        });
+        // Simple toast notification function
+        function showToast(message, type = 'info') {
+          const toast = document.createElement('div');
+          toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: white;
+            z-index: 10000;
+            background-color: ${type === 'error' ? '#f44336' : type === 'success' ? '#4caf50' : '#2196f3'};
+          `;
+          toast.textContent = message;
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.remove();
+          }, 3000);
+        }
 
         /**
          * Saves the selected classroom to the spreadsheet.
@@ -50,7 +70,8 @@
         function saveClassroom() {
             const select = document.getElementById('classrooms');
             const courseId = select.value;
-            const courseName = select.options[select.selectedIndex].text;
+            const selectedOption = select.querySelector(`md-select-option[value="${courseId}"]`);
+            const courseName = selectedOption ? selectedOption.querySelector('[slot="headline"]').textContent : '';
 
             if (!courseId || !courseName) {
                 alert('Please select a classroom.');
@@ -60,8 +81,8 @@
             // Call server-side function to save the selected classroom
             google.script.run
                 .withSuccessHandler(function() {
-                    // Display a client-side toast message using Materialize
-                    M.toast({html: 'Classroom saved successfully.', displayLength: 5000, classes: 'rounded'});
+                    // Display a toast message
+                    showToast('Classroom saved successfully.', 'success');
 
                     // Close the modal dialog
                     google.script.host.close();
