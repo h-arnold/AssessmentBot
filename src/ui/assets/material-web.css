@@ -59,39 +59,7 @@ html, body {
   .col.s12, .col.s6, .col.s4 { flex: 0 0 100%; max-width: 100%; }
 }
 
-/* Tab styling (custom implementation to match Material Web tabs) */
-.tabs {
-  display: flex;
-  border-bottom: 1px solid var(--md-sys-color-outline);
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.tab {
-  flex: 1;
-}
-
-.tab a {
-  display: block;
-  padding: 12px 16px;
-  text-decoration: none;
-  color: var(--md-sys-color-secondary);
-  border-bottom: 2px solid transparent;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.tab a.active,
-.tab a:hover {
-  background-color: var(--md-sys-color-primary-container);
-  border-bottom-color: var(--md-sys-color-secondary);
-}
-
-.tab-content {
-  padding: 20px 0;
-}
-
+/* Tab styling removed to avoid conflict with Material Web's native md-tabs component */
 /* Button group styling */
 .button-group {
   position: fixed;
@@ -244,8 +212,8 @@ md-tabs {
 .grey-bg { background-color: var(--md-sys-color-outline); }
 
 /* Responsive design */
-@media (max-width: 600px) {
-  .container {
+  width: var(--md-outlined-text-field-width, 100%);
+  margin: var(--md-outlined-text-field-margin, 8px 0);
     padding: 16px;
   }
   

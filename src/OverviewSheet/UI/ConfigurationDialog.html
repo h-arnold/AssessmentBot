@@ -222,7 +222,7 @@
       event.preventDefault();
 
       const select = document.getElementById('classrooms');
-      const selectedOption = select.querySelector(`md-select-option[value="${select.value}"]`);
+      const selectedOption = select.selectedOptions && select.selectedOptions.length > 0 ? select.selectedOptions[0] : null;
       const classroom = select.value ? {
         courseId: select.value,
         courseName: selectedOption ? selectedOption.dataset.name : ''
