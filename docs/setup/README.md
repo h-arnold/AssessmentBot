@@ -5,12 +5,11 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
 - [🛠️ Setting up Assessment Bot](#️-setting-up-assessment-bot)
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
-    - [1️⃣ Langflow Backend](#1️⃣-langflow-backend)
+    - [1️⃣ Assessment Bot Backend](#1️⃣-assessment-bot-backend)
     - [2️⃣ Admin Sheet](#2️⃣-admin-sheet)
     - [3️⃣ Assessment Records](#3️⃣-assessment-records)
   - [🚀 The Setup Process](#-the-setup-process)
-    - [🌐 Setting up the Langflow Backend](#-setting-up-the-langflow-backend)
-      - [Deploy Langflow in Google Cloud Run](#deploy-langflow-in-google-cloud-run)
+    - [🌐 Setting up the Backend](#-setting-up-the-backend)
     - [🖥️ Setting up the Google Apps Script Frontend](#️-setting-up-the-google-apps-script-frontend)
       - [1️⃣ Configuring Assessment Bot](#1️⃣-configuring-assessment-bot)
       - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
@@ -33,7 +32,7 @@ Understanding the system's components will help you see how it all fits together
 
 ### 1️⃣ Assessment Bot Backend
 
--  ([The Assessment Bot Backend](https://github.com/langflow-ai/langflow)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
+-  ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
 ### 2️⃣ Admin Sheet
 
@@ -54,24 +53,9 @@ Follow these steps to set up the system.
 
 ---
 
-### 🌐 Setting up the Langflow Backend
+### 🌐 Setting up the Backend
 
-**⚠️Assessment Bot won't work with the [Langflow free cloud instance](https://www.datastax.com/products/langflow).** API requests via the cloud instance are slightly different to the self hosted verison and I haven't implemented this into Assessment Bot yet.  
-
-#### [Deploy Langflow in Google Cloud Run](./langflowDeployment/langflowDeployment.md)
-
-- Setting up Langflow on **Google Cloud Run** is highly recommended for production use. This approach provides the following benefits:
-
-1. **💡 High Resource Requirements:** Langflow requires at least 1vCPU and 2GB of RAM per worker. Running it on a VPS can quickly become expensive.
-2. **📈 Bursty Usage:** Langflow is rarely used continuously but must handle high demand during assessment periods. A serverless solution like Google Cloud Run scales up automatically when needed and scales back down to zero when idle, reducing costs.
-3. **💰 Cost Efficiency:** For typical usage, the free tier of Google Cloud Run is sufficient, so you are unlikely to incur significant charges.
-4. **📂 Ephemeral File Storage:** Following the guide will set up a shared `ramdisk` `.cache` folder. This ensures:
-   - All uploaded images are available to all instances during an assessment.
-   - Files are automatically deleted when the assessment run completes, as the instance shuts down.
-
-- Follow [this guide](./langflowDeployment/langflowDeployment.md) to set up your own Google Cloud Run instance.
-
-**💡Tip:** Langflow offers [several different deployment guides](https://docs.langflow.org/deployment-docker) if you'd prefer to use something else.
+The Backend has an Alpine Linux based Docker image that can be deployed to a cloud provider of your choice. Check out the deloyment instructions here: [Assessment Bot Backend Deployment Instructions](https://github.com/h-arnold/AssessmentBot-Backend/blob/master/docs/deployment/docker.md
 
 ---
 
