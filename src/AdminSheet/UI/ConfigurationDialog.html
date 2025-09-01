@@ -62,8 +62,9 @@
 
 <body>
   <div class="container">
-    <!-- The entire tab content is wrapped inside one form for configuration -->
-    <form id="config-form">
+  <!-- The entire tab content is wrapped inside one form for configuration -->
+  <!-- Disable native browser validation (some inputs live in hidden tabs and cannot be focused) -->
+  <form id="config-form" novalidate>
       <div class="row">
         <div class="col s12">
           <ul class="tabs">
@@ -183,6 +184,10 @@
     });
 
     function populateForm(data) {
+      if (data.loadError) {
+        console.error('Configuration load errors:', data.loadError);
+        M.toast({ html: `Some configuration values failed to load: ${data.loadError}`, classes: 'orange', displayLength: 8000 });
+      }
       document.getElementById('apiKey').value = data.apiKey || '';
       document.getElementById('backendUrl').value = data.backendUrl || '';
       document.getElementById('batchSize').value = data.batchSize || 20;
@@ -219,6 +224,46 @@
 
     document.getElementById('config-form').addEventListener('submit', function (event) {
       event.preventDefault();
+      // Custom validation: browser native validation can fail when an invalid control
+      // is inside a hidden tab (not focusable). Use a small JS validator and switch
+      // to the backend tab if required fields are missing.
+      const apiKeyEl = document.getElementById('apiKey');
+      const backendUrlEl = document.getElementById('backendUrl');
+
+      function focusBackendTab() {
+        try {
+          var tabsInstance = M.Tabs.getInstance(document.querySelector('.tabs'));
+          if (tabsInstance && typeof tabsInstance.select === 'function') {
+            tabsInstance.select('backendTab');
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function isValidUrl(u) {
+        if (!u) return false;
+        try {
+          new URL(u);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      if (!apiKeyEl.value.trim()) {
+        focusBackendTab();
+        M.toast({ html: 'API Key is required.', classes: 'orange' });
+        apiKeyEl.focus();
+        return;
+      }
+
+      if (!backendUrlEl.value.trim() || !isValidUrl(backendUrlEl.value.trim())) {
+        focusBackendTab();
+        M.toast({ html: 'Please provide a valid Backend URL.', classes: 'orange' });
+        backendUrlEl.focus();
+        return;
+      }
 
       const select = document.getElementById('classrooms');
       const classroom = select.value ? {
@@ -238,9 +283,18 @@
       };
 
       google.script.run
-        .withSuccessHandler(function () {
-          M.toast({ html: 'Configuration saved successfully.', classes: 'green' });
-          google.script.host.close();
+        .withSuccessHandler(function (result) {
+          if (!result) {
+            M.toast({ html: 'Configuration save returned no result.', classes: 'orange' });
+            return;
+          }
+          if (result.success) {
+            M.toast({ html: 'Configuration saved successfully.', classes: 'green' });
+            google.script.host.close();
+          } else {
+            console.error('Configuration save failed:', result.error);
+            M.toast({ html: `Error saving configuration: ${result.error}`, classes: 'orange', displayLength: 8000 });
+          }
         })
         .withFailureHandler(function (error) {
           M.toast({ html: `Error saving configuration: ${error.message}`, classes: 'red' });

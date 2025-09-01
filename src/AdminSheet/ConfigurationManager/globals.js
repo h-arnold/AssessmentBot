@@ -6,20 +6,37 @@
  * @returns {object} An object containing the current configuration values.
  */
 function getConfiguration() {
-    return {
-        batchSize: configurationManager.getBatchSize(),
-        apiKey: configurationManager.getApiKey(),
-        backendUrl: configurationManager.getBackendUrl(),
-        assessmentRecordTemplateId: configurationManager.getAssessmentRecordTemplateId(),
-        assessmentRecordDestinationFolder: configurationManager.getAssessmentRecordDestinationFolder(),
-        updateDetailsUrl: configurationManager.getUpdateDetailsUrl(),
-        updateStage: configurationManager.getUpdateStage(),
-        isAdminSheet: configurationManager.getIsAdminSheet(),
-        revokeAuthTriggerSet: configurationManager.getRevokeAuthTriggerSet(),
-        daysUntilAuthRevoke: configurationManager.getDaysUntilAuthRevoke(),
-        scriptAuthorised: configurationManager.getScriptAuthorised(),
-        // Removed imageAssessmentUrl, textAssessmentUrl, tableAssessmentUrl
+    const errors = [];
+
+    function safeGet(getter, name, fallback = '') {
+        try {
+            return getter();
+        } catch (err) {
+            console.error(`Error retrieving configuration value for ${name}:`, err);
+            errors.push(`${name}: ${err.message}`);
+            return fallback;
+        }
     }
+
+    const config = {
+        batchSize: safeGet(() => configurationManager.getBatchSize(), 'batchSize', 30),
+        apiKey: safeGet(() => configurationManager.getApiKey(), 'apiKey', ''),
+        backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
+        assessmentRecordTemplateId: safeGet(() => configurationManager.getAssessmentRecordTemplateId(), 'assessmentRecordTemplateId', ''),
+        assessmentRecordDestinationFolder: safeGet(() => configurationManager.getAssessmentRecordDestinationFolder(), 'assessmentRecordDestinationFolder', ''),
+        updateDetailsUrl: safeGet(() => configurationManager.getUpdateDetailsUrl(), 'updateDetailsUrl', ''),
+        updateStage: safeGet(() => configurationManager.getUpdateStage(), 'updateStage', 0),
+        isAdminSheet: safeGet(() => configurationManager.getIsAdminSheet(), 'isAdminSheet', false),
+        revokeAuthTriggerSet: safeGet(() => configurationManager.getRevokeAuthTriggerSet(), 'revokeAuthTriggerSet', false),
+        daysUntilAuthRevoke: safeGet(() => configurationManager.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
+        scriptAuthorised: safeGet(() => configurationManager.getScriptAuthorised(), 'scriptAuthorised', false),
+    };
+
+    if (errors.length > 0) {
+        config.loadError = errors.join('; ');
+    }
+
+    return config;
 }
 
 /**
@@ -28,45 +45,65 @@ function getConfiguration() {
  * @throws {Error} Throws an error if the configuration fails to save.
  */
 function saveConfiguration(config) {
-    try {
-        // Save classroom data if provided
-        if (config.classroom) {
+    const errors = [];
+
+    function safeSet(action, name) {
+        try {
+            action();
+            return true;
+        } catch (err) {
+            console.error(`Error saving configuration value for ${name}:`, err);
+            errors.push(`${name}: ${err.message}`);
+            return false;
+        }
+    }
+
+    // Save classroom data if provided
+    if (config.classroom) {
+        try {
             this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
             delete config.classroom; // Remove classroom data before saving other configs
+        } catch (err) {
+            console.error('Error saving classroom configuration:', err);
+            errors.push(`classroom: ${err.message}`);
         }
-
-        // Delegate configuration saving to ConfigurationManager
-        if (config.batchSize !== undefined) {
-            configurationManager.setBatchSize(config.batchSize);
-        }
-        if (config.apiKey !== undefined) {
-            configurationManager.setApiKey(config.apiKey);
-        }
-        if (config.backendUrl !== undefined) {
-            configurationManager.setBackendUrl(config.backendUrl);
-        }
-
-        // Handle Assessment Record values
-        if (config.assessmentRecordTemplateId !== undefined) {
-            configurationManager.setAssessmentRecordTemplateId(config.assessmentRecordTemplateId);
-        }
-        if (config.assessmentRecordDestinationFolder !== undefined) {
-            configurationManager.setAssessmentRecordDestinationFolder(config.assessmentRecordDestinationFolder);
-        }
-
-        // Handle updateDetailsUrl parameter
-        if (config.updateDetailsUrl !== undefined) {
-            configurationManager.setUpdateDetailsUrl(config.updateDetailsUrl);
-        }
-
-        // Handle daysUntilAuthRevoke parameter
-        if (config.daysUntilAuthRevoke !== undefined) {
-            configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke);
-        }
-
-        console.log("Configuration saved successfully.");
-    } catch (error) {
-        console.error("Error saving configuration:", error);
-        throw new Error(`Failed to save configuration. ${error.message}`);
     }
+
+    // Delegate configuration saving to ConfigurationManager using safeSet
+    if (config.batchSize !== undefined) {
+        safeSet(() => configurationManager.setBatchSize(config.batchSize), 'batchSize');
+    }
+    if (config.apiKey !== undefined) {
+        safeSet(() => configurationManager.setApiKey(config.apiKey), 'apiKey');
+    }
+    if (config.backendUrl !== undefined) {
+        safeSet(() => configurationManager.setBackendUrl(config.backendUrl), 'backendUrl');
+    }
+
+    // Handle Assessment Record values
+    if (config.assessmentRecordTemplateId !== undefined) {
+        safeSet(() => configurationManager.setAssessmentRecordTemplateId(config.assessmentRecordTemplateId), 'assessmentRecordTemplateId');
+    }
+    if (config.assessmentRecordDestinationFolder !== undefined) {
+        safeSet(() => configurationManager.setAssessmentRecordDestinationFolder(config.assessmentRecordDestinationFolder), 'assessmentRecordDestinationFolder');
+    }
+
+    // Handle updateDetailsUrl parameter
+    if (config.updateDetailsUrl !== undefined) {
+        safeSet(() => configurationManager.setUpdateDetailsUrl(config.updateDetailsUrl), 'updateDetailsUrl');
+    }
+
+    // Handle daysUntilAuthRevoke parameter
+    if (config.daysUntilAuthRevoke !== undefined) {
+        safeSet(() => configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke), 'daysUntilAuthRevoke');
+    }
+
+    if (errors.length > 0) {
+        const message = `Failed to save some configuration values: ${errors.join('; ')}`;
+        console.error(message);
+        return { success: false, error: message };
+    }
+
+    console.log("Configuration saved successfully.");
+    return { success: true };
 }

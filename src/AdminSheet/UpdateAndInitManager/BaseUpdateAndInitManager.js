@@ -32,30 +32,33 @@ class BaseUpdateAndInit {
   fetchVersionDetails() {
     const updateDetailsUrl = configurationManager.getUpdateDetailsUrl();
     if (!updateDetailsUrl) {
-      console.error("Update_Details_Url not found in configuration.");
-      return null;
+      const msg = "Update_Details_Url not found in configuration.";
+      console.error(msg);
+      throw new Error(msg);
     }
-    
+
     const request = {
       url: updateDetailsUrl,
       method: "GET",
       muteHttpExceptions: true
     };
-    
+
     const requestManager = new BaseRequestManager();
     const response = requestManager.sendRequestWithRetries(request, 1);
-    
+
     if (!response) {
-      console.error("Failed to fetch assessmentBotVersions.json.");
-      return null;
+      const msg = "Failed to fetch assessmentBotVersions.json after 1 attempt.";
+      console.error(msg);
+      throw new Error(msg);
     }
-    
-    if (response.getResponseCode() !== 200) {
-      const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${response.getResponseCode()} Returned Message: ${response.getContentText()}.`
-      console.error(errorMessage)
+
+    const status = response.getResponseCode();
+    if (status !== 200) {
+      const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${status} Returned Message: ${response.getContentText()}.`;
+      console.error(errorMessage);
       throw new Error(errorMessage);
     }
-    
+
     try {
       return JSON.parse(response.getContentText());
     } catch (error) {
