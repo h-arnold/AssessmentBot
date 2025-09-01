@@ -51,15 +51,17 @@ class BaseUpdateAndInit {
     }
     
     if (response.getResponseCode() !== 200) {
-      console.error(`Failed to fetch assessmentBotVersions.json. Status Code: ${response.getResponseCode()} Returned Message: ${response.getContentText()}.`);
-      return null;
+      const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${response.getResponseCode()} Returned Message: ${response.getContentText()}.`
+      console.error(errorMessage)
+      throw new Error(errorMessage);
     }
     
     try {
       return JSON.parse(response.getContentText());
     } catch (error) {
-      console.error(`Error parsing assessmentBotVersions.json: ${error}`);
-      return null;
+      const errorMessage = `Error parsing assessmentBotVersions.json: ${error}`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
   }
   
