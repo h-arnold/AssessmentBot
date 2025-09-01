@@ -115,7 +115,7 @@ class ConfigurationManager {
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
         if (typeof value !== 'string' || !this.isValidApiKey(value)) {
-          throw new Error("API Key must be a valid string starting with 'sk-' followed by alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
+          throw new Error("API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.BACKEND_URL:
@@ -180,8 +180,10 @@ class ConfigurationManager {
   }
 
   isValidApiKey(apiKey) {
-    const apiKeyPattern = /^sk-(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-    return apiKeyPattern.test(apiKey.trim());
+  // Accept API keys that are alphanumeric with optional single hyphens between segments.
+  // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
+  const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+  return apiKeyPattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
@@ -257,10 +259,17 @@ class ConfigurationManager {
   }
 
 
-  // getImageUploadUrl removed (IMAGE_FLOW_UID no longer used)
-
   getAssessmentRecordTemplateId() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
+    const assessmentRecordTempalateId = this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
+
+    // If no assessment record template Id has been set, pull the version that matches the version number from github.
+    if (!assessmentRecordTempalateId) {
+      const initManager = new BaseUpdateAndInit();
+      return initManager.getLatestAssessmentRecordTemplateId();
+    }
+    else {
+      return assessmentRecordTempalateId;
+    }
   }
 
   getAssessmentRecordDestinationFolder() {
