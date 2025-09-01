@@ -243,7 +243,7 @@ class ConfigurationManager {
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
     if (!value) {
-      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateAndInitManager/assessmentBotVersions.json';
+      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json';
     } else {
       return value;
     }
