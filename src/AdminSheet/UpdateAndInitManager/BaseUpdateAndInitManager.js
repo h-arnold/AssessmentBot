@@ -43,7 +43,7 @@ class BaseUpdateAndInit {
     };
     
     const requestManager = new BaseRequestManager();
-    const response = requestManager.sendRequestWithRetries(request);
+    const response = requestManager.sendRequestWithRetries(request, 1);
     
     if (!response) {
       console.error("Failed to fetch assessmentBotVersions.json.");
