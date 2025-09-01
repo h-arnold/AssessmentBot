@@ -1,8 +1,8 @@
-# 🛠️ Setting up Google Slides Assessor
+# 🛠️ Setting up Assessment Bot
 
 This guide will walk you through setting up the Google Slides Assessor, a tool designed to streamline the assessment of student work in Google Slides. 
 
-- [🛠️ Setting up Google Slides Assessor](#️-setting-up-google-slides-assessor)
+- [🛠️ Setting up Assessment Bot](#️-setting-up-assessment-bot)
   - [📝 Prerequisites](#-prerequisites)
   - [🧩 Core Components](#-core-components)
     - [1️⃣ Langflow Backend](#1️⃣-langflow-backend)
@@ -31,9 +31,9 @@ Before starting, ensure you have the following:
 
 Understanding the system's components will help you see how it all fits together:
 
-### 1️⃣ Langflow Backend
+### 1️⃣ Assessment Bot Backend
 
-- Langflow ([GitHub Repo](https://github.com/langflow-ai/langflow)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
+-  ([The Assessment Bot Backend](https://github.com/langflow-ai/langflow)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
 ### 2️⃣ Admin Sheet
 

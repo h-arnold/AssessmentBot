@@ -15,25 +15,23 @@
  * config.setLangflowApiKey('sk-abc123');
  */
 class ConfigurationManager {
-  // ...existing code...
 
-  getApiKey() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.API_KEY);
+  constructor() {
+    if (ConfigurationManager.instance) {
+      return ConfigurationManager.instance;
+    }
+
+    this.scriptProperties = PropertiesService.getScriptProperties();
+    this.documentProperties = PropertiesService.getDocumentProperties();
+
+    this.configCache = null; // Initialize cache early
+
+    this.maybeDeserializeProperties();
+
+    ConfigurationManager.instance = this;
+    return this;
   }
 
-  setApiKey(apiKey) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, apiKey);
-  }
-
-  getBackendUrl() {
-    let url = this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL) || '';
-    url = url.replace(/\/+$/, ''); // Remove trailing slashes
-    return url;
-  }
-
-  setBackendUrl(url) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
-  }
   static get CONFIG_KEYS() {
     return {
       BATCH_SIZE: 'batchSize',
@@ -50,21 +48,6 @@ class ConfigurationManager {
     };
   }
 
-  constructor() {
-    if (ConfigurationManager.instance) {
-      return ConfigurationManager.instance;
-    }
-
-    this.scriptProperties = PropertiesService.getScriptProperties();
-    this.documentProperties = PropertiesService.getDocumentProperties();
-
-    this.maybeDeserializeProperties();
-    
-    this.configCache = null; // Initialize cache
-
-    ConfigurationManager.instance = this;
-    return this;
-  }
 
   /**
    * Attempts to deserialize properties from a propertiesStore sheet if no script or document properties are found.
@@ -131,7 +114,7 @@ class ConfigurationManager {
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
-        if (typeof value !== 'string') {
+        if (typeof value !== 'string' || !this.isValidApiKey(value)) {
           throw new Error("API Key must be a valid string starting with 'sk-' followed by alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.");
         }
         break;
@@ -171,12 +154,6 @@ class ConfigurationManager {
         }
         this.documentProperties.setProperty(key, value.toString());
         return;
-      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED:
-      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
-        if (!this.isBoolean(value)) {
-          throw new Error(`${key} must be a boolean.`);
-        }
-        break;
       case ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE:
         if (!Number.isInteger(value) || value <= 0) {
           throw new Error("Days Until Auth Revoke must be a positive integer.");
