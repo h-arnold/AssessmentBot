@@ -448,7 +448,7 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   formatNote(reasoning, studentResponse) {
     let noteContent = `Reasoning\n========\n${reasoning}`;
-    if (this.#shouldIncludeStudentResponse(studentResponse)) {
+    if (this._shouldIncludeStudentResponse(studentResponse)) {
       noteContent += `\n\nStudent Response\n===============\n${studentResponse}`;
     }
     return noteContent;
@@ -459,7 +459,7 @@ class AnalysisSheetManager extends BaseSheetManager {
    * @param {any} response - The student response.
    * @returns {boolean} - True if the response is a string and not a base64 URI.
    */
-  #shouldIncludeStudentResponse(response) {
+  _shouldIncludeStudentResponse(response) {
     if (typeof response !== 'string') return false;
     // Most base64 URIs start with 'data:'
     return !response.startsWith('data:');
