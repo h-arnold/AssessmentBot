@@ -99,7 +99,8 @@ class GoogleClassroomManager {
           teachers: row.slice(2, 6).filter(email => email) // Teacher emails
         });
         classroom.create();
-        this.progressTracker.logInfo(`Classroom created: ${row[1]}`);
+  // Use updateProgress to record informational messages without incrementing the step
+  this.progressTracker.updateProgress(`Classroom created: ${row[1]}`, false);
 
         // Update Classroom ID in the sheet
         // Before: this.sheet.getRange(index + 1, 1).setValue(classroom.id);
@@ -136,8 +137,8 @@ class GoogleClassroomManager {
     this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
 
     // 0) Initialise progress tracker
-    let step = 0 //initialise step variable for the Progress Tracker
-    this.progressTracker.updateProgress('Creating Assessment Records');
+  // Use the ProgressTracker directly; it will manage step increments itself
+  this.progressTracker.updateProgress('Creating Assessment Records');
 
     // 1) Retrieve all rows
     const data = this.csm.getData(); 
@@ -216,10 +217,8 @@ class GoogleClassroomManager {
             ClassroomSheetManager.appendClassInfo(newFileId, className, courseId)
 
             // Update progress each time we successfully copy a template
-            this.progressTracker.updateProgress(
-              ++step,
-              `Created assessment record for: ${className}`
-            );
+            // Let ProgressTracker increment the step automatically and record the message
+            this.progressTracker.updateProgress(`Created assessment record for: ${className}`);
           } else if (copyResult.status === 'skipped') {
             console.log(copyResult.message);
             // Push the existing file ID to the readpsheet instead
@@ -229,10 +228,8 @@ class GoogleClassroomManager {
               templateFileIdValue: existingFiledId
             });
 
-            this.progressTracker.updateProgress(
-              ++step,
-              `Skipping record for: ${className} (already exists)`
-            );
+            // Record a skipped message and allow the tracker to increment its internal step
+            this.progressTracker.updateProgress(`Skipping record for: ${className} (already exists)`);
           }
         } catch (error) {
           const errMsg = `Failed to copy template for row ${i + 1}: ${error.message}`;
@@ -280,7 +277,7 @@ class GoogleClassroomManager {
         const shareResult = DriveManager.shareFolder(this.destinationFolderId, teacherEmailsSet);
         // Use the shareResult status to update progress or log a message
         if (shareResult.status === 'complete') {
-          this.progressTracker.updateProgress(`Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`,true);
+          this.progressTracker.updateProgress(`Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`, true);
         } else if (shareResult.status === 'partial') {
           this.progressTracker.updateProgress(`Some teachers shared, some failed. Check logs.`, false);
         } else if (shareResult.status === 'none') {
@@ -371,7 +368,7 @@ class GoogleClassroomManager {
     const sheet = spreadsheet.getSheetByName("ClassInfo");
     
     // If ClassInfo sheet doesn't exist or course ID is missing
-    if (!sheet || !sheet.getRange("B2").getValue()) {
+  if (!sheet || !sheet.getRange("B2").getValue()) {
       console.error("ClassInfo sheet not found or missing course ID.");
       
       // Create a detailed error message for logging
@@ -382,17 +379,21 @@ class GoogleClassroomManager {
       this.progressTracker.logError(errorMessage, detailedError);
       
       // Use UIManager to handle the classroom selection prompt
+      // Attempt to show a UI prompt to help the user select a classroom. Capture any UI errors
+      // so they can be included in the thrown error's developer details.
+      let uiError = null;
       try {
-        // Get the UIManager instance
         const uiManager = UIManager.getInstance();
-        
-        // Prompt the user about missing classroom selection
         uiManager.promptMissingClassroomSelection();
       } catch (e) {
+        uiError = e;
         this.progressTracker.captureError(e, "Cannot show UI prompt using UIManager");
       }
-      
-      this.progressTracker.logAndThrowError(errorMessage + " Please use the 'Change Class' menu option to select a classroom first.", e);
+
+      this.progressTracker.logAndThrowError(
+        errorMessage + " Please use the 'Change Class' menu option to select a classroom first.",
+        uiError
+      );
 
     }
     
