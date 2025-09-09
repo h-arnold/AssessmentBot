@@ -11,7 +11,7 @@
  * 
  * @example
  * const config = new ConfigurationManager();
- * const batchSize = config.getBatchSize();
+ * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
 class ConfigurationManager {
@@ -34,7 +34,7 @@ class ConfigurationManager {
 
   static get CONFIG_KEYS() {
     return {
-      BATCH_SIZE: 'batchSize',
+  BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
       SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
       API_KEY: 'apiKey',
       BACKEND_URL: 'backendUrl',
@@ -109,9 +109,10 @@ class ConfigurationManager {
 
   setProperty(key, value) {
     switch (key) {
-      case ConfigurationManager.CONFIG_KEYS.BATCH_SIZE:
-        if (!Number.isInteger(value) || value <= 0) {
-          throw new Error("Batch Size must be a positive integer.");
+      case ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE:
+        // Backend assessor batch size must be an integer between 1 and 500.
+        if (!Number.isInteger(value) || value < 1 || value > 500) {
+          throw new Error("Backend Assessor Batch Size must be an integer between 1 and 500.");
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
@@ -220,8 +221,8 @@ class ConfigurationManager {
       .replace(/^./, str => str.toUpperCase());
   }
 
-  getBatchSize() {
-    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE), 10);
+  getBackendAssessorBatchSize() {
+    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE), 10);
     return isNaN(value) ? 20 : value;
   }
 
@@ -307,8 +308,8 @@ class ConfigurationManager {
     return value.toString().toLowerCase() === 'true';
   }
 
-  setBatchSize(batchSize) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE, batchSize);
+  setBackendAssessorBatchSize(batchSize) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
   }
 
   setSlidesFetchBatchSize(batchSize) {

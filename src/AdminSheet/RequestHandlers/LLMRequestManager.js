@@ -224,7 +224,7 @@ class LLMRequestManager extends BaseRequestManager {
       console.log("No requests to send.");
       return;
     }
-    console.log(`Sending student responses in batches of ${this.configManager.getBatchSize()}.`)
+  console.log(`Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`)
 
     // Use BaseRequestManager's sendRequestsInBatches method
     const responses = this.sendRequestsInBatches(requests);

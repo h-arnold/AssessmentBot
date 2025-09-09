@@ -101,8 +101,8 @@
           <h5>Advanced Settings</h5>
           <div class="row">
             <div class="input-field col s12 m6">
-              <input id="batchSize" name="batchSize" type="number" min="1">
-              <label for="batchSize">Batch Size</label>
+              <input id="backendAssessorBatchSize" name="backendAssessorBatchSize" type="number" min="1" max="500">
+              <label for="backendAssessorBatchSize">Backend Assessor Batch Size (1–500)</label>
             </div>
             <div class="input-field col s12 m6">
               <input id="slidesFetchBatchSize" name="slidesFetchBatchSize" type="number" min="1" max="100">
@@ -194,7 +194,11 @@
       }
       document.getElementById('apiKey').value = data.apiKey || '';
       document.getElementById('backendUrl').value = data.backendUrl || '';
-      document.getElementById('batchSize').value = data.batchSize || 20;
+      // Populate renamed backend assessor batch size
+      const backendBatchInput = document.getElementById('backendAssessorBatchSize');
+      if (backendBatchInput) {
+        backendBatchInput.value = data.backendAssessorBatchSize || 20;
+      }
   document.getElementById('slidesFetchBatchSize').value = data.slidesFetchBatchSize || 20;
       document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
@@ -291,6 +295,16 @@
         return;
       }
 
+      // Validate backendAssessorBatchSize (must be integer between 1 and 500)
+      const backendBatchEl = document.getElementById('backendAssessorBatchSize');
+      const backendBatchVal = parseInt(backendBatchEl.value, 10);
+      if (isNaN(backendBatchVal) || backendBatchVal < 1 || backendBatchVal > 500) {
+        focusAdvancedTab();
+        M.toast({ html: 'Backend Assessor Batch Size must be an integer between 1 and 500.', classes: 'orange' });
+        backendBatchEl.focus();
+        return;
+      }
+
       const select = document.getElementById('classrooms');
       const classroom = select.value ? {
         courseId: select.value,
@@ -300,7 +314,7 @@
       const formData = {
         apiKey: document.getElementById('apiKey').value.trim(),
         backendUrl: document.getElementById('backendUrl').value.trim(),
-        batchSize: parseInt(document.getElementById('batchSize').value, 10),
+  backendAssessorBatchSize: parseInt(document.getElementById('backendAssessorBatchSize').value, 10),
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
