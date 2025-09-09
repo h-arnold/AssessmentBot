@@ -230,6 +230,19 @@
       M.FormSelect.init(selects);
     }
 
+    // Shared helper to validate integer ranges; returns parsed value or null (and focuses tab + shows toast on failure)
+    function validateIntRange(id, min, max, label, focusTabFn) {
+      const el = document.getElementById(id);
+      const val = parseInt(el.value, 10);
+      if (isNaN(val) || val < min || val > max) {
+        if (typeof focusTabFn === 'function') focusTabFn();
+        M.toast({ html: `${label} must be an integer between ${min} and ${max}.`, classes: 'orange' });
+        el.focus();
+        return null;
+      }
+      return val;
+    }
+
 
     document.getElementById('config-form').addEventListener('submit', function (event) {
       event.preventDefault();
@@ -285,25 +298,13 @@
         return;
       }
 
-      // Validate slidesFetchBatchSize (must be integer between 1 and 100)
-      const slidesEl = document.getElementById('slidesFetchBatchSize');
-      const slidesVal = parseInt(slidesEl.value, 10);
-      if (isNaN(slidesVal) || slidesVal < 1 || slidesVal > 100) {
-        focusAdvancedTab();
-        M.toast({ html: 'Slides Fetch Batch Size must be an integer between 1 and 100.', classes: 'orange' });
-        slidesEl.focus();
-        return;
-      }
-
-      // Validate backendAssessorBatchSize (must be integer between 1 and 500)
-      const backendBatchEl = document.getElementById('backendAssessorBatchSize');
-      const backendBatchVal = parseInt(backendBatchEl.value, 10);
-      if (isNaN(backendBatchVal) || backendBatchVal < 1 || backendBatchVal > 500) {
-        focusAdvancedTab();
-        M.toast({ html: 'Backend Assessor Batch Size must be an integer between 1 and 500.', classes: 'orange' });
-        backendBatchEl.focus();
-        return;
-      }
+  // Validate integer range fields via shared helper
+  const slidesVal = validateIntRange('slidesFetchBatchSize', 1, 100, 'Slides Fetch Batch Size', focusAdvancedTab);
+  if (slidesVal === null) return;
+  const backendBatchVal = validateIntRange('backendAssessorBatchSize', 1, 500, 'Backend Assessor Batch Size', focusAdvancedTab);
+  if (backendBatchVal === null) return;
+  const daysUntilAuthRevokeVal = validateIntRange('daysUntilAuthRevoke', 1, 365, 'Days Until Auth Revoke', focusAdvancedTab);
+  if (daysUntilAuthRevokeVal === null) return;
 
       const select = document.getElementById('classrooms');
       const classroom = select.value ? {
@@ -314,12 +315,12 @@
       const formData = {
         apiKey: document.getElementById('apiKey').value.trim(),
         backendUrl: document.getElementById('backendUrl').value.trim(),
-  backendAssessorBatchSize: parseInt(document.getElementById('backendAssessorBatchSize').value, 10),
+        backendAssessorBatchSize: backendBatchVal,
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
-  slidesFetchBatchSize: parseInt(document.getElementById('slidesFetchBatchSize').value, 10),
-  daysUntilAuthRevoke: parseInt(document.getElementById('daysUntilAuthRevoke').value, 10),
+        slidesFetchBatchSize: slidesVal,
+  daysUntilAuthRevoke: daysUntilAuthRevokeVal,
         classroom: classroom
       };
 
