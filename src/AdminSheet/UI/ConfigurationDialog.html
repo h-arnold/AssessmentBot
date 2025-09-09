@@ -62,9 +62,9 @@
 
 <body>
   <div class="container">
-  <!-- The entire tab content is wrapped inside one form for configuration -->
-  <!-- Disable native browser validation (some inputs live in hidden tabs and cannot be focused) -->
-  <form id="config-form" novalidate>
+    <!-- The entire tab content is wrapped inside one form for configuration -->
+    <!-- Disable native browser validation (some inputs live in hidden tabs and cannot be focused) -->
+    <form id="config-form" novalidate>
       <div class="row">
         <div class="col s12">
           <ul class="tabs">
@@ -94,61 +94,62 @@
             </div>
           </div>
         </div>
-        </div>
+      </div>
 
-        <!-- Tab 2: Advanced -->
-        <div id="advancedTab" class="col s12">
-          <h5>Advanced Settings</h5>
-          <div class="row">
-            <div class="input-field col s12 m6">
-              <input id="backendAssessorBatchSize" name="backendAssessorBatchSize" type="number" min="1" max="500">
-              <label for="backendAssessorBatchSize">Backend Assessor Batch Size (1–500)</label>
-            </div>
-            <div class="input-field col s12 m6">
-              <input id="slidesFetchBatchSize" name="slidesFetchBatchSize" type="number" min="1" max="100">
-              <label for="slidesFetchBatchSize">Slides Fetch Batch Size (1–100)</label>
-            </div>
-            <div class="input-field col s12 m6">
-              <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
-              <label for="updateDetailsUrl">Update Details URL</label>
-            </div>
+      <!-- Tab 2: Advanced -->
+      <div id="advancedTab" class="col s12">
+        <h5>Advanced Settings</h5>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="backendAssessorBatchSize" name="backendAssessorBatchSize" type="number" min="1" max="500">
+            <label for="backendAssessorBatchSize">Backend Assessor Batch Size (1–500)</label>
           </div>
-          <div class="row">
-            <div class="input-field col s12 m6">
-              <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text">
-              <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
-            </div>
-            <div class="input-field col s12 m6">
-              <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text">
-              <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
-            </div>
+          <div class="input-field col s12 m6">
+            <input id="slidesFetchBatchSize" name="slidesFetchBatchSize" type="number" min="1" max="100">
+            <label for="slidesFetchBatchSize">Slides Fetch Batch Size (1–100)</label>
           </div>
-          <!-- New field: Days Until Auth Revoke -->
-          <div class="row">
-            <div class="input-field col s12 m6">
-              <input id="daysUntilAuthRevoke" name="daysUntilAuthRevoke" type="number" min="1">
-              <label for="daysUntilAuthRevoke">Days Until Auth Revoke (after this many days, authentication will be revoked)</label>
-            </div>
+          <div class="input-field col s12 m6">
+            <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
+            <label for="updateDetailsUrl">Update Details URL</label>
           </div>
         </div>
-
-        <!-- Tab 3: Debug (Classroom Selector) -->
-        <div id="debugTab" class="col s12">
-          <h5>Select Your Classroom</h5>
-          <div class="input-field">
-            <select id="classrooms" name="classrooms">
-              <option value="" disabled selected>Choose your classroom</option>
-              <? for (let i = 0; i < classrooms.length; i++) { ?>
-              <option value="<?= classrooms[i].id ?>" data-name="<?= classrooms[i].name ?>">
-                <?= classrooms[i].name ?>
-              </option>
-              <? } ?>
-            </select>
-            <label for="classrooms">Classroom</label>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="assessmentRecordTemplateId" name="assessmentRecordTemplateId" type="text">
+            <label for="assessmentRecordTemplateId">Assessment Record Template ID</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <input id="assessmentRecordDestinationFolder" name="assessmentRecordDestinationFolder" type="text">
+            <label for="assessmentRecordDestinationFolder">Assessment Record Destination Folder</label>
+          </div>
+        </div>
+        <!-- New field: Days Until Auth Revoke -->
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="daysUntilAuthRevoke" name="daysUntilAuthRevoke" type="number" min="1">
+            <label for="daysUntilAuthRevoke">Days Until Auth Revoke (after this many days, authentication will be
+              revoked)</label>
           </div>
         </div>
       </div>
-    </form>
+
+      <!-- Tab 3: Debug (Classroom Selector) -->
+      <div id="debugTab" class="col s12">
+        <h5>Select Your Classroom</h5>
+        <div class="input-field">
+          <select id="classrooms" name="classrooms">
+            <option value="" disabled selected>Choose your classroom</option>
+            <? for (let i = 0; i < classrooms.length; i++) { ?>
+            <option value="<?= classrooms[i].id ?>" data-name="<?= classrooms[i].name ?>">
+              <?= classrooms[i].name ?>
+            </option>
+            <? } ?>
+          </select>
+          <label for="classrooms">Classroom</label>
+        </div>
+      </div>
+  </div>
+  </form>
   </div>
 
   <!-- Fixed button group for configuration (applies to Langflow and Advanced tabs) -->
@@ -160,7 +161,7 @@
   </div>
 
   <!-- Materialize JS and initialisation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       var tabs = document.querySelectorAll('.tabs');
@@ -177,7 +178,7 @@
         })
         .getConfiguration();
 
-        // Load classrooms
+      // Load classrooms
       google.script.run
         .withSuccessHandler(populateClassrooms)
         .withFailureHandler(function (error) {
@@ -199,7 +200,7 @@
       if (backendBatchInput) {
         backendBatchInput.value = data.backendAssessorBatchSize || 20;
       }
-  document.getElementById('slidesFetchBatchSize').value = data.slidesFetchBatchSize || 20;
+      document.getElementById('slidesFetchBatchSize').value = data.slidesFetchBatchSize || 20;
       document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
       document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
@@ -298,13 +299,13 @@
         return;
       }
 
-  // Validate integer range fields via shared helper
-  const slidesVal = validateIntRange('slidesFetchBatchSize', 1, 100, 'Slides Fetch Batch Size', focusAdvancedTab);
-  if (slidesVal === null) return;
-  const backendBatchVal = validateIntRange('backendAssessorBatchSize', 1, 500, 'Backend Assessor Batch Size', focusAdvancedTab);
-  if (backendBatchVal === null) return;
-  const daysUntilAuthRevokeVal = validateIntRange('daysUntilAuthRevoke', 1, 365, 'Days Until Auth Revoke', focusAdvancedTab);
-  if (daysUntilAuthRevokeVal === null) return;
+      // Validate integer range fields via shared helper
+      const slidesVal = validateIntRange('slidesFetchBatchSize', 1, 100, 'Slides Fetch Batch Size', focusAdvancedTab);
+      if (slidesVal === null) return;
+      const backendBatchVal = validateIntRange('backendAssessorBatchSize', 1, 500, 'Backend Assessor Batch Size', focusAdvancedTab);
+      if (backendBatchVal === null) return;
+      const daysUntilAuthRevokeVal = validateIntRange('daysUntilAuthRevoke', 1, 365, 'Days Until Auth Revoke', focusAdvancedTab);
+      if (daysUntilAuthRevokeVal === null) return;
 
       const select = document.getElementById('classrooms');
       const classroom = select.value ? {
@@ -320,7 +321,7 @@
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
         slidesFetchBatchSize: slidesVal,
-  daysUntilAuthRevoke: daysUntilAuthRevokeVal,
+        daysUntilAuthRevoke: daysUntilAuthRevokeVal,
         classroom: classroom
       };
 
