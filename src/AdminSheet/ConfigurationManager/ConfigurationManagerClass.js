@@ -35,7 +35,7 @@ class ConfigurationManager {
   static get CONFIG_KEYS() {
     return {
       BATCH_SIZE: 'batchSize',
-  SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
+      SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
       API_KEY: 'apiKey',
       BACKEND_URL: 'backendUrl',
       ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
@@ -57,7 +57,7 @@ class ConfigurationManager {
    * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
-  maybeDeserializeProperties(){
+  maybeDeserializeProperties() {
     let hasScriptProperties = null;
 
     if (this.getIsAdminSheet()) {
@@ -100,8 +100,8 @@ class ConfigurationManager {
 
     // Properties that should be stored as document properties
     if (key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
-        key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
-        key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) {
+      key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
+      key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) {
       return this.documentProperties.getProperty(key) || false;
     }
     return this.configCache[key] || '';
@@ -186,10 +186,10 @@ class ConfigurationManager {
   }
 
   isValidApiKey(apiKey) {
-  // Accept API keys that are alphanumeric with optional single hyphens between segments.
-  // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-  const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-  return apiKeyPattern.test(apiKey.trim());
+    // Accept API keys that are alphanumeric with optional single hyphens between segments.
+    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
+    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+    return apiKeyPattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
