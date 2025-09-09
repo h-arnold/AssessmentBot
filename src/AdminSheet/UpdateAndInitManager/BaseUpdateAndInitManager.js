@@ -17,7 +17,7 @@ class BaseUpdateAndInit {
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();
     this.uiManager = UIManager.getInstance();
     this.destinationFolderId = ""; // to be set later from configuration or during the process
-    this.versionNo = '0.7.0';
+    this.versionNo = '0.7.1';
     // This needs to before getting the new template Ids otherwise they'll stay with whatever value was set before.
     this.versionDetails = this.fetchVersionDetails();
     this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
