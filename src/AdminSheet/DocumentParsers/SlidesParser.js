@@ -93,8 +93,7 @@ class SlidesParser extends DocumentParser {
             }
             break;
 
-          case '~': //Quick workaround - see details above.
-          case '|': // Entire Slide Image
+         case '~': // Entire Slide Image
             // For slide images, generate the slide export URL instead of fetching the image Blob
             const slideImageUrl = this.generateSlideImageUrl(documentId, currentPageId);
             const slideImageTask = this.parseTask(key, slideImageUrl, currentPageId, "Image", contentType);
