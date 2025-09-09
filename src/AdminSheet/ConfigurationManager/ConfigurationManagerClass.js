@@ -35,6 +35,7 @@ class ConfigurationManager {
   static get CONFIG_KEYS() {
     return {
       BATCH_SIZE: 'batchSize',
+  SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
       API_KEY: 'apiKey',
       BACKEND_URL: 'backendUrl',
       ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
@@ -159,6 +160,11 @@ class ConfigurationManager {
           throw new Error("Days Until Auth Revoke must be a positive integer.");
         }
         break;
+      case ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE:
+        if (!Number.isInteger(value) || value < 1 || value > 100) {
+          throw new Error("Slides Fetch Batch Size must be an integer between 1 and 100.");
+        }
+        break;
       default:
         // No specific validation
         break;
@@ -216,6 +222,12 @@ class ConfigurationManager {
 
   getBatchSize() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE), 10);
+    return isNaN(value) ? 20 : value;
+  }
+
+  getSlidesFetchBatchSize() {
+    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE), 10);
+    // Default to 20 if not set or invalid
     return isNaN(value) ? 20 : value;
   }
 
@@ -297,6 +309,10 @@ class ConfigurationManager {
 
   setBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE, batchSize);
+  }
+
+  setSlidesFetchBatchSize(batchSize) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE, batchSize);
   }
 
   setApiKey(apiKey) {

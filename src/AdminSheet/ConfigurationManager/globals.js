@@ -30,6 +30,7 @@ function getConfiguration() {
         revokeAuthTriggerSet: safeGet(() => configurationManager.getRevokeAuthTriggerSet(), 'revokeAuthTriggerSet', false),
         daysUntilAuthRevoke: safeGet(() => configurationManager.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
         scriptAuthorised: safeGet(() => configurationManager.getScriptAuthorised(), 'scriptAuthorised', false),
+    slidesFetchBatchSize: safeGet(() => configurationManager.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
     };
 
     if (errors.length > 0) {
@@ -72,6 +73,9 @@ function saveConfiguration(config) {
     // Delegate configuration saving to ConfigurationManager using safeSet
     if (config.batchSize !== undefined) {
         safeSet(() => configurationManager.setBatchSize(config.batchSize), 'batchSize');
+    }
+    if (config.slidesFetchBatchSize !== undefined) {
+        safeSet(() => configurationManager.setSlidesFetchBatchSize(config.slidesFetchBatchSize), 'slidesFetchBatchSize');
     }
     if (config.apiKey !== undefined) {
         safeSet(() => configurationManager.setApiKey(config.apiKey), 'apiKey');

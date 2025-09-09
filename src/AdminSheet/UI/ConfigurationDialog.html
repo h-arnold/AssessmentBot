@@ -105,6 +105,10 @@
               <label for="batchSize">Batch Size</label>
             </div>
             <div class="input-field col s12 m6">
+              <input id="slidesFetchBatchSize" name="slidesFetchBatchSize" type="number" min="1" max="100">
+              <label for="slidesFetchBatchSize">Slides Fetch Batch Size (1–100)</label>
+            </div>
+            <div class="input-field col s12 m6">
               <input id="updateDetailsUrl" name="updateDetailsUrl" type="url">
               <label for="updateDetailsUrl">Update Details URL</label>
             </div>
@@ -191,6 +195,7 @@
       document.getElementById('apiKey').value = data.apiKey || '';
       document.getElementById('backendUrl').value = data.backendUrl || '';
       document.getElementById('batchSize').value = data.batchSize || 20;
+  document.getElementById('slidesFetchBatchSize').value = data.slidesFetchBatchSize || 20;
       document.getElementById('updateDetailsUrl').value = data.updateDetailsUrl || '';
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
       document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
@@ -241,6 +246,17 @@
         }
       }
 
+      function focusAdvancedTab() {
+        try {
+          var tabsInstance = M.Tabs.getInstance(document.querySelector('.tabs'));
+          if (tabsInstance && typeof tabsInstance.select === 'function') {
+            tabsInstance.select('advancedTab');
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
       function isValidUrl(u) {
         if (!u) return false;
         try {
@@ -265,6 +281,16 @@
         return;
       }
 
+      // Validate slidesFetchBatchSize (must be integer between 1 and 100)
+      const slidesEl = document.getElementById('slidesFetchBatchSize');
+      const slidesVal = parseInt(slidesEl.value, 10);
+      if (isNaN(slidesVal) || slidesVal < 1 || slidesVal > 100) {
+        focusAdvancedTab();
+        M.toast({ html: 'Slides Fetch Batch Size must be an integer between 1 and 100.', classes: 'orange' });
+        slidesEl.focus();
+        return;
+      }
+
       const select = document.getElementById('classrooms');
       const classroom = select.value ? {
         courseId: select.value,
@@ -278,7 +304,8 @@
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
         assessmentRecordTemplateId: document.getElementById('assessmentRecordTemplateId').value.trim(),
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
-        daysUntilAuthRevoke: parseInt(document.getElementById('daysUntilAuthRevoke').value, 10),
+  slidesFetchBatchSize: parseInt(document.getElementById('slidesFetchBatchSize').value, 10),
+  daysUntilAuthRevoke: parseInt(document.getElementById('daysUntilAuthRevoke').value, 10),
         classroom: classroom
       };
 
