@@ -273,16 +273,9 @@ class ConfigurationManager {
 
 
   getAssessmentRecordTemplateId() {
-    const assessmentRecordTempalateId = this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
-
-    // If no assessment record template Id has been set, pull the version that matches the version number from github.
-    if (!assessmentRecordTempalateId) {
-      const initManager = new BaseUpdateAndInit();
-      return initManager.getLatestAssessmentRecordTemplateId();
-    }
-    else {
-      return assessmentRecordTempalateId;
-    }
+  // Simply return the stored property (empty string if unset). Fallback logic is now handled
+  // by BaseUpdateAndInit to avoid recursive instantiation between the two classes.
+  return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
   }
 
   getAssessmentRecordDestinationFolder() {

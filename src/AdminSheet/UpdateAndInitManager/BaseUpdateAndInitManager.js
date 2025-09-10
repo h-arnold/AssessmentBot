@@ -20,7 +20,20 @@ class BaseUpdateAndInit {
     this.versionNo = '0.7.1';
     // This needs to before getting the new template Ids otherwise they'll stay with whatever value was set before.
     this.versionDetails = this.fetchVersionDetails();
-    this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
+    // Retrieve stored Assessment Record Template ID (may be empty string if unset)
+    const storedTemplateId = configurationManager.getAssessmentRecordTemplateId();
+    if (storedTemplateId) {
+      this.assessmentRecordTemplateId = storedTemplateId;
+    } else {
+      // Fallback: derive latest from version details without calling back into ConfigurationManager to avoid recursion
+      try {
+        this.assessmentRecordTemplateId = this.getLatestAssessmentRecordTemplateId();
+        // (Optional future enhancement) Persist this value via configurationManager.setAssessmentRecordTemplateId(this.assessmentRecordTemplateId);
+      } catch (e) {
+        console.error('Failed to derive latest Assessment Record Template ID:', e);
+        this.assessmentRecordTemplateId = '';
+      }
+    }
     this.adminSheetTemplateId = null; // will be set from version details
     this.progressTracker = new ProgressTracker(); // May be used during long-running tasks
   }
