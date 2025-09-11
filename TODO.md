@@ -239,17 +239,17 @@ This plan provides a comprehensive roadmap for the refactoring while maintaining
 The following test cases avoid direct Google Apps Script API objects. They rely solely on primitives, simple stubs, or already-exported model classes. Add/adjust as implementation evolves. All boxes start unchecked until implemented in the Vitest suite.
 
 ### Phase 1 – Core Model Implementation
-- [ ] TaskDefinition: generates stable id; id unchanged after mutating `taskTitle` or `pageId` post-construction.
-- [ ] TaskDefinition: `validate()` fails when missing reference or template artifacts.
-- [ ] TaskDefinition: serialization round-trip preserves `index`, `taskMetadata`, and artifacts (deep equality by JSON).
-- [ ] TextTaskArtifact: normalises CRLF → LF; trims; converts empty string → null; hash stable across repeated `ensureHash()`.
-- [ ] TableTaskArtifact: trims trailing empty rows/cols; trims individual cells; preserves internal non-empty cells; markdown output contains header separator line count = content length.
-- [ ] SpreadsheetTaskArtifact: formula canonicalisation uppercases outside quotes; quoted segments preserved; multiple calls idempotent (canonical form unchanged after second normalisation).
-- [ ] ImageTaskArtifact: `setContentFromBlob` (simulated Uint8Array) sets base64 and hash; identical byte arrays produce identical `contentHash`; different bytes produce different hash.
-- [ ] Artifact UID format: default `uid` matches pattern `<taskId>-<taskIndex>-<role>-<pageId|na>-<artifactIndex>`.
-- [ ] StudentSubmission: first `upsertItemFromExtraction` creates item; second call with new content updates hash and `updatedAt` increases; metadata merge does not erase existing keys.
-- [ ] StudentSubmissionItem: `addAssessment` stores JSON; `markAssessed` updates `lastAssessedHash`; `getType()` proxies artifact type.
-- [ ] Factory helpers: `ArtifactFactory.text/table/spreadsheet/image` create matching subclass types.
+- [x] TaskDefinition: generates stable id; id unchanged after mutating `taskTitle` or `pageId` post-construction.
+- [x] TaskDefinition: `validate()` fails when missing reference or template artifacts.
+- [x] TaskDefinition: serialization round-trip preserves `index`, `taskMetadata`, and artifacts (deep equality by JSON).
+- [x] TextTaskArtifact: normalises CRLF → LF; trims; converts empty string → null; hash stable across repeated `ensureHash()`.
+- [x] TableTaskArtifact: trims trailing empty rows/cols; trims individual cells; preserves internal non-empty cells; markdown output contains header separator line count = content length.
+- [x] SpreadsheetTaskArtifact: formula canonicalisation uppercases outside quotes; quoted segments preserved; multiple calls idempotent (canonical form unchanged after second normalisation).
+- [x] ImageTaskArtifact: `setContentFromBlob` (simulated Uint8Array) sets base64 and hash; identical byte arrays produce identical `contentHash`; different bytes produce different hash.
+- [x] Artifact UID format: default `uid` matches pattern `<taskId>-<taskIndex>-<role>-<pageId|na>-<artifactIndex>`.
+- [x] StudentSubmission: first `upsertItemFromExtraction` creates item; second call with new content updates hash and `updatedAt` increases; metadata merge does not erase existing keys.
+- [x] StudentSubmissionItem: `addAssessment` stores JSON; `markAssessed` updates `lastAssessedHash`; `getType()` proxies artifact type.
+- [x] Factory helpers: `ArtifactFactory.text/table/spreadsheet/image` create matching subclass types.
 
 ### Phase 2 – Parser Interface Updates (Interface-Level / Stubs)
 Create a minimal stub subclass `TestDocumentParser` (no GAS) to validate interface contracts.
