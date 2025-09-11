@@ -152,7 +152,6 @@ Methods:
 - getAssessment(criterion?: string): AssessmentJSON | object | null
 - addFeedback(type: string, feedback: Feedback)
 - getFeedback(type?: string): FeedbackJSON | object | null
-- markAssessed(): void (set lastAssessedHash, update timestamp)
 - getType(): TaskType
 - toJSON() / static fromJSON(json)
  - getType(): TaskType
@@ -227,22 +226,25 @@ Notes:
       data and own canonicalisation, markdown/serialization and content hashing.
 
 ## Assessment engines and routing
+To keep artifacts pure (normalisation/validation/hashing only) and make assessment strategies pluggable, assessment is routed by task type.
 
-To keep artifacts pure (normalisation/validation/hashing only) and make assessment strategies pluggable, assessment is routed by task type:
+Implementation note (current behaviour): the repository uses the existing, implicit routing implemented in the assignment classes and controllers rather than a separate top-level router object:
 
-- AssessmentEngineRouter
-  - spreadsheet → SheetsAssessorEngine (rule-based, non-LLM)
-  - text | table | image → LLMRequestManager (LLM-based)
+- Spreadsheet tasks are assessed by the sheets-specific assessor (see `SheetsAssignment.assessResponses()` which constructs and calls `SheetsAssessor`).
+- Non-spreadsheet tasks (text, table, image) are assessed via the base `Assignment.assessResponses()` which delegates to `LLMRequestManager` (LLM-based).
 
-- SheetsAssessorEngine contract
-  - Inputs: the primary reference `SpreadsheetTaskArtifact` from `TaskDefinition` and the student's `SpreadsheetTaskArtifact` (role='submission') from `StudentSubmissionItem`.
-  - Uses `taskDefinition.taskMetadata` (e.g., `bbox`, `referenceLocationsMap`, `sheetName`) for positional context.
-  - Compares canonicalised formulas from artifacts; writes assessments and feedback back to the `StudentSubmissionItem` via its API.
-  - Caching is optional; typical usage does not require LLM or cache.
+This mirrors the original design (spreadsheet → SheetsAssessor, text|table|image → LLMRequestManager) while keeping the routing colocated with assignment implementations and the controller orchestration.
 
-- LLMRequestManager
-  - Continues to handle non-spreadsheet tasks. Request generation and processing remain as specified below.
-  - Implementations should skip spreadsheet items when building LLM requests.
+SheetsAssessor contract
+- Inputs: the primary reference `SpreadsheetTaskArtifact` from `TaskDefinition` and the student's `SpreadsheetTaskArtifact` (role='submission') from `StudentSubmissionItem`.
+- Uses `taskDefinition.taskMetadata` (e.g., `bbox`, `referenceLocationsMap`, `sheetName`) for positional context.
+- Compares canonicalised formulas from artifacts; writes assessments and feedback back to the `StudentSubmissionItem` via its API.
+- Caching is optional; typical usage does not require LLM or cache.
+
+LLMRequestManager
+- Handles non-spreadsheet tasks. Request generation and processing remain as specified below.
+- Implementations should skip spreadsheet items when building LLM requests.
+
 
 ## Assignment layer integration
 

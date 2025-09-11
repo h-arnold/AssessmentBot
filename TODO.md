@@ -103,6 +103,15 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Update generateLLMRequests() to delegate to LLMRequestManager
   - [ ] Update assessResponses() to handle new model
   - [ ] Add temporary getter for legacy compatibility (remove later)
+  - [ ] Update `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
+    - [ ] Iterate assignment.submissions instead of studentTasks
+    - [ ] Filter to text/table/image items only (skip spreadsheets)
+    - [ ] Get TaskDefinition by taskId for context
+    - [ ] Use artifact.contentHash for not-attempted detection
+    - [ ] Use artifact.contentHash for caching keys
+    - [ ] Build payloads from artifact.content
+    - [ ] Use artifact.getUid() for result routing
+    - [ ] Create uid→{submission, item} mapping for result assignment
 
 ### 3.2 Update SlidesAssignment
 - [ ] Update `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
@@ -120,34 +129,7 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Update to work with StudentSubmission model
   - [ ] Remove legacy SheetsAssessor usage
 
-## Phase 4: Assessment Engine Updates
 
-### 4.1 Create AssessmentEngineRouter
-- [ ] Create `src/AdminSheet/Assessors/AssessmentEngineRouter.js`
-  - [ ] Implement routing logic: spreadsheet → SheetsAssessorEngine
-  - [ ] Route text/table/image → LLMRequestManager  
-  - [ ] Iterate over StudentSubmissionItems by type
-  - [ ] Coordinate assessment flow
-
-### 4.2 Create SheetsAssessorEngine
-- [ ] Create `src/AdminSheet/Assessors/SheetsAssessorEngine.js`
-  - [ ] Replace SheetsAssessor with new artifact-based engine
-  - [ ] Accept (taskDefinition, refArtifact, item) triplets
-  - [ ] Use taskDefinition.taskMetadata for positional context
-  - [ ] Compare canonicalized formulas from artifacts
-  - [ ] Write results via item.addAssessment()/addFeedback()
-  - [ ] Call item.markAssessed() after assessment
-
-### 4.3 Update LLMRequestManager
-- [ ] Update `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
-  - [ ] Iterate assignment.submissions instead of studentTasks
-  - [ ] Filter to text/table/image items only (skip spreadsheets)
-  - [ ] Get TaskDefinition by taskId for context
-  - [ ] Use artifact.contentHash for not-attempted detection
-  - [ ] Use artifact.contentHash for caching keys
-  - [ ] Build payloads from artifact.content
-  - [ ] Use artifact.getUid() for result routing
-  - [ ] Create uid→{submission, item} mapping for result assignment
 
 ## Phase 5: Supporting System Updates
 

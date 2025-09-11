@@ -32,7 +32,6 @@ Note: All hashing is centralized in TaskArtifact.ensureHash(). Parsers and other
 - Replace string/array payloads in code paths with typed artifacts: TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact.
 - Use artifact.getUid() for image pipeline identity instead of Task.uid or StudentTask response uid.
 - Not-attempted detection uses submission.artifact.contentHash === templateArtifact.contentHash.
-- For spreadsheets, skip the LLM; route to SheetsAssessorEngine via AssessmentEngineRouter.
 
 
 ## src/AdminSheet/AssignmentProcessor/Assignment.js
@@ -48,7 +47,7 @@ Refactor steps
 - Replace this.studentTasks with this.submissions: StudentSubmission[].
 - addStudent(student): create new StudentSubmission(student.id, this.assignmentId, null).
 - generateLLMRequests delegates to LLMRequestManager.generateRequestObjects(assignment) which now iterates submissions and StudentSubmissionItem instances; skip spreadsheets.
-- assessResponses unchanged in shape but now operates on submissions through the manager; for spreadsheets, delegate via AssessmentEngineRouter to SheetsAssessorEngine.
+
 
 Migration notes
 - Provide a temporary getter this.studentTasks to return this.submissions during the migration (read-only) if needed by legacy callers, then remove once all callers are updated.
@@ -80,10 +79,6 @@ Current coupling
 Refactor steps
 - populateTasks(): this.tasks = mapById(sheetsParser.extractTaskDefinitions(referenceId, templateId)). Each TaskDefinition should have primary SpreadsheetTaskArtifact artifacts for reference/template and taskMetadata with bbox and referenceLocationsMap.
 - processAllSubmissions(): for each StudentSubmission with documentId → const artifacts = parser.extractSubmissionArtifacts(studentDocId, Object.values(this.tasks)); artifacts.forEach(a => submission.upsertItemFromExtraction(taskDef, a)).
-- assessResponses(): introduce AssessmentEngineRouter. For spreadsheet items, router delegates to SheetsAssessorEngine with (reference SpreadsheetTaskArtifact, submission SpreadsheetTaskArtifact, taskDefinition.taskMetadata). Remove direct StudentTask usage.
-
-Migration notes
-- SheetsAssessor class will be replaced by SheetsAssessorEngine per DESIGN.md. Keep a compatibility wrapper if needed during migration.
 
 
 ## src/AdminSheet/DocumentParsers/DocumentParser.js
@@ -180,8 +175,7 @@ Refactor steps
 - UID: use item.artifact.getUid() for routing results; assign results via item.addAssessment(criterion, new Assessment(...)); no StudentTask lookup by uid; instead: build an index map uid→{ submission, item } during request generation to avoid searching.
 - Skip spreadsheets entirely in request generation.
 
-Migration notes
-- Add AssessmentEngineRouter and call it prior to LLM to handle spreadsheet items elsewhere.
+
 
 
 ## src/AdminSheet/RequestHandlers/ImageManager.js
@@ -202,17 +196,17 @@ Migration notes
 - Ensure artifacts are created with metadata.sourceUrl at parse/upsert time; otherwise ImageManager won’t have URLs to fetch.
 
 
-## src/AdminSheet/Assessors/SheetsAssessor.js (→ SheetsAssessorEngine)
+## src/AdminSheet/Assessors/SheetsAssessor.js 
 
 Current coupling
 - Constructed with tasks (reference Task map) and studentTasks; loops studentTask.responses; looks up referenceTask by taskKey; compares student formulas vs referenceTask.taskReference; writes assessments via StudentTask.addAssessment and feedback via addFeedback.
 
 Refactor steps
-- Replace class with SheetsAssessorEngine that:
-  - Accepts (taskDefinition, refArtifact: SpreadsheetTaskArtifact, item: StudentSubmissionItem) triplets from AssessmentEngineRouter.
+- Update class so that it: 
+  - Accepts (taskDefinition, refArtifact: SpreadsheetTaskArtifact, item: StudentSubmissionItem) triplets
   - Uses taskDefinition.taskMetadata (bbox, referenceLocationsMap, sheetName) for positional context.
   - Compares canonicalized formulas: refArtifact.content vs item.artifact.content. Write results via item.addAssessment/addFeedback and item.markAssessed().
-- AssessmentEngineRouter iterates over all spreadsheet items and invokes this engine; LLMRequestManager must not include spreadsheet items in requests.
+
 
 Migration notes
 - Keep existing formula diff logic but move canonicalization into SpreadsheetTaskArtifact.normalizeContent.
@@ -301,7 +295,6 @@ Refactor steps
 - src/AdminSheet/AssignmentProcessor/SheetsAssignment.js
   - populateTasks: use extractTaskDefinitions
   - processAllSubmissions: use extractSubmissionArtifacts + upserts
-  - assessResponses: AssessmentEngineRouter → SheetsAssessorEngine
 
 - src/AdminSheet/DocumentParsers/DocumentParser.js
   - deprecate parseTask building Task; add new extract* methods signatures
@@ -329,9 +322,6 @@ Refactor steps
 
 - src/AdminSheet/RequestHandlers/ImageManager.js
   - collectAllImageArtifacts, fetchImagesAsBlobs, artifact.setContentFromBlob
-
-- src/AdminSheet/Assessors/SheetsAssessor.js
-  - replace with SheetsAssessorEngine (uses artifacts)
 
 - src/AdminSheet/Sheets/AnalysisSheetManager.js
   - switch to taskId keyed maps and StudentSubmission
@@ -378,7 +368,6 @@ Refactor steps
 
 1) Introduce new models alongside legacy:
 - Add src/AdminSheet/Models/TaskDefinition.js, Artifacts.js, StudentSubmission.js as specified in DESIGN.md.
-- Add AssessmentEngineRouter and SheetsAssessorEngine.
 
 2) Parser migration:
 - Update SlidesParser/SheetsParser to implement extractTaskDefinitions/extractSubmissionArtifacts, returning primitives; keep legacy extractTasks for a short period.
@@ -388,7 +377,6 @@ Refactor steps
 
 4) Request/Assessor/Image pipelines:
 - Update LLMRequestManager and ImageManager to the artifact model and uid mapping.
-- Replace SheetsAssessor with SheetsAssessorEngine and router; LLM skips spreadsheets.
 
 5) Reporting/feedback:
 - Update AnalysisSheetManager and SheetsFeedback to submission/items and taskId indexing.
