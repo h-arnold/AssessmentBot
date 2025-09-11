@@ -18,19 +18,19 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Implement BaseTaskArtifact base class
     - [ ] Add shared fields: taskId, role, documentId, pageId, contentHash, metadata
     - [ ] Implement constructor with UID generation
-    - [ ] Add normalizeContent(), validate(), ensureHash() methods
+    - [ ] Add normaliseContent(), validate(), ensureHash() methods
     - [ ] Add getUid(), getType(), toJSON()/fromJSON() methods
   - [ ] Implement TextTaskArtifact subclass
-    - [ ] Content normalization (trim, newlines)
+    - [ ] Content normalisation (trim, newlines)
     - [ ] Validation for text content
     - [ ] Static factory method fromRawText()
   - [ ] Implement TableTaskArtifact subclass
     - [ ] 2D array content handling
-    - [ ] Cell normalization and validation
+    - [ ] Cell normalisation and validation
     - [ ] Markdown generation for tables
     - [ ] Static factory method fromRawCells()
   - [ ] Implement SpreadsheetTaskArtifact subclass (extends Table)
-    - [ ] Formula canonicalization logic
+    - [ ] Formula canonicalisation logic
     - [ ] Metadata handling (range, sheetName, bbox)
     - [ ] Move _normaliseFormulaCase logic from parser
   - [ ] Implement ImageTaskArtifact subclass
@@ -48,19 +48,19 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
     - [ ] Constructor and basic accessors
     - [ ] upsertItemFromExtraction() method
     - [ ] getItem() method
-    - [ ] toJSON()/fromJSON() serialization
+    - [ ] toJSON()/fromJSON() serialisation
   - [ ] Implement StudentSubmissionItem class
     - [ ] Fields: id, taskId, documentId, pageId, artifact, assessments, feedback
     - [ ] Assessment management: addAssessment(), getAssessment()
     - [ ] Feedback management: addFeedback(), getFeedback()
     - [ ] markAssessed() method
     - [ ] getType() method delegating to artifact
-    - [ ] toJSON()/fromJSON() serialization
+    - [ ] toJSON()/fromJSON() serialisation
 
 ## Phase 2: Parser Interface Updates
 
 ### 2.1 Update DocumentParser Base Class
-- [ ] Update `src/AdminSheet/DocumentParsers/DocumentParser.js`
+  - [ ] Update `src/AdminSheet/DocumentParsers/DocumentParser.js`
   - [ ] Add abstract extractTaskDefinitions(referenceId, templateId?) method
   - [ ] Add abstract extractSubmissionArtifacts(documentId, taskDefs) method
   - [ ] Deprecate parseTask() method (keep temporarily for migration)
@@ -90,13 +90,13 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
     - [ ] Use bbox/referenceLocationsMap from TaskDefinition.taskMetadata
     - [ ] Extract student formulas from specific locations only
     - [ ] Return primitive formula arrays with location metadata
-  - [ ] Move formula canonicalization to SpreadsheetTaskArtifact
+  - [ ] Move formula canonicalisation to SpreadsheetTaskArtifact
   - [ ] Update extractStudentTasks() to use new model
 
 ## Phase 3: Assignment Layer Updates
 
 ### 3.1 Update Assignment Base Class
-- [ ] Update `src/AdminSheet/AssignmentProcessor/Assignment.js`
+  - [ ] Update `src/AdminSheet/AssignmentProcessor/Assignment.js`
   - [ ] Replace this.tasks with {[taskId]: TaskDefinition} map
   - [ ] Replace this.studentTasks with this.submissions: StudentSubmission[]
   - [ ] Update addStudent() to create StudentSubmission instances
@@ -114,7 +114,7 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
     - [ ] Create uid→{submission, item} mapping for result assignment
 
 ### 3.2 Update SlidesAssignment
-- [ ] Update `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
+  - [ ] Update `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
   - [ ] Update populateTasks() to use extractTaskDefinitions()
   - [ ] Update processAllSubmissions() to use extractSubmissionArtifacts()
   - [ ] Replace processImages() with new ImageManager flow
@@ -122,7 +122,7 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Update to use submission.upsertItemFromExtraction()
 
 ### 3.3 Update SheetsAssignment  
-- [ ] Update `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
+  - [ ] Update `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
   - [ ] Update populateTasks() to use extractTaskDefinitions()
   - [ ] Update processAllSubmissions() to use new extraction flow
   - [ ] Replace assessResponses() with AssessmentEngineRouter
@@ -134,7 +134,7 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ## Phase 5: Supporting System Updates
 
 ### 5.1 Update ImageManager
-- [ ] Update `src/AdminSheet/RequestHandlers/ImageManager.js`
+  - [ ] Update `src/AdminSheet/RequestHandlers/ImageManager.js`
   - [ ] Replace collectAllSlideUrls() with collectAllImageArtifacts()
   - [ ] Update to collect from TaskDefinition artifacts and StudentSubmissionItems
   - [ ] Include artifact UIDs and metadata.sourceUrl
@@ -143,7 +143,7 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Remove direct base64 writing to task/response fields
 
 ### 5.2 Update AnalysisSheetManager
-- [ ] Update `src/AdminSheet/Sheets/AnalysisSheetManager.js`
+  - [ ] Update `src/AdminSheet/Sheets/AnalysisSheetManager.js`
   - [ ] Use TaskDefinition map keyed by taskId
   - [ ] Replace studentTasks with submissions
   - [ ] Use submission.getItem(taskId) for data access
@@ -152,47 +152,47 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Convert item.artifact.content to display strings
 
 ### 5.3 Update FeedbackPopulators
-- [ ] Update `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
+  - [ ] Update `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
   - [ ] Accept StudentSubmission[] instead of StudentTask[]
   - [ ] Use submission.documentId and item.pageId for targeting
   - [ ] Access feedback via StudentSubmissionItem.getFeedback()
   - [ ] Maintain existing feedback JSON structure
 
 ### 5.4 Update TaskSheet Helper
-- [ ] Update `src/AdminSheet/Sheets/TaskSheet.js`
+  - [ ] Update `src/AdminSheet/Sheets/TaskSheet.js`
   - [ ] Ensure outputs are primitives only (no GAS objects)
   - [ ] Remove contentHash computation
-  - [ ] Remove canonicalization (move to SpreadsheetTaskArtifact)
+  - [ ] Remove canonicalisation (move to SpreadsheetTaskArtifact)
   - [ ] Keep as Sheets API helper for extraction
 
 ## Phase 6: Final Integration and Cleanup
 
 ### 6.1 Update Remaining Dependencies
-- [ ] Update `src/AdminSheet/y_controllers/AssignmentController.js`
+  - [ ] Update `src/AdminSheet/y_controllers/AssignmentController.js`
   - [ ] Use assignment.submissions instead of studentTasks
   - [ ] Update SheetsFeedback construction
   - [ ] Ensure compatibility with new model
-- [ ] Update any remaining classes that reference Task/StudentTask
-- [ ] Verify CacheManager works with new artifact hashes
+  - [ ] Update any remaining classes that reference Task/StudentTask
+  - [ ] Verify CacheManager works with new artifact hashes
 
 ### 6.2 Create Migration Utilities (Temporary)
-- [ ] Create adapter for legacy Task JSON to TaskDefinition
-- [ ] Create adapter for legacy StudentTask JSON to StudentSubmission
-- [ ] Add validation utilities for new model integrity
+  - [ ] Create adapter for legacy Task JSON to TaskDefinition
+  - [ ] Create adapter for legacy StudentTask JSON to StudentSubmission
+  - [ ] Add validation utilities for new model integrity
 
 ### 6.3 Remove Legacy Models
-- [ ] Deprecate `src/AdminSheet/Models/Task.js`
-- [ ] Deprecate `src/AdminSheet/Models/StudentTask.js`
-- [ ] Remove legacy adapters after verification
-- [ ] Clean up any remaining legacy references
+  - [ ] Deprecate `src/AdminSheet/Models/Task.js`
+  - [ ] Deprecate `src/AdminSheet/Models/StudentTask.js`
+  - [ ] Remove legacy adapters after verification
+  - [ ] Clean up any remaining legacy references
 
 ## Phase 7: Testing and Validation
 
 ### 7.1 Model Validation
 - [ ] Test TaskDefinition creation and artifact management
-- [ ] Test all TaskArtifact subclasses for normalization and hashing
+- [ ] Test all TaskArtifact subclasses for normalisation and hashing
 - [ ] Test StudentSubmission and StudentSubmissionItem functionality
-- [ ] Verify JSON serialization/deserialization integrity
+- [ ] Verify JSON serialisation/deserialization integrity
 
 ### 7.2 Integration Testing
 - [ ] Test parser extraction workflows
@@ -213,9 +213,9 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ### Key Design Principles
 - **Single Source of Truth**: TaskDefinition owns task identity and metadata
 - **Typed Artifacts**: All content is handled by appropriate artifact subclasses  
-- **Centralized Hashing**: Only artifacts compute contentHash values
+- **Centralised Hashing**: Only artifacts compute contentHash values
 - **Stable Identity**: TaskDefinition.id persists across title/page changes
-- **Separation of Concerns**: Parsers extract primitives, artifacts handle normalization
+- **Separation of Concerns**: Parsers extract primitives, artifacts handle normalisation
 
 ### Migration Strategy
 - Implement new models alongside legacy ones initially
