@@ -36,9 +36,11 @@ Definition owns reference/template artifacts (can be multiple per role). Submiss
 ## Enums and shared helpers
 
 - ArtifactRole: 'reference' | 'template' | 'submission'
-- Note: content encoding is canonical per artifact subclass and is not stored as a separate persisted field (e.g. Text -> 'text', Table/Spreadsheet -> 'table', Image -> 'url'). Base64 image payloads are kept in metadata.
+ - Note: content encoding is canonical per artifact subclass and is not stored as a separate persisted field (e.g. Text -> 'text', Table/Spreadsheet -> 'table').
+   For Image artifacts the canonical binary payload (base64) is stored in the artifact's `content` field (or written via the provided setter); a single fetch URL is kept as `metadata.sourceUrl` during extraction.
 - ValidationStatus: 'ok' | 'empty' | 'invalid'
 - Utils: generateHash(str), deepStableStringify(obj), normalizeUrls(urls), nowIso()
+ - TaskType: 'text' | 'table' | 'spreadsheet' | 'image' (derived from the artifact subclass)
 
 ## Core classes
 
@@ -48,6 +50,7 @@ Fields:
 - id: string (stable; persisted). Default: hash(taskTitle + '-' + pageId)
 - taskTitle: string (display/UI)
 - pageId?: string
+- index?: number (position of this task in the source document; parsers should set this sequentially to preserve document order)
 - taskNotes?: string | null
 - taskMetadata: object (free-form; e.g., ranges, bounding boxes)
 - artifacts: { reference: TaskArtifact[], template: TaskArtifact[] }
@@ -78,7 +81,10 @@ Shared fields (BaseTaskArtifact):
 - pageId?: string
 - contentHash?: string (computed on normalized content)
 - metadata: object
-- uid: string (stable identity for pipelines; default `${taskId}-${role}-${pageId||'na'}-${index}`)
+ - uid: string (stable identity for pipelines; default pattern uses the task and artifact position to ensure uniqueness: `${taskId}-${taskIndex||'0'}-${role}-${pageId||'na'}-${artifactIndex}`)
+   - `taskIndex` is the `TaskDefinition.index` (parsers should set this when populating tasks sequentially).
+   - `artifactIndex` is the position of the artifact within the task's artifact array (assigned by the TaskDefinition when adding/creating artifacts).
+   Callers may provide an explicit `uid` to override the default if a different identity scheme is needed.
 
 Shared methods:
 - constructor({ taskId, role, pageId?, content?, contentHash?, metadata?, uid? })
@@ -86,6 +92,7 @@ Shared methods:
 - validate(): { status: ValidationStatus, errors?: string[] }
 - ensureHash(): string (hash of normalized content via deepStableStringify)
 - getUid(): string
+ - getType(): TaskType (derived from the concrete subclass)
 - toJSON() / static fromJSON(json)
 
 Typed subclasses:
@@ -97,9 +104,14 @@ Typed subclasses:
   - normalize: coerce to array-of-arrays of strings, trim cells, strip empty trailing rows/cols
 - SpreadsheetTaskArtifact (extends Table)
   - metadata: { range?: string, sheetName?: string, bbox?: { r1,c1,r2,c2 }, ... }
-- ImageTaskArtifact
-  - slideUrl: string (single slide page URL; artifact holds one URL which is converted to a png)
-  - content: base64 (artifact stores base64 in content/metadata; contentHash is computed from the base64 payload)
+ - ImageTaskArtifact
+  - metadata: { sourceUrl: string } (single slide page URL used to fetch the image)
+  - content: base64 | null (artifact stores the base64 binary payload in `content`. Implementations should provide a setter `setContentFromBlob(blob: Blob|Buffer|Uint8Array)` which converts the blob to base64, writes it to `content`, and computes `contentHash` from the base64 payload.)
+  - behavior: provide `setContentFromBlob(blob)` which:
+    1. accepts a binary blob (or platform equivalent),
+    2. converts it to a base64 string,
+    3. sets `this.content` to that base64 value,
+    4. computes and sets `this.contentHash` from the normalized base64 via `ensureHash()` / `deepStableStringify`.
 
 
 Important: Artifacts do NOT store assessments/feedback. Those live only on StudentSubmissionItem.
@@ -130,6 +142,7 @@ Fields:
 - artifact: TaskArtifact (role='submission')
 - assessments: { [criterion: string]: AssessmentJSON }
 - feedback: { [type: string]: FeedbackJSON }
+ - (no per-item timestamps; submission-level `updatedAt` is authoritative)
 
 Methods:
 - constructor({ taskId, taskType, documentId?, pageId?, artifact })
@@ -140,6 +153,8 @@ Methods:
 - markAssessed(): void (set lastAssessedHash, update timestamp)
 - getType(): TaskType
 - toJSON() / static fromJSON(json)
+ - getType(): TaskType
+ - toJSON() / static fromJSON(json)
 
 ## Parsers (Slides/Sheets)
 
@@ -168,7 +183,7 @@ Assignment (base):
 SlidesAssignment/SheetsAssignment:
 - populateTasks: use respective parser.extractTaskDefinitions and map by `id`
 - processAllSubmissions: for each submission with documentId → extractSubmissionArtifacts → upsert items
-- processImages (Slides): batch-fetch base64 for Image artifacts by `uid` and write to `metadata.base64` (do not affect hashes)
+ - processImages (Slides): batch-fetch image binaries for Image artifacts by `uid` and call each artifact's `setContentFromBlob(blob)` to write base64 into `content` and compute/update `contentHash`.
 
 ## LLMRequestManager contract
 
@@ -182,16 +197,21 @@ SlidesAssignment/SheetsAssignment:
 
 ## ImageManager expectations
 
-- collectAllImageArtifacts(assignment): Array<{ uid, urls: string[], scope: 'reference'|'template'|'submission', taskId, itemId? }>
-- fetchImagesAsBase64(entries, batchSize): Array<{ uid, base64: string[] }>
-- writeBackBase64(assignment, results): store under artifact.metadata.base64 or item.artifact.metadata.base64
-- Image hashing: artifacts compute `contentHash` from the base64 payload. The ImageManager may request different URLs for the same artifact, but identical base64 results should yield identical hashes.
+- collectAllImageArtifacts(assignment): Array<{ uid, url: string, documentId: string, scope: 'reference'|'template'|'submission', taskId, itemId? }>
+  - One URL per image artifact, read from `artifact.metadata.sourceUrl`.
+  - Include the related `documentId` (e.g., reference/template doc for definition artifacts; submission doc for student items).
+- fetchImagesAsBlobs(entries, batchSize): Array<{ uid, blob: Blob|Buffer|Uint8Array }>
+  - Fetch the raw image binary data using the single URL provided per entry.
+  - Interleave batches by `documentId` (round-robin across documents) to minimize per-document throttling; otherwise keep batching logic simple and close to existing behavior.
+  - The ImageManager should hand each blob to `artifact.setContentFromBlob` to persist base64 and compute hashes.
+- writeBackContent(assignment, results): helper to apply blobs/base64 back to the appropriate artifacts or items (but primary write should happen via the artifact setter).
+- Image hashing: artifacts compute `contentHash` from the base64 payload. Different fetch URLs that resolve to the same binary image will yield identical base64 and therefore identical hashes.
 
 ## Identity and hashing
 
-- TaskDefinition.id is stable and persisted (default hash(taskTitle + pageId)).
+- TaskDefinition.id is stable and persisted (default hash(taskTitle + '-' + pageId)).
 - Artifacts compute contentHash from normalized content via deepStableStringify.
-- Image artifacts compute `contentHash` from the base64 image payload. URLs are only used to fetch the image; different URLs that resolve to the same image should result in the same `contentHash`.
+- Image artifacts compute `contentHash` from the base64 image payload. The URL is only used to fetch the image; different URLs that resolve to the same image should result in the same `contentHash` once the binary is converted to base64 and set on the artifact via `setContentFromBlob`.
 
 ## JSON shapes (examples)
 
