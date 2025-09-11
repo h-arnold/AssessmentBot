@@ -191,6 +191,40 @@ Notes:
 
   This keeps artifact classes pure, testable, and free of environment-specific APIs while preserving the parser's responsibility for interacting with platform objects.
 
+  - Important rule: all content hashing is the responsibility of the `TaskArtifact` classes. Parsers,
+    `TaskDefinition` constructors, `TaskSheet` helpers, ImageManager fetchers, and other layers must NOT
+    compute or persist `contentHash` values themselves. Instead, parsers supply primitive `content` and
+    `metadata` and the artifact must compute its canonical normalized representation and hash (for example
+    via `artifact.normalizeContent(); artifact.ensureHash()` or helper constructors like
+    `TextTaskArtifact.fromRawText(...)`). This preserves a single, testable hashing implementation and
+    avoids divergence between parser-side heuristics and artifact identity.
+
+    - For spreadsheet/task-sheet extraction: parsers (and any `TaskSheet` helpers) must convert GAS objects
+      into plain, serialisable primitives (for example an array of formula strings plus [row,col] locations or
+      an Array<Array<string|null>> of cell contents). Parsers should NOT hand GAS `Sheet`/`Range`/`Table`
+      objects or TaskSheet instances into artifact constructors.
+
+      The parser is allowed to perform minimal, local normalisation that simplifies diff-detection
+      (for example trimming irrelevant whitespace when comparing reference ↔ template). However, any
+      canonical formula/cell normalisation that affects persistent identity or hashing (for example the
+      quote-handling and case-normalisation currently implemented in `_normaliseFormulaCase`) must live
+      on the `SpreadsheetTaskArtifact` (or a helper in the artifacts module). That ensures:
+
+      - hashing is stable and testable outside GAS,
+      - parsers focus on mapping positions/metadata (bounding boxes, sheet names, locations), and
+      - different parser implementations produce the same canonical artifact representation.
+
+      Example (parser-side for sheets):
+
+      - const rawCells = this.extractFormulaCellsFromRange(gasRange); // Array<Array<string|null>>
+      - const metadata = { sheetName, bbox } // bounding box, ranges etc.
+      - const ssArtifact = SpreadsheetTaskArtifact.fromRawCells(rawCells, { metadata });
+      - // ssArtifact.normalizeContent() and ssArtifact.ensureHash() compute canonical formula text and hash
+
+      Note: parsers should still compute bounding boxes, `referenceLocationsMap` and other positional
+      metadata since these are document-structure concerns. Artifacts consume the primitive cell/formula
+      data and own canonicalisation, markdown/serialization and content hashing.
+
 ## Assignment layer integration
 
 Assignment (base):
