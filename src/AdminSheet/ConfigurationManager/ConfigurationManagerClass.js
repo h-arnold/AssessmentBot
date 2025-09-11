@@ -111,17 +111,18 @@ class ConfigurationManager {
       },
       [ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET]: {
         storage: 'document',
-        validate: ConfigurationManager.validateBoolean,
+        validate: (v) => ConfigurationManager.validateBoolean('Is Admin Sheet', v),
         normalize: ConfigurationManager.toBooleanString,
       },
       [ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED]: {
         storage: 'document',
-        validate: ConfigurationManager.validateBoolean,
+        validate: (v) => ConfigurationManager.validateBoolean('Script Authorised', v),
         normalize: ConfigurationManager.toBooleanString,
       },
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
         storage: 'document',
-        validate: ConfigurationManager.validateBoolean,
+        validate: (v) =>
+          ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
         normalize: ConfigurationManager.toBooleanString,
       },
     };

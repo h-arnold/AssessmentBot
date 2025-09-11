@@ -443,13 +443,13 @@ describe('ConfigurationManager setProperty', () => {
     it('should reject invalid boolean values', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 'invalid');
-      }).toThrow('Value must be boolean (true/false)');
+      }).toThrow(/must be a boolean \(true\/false\)/);
     });
 
     it('should reject numeric values', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, 123);
-      }).toThrow('Value must be boolean (true/false)');
+      }).toThrow(/must be a boolean \(true\/false\)/);
     });
   });
 
