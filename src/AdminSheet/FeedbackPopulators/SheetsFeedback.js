@@ -11,8 +11,9 @@ class SheetsFeedback {
    * Creates an instance of SheetsFeedback.
    * @param {Array} studentTasks - Array of StudentTask objects to process feedback for.
    */
-  constructor(studentTasks) {
-    this.studentTasks = studentTasks;
+  constructor(studentTasksOrSubmissions) {
+    // Accept new model submissions array; fall back for backward compatibility.
+    this.submissions = studentTasksOrSubmissions;
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -23,39 +24,28 @@ class SheetsFeedback {
   applyFeedback() {
     try {
       const batchUpdates = [];
-      
-      this.studentTasks.forEach((studentTask) => {
-        if (!studentTask || !studentTask.documentId) {
-          console.warn(`Missing student task or document ID for student: ${studentTask?.student?.name || 'Unknown'}`);
+      (this.submissions || []).forEach(sub => {
+        if (!sub || !sub.documentId) {
+          console.warn(`Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`);
           return;
         }
-
-        this.progressTracker.updateProgress(`Generating feedback for ${studentTask.student.name}'s spreadsheet.`, false);
-        
-        // Generate batch update requests for this student's spreadsheet
-        const requests = this.generateBatchRequestsForStudent(studentTask);
-        
-        if (requests && requests.length > 0) {
-          batchUpdates.push({
-            requests: requests,
-            spreadsheetId: studentTask.documentId
-          });
+        const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
+        this.progressTracker.updateProgress(`Generating feedback for ${studentLabel}'s spreadsheet.`, false);
+        const requests = this.generateBatchRequestsForSubmission(sub);
+        if (requests && requests.length) {
+          batchUpdates.push({ requests, spreadsheetId: sub.documentId });
         }
       });
-      
-      // Execute all batch updates
-      this.progressTracker.updateProgress(`Applying feedback to student sheets`)
-
-
-      if (batchUpdates.length > 0) {
+      this.progressTracker.updateProgress(`Applying feedback to student sheets`);
+      if (batchUpdates.length) {
         BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
         this.progressTracker.updateProgress(`Applied cell colour feedback to ${batchUpdates.length} student sheets.`, false);
       } else {
-        this.progressTracker.updateProgress("No spreadsheet feedback to apply.", false);
+        this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
       }
-    } catch (error) {
-      console.error("Error applying spreadsheet feedback:", error);
-      this.progressTracker.logError("Failed to apply spreadsheet feedback", error);
+    } catch (e) {
+      console.error('Error applying spreadsheet feedback:', e);
+      this.progressTracker.logError('Failed to apply spreadsheet feedback', e);
     }
   }
 
@@ -64,43 +54,22 @@ class SheetsFeedback {
    * @param {StudentTask} studentTask - The student task to generate requests for.
    * @return {Array} Array of batch update request objects.
    */
-  generateBatchRequestsForStudent(studentTask) {
+  generateBatchRequestsForSubmission(sub) {
     const requests = [];
-    
-    Object.entries(studentTask.responses).forEach(([taskKey, response]) => {
-      // Skip if no response, or no feedback
-      if (!response || !response.feedback || response.pageId === undefined || response.pageId === null) { //pageId needs to be not null or undefined because the first sheetId is 0 which is falsy
-        console.warn(`No response or feedback for task ${taskKey} for student ${studentTask.student.name}`);
-        return;
-      }
-      
-      // Get the sheetId for the response
-      const sheetId = response.pageId
-
-      // Look for cell reference feedback
-      const cellFeedback = response.feedback.cellReference;
+    const items = sub.items || {};
+    Object.values(items).forEach(item => {
+      if (!item || !item.feedback || item.pageId === undefined || item.pageId === null) return;
+      const sheetId = item.pageId; // spreadsheet sheetId
+      const cellFeedback = item.getFeedback ? item.getFeedback('cellReference') : (item.feedback.cellReference || null);
       if (cellFeedback && cellFeedback.getItems) {
-        const feedbackItems = cellFeedback.getItems();
-        
-        feedbackItems.forEach(item => {
-          // Create cell format request based on row and column indices
-          const rowIndex = item.location[0] || 0; //First entry in `location` is the row
-          const colIndex = item.location[1] || 0; //First entry in `location` is the column
-          
-          const cellRequest = this.createCellFormatRequest(
-            rowIndex, 
-            colIndex, 
-            item.status, 
-            sheetId
-          );
-          
-          if (cellRequest) {
-            requests.push(cellRequest);
-          }
+        cellFeedback.getItems().forEach(cfItem => {
+          const rowIndex = cfItem.location[0] || 0;
+          const colIndex = cfItem.location[1] || 0;
+          const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
+          if (req) requests.push(req);
         });
       }
     });
-    
     return requests;
   }
 

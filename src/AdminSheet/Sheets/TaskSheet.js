@@ -76,6 +76,8 @@ class TaskSheet extends BaseSheetManager {
 
   /**
    * Retrieves all formulae from the sheet and populates the formulaArray attribute.
+   * NOTE (Phase 5 Refactor): This helper must only return primitive arrays (strings/numbers/null) and MUST NOT
+   * perform hashing or formula canonicalisation. Canonicalisation & hashing are handled inside SpreadsheetTaskArtifact.
    * @returns {Array<Array<string>>} A 2D array of formulae from the sheet.
    *                                 Cells without formulae will be represented by empty strings.
    */

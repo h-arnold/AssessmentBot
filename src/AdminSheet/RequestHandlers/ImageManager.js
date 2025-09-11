@@ -6,106 +6,142 @@ class ImageManager extends BaseRequestManager {
   }
 
   /**
-   * Collects all unique slide URLs from the assignment's tasks and student responses.
-   * @param {Assignment} assignment - The Assignment instance.
-   * @return {Object[]} - An array of objects containing documentId, slideURL, and uid.
+   * Collect all image artifacts (reference, template, submission) across the assignment.
+   * Returns entries containing uid, url (metadata.sourceUrl), documentId, scope, taskId, and optional itemId.
+   * @param {Assignment} assignment
+   * @returns {Array<{uid:string,url:string,documentId:string,scope:'reference'|'template'|'submission',taskId:string,itemId?:string}>}
    */
-  collectAllSlideUrls(assignment) {
-    const slideUrls = []; // Array to hold { documentId, slideURL, uid }
+  collectAllImageArtifacts(assignment) {
+    const results = [];
+    const taskDefs = assignment.tasks || {};
+    // TaskDefinition artifacts (reference/template)
+    Object.values(taskDefs).forEach(td => {
+      ['reference','template'].forEach(role => {
+        td.artifacts[role].forEach(artifact => {
+          if (artifact.getType && artifact.getType() === 'image') {
+            const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
+            if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
+              results.push({
+                uid: artifact.getUid(),
+                url: sourceUrl,
+                documentId: role === 'reference' ? assignment.referenceDocumentId : assignment.templateDocumentId,
+                scope: role,
+                taskId: td.id
+              });
+            }
+          }
+        });
+      });
+    });
 
-    // Collect from tasks
-    for (const taskKey in assignment.tasks) {
-      const task = assignment.tasks[taskKey];
-
-      // For Image tasks
-      if (task.taskType === "Image") {
-        if (task.taskReference) {
-          slideUrls.push({
-            documentId: assignment.referenceDocumentId,
-            slideURL: task.taskReference,
-            uid: task.uid + "-reference", // Append 'reference' to distinguish
-          });
-        }
-        if (task.templateContent) {
-          slideUrls.push({
-            documentId: assignment.templateDocumentId,
-            slideURL: task.templateContent,
-            uid: task.uid + "-template", // Append 'template' to distinguish
-          });
-        }
-      }
-    }
-
-    // Collect from student responses
-    for (const studentTask of assignment.studentTasks) {
-      if (studentTask.documentId) {
-        for (const taskKey in studentTask.responses) {
-          const response = studentTask.responses[taskKey];
-          const task = assignment.tasks[taskKey];
-
-          if (
-            task.taskType === "Image" &&
-            Utils.isValidUrl(response.response)
-          ) {
-            slideUrls.push({
-              documentId: studentTask.documentId,
-              slideURL: response.response,
-              uid: response.uid, // UID from student response
+    // Submission items
+    const submissions = assignment.submissions || assignment.studentTasks || [];
+    submissions.forEach(sub => {
+      if (!sub || !sub.documentId) return;
+      const items = sub.items || {};
+      Object.values(items).forEach(item => {
+        if (!item || !item.artifact) return;
+        const art = item.artifact;
+        if (art.getType && art.getType() === 'image') {
+          const sourceUrl = art.metadata && art.metadata.sourceUrl;
+          if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
+            results.push({
+              uid: art.getUid(),
+              url: sourceUrl,
+              documentId: sub.documentId,
+              scope: 'submission',
+              taskId: item.taskId,
+              itemId: item.id
             });
           }
         }
-      } else {
-        console.warn(
-          `Invalid task data for: ${studentTask.student.email}. Skipping slide URL collection.`
-        );
-        console.error(
-          `Task detail is as follows: \n ${JSON.stringify(studentTask)}`
-        );
-      }
-    }
-
-    return slideUrls;
+      });
+    });
+    return results;
   }
 
-
   /**
-   * Fetch slide images as base64 in parallel batches.
-   * @param {{documentId:string, slideURL:string, uid:string}[]} slideUrls
+   * Fetch images as blobs with round-robin ordering by documentId to distribute load.
+   * @param {Array<{uid:string,url:string,documentId:string}>} entries
    * @param {number} maxBatchSize
-   * @returns {{uid:string, base64:string}[]}
+   * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>}
    */
-  fetchImagesAsBase64(slideUrls, maxBatchSize = 30) {
-    const images = [];
-    for (let i = 0; i < slideUrls.length; i += maxBatchSize) {
-      const batch = slideUrls.slice(i, i + maxBatchSize);
-      this.progressTracker.updateProgress(
-        `Fetching image batch ${Math.floor(i / maxBatchSize) + 1} of ${Math.ceil(
-          slideUrls.length / maxBatchSize
-        )}`,
-        false
-      );
-
-      const requests = batch.map((slide) => ({
-        url: slide.slideURL,
-        method: "get",
-        headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
-        muteHttpExceptions: true,
+  fetchImagesAsBlobs(entries, maxBatchSize = 30) {
+    if (!entries || !entries.length) return [];
+    // Group by documentId
+    const byDoc = entries.reduce((acc, e) => {
+      acc[e.documentId] = acc[e.documentId] || [];
+      acc[e.documentId].push(e);
+      return acc;
+    }, {});
+    // Round-robin merge
+    const merged = [];
+    const docLists = Object.values(byDoc);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const list of docLists) {
+        if (list.length) {
+          merged.push(list.shift());
+          added = true;
+        }
+      }
+    }
+    const results = [];
+    for (let i = 0; i < merged.length; i += maxBatchSize) {
+      const batch = merged.slice(i, i + maxBatchSize);
+      this.progressTracker.updateProgress(`Fetching image batch ${Math.floor(i / maxBatchSize) + 1} of ${Math.ceil(merged.length / maxBatchSize)}`, false);
+      const requests = batch.map(entry => ({
+        url: entry.url,
+        method: 'get',
+        headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+        muteHttpExceptions: true
       }));
-
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
       responses.forEach((resp, idx) => {
-        const slide = batch[idx];
-        if (resp && resp.getResponseCode() === 200) {
-          const blob = resp.getBlob();
-          images.push({
-            uid: slide.uid,
-            base64: `data:image/png;base64,${Utilities.base64Encode(blob.getBytes())}`,
-          });
+        const entry = batch[idx];
+        if (resp && resp.getResponseCode && resp.getResponseCode() === 200) {
+          try {
+            const blob = resp.getBlob();
+            results.push({ uid: entry.uid, blob });
+          } catch (e) {
+            console.warn('Failed to read blob for image uid ' + entry.uid, e);
+          }
         } else {
-          console.warn(`Failed to fetch image for UID ${slide.uid}`);
+          console.warn('Failed to fetch image for uid ' + entry.uid);
         }
       });
     }
-    return images;
+    return results;
+  }
+
+  /**
+   * Apply fetched blobs back to their artifacts using setContentFromBlob which sets base64 & hash.
+   * @param {Assignment} assignment
+   * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs
+   */
+  writeBackBlobs(assignment, blobs) {
+    if (!blobs || !blobs.length) return;
+    // Build uid -> artifact map
+    const map = {};
+    // Task artifacts
+    Object.values(assignment.tasks || {}).forEach(td => {
+      ['reference','template'].forEach(role => {
+        td.artifacts[role].forEach(a => { if (a.getType && a.getType() === 'image') map[a.getUid()] = a; });
+      });
+    });
+    // Submission artifacts
+    (assignment.submissions || []).forEach(sub => {
+      Object.values(sub.items || {}).forEach(item => {
+        const a = item.artifact;
+        if (a && a.getType && a.getType() === 'image') map[a.getUid()] = a;
+      });
+    });
+    blobs.forEach(({ uid, blob }) => {
+      const artifact = map[uid];
+      if (artifact && artifact.setContentFromBlob) {
+        artifact.setContentFromBlob(blob);
+      }
+    });
   }
 }

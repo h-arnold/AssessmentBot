@@ -134,36 +134,36 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ## Phase 5: Supporting System Updates
 
 ### 5.1 Update ImageManager
-  - [ ] Update `src/AdminSheet/RequestHandlers/ImageManager.js`
-  - [ ] Replace collectAllSlideUrls() with collectAllImageArtifacts()
-  - [ ] Update to collect from TaskDefinition artifacts and StudentSubmissionItems
-  - [ ] Include artifact UIDs and metadata.sourceUrl
-  - [ ] Update fetchImagesAsBlobs() with round-robin by documentId
-  - [ ] Use artifact.setContentFromBlob() to write base64 and compute hashes
-  - [ ] Remove direct base64 writing to task/response fields
+  - [x] Update `src/AdminSheet/RequestHandlers/ImageManager.js`
+  - [x] Replace collectAllSlideUrls() with collectAllImageArtifacts()
+  - [x] Update to collect from TaskDefinition artifacts and StudentSubmissionItems
+  - [x] Include artifact UIDs and metadata.sourceUrl
+  - [x] Update fetchImagesAsBlobs() with round-robin by documentId
+  - [x] Use artifact.setContentFromBlob() to write base64 and compute hashes
+  - [x] Remove direct base64 writing to task/response fields
 
 ### 5.2 Update AnalysisSheetManager
-  - [ ] Update `src/AdminSheet/Sheets/AnalysisSheetManager.js`
-  - [ ] Use TaskDefinition map keyed by taskId
-  - [ ] Replace studentTasks with submissions
-  - [ ] Use submission.getItem(taskId) for data access
-  - [ ] Use TaskDefinition.taskTitle for display headers
-  - [ ] Maintain deterministic order via TaskDefinition.index
-  - [ ] Convert item.artifact.content to display strings
+  - [x] Update `src/AdminSheet/Sheets/AnalysisSheetManager.js`
+  - [x] Use TaskDefinition map keyed by taskId
+  - [x] Replace studentTasks with submissions
+  - [x] Use submission.getItem(taskId) for data access
+  - [x] Use TaskDefinition.taskTitle for display headers
+  - [x] Maintain deterministic order via TaskDefinition.index
+  - [x] Convert item.artifact.content to display strings
 
 ### 5.3 Update FeedbackPopulators
-  - [ ] Update `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
-  - [ ] Accept StudentSubmission[] instead of StudentTask[]
-  - [ ] Use submission.documentId and item.pageId for targeting
-  - [ ] Access feedback via StudentSubmissionItem.getFeedback()
-  - [ ] Maintain existing feedback JSON structure
+  - [x] Update `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
+  - [x] Accept StudentSubmission[] instead of StudentTask[]
+  - [x] Use submission.documentId and item.pageId for targeting
+  - [x] Access feedback via StudentSubmissionItem.getFeedback()
+  - [x] Maintain existing feedback JSON structure
 
 ### 5.4 Update TaskSheet Helper
-  - [ ] Update `src/AdminSheet/Sheets/TaskSheet.js`
-  - [ ] Ensure outputs are primitives only (no GAS objects)
-  - [ ] Remove contentHash computation
-  - [ ] Remove canonicalisation (move to SpreadsheetTaskArtifact)
-  - [ ] Keep as Sheets API helper for extraction
+  - [x] Update `src/AdminSheet/Sheets/TaskSheet.js`
+  - [x] Ensure outputs are primitives only (no GAS objects)
+  - [x] Remove contentHash computation
+  - [x] Remove canonicalisation (move to SpreadsheetTaskArtifact)
+  - [x] Keep as Sheets API helper for extraction
 
 ## Phase 6: Final Integration and Cleanup
 
@@ -174,11 +174,6 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [ ] Ensure compatibility with new model
   - [ ] Update any remaining classes that reference Task/StudentTask
   - [ ] Verify CacheManager works with new artifact hashes
-
-### 6.2 Create Migration Utilities (Temporary)
-  - [ ] Create adapter for legacy Task JSON to TaskDefinition
-  - [ ] Create adapter for legacy StudentTask JSON to StudentSubmission
-  - [ ] Add validation utilities for new model integrity
 
 ### 6.3 Remove Legacy Models
   - [ ] Deprecate `src/AdminSheet/Models/Task.js`
