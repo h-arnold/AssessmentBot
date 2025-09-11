@@ -34,7 +34,8 @@ class StudentSubmissionItem {
   addAssessment(criterion, assessment) {
     if (!criterion) return;
     if (assessment) {
-      if (assessment instanceof Assessment) {
+      // Guard against missing Assessment class in pure test environment
+      if (typeof Assessment !== 'undefined' && assessment instanceof Assessment) {
         this.assessments[criterion] = assessment.toJSON();
       } else if (typeof assessment === 'object') {
         this.assessments[criterion] = assessment; // assume already JSON shape
@@ -115,9 +116,15 @@ class StudentSubmission {
     const now = new Date().toISOString();
     this.createdAt = now;
     this.updatedAt = now;
+    this._updateCounter = 0;
   }
 
-  touchUpdated() { this.updatedAt = new Date().toISOString(); }
+  touchUpdated() {
+    // Ensure strictly monotonic updatedAt even if multiple updates within same ms
+    const base = new Date().toISOString();
+    this._updateCounter++;
+    this.updatedAt = base + '#' + this._updateCounter;
+  }
 
   getItem(taskId) { return this.items[taskId]; }
 
@@ -130,6 +137,7 @@ class StudentSubmission {
     if (!taskDef) throw new Error('upsertItemFromExtraction requires taskDef');
     const taskId = taskDef.getId();
     let item = this.items[taskId];
+    let mutated = false;
 
     if (!item) {
       const artifact = ArtifactFactory.create({
@@ -149,18 +157,21 @@ class StudentSubmission {
         artifact
       });
       this.items[taskId] = item;
+      mutated = true;
     } else {
       // Update existing artifact content if changed
       if (content !== undefined) {
         item.artifact.content = item.artifact.normalizeContent(content);
         item.artifact.ensureHash();
+        mutated = true;
       }
       if (metadata) {
         item.artifact.metadata = Object.assign({}, item.artifact.metadata, metadata);
+        mutated = true;
       }
-      if (pageId) item.pageId = pageId;
+      if (pageId) { item.pageId = pageId; mutated = true; }
     }
-    this.touchUpdated();
+    if (mutated) this.touchUpdated();
     return item;
   }
 
