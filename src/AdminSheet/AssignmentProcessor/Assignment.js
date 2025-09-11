@@ -13,8 +13,15 @@ class Assignment {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.tasks = {};           // { taskKey: Task }
-    this.studentTasks = [];    // Array of StudentTask instances
+    // New model: tasks keyed by stable taskId -> TaskDefinition
+    this.tasks = {};           // { [taskId: string]: TaskDefinition }
+    // New model: submissions array of StudentSubmission
+    this.submissions = [];     // Array<StudentSubmission>
+    // TEMP migration alias (read-only) for legacy callers expecting studentTasks
+    Object.defineProperty(this, 'studentTasks', {
+      get: () => this.submissions,
+      configurable: true
+    });
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -39,8 +46,20 @@ class Assignment {
    * @param {Student} student - The Student instance to add.
    */
   addStudent(student) {
-    const studentTask = new StudentTask(student, this.assignmentId, null);
-    this.studentTasks.push(studentTask);
+    // Expect student object with id
+    const studentId = student.id || student.studentId || student.userId;
+    if (!studentId) {
+      console.warn('addStudent called without resolvable studentId');
+      return null;
+    }
+    // Avoid duplicates
+    const existing = this.submissions.find(s => s.studentId === studentId);
+    if (existing) return existing;
+    const submission = new StudentSubmission(studentId, this.assignmentId, null);
+    // Attach original student metadata for any legacy code (non-persisted)
+    submission._legacyStudent = student;
+    this.submissions.push(submission);
+    return submission;
   }
 
   /**
@@ -137,26 +156,22 @@ class Assignment {
    * @return {Object[]} - An array of request objects.
    */
   generateLLMRequests() {
-    // Utilize the singleton instance of LLMRequestManager
-    const requests = llmRequestManager.generateRequestObjects(this);
-    return requests;
+    // Delegate to LLMRequestManager (new model aware)
+    const manager = new LLMRequestManager();
+    return manager.generateRequestObjects(this);
   }
 
   /**
    * Assesses student responses by interacting with the LLM.
    */
   assessResponses() {
-    // Utilize the singleton instance of LLMRequestManager
-    const llmRequestManager = new LLMRequestManager();
-
-    // Generate LLM Requests
-    const requests = llmRequestManager.generateRequestObjects(this);
-    if (requests.length === 0) {
-      Utils.toastMessage("No LLM requests to send.", "Info", 3);
+    // Base Assignment only handles non-spreadsheet (text/table/image) via LLM
+    const manager = new LLMRequestManager();
+    const requests = manager.generateRequestObjects(this);
+    if (!requests || requests.length === 0) {
+      Utils.toastMessage('No LLM requests to send.', 'Info', 3);
       return;
     }
-
-    // Send Requests in Batches and adds the responses to the assignment instance
-    llmRequestManager.processStudentResponses(requests, this);
+    manager.processStudentResponses(requests, this);
   }
 }

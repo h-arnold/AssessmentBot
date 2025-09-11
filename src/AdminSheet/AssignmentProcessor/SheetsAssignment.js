@@ -19,11 +19,10 @@ class SheetsAssignment extends Assignment {
   }
 
   populateTasks() {
-    const sheetsParser = new SheetsParser();
-
-    // Extract reference tasks
-    this.tasks = sheetsParser.extractTasks(this.referenceDocumentId, this.templateDocumentId);
-
+    const parser = new SheetsParser();
+    const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
+    this.tasks = Object.fromEntries(defs.map(td => [td.getId(), td]));
+    console.log(`Populated ${defs.length} spreadsheet TaskDefinitions.`);
   }
 
   /**
@@ -41,15 +40,23 @@ class SheetsAssignment extends Assignment {
    * Implements the abstract processAllSubmissions method from the base class.
    */
   processAllSubmissions() {
-    const sheetsParser = new SheetsParser();
-
-    this.studentTasks.forEach(studentTask => {
-      this.progressTracker.updateProgress(`Extracting work from ${studentTask.student.name}'s spreadsheet.`, false); // Corrected British English spelling
-      if (studentTask.documentId) {
-        studentTask.extractAndAssignResponses(sheetsParser, this.tasks);
-      } else {
-        console.warn(`No document ID for student: ${studentTask.student.email}. Skipping response extraction.`);
+    const parser = new SheetsParser();
+    const taskDefs = Object.values(this.tasks);
+    this.submissions.forEach(sub => {
+      this.progressTracker.updateProgress(`Extracting work from spreadsheet for student ${sub.studentId}.`, false);
+      if (!sub.documentId) {
+        console.warn(`No document ID for studentId ${sub.studentId}; skipping.`);
+        return;
       }
+      const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
+      artifacts.forEach(a => {
+        const taskDef = this.tasks[a.taskId];
+        if (!taskDef) {
+          console.warn('Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction');
+          return;
+        }
+        sub.upsertItemFromExtraction(taskDef, { pageId: a.pageId, content: a.content, metadata: a.metadata });
+      });
     });
   }
 
@@ -80,10 +87,14 @@ class SheetsAssignment extends Assignment {
   }
 
   assessResponses() {
-    //Construct a sheets assessor instance with the reference and student tasks.
-    const sheetsAssesor = new SheetsAssessor(this.tasks, this.studentTasks);
-
-    const assessments = sheetsAssesor.assessResponses();
+    // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
+    // Placeholder: integrate AssessmentEngineRouter in later phase.
+    if (typeof SheetsAssessor !== 'undefined') {
+      const assessor = new SheetsAssessor(this.tasks, this.submissions); // TODO: update SheetsAssessor signature in Phase 5/6
+      assessor.assessResponses && assessor.assessResponses();
+    } else {
+      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
+    }
   }
 }
     

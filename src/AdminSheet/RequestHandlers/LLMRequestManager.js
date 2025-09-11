@@ -51,75 +51,66 @@ class LLMRequestManager extends BaseRequestManager {
    */
   generateRequestObjects(assignment) {
     const requests = [];
+    // Build uid -> { submission, item, taskDef } map for response routing
+    this.uidIndex = {}; // reset per generation
+    const baseUrl = this.configManager.getBackendUrl();
+    const apiKey  = this.configManager.getApiKey();
 
-    assignment.studentTasks.forEach(studentTask => {
-      Object.keys(studentTask.responses).forEach(taskKey => {
-        const response = studentTask.responses[taskKey];
-        const { uid, response: rawStudentResponse, contentHash: contentHashResponse } = response;
+    assignment.submissions.forEach(submission => {
+      Object.values(submission.items).forEach(item => {
+        const taskDef = assignment.tasks[item.taskId];
+        if (!taskDef) {
+          this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
+          return;
+        }
+        const type = item.getType();
+        // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
+        if (type === 'spreadsheet') return;
+        const ref = taskDef.getPrimaryReference();
+        const tpl = taskDef.getPrimaryTemplate();
+        if (!ref || !tpl) {
+          this.progressTracker.logError('Missing reference/template artifacts for taskId ' + item.taskId);
+          return;
+        }
+        const studentArtifact = item.artifact;
 
-        const studentResponse = rawStudentResponse ?? '';
-
-        const task = assignment.tasks[taskKey];
-        if (!task) {
-          this.progressTracker.logError('No corresponding task found for task key: ' + taskKey);
+        // Not attempted detection: submission hash equals template hash
+        if (studentArtifact.contentHash && tpl.contentHash && studentArtifact.contentHash === tpl.contentHash) {
+          const notAttempted = this.createNotAttemptedAssessment();
+          this._assignAssessmentArtifacts(item, notAttempted);
           return;
         }
 
-        if (!task.taskReference) {
-          const errorMessage = 'Missing taskReference for task key: ' + taskKey + ' in assignment: ' + assignment.assignmentId;
-          this.progressTracker.logAndThrowError(errorMessage);
+        // Cache lookup using reference & student hashes
+        const refHash = ref.contentHash;
+        const respHash = studentArtifact.contentHash;
+        if (refHash && respHash) {
+          const cached = this.cacheManager.getCachedAssessment(refHash, respHash);
+          if (cached) {
+            this._assignAssessmentArtifacts(item, cached);
+            return;
+          }
         }
 
-        if (task.templateContent === null || task.templateContent === undefined) {
-          const errorMessage = 'Missing templateContent for task key: ' + taskKey + ' in assignment: ' + assignment.assignmentId;
-          this.progressTracker.logAndThrowError(errorMessage);
-        }
-
-        const contentHashReference = task.contentHash;
-        const contentHashTemplate = task.templateContentHash;
-
-        // Check for unattempted tasks (template task matches student response)
-        if (contentHashTemplate === contentHashResponse) {
-          // Create default "Not Attempted" assessment
-          const notAttemptedAssessment = this.createNotAttemptedAssessment();
-          
-          // Assign not attempted assessment
-          this.assignAssessmentToStudentTask(uid, notAttemptedAssessment, assignment);
-          console.log(`Task not attempted for UID: ${uid}. Assigned 'N' for all criteria'.`);
-          return; // Skip adding to requests
-        }
-
-        // Use CacheManager to check for cached assessments
-        const cachedAssessment = this.cacheManager.getCachedAssessment(contentHashReference, contentHashResponse);
-        if (cachedAssessment) {
-          // Assign assessment directly from cache
-          this.assignAssessmentToStudentTask(uid, cachedAssessment, assignment);
-          console.log(`Cache hit for UID: ${uid}. Assigned assessment from cache.`);
-          return; // Skip adding to requests
-        }
-
-        // Build request for new backend /v1/assessor API
-        const baseUrl = this.configManager.getBackendUrl();
-        const apiKey  = this.configManager.getApiKey();
+        const uid = studentArtifact.getUid();
+        this.uidIndex[uid] = { submission, item, taskDef };
+        const payload = {
+          taskType: type.toUpperCase(),
+          reference: ref.content,
+          template: tpl.content,
+          studentResponse: studentArtifact.content
+        };
         requests.push({
-          uid: uid,
+          uid,
           url: `${baseUrl}/v1/assessor`,
-          method: 'post',
-          contentType: 'application/json',
-          payload: JSON.stringify({
-            taskType:       task.taskType.toUpperCase(),
-            reference:      task.taskReference,
-            template:       task.templateContent,
-            studentResponse: studentResponse
-          }),
-          headers: {
-            Authorization: `Bearer ${apiKey}`
-          },
-          muteHttpExceptions: true
+            method: 'post',
+            contentType: 'application/json',
+            payload: JSON.stringify(payload),
+            headers: { Authorization: `Bearer ${apiKey}` },
+            muteHttpExceptions: true
         });
       });
     });
-
     console.log(`Generated ${requests.length} request objects for LLM.`);
     return requests;
   }
@@ -254,19 +245,20 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance.
    */
   assignAssessmentToStudentTask(uid, assessmentData, assignment) {
-    // Iterate through studentTasks to find the matching UID
-    for (const studentTask of assignment.studentTasks) {
-      for (const [taskKey, response] of Object.entries(studentTask.responses)) {
-        if (response.uid === uid) {
-          // Assign each criterion's assessment
-          for (const [criterion, assessment] of Object.entries(assessmentData)) {
-            studentTask.addAssessment(taskKey, criterion, assessment);
-          }
-          return; // Assessment assigned; exit the function
-        }
-      }
+    // Legacy method retained for backward compatibility; delegate to uidIndex if present
+    if (this.uidIndex && this.uidIndex[uid]) {
+      const { item } = this.uidIndex[uid];
+      this._assignAssessmentArtifacts(item, assessmentData);
+      return;
     }
-    console.warn(`No matching StudentTask found for UID: ${uid}`);
+    console.warn(`No matching submission item found for UID: ${uid}`);
+  }
+
+  _assignAssessmentArtifacts(item, assessmentData) {
+    for (const [criterion, assessment] of Object.entries(assessmentData)) {
+      item.addAssessment(criterion, assessment);
+    }
+    item.markAssessed();
   }
 
   /**
@@ -276,13 +268,8 @@ class LLMRequestManager extends BaseRequestManager {
    * @return {StudentTask|null} - The matching StudentTask or null if not found.
    */
   findStudentTaskByUid(uid, assignment) {
-    for (const studentTask of assignment.studentTasks) {
-      for (const response of Object.values(studentTask.responses)) {
-        if (response.uid === uid) {
-          return studentTask;
-        }
-      }
-    }
+    // Deprecated in new model, kept for compatibility; try uidIndex
+    if (this.uidIndex && this.uidIndex[uid]) return this.uidIndex[uid].submission;
     return null;
   }
 
@@ -293,11 +280,7 @@ class LLMRequestManager extends BaseRequestManager {
    * @return {string|null} - The task key or null if not found.
    */
   findTaskKeyByUid(uid, studentTask) {
-    for (const [taskKey, response] of Object.entries(studentTask.responses)) {
-      if (response.uid === uid) {
-        return taskKey;
-      }
-    }
+    if (this.uidIndex && this.uidIndex[uid]) return this.uidIndex[uid].item.taskId;
     return null;
   }
 
@@ -405,21 +388,14 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment
    */
   _assignAndCacheAssessment(uid, assessmentData, request, assignment) {
-    // Assign to StudentTask
     this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData), assignment);
-    // Cache lookup and store
-    const studentTask = this.findStudentTaskByUid(uid, assignment);
-    if (studentTask) {
-      const taskKey = this.findTaskKeyByUid(uid, studentTask);
-      const task = assignment.tasks[taskKey];
-      if (task) {
-        const referenceHash = task.contentHash;
-        const responseHash  = studentTask.responses[taskKey].contentHash;
-        this.cacheManager.setCachedAssessment(
-          referenceHash,
-          responseHash,
-          assessmentData
-        );
+    if (this.uidIndex && this.uidIndex[uid]) {
+      const { item, taskDef } = this.uidIndex[uid];
+      const ref = taskDef.getPrimaryReference();
+      const refHash = ref && ref.contentHash;
+      const respHash = item.artifact && item.artifact.contentHash;
+      if (refHash && respHash) {
+        this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
       }
     }
   }

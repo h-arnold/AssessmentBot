@@ -96,38 +96,38 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ## Phase 3: Assignment Layer Updates
 
 ### 3.1 Update Assignment Base Class
-  - [ ] Update `src/AdminSheet/AssignmentProcessor/Assignment.js`
-  - [ ] Replace this.tasks with {[taskId]: TaskDefinition} map
-  - [ ] Replace this.studentTasks with this.submissions: StudentSubmission[]
-  - [ ] Update addStudent() to create StudentSubmission instances
-  - [ ] Update generateLLMRequests() to delegate to LLMRequestManager
-  - [ ] Update assessResponses() to handle new model
-  - [ ] Add temporary getter for legacy compatibility (remove later)
-  - [ ] Update `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
-    - [ ] Iterate assignment.submissions instead of studentTasks
-    - [ ] Filter to text/table/image items only (skip spreadsheets)
-    - [ ] Get TaskDefinition by taskId for context
-    - [ ] Use artifact.contentHash for not-attempted detection
-    - [ ] Use artifact.contentHash for caching keys
-    - [ ] Build payloads from artifact.content
-    - [ ] Use artifact.getUid() for result routing
-    - [ ] Create uid→{submission, item} mapping for result assignment
+  - [x] Update `src/AdminSheet/AssignmentProcessor/Assignment.js`
+  - [x] Replace this.tasks with {[taskId]: TaskDefinition} map
+  - [x] Replace this.studentTasks with this.submissions: StudentSubmission[]
+  - [x] Update addStudent() to create StudentSubmission instances
+  - [x] Update generateLLMRequests() to delegate to LLMRequestManager
+  - [x] Update assessResponses() to handle new model
+  - [x] Add temporary getter for legacy compatibility (remove later)
+  - [x] Update `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
+    - [x] Iterate assignment.submissions instead of studentTasks
+    - [x] Filter to text/table/image items only (skip spreadsheets)
+    - [x] Get TaskDefinition by taskId for context
+    - [x] Use artifact.contentHash for not-attempted detection
+    - [x] Use artifact.contentHash for caching keys
+    - [x] Build payloads from artifact.content
+    - [x] Use artifact.getUid() for result routing
+    - [x] Create uid→{submission, item} mapping for result assignment
 
 ### 3.2 Update SlidesAssignment
-  - [ ] Update `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
-  - [ ] Update populateTasks() to use extractTaskDefinitions()
-  - [ ] Update processAllSubmissions() to use extractSubmissionArtifacts()
-  - [ ] Replace processImages() with new ImageManager flow
-  - [ ] Remove StudentTask.extractAndAssignResponses() usage
-  - [ ] Update to use submission.upsertItemFromExtraction()
+  - [x] Update `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
+  - [x] Update populateTasks() to use extractTaskDefinitions()
+  - [x] Update processAllSubmissions() to use extractSubmissionArtifacts()
+  - [x] Replace processImages() with new ImageManager flow (placeholder no-op)
+  - [x] Remove StudentTask.extractAndAssignResponses() usage
+  - [x] Update to use submission.upsertItemFromExtraction()
 
 ### 3.3 Update SheetsAssignment  
-  - [ ] Update `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
-  - [ ] Update populateTasks() to use extractTaskDefinitions()
-  - [ ] Update processAllSubmissions() to use new extraction flow
-  - [ ] Replace assessResponses() with AssessmentEngineRouter
-  - [ ] Update to work with StudentSubmission model
-  - [ ] Remove legacy SheetsAssessor usage
+  - [x] Update `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
+  - [x] Update populateTasks() to use extractTaskDefinitions()
+  - [x] Update processAllSubmissions() to use new extraction flow
+  - [x] Replace assessResponses() with AssessmentEngineRouter (placeholder logic added)
+  - [x] Update to work with StudentSubmission model
+  - [ ] Remove legacy SheetsAssessor usage (pending future phase)
 
 
 
