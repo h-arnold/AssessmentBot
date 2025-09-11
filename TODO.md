@@ -60,11 +60,11 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ## Phase 2: Parser Interface Updates
 
 ### 2.1 Update DocumentParser Base Class
-  - [ ] Update `src/AdminSheet/DocumentParsers/DocumentParser.js`
-  - [ ] Add abstract extractTaskDefinitions(referenceId, templateId?) method
-  - [ ] Add abstract extractSubmissionArtifacts(documentId, taskDefs) method
-  - [ ] Deprecate parseTask() method (keep temporarily for migration)
-  - [ ] Update method signatures to work with primitives only
+  - [x] Update `src/AdminSheet/DocumentParsers/DocumentParser.js`
+  - [x] Add abstract extractTaskDefinitions(referenceId, templateId?) method
+  - [x] Add abstract extractSubmissionArtifacts(documentId, taskDefs) method
+  - [x] Deprecate parseTask() method (keep temporarily for migration)
+  - [x] Update method signatures to work with primitives only
 
 ### 2.2 Update SlidesParser
 - [ ] Update `src/AdminSheet/DocumentParsers/SlidesParser.js`
@@ -253,12 +253,12 @@ The following test cases avoid direct Google Apps Script API objects. They rely 
 
 ### Phase 2 – Parser Interface Updates (Interface-Level / Stubs)
 Create a minimal stub subclass `TestDocumentParser` (no GAS) to validate interface contracts.
-- [ ] Abstract enforcement: instantiating base `DocumentParser` (if exported) throws or calling abstract methods throws.
-- [ ] Stub parser `extractTaskDefinitions()` returns array of TaskDefinitions with sequential `index` values starting at 0.
-- [ ] Returned TaskDefinitions contain only primitive artifact contents (strings / arrays / null) – no functions or objects.
-- [ ] `extractSubmissionArtifacts()` output objects contain only primitive fields: `{ taskId, pageId?, content, metadata? }` and NO `contentHash`.
-- [ ] Ensure parser does not compute `contentHash` (artifacts assigned later do it).
-- [ ] Alignment logic (stub): when titles repeated or out-of-order, assigned `index` keeps original order of appearance.
+- [x] Abstract enforcement: instantiating base `DocumentParser` (if exported) throws or calling abstract methods throws.
+- [x] Stub parser `extractTaskDefinitions()` returns array of TaskDefinitions with sequential `index` values starting at 0.
+- [x] Returned TaskDefinitions contain only primitive artifact contents (strings / arrays / null) – no functions or objects.
+- [x] `extractSubmissionArtifacts()` output objects contain only primitive fields: `{ taskId, pageId?, content, metadata? }` and NO `contentHash` on the primitive extraction objects.
+- [x] Parsers must NOT manually compute or inject `contentHash` into extracted primitives; Artifact constructors now compute `contentHash` immediately when `content` is present.
+- [x] Alignment logic (stub): when titles repeated or out-of-order, assigned `index` keeps original order of appearance.
 
 ### Phase 3 – Assignment Layer Updates (Using Stubs / Models Only)
 Use lightweight stub for LLMRequestManager that records received payloads.

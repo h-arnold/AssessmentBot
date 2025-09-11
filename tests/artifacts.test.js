@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { ArtifactFactory, TableTaskArtifact } from '../src/AdminSheet/Models/Artifacts.js';
 
 describe('Artifacts', () => {
-  it('normalises text content & hashes', () => {
+  it('normalises text content and hashes immediately for reference/template', () => {
     const art = ArtifactFactory.text({ type: 'text', taskId: 't1', role: 'reference', content: '  Hello  ' });
     expect(art.content).toBe('Hello');
     expect(art.contentHash).toBeTruthy();
+    const first = art.contentHash;
+    art.ensureHash();
+    expect(art.contentHash).toBe(first); // stable
   });
 
   it('trims table trailing empties and converts to markdown', () => {
@@ -15,10 +18,14 @@ describe('Artifacts', () => {
     expect(md.split('\n').length).toBe(3);
   });
 
-  it('canonicalises spreadsheet formulas', () => {
+  it('canonicalises spreadsheet formulas and hashes immediately', () => {
     const ss = ArtifactFactory.spreadsheet({ type: 'spreadsheet', taskId: 't3', role: 'reference', content: [ ['=sum(a1:a2)','"a"'], ['=if("b",1,2)'] ] });
     expect(ss.content[0][0]).toBe('=SUM(A1:A2)');
     expect(ss.content[0][1]).toBe('"a"');
+    expect(ss.contentHash).toBeTruthy();
+    const first = ss.contentHash;
+    ss.ensureHash();
+    expect(ss.contentHash).toBe(first);
   });
 
   it('creates image artifact without base64 initially', () => {

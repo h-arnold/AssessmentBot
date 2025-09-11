@@ -38,13 +38,14 @@ describe('Phase1 Model Requirements', () => {
     expect(restored.artifacts.template[0].content).toBe('Template');
   });
 
-  it('TextTaskArtifact normalisation and hash stability', () => {
+  it('TextTaskArtifact normalisation and immediate hash stability', () => {
     const raw = '  Line1\r\nLine2  ';
     const art = ArtifactFactory.text({ taskId: 'tX', role: 'reference', content: raw });
     expect(art.content).toBe('Line1\nLine2');
+    expect(art.contentHash).toBeTruthy();
     const firstHash = art.contentHash;
-    art.ensureHash();
-    expect(art.contentHash).toBe(firstHash);
+    art.ensureHash(); // idempotent
+    expect(art.contentHash).toBe(firstHash); // stable
     const empty = ArtifactFactory.text({ taskId: 'tY', role: 'reference', content: '   ' });
     expect(empty.content).toBeNull();
   });
@@ -64,12 +65,13 @@ describe('Phase1 Model Requirements', () => {
     expect(sepCount).toBe(table.content[0].length);
   });
 
-  it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent', () => {
+  it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {
     const ss = ArtifactFactory.spreadsheet({ taskId: 'tSS', role: 'reference', content: [['=sum("a")', '=if("Text",1,2)']] });
     expect(ss.content[0][0]).toBe('=SUM("a")');
     expect(ss.content[0][1]).toBe('=IF("Text",1,2)');
-    const firstHash = ss.contentHash; // ensureHash invoked in constructor
-    ss.ensureHash();
+    expect(ss.contentHash).toBeTruthy();
+    const firstHash = ss.contentHash;
+    ss.ensureHash(); // still stable
     expect(ss.contentHash).toBe(firstHash);
     const before = JSON.stringify(ss.content);
     // force re-normalise by creating new artifact from existing content

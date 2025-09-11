@@ -6,11 +6,16 @@
  */
 class DocumentParser {
   /**
-   * Constructs a DocumentParser instance.
+   * Base constructor is abstract – prevent direct instantiation in Phase 2 refactor.
    */
   constructor() {
-    this.progressTracker = ProgressTracker.getInstance();
-    // Base initialization
+    if (new.target === DocumentParser) {
+      throw new Error('DocumentParser is abstract and cannot be instantiated directly');
+    }
+    // ProgressTracker may not exist in pure test environment; guard.
+    if (typeof ProgressTracker !== 'undefined' && ProgressTracker.getInstance) {
+      this.progressTracker = ProgressTracker.getInstance();
+    }
   }
 
   /**
@@ -23,6 +28,7 @@ class DocumentParser {
    * @param {string|null} taskNotes - Optional notes for the task.
    * @return {Task|null} - The Task instance or null if parsing fails.
    */
+  // DEPRECATED: legacy parseTask retained temporarily for migration. Will be removed after Phase 3.
   parseTask(key, content, identifier, taskType, contentType, taskNotes = null) {
     let taskReference = null;
     let templateContent = null;
@@ -60,8 +66,28 @@ class DocumentParser {
    * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
    * @return {Task[]} - An array of Task instances extracted from the document.
    */
-  extractTasks(documentId, contentType = "reference") {
-    throw new Error("Method 'extractTasks' must be implemented by subclasses");
+  extractTasks(documentId, contentType = "reference") { // legacy abstract method
+    throw new Error("Method 'extractTasks' is deprecated – use extractTaskDefinitions / extractSubmissionArtifacts");
+  }
+
+  /**
+   * Phase 2 abstract: extract ordered TaskDefinitions from reference/template docs.
+   * @param {string} referenceDocumentId
+   * @param {string=} templateDocumentId
+   * @return {TaskDefinition[]}
+   */
+  extractTaskDefinitions(referenceDocumentId, templateDocumentId) { // eslint-disable-line no-unused-vars
+    throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
+  }
+
+  /**
+   * Phase 2 abstract: extract primitive submission artifact records (no hashing) for a student document.
+   * @param {string} documentId
+   * @param {TaskDefinition[]} taskDefinitions
+   * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
+   */
+  extractSubmissionArtifacts(documentId, taskDefinitions) { // eslint-disable-line no-unused-vars
+    throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
   }
 
   /**
@@ -94,4 +120,9 @@ class DocumentParser {
     
     return markdownTable;
   }
+}
+
+// Export for Node/test environments
+if (typeof module !== 'undefined') {
+  module.exports = { DocumentParser };
 }

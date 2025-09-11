@@ -24,7 +24,12 @@ class BaseTaskArtifact {
     this.documentId = documentId;
     this.metadata = metadata || {};
     this.content = this.normalizeContent(content);
-    this.contentHash = contentHash || (this.content != null ? this.ensureHash() : null);
+    // Auto-compute hash immediately for any role when content present (reference/template hashes needed for caching & not-attempted detection).
+    if (contentHash) {
+      this.contentHash = contentHash;
+    } else {
+      this.contentHash = this.content != null ? this.ensureHash() : null;
+    }
     this._uid = uid || this._defaultUid(taskIndex, artifactIndex);
   }
 
