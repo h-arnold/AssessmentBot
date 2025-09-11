@@ -1,11 +1,11 @@
 # Task and Submission Architecture Design
 
-Refined design for decoupling Task definition from student submissions. Aligns with existing workflow (Slides/Sheets parsers, image pipeline, LLM assessment) while tightening identities, hashing, and type behavior.
+Refined design for decoupling Task definition from student submissions. Aligns with existing workflow (Slides/Sheets parsers, image pipeline, LLM assessment) while tightening identities, hashing, and type behaviour.
 
 ## Goals
 
 - Single source of truth for task identity and metadata.
-- Typed artifacts encapsulate normalization/validation/hashing.
+- Typed artifacts encapsulate normalisation/validation/hashing.
 - Stable `taskId` and consistent hashing for caching/change detection.
 - Reference/template artifacts live on the definition; submissions are per-student.
 - Extensible for new task types without touching the core.
@@ -79,7 +79,7 @@ Shared fields (BaseTaskArtifact):
 - role: ArtifactRole
 - documentId?: string
 - pageId?: string
-- contentHash?: string (computed on normalized content)
+- contentHash?: string (computed on normalised content)
 - metadata: object
  - uid: string (stable identity for pipelines; default pattern uses the task and artifact position to ensure uniqueness: `${taskId}-${taskIndex||'0'}-${role}-${pageId||'na'}-${artifactIndex}`)
    - `taskIndex` is the `TaskDefinition.index` (parsers should set this when populating tasks sequentially).
@@ -90,7 +90,7 @@ Shared methods:
 - constructor({ taskId, role, pageId?, content?, contentHash?, metadata?, uid? })
 - normalizeContent(content): any (type-specific)
 - validate(): { status: ValidationStatus, errors?: string[] }
-- ensureHash(): string (hash of normalized content via deepStableStringify)
+- ensureHash(): string (hash of normalised content via deepStableStringify)
 - getUid(): string
  - getType(): TaskType (derived from the concrete subclass)
 - toJSON() / static fromJSON(json)
@@ -98,22 +98,22 @@ Shared methods:
 Typed subclasses:
  - TextTaskArtifact
   - content: string
-  - normalize: trim, normalize newlines; null if empty
+  - normalise: trim, normalise newlines; null if empty
 - TableTaskArtifact
   - content: Array<Array<string|number|null>> | null; canonical encoding: 'table' (computed by the subclass)
-  - normalize: coerce to array-of-arrays of strings, trim cells, strip empty trailing rows/cols
-  - important: Parsers must NOT pass platform-specific objects (for example, Google Apps Script Table/PageElement objects) into the artifact. Parsers should extract plain JavaScript primitives (Array<Array<string|number|null>>) and hand those to the `TableTaskArtifact` which will perform normalization, escaping, markdown generation and hashing.
+  - normalise: coerce to array-of-arrays of strings, trim cells, strip empty trailing rows/cols
+  - important: Parsers must NOT pass platform-specific objects (for example, Google Apps Script Table/PageElement objects) into the artifact. Parsers should extract plain JavaScript primitives (Array<Array<string|number|null>>) and hand those to the `TableTaskArtifact` which will perform normalisation, escaping, markdown generation and hashing.
 - SpreadsheetTaskArtifact (extends Table)
   - metadata: { range?: string, sheetName?: string, bbox?: { r1,c1,r2,c2 }, ... }
-  - normalization: owns canonicalisation of spreadsheet content (e.g. uppercase outside quotes, preserve quoted strings, trim irrelevant whitespace). Parsers should not implement canonical, persistent normalization.
+  - normalisation: owns canonicalisation of spreadsheet content (e.g. uppercase outside quotes, preserve quoted strings, trim irrelevant whitespace). Parsers should not implement canonical, persistent normalisation.
  - ImageTaskArtifact
   - metadata: { sourceUrl: string } (single slide page URL used to fetch the image)
   - content: base64 | null (artifact stores the base64 binary payload in `content`. Implementations should provide a setter `setContentFromBlob(blob: Blob|Buffer|Uint8Array)` which converts the blob to base64, writes it to `content`, and computes `contentHash` from the base64 payload.)
-  - behavior: provide `setContentFromBlob(blob)` which:
+  - behaviour: provide `setContentFromBlob(blob)` which:
     1. accepts a binary blob (or platform equivalent),
     2. converts it to a base64 string,
     3. sets `this.content` to that base64 value,
-    4. computes and sets `this.contentHash` from the normalized base64 via `ensureHash()` / `deepStableStringify`.
+  4. computes and sets `this.contentHash` from the normalised base64 via `ensureHash()` / `deepStableStringify`.
 
 
 Important: Artifacts do NOT store assessments/feedback. Those live only on StudentSubmissionItem.
@@ -168,8 +168,8 @@ Unified interface:
 
 Notes:
 - Parsers map titles/pages to `taskId` internally and output stable `taskId` keys.
-- Parsers provide minimal normalization; artifacts finalize normalization and hashing.
-  - Important: parsers should extract primitive data from platform APIs and pass only primitives to artifacts. For example, when the parser encounters a Slides table it should read cell text and produce an Array<Array<string|number|null>>; it should not pass the GAS Table object into the artifact.
+- Parsers provide minimal normalisation; artifacts finalise normalisation and hashing.
+   - Important: parsers should extract primitive data from platform APIs and pass only primitives to artifacts. For example, when the parser encounters a Slides table it should read cell text and produce an Array<Array<string|number|null>>; it should not pass the GAS Table object into the artifact.
 
     Example (parser-side):
 
@@ -177,17 +177,17 @@ Notes:
     - const tableArtifact = TableTaskArtifact.fromRawCells(raw);
     - const md = tableArtifact.toMarkdown();
 
-  - For text content specifically: parsers should extract a plain string and avoid performing final normalization.
+  - For text content specifically: parsers should extract a plain string and avoid performing final normalisation.
     The parser's job is to convert the platform object (for example, a Slides Shape) into a primitive value
     (e.g. `const raw = this.extractTextFromShape(shape); // string`). The `TextTaskArtifact` is responsible
-    for canonical text normalization (trim, newline normalization, collapse/expose whitespace rules, and
+    for canonical text normalisation (trim, newline normalisation, collapse/expose whitespace rules, and
     converting empty strings to `null`) and for computing the `contentHash`.
 
     Example (parser → artifact for text):
 
     - const raw = this.extractTextFromShape(gasShape); // string
     - const textArtifact = TextTaskArtifact.fromRawText(raw);
-    - // textArtifact.normalizeContent() and textArtifact.ensureHash() are artifact responsibilities
+  - // textArtifact.normalizeContent() and textArtifact.ensureHash() are artifact responsibilities
 
 
   This keeps artifact classes pure, testable, and free of environment-specific APIs while preserving the parser's responsibility for interacting with platform objects.
@@ -195,8 +195,8 @@ Notes:
   - Important rule: all content hashing is the responsibility of the `TaskArtifact` classes. Parsers,
     `TaskDefinition` constructors, `TaskSheet` helpers, ImageManager fetchers, and other layers must NOT
     compute or persist `contentHash` values themselves. Instead, parsers supply primitive `content` and
-    `metadata` and the artifact must compute its canonical normalized representation and hash (for example
-    via `artifact.normalizeContent(); artifact.ensureHash()` or helper constructors like
+    `metadata` and the artifact must compute its canonical normalised representation and hash (for example
+  via `artifact.normalizeContent(); artifact.ensureHash()` or helper constructors like
     `TextTaskArtifact.fromRawText(...)`). This preserves a single, testable hashing implementation and
     avoids divergence between parser-side heuristics and artifact identity.
 
@@ -205,13 +205,13 @@ Notes:
       an Array<Array<string|null>> of cell contents). Parsers should NOT hand GAS `Sheet`/`Range`/`Table`
       objects or TaskSheet instances into artifact constructors.
 
-      The parser is allowed to perform minimal, local normalisation that simplifies diff-detection
-      (for example trimming irrelevant whitespace when comparing reference ↔ template). However, any
-      canonical formula/cell normalisation that affects persistent identity or hashing (for example the
-      quote-handling and case-normalisation currently implemented in `_normaliseFormulaCase`) must live
+  The parser is allowed to perform minimal, local normalisation that simplifies diff-detection
+  (for example trimming irrelevant whitespace when comparing reference ↔ template). However, any
+  canonical formula/cell normalisation that affects persistent identity or hashing (for example the
+  quote-handling and case-normalisation currently implemented in `_normaliseFormulaCase`) must live
       on the `SpreadsheetTaskArtifact` (or a helper in the artifacts module). That ensures:
 
-      - hashing is stable and testable outside GAS,
+  - hashing is stable and testable outside GAS,
       - parsers focus on mapping positions/metadata (bounding boxes, sheet names, locations), and
       - different parser implementations produce the same canonical artifact representation.
 
@@ -228,7 +228,7 @@ Notes:
 
 ## Assessment engines and routing
 
-To keep artifacts pure (normalization/validation/hashing only) and make assessment strategies pluggable, assessment is routed by task type:
+To keep artifacts pure (normalisation/validation/hashing only) and make assessment strategies pluggable, assessment is routed by task type:
 
 - AssessmentEngineRouter
   - spreadsheet → SheetsAssessorEngine (rule-based, non-LLM)
@@ -237,7 +237,7 @@ To keep artifacts pure (normalization/validation/hashing only) and make assessme
 - SheetsAssessorEngine contract
   - Inputs: the primary reference `SpreadsheetTaskArtifact` from `TaskDefinition` and the student's `SpreadsheetTaskArtifact` (role='submission') from `StudentSubmissionItem`.
   - Uses `taskDefinition.taskMetadata` (e.g., `bbox`, `referenceLocationsMap`, `sheetName`) for positional context.
-  - Compares canonicalized formulas from artifacts; writes assessments and feedback back to the `StudentSubmissionItem` via its API.
+  - Compares canonicalised formulas from artifacts; writes assessments and feedback back to the `StudentSubmissionItem` via its API.
   - Caching is optional; typical usage does not require LLM or cache.
 
 - LLMRequestManager
@@ -279,7 +279,7 @@ SlidesAssignment/SheetsAssignment:
   - Include the related `documentId` (e.g., reference/template doc for definition artifacts; submission doc for student items).
 - fetchImagesAsBlobs(entries, batchSize): Array<{ uid, blob: Blob|Buffer|Uint8Array }>
   - Fetch the raw image binary data using the single URL provided per entry.
-  - Interleave batches by `documentId` (round-robin across documents) to minimize per-document throttling; otherwise keep batching logic simple and close to existing behavior.
+  - Interleave batches by `documentId` (round-robin across documents) to minimise per-document throttling; otherwise keep batching logic simple and close to existing behaviour.
   - The ImageManager should hand each blob to `artifact.setContentFromBlob` to persist base64 and compute hashes.
 - writeBackContent(assignment, results): helper to apply blobs/base64 back to the appropriate artifacts or items (but primary write should happen via the artifact setter).
 - Image hashing: artifacts compute `contentHash` from the base64 payload. Different fetch URLs that resolve to the same binary image will yield identical base64 and therefore identical hashes.
@@ -287,9 +287,9 @@ SlidesAssignment/SheetsAssignment:
 ## Identity and hashing
 
 - TaskDefinition.id is stable and persisted (default hash(taskTitle + '-' + pageId)).
-- Artifacts compute contentHash from normalized content via deepStableStringify.
+- Artifacts compute contentHash from normalised content via deepStableStringify.
 - Image artifacts compute `contentHash` from the base64 image payload. The URL is only used to fetch the image; different URLs that resolve to the same image should result in the same `contentHash` once the binary is converted to base64 and set on the artifact via `setContentFromBlob`.
- - No legacy hash compatibility is required. All hashing is centralized in artifacts over canonical, normalized content.
+ - No legacy hash compatibility is required. All hashing is centralised in artifacts over canonical, normalised content.
 
 ## JSON shapes (examples)
 
@@ -371,7 +371,7 @@ StudentSubmission JSON (simplified):
 
 ## Extending with new task types
 
-1. Add a subclass of BaseTaskArtifact with type-specific normalization/validation.
+1. Add a subclass of BaseTaskArtifact with type-specific normalisation/validation.
 2. Extend ArtifactFactory.create switch.
 3. Ensure parsers can output content for the new type.
 4. Define any type-specific metadata conventions.
@@ -415,7 +415,7 @@ StudentSubmission
 
 1. Build TaskDefinitions; attach reference/template artifacts.
 2. Create StudentSubmission per student; set documentId when available.
-3. Extract submission artifacts via parser; upsert items; artifacts normalize and hash.
+3. Extract submission artifacts via parser; upsert items; artifacts normalise and hash.
 4. Generate LLM requests for items that need reassessment; process responses; write assessments; mark assessed.
 5. Optionally fetch base64 for images for presentation; keep hashes based on URLs.
 
