@@ -16,8 +16,8 @@ class StudentSubmissionItem {
     if (!artifact) throw new Error('StudentSubmissionItem requires artifact');
     this.taskId = taskId;
     this.artifact = artifact;
-    this.assessments = {}; // criterion -> { score, reasoning }
-    this.feedback = {}; // type -> feedback JSON or object
+  this.assessments = {}; // criterion -> { score, reasoning }
+  this.feedback = {}; // type -> feedback JSON or object
     this.id = this._deriveId();
   }
 
