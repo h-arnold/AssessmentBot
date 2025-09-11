@@ -113,3 +113,7 @@ class TaskDefinition {
     return td;
   }
 }
+
+if (typeof module !== 'undefined') {
+  module.exports = { TaskDefinition };
+}

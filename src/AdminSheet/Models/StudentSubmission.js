@@ -197,3 +197,7 @@ class StudentSubmission {
     return sub;
   }
 }
+
+if (typeof module !== 'undefined') {
+  module.exports = { StudentSubmission, StudentSubmissionItem };
+}

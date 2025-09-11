@@ -7,7 +7,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+  "test": "vitest run",
+  "test:watch": "vitest",
     "lint": "eslint --config eslint.config.js --fix src/**/*.js"
   },
   "keywords": [],
@@ -15,7 +16,8 @@
   "license": "ISC",
   "devDependencies": {
     "eslint": "^9.19.0",
-    "eslint-plugin-googleappsscript": "^1.0.5"
+    "eslint-plugin-googleappsscript": "^1.0.5",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "clasp": "^1.0.0"

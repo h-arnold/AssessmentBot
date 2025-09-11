@@ -87,6 +87,14 @@ class TextTaskArtifact extends BaseTaskArtifact {
     const normalised = content.replace(/\r\n?/g, '\n').trim();
     return normalised === '' ? null : normalised;
   }
+  /**
+   * Convenience factory from raw (possibly un-normalised) text.
+   * @param {string} raw
+   * @param {Object} params - Remaining constructor params excluding content.
+   */
+  static fromRawText(raw, params) {
+    return new TextTaskArtifact({ ...params, content: raw });
+  }
 }
 
 class TableTaskArtifact extends BaseTaskArtifact {
@@ -136,6 +144,14 @@ class TableTaskArtifact extends BaseTaskArtifact {
       lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
     }
     return lines.join('\n');
+  }
+  /**
+   * Convenience factory from raw 2D cells array.
+   * @param {Array<Array<any>>} rawCells
+   * @param {Object} params - Remaining constructor params excluding content.
+   */
+  static fromRawCells(rawCells, params) {
+    return new TableTaskArtifact({ ...params, content: rawCells });
   }
 }
 
@@ -224,4 +240,21 @@ class ArtifactFactory {
   static fromJSON(json) {
     return this.create(json);
   }
+  // Convenience helpers mirroring subclass-specific static constructors.
+  static text(params) { return this.create({ ...params, type: 'text' }); }
+  static table(params) { return this.create({ ...params, type: 'table' }); }
+  static spreadsheet(params) { return this.create({ ...params, type: 'spreadsheet' }); }
+  static image(params) { return this.create({ ...params, type: 'image' }); }
+}
+
+// Export for Node/test environment (GAS will ignore module.exports)
+if (typeof module !== 'undefined') {
+  module.exports = {
+    BaseTaskArtifact,
+    TextTaskArtifact,
+    TableTaskArtifact,
+    SpreadsheetTaskArtifact,
+    ImageTaskArtifact,
+    ArtifactFactory
+  };
 }
