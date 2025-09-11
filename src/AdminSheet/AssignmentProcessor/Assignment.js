@@ -175,3 +175,8 @@ class Assignment {
     manager.processStudentResponses(requests, this);
   }
 }
+
+// Export for Node/Vitest environment (ignored in GAS runtime)
+if (typeof module !== 'undefined') {
+  module.exports = Assignment;
+}

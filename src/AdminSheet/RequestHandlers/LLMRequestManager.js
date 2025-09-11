@@ -400,3 +400,8 @@ class LLMRequestManager extends BaseRequestManager {
     }
   }
 }
+
+// Export for Node/Vitest environment
+if (typeof module !== 'undefined') {
+  module.exports = LLMRequestManager;
+}
