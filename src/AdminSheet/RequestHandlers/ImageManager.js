@@ -1,7 +1,13 @@
 class ImageManager extends BaseRequestManager {
   constructor() {
     super();
-    this.apiKey = this.configManager.getApiKey();
+    // In GAS runtime BaseRequestManager should supply configManager.
+    // For test environments where it may be absent, guard access.
+    if (this.configManager && typeof this.configManager.getApiKey === 'function') {
+      this.apiKey = this.configManager.getApiKey();
+    } else {
+      this.apiKey = null; // not required for tested logic
+    }
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -63,10 +69,11 @@ class ImageManager extends BaseRequestManager {
   /**
    * Fetch images as blobs with round-robin ordering by documentId to distribute load.
    * @param {Array<{uid:string,url:string,documentId:string}>} entries
-   * @param {number} maxBatchSize
    * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>}
    */
-  fetchImagesAsBlobs(entries, maxBatchSize = 30) {
+  fetchImagesAsBlobs(entries) {
+    const maxBatchSize = configurationManager.getSlidesFetchBatchSize()
+
     if (!entries || !entries.length) return [];
     // Group by documentId
     const byDoc = entries.reduce((acc, e) => {
@@ -144,4 +151,9 @@ class ImageManager extends BaseRequestManager {
       }
     });
   }
+}
+
+// Export for Node/test environment
+if (typeof module !== 'undefined') {
+  module.exports = ImageManager;
 }
