@@ -1,0 +1,227 @@
+// Artifacts.js
+// Defines BaseTaskArtifact and concrete subclasses plus ArtifactFactory.
+
+class BaseTaskArtifact {
+  /**
+   * @param {Object} p
+   * @param {string} p.taskId
+   * @param {'reference'|'template'|'submission'} p.role
+   * @param {string=} p.pageId
+   * @param {string=} p.documentId
+   * @param {any=} p.content
+   * @param {string=} p.contentHash
+   * @param {Object=} p.metadata
+   * @param {string=} p.uid
+   * @param {number=} p.taskIndex
+   * @param {number=} p.artifactIndex
+   */
+  constructor({ taskId, role, pageId = null, documentId = null, content = null, contentHash = null, metadata = {}, uid = null, taskIndex = null, artifactIndex = 0 }) {
+    if (!taskId) throw new Error('Artifact requires taskId');
+    if (!role) throw new Error('Artifact requires role');
+    this.taskId = taskId;
+    this.role = role; // reference|template|submission
+    this.pageId = pageId;
+    this.documentId = documentId;
+    this.metadata = metadata || {};
+    this.content = this.normalizeContent(content);
+    this.contentHash = contentHash || (this.content != null ? this.ensureHash() : null);
+    this._uid = uid || this._defaultUid(taskIndex, artifactIndex);
+  }
+
+  _defaultUid(taskIndex, artifactIndex) {
+    return `${this.taskId}-${taskIndex != null ? taskIndex : '0'}-${this.role}-${this.pageId || 'na'}-${artifactIndex}`;
+  }
+
+  getUid() { return this._uid; }
+
+  // Subclasses override
+  getType() { return 'base'; }
+
+  normalizeContent(content) { return content; }
+
+  validate() {
+    if (this.content == null || this.content === '' || (Array.isArray(this.content) && !this.content.length)) {
+      return { status: 'empty', errors: ['No content'] };
+    }
+    return { status: 'ok' };
+  }
+
+  ensureHash() {
+    // Use deep stable stringify; implement simple deterministic JSON.
+    const str = this._stableStringify(this.content);
+    this.contentHash = Utils.generateHash(str);
+    return this.contentHash;
+  }
+
+  _stableStringify(obj) {
+    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+    if (Array.isArray(obj)) return '[' + obj.map(i => this._stableStringify(i)).join(',') + ']';
+    const keys = Object.keys(obj).sort();
+    return '{' + keys.map(k => JSON.stringify(k) + ':' + this._stableStringify(obj[k])).join(',') + '}';
+  }
+
+  toJSON() {
+    return {
+      taskId: this.taskId,
+      role: this.role,
+      pageId: this.pageId,
+      documentId: this.documentId,
+      content: this.content,
+      contentHash: this.contentHash,
+      metadata: this.metadata,
+      uid: this._uid,
+      type: this.getType()
+    };
+  }
+
+  static baseFromJSON(json) {
+    return new BaseTaskArtifact(json); // For unknown types
+  }
+}
+
+class TextTaskArtifact extends BaseTaskArtifact {
+  getType() { return 'text'; }
+  normalizeContent(content) {
+    if (content == null) return null;
+    if (typeof content !== 'string') content = String(content);
+    const normalised = content.replace(/\r\n?/g, '\n').trim();
+    return normalised === '' ? null : normalised;
+  }
+}
+
+class TableTaskArtifact extends BaseTaskArtifact {
+  getType() { return 'table'; }
+  normalizeContent(content) {
+    if (content == null) return null;
+    if (!Array.isArray(content)) return null;
+    // Ensure 2D array of primitive (string|number|null)
+    const rows = content.map(row => Array.isArray(row) ? row.map(cell => this._normCell(cell)) : []);
+    return this._trimEmpty(rows);
+  }
+  _normCell(cell) {
+    if (cell == null) return null;
+    if (typeof cell === 'number') return cell;
+    let s = String(cell).trim();
+    return s === '' ? null : s;
+  }
+  _trimEmpty(rows) {
+    // Remove trailing empty rows
+    while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
+    // Remove trailing empty cols
+    if (rows.length) {
+      let colCount = Math.max(...rows.map(r => r.length));
+      for (let c = colCount - 1; c >= 0; c--) {
+        let allEmpty = true;
+        for (let r = 0; r < rows.length; r++) {
+          if (!this._cellEmpty(rows[r][c])) { allEmpty = false; break; }
+        }
+        if (allEmpty) {
+          for (let r = 0; r < rows.length; r++) rows[r].splice(c, 1);
+        }
+      }
+    }
+    return rows;
+  }
+  _rowEmpty(row) { return !row.some(c => !this._cellEmpty(c)); }
+  _cellEmpty(c) { return c == null || c === ''; }
+
+  toMarkdown() {
+    if (!this.content || !this.content.length) return '';
+    const header = this.content[0];
+    const lines = [];
+    lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
+    lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
+    for (let i = 1; i < this.content.length; i++) {
+      const row = this.content[i];
+      lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
+    }
+    return lines.join('\n');
+  }
+}
+
+class SpreadsheetTaskArtifact extends TableTaskArtifact {
+  getType() { return 'spreadsheet'; }
+  normalizeContent(content) {
+    // Reuse table normalisation
+    const norm = super.normalizeContent(content);
+    if (!norm) return norm;
+    // Apply formula canonicalisation to each cell string that starts with '='
+    for (let r = 0; r < norm.length; r++) {
+      for (let c = 0; c < norm[r].length; c++) {
+        const cell = norm[r][c];
+        if (typeof cell === 'string' && cell.startsWith('=')) {
+          norm[r][c] = this._canonicaliseFormula(cell);
+        }
+      }
+    }
+    return norm;
+  }
+  _canonicaliseFormula(f) {
+    // Uppercase function names outside quotes; preserve quoted substrings.
+    // Simple state machine.
+    let result = '';
+    let inQuote = false;
+    for (let i = 0; i < f.length; i++) {
+      const ch = f[i];
+      if (ch === '"') {
+        inQuote = !inQuote; result += ch; continue;
+      }
+      if (!inQuote) {
+        result += ch.toUpperCase();
+      } else {
+        result += ch; // inside quotes leave as-is
+      }
+    }
+    return result;
+  }
+}
+
+class ImageTaskArtifact extends BaseTaskArtifact {
+  getType() { return 'image'; }
+  normalizeContent(content) {
+    // content is base64 string when set; may be null initially
+    if (content == null) return null;
+    if (typeof content !== 'string') return null;
+    const trimmed = content.trim();
+    return trimmed === '' ? null : trimmed;
+  }
+  setContentFromBlob(blob) {
+    // blob expected to be a Google Apps Script Blob or similar providing getBytes()
+    if (!blob) return;
+    try {
+      let bytes;
+      if (blob.getBytes) {
+        bytes = blob.getBytes();
+      } else if (blob instanceof Uint8Array) {
+        bytes = blob;
+      } else if (blob.bytes) {
+        bytes = blob.bytes;
+      }
+      if (!bytes) return;
+      const base64 = Utilities.base64Encode(bytes);
+      this.content = base64;
+      this.ensureHash();
+    } catch (e) {
+      console.error('Failed to set image content from blob', e);
+    }
+  }
+}
+
+class ArtifactFactory {
+  /**
+   * Params: { type, taskId, role, pageId?, documentId?, content?, metadata?, contentHash?, uid?, taskIndex?, artifactIndex? }
+   */
+  static create(params) {
+    const { type } = params;
+    switch (type) {
+      case 'text': return new TextTaskArtifact(params);
+      case 'table': return new TableTaskArtifact(params);
+      case 'spreadsheet': return new SpreadsheetTaskArtifact(params);
+      case 'image': return new ImageTaskArtifact(params);
+      default: return new BaseTaskArtifact(params);
+    }
+  }
+  static fromJSON(json) {
+    return this.create(json);
+  }
+}
