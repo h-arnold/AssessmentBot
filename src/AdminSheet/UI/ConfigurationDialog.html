@@ -264,15 +264,19 @@
         }
       }
 
-      function focusAdvancedTab() {
+      function focusTab(tabId) {
         try {
-          var tabsInstance = M.Tabs.getInstance(document.querySelector('.tabs'));
+          const tabsInstance = M.Tabs.getInstance(document.querySelector('.tabs'));
           if (tabsInstance && typeof tabsInstance.select === 'function') {
-            tabsInstance.select('advancedTab');
+            tabsInstance.select(tabId);
           }
         } catch (e) {
           // ignore
         }
+      }
+
+      function focusAdvancedTab() {
+        focusTab('advancedTab');
       }
 
       function isValidUrl(u) {

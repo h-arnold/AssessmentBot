@@ -154,14 +154,11 @@ class ConfigurationManager {
         this.documentProperties.setProperty(key, value.toString());
         return;
       case ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE:
-        if (!Number.isInteger(value) || value <= 0) {
-          throw new Error("Days Until Auth Revoke must be a positive integer.");
-        }
+  // Frontend enforces a max of 365 days; validate here as well (1-365)
+  this._validateIntegerRange(value, key, 1, 365);
         break;
       case ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE:
-        if (!Number.isInteger(value) || value < 1 || value > 100) {
-          throw new Error("Slides Fetch Batch Size must be an integer between 1 and 100.");
-        }
+  this._validateIntegerRange(value, key, 1, 100);
         break;
       default:
         // No specific validation
@@ -181,6 +178,19 @@ class ConfigurationManager {
       return lowerValue === 'true' || lowerValue === 'false';
     }
     return false;
+  }
+
+  /**
+   * Validate that a value is an integer within the provided inclusive range.
+   * Parses the value to an integer and throws an Error when invalid.
+   * Returns the parsed integer on success.
+   */
+  _validateIntegerRange(value, key, min, max) {
+    const parsed = parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+      throw new Error(`${this.toReadableKey(key)} must be an integer between ${min} and ${max}.`);
+    }
+    return parsed;
   }
 
   isValidApiKey(apiKey) {
