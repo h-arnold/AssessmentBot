@@ -248,7 +248,7 @@ The following test cases avoid direct Google Apps Script API objects. They rely 
 - [x] ImageTaskArtifact: `setContentFromBlob` (simulated Uint8Array) sets base64 and hash; identical byte arrays produce identical `contentHash`; different bytes produce different hash.
 - [x] Artifact UID format: default `uid` matches pattern `<taskId>-<taskIndex>-<role>-<pageId|na>-<artifactIndex>`.
 - [x] StudentSubmission: first `upsertItemFromExtraction` creates item; second call with new content updates hash and `updatedAt` increases; metadata merge does not erase existing keys.
-- [x] StudentSubmissionItem: `addAssessment` stores JSON; `markAssessed` updates `lastAssessedHash`; `getType()` proxies artifact type.
+- [x] StudentSubmissionItem: `addAssessment` stores JSON; `markAssessed` triggers submission `updatedAt` update; `getType()` proxies artifact type.
 - [x] Factory helpers: `ArtifactFactory.text/table/spreadsheet/image` create matching subclass types.
 
 ### Phase 2 – Parser Interface Updates (Interface-Level / Stubs)
@@ -267,7 +267,7 @@ Use lightweight stub for LLMRequestManager that records received payloads.
 - [ ] `generateLLMRequests()` skips spreadsheet artifacts; includes text/table/image; request count matches eligible submission items.
 - [ ] Not-attempted detection: if submission artifact hash === template artifact hash, request excluded.
 - [ ] Result routing: simulate LLM responses keyed by artifact `uid`; correct `StudentSubmissionItem` updated.
-- [ ] `assessResponses()` marks items assessed and sets `lastAssessedHash`.
+- [ ] `assessResponses()` marks items assessed and updates the containing `StudentSubmission.updatedAt` to the current time when any item changes.
 
 ### Phase 5 – Supporting System Updates
 - [ ] ImageManager.collectAllImageArtifacts: returns entries for reference, template, and submission image artifacts with required fields `{ uid, url, documentId, scope, taskId }`.

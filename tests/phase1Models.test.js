@@ -129,8 +129,9 @@ describe('Phase1 Model Requirements', () => {
     expect(item.getType()).toBe('text');
     item.addAssessment('quality', { score: 0.8 });
     expect(item.getAssessment('quality').score).toBe(0.8);
-    item.markAssessed();
-    expect(item.lastAssessedHash).toBe(item.artifact.contentHash);
+  const before = sub.updatedAt;
+  item.markAssessed();
+  expect(sub.updatedAt > before).toBe(true);
   });
 
   it('ArtifactFactory convenience helpers create proper subclasses', () => {

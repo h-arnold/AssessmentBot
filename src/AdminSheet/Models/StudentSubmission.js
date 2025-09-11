@@ -11,7 +11,7 @@ class StudentSubmissionItem {
    * @param {string=} p.pageId
    * @param {BaseTaskArtifact} p.artifact (role='submission')
    */
-  constructor({ assignmentId, studentId, taskId, documentId = null, pageId = null, artifact }) {
+  constructor({ assignmentId, studentId, taskId, documentId = null, pageId = null, artifact, onMutate = null }) {
     if (!assignmentId || !studentId || !taskId) throw new Error('StudentSubmissionItem missing identity fields');
     if (!artifact) throw new Error('StudentSubmissionItem requires artifact');
     this.assignmentId = assignmentId;
@@ -20,10 +20,10 @@ class StudentSubmissionItem {
     this.documentId = documentId;
     this.pageId = pageId;
     this.artifact = artifact;
-    this.assessments = {}; // criterion -> { score, reasoning }
-    this.feedback = {}; // type -> feedback JSON or object
+  this.assessments = {}; // criterion -> { score, reasoning }
+  this.feedback = {}; // type -> feedback JSON or object
     this.id = this._deriveId();
-    this.lastAssessedHash = null; // optional tracking of artifact.contentHash when last assessed
+  this._onMutate = typeof onMutate === 'function' ? onMutate : null;
   }
 
   _deriveId() {
@@ -40,7 +40,7 @@ class StudentSubmissionItem {
       } else if (typeof assessment === 'object') {
         this.assessments[criterion] = assessment; // assume already JSON shape
       }
-      this.lastAssessedHash = this.artifact.contentHash;
+  if (this._onMutate) this._onMutate();
     }
   }
 
@@ -66,7 +66,7 @@ class StudentSubmissionItem {
   }
 
   markAssessed() {
-    this.lastAssessedHash = this.artifact.contentHash;
+  if (this._onMutate) this._onMutate();
   }
 
   getType() { return this.artifact.getType(); }
@@ -80,11 +80,11 @@ class StudentSubmissionItem {
       artifact: this.artifact.toJSON(),
       assessments: this.assessments,
       feedback: this.feedback,
-      lastAssessedHash: this.lastAssessedHash
+      // lastAssessedHash intentionally removed; submission.updatedAt is authoritative
     };
   }
 
-  static fromJSON(json, assignmentId, studentId) {
+  static fromJSON(json, assignmentId, studentId, onMutate = null) {
     const artifact = ArtifactFactory.fromJSON(json.artifact);
     const item = new StudentSubmissionItem({
       assignmentId,
@@ -92,11 +92,12 @@ class StudentSubmissionItem {
       taskId: json.taskId,
       documentId: json.documentId,
       pageId: json.pageId,
-      artifact
+      artifact,
+      onMutate
     });
     item.assessments = json.assessments || {};
     item.feedback = json.feedback || {};
-    item.lastAssessedHash = json.lastAssessedHash || null;
+    // previous lastAssessedHash is ignored in new model
     return item;
   }
 }
@@ -154,7 +155,8 @@ class StudentSubmission {
         taskId,
         documentId: this.documentId,
         pageId: pageId != null ? pageId : taskDef.pageId,
-        artifact
+        artifact,
+        onMutate: () => this.touchUpdated()
       });
       this.items[taskId] = item;
       mutated = true;
@@ -201,8 +203,9 @@ class StudentSubmission {
     sub.updatedAt = json.updatedAt || sub.createdAt;
     if (json.items) {
       for (const [taskId, itemJson] of Object.entries(json.items)) {
-        const item = StudentSubmissionItem.fromJSON(itemJson, json.assignmentId, json.studentId);
-        sub.items[taskId] = item;
+  const item = StudentSubmissionItem.fromJSON(itemJson, json.assignmentId, json.studentId, () => sub.touchUpdated());
+  // ensure onMutate callback is set so item mutations update submission.updatedAt
+  sub.items[taskId] = item;
       }
     }
     return sub;

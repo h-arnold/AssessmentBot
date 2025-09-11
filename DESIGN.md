@@ -351,11 +351,11 @@ StudentSubmission JSON (simplified):
         "metadata": {},
         "uid": "t_abc123-submission-gSlide123-0"
       },
-      "assessments": { "accuracy": { "score": 4, "reasoning": "..." } },
-      "feedback": {},
-      "lastAssessedHash": "...",
-      "createdAt": "...",
-      "updatedAt": "..."
+  "assessments": { "accuracy": { "score": 4, "reasoning": "..." } },
+  "feedback": {},
+  // per-item lastAssessedHash removed; use submission-level `updatedAt` for mutation tracking
+  "createdAt": "...",
+  "updatedAt": "..."
     }
   },
   "createdAt": "...",
