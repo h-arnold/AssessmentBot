@@ -148,21 +148,64 @@ class DriveManager {
    * @returns {string | null} The parent folder ID, or null if none is found.
    */
   static getParentFolderId(fileId) {
-    try {
-      const file = DriveApp.getFileById(fileId);
-      const parentIterator = file.getParents();
+    // Try DriveApp first; if it fails (e.g., Shared Drives quirk) fall back to Advanced Drive API
+    const retries = 3;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const file = DriveApp.getFileById(fileId);
+        const parentIterator = file.getParents();
 
-      if (parentIterator.hasNext()) {
-        const parentFolder = parentIterator.next();
-        console.log(`Parent folder ID for file ${fileId}: ${parentFolder.getId()}`);
-        return parentFolder.getId();
-      } else {
-        console.log(`File ${fileId} has no parent folder.`);
-        return null;
+        if (parentIterator.hasNext()) {
+          const parentFolder = parentIterator.next();
+          const parentId = parentFolder.getId();
+          console.log(`Parent folder ID for file ${fileId}: ${parentId}`);
+          return parentId;
+        }
+        // No parents via DriveApp (can happen for orphaned files or Shared Drive root)
+        console.log(`No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`);
+        break; // proceed to fallback
+      } catch (error) {
+        const waitMs = 500 * Math.pow(2, attempt);
+        console.warn(`DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''}`);
+        if (attempt < retries - 1) {
+          Utilities.sleep(waitMs);
+          continue;
+        }
       }
-    } catch (error) {
-      console.error(`Failed to retrieve parent folder for file ${fileId}: ${error.message}`);
-      throw error;
+    }
+
+    // Fallback: Advanced Drive API (supportsAllDrives) to handle Shared Drives
+    try {
+      const fields = 'parents,driveId';
+      const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
+
+      if (res && res.parents && res.parents.length > 0) {
+        const parentId = res.parents[0];
+        console.log(`Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`);
+        return parentId;
+      }
+
+      // If on a Shared Drive root, use the driveId as the parent folder id
+      if (res && res.driveId) {
+        console.log(`File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`);
+        return res.driveId;
+      }
+
+      // Last resort: use user's My Drive root
+      const rootId = DriveApp.getRootFolder().getId();
+      console.log(`Falling back to My Drive root as parent for ${fileId}: ${rootId}`);
+      return rootId;
+    } catch (fallbackError) {
+      console.error(`Advanced Drive API fallback failed for ${fileId}: ${fallbackError.message}`);
+      // As a final fallback, try My Drive root to avoid hard failure
+      try {
+        const rootId = DriveApp.getRootFolder().getId();
+        console.log(`Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`);
+        return rootId;
+      } catch (rootErr) {
+        console.error(`Failed to obtain My Drive root folder ID: ${rootErr.message}`);
+        throw fallbackError; // bubble original meaningful error
+      }
     }
   }
 

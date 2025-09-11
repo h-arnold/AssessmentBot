@@ -29,7 +29,8 @@ class SlidesAssignment extends Assignment {
     // 1) collect all the URLs
     const slideUrls = imageManager.collectAllSlideUrls(this);
     // 2) fetch them as base64 in batches of 30
-    const base64Images = imageManager.fetchImagesAsBase64(slideUrls, 30);
+    const batchSize = configurationManager.getSlidesFetchBatchSize();
+    const base64Images = imageManager.fetchImagesAsBase64(slideUrls, batchSize);
 
     // 3) re‐assign back into your tasks & student responses
     base64Images.forEach(({ uid, base64 }) => {

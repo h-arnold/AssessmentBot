@@ -11,7 +11,7 @@
  * 
  * @example
  * const config = new ConfigurationManager();
- * const batchSize = config.getBatchSize();
+ * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
 class ConfigurationManager {
@@ -34,7 +34,8 @@ class ConfigurationManager {
 
   static get CONFIG_KEYS() {
     return {
-      BATCH_SIZE: 'batchSize',
+  BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
+      SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
       API_KEY: 'apiKey',
       BACKEND_URL: 'backendUrl',
       ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
@@ -56,7 +57,7 @@ class ConfigurationManager {
    * deserialization is successful, it logs a success message. If the 'propertiesStore' sheet is not found, it
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
-  maybeDeserializeProperties(){
+  maybeDeserializeProperties() {
     let hasScriptProperties = null;
 
     if (this.getIsAdminSheet()) {
@@ -99,8 +100,8 @@ class ConfigurationManager {
 
     // Properties that should be stored as document properties
     if (key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
-        key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
-        key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) {
+      key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
+      key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED) {
       return this.documentProperties.getProperty(key) || false;
     }
     return this.configCache[key] || '';
@@ -108,10 +109,8 @@ class ConfigurationManager {
 
   setProperty(key, value) {
     switch (key) {
-      case ConfigurationManager.CONFIG_KEYS.BATCH_SIZE:
-        if (!Number.isInteger(value) || value <= 0) {
-          throw new Error("Batch Size must be a positive integer.");
-        }
+      case ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE:
+        this._validateIntegerRange(value, key, 1, 500);
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
         if (typeof value !== 'string' || !this.isValidApiKey(value)) {
@@ -155,9 +154,11 @@ class ConfigurationManager {
         this.documentProperties.setProperty(key, value.toString());
         return;
       case ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE:
-        if (!Number.isInteger(value) || value <= 0) {
-          throw new Error("Days Until Auth Revoke must be a positive integer.");
-        }
+  // Frontend enforces a max of 365 days; validate here as well (1-365)
+  this._validateIntegerRange(value, key, 1, 365);
+        break;
+      case ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE:
+  this._validateIntegerRange(value, key, 1, 100);
         break;
       default:
         // No specific validation
@@ -179,11 +180,24 @@ class ConfigurationManager {
     return false;
   }
 
+  /**
+   * Validate that a value is an integer within the provided inclusive range.
+   * Parses the value to an integer and throws an Error when invalid.
+   * Returns the parsed integer on success.
+   */
+  _validateIntegerRange(value, key, min, max) {
+    const parsed = parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+      throw new Error(`${this.toReadableKey(key)} must be an integer between ${min} and ${max}.`);
+    }
+    return parsed;
+  }
+
   isValidApiKey(apiKey) {
-  // Accept API keys that are alphanumeric with optional single hyphens between segments.
-  // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-  const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-  return apiKeyPattern.test(apiKey.trim());
+    // Accept API keys that are alphanumeric with optional single hyphens between segments.
+    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
+    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+    return apiKeyPattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
@@ -214,9 +228,28 @@ class ConfigurationManager {
       .replace(/^./, str => str.toUpperCase());
   }
 
-  getBatchSize() {
-    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE), 10);
-    return isNaN(value) ? 20 : value;
+  getBackendAssessorBatchSize() {
+    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE), 10);
+    return isNaN(value) ? ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE : value;
+  }
+
+  static get DEFAULTS() {
+    return {
+      BACKEND_ASSESSOR_BATCH_SIZE: 120,
+      SLIDES_FETCH_BATCH_SIZE: 30,
+      DAYS_UNTIL_AUTH_REVOKE: 60,
+      UPDATE_DETAILS_URL: 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json',
+      UPDATE_STAGE: 0,
+    };
+  }
+
+  getSlidesFetchBatchSize() {
+    const raw = this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE);
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 100) {
+      return parsed;
+    }
+    return ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE;
   }
 
   getApiKey() {
@@ -235,41 +268,26 @@ class ConfigurationManager {
 
   getDaysUntilAuthRevoke() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE), 10);
-    return isNaN(value) ? 60 : value;
+  return isNaN(value) ? ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE : value;
   }
 
 
 
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
-    if (!value) {
-      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json';
-    } else {
-      return value;
-    }
+  return value || ConfigurationManager.DEFAULTS.UPDATE_DETAILS_URL;
   }
 
   getUpdateStage() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE), 10);
-    if (isNaN(value)) {
-      return 0;
-    } else {
-      return value;
-    }
+  return isNaN(value) ? ConfigurationManager.DEFAULTS.UPDATE_STAGE : value;
   }
 
 
   getAssessmentRecordTemplateId() {
-    const assessmentRecordTempalateId = this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
-
-    // If no assessment record template Id has been set, pull the version that matches the version number from github.
-    if (!assessmentRecordTempalateId) {
-      const initManager = new BaseUpdateAndInit();
-      return initManager.getLatestAssessmentRecordTemplateId();
-    }
-    else {
-      return assessmentRecordTempalateId;
-    }
+  // Simply return the stored property (empty string if unset). Fallback logic is now handled
+  // by BaseUpdateAndInit to avoid recursive instantiation between the two classes.
+  return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
   }
 
   getAssessmentRecordDestinationFolder() {
@@ -295,8 +313,12 @@ class ConfigurationManager {
     return value.toString().toLowerCase() === 'true';
   }
 
-  setBatchSize(batchSize) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.BATCH_SIZE, batchSize);
+  setBackendAssessorBatchSize(batchSize) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
+  }
+
+  setSlidesFetchBatchSize(batchSize) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE, batchSize);
   }
 
   setApiKey(apiKey) {

@@ -19,7 +19,7 @@ function getConfiguration() {
     }
 
     const config = {
-        batchSize: safeGet(() => configurationManager.getBatchSize(), 'batchSize', 30),
+    backendAssessorBatchSize: safeGet(() => configurationManager.getBackendAssessorBatchSize(), 'backendAssessorBatchSize', 30),
         apiKey: safeGet(() => configurationManager.getApiKey(), 'apiKey', ''),
         backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
         assessmentRecordTemplateId: safeGet(() => configurationManager.getAssessmentRecordTemplateId(), 'assessmentRecordTemplateId', ''),
@@ -30,6 +30,7 @@ function getConfiguration() {
         revokeAuthTriggerSet: safeGet(() => configurationManager.getRevokeAuthTriggerSet(), 'revokeAuthTriggerSet', false),
         daysUntilAuthRevoke: safeGet(() => configurationManager.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
         scriptAuthorised: safeGet(() => configurationManager.getScriptAuthorised(), 'scriptAuthorised', false),
+    slidesFetchBatchSize: safeGet(() => configurationManager.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
     };
 
     if (errors.length > 0) {
@@ -70,8 +71,11 @@ function saveConfiguration(config) {
     }
 
     // Delegate configuration saving to ConfigurationManager using safeSet
-    if (config.batchSize !== undefined) {
-        safeSet(() => configurationManager.setBatchSize(config.batchSize), 'batchSize');
+    if (config.backendAssessorBatchSize !== undefined) {
+        safeSet(() => configurationManager.setBackendAssessorBatchSize(config.backendAssessorBatchSize), 'backendAssessorBatchSize');
+    }
+    if (config.slidesFetchBatchSize !== undefined) {
+        safeSet(() => configurationManager.setSlidesFetchBatchSize(config.slidesFetchBatchSize), 'slidesFetchBatchSize');
     }
     if (config.apiKey !== undefined) {
         safeSet(() => configurationManager.setApiKey(config.apiKey), 'apiKey');
