@@ -102,6 +102,7 @@ Typed subclasses:
 - TableTaskArtifact
   - content: Array<Array<string|number|null>> | null; canonical encoding: 'table' (computed by the subclass)
   - normalize: coerce to array-of-arrays of strings, trim cells, strip empty trailing rows/cols
+  - important: Parsers must NOT pass platform-specific objects (for example, Google Apps Script Table/PageElement objects) into the artifact. Parsers should extract plain JavaScript primitives (Array<Array<string|number|null>>) and hand those to the `TableTaskArtifact` which will perform normalization, escaping, markdown generation and hashing.
 - SpreadsheetTaskArtifact (extends Table)
   - metadata: { range?: string, sheetName?: string, bbox?: { r1,c1,r2,c2 }, ... }
  - ImageTaskArtifact
@@ -167,6 +168,28 @@ Unified interface:
 Notes:
 - Parsers map titles/pages to `taskId` internally and output stable `taskId` keys.
 - Parsers provide minimal normalization; artifacts finalize normalization and hashing.
+  - Important: parsers should extract primitive data from platform APIs and pass only primitives to artifacts. For example, when the parser encounters a Slides table it should read cell text and produce an Array<Array<string|number|null>>; it should not pass the GAS Table object into the artifact.
+
+    Example (parser-side):
+
+    - const raw = this.extractTableAsCells(gasTable); // Array<Array<string|number|null>>
+    - const tableArtifact = TableTaskArtifact.fromRawCells(raw);
+    - const md = tableArtifact.toMarkdown();
+
+  - For text content specifically: parsers should extract a plain string and avoid performing final normalization.
+    The parser's job is to convert the platform object (for example, a Slides Shape) into a primitive value
+    (e.g. `const raw = this.extractTextFromShape(shape); // string`). The `TextTaskArtifact` is responsible
+    for canonical text normalization (trim, newline normalization, collapse/expose whitespace rules, and
+    converting empty strings to `null`) and for computing the `contentHash`.
+
+    Example (parser → artifact for text):
+
+    - const raw = this.extractTextFromShape(gasShape); // string
+    - const textArtifact = TextTaskArtifact.fromRawText(raw);
+    - // textArtifact.normalizeContent() and textArtifact.ensureHash() are artifact responsibilities
+
+
+  This keeps artifact classes pure, testable, and free of environment-specific APIs while preserving the parser's responsibility for interacting with platform objects.
 
 ## Assignment layer integration
 
