@@ -110,10 +110,7 @@ class ConfigurationManager {
   setProperty(key, value) {
     switch (key) {
       case ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE:
-        // Backend assessor batch size must be an integer between 1 and 500.
-        if (!Number.isInteger(value) || value < 1 || value > 500) {
-          throw new Error("Backend Assessor Batch Size must be an integer between 1 and 500.");
-        }
+        this._validateIntegerRange(value, key, 1, 500);
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
         if (typeof value !== 'string' || !this.isValidApiKey(value)) {
@@ -223,13 +220,26 @@ class ConfigurationManager {
 
   getBackendAssessorBatchSize() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE), 10);
-    return isNaN(value) ? 20 : value;
+    return isNaN(value) ? ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE : value;
+  }
+
+  static get DEFAULTS() {
+    return {
+      BACKEND_ASSESSOR_BATCH_SIZE: 120,
+      SLIDES_FETCH_BATCH_SIZE: 30,
+      DAYS_UNTIL_AUTH_REVOKE: 60,
+      UPDATE_DETAILS_URL: 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json',
+      UPDATE_STAGE: 0,
+    };
   }
 
   getSlidesFetchBatchSize() {
-    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE), 10);
-    // Default to 20 if not set or invalid
-    return isNaN(value) ? 20 : value;
+    const raw = this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE);
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 100) {
+      return parsed;
+    }
+    return ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE;
   }
 
   getApiKey() {
@@ -248,27 +258,19 @@ class ConfigurationManager {
 
   getDaysUntilAuthRevoke() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE), 10);
-    return isNaN(value) ? 60 : value;
+  return isNaN(value) ? ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE : value;
   }
 
 
 
   getUpdateDetailsUrl() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL)
-    if (!value) {
-      return 'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json';
-    } else {
-      return value;
-    }
+  return value || ConfigurationManager.DEFAULTS.UPDATE_DETAILS_URL;
   }
 
   getUpdateStage() {
     const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE), 10);
-    if (isNaN(value)) {
-      return 0;
-    } else {
-      return value;
-    }
+  return isNaN(value) ? ConfigurationManager.DEFAULTS.UPDATE_STAGE : value;
   }
 
 
