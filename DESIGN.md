@@ -105,6 +105,7 @@ Typed subclasses:
   - important: Parsers must NOT pass platform-specific objects (for example, Google Apps Script Table/PageElement objects) into the artifact. Parsers should extract plain JavaScript primitives (Array<Array<string|number|null>>) and hand those to the `TableTaskArtifact` which will perform normalization, escaping, markdown generation and hashing.
 - SpreadsheetTaskArtifact (extends Table)
   - metadata: { range?: string, sheetName?: string, bbox?: { r1,c1,r2,c2 }, ... }
+  - normalization: owns canonicalisation of spreadsheet content (e.g. uppercase outside quotes, preserve quoted strings, trim irrelevant whitespace). Parsers should not implement canonical, persistent normalization.
  - ImageTaskArtifact
   - metadata: { sourceUrl: string } (single slide page URL used to fetch the image)
   - content: base64 | null (artifact stores the base64 binary payload in `content`. Implementations should provide a setter `setContentFromBlob(blob: Blob|Buffer|Uint8Array)` which converts the blob to base64, writes it to `content`, and computes `contentHash` from the base64 payload.)
@@ -225,6 +226,24 @@ Notes:
       metadata since these are document-structure concerns. Artifacts consume the primitive cell/formula
       data and own canonicalisation, markdown/serialization and content hashing.
 
+## Assessment engines and routing
+
+To keep artifacts pure (normalization/validation/hashing only) and make assessment strategies pluggable, assessment is routed by task type:
+
+- AssessmentEngineRouter
+  - spreadsheet → SheetsAssessorEngine (rule-based, non-LLM)
+  - text | table | image → LLMRequestManager (LLM-based)
+
+- SheetsAssessorEngine contract
+  - Inputs: the primary reference `SpreadsheetTaskArtifact` from `TaskDefinition` and the student's `SpreadsheetTaskArtifact` (role='submission') from `StudentSubmissionItem`.
+  - Uses `taskDefinition.taskMetadata` (e.g., `bbox`, `referenceLocationsMap`, `sheetName`) for positional context.
+  - Compares canonicalized formulas from artifacts; writes assessments and feedback back to the `StudentSubmissionItem` via its API.
+  - Caching is optional; typical usage does not require LLM or cache.
+
+- LLMRequestManager
+  - Continues to handle non-spreadsheet tasks. Request generation and processing remain as specified below.
+  - Implementations should skip spreadsheet items when building LLM requests.
+
 ## Assignment layer integration
 
 Assignment (base):
@@ -249,6 +268,7 @@ SlidesAssignment/SheetsAssignment:
     - Collect reference/template artifacts (primary) and submission artifact
     - Include task context (taskNotes, pageId, taskId) and student/assignment info
     - Produce minimal, typed payload
+  - Not-attempted detection for non-spreadsheet tasks: if the submission artifact's `contentHash` equals the template artifact's `contentHash`, mark as not attempted and skip LLM.
 - processStudentResponses(requests, assignment):
   - Handle batching/limits; write assessments to items; call markAssessed()
 
@@ -269,6 +289,7 @@ SlidesAssignment/SheetsAssignment:
 - TaskDefinition.id is stable and persisted (default hash(taskTitle + '-' + pageId)).
 - Artifacts compute contentHash from normalized content via deepStableStringify.
 - Image artifacts compute `contentHash` from the base64 image payload. The URL is only used to fetch the image; different URLs that resolve to the same image should result in the same `contentHash` once the binary is converted to base64 and set on the artifact via `setContentFromBlob`.
+ - No legacy hash compatibility is required. All hashing is centralized in artifacts over canonical, normalized content.
 
 ## JSON shapes (examples)
 
