@@ -141,8 +141,9 @@ class AssignmentController {
     assignment.assessResponses();
     this.progressTracker.updateProgress("Responses assessed.", false);
 
-    const feedback = new SheetsFeedback(assignment.studentTasks)
-    feedback.applyFeedback();
+  // Use new StudentSubmission model (assignment.submissions). Legacy studentTasks removed.
+  const feedback = new SheetsFeedback(assignment.submissions);
+  feedback.applyFeedback();
 
 
     return assignment;

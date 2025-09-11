@@ -1,6 +1,9 @@
 /**
  * StudentTask Class
  *
+ * @deprecated Legacy StudentTask model. Replaced by StudentSubmission + StudentSubmissionItem.
+ * Maintained temporarily for migration (Phase 6). Will be removed in Phase 6.3.
+ *
  * Represents a student's submission for an assignment, containing responses to each task.
  */
 class StudentTask {
@@ -11,6 +14,10 @@ class StudentTask {
    * @param {string} documentId - The ID of the student's submission document.
    */
   constructor(student, assignmentId, documentId) {
+    if (!StudentTask._deprecationWarned) {
+      console.warn('[DEPRECATION] StudentTask class is deprecated. Use StudentSubmission instead.');
+      StudentTask._deprecationWarned = true;
+    }
     this.student = student; // Student: Associated student
     this.assignmentId = assignmentId; // string: ID of the assignment
     this.documentId = documentId; // string: Document ID of the student's submission

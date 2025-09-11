@@ -1,4 +1,9 @@
 //Task.gs
+/**
+ * @deprecated Legacy Task model. Replaced by TaskDefinition + TaskArtifact hierarchy.
+ * Retained temporarily for backward compatibility during refactor Phase 6.
+ * Will be removed in Phase 6.3 cleanup once all references are migrated.
+ */
 
 class Task {
     /**
@@ -26,6 +31,10 @@ class Task {
         templateContentHash = null,
         taskMetadata = null
     ) {
+        if (!Task._deprecationWarned) {
+            console.warn('[DEPRECATION] Task class is deprecated. Use TaskDefinition and artifacts instead.');
+            Task._deprecationWarned = true;
+        }
         this.taskTitle = taskTitle;          // string
         this.taskType = taskType;            // "Text", "Table", "Image", or "Spreadsheet"
         this.pageId = pageId;                // string - slide ID or spreadsheet tab ID

@@ -168,16 +168,16 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
 ## Phase 6: Final Integration and Cleanup
 
 ### 6.1 Update Remaining Dependencies
-  - [ ] Update `src/AdminSheet/y_controllers/AssignmentController.js`
-  - [ ] Use assignment.submissions instead of studentTasks
-  - [ ] Update SheetsFeedback construction
-  - [ ] Ensure compatibility with new model
+  - [x] Update `src/AdminSheet/y_controllers/AssignmentController.js`
+  - [x] Use assignment.submissions instead of studentTasks
+  - [x] Update SheetsFeedback construction
+  - [ ] Ensure compatibility with new model (final pass after tests)
   - [ ] Update any remaining classes that reference Task/StudentTask
   - [ ] Verify CacheManager works with new artifact hashes
 
 ### 6.3 Remove Legacy Models
-  - [ ] Deprecate `src/AdminSheet/Models/Task.js`
-  - [ ] Deprecate `src/AdminSheet/Models/StudentTask.js`
+  - [x] Deprecate `src/AdminSheet/Models/Task.js`
+  - [x] Deprecate `src/AdminSheet/Models/StudentTask.js`
   - [ ] Remove legacy adapters after verification
   - [ ] Clean up any remaining legacy references
 
