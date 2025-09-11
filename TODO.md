@@ -67,31 +67,31 @@ This implementation plan follows the specifications in `DESIGN.md` and addresses
   - [x] Update method signatures to work with primitives only
 
 ### 2.2 Update SlidesParser
-- [ ] Update `src/AdminSheet/DocumentParsers/SlidesParser.js`
-  - [ ] Implement extractTaskDefinitions() method
-    - [ ] Walk reference and template documents
-    - [ ] Align by title/page and create TaskDefinition instances
-    - [ ] Add reference and template artifacts appropriately
-    - [ ] Set TaskDefinition.id and index for document order
-    - [ ] Handle image metadata.sourceUrl (no base64 at parse time)
-  - [ ] Implement extractSubmissionArtifacts() method
-    - [ ] Extract student content as primitives
-    - [ ] Return array of {taskId, pageId, content, metadata} objects
-    - [ ] Remove contentHash computation from parser
-  - [ ] Remove direct Task instantiation and contentHash computation
+- [x] Update `src/AdminSheet/DocumentParsers/SlidesParser.js`
+  - [x] Implement extractTaskDefinitions() method
+    - [x] Walk reference and template documents
+    - [x] Align by title/page and create TaskDefinition instances
+    - [x] Add reference and template artifacts appropriately
+    - [x] Set TaskDefinition.id and index for document order
+    - [x] Handle image metadata.sourceUrl (no base64 at parse time)
+  - [x] Implement extractSubmissionArtifacts() method
+    - [x] Extract student content as primitives
+    - [x] Return array of {taskId, pageId, content, metadata} objects
+    - [x] Remove contentHash computation from parser
+  - [x] Remove direct Task instantiation and contentHash computation
 
 ### 2.3 Update SheetsParser
-- [ ] Update `src/AdminSheet/DocumentParsers/SheetsParser.js`
-  - [ ] Implement extractTaskDefinitions() method
-    - [ ] Create TaskDefinition per sheet with SpreadsheetTaskArtifacts
-    - [ ] Move boundingBox and referenceLocationsMap to TaskDefinition.taskMetadata
-    - [ ] Handle reference and template artifacts
-  - [ ] Implement extractSubmissionArtifacts() method
-    - [ ] Use bbox/referenceLocationsMap from TaskDefinition.taskMetadata
-    - [ ] Extract student formulas from specific locations only
-    - [ ] Return primitive formula arrays with location metadata
-  - [ ] Move formula canonicalisation to SpreadsheetTaskArtifact
-  - [ ] Update extractStudentTasks() to use new model
+- [x] Update `src/AdminSheet/DocumentParsers/SheetsParser.js`
+  - [x] Implement extractTaskDefinitions() method
+    - [x] Create TaskDefinition per sheet with SpreadsheetTaskArtifacts
+    - [x] Move boundingBox and referenceLocationsMap to TaskDefinition.taskMetadata
+    - [x] Handle reference and template artifacts
+  - [x] Implement extractSubmissionArtifacts() method
+    - [x] Use bbox/referenceLocationsMap from TaskDefinition.taskMetadata
+    - [x] Extract student formulas from specific locations only
+    - [x] Return primitive formula arrays with location metadata
+  - [x] Move formula canonicalisation to SpreadsheetTaskArtifact
+  - [x] Update extractStudentTasks() to use new model (removed legacy method)
 
 ## Phase 3: Assignment Layer Updates
 
