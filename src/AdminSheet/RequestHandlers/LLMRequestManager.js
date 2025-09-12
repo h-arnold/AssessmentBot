@@ -54,7 +54,7 @@ class LLMRequestManager extends BaseRequestManager {
     // Build uid -> { submission, item, taskDef } map for response routing
     this.uidIndex = {}; // reset per generation
     const baseUrl = this.configManager.getBackendUrl();
-    const apiKey  = this.configManager.getApiKey();
+    const apiKey = this.configManager.getApiKey();
 
     assignment.submissions.forEach(submission => {
       Object.values(submission.items).forEach(item => {
@@ -63,29 +63,29 @@ class LLMRequestManager extends BaseRequestManager {
           this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
           return;
         }
-  const type = item.getType();
-  // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
-  if (type === 'SPREADSHEET') return;
-        const ref = taskDef.getPrimaryReference();
-        const tpl = taskDef.getPrimaryTemplate();
-        if (!ref || !tpl) {
+        const type = item.getType();
+        // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
+        if (type === 'SPREADSHEET') return;
+        const referenceTask = taskDef.getPrimaryReference();
+        const templateTask = taskDef.getPrimaryTemplate();
+        if (!referenceTask || !templateTask) {
           this.progressTracker.logError('Missing reference/template artifacts for taskId ' + item.taskId);
           return;
         }
         const studentArtifact = item.artifact;
 
         // Not attempted detection: submission hash equals template hash
-        if (studentArtifact.contentHash && tpl.contentHash && studentArtifact.contentHash === tpl.contentHash) {
+        if (studentArtifact.contentHash === templateTask.contentHash) {
           const notAttempted = this.createNotAttemptedAssessment();
           this._assignAssessmentArtifacts(item, notAttempted);
           return;
         }
 
         // Cache lookup using reference & student hashes
-        const refHash = ref.contentHash;
-        const respHash = studentArtifact.contentHash;
-        if (refHash && respHash) {
-          const cached = this.cacheManager.getCachedAssessment(refHash, respHash);
+        const referenceTaskHash = referenceTask.contentHash;
+        const studentResponseHash = studentArtifact.contentHash;
+        if (referenceTaskHash && studentResponseHash) {
+          const cached = this.cacheManager.getCachedAssessment(referenceTaskHash, studentResponseHash);
           if (cached) {
             this._assignAssessmentArtifacts(item, cached);
             return;
@@ -96,18 +96,18 @@ class LLMRequestManager extends BaseRequestManager {
         this.uidIndex[uid] = { submission, item, taskDef };
         const payload = {
           taskType: type,
-          reference: ref.content,
-          template: tpl.content,
+          reference: referenceTask.content,
+          template: templateTask.content,
           studentResponse: studentArtifact.content
         };
         requests.push({
           uid,
           url: `${baseUrl}/v1/assessor`,
-            method: 'post',
-            contentType: 'application/json',
-            payload: JSON.stringify(payload),
-            headers: { Authorization: `Bearer ${apiKey}` },
-            muteHttpExceptions: true
+          method: 'post',
+          contentType: 'application/json',
+          payload: JSON.stringify(payload),
+          headers: { Authorization: `Bearer ${apiKey}` },
+          muteHttpExceptions: true
         });
       });
     });
@@ -125,7 +125,7 @@ class LLMRequestManager extends BaseRequestManager {
    */
   processResponses(responses, requests, assignment) {
 
-    this.progressTracker.updateProgress(`Double-checking all assessments.`,true);
+    this.progressTracker.updateProgress(`Double-checking all assessments.`, true);
 
     responses.forEach((response, index) => {
       this._processSingleResponse(response, requests[index], assignment);
@@ -139,52 +139,40 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance.
    */
   handleValidationFailure(uid, request, assignment) {
-    // Abort flag prevents further processing if critical backend errors have occurred
-
-    if (!this.retryAttempts[uid]) {
-      this.retryAttempts[uid] = 0;
+    if (!this.retryAttempts[uid]) this.retryAttempts[uid] = 0;
+    if (this.retryAttempts[uid] >= this.maxValidationRetries) {
+      this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
+      Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+      return;
     }
-
-    if (this.retryAttempts[uid] < this.maxValidationRetries) {
-      this.retryAttempts[uid]++;
-      this.progressTracker.logError('Validation failed for UID: ' + uid + '. Retrying attempt ' + this.retryAttempts[uid] + ' of ' + this.maxValidationRetries + '.');
-
-      const retryResponse = this.sendRequestWithRetries(request, 3);
-
-
-      if (retryResponse && (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)) {
-        try {
-          const responseData = JSON.parse(retryResponse.getContentText());
-          const assessmentDataRaw = JSON.parse(responseData.outputs[0].outputs[0].messages[0].message);
-          const assessmentData = Utils.normaliseKeysToLowerCase(assessmentDataRaw);
-
-          if (this.validateAssessmentData(assessmentData)) {
-            const assessment = this.createAssessmentFromData(assessmentData);
-            this.assignAssessmentToStudentTask(uid, assessment, assignment);
-            const studentTask = this.findStudentTaskByUid(uid, assignment);
-            if (studentTask) {
-              const taskKey = this.findTaskKeyByUid(uid, studentTask);
-              const task = assignment.tasks[taskKey];
-              if (task) {
-                const studentResponse = studentTask.responses[taskKey].response;
-                this.cacheManager.setCachedAssessment(task.taskReference, studentResponse, assessmentData);
-              }
-            }
-            this.retryAttempts[uid] = 0; // Reset after successful retry
-          } else {
-            this.progressTracker.logError('Invalid assessment data for UID: ' + uid + '. Assessment data object: ' + JSON.stringify(assessmentData));
-            this.handleValidationFailure(uid, request, assignment);
+    this.retryAttempts[uid]++;
+    this.progressTracker.logError('Validation failed for UID: ' + uid + '. Retrying attempt ' + this.retryAttempts[uid] + ' of ' + this.maxValidationRetries + '.');
+    const retryResponse = this.sendRequestWithRetries(request, 3);
+    if (retryResponse && (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)) {
+      try {
+        const assessmentData = this._extractAssessmentData(retryResponse);
+        if (this.validateAssessmentData(assessmentData)) {
+          // Assign
+          this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData), assignment);
+          // Cache via uidIndex mapping
+          if (this.uidIndex && this.uidIndex[uid]) {
+            const { item, taskDef } = this.uidIndex[uid];
+            const ref = taskDef.getPrimaryReference();
+            const refHash = ref && ref.contentHash;
+            const respHash = item.artifact && item.artifact.contentHash;
+            if (refHash && respHash) this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
           }
-        } catch (e) {
-          this.progressTracker.logError('Error parsing retry response for UID: ' + uid + ' - ' + e.message, e);
+          this.retryAttempts[uid] = 0; // success reset
+        } else {
+          this.progressTracker.logError('Invalid assessment data for UID: ' + uid + '. Assessment data object: ' + JSON.stringify(assessmentData));
           this.handleValidationFailure(uid, request, assignment);
         }
-      } else {
-        this.progressTracker.logError('Retry failed for UID: ' + uid);
-        Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+      } catch (e) {
+        this.progressTracker.logError('Error parsing retry response for UID: ' + uid + ' - ' + e.message, e);
+        this.handleValidationFailure(uid, request, assignment);
       }
     } else {
-      this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
+      this.progressTracker.logError('Retry failed for UID: ' + uid);
       Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
     }
   }
@@ -215,7 +203,7 @@ class LLMRequestManager extends BaseRequestManager {
       console.log("No requests to send.");
       return;
     }
-  console.log(`Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`)
+    console.log(`Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`)
 
     // Use BaseRequestManager's sendRequestsInBatches method
     const responses = this.sendRequestsInBatches(requests);
@@ -239,19 +227,18 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Assigns the assessment to the corresponding StudentTask based on UID.
-   * @param {string} uid - The unique identifier of the response.
-   * @param {Object} assessmentData - The assessment data to assign.
-   * @param {Assignment} assignment - The Assignment instance.
+   * Assign assessments to the mapped StudentSubmissionItem via uidIndex.
+   * @param {string} uid
+   * @param {Object} assessmentData (criterion -> Assessment instance)
+   * @param {Assignment} assignment (unused but kept for signature compatibility)
    */
-  assignAssessmentToStudentTask(uid, assessmentData, assignment) {
-    // Legacy method retained for backward compatibility; delegate to uidIndex if present
+  assignAssessmentToStudentTask(uid, assessmentData, assignment) { // name retained to minimise external ripple
     if (this.uidIndex && this.uidIndex[uid]) {
       const { item } = this.uidIndex[uid];
       this._assignAssessmentArtifacts(item, assessmentData);
-      return;
+    } else {
+      console.warn(`No matching submission item found for UID: ${uid}`);
     }
-    console.warn(`No matching submission item found for UID: ${uid}`);
   }
 
   _assignAssessmentArtifacts(item, assessmentData) {
@@ -260,28 +247,7 @@ class LLMRequestManager extends BaseRequestManager {
     }
   }
 
-  /**
-   * Finds the StudentTask instance by UID.
-   * @param {string} uid - The unique identifier of the response.
-   * @param {Assignment} assignment - The Assignment instance.
-   * @return {StudentTask|null} - The matching StudentTask or null if not found.
-   */
-  findStudentTaskByUid(uid, assignment) {
-    // Deprecated in new model, kept for compatibility; try uidIndex
-    if (this.uidIndex && this.uidIndex[uid]) return this.uidIndex[uid].submission;
-    return null;
-  }
-
-  /**
-   * Finds the task key within a StudentTask by UID.
-   * @param {string} uid - The unique identifier of the response.
-   * @param {StudentTask} studentTask - The StudentTask instance.
-   * @return {string|null} - The task key or null if not found.
-   */
-  findTaskKeyByUid(uid, studentTask) {
-    if (this.uidIndex && this.uidIndex[uid]) return this.uidIndex[uid].item.taskId;
-    return null;
-  }
+  // Removed legacy findStudentTaskByUid & findTaskKeyByUid (StudentTask model deprecated)
 
   /**
    * Creates a default assessment for unattempted tasks.
@@ -290,11 +256,11 @@ class LLMRequestManager extends BaseRequestManager {
   createNotAttemptedAssessment() {
     const criteria = ['completeness', 'accuracy', 'spag'];
     const assessments = {};
-    
+
     criteria.forEach(criterion => {
       assessments[criterion] = new Assessment("N", "Task not attempted");
     });
-    
+
     return assessments;
   }
 

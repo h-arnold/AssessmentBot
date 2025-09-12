@@ -15,9 +15,6 @@ global.Utils = {
 };
 global.Utilities = {
   base64Encode(bytes) {
-    if (bytes instanceof Uint8Array) {
-      return Buffer.from(bytes).toString('base64');
-    }
     if (Array.isArray(bytes)) {
       return Buffer.from(Uint8Array.from(bytes)).toString('base64');
     }

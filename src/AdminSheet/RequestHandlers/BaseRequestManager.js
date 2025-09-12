@@ -54,7 +54,7 @@ class BaseRequestManager {
    * @return {HTTPResponse[]} - An array of HTTPResponse objects.
    */
   sendRequestsInBatches(requests) {
-  const batchSize = this.configManager.getBackendAssessorBatchSize();
+  const batchSize = configurationManager.getBackendAssessorBatchSize();
     const batches = [];
 
     // Split requests into batches

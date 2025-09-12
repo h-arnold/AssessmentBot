@@ -137,14 +137,15 @@ class TableTaskArtifact extends BaseTaskArtifact {
     // If already a string (pre-rendered markdown), accept it
     if (typeof content === 'string') {
       const s = content.trim();
-      return s === '' ? null : s;
+      return s === '' ? null : s; // consumer tests treat string content as-is
     }
     if (!Array.isArray(content)) return null;
     // Ensure 2D array of primitive (string|number|null)
     const rows = content.map(row => Array.isArray(row) ? row.map(cell => this._normCell(cell)) : []);
     const trimmed = this._trimEmpty(rows);
-    // By default, render table content to markdown string for storage/display
-    return this._rowsToMarkdown(trimmed);
+  // Store trimmed 2D array directly (tests expect array form, markdown generated lazily by toMarkdown())
+  if (!trimmed.length) return null;
+  return trimmed;
   }
   _normCell(cell) {
     if (cell == null) return null;
@@ -174,11 +175,9 @@ class TableTaskArtifact extends BaseTaskArtifact {
   _cellEmpty(c) { return c == null || c === ''; }
 
   toMarkdown() {
-    // If content is already a markdown string, return it
     if (!this.content) return '';
-    if (typeof this.content === 'string') return this.content;
-    // Otherwise assume it's an array of rows
-    if (!this.content.length) return '';
+    if (typeof this.content === 'string') return this.content; // legacy/pre-rendered
+    if (!Array.isArray(this.content) || !this.content.length) return '';
     const header = this.content[0];
     const lines = [];
     lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
@@ -189,19 +188,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
     }
     return lines.join('\n');
   }
-  // Convert 2D rows array into markdown table string
-  _rowsToMarkdown(rows) {
-    if (!rows || !rows.length) return '';
-    const header = rows[0];
-    const lines = [];
-    lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
-    lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
-    }
-    return lines.join('\n');
-  }
+  
   /**
    * Convenience factory from raw 2D cells array.
    * @param {Array<Array<any>>} rawCells
@@ -217,10 +204,13 @@ class SpreadsheetTaskArtifact extends TableTaskArtifact {
   // Still return uppercase for consistency; assessor logic will still skip.
   getType() { return 'SPREADSHEET'; }
   normalizeContent(content) {
-    // Reuse table normalisation
-    const norm = super.normalizeContent(content);
-    if (!norm) return norm;
-    // Apply formula canonicalisation to each cell string that starts with '='
+    if (content == null) return null;
+    // Delegate to Table normalisation to get either markdown string or 2D array
+    const base = super.normalizeContent(content);
+    // If base returned a markdown string (legacy) just return it unchanged
+    if (typeof base === 'string' || !Array.isArray(base)) return base;
+    // Clone rows deeply to avoid mutating shared arrays
+    const norm = base.map(r => r.slice());
     for (let r = 0; r < norm.length; r++) {
       for (let c = 0; c < norm[r].length; c++) {
         const cell = norm[r][c];

@@ -164,7 +164,7 @@ class SlidesParser extends DocumentParser {
         if (!primary) return;
         const typeNeeded = primary.getType();
         let extracted = null;
-  if (typeNeeded === 'IMAGE') { // legacy lowercase no longer required
+  if (typeNeeded === 'IMAGE') {
           // For images we just supply metadata with sourceUrl again
           extracted = { taskId: def.getId(), pageId, content: null, metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) } };
           artifacts.push(extracted);

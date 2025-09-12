@@ -82,15 +82,15 @@ describe('Phase1 Model Requirements', () => {
   it('ImageTaskArtifact setContentFromBlob hashing', () => {
     const img = ArtifactFactory.image({ taskId: 'tImg', role: 'reference', metadata: { sourceUrl: 'http://img' } });
     expect(img.content).toBeNull();
-    const bytes1 = new Uint8Array([1, 2, 3, 4]);
-    img.setContentFromBlob(bytes1);
+    const blob1 = { getBytes: () => [1, 2, 3, 4] };
+    img.setContentFromBlob(blob1);
     const hash1 = img.contentHash;
     expect(hash1).toBeTruthy();
     const img2 = ArtifactFactory.image({ taskId: 'tImg', role: 'reference', metadata: { sourceUrl: 'http://img' } });
-    img2.setContentFromBlob(new Uint8Array([1, 2, 3, 4]));
+    img2.setContentFromBlob({ getBytes: () => [1, 2, 3, 4] });
     expect(img2.contentHash).toBe(hash1);
     const img3 = ArtifactFactory.image({ taskId: 'tImg', role: 'reference', metadata: { sourceUrl: 'http://img' } });
-    img3.setContentFromBlob(new Uint8Array([1, 2, 3, 5]));
+    img3.setContentFromBlob({ getBytes: () => [1, 2, 3, 5] });
     expect(img3.contentHash).not.toBe(hash1);
   });
 

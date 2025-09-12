@@ -22,7 +22,7 @@ class DummyBaseRequestManager {
   sendRequestsInBatches(requests){
     return requests.map((req, idx) => ({
       getResponseCode: () => 200,
-      getBlob: () => ({ getBytes: () => new Uint8Array([idx, idx+1, idx+2]) })
+      getBlob: () => ({ getBytes: () => [idx, idx+1, idx+2] })
     }));
   }
 }
@@ -80,7 +80,7 @@ describe('Phase 5 ImageManager', () => {
     const mgr = buildImageManager();
     const entries = mgr.collectAllImageArtifacts(assignment);
     // Simulate blobs for each uid
-    const blobs = entries.map((e, idx) => ({ uid: e.uid, blob: { getBytes: () => new Uint8Array([1,2,3, idx]) } }));
+    const blobs = entries.map((e, idx) => ({ uid: e.uid, blob: { getBytes: () => [1,2,3, idx] } }));
     mgr.writeBackBlobs(assignment, blobs);
     // Validate artifacts updated
     const td = assignment.tasks.t1;
