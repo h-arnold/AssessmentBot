@@ -4,30 +4,34 @@
 class StudentSubmissionItem {
   /**
    * @param {Object} p
-   * @param {string} p.assignmentId
-   * @param {string} p.studentId
    * @param {string} p.taskId
-   * @param {string=} p.documentId
-   * @param {string=} p.pageId
    * @param {BaseTaskArtifact} p.artifact (role='submission')
+   * @param {function=} p.onMutate
+   *
+   * Note: We intentionally do NOT store assignmentId/studentId/documentId/pageId
+   * on the item to avoid duplicated canonical data; these are available on
+   * the parent StudentSubmission or on the artifact itself.
    */
-  constructor({ assignmentId, studentId, taskId, documentId = null, pageId = null, artifact, onMutate = null }) {
-    if (!assignmentId || !studentId || !taskId) throw new Error('StudentSubmissionItem missing identity fields');
+  constructor({ taskId, artifact }) {
+    if (!taskId) throw new Error('StudentSubmissionItem missing taskId');
     if (!artifact) throw new Error('StudentSubmissionItem requires artifact');
-    this.assignmentId = assignmentId;
-    this.studentId = studentId;
     this.taskId = taskId;
-    this.documentId = documentId;
-    this.pageId = pageId;
     this.artifact = artifact;
-  this.assessments = {}; // criterion -> { score, reasoning }
-  this.feedback = {}; // type -> feedback JSON or object
+    this.assessments = {}; // criterion -> { score, reasoning }
+    this.feedback = {}; // type -> feedback JSON or object
     this.id = this._deriveId();
-  this._onMutate = typeof onMutate === 'function' ? onMutate : null;
   }
 
   _deriveId() {
-    const base = `${this.assignmentId}::${this.studentId}::${this.taskId}`;
+    // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
+    let uid = null;
+    try {
+      if (this.artifact && typeof this.artifact.getUid === 'function') uid = this.artifact.getUid();
+    } catch (e) {
+      uid = null;
+    }
+    if (!uid) uid = (this.artifact && this.artifact.contentHash) ? this.artifact.contentHash : '';
+    const base = `${this.taskId}::${uid}`;
     return 'ssi_' + Utils.generateHash(base).substring(0, 16);
   }
 
@@ -40,7 +44,6 @@ class StudentSubmissionItem {
       } else if (typeof assessment === 'object') {
         this.assessments[criterion] = assessment; // assume already JSON shape
       }
-  if (this._onMutate) this._onMutate();
     }
   }
 
@@ -66,7 +69,6 @@ class StudentSubmissionItem {
   }
 
   markAssessed() {
-  if (this._onMutate) this._onMutate();
   }
 
   getType() { return this.artifact.getType(); }
@@ -75,8 +77,8 @@ class StudentSubmissionItem {
     return {
       id: this.id,
       taskId: this.taskId,
-      documentId: this.documentId,
-      pageId: this.pageId,
+      // documentId/pageId intentionally omitted here; parent submission
+      // holds documentId and the artifact contains any pageId information.
       artifact: this.artifact.toJSON(),
       assessments: this.assessments,
       feedback: this.feedback,
@@ -84,17 +86,14 @@ class StudentSubmissionItem {
     };
   }
 
-  static fromJSON(json, assignmentId, studentId, onMutate = null) {
+  static fromJSON(json) {
     const artifact = ArtifactFactory.fromJSON(json.artifact);
     const item = new StudentSubmissionItem({
-      assignmentId,
-      studentId,
       taskId: json.taskId,
-      documentId: json.documentId,
-      pageId: json.pageId,
       artifact,
-      onMutate
     });
+    // Preserve id from persisted JSON when present for compatibility
+    if (json.id) item.id = json.id;
     item.assessments = json.assessments || {};
     item.feedback = json.feedback || {};
     // previous lastAssessedHash is ignored in new model
@@ -149,15 +148,7 @@ class StudentSubmission {
         content,
         metadata
       });
-      item = new StudentSubmissionItem({
-        assignmentId: this.assignmentId,
-        studentId: this.studentId,
-        taskId,
-        documentId: this.documentId,
-        pageId: pageId != null ? pageId : taskDef.pageId,
-        artifact,
-        onMutate: () => this.touchUpdated()
-      });
+      item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
       this.items[taskId] = item;
       mutated = true;
     } else {
@@ -171,7 +162,7 @@ class StudentSubmission {
         item.artifact.metadata = Object.assign({}, item.artifact.metadata, metadata);
         mutated = true;
       }
-      if (pageId) { item.pageId = pageId; mutated = true; }
+      // pageId is stored on the artifact; do not duplicate on the item
     }
     if (mutated) this.touchUpdated();
     return item;
@@ -203,8 +194,7 @@ class StudentSubmission {
     sub.updatedAt = json.updatedAt || sub.createdAt;
     if (json.items) {
       for (const [taskId, itemJson] of Object.entries(json.items)) {
-  const item = StudentSubmissionItem.fromJSON(itemJson, json.assignmentId, json.studentId, () => sub.touchUpdated());
-  // ensure onMutate callback is set so item mutations update submission.updatedAt
+  const item = StudentSubmissionItem.fromJSON(itemJson);
   sub.items[taskId] = item;
       }
     }
