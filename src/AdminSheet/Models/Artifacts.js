@@ -238,12 +238,15 @@ class ArtifactFactory {
    * Params: { type, taskId, role, pageId?, documentId?, content?, metadata?, contentHash?, uid?, taskIndex?, artifactIndex? }
    */
   static create(params) {
-    const { type } = params;
+    const rawType = (params.type || '').toString();
+    // Expect upstream callers to use uppercase enums ('TEXT','TABLE','SPREADSHEET','IMAGE').
+    // For backwards compatibility accept lowercase but immediately map to uppercase.
+    const type = rawType.toUpperCase();
     switch (type) {
-      case 'text': return new TextTaskArtifact(params);
-      case 'table': return new TableTaskArtifact(params);
-      case 'spreadsheet': return new SpreadsheetTaskArtifact(params);
-      case 'image': return new ImageTaskArtifact(params);
+      case 'TEXT': return new TextTaskArtifact(params);
+      case 'TABLE': return new TableTaskArtifact(params);
+      case 'SPREADSHEET': return new SpreadsheetTaskArtifact(params);
+      case 'IMAGE': return new ImageTaskArtifact(params);
       default: return new BaseTaskArtifact(params);
     }
   }
@@ -251,10 +254,10 @@ class ArtifactFactory {
     return this.create(json);
   }
   // Convenience helpers mirroring subclass-specific static constructors.
-  static text(params) { return this.create({ ...params, type: 'text' }); }
-  static table(params) { return this.create({ ...params, type: 'table' }); }
-  static spreadsheet(params) { return this.create({ ...params, type: 'spreadsheet' }); }
-  static image(params) { return this.create({ ...params, type: 'image' }); }
+  static text(params) { return this.create({ ...params, type: 'TEXT' }); }
+  static table(params) { return this.create({ ...params, type: 'TABLE' }); }
+  static spreadsheet(params) { return this.create({ ...params, type: 'SPREADSHEET' }); }
+  static image(params) { return this.create({ ...params, type: 'IMAGE' }); }
 }
 
 // Export for Node/test environment (GAS will ignore module.exports)

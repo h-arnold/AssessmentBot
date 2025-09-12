@@ -56,75 +56,75 @@ class SlidesParser extends DocumentParser {
    * Page ordering establishes TaskDefinition.index.
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-    const refPresentation = SlidesApp.openById(referenceDocumentId);
-    const tplPresentation = templateDocumentId ? SlidesApp.openById(templateDocumentId) : null;
-    const refSlides = refPresentation.getSlides();
-    const templateSlides = tplPresentation ? tplPresentation.getSlides() : [];
+    const referencePresentation = SlidesApp.openById(referenceDocumentId);
+    const templatePresentation = templateDocumentId ? SlidesApp.openById(templateDocumentId) : null;
+    const referenceSlides = referencePresentation.getSlides();
+    const templateSlides = templatePresentation ? templatePresentation.getSlides() : [];
 
     // Map: key = title + '|' + pageId (slide id) for stability
-    const defMap = new Map();
+    const definitionMap = new Map();
     let order = 0;
 
     const processSlides = (slides, role) => {
       slides.forEach(slide => {
         const pageId = this.getPageId(slide);
         const pageElements = slide.getPageElements();
-        pageElements.forEach(pe => {
-          const description = pe.getDescription();
+        pageElements.forEach(pageElement => {
+          const description = pageElement.getDescription();
           if (!description || !description.length) return;
           const tag = description.charAt(0);
-            const key = description.substring(1).trim();
+            const tagText = description.substring(1).trim();
           switch (tag) {
             case '#': { // title element -> create/find TaskDefinition
-              const taskTitle = key;
-              const defKey = taskTitle + '|' + pageId;
-              let def = defMap.get(defKey);
-              if (!def) {
-                def = new TaskDefinition({ taskTitle, pageId });
-                def.index = order++;
-                defMap.set(defKey, def);
+              const taskTitle = tagText;
+              const definitionKey = taskTitle + '|' + pageId;
+              let definition = definitionMap.get(definitionKey);
+              if (!definition) {
+                definition = new TaskDefinition({ taskTitle, pageId });
+                definition.index = order++;
+                definitionMap.set(definitionKey, definition);
               }
               // Extract content (text/table) as primitive
-              let content = '';
-              const type = pe.getPageElementType();
-              let artifactType = 'text';
-              if (type === SlidesApp.PageElementType.SHAPE) {
-                content = this.extractTextFromShape(pe.asShape());
-                artifactType = 'text';
-              } else if (type === SlidesApp.PageElementType.TABLE) {
-                content = this.extractTextFromTable(pe.asTable());
-                artifactType = 'table';
+              let elementContent = '';
+              const elementType = pageElement.getPageElementType();
+              let artifactType = 'TEXT';
+              if (elementType === SlidesApp.PageElementType.SHAPE) {
+                elementContent = this.extractTextFromShape(pageElement.asShape());
+                artifactType = 'TEXT';
+              } else if (elementType === SlidesApp.PageElementType.TABLE) {
+                elementContent = this.extractTextFromTable(pageElement.asTable());
+                artifactType = 'TABLE';
               } else {
                 return;
               }
               if (role === 'reference') {
-                def.addReferenceArtifact({ type: artifactType, pageId, content, taskIndex: def.index });
+                definition.addReferenceArtifact({ type: artifactType, pageId, content: elementContent, taskIndex: definition.index });
               } else if (role === 'template') {
-                def.addTemplateArtifact({ type: artifactType, pageId, content, taskIndex: def.index });
+                definition.addTemplateArtifact({ type: artifactType, pageId, content: elementContent, taskIndex: definition.index });
               }
               break; }
             case '^': { // notes
-              // Attach to existing def matching same page by last created def with pageId
-              // Simpler: find any def with pageId (rare multiple) and append notes
-              for (const d of defMap.values()) {
-                if (d.pageId === pageId) {
-                  const notesContent = this.extractTextFromPageElement(pe);
-                  d.taskNotes = (d.taskNotes ? d.taskNotes + '\n' : '') + notesContent;
+              // Attach to existing definition matching same page by last created definition with pageId
+              // Simpler: find any definition with pageId (rare multiple) and append notes
+              for (const definition of definitionMap.values()) {
+                if (definition.pageId === pageId) {
+                  const notesContent = this.extractTextFromPageElement(pageElement);
+                  definition.taskNotes = (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
                 }
               }
               break; }
             case '~': { // image artifact for whole slide
-              const taskTitle = key; // image title key
-              const defKey = taskTitle + '|' + pageId;
-              let def = defMap.get(defKey);
-              if (!def) {
-                def = new TaskDefinition({ taskTitle, pageId });
-                def.index = order++;
-                defMap.set(defKey, def);
+              const taskTitle = tagText; // image title key
+              const definitionKey = taskTitle + '|' + pageId;
+              let definition = definitionMap.get(definitionKey);
+              if (!definition) {
+                definition = new TaskDefinition({ taskTitle, pageId });
+                definition.index = order++;
+                definitionMap.set(definitionKey, definition);
               }
               const url = this.generateSlideImageUrl(role === 'reference' ? referenceDocumentId : templateDocumentId, pageId);
-              const params = { type: 'image', pageId, metadata: { sourceUrl: url }, content: null, taskIndex: def.index };
-              if (role === 'reference') def.addReferenceArtifact(params); else def.addTemplateArtifact(params);
+              const params = { type: 'IMAGE', pageId, metadata: { sourceUrl: url }, content: null, taskIndex: definition.index };
+              if (role === 'reference') definition.addReferenceArtifact(params); else definition.addTemplateArtifact(params);
               break; }
             default:
               break;
@@ -133,10 +133,10 @@ class SlidesParser extends DocumentParser {
       });
     };
 
-    processSlides(refSlides, 'reference');
+    processSlides(referenceSlides, 'reference');
     if (templateSlides.length) processSlides(templateSlides, 'template');
 
-    return Array.from(defMap.values());
+    return Array.from(definitionMap.values());
   }
 
   /**

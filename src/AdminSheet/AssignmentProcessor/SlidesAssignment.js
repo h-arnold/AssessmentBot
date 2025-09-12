@@ -24,9 +24,25 @@ class SlidesAssignment extends Assignment {
    * taskReference/templateContent or studentTask.responses[x].response.
    */
   processImages() {
-    // Deprecated legacy image processing; new ImageManager flow will operate on artifacts directly.
-    // Intentionally left as a no-op placeholder until Phase 5 updates.
-    return;
+    // New Phase 5 image hydration flow: collect image artifacts, fetch blobs, write back base64 + hashes.
+    try {
+      const imageManager = new ImageManager();
+      const entries = imageManager.collectAllImageArtifacts(this);
+      if (!entries.length) {
+        console.log('No image artifacts to process.');
+        return;
+      }
+      this.progressTracker && this.progressTracker.updateProgress && this.progressTracker.updateProgress(`Found ${entries.length} image artifacts. Fetching...`, false);
+      const blobs = imageManager.fetchImagesAsBlobs(entries);
+      this.progressTracker && this.progressTracker.updateProgress && this.progressTracker.updateProgress(`Fetched ${blobs.length} image blobs. Writing content...`, false);
+      imageManager.writeBackBlobs(this, blobs);
+      console.log(`Hydrated ${blobs.length} image artifacts.`);
+    } catch (e) {
+      console.error('SlidesAssignment.processImages failed', e);
+      if (this.progressTracker && typeof this.progressTracker.logError === 'function') {
+        this.progressTracker.logError('Image processing failed: ' + e.message, e);
+      }
+    }
   }
 
   /**

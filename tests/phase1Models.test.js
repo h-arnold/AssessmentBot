@@ -5,8 +5,8 @@ import { StudentSubmission } from '../src/AdminSheet/Models/StudentSubmission.js
 
 function makeTD(idx = 0, opts = {}) {
   const td = new TaskDefinition({ taskTitle: opts.title || `Task ${idx}`, pageId: opts.pageId || `p${idx}`, index: idx });
-  td.addReferenceArtifact({ type: 'text', content: 'Reference content' });
-  td.addTemplateArtifact({ type: 'text', content: '' });
+  td.addReferenceArtifact({ type: 'TEXT', content: 'Reference content' });
+  td.addTemplateArtifact({ type: 'TEXT', content: '' });
   return td;
 }
 
@@ -28,8 +28,8 @@ describe('Phase1 Model Requirements', () => {
 
   it('TaskDefinition serialization preserves index, metadata, artifacts', () => {
     const td = new TaskDefinition({ taskTitle: 'Serialize', pageId: 'p3', index: 3, taskMetadata: { a: 1 } });
-    td.addReferenceArtifact({ type: 'text', content: 'Ref' });
-    td.addTemplateArtifact({ type: 'text', content: 'Template' });
+  td.addReferenceArtifact({ type: 'TEXT', content: 'Ref' });
+  td.addTemplateArtifact({ type: 'TEXT', content: 'Template' });
     const json = td.toJSON();
     const restored = TaskDefinition.fromJSON(json);
     expect(restored.index).toBe(3);
@@ -95,9 +95,9 @@ describe('Phase1 Model Requirements', () => {
   });
 
   it('Artifact UID format pattern', () => {
-    const td = new TaskDefinition({ taskTitle: 'UID Test', pageId: 'pg', index: 5 });
-    td.addReferenceArtifact({ type: 'text', content: 'Ref' });
-    td.addTemplateArtifact({ type: 'text', content: 'Tpl' });
+  const td = new TaskDefinition({ taskTitle: 'UID Test', pageId: 'pg', index: 5 });
+  td.addReferenceArtifact({ type: 'TEXT', content: 'Ref' });
+  td.addTemplateArtifact({ type: 'TEXT', content: 'Tpl' });
     const ref = td.getPrimaryReference();
     const tpl = td.getPrimaryTemplate();
     const pattern = new RegExp(`^${td.getId()}-5-(reference|template)-pg-0$`);
@@ -126,7 +126,7 @@ describe('Phase1 Model Requirements', () => {
     const sub = new StudentSubmission('stu2', 'assign1', 'doc2');
     sub.upsertItemFromExtraction(td, { content: ' response ' });
     const item = sub.getItem(td.getId());
-    expect(item.getType()).toBe('text');
+  expect(item.getType()).toBe('TEXT');
     item.addAssessment('quality', { score: 0.8 });
     expect(item.getAssessment('quality').score).toBe(0.8);
   const before = sub.updatedAt;

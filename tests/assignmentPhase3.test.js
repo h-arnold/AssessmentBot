@@ -69,8 +69,8 @@ const Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js'
 // Helper to build a text TaskDefinition with ref+template artifacts
 function buildTextTask(idSuffix, refContent, tplContent){
 	const td = new TaskDefinition({ taskTitle: 'Task '+idSuffix, pageId: 'p'+idSuffix, index: parseInt(idSuffix,10) });
-	td.addReferenceArtifact({ type: 'text', content: refContent });
-	td.addTemplateArtifact({ type: 'text', content: tplContent });
+	td.addReferenceArtifact({ type: 'TEXT', content: refContent });
+	td.addTemplateArtifact({ type: 'TEXT', content: tplContent });
 	return td;
 }
 
@@ -87,8 +87,8 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
 		const td1 = buildTextTask('1', 'Reference Answer', 'Template Text');
 		const td2 = buildTextTask('2', 'Another Ref', 'Another Template');
 		const tdSpreadsheet = new TaskDefinition({ taskTitle: 'Sheet', pageId: 's1', index: 3 });
-		tdSpreadsheet.addReferenceArtifact({ type: 'spreadsheet', content: [['=sum(a1:a2)']] });
-		tdSpreadsheet.addTemplateArtifact({ type: 'spreadsheet', content: [['=sum(a1:a2)']] });
+		tdSpreadsheet.addReferenceArtifact({ type: 'SPREADSHEET', content: [['=sum(a1:a2)']] });
+		tdSpreadsheet.addTemplateArtifact({ type: 'SPREADSHEET', content: [['=sum(a1:a2)']] });
 		assignment.tasks = { [td1.getId()]: td1, [td2.getId()]: td2, [tdSpreadsheet.getId()]: tdSpreadsheet };
 
 		// Add a student & create submission entries
@@ -157,7 +157,7 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
 		const reqs = manager.generateRequestObjects(assignment);
 		manager.processStudentResponses(reqs, assignment);
 		const sub = assignment.submissions[0];
-		const assessedItems = Object.values(sub.items).filter(i => i.getType() !== 'spreadsheet');
+		const assessedItems = Object.values(sub.items).filter(i => i.getType() !== 'SPREADSHEET');
 		assessedItems.forEach(item => {
 			const a = item.getAssessment();
 			expect(a.completeness.score).toBeTypeOf('number');

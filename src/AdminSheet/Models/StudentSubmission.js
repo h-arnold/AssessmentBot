@@ -180,10 +180,10 @@ class StudentSubmission {
   _inferTypeFromTask(taskDef) {
     // Attempt to infer from primary reference artifact if present
     const ref = taskDef.getPrimaryReference();
-    if (ref) return ref.getType();
+  if (ref) return ref.getType();
     // fallback: check metadata hints
-    if (taskDef.taskMetadata && taskDef.taskMetadata.taskType) return taskDef.taskMetadata.taskType;
-    return 'text';
+  if (taskDef.taskMetadata && taskDef.taskMetadata.taskType) return taskDef.taskMetadata.taskType;
+  return 'TEXT';
   }
 
   toJSON() {
