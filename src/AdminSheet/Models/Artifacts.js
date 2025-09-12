@@ -58,6 +58,32 @@ class BaseTaskArtifact {
     return this.contentHash;
   }
 
+  /**
+   * Produce a deterministic, canonical string representation of a value.
+   *
+   * This method provides a stable serialization that can be used for deterministic
+   * comparisons (for example, as a key in caches or for equality checks). It differs
+   * from JSON.stringify in that object keys are always sorted lexicographically,
+   * making the output order-independent for plain objects.
+   *
+   * Behavior summary:
+   *  - Primitives and null: returned via JSON.stringify(obj).
+   *  - Arrays: element order is preserved; each element is recursively stable-stringified.
+   *  - Plain objects: enumerable string keys are sorted (Object.keys(obj).sort()) and
+   *    each key/value pair is serialized as "key:stableStringify(value)".
+   *
+   * Important notes and limitations:
+   *  - Only enumerable string-keyed own properties are considered. Non-enumerable
+   *    properties, symbol-keyed properties, and prototype properties are ignored.
+   *  - The result is intended to be stable/deterministic, but may not be valid JSON
+   *    for all inputs (e.g., functions and symbols follow JSON.stringify semantics).
+   *  - Circular references are not handled and will lead to a thrown error or
+   *    stack overflow.
+   *
+   * @private
+   * @param {*} obj - The value to serialize (primitive, array, or plain object).
+   * @returns {string} A stable string representation of the input.
+   */
   _stableStringify(obj) {
     if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
     if (Array.isArray(obj)) return '[' + obj.map(i => this._stableStringify(i)).join(',') + ']';

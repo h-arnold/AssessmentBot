@@ -258,7 +258,6 @@ class LLMRequestManager extends BaseRequestManager {
     for (const [criterion, assessment] of Object.entries(assessmentData)) {
       item.addAssessment(criterion, assessment);
     }
-    item.markAssessed();
   }
 
   /**

@@ -6,7 +6,6 @@ class StudentSubmissionItem {
    * @param {Object} p
    * @param {string} p.taskId
    * @param {BaseTaskArtifact} p.artifact (role='submission')
-   * @param {function=} p.onMutate
    *
    * Note: We intentionally do NOT store assignmentId/studentId/documentId/pageId
    * on the item to avoid duplicated canonical data; these are available on
@@ -66,9 +65,6 @@ class StudentSubmissionItem {
   getFeedback(type = null) {
     if (!type) return this.feedback || null;
     return this.feedback[type] || null;
-  }
-
-  markAssessed() {
   }
 
   getType() { return this.artifact.getType(); }

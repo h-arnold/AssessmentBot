@@ -42,7 +42,9 @@ class SlidesParser extends DocumentParser {
    * @deprecated Use extractTasks() instead
    */
   extractTasksFromSlides(documentId, contentType = null) { // Default to null
-    this.extractTasks(documentId, contentType);
+    // Legacy wrapper removed in Phase 2 refactor. Keep as no-op for compatibility.
+    // Prefer using extractTaskDefinitions/extractSubmissionArtifacts.
+    return null;
   }
 
 
@@ -92,7 +94,8 @@ class SlidesParser extends DocumentParser {
                 elementContent = this.extractTextFromShape(pageElement.asShape());
                 artifactType = 'TEXT';
               } else if (elementType === SlidesApp.PageElementType.TABLE) {
-                elementContent = this.extractTextFromTable(pageElement.asTable());
+                // Return raw 2D cell array so TableTaskArtifact can normalise instead of markdown string
+                elementContent = this.extractTableCells(pageElement.asTable());
                 artifactType = 'TABLE';
               } else {
                 return;
@@ -180,7 +183,8 @@ class SlidesParser extends DocumentParser {
             break;
           }
           if (typeNeeded === 'TABLE' && pe.getPageElementType() === SlidesApp.PageElementType.TABLE) {
-            extracted = { taskId: def.getId(), pageId, content: this.extractTextFromTable(pe.asTable()) };
+            // Provide raw 2D cell array for table submission content
+            extracted = { taskId: def.getId(), pageId, content: this.extractTableCells(pe.asTable()) };
             break;
           }
         }
@@ -217,56 +221,7 @@ class SlidesParser extends DocumentParser {
     return text.trim();
   }
 
-  /**
-   * Converts a Google Slides Table to a Markdown-formatted string.
-   * @param {GoogleAppsScript.Slides.Table} table - The table element to convert.
-   * @return {string} - The Markdown-formatted table.
-   * @deprecated Use the superclass convertToMarkdownTable() method instead
-   */
-  convertTableToMarkdown(table) {
-    if (!table || !(table.getNumRows() && table.getNumColumns())) {
-      console.log("The provided element is not a table or is empty.");
-      return '';
-    }
-
-    const numRows = table.getNumRows();
-    const numCols = table.getNumColumns();
-    let markdownTable = '';
-
-    // Extract all rows' data
-    let rows = [];
-    for (let i = 0; i < numRows; i++) {
-      let row = [];
-      for (let j = 0; j < numCols; j++) {
-        const cell = table.getCell(i, j);
-        const text = cell.getText().asString().trim();
-        // Escape pipe characters in Markdown
-        const escapedText = text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-        row.push(escapedText);
-      }
-      rows.push(row);
-    }
-
-    if (rows.length === 0) return '';
-
-    // Assume first row as header
-    const header = rows[0];
-    const separator = header.map(() => '---');
-    const dataRows = rows.slice(1);
-
-    // Create header row
-    markdownTable += '| ' + header.join(' | ') + ' |\n';
-
-    // Create separator row
-    markdownTable += '| ' + separator.join(' | ') + ' |\n';
-
-    // Create data rows
-    dataRows.forEach(row => {
-      markdownTable += '| ' + row.join(' | ') + ' |\n';
-    });
-
-    return markdownTable;
-  }
+  // Legacy convertTableToMarkdown removed; use DocumentParser.convertToMarkdownTable(tableData)
 
   /**
    * Extracts text from a table element and converts it to Markdown.
@@ -274,7 +229,40 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The extracted Markdown text from the table.
    */
   extractTextFromTable(table) {
-    return this.convertTableToMarkdown(table);
+    // Delegate to DocumentParser helper which accepts 2D arrays. We extract cells then convert.
+    const cells = this.extractTableCells(table);
+    return super.convertToMarkdownTable(cells);
+  }
+
+  /**
+   * Extract raw 2D cell array from a Slides table (preferred for TABLE artifacts).
+   * @param {GoogleAppsScript.Slides.Table} table
+   * @return {Array<Array<string|null>>} Cell values trimmed; empty cells as '' (later normalised to null by TableTaskArtifact)
+   */
+  extractTableCells(table) {
+    try {
+      if (!table || !(table.getNumRows && table.getNumColumns)) return [];
+      const rows = [];
+      const numRows = table.getNumRows();
+      const numCols = table.getNumColumns();
+      for (let r = 0; r < numRows; r++) {
+        const row = [];
+        for (let c = 0; c < numCols; c++) {
+          try {
+            const cell = table.getCell(r, c);
+            const text = cell && cell.getText ? cell.getText().asString().trim() : '';
+            row.push(text);
+          } catch (e) {
+            row.push('');
+          }
+        }
+        rows.push(row);
+      }
+      return rows;
+    } catch (e) {
+      console.error('extractTableCells failed', e);
+      return [];
+    }
   }
 
   /**
