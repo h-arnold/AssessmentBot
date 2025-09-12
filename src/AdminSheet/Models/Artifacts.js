@@ -134,10 +134,17 @@ class TableTaskArtifact extends BaseTaskArtifact {
   getType() { return 'TABLE'; }
   normalizeContent(content) {
     if (content == null) return null;
+    // If already a string (pre-rendered markdown), accept it
+    if (typeof content === 'string') {
+      const s = content.trim();
+      return s === '' ? null : s;
+    }
     if (!Array.isArray(content)) return null;
     // Ensure 2D array of primitive (string|number|null)
     const rows = content.map(row => Array.isArray(row) ? row.map(cell => this._normCell(cell)) : []);
-    return this._trimEmpty(rows);
+    const trimmed = this._trimEmpty(rows);
+    // By default, render table content to markdown string for storage/display
+    return this._rowsToMarkdown(trimmed);
   }
   _normCell(cell) {
     if (cell == null) return null;
@@ -167,13 +174,30 @@ class TableTaskArtifact extends BaseTaskArtifact {
   _cellEmpty(c) { return c == null || c === ''; }
 
   toMarkdown() {
-    if (!this.content || !this.content.length) return '';
+    // If content is already a markdown string, return it
+    if (!this.content) return '';
+    if (typeof this.content === 'string') return this.content;
+    // Otherwise assume it's an array of rows
+    if (!this.content.length) return '';
     const header = this.content[0];
     const lines = [];
     lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
     lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
     for (let i = 1; i < this.content.length; i++) {
       const row = this.content[i];
+      lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
+    }
+    return lines.join('\n');
+  }
+  // Convert 2D rows array into markdown table string
+  _rowsToMarkdown(rows) {
+    if (!rows || !rows.length) return '';
+    const header = rows[0];
+    const lines = [];
+    lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
+    lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
       lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
     }
     return lines.join('\n');

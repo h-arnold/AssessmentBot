@@ -218,15 +218,14 @@ class AnalysisSheetManager extends BaseSheetManager {
    *                   or '' when artifact/type/content is missing or unsupported.
    */
   _artifactDisplayString(artifact) {
-    if (!artifact) return '';
+    if (!artifact || artifact.content == null || artifact.content === '') return '';
     const type = artifact.getType ? artifact.getType() : null;
-  const t = type; // now already uppercase from artifact
-  if (t === 'TEXT') return artifact.content || '';
-  if (t === 'TABLE' || t === 'SPREADSHEET') {
-      if (!artifact.content) return '';
-      return artifact.content.map(r => r.map(c => (c==null?'':c)).join('\t')).join('\n');
-    }
-  if (t === 'IMAGE') return artifact.content ? '[image]' : '';
+    const t = type; // expected uppercase
+
+    if (t === 'TEXT') return artifact.content;
+    if (t === 'TABLE') return typeof artifact.content === 'string' ? artifact.content : String(artifact.content);
+    if (t === 'SPREADSHEET') return artifact.content.map(r => r.map(c => (c == null ? '' : c)).join('\t')).join('\n');
+    if (t === 'IMAGE') return artifact.content ? '[image]' : '';
     return '';
   }
 
