@@ -193,6 +193,30 @@ class AnalysisSheetManager extends BaseSheetManager {
     });
   }
 
+  /**
+   * Convert an artifact object into a human-readable display string.
+   *
+   * The function inspects artifact.getType() (if present) to decide how to
+   * serialize artifact.content:
+   * - 'TEXT'        : returns artifact.content (string) or '' when missing.
+   * - 'TABLE'|'SPREADSHEET'
+   *                 : expects content to be an array of rows (each row an array of cells).
+   *                   Cells that are null or undefined are rendered as empty strings.
+   *                   Rows are joined with tabs and rows are joined with newlines.
+   * - 'IMAGE'       : returns "[image]" when artifact.content is truthy, otherwise ''.
+   *
+   * For any missing artifact or unrecognized type the function returns the empty string.
+   *
+   * @private
+   * @param {Object|null|undefined} artifact - Artifact to render. May be null/undefined.
+   *   If present, may implement getType():string (type is expected to be uppercase),
+   *   and have a content property whose shape depends on the type:
+   *     - TEXT: content is a string
+   *     - TABLE|SPREADSHEET: content is Array<Array<any>>
+   *     - IMAGE: content truthiness indicates presence of an image
+   * @returns {string} A string suitable for display (possibly multi-line for tables),
+   *                   or '' when artifact/type/content is missing or unsupported.
+   */
   _artifactDisplayString(artifact) {
     if (!artifact) return '';
     const type = artifact.getType ? artifact.getType() : null;
