@@ -243,10 +243,6 @@ class ImageTaskArtifact extends BaseTaskArtifact {
       let bytes;
       if (blob.getBytes) {
         bytes = blob.getBytes();
-      } else if (blob instanceof Uint8Array) {
-        bytes = blob;
-      } else if (blob.bytes) {
-        bytes = blob.bytes;
       }
       if (!bytes) return;
       let base64;
@@ -257,7 +253,9 @@ class ImageTaskArtifact extends BaseTaskArtifact {
       } else {
         return;
       }
-      this.content = base64;
+      // Always use PNG data URI prefix per spec
+      const pngPrefix = 'data:image/png;base64,';
+      this.content = pngPrefix + base64;
       this.ensureHash();
     } catch (e) {
       // swallow errors silently in production path
