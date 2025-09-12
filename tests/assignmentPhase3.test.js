@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import model classes from source (CommonJS exports)
 const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
-const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts.js');
 const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
 
 // Minimal global Utils & dependencies stubs required by artifacts & manager (non-GAS)
