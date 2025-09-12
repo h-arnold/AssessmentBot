@@ -24,7 +24,7 @@ class ImageManager extends BaseRequestManager {
     Object.values(taskDefs).forEach(td => {
       ['reference','template'].forEach(role => {
         td.artifacts[role].forEach(artifact => {
-          if (artifact.getType && artifact.getType() === 'image') {
+          if (artifact.getType && artifact.getType() === 'IMAGE') {
             const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
             if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
               results.push({
@@ -41,14 +41,14 @@ class ImageManager extends BaseRequestManager {
     });
 
     // Submission items
-    const submissions = assignment.submissions || assignment.studentTasks || [];
+  const submissions = assignment.submissions || [];
     submissions.forEach(sub => {
       if (!sub || !sub.documentId) return;
       const items = sub.items || {};
       Object.values(items).forEach(item => {
         if (!item || !item.artifact) return;
         const art = item.artifact;
-        if (art.getType && art.getType() === 'image') {
+  if (art.getType && art.getType() === 'IMAGE') {
           const sourceUrl = art.metadata && art.metadata.sourceUrl;
           if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
             results.push({
@@ -134,14 +134,14 @@ class ImageManager extends BaseRequestManager {
     // Task artifacts
     Object.values(assignment.tasks || {}).forEach(td => {
       ['reference','template'].forEach(role => {
-        td.artifacts[role].forEach(a => { if (a.getType && a.getType() === 'image') map[a.getUid()] = a; });
+  td.artifacts[role].forEach(a => { if (a.getType && a.getType() === 'IMAGE') map[a.getUid()] = a; });
       });
     });
     // Submission artifacts
     (assignment.submissions || []).forEach(sub => {
       Object.values(sub.items || {}).forEach(item => {
         const a = item.artifact;
-        if (a && a.getType && a.getType() === 'image') map[a.getUid()] = a;
+  if (a && a.getType && a.getType() === 'IMAGE') map[a.getUid()] = a;
       });
     });
     blobs.forEach(({ uid, blob }) => {

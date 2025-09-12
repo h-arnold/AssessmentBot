@@ -63,9 +63,9 @@ class LLMRequestManager extends BaseRequestManager {
           this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
           return;
         }
-        const type = item.getType();
-        // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
-        if (type === 'spreadsheet') return;
+  const type = item.getType();
+  // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
+  if (type === 'SPREADSHEET') return;
         const ref = taskDef.getPrimaryReference();
         const tpl = taskDef.getPrimaryTemplate();
         if (!ref || !tpl) {
@@ -95,7 +95,7 @@ class LLMRequestManager extends BaseRequestManager {
         const uid = studentArtifact.getUid();
         this.uidIndex[uid] = { submission, item, taskDef };
         const payload = {
-          taskType: type.toUpperCase(),
+          taskType: type,
           reference: ref.content,
           template: tpl.content,
           studentResponse: studentArtifact.content

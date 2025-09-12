@@ -17,11 +17,7 @@ class Assignment {
     this.tasks = {};           // { [taskId: string]: TaskDefinition }
     // New model: submissions array of StudentSubmission
     this.submissions = [];     // Array<StudentSubmission>
-    // TEMP migration alias (read-only) for legacy callers expecting studentTasks
-    Object.defineProperty(this, 'studentTasks', {
-      get: () => this.submissions,
-      configurable: true
-    });
+    // Legacy studentTasks alias removed – callers must use this.submissions.
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -91,12 +87,14 @@ class Assignment {
                 const fileMimeType = file.getMimeType();
                 if (this.isValidMimeType(fileMimeType, mimeType)) {
                   const documentId = driveFileId;
-                  // Find the corresponding StudentTask instance
-                  const studentTask = this.studentTasks.find(st => st.student.id === studentId);
-                  if (studentTask) {
-                    studentTask.documentId = documentId;
+                  // New model: submissions array holds StudentSubmission objects with studentId
+                  const submissionObj = this.submissions.find(sub => sub.studentId === studentId);
+                  if (submissionObj) {
+                    submissionObj.documentId = documentId;
+                    // Keep updatedAt coherent if method exists
+                    if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
                   } else {
-                    console.log(`No matching student found for student ID: ${studentId}`);
+                    console.log(`No matching submission found for student ID: ${studentId}`);
                   }
                 } else {
                   console.log(`Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`);

@@ -253,8 +253,8 @@ class StudentTask {
           let responseHash = contentHash;
           if (!responseHash) {
             if (
-              task.taskType.toLowerCase() === "text" ||
-              task.taskType.toLowerCase() === "table"
+              task.taskType === "TEXT" ||
+              task.taskType === "TABLE"
             ) {
               // Generate contentHash for Text and Table tasks
               responseHash = Utils.generateHash(response);

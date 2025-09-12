@@ -148,7 +148,7 @@ class AnalysisSheetManager extends BaseSheetManager {
   createDataRowsRequests() {
     const sheetId = this.sheet.getSheetId();
     const startRowIndex = 2;
-    const submissions = this.assignment.submissions || this.assignment.studentTasks || [];
+  const submissions = this.assignment.submissions || [];
     submissions.forEach((submission, studentIndex) => {
       const rowData = [];
       const notesData = [];
@@ -196,12 +196,13 @@ class AnalysisSheetManager extends BaseSheetManager {
   _artifactDisplayString(artifact) {
     if (!artifact) return '';
     const type = artifact.getType ? artifact.getType() : null;
-    if (type === 'text') return artifact.content || '';
-    if (type === 'table' || type === 'spreadsheet') {
+  const t = type; // now already uppercase from artifact
+  if (t === 'TEXT') return artifact.content || '';
+  if (t === 'TABLE' || t === 'SPREADSHEET') {
       if (!artifact.content) return '';
       return artifact.content.map(r => r.map(c => (c==null?'':c)).join('\t')).join('\n');
     }
-    if (type === 'image') return artifact.content ? '[image]' : '';
+  if (t === 'IMAGE') return artifact.content ? '[image]' : '';
     return '';
   }
 
@@ -210,7 +211,7 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   applyFormatting() {
     const sheetId = this.sheet.getSheetId();
-    const submissions = this.assignment.submissions || this.assignment.studentTasks || [];
+  const submissions = this.assignment.submissions || [];
     const numRows = submissions.length + 2; // header rows
     const numColumns = this.headers.subHeaders.length;
 
@@ -342,7 +343,7 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   addClassAverageRow() {
     const sheetId = this.sheet.getSheetId();
-    const submissions = this.assignment.submissions || this.assignment.studentTasks || [];
+  const submissions = this.assignment.submissions || [];
     const lastRowIndex = submissions.length + 2;
     // Add blank row
     this.requests.push({
@@ -406,7 +407,7 @@ class AnalysisSheetManager extends BaseSheetManager {
   storeAverageRanges() {
     const documentProperties = PropertiesService.getDocumentProperties();
     const sheetName = this.sheet.getName();
-    const submissions = this.assignment.submissions || this.assignment.studentTasks || [];
+  const submissions = this.assignment.submissions || [];
     const numStudents = submissions.length;
     const firstDataRow = 2; // Data starts from row index 2 (3rd row)
     const lastDataRow = firstDataRow + numStudents - 1;

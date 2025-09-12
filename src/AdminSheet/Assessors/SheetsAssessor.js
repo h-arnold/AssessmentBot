@@ -6,7 +6,7 @@
 class SheetsAssessor {
   constructor(tasks, studentTasks) {
     this.tasks = tasks;
-    this.studentTasks = studentTasks;
+    this.submissions = studentTasks;
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -16,10 +16,10 @@ class SheetsAssessor {
    * dispatching to specific assessment methods based on response type.
    */
   assessResponses() {
-    this.studentTasks.forEach((studentTask) => {
+    this.submissions.forEach((submission) => {
       // Essential check - skip if student task or responses don't exist
-      if (!studentTask || !studentTask.responses) {
-        console.warn(`Student task or responses missing for student: ${studentTask?.student?.name || 'Unknown'}`);
+      if (!submission || !submission.responses) {
+        console.warn(`Submission or responses missing for student: ${submission?.student?.name || 'Unknown'}`);
         return;
       }
 

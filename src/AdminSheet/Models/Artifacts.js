@@ -85,7 +85,8 @@ class BaseTaskArtifact {
 }
 
 class TextTaskArtifact extends BaseTaskArtifact {
-  getType() { return 'text'; }
+  // Updated to use uppercase enum expected by backend
+  getType() { return 'TEXT'; }
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') content = String(content);
@@ -103,7 +104,8 @@ class TextTaskArtifact extends BaseTaskArtifact {
 }
 
 class TableTaskArtifact extends BaseTaskArtifact {
-  getType() { return 'table'; }
+  // Updated to uppercase enum
+  getType() { return 'TABLE'; }
   normalizeContent(content) {
     if (content == null) return null;
     if (!Array.isArray(content)) return null;
@@ -161,7 +163,9 @@ class TableTaskArtifact extends BaseTaskArtifact {
 }
 
 class SpreadsheetTaskArtifact extends TableTaskArtifact {
-  getType() { return 'spreadsheet'; }
+  // Represented as its own subtype internally but we keep distinct identifier.
+  // Still return uppercase for consistency; assessor logic will still skip.
+  getType() { return 'SPREADSHEET'; }
   normalizeContent(content) {
     // Reuse table normalisation
     const norm = super.normalizeContent(content);
@@ -198,7 +202,8 @@ class SpreadsheetTaskArtifact extends TableTaskArtifact {
 }
 
 class ImageTaskArtifact extends BaseTaskArtifact {
-  getType() { return 'image'; }
+  // Updated to uppercase enum
+  getType() { return 'IMAGE'; }
   normalizeContent(content) {
     // content is base64 string when set; may be null initially
     if (content == null) return null;

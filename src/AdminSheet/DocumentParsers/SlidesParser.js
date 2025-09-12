@@ -161,7 +161,7 @@ class SlidesParser extends DocumentParser {
         if (!primary) return;
         const typeNeeded = primary.getType();
         let extracted = null;
-        if (typeNeeded === 'image') {
+  if (typeNeeded === 'IMAGE') { // legacy lowercase no longer required
           // For images we just supply metadata with sourceUrl again
           extracted = { taskId: def.getId(), pageId, content: null, metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) } };
           artifacts.push(extracted);
@@ -175,11 +175,11 @@ class SlidesParser extends DocumentParser {
           const key = desc.substring(1).trim();
           if (tag !== '#' && tag !== '~') continue;
           if (key !== def.taskTitle) continue;
-          if (typeNeeded === 'text' && pe.getPageElementType() === SlidesApp.PageElementType.SHAPE) {
+          if (typeNeeded === 'TEXT' && pe.getPageElementType() === SlidesApp.PageElementType.SHAPE) {
             extracted = { taskId: def.getId(), pageId, content: this.extractTextFromShape(pe.asShape()) };
             break;
           }
-          if (typeNeeded === 'table' && pe.getPageElementType() === SlidesApp.PageElementType.TABLE) {
+          if (typeNeeded === 'TABLE' && pe.getPageElementType() === SlidesApp.PageElementType.TABLE) {
             extracted = { taskId: def.getId(), pageId, content: this.extractTextFromTable(pe.asTable()) };
             break;
           }
