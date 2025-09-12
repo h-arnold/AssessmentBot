@@ -50,19 +50,19 @@ describe('Phase1 Model Requirements', () => {
     expect(empty.content).toBeNull();
   });
 
-  it('TableTaskArtifact trimming and markdown header separator count', () => {
+  it('TableTaskArtifact trimming, internal rows storage and markdown header separator count', () => {
     const table = ArtifactFactory.table({ taskId: 'tTable', role: 'reference', content: [['H1', 'H2', ''], [' a ', ' b ', ' '], ['', '', ''], ['', '', '']] });
+    const rows = table.getRows();
     // internal cells trimmed
-    expect(table.content[1][0]).toBe('a');
+    expect(rows[1][0]).toBe('a');
     // trailing empty rows removed (should not include rows with all empties)
-    expect(table.content.length).toBe(2);
+    expect(rows.length).toBe(2);
     // trailing empty column removed
-    expect(table.content[0].length).toBe(2);
-    const md = table.toMarkdown();
+    expect(rows[0].length).toBe(2);
+    const md = table.content; // already markdown
     const lines = md.split('\n');
-    // header separator line count equals content header length
     const sepCount = lines[1].split('|').filter(s => s.trim() === '---').length;
-    expect(sepCount).toBe(table.content[0].length);
+    expect(sepCount).toBe(rows[0].length);
   });
 
   it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {

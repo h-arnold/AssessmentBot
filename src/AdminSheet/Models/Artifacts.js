@@ -143,9 +143,16 @@ class TableTaskArtifact extends BaseTaskArtifact {
     // Ensure 2D array of primitive (string|number|null)
     const rows = content.map(row => Array.isArray(row) ? row.map(cell => this._normCell(cell)) : []);
     const trimmed = this._trimEmpty(rows);
-  // Store trimmed 2D array directly (tests expect array form, markdown generated lazily by toMarkdown())
-  if (!trimmed.length) return null;
-  return trimmed;
+    if (!trimmed.length) return null;
+    // Store raw rows separately for internal access; return markdown string for content.
+    this._rows = trimmed; // non-enumerable in JSON by default (not part of toJSON output)
+    return this.toMarkdown(trimmed);
+  }
+  /** Return a deep clone of the raw 2D rows (if present) */
+  getRows() {
+    if (this._rows && Array.isArray(this._rows)) return this._rows.map(r => r.slice());
+    // If content is a markdown string and _rows absent, attempt to parse minimal header (future improvement)
+    return [];
   }
   _normCell(cell) {
     if (cell == null) return null;
@@ -174,17 +181,31 @@ class TableTaskArtifact extends BaseTaskArtifact {
   _rowEmpty(row) { return !row.some(c => !this._cellEmpty(c)); }
   _cellEmpty(c) { return c == null || c === ''; }
 
-  toMarkdown() {
-    if (!this.content) return '';
-    if (typeof this.content === 'string') return this.content; // legacy/pre-rendered
-    if (!Array.isArray(this.content) || !this.content.length) return '';
-    const header = this.content[0];
+  /**
+   * Render the table content (or provided rows) as markdown.
+   * Accepts an optional rows parameter so the function can be used as a pure helper
+   * and so that if the method is extracted and invoked unbound (losing its `this`)
+   * callers can still supply the 2D array explicitly. This also mitigates the
+   * observed issue where toMarkdown returned an empty string when called as an
+   * unbound function (because `this` became undefined and `this.content` was falsy).
+   * @param {Array<Array<any>>|string=} rowsOverride 2D array of cells or pre-rendered markdown string.
+   * @returns {string}
+   */
+  toMarkdown(rowsOverride) {
+    // Support unbound invocation: if `this` is not a TableTaskArtifact instance, fall back to rowsOverride.
+    const candidate = (this && this.content !== undefined) ? this.content : undefined;
+    let src = rowsOverride !== undefined ? rowsOverride : candidate;
+    if (!src) return '';
+    if (typeof src === 'string') return src.trim(); // already markdown
+    if (!Array.isArray(src) || !src.length) return '';
+    const header = src[0] || [];
+    if (!Array.isArray(header)) return '';
     const lines = [];
-    lines.push('| ' + header.map(c => c ?? '').join(' | ') + ' |');
+    lines.push('| ' + header.map(c => (c == null ? '' : String(c))).join(' | ') + ' |');
     lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
-    for (let i = 1; i < this.content.length; i++) {
-      const row = this.content[i];
-      lines.push('| ' + row.map(c => c ?? '').join(' | ') + ' |');
+    for (let i = 1; i < src.length; i++) {
+      const row = Array.isArray(src[i]) ? src[i] : [];
+      lines.push('| ' + row.map(c => (c == null ? '' : String(c))).join(' | ') + ' |');
     }
     return lines.join('\n');
   }
@@ -199,43 +220,62 @@ class TableTaskArtifact extends BaseTaskArtifact {
   }
 }
 
-class SpreadsheetTaskArtifact extends TableTaskArtifact {
-  // Represented as its own subtype internally but we keep distinct identifier.
-  // Still return uppercase for consistency; assessor logic will still skip.
+class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   getType() { return 'SPREADSHEET'; }
   normalizeContent(content) {
     if (content == null) return null;
-    // Delegate to Table normalisation to get either markdown string or 2D array
-    const base = super.normalizeContent(content);
-    // If base returned a markdown string (legacy) just return it unchanged
-    if (typeof base === 'string' || !Array.isArray(base)) return base;
-    // Clone rows deeply to avoid mutating shared arrays
-    const norm = base.map(r => r.slice());
-    for (let r = 0; r < norm.length; r++) {
-      for (let c = 0; c < norm[r].length; c++) {
-        const cell = norm[r][c];
+    if (typeof content === 'string') {
+      // Legacy should be treated as unsupported for spreadsheet; return null
+      return null;
+    }
+    if (!Array.isArray(content)) return null;
+    // Deep normalisation similar to Table but preserve array form (no markdown conversion)
+    const rows = content.map(row => Array.isArray(row) ? row.map(cell => this._normCell(cell)) : []);
+    // Remove trailing empty rows/cols
+    const trimmed = this._trimEmpty(rows);
+    if (!trimmed.length) return null;
+    // Canonicalise formulas
+    for (let r = 0; r < trimmed.length; r++) {
+      for (let c = 0; c < trimmed[r].length; c++) {
+        const cell = trimmed[r][c];
         if (typeof cell === 'string' && cell.startsWith('=')) {
-          norm[r][c] = this._canonicaliseFormula(cell);
+          trimmed[r][c] = this._canonicaliseFormula(cell);
         }
       }
     }
-    return norm;
+    return trimmed;
   }
+  _normCell(cell) {
+    if (cell == null) return null;
+    if (typeof cell === 'number') return cell;
+    const s = String(cell).trim();
+    return s === '' ? null : s;
+  }
+  _trimEmpty(rows) {
+    while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
+    if (rows.length) {
+      let colCount = Math.max(...rows.map(r => r.length));
+      for (let c = colCount - 1; c >= 0; c--) {
+        let allEmpty = true;
+        for (let r = 0; r < rows.length; r++) {
+          const v = rows[r][c];
+          if (!(v == null || v === '')) { allEmpty = false; break; }
+        }
+        if (allEmpty) {
+          for (let r = 0; r < rows.length; r++) rows[r].splice(c, 1);
+        }
+      }
+    }
+    return rows;
+  }
+  _rowEmpty(row) { return !row.some(c => !(c == null || c === '')); }
   _canonicaliseFormula(f) {
-    // Uppercase function names outside quotes; preserve quoted substrings.
-    // Simple state machine.
     let result = '';
     let inQuote = false;
     for (let i = 0; i < f.length; i++) {
       const ch = f[i];
-      if (ch === '"') {
-        inQuote = !inQuote; result += ch; continue;
-      }
-      if (!inQuote) {
-        result += ch.toUpperCase();
-      } else {
-        result += ch; // inside quotes leave as-is
-      }
+      if (ch === '"') { inQuote = !inQuote; result += ch; continue; }
+      result += inQuote ? ch : ch.toUpperCase();
     }
     return result;
   }

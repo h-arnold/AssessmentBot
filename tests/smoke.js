@@ -44,9 +44,10 @@ function testTaskDefinitionAndArtifacts() {
 function testTableArtifact() {
   const raw = [ [' H ', 'B', ''], ['1', ' 2 ', null], [' ', ' ', ' '] ];
   const table = ArtifactFactory.table({ type: 'table', taskId: 't1', role: 'reference', content: raw });
-  assert(table.content.length === 2, 'trimmed empty trailing row');
-  assert(table.content[0][0] === 'H', 'cell trimmed');
-  const md = table.toMarkdown();
+  const rows = table.getRows();
+  assert(rows.length === 2, 'trimmed empty trailing row');
+  assert(rows[0][0] === 'H', 'cell trimmed');
+  const md = table.content; // already markdown
   assert(md.split('\n').length === 3, 'markdown lines');
 }
 

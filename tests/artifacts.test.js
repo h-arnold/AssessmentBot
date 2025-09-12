@@ -13,8 +13,9 @@ describe('Artifacts', () => {
 
   it('trims table trailing empties and converts to markdown', () => {
     const table = ArtifactFactory.table({ type: 'table', taskId: 't2', role: 'reference', content: [ ['H','B',''], ['1','2',null], [' ', ' ', ' '] ] });
-    expect(table.content.length).toBe(2);
-    const md = table.toMarkdown();
+    const rows = table.getRows();
+    expect(rows.length).toBe(2);
+    const md = table.content; // already markdown
     expect(md.split('\n').length).toBe(3);
   });
 
