@@ -40,9 +40,9 @@ class ImageManager extends BaseRequestManager {
       });
     });
 
-    // Submission items
+  // Submission items (current structure uses `assignment.submissions` only)
   const submissions = assignment.submissions || [];
-    submissions.forEach(sub => {
+  submissions.forEach(sub => {
       if (!sub || !sub.documentId) return;
       const items = sub.items || {};
       Object.values(items).forEach(item => {
@@ -146,7 +146,7 @@ class ImageManager extends BaseRequestManager {
 
     // Build a fast lookup from artifact uid -> artifact object. Using a map
     // allows applying blobs in O(1) per blob instead of scanning nested arrays.
-    const artifactMap = {};
+  const artifactMap = {};
 
     // --- Collect artifacts defined on task definitions (reference & template) ---
     // For each task definition, inspect both the `reference` and `template` roles
@@ -166,9 +166,10 @@ class ImageManager extends BaseRequestManager {
     // Walk each submission's items and add any IMAGE artifacts to the same map.
     // Using a single map ensures we can apply blobs for any artifact regardless
     // of whether it originated from the assignment template/reference or a submission.
-    assignment.submissions.forEach(submission => {
+    const submissions = assignment.submissions || [];
+    submissions.forEach(submission => {
       Object.values(submission.items).forEach(item => {
-        const artifact = item.artifact;
+        const artifact = item && item.artifact;
         if (artifact && artifact.getType && artifact.getType() === 'IMAGE') {
           artifactMap[artifact.getUid()] = artifact;
         }
