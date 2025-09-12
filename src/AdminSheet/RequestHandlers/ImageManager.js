@@ -123,29 +123,64 @@ class ImageManager extends BaseRequestManager {
   }
 
   /**
-   * Apply fetched blobs back to their artifacts using setContentFromBlob which sets base64 & hash.
-   * @param {Assignment} assignment
-   * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs
+   * Apply fetched blobs back to their corresponding artifact objects.
+   *
+   * Behaviour and assumptions:
+   * - This function is intentionally "fail-fast": it assumes the caller has ensured
+   *   `assignment.tasks`, `assignment.submissions` and nested collections exist. If
+   *   any expected property is missing the runtime will throw, making problems visible
+   *   earlier rather than silently continuing.
+   * - `blobs` is an array of objects with shape { uid, blob } where `uid` matches
+   *   an artifact's unique id and `blob` is a GoogleAppsScript.Base.Blob fetched
+   *   earlier (for example by `fetchImagesAsBlobs`).
+   * - For each matching artifact that exposes `setContentFromBlob`, we call that
+   *   method to update the artifact's internal content (base64) and associated hash.
+   *
+   * Inputs:
+   * @param {Assignment} assignment - assignment model containing task definitions and submissions
+   * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs - blobs to apply
    */
   writeBackBlobs(assignment, blobs) {
+    // Quick no-op when there are no blobs to apply.
     if (!blobs || !blobs.length) return;
-    // Build uid -> artifact map
-    const map = {};
-    // Task artifacts
-    Object.values(assignment.tasks || {}).forEach(td => {
-      ['reference','template'].forEach(role => {
-  td.artifacts[role].forEach(a => { if (a.getType && a.getType() === 'IMAGE') map[a.getUid()] = a; });
+
+    // Build a fast lookup from artifact uid -> artifact object. Using a map
+    // allows applying blobs in O(1) per blob instead of scanning nested arrays.
+    const artifactMap = {};
+
+    // --- Collect artifacts defined on task definitions (reference & template) ---
+    // For each task definition, inspect both the `reference` and `template` roles
+    // and add any IMAGE artifacts to the lookup. We guard each artifact with a
+    // small feature check (`getType`) to avoid assuming a concrete implementation.
+    Object.values(assignment.tasks).forEach(taskDefinition => {
+      ['reference', 'template'].forEach(role => {
+        taskDefinition.artifacts[role].forEach(artifact => {
+          if (artifact.getType && artifact.getType() === 'IMAGE') {
+            artifactMap[artifact.getUid()] = artifact;
+          }
+        });
       });
     });
-    // Submission artifacts
-    (assignment.submissions || []).forEach(sub => {
-      Object.values(sub.items || {}).forEach(item => {
-        const a = item.artifact;
-  if (a && a.getType && a.getType() === 'IMAGE') map[a.getUid()] = a;
+
+    // --- Collect artifacts attached to student submissions ---
+    // Walk each submission's items and add any IMAGE artifacts to the same map.
+    // Using a single map ensures we can apply blobs for any artifact regardless
+    // of whether it originated from the assignment template/reference or a submission.
+    assignment.submissions.forEach(submission => {
+      Object.values(submission.items).forEach(item => {
+        const artifact = item.artifact;
+        if (artifact && artifact.getType && artifact.getType() === 'IMAGE') {
+          artifactMap[artifact.getUid()] = artifact;
+        }
       });
     });
+
+    // --- Apply blobs to matched artifacts ---
+    // For each fetched blob, find the corresponding artifact by uid and, if it
+    // exposes `setContentFromBlob`, call it to update the artifact's stored data.
+    // Artifacts that don't match or don't implement the setter are skipped.
     blobs.forEach(({ uid, blob }) => {
-      const artifact = map[uid];
+      const artifact = artifactMap[uid];
       if (artifact && artifact.setContentFromBlob) {
         artifact.setContentFromBlob(blob);
       }
