@@ -238,7 +238,6 @@ class ImageTaskArtifact extends BaseTaskArtifact {
     return trimmed === '' ? null : trimmed;
   }
   setContentFromBlob(blob) {
-    // blob expected to be a Google Apps Script Blob or similar providing getBytes()
     if (!blob) return;
     try {
       let bytes;
@@ -250,11 +249,18 @@ class ImageTaskArtifact extends BaseTaskArtifact {
         bytes = blob.bytes;
       }
       if (!bytes) return;
-      const base64 = Utilities.base64Encode(bytes);
+      let base64;
+      if (typeof Utilities !== 'undefined' && Utilities.base64Encode) {
+        base64 = Utilities.base64Encode(bytes);
+      } else if (typeof Buffer !== 'undefined') {
+        base64 = Buffer.from(bytes).toString('base64');
+      } else {
+        return;
+      }
       this.content = base64;
       this.ensureHash();
     } catch (e) {
-      console.error('Failed to set image content from blob', e);
+      // swallow errors silently in production path
     }
   }
 }

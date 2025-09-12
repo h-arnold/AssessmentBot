@@ -136,13 +136,16 @@ class StudentSubmission {
     let mutated = false;
 
     if (!item) {
+      // Construct a submission-specific UID including the studentId to avoid collisions
+      const uid = `${taskId}-${this.studentId}-${pageId != null ? pageId : (taskDef.pageId || 'na')}-0`;
       const artifact = ArtifactFactory.create({
         type: this._inferTypeFromTask(taskDef),
         taskId,
         role: 'submission',
         pageId: pageId != null ? pageId : taskDef.pageId,
         content,
-        metadata
+        metadata,
+        uid
       });
       item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
       this.items[taskId] = item;

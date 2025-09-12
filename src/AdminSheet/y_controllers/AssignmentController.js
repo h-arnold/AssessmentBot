@@ -293,17 +293,17 @@ class AssignmentController {
     } finally {
       lock.releaseLock();
       console.log("Lock released.");
-      try {
-        const properties = PropertiesService.getDocumentProperties();
-        properties.deleteProperty('assignmentId');
-        properties.deleteProperty('referenceDocumentId');
-        properties.deleteProperty('templateDocumentId');
-        properties.deleteProperty('triggerId');
-        properties.deleteProperty('documentType'); // Clean up documentType property as well
-        console.log("Document properties cleaned up.");
-      } catch (cleanupError) {
-        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, cleanupError);
-      }
+      //try {
+      //  const properties = PropertiesService.getDocumentProperties();
+      //  properties.deleteProperty('assignmentId');
+      //  properties.deleteProperty('referenceDocumentId');
+      //  properties.deleteProperty('templateDocumentId');
+      //  properties.deleteProperty('triggerId');
+      //  properties.deleteProperty('documentType'); // Clean up documentType property as well
+      //  console.log("Document properties cleaned up.");
+      //} catch (cleanupError) {
+       // this..logError(`Failed to clean up properties: ${cleanupError.message}`, cleanupError);
+      //}
     }
   }
 

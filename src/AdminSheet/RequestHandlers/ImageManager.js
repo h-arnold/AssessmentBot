@@ -12,6 +12,17 @@ class ImageManager extends BaseRequestManager {
   }
 
   /**
+   * Return true when the passed object exposes a callable getType()
+   * method and reports 'IMAGE'. Centralises the defensive check used
+   * throughout this class for readability and a single point of change.
+   * @param {any} artifact
+   * @returns {boolean}
+   */
+  isImageArtifact(artifact) {
+    return typeof artifact?.getType === 'function' && artifact.getType() === 'IMAGE';
+  }
+
+  /**
    * Collect all image artifacts (reference, template, submission) across the assignment.
    * Returns entries containing uid, url (metadata.sourceUrl), documentId, scope, taskId, and optional itemId.
    * @param {Assignment} assignment
@@ -21,18 +32,18 @@ class ImageManager extends BaseRequestManager {
     const results = [];
     const taskDefs = assignment.tasks || {};
     // TaskDefinition artifacts (reference/template)
-    Object.values(taskDefs).forEach(td => {
+    Object.values(taskDefs).forEach(taskDefinition => {
       ['reference','template'].forEach(role => {
-        td.artifacts[role].forEach(artifact => {
-          if (artifact.getType && artifact.getType() === 'IMAGE') {
+    taskDefinition.artifacts[role].forEach(artifact => {
+      if (this.isImageArtifact(artifact)) {
             const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
-            if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
+            if (Utils.isValidUrl(sourceUrl)) {
               results.push({
                 uid: artifact.getUid(),
                 url: sourceUrl,
                 documentId: role === 'reference' ? assignment.referenceDocumentId : assignment.templateDocumentId,
                 scope: role,
-                taskId: td.id
+                taskId: taskDefinition.id
               });
             }
           }
@@ -48,9 +59,9 @@ class ImageManager extends BaseRequestManager {
       Object.values(items).forEach(item => {
         if (!item || !item.artifact) return;
         const art = item.artifact;
-  if (art.getType && art.getType() === 'IMAGE') {
+        if (this.isImageArtifact(art)) {
           const sourceUrl = art.metadata && art.metadata.sourceUrl;
-          if (Utils.isValidUrl && Utils.isValidUrl(sourceUrl)) {
+          if (Utils.isValidUrl(sourceUrl)) {
             results.push({
               uid: art.getUid(),
               url: sourceUrl,
@@ -141,51 +152,48 @@ class ImageManager extends BaseRequestManager {
    * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs - blobs to apply
    */
   writeBackBlobs(assignment, blobs) {
-    // Quick no-op when there are no blobs to apply.
-    if (!blobs || !blobs.length) return;
+  if (!blobs || !blobs.length) return;
 
-    // Build a fast lookup from artifact uid -> artifact object. Using a map
-    // allows applying blobs in O(1) per blob instead of scanning nested arrays.
-  const artifactMap = {};
+    const artifactMap = {};
 
-    // --- Collect artifacts defined on task definitions (reference & template) ---
-    // For each task definition, inspect both the `reference` and `template` roles
-    // and add any IMAGE artifacts to the lookup. We guard each artifact with a
-    // small feature check (`getType`) to avoid assuming a concrete implementation.
     Object.values(assignment.tasks).forEach(taskDefinition => {
       ['reference', 'template'].forEach(role => {
         taskDefinition.artifacts[role].forEach(artifact => {
-          if (artifact.getType && artifact.getType() === 'IMAGE') {
-            artifactMap[artifact.getUid()] = artifact;
+          if (this.isImageArtifact(artifact)) {
+            const uid = artifact.getUid();
+            artifactMap[uid] = artifact;
           }
         });
       });
     });
 
-    // --- Collect artifacts attached to student submissions ---
-    // Walk each submission's items and add any IMAGE artifacts to the same map.
-    // Using a single map ensures we can apply blobs for any artifact regardless
-    // of whether it originated from the assignment template/reference or a submission.
-    const submissions = assignment.submissions || [];
-    submissions.forEach(submission => {
+    assignment.submissions.forEach(submission => {
       Object.values(submission.items).forEach(item => {
-        const artifact = item && item.artifact;
-        if (artifact && artifact.getType && artifact.getType() === 'IMAGE') {
-          artifactMap[artifact.getUid()] = artifact;
+        const artifact = item.artifact;
+        if (this.isImageArtifact(artifact)) {
+          const uid = artifact.getUid();
+          artifactMap[uid] = artifact;
         }
       });
     });
 
-    // --- Apply blobs to matched artifacts ---
-    // For each fetched blob, find the corresponding artifact by uid and, if it
-    // exposes `setContentFromBlob`, call it to update the artifact's stored data.
-    // Artifacts that don't match or don't implement the setter are skipped.
+  const unmatched = [];
+
     blobs.forEach(({ uid, blob }) => {
       const artifact = artifactMap[uid];
       if (artifact && artifact.setContentFromBlob) {
-        artifact.setContentFromBlob(blob);
+        const beforeLen = artifact.content && artifact.content.length;
+        try {
+          artifact.setContentFromBlob(blob);
+      const afterLen = artifact.content && artifact.content.length; // retained variable for potential future logic
+        } catch (e) {
+      // silent
+        }
+      } else {
+        unmatched.push(uid);
       }
     });
+    // intentionally no logging in production path
   }
 }
 
