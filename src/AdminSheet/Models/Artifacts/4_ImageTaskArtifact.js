@@ -4,15 +4,29 @@ if (typeof module !== 'undefined') {
 }
 
 class ImageTaskArtifact extends BaseTaskArtifact {
+  /**
+   * Return the artifact type identifier.
+   * @returns {string}
+   */
   getType() {
     return 'IMAGE';
   }
+  /**
+   * Normalize image content; accepts only non-empty strings (data URLs).
+   * @param {*} content
+   * @returns {string|null}
+   */
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') return null;
     const trimmed = content.trim();
     return trimmed === '' ? null : trimmed;
   }
+  /**
+   * Set the artifact content from a binary blob (GAS Blob or Node Buffer-like).
+   * The blob is converted to a base64 PNG data URL and a content hash is set.
+   * @param {*} blob
+   */
   setContentFromBlob(blob) {
     if (!blob) return;
     try {

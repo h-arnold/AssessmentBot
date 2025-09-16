@@ -4,9 +4,20 @@ if (typeof module !== 'undefined') {
 }
 
 class SpreadsheetTaskArtifact extends BaseTaskArtifact {
+  /**
+   * Return the artifact type identifier.
+   * @returns {string}
+   */
   getType() {
     return 'SPREADSHEET';
   }
+  /**
+   * Normalize spreadsheet-like content into a trimmed 2D array.
+   * Strings are rejected (returns null). Formula strings starting with '='
+   * are canonicalised (uppercase outside quoted regions).
+   * @param {Array<Array<any>>|null} content
+   * @returns {Array<Array<any>>|null}
+   */
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content === 'string') return null;
@@ -26,12 +37,24 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     }
     return trimmed;
   }
+  /**
+   * Normalize an individual spreadsheet cell.
+   * @private
+   * @param {*} cell
+   * @returns {string|number|null}
+   */
   _normCell(cell) {
     if (cell == null) return null;
     if (typeof cell === 'number') return cell;
     const s = String(cell).trim();
     return s === '' ? null : s;
   }
+  /**
+   * Trim trailing empty rows and fully-empty trailing columns.
+   * @private
+   * @param {Array<Array<any>>} rows
+   * @returns {Array<Array<any>>}
+   */
   _trimEmpty(rows) {
     while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
     if (rows.length) {
@@ -52,9 +75,21 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     }
     return rows;
   }
+  /**
+   * Predicate: is the row empty?
+   * @private
+   * @param {Array<any>} row
+   * @returns {boolean}
+   */
   _rowEmpty(row) {
     return !row.some((c) => !(c == null || c === ''));
   }
+  /**
+   * Canonicalise a formula string by uppercasing outside quoted literals.
+   * @private
+   * @param {string} f
+   * @returns {string}
+   */
   _canonicaliseFormula(f) {
     let result = '';
     let inQuote = false;

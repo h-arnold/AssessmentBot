@@ -96,9 +96,19 @@ if (typeof module !== 'undefined') {
  *                              { ...params, content: rawCells }.
  */
 class TableTaskArtifact extends BaseTaskArtifact {
+  /**
+   * Return the artifact type identifier.
+   * @returns {string}
+   */
   getType() {
     return 'TABLE';
   }
+  /**
+   * Normalize table-like content into internal rows and return a Markdown
+   * string representation. Accepts null, string, or 2D array input.
+   * @param {null|string|Array<Array<any>>} content
+   * @returns {string|null}
+   */
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content === 'string') {
@@ -114,16 +124,32 @@ class TableTaskArtifact extends BaseTaskArtifact {
     this._rows = trimmed;
     return this.toMarkdown(trimmed);
   }
+  /**
+   * Return a shallow copy of the normalized rows.
+   * @returns {Array<Array<any>>}
+   */
   getRows() {
     if (this._rows && Array.isArray(this._rows)) return this._rows.map((r) => r.slice());
     return [];
   }
+  /**
+   * Normalize an individual cell value.
+   * @private
+   * @param {*} cell
+   * @returns {string|number|null}
+   */
   _normCell(cell) {
     if (cell == null) return null;
     if (typeof cell === 'number') return cell;
     let s = String(cell).trim();
     return s === '' ? null : s;
   }
+  /**
+   * Remove trailing empty rows and fully-empty trailing columns in-place.
+   * @private
+   * @param {Array<Array<any>>} rows
+   * @returns {Array<Array<any>>}
+   */
   _trimEmpty(rows) {
     while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
     if (rows.length) {
@@ -143,12 +169,29 @@ class TableTaskArtifact extends BaseTaskArtifact {
     }
     return rows;
   }
+  /**
+   * Predicate: is the row empty?
+   * @private
+   * @param {Array<any>} row
+   * @returns {boolean}
+   */
   _rowEmpty(row) {
     return !row.some((c) => !this._cellEmpty(c));
   }
+  /**
+   * Predicate: is the cell empty?
+   * @private
+   * @param {*} c
+   * @returns {boolean}
+   */
   _cellEmpty(c) {
     return c == null || c === '';
   }
+  /**
+   * Convert rows (or current content) into a Markdown table string.
+   * @param {Array<Array<any>>} [rowsOverride]
+   * @returns {string}
+   */
   toMarkdown(rowsOverride) {
     const candidate = this && this.content !== undefined ? this.content : undefined;
     let src = rowsOverride !== undefined ? rowsOverride : candidate;
@@ -166,6 +209,12 @@ class TableTaskArtifact extends BaseTaskArtifact {
     }
     return lines.join('\n');
   }
+  /**
+   * Create a TableTaskArtifact from raw 2D cells.
+   * @param {Array<Array<any>>} rawCells
+   * @param {Object} params
+   * @returns {TableTaskArtifact}
+   */
   static fromRawCells(rawCells, params) {
     return new TableTaskArtifact({ ...params, content: rawCells });
   }

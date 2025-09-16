@@ -30,15 +30,31 @@ if (typeof module !== 'undefined') {
  * @returns {TextTaskArtifact} New TextTaskArtifact instance initialized with the provided content and params.
  */
 class TextTaskArtifact extends BaseTaskArtifact {
+  /**
+   * Return the artifact type identifier.
+   * @returns {string}
+   */
   getType() {
     return 'TEXT';
   }
+  /**
+   * Normalize raw content to a trimmed LF-only string.
+   * Non-string inputs are coerced to string. Empty strings become null.
+   * @param {*} content
+   * @returns {string|null}
+   */
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') content = String(content);
     const normalised = content.replace(/\r\n?/g, '\n').trim();
     return normalised === '' ? null : normalised;
   }
+  /**
+   * Helper to create a TextTaskArtifact from raw text.
+   * @param {*} raw - raw text to use as content
+   * @param {Object} params - additional constructor params
+   * @returns {TextTaskArtifact}
+   */
   static fromRawText(raw, params) {
     return new TextTaskArtifact({ ...params, content: raw });
   }

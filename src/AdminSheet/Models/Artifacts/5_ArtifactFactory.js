@@ -8,6 +8,12 @@ if (typeof module !== 'undefined') {
 }
 
 class ArtifactFactory {
+  /**
+   * Create an artifact instance based on the provided params.type.
+   * Falls back to BaseTaskArtifact for unknown types.
+   * @param {Object} params - constructor parameters including optional `type`.
+   * @returns {BaseTaskArtifact}
+   */
   static create(params) {
     const rawType = (params.type || '').toString();
     const type = rawType.toUpperCase();
@@ -24,18 +30,27 @@ class ArtifactFactory {
         return new BaseTaskArtifact(params);
     }
   }
+  /**
+   * Alias for create when given a JSON-like object.
+   * @param {Object} json
+   * @returns {BaseTaskArtifact}
+   */
   static fromJSON(json) {
     return this.create(json);
   }
+  /** Create a text artifact. */
   static text(params) {
     return this.create({ ...params, type: 'TEXT' });
   }
+  /** Create a table artifact. */
   static table(params) {
     return this.create({ ...params, type: 'TABLE' });
   }
+  /** Create a spreadsheet artifact. */
   static spreadsheet(params) {
     return this.create({ ...params, type: 'SPREADSHEET' });
   }
+  /** Create an image artifact. */
   static image(params) {
     return this.create({ ...params, type: 'IMAGE' });
   }
