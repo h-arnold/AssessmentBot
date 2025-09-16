@@ -12,11 +12,23 @@ function getConfiguration() {
     try {
       return getter();
     } catch (err) {
-      console.error(`Error retrieving configuration value for ${name}:`, err);
-      errors.push(`${name}: ${err.message}`);
+      // Avoid logging full error objects which may contain sensitive details.
+      console.error(
+        `Error retrieving configuration value for ${name}: ${err && err.name ? err.name : 'Error'}`
+      );
+      errors.push(`${name}: ${err && err.message ? err.message : 'REDACTED'}`);
       return fallback;
     }
   }
+
+  function maskApiKey(key) {
+    if (!key) return '';
+    const s = String(key);
+    if (s.length <= 4) return '****';
+    return '****' + s.slice(-4);
+  }
+
+  const rawApiKey = safeGet(() => configurationManager.getApiKey(), 'apiKey', '');
 
   const config = {
     backendAssessorBatchSize: safeGet(
@@ -24,7 +36,10 @@ function getConfiguration() {
       'backendAssessorBatchSize',
       30
     ),
-    apiKey: safeGet(() => configurationManager.getApiKey(), 'apiKey', ''),
+    // Return a redacted API key to prevent accidental clear-text logging.
+    apiKey: maskApiKey(rawApiKey),
+    // Provide a boolean so callers can know whether a key is present without exposing it.
+    hasApiKey: !!rawApiKey,
     backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
     assessmentRecordTemplateId: safeGet(
       () => configurationManager.getAssessmentRecordTemplateId(),
@@ -85,8 +100,12 @@ function saveConfiguration(config) {
       action();
       return true;
     } catch (err) {
-      console.error(`Error saving configuration value for ${name}:`, err);
-      errors.push(`${name}: ${err.message}`);
+      // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
+      // Log only a generic error identifier and mark the detailed message as redacted.
+      console.error(
+        `Error saving configuration value for ${name}: ${err && err.name ? err.name : 'Error'}`
+      );
+      errors.push(`${name}: REDACTED`);
       return false;
     }
   }
