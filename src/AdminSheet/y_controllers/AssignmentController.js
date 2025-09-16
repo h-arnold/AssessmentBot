@@ -279,6 +279,10 @@ class AssignmentController {
         this.progressTracker.logAndThrowError(errorMsg);
       }
 
+      // Update lastUpdated value - when JsonDbApp is integrated, this will also be the point where the assignment data is written to the DB
+
+      assignment.touchUpdated();
+
       // Analyse assignment data
       this.analyseAssignmentData(assignment);
 

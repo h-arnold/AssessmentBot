@@ -11,6 +11,7 @@ class Assignment {
    * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
    * @param {Date} dueDate - to be implemented later 
    * @param {object} assignmentMetadata - to be implemented later
+   * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
    */
   constructor(courseId, assignmentId) {
     this.courseId = courseId;
@@ -19,6 +20,8 @@ class Assignment {
     this.assignmentWeighting = null //will be implemented later.
     this.assignmentMetadata = null //will be implemented later.
     this.dueDate = null //to be implemented later with the homework tracker. 
+    // Timestamp for when this assignment was last updated. Use Date or null.
+    this.lastUpdated = null;
     // New model: tasks keyed by stable taskId -> TaskDefinition
     this.tasks = {};           // { [taskId: string]: TaskDefinition }
     // New model: submissions array of StudentSubmission
@@ -69,6 +72,7 @@ class Assignment {
       assignmentWeighting: this.assignmentWeighting,
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
       tasks,
       submissions,
     };
@@ -92,7 +96,8 @@ class Assignment {
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
     inst.assignmentWeighting = data.assignmentWeighting ?? null;
     inst.assignmentMetadata = data.assignmentMetadata ?? null;
-    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+  inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+  inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
     inst.tasks = {};
     inst.submissions = [];
     // restore tasks
@@ -171,6 +176,44 @@ class Assignment {
       console.error(`Error fetching assignment name for ID ${assignmentId}:`, error);
       return `Assignment ${assignmentId}`;
     }
+  }
+
+  /**
+   * Update the lastUpdated timestamp to the current date/time.
+   * Call this whenever the assignment is modified in-memory.
+   * @return {Date} the new lastUpdated value
+   */
+  touchUpdated() {
+    // Use setLastUpdated to centralize validation/copying behavior.
+    return this.setLastUpdated(new Date());
+  }
+
+  /**
+   * Returns the lastUpdated Date or null if not set.
+   * @return {Date|null}
+   */
+  getLastUpdated() {
+    return this.lastUpdated || null;
+  }
+
+  /**
+   * Set the lastUpdated timestamp from a JavaScript Date object (or null to clear).
+   * The method copies the provided Date to avoid external mutation.
+   * @param {Date|null} date
+   * @throws {TypeError} if the provided value is not a Date or null
+   * @return {Date|null} the stored Date instance or null
+   */
+  setLastUpdated(date) {
+    if (date === null) {
+      this.lastUpdated = null;
+      return null;
+    }
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      throw new TypeError('setLastUpdated expects a valid Date or null');
+    }
+    // store a copy to avoid outside mutation
+    this.lastUpdated = new Date(date.getTime());
+    return this.lastUpdated;
   }
 
   /**
