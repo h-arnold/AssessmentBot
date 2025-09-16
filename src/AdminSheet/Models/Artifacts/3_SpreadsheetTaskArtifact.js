@@ -27,11 +27,11 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     );
     const trimmed = this._trimEmpty(rows);
     if (!trimmed.length) return null;
-    for (let r = 0; r < trimmed.length; r++) {
-      for (let c = 0; c < trimmed[r].length; c++) {
-        const cell = trimmed[r][c];
+    for (const row of trimmed) {
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
         if (typeof cell === 'string' && cell.startsWith('=')) {
-          trimmed[r][c] = this._canonicaliseFormula(cell);
+          row[c] = this._canonicaliseFormula(cell);
         }
       }
     }
@@ -61,15 +61,15 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
       let colCount = Math.max(...rows.map((r) => r.length));
       for (let c = colCount - 1; c >= 0; c--) {
         let allEmpty = true;
-        for (let r = 0; r < rows.length; r++) {
-          const v = rows[r][c];
+        for (const row of rows) {
+          const v = row[c];
           if (!(v == null || v === '')) {
             allEmpty = false;
             break;
           }
         }
         if (allEmpty) {
-          for (let r = 0; r < rows.length; r++) rows[r].splice(c, 1);
+          for (const row of rows) row.splice(c, 1);
         }
       }
     }
@@ -93,8 +93,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   _canonicaliseFormula(f) {
     let result = '';
     let inQuote = false;
-    for (let i = 0; i < f.length; i++) {
-      const ch = f[i];
+    for (const ch of String(f)) {
       if (ch === '"') {
         inQuote = !inQuote;
         result += ch;

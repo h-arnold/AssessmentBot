@@ -156,14 +156,14 @@ class TableTaskArtifact extends BaseTaskArtifact {
       let colCount = Math.max(...rows.map((r) => r.length));
       for (let c = colCount - 1; c >= 0; c--) {
         let allEmpty = true;
-        for (let r = 0; r < rows.length; r++) {
-          if (!this._cellEmpty(rows[r][c])) {
+        for (const row of rows) {
+          if (!this._cellEmpty(row[c])) {
             allEmpty = false;
             break;
           }
         }
         if (allEmpty) {
-          for (let r = 0; r < rows.length; r++) rows[r].splice(c, 1);
+          for (const row of rows) row.splice(c, 1);
         }
       }
     }
