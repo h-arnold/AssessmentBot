@@ -1,8 +1,3 @@
-const BaseTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./0_BaseTaskArtifact.js')
-    : this.BaseTaskArtifact;
-
 class ImageTaskArtifact extends BaseTaskArtifact {
   getType() {
     return 'IMAGE';

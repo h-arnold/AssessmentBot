@@ -1,26 +1,3 @@
-// Bring subclass constructors into local scope for Node environment while
-// preserving global usage for GAS.
-const TextTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./1_TextTaskArtifact.js')
-    : this.TextTaskArtifact;
-const TableTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./2_TableTaskArtifact.js')
-    : this.TableTaskArtifact;
-const SpreadsheetTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./3_SpreadsheetTaskArtifact.js')
-    : this.SpreadsheetTaskArtifact;
-const ImageTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./4_ImageTaskArtifact.js')
-    : this.ImageTaskArtifact;
-const BaseTaskArtifact =
-  typeof module !== 'undefined' && module.exports
-    ? require('./0_BaseTaskArtifact.js')
-    : this.BaseTaskArtifact;
-
 class ArtifactFactory {
   static create(params) {
     const rawType = (params.type || '').toString();
@@ -53,10 +30,4 @@ class ArtifactFactory {
   static image(params) {
     return this.create({ ...params, type: 'IMAGE' });
   }
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ArtifactFactory;
-} else {
-  this.ArtifactFactory = ArtifactFactory;
 }
