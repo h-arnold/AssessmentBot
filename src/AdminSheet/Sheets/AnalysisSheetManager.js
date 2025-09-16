@@ -182,9 +182,9 @@ class AnalysisSheetManager extends BaseSheetManager {
         spagCells.push(Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1));
         currentColumnIndex++;
       });
-      const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),1),'E')`;
-      const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),1),'N')`;
-      const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),1),'N')`;
+  const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),1),"E")`;
+  const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),1),"N")`;
+  const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),1),"N")`;
       rowData.push({ userEnteredValue: { formulaValue: completenessFormula } });
       rowData.push({ userEnteredValue: { formulaValue: accuracyFormula } });
       rowData.push({ userEnteredValue: { formulaValue: spagFormula } });
