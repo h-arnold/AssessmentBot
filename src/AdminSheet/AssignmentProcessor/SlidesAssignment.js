@@ -32,19 +32,17 @@ class SlidesAssignment extends Assignment {
         console.log('No image artifacts to process.');
         return;
       }
-      this.progressTracker &&
-        this.progressTracker.updateProgress &&
-        this.progressTracker.updateProgress(
-          `Found ${entries.length} image artifacts. Fetching...`,
-          false
-        );
+      // Use optional chaining to call updateProgress if progressTracker exists
+      this.progressTracker?.updateProgress(
+        `Found ${entries.length} image artifacts. Fetching...`,
+        false
+      );
       const blobs = imageManager.fetchImagesAsBlobs(entries);
-      this.progressTracker &&
-        this.progressTracker.updateProgress &&
-        this.progressTracker.updateProgress(
-          `Fetched ${blobs.length} image blobs. Writing content...`,
-          false
-        );
+      // Optional chaining for concise progress update
+      this.progressTracker?.updateProgress(
+        `Fetched ${blobs.length} image blobs. Writing content...`,
+        false
+      );
       imageManager.writeBackBlobs(this, blobs);
       console.log(`Hydrated ${blobs.length} image artifacts.`);
     } catch (e) {
