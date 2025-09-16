@@ -379,3 +379,20 @@ By following this, you can ensure your contributions remain consistent with my s
 
 Thank you again for contributing to the Google Slides AI Assessor! Every contribution helps make this project better, and your efforts are greatly appreciated.
 
+
+## Git hooks (Husky)
+
+This project uses Husky to provide Git hooks for contributors. On a fresh checkout, install dependencies with `npm install` which will run `npm run prepare` and create the Git hooks automatically.
+
+The repository ships a `pre-commit` hook which runs `npm run lint`. If you want to (re)install the hooks manually, run:
+
+```bash
+npx husky install
+```
+
+To add or update hooks locally, use the `npx husky add` command. For example:
+
+```bash
+npx husky add .husky/pre-commit "npm run lint"
+```
+
