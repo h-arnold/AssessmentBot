@@ -7,9 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-  "test": "vitest run",
-  "test:watch": "vitest",
-    "lint": "eslint --config eslint.config.js --fix src/**/*.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint --config eslint.config.js src/**/*.js",
+    "lint:fix": "eslint --config eslint.config.js --fix src/**/*.js"
   },
   "keywords": [],
   "author": "",

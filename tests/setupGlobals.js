@@ -23,5 +23,5 @@ global.Logger = {
 };
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
-const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts');
+const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory;

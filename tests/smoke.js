@@ -22,7 +22,7 @@ global.Utilities = {
   }
 };
 
-const { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } = require('../src/AdminSheet/Models/Artifacts');
+const { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory; // so TaskDefinition can reference it when loaded
 const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
 const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');

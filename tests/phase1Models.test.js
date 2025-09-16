@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TaskDefinition } from '../src/AdminSheet/Models/TaskDefinition.js';
-import { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } from '../src/AdminSheet/Models/Artifacts';
+import { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } from '../src/AdminSheet/Models/Artifacts/index.js';
 import { StudentSubmission } from '../src/AdminSheet/Models/StudentSubmission.js';
 
 function makeTD(idx = 0, opts = {}) {

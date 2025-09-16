@@ -1,3 +1,7 @@
+const BaseTaskArtifact = (typeof module !== 'undefined' && module.exports)
+  ? require('./0_BaseTaskArtifact.js')
+  : this.BaseTaskArtifact;
+
 class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   getType() { return 'SPREADSHEET'; }
   normalizeContent(content) {
