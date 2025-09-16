@@ -73,10 +73,10 @@ class SheetsAssignment extends Assignment {
    * @return {boolean}
    */
   hasValidStudentResponse(studentResponseEntry) {
-    return !!(
-      studentResponseEntry &&
-      typeof studentResponseEntry.response !== 'undefined' &&
-      studentResponseEntry.response !== null
+    // Use optional chaining to check presence of response property and ensure it's not null/undefined
+    return (
+      typeof studentResponseEntry?.response !== 'undefined' &&
+      studentResponseEntry?.response !== null
     );
   }
 
@@ -86,10 +86,9 @@ class SheetsAssignment extends Assignment {
    * @return {boolean}
    */
   hasValidReferenceTask(referenceTask) {
-    return !!(
-      referenceTask &&
-      typeof referenceTask.taskReference !== 'undefined' &&
-      referenceTask.taskReference !== null
+    // Optional chaining for concise existence check
+    return (
+      typeof referenceTask?.taskReference !== 'undefined' && referenceTask?.taskReference !== null
     );
   }
 
@@ -97,8 +96,9 @@ class SheetsAssignment extends Assignment {
     // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
     // Placeholder: integrate AssessmentEngineRouter in later phase.
     if (typeof SheetsAssessor !== 'undefined') {
-      const assessor = new SheetsAssessor(this.tasks, this.submissions); // TODO: update SheetsAssessor signature in Phase 5/6
-      assessor.assessResponses && assessor.assessResponses();
+      const assessor = new SheetsAssessor(this.tasks, this.submissions); //
+      // Use optional chaining to call assessResponses if present
+      assessor.assessResponses?.();
     } else {
       console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
     }
