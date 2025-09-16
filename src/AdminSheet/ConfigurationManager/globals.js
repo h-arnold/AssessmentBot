@@ -13,10 +13,12 @@ function getConfiguration() {
       return getter();
     } catch (err) {
       // Avoid logging full error objects which may contain sensitive details.
+      // Log a concise error identifier only. Use optional chaining to avoid
+      // referencing properties on possibly undefined/null error objects.
       console.error(
-        `Error retrieving configuration value for ${name}: ${err && err.name ? err.name : 'Error'}`
+        `Error retrieving configuration value for ${name}: ${err?.name ?? 'Error'}`
       );
-      errors.push(`${name}: ${err && err.message ? err.message : 'REDACTED'}`);
+      errors.push(`${name}: ${err?.message ?? 'REDACTED'}`);
       return fallback;
     }
   }
@@ -101,10 +103,8 @@ function saveConfiguration(config) {
       return true;
     } catch (err) {
       // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
-      // Log only a generic error identifier and mark the detailed message as redacted.
-      console.error(
-        `Error saving configuration value for ${name}: REDACTED`
-      );
+      // Log only a concise identifier using optional chaining to be safe.
+      console.error(`Error saving configuration value for ${name}: ${err?.name ?? 'Error'}`);
       errors.push(`${name}: REDACTED`);
       return false;
     }
@@ -116,8 +116,9 @@ function saveConfiguration(config) {
       this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
       delete config.classroom; // Remove classroom data before saving other configs
     } catch (err) {
-      console.error('Error saving classroom configuration:', err);
-      errors.push(`classroom: ${err.message}`);
+      // Keep the logged output concise to avoid exposing sensitive details.
+      console.error('Error saving classroom configuration:', err?.name ?? 'Error');
+      errors.push(`classroom: ${err?.message ?? 'REDACTED'}`);
     }
   }
 
