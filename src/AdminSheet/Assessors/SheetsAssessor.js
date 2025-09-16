@@ -18,7 +18,7 @@ class SheetsAssessor {
   assessResponses() {
     this.submissions.forEach((submission) => {
       // Essential check - skip if student task or items don't exist
-      if (!submission || !submission.items) {
+      if (!submission.items) {
         console.warn(
           `Submission or items missing for student: ${
             submission?.student?.name || submission.studentId || 'Unknown'
@@ -38,7 +38,7 @@ class SheetsAssessor {
         }
 
         // Skip non-formula responses or empty responses
-        if (!studentResponseEntry.response || !Array.isArray(studentResponseEntry.response)) {
+        if (!Array.isArray(studentResponseEntry?.response)) {
           return;
         }
 
@@ -93,12 +93,7 @@ class SheetsAssessor {
    * @return {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
    */
   assessFormulaeTasks(studentResponseEntry, referenceTask, taskKey, studentName) {
-    if (
-      !studentResponseEntry ||
-      !studentResponseEntry.response ||
-      !referenceTask ||
-      !referenceTask.taskReference
-    ) {
+    if (!studentResponseEntry?.response || !referenceTask?.taskReference) {
       console.warn(
         `Invalid input for assessFormulaeTasks for taskKey: ${taskKey}, student: ${studentName}`
       );
@@ -260,7 +255,7 @@ class SheetsAssessor {
    */
   calculateFormulaeAssessmentScores(scores, countOfFormulae) {
     const completenessScore = this._calculateFormulaeCompletenessScore(scores, countOfFormulae);
-    const accuracyScore = this._calculateFormalaeAccuracyScore(scores, countOfFormulae);
+    const accuracyScore = this._calculateFormulaeAccuracyScore(scores, countOfFormulae);
     return {
       completenessScore,
       accuracyScore,
@@ -303,7 +298,7 @@ class SheetsAssessor {
    * @param {number} countOfFormulae - The total number of formulae to assess.
    * @returns {number} The calculated accuracy score (0 to 5, rounded to 2 decimal places).
    */
-  _calculateFormalaeAccuracyScore(scores, countOfFormulae) {
+  _calculateFormulaeAccuracyScore(scores, countOfFormulae) {
     if (scores.correct === 0) {
       return 0; // If no correct answers, return 0
     }
