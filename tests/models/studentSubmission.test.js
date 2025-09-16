@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { TaskDefinition } from '../src/AdminSheet/Models/TaskDefinition.js';
-import { StudentSubmission } from '../src/AdminSheet/Models/StudentSubmission.js';
+import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
+import { StudentSubmission } from '../../src/AdminSheet/Models/StudentSubmission.js';
 
 describe('StudentSubmission', () => {
   it('upserts items and round-trips JSON', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TaskDefinition } from '../src/AdminSheet/Models/TaskDefinition.js';
+import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
 
 describe('TaskDefinition', () => {
   it('adds reference & template artifacts and validates', () => {

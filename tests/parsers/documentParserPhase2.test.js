@@ -1,14 +1,12 @@
 import { describe, test, expect, beforeAll } from 'vitest';
-const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
+import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
 
-// Global shims already provided in setupGlobals.js – ensure they exist.
 if (!global.Utils || !global.Utilities) {
   throw new Error('Global Utils/Utilities expected from setupGlobals.js');
 }
 
 describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () => {
-  // We'll require the base after setting globals in case it references them.
-  const basePath = '../src/AdminSheet/DocumentParsers/DocumentParser.js';
+  const basePath = '../../src/AdminSheet/DocumentParsers/DocumentParser.js';
   let ParserExport;
   let ParserClass;
   beforeAll(() => {
@@ -18,13 +16,11 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
 
   test('Abstract enforcement: instantiating base or calling abstract methods throws', () => {
   expect(() => new ParserClass()).toThrow();
-    // If we somehow could instantiate, calling abstract should throw
     try {
       const maybe = Object.create(ParserClass.prototype);
       expect(() => maybe.extractTaskDefinitions('ref', 'tpl')).toThrow();
       expect(() => maybe.extractSubmissionArtifacts('doc', [])).toThrow();
     } catch (e) {
-      // Already thrown earlier is fine.
     }
   });
 
@@ -61,7 +57,7 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
     const parser = new TestDocumentParser([
       { title: 'A', refContent: 'R1', tplContent: 'T1' },
       { title: 'B', refContent: 'R2', tplContent: 'T2' },
-      { title: 'A', refContent: 'R3', tplContent: 'T3' } // duplicate title intentionally
+      { title: 'A', refContent: 'R3', tplContent: 'T3' }
     ]);
     const defs = parser.extractTaskDefinitions('refDoc', 'tplDoc');
     expect(defs.map(d => d.index)).toEqual([0,1,2]);
@@ -89,7 +85,6 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
       expect(Object.keys(o).sort()).toEqual(expect.arrayContaining(['taskId','content','pageId','metadata']));
       expect(typeof o.taskId).toBe('string');
       expect(o.metadata && typeof o.metadata).toBe('object');
-      // content allowed null or string
       if (o.content != null) expect(typeof o.content).toBe('string');
     });
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { TaskDefinition } from '../src/AdminSheet/Models/TaskDefinition.js';
-import { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } from '../src/AdminSheet/Models/Artifacts/index.js';
-import { StudentSubmission } from '../src/AdminSheet/Models/StudentSubmission.js';
+import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
+import { ArtifactFactory, TextTaskArtifact, TableTaskArtifact, SpreadsheetTaskArtifact, ImageTaskArtifact } from '../../src/AdminSheet/Models/Artifacts/index.js';
+import { StudentSubmission } from '../../src/AdminSheet/Models/StudentSubmission.js';
 
 function makeTD(idx = 0, opts = {}) {
   const td = new TaskDefinition({ taskTitle: opts.title || `Task ${idx}`, pageId: opts.pageId || `p${idx}`, index: idx });

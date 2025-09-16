@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import model classes from source (CommonJS exports)
-const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
-const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
+const { TaskDefinition } = require('../../src/AdminSheet/Models/TaskDefinition.js');
+const { StudentSubmission } = require('../../src/AdminSheet/Models/StudentSubmission.js');
 
 // Minimal global Utils & dependencies stubs required by artifacts & manager (non-GAS)
 global.Utils = {
@@ -62,8 +62,8 @@ global.MimeType = { GOOGLE_SLIDES: 'application/vnd.google-apps.slides', GOOGLE_
 global.StudentSubmission = StudentSubmission;
 
 // Now that globals exist, require runtime-dependent classes
-const LLMRequestManagerFresh = require('../src/AdminSheet/RequestHandlers/LLMRequestManager.js');
-const Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
+const LLMRequestManagerFresh = require('../../src/AdminSheet/RequestHandlers/LLMRequestManager.js');
+const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
 
 // Helper to build a text TaskDefinition with ref+template artifacts
 function buildTextTask(idSuffix, refContent, tplContent){

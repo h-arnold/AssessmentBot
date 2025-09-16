@@ -30,8 +30,8 @@ class DummyBaseRequestManager {
 global.BaseRequestManager = DummyBaseRequestManager;
 
 // Import artifacts & ImageManager
-const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
-const ImageManager = require('../src/AdminSheet/RequestHandlers/ImageManager.js');
+const { ArtifactFactory } = require('../../src/AdminSheet/Models/Artifacts/index.js');
+const ImageManager = require('../../src/AdminSheet/RequestHandlers/ImageManager.js');
 
 function buildImageManager(){
   const mgr = new ImageManager();
