@@ -102,7 +102,7 @@ class ConfigurationManager {
       [ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE]: {
         storage: 'script',
         validate: (v) => {
-          const stage = parseInt(v);
+          const stage = parseInt(v, 10);
           if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
             throw new Error('Update Stage must be 0, 1, or 2');
           }
