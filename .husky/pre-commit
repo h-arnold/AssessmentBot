@@ -1,4 +1,28 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Format staged JavaScript and JSON files with Prettier, add them back to the commit,
+# then run ESLint --fix. This keeps formatting consistent for committed files.
+
+## Get list of staged files (null-separated to safely handle spaces/newlines in names)
+# Use %x00 to terminate entries and xargs -0 to consume them safely.
+STAGED_FILES_NULL=$(git diff --cached --name-only --diff-filter=ACM -z | xargs -0 -n1 | grep -E "\.(js|json|md)$" | tr '\n' '\0' || true)
+
+if [ -n "$STAGED_FILES_NULL" ]; then
+	echo "Running Prettier on staged files:"
+	# Print each file on its own line for readability
+	printf '%s\n' "$STAGED_FILES_NULL" | tr '\0' '\n'
+
+	# Run Prettier safely via xargs -0 (use npx if available)
+	if command -v npx >/dev/null 2>&1; then
+		printf '%s' "$STAGED_FILES_NULL" | xargs -0 npx prettier --write
+	else
+		printf '%s' "$STAGED_FILES_NULL" | xargs -0 prettier --write
+	fi
+
+	# Add any changes made by Prettier back to the commit
+	printf '%s' "$STAGED_FILES_NULL" | xargs -0 git add --ignore-errors --
+fi
+
+# Run ESLint autofix for remaining JS files
 npm run lint:fix

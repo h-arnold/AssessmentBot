@@ -1,6 +1,6 @@
 /**
  * BaseRequestManager Class
- * 
+ *
  * Handles generic URL requests with error handling, retries, and exponential backoff.
  */
 class BaseRequestManager {
@@ -9,7 +9,6 @@ class BaseRequestManager {
     this.cache = CacheService.getScriptCache(); // Initialize the script cache
     this.progressTracker = ProgressTracker.getInstance();
   }
-
 
   /**
    * Sends a single HTTP request with retries and exponential backoff.
@@ -28,20 +27,36 @@ class BaseRequestManager {
         if (responseCode === 200 || responseCode === 201) {
           return response;
         } else if (responseCode === 403) {
-          this.progressTracker.Error(`Request to ${request.url} failed. Please check your API Keys in the settings.`);
-          throw new Error(`Request to ${request.url} failed with status 403. Error message: ${response.getContentText()}`);
+          this.progressTracker.Error(
+            `Request to ${request.url} failed. Please check your API Keys in the settings.`
+          );
+          throw new Error(
+            `Request to ${
+              request.url
+            } failed with status 403. Error message: ${response.getContentText()}`
+          );
         } else {
-          console.warn(`Request to ${request.url} failed with status ${response.getResponseCode()}. \n Returned message: ${response.getContentText()} \n Attempt ${attempt + 1} of ${maxRetries + 1}.`);
+          console.warn(
+            `Request to ${
+              request.url
+            } failed with status ${response.getResponseCode()}. \n Returned message: ${response.getContentText()} \n Attempt ${
+              attempt + 1
+            } of ${maxRetries + 1}.`
+          );
         }
       } catch (error) {
-        console.error(`Error during request to ${request.url}: ${error.message}. Attempt ${attempt + 1} of ${maxRetries + 1}.`);
+        console.error(
+          `Error during request to ${request.url}: ${error.message}. Attempt ${attempt + 1} of ${
+            maxRetries + 1
+          }.`
+        );
       }
 
       // Increment attempt counter and apply exponential backoff
       attempt++;
       if (attempt > maxRetries) break;
       Utilities.sleep(delay);
-      delay *= 1.5; // Increase the backoff by 50% as the base pause time is quite high 
+      delay *= 1.5; // Increase the backoff by 50% as the base pause time is quite high
     }
 
     console.error(`All ${maxRetries + 1} attempts failed for request to ${request.url}.`);
@@ -54,7 +69,7 @@ class BaseRequestManager {
    * @return {HTTPResponse[]} - An array of HTTPResponse objects.
    */
   sendRequestsInBatches(requests) {
-  const batchSize = configurationManager.getBackendAssessorBatchSize();
+    const batchSize = configurationManager.getBackendAssessorBatchSize();
     const batches = [];
 
     // Split requests into batches
@@ -66,19 +81,20 @@ class BaseRequestManager {
 
     //Gets the current step message before iterating
     const currentProgress = this.progressTracker.getCurrentProgress();
-    const currentMessage = currentProgress.message //Gets the current message before the loop so you don't end up concatentating all the previous updates.
-
+    const currentMessage = currentProgress.message; //Gets the current message before the loop so you don't end up concatentating all the previous updates.
 
     batches.forEach((batch, index) => {
-
-      this.progressTracker.updateProgress(`${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`, false)
-      const fetchAllRequests = batch.map(req => ({
+      this.progressTracker.updateProgress(
+        `${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`,
+        false
+      );
+      const fetchAllRequests = batch.map((req) => ({
         url: req.url,
-        method: req.method || "get",
-        contentType: req.contentType || "application/json",
+        method: req.method || 'get',
+        contentType: req.contentType || 'application/json',
         payload: req.payload || null,
         headers: req.headers || {},
-        muteHttpExceptions: req.muteHttpExceptions || true
+        muteHttpExceptions: req.muteHttpExceptions || true,
       }));
 
       const responses = UrlFetchApp.fetchAll(fetchAllRequests);
@@ -87,7 +103,11 @@ class BaseRequestManager {
       responses.forEach((response, idx) => {
         const originalRequest = batch[idx];
         if (response.getResponseCode() !== 200 && response.getResponseCode() !== 201) {
-          console.warn(`Batch ${index + 1}, Request ${idx + 1} failed with status ${response.getResponseCode()}. Retrying...`);
+          console.warn(
+            `Batch ${index + 1}, Request ${
+              idx + 1
+            } failed with status ${response.getResponseCode()}. Retrying...`
+          );
           const retryResponse = this.sendRequestWithRetries(originalRequest);
           if (retryResponse) {
             allResponses.push(retryResponse);

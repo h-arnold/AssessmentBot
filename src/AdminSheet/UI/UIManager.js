@@ -5,18 +5,18 @@
  * The class implements a "safe UI operation" pattern through encapsulation, where all UI operations are wrapped in safety checks.
  * This ensures that UI operations only execute when the UI context is available, preventing runtime errors in contexts where UI operations are not possible
  * (such as time-driven triggers or background operations).
- * 
+ *
  * Key features:
  * - Automatic UI context detection and graceful degradation
  * - Safe UI operation wrapper for all UI interactions
  * - Comprehensive menu management for different authorization states
  * - Modal dialog management for various user interactions
  * - Classroom data management integration
- * 
+ *
  * @property {boolean} uiAvailable - Indicates whether UI operations are possible in current context
  * @property {GoogleAppsScript.Base.Ui} ui - Reference to Google Apps Script UI instance, null if UI is unavailable
  * @property {GoogleClassroomManager} classroomManager - Instance of GoogleClassroomManager for classroom operations
- * 
+ *
  * @example
  * const uiManager = new UIManager();
  * uiManager.safeUiOperation(() => {
@@ -24,7 +24,6 @@
  *   this.ui.alert('Hello World');
  * }, "showAlert");
  */
-
 
 class UIManager {
   /**
@@ -50,7 +49,7 @@ class UIManager {
       ui.createMenu('Test');
       return true;
     } catch (error) {
-      console.log("UI operations are not available in this context: " + error.message);
+      console.log('UI operations are not available in this context: ' + error.message);
       return false;
     }
   }
@@ -59,7 +58,7 @@ class UIManager {
     // The constructor return pattern doesn't work in JavaScript
     // Instead we use a more reliable approach with a private parameter
     if (!isSingletonCreator && UIManager.instance) {
-      console.log("UIManager already exists - returning existing instance via getInstance()");
+      console.log('UIManager already exists - returning existing instance via getInstance()');
       // We can't actually return the instance here, that's why we need the static method
       return;
     }
@@ -69,9 +68,11 @@ class UIManager {
 
     if (this.uiAvailable) {
       this.ui = SpreadsheetApp.getUi();
-      console.log("UIManager instantiated with full UI capabilities.");
+      console.log('UIManager instantiated with full UI capabilities.');
     } else {
-      console.log("UIManager instantiated in limited mode (no UI capabilities available in this execution context).");
+      console.log(
+        'UIManager instantiated in limited mode (no UI capabilities available in this execution context).'
+      );
       // Set ui to null to prevent accidental usage
       this.ui = null;
     }
@@ -91,12 +92,12 @@ class UIManager {
    * @param {string} operationName - Name of the operation for logging
    * @returns {*} Result of the operation or null if UI is unavailable
    */
-  safeUiOperation(operation, operationName = "UI operation") {
+  safeUiOperation(operation, operationName = 'UI operation') {
     if (!this.uiAvailable) {
       console.log(`Skipped ${operationName}: UI not available in this context`);
       return null;
     }
-    
+
     try {
       return operation();
     } catch (error) {
@@ -110,60 +111,63 @@ class UIManager {
    */
   createUnauthorisedMenu() {
     this.safeUiOperation(() => {
-      const menu = this.ui.createMenu('Assessment Bot')
+      const menu = this.ui
+        .createMenu('Assessment Bot')
         .addItem('Authorise App', 'handleScriptInit');
       menu.addToUi();
-    }, "createUnauthorisedMenu");
+    }, 'createUnauthorisedMenu');
   }
 
-    /**
+  /**
    * Creates a single menu option to complete update process.
-   * 
+   *
    */
-    createFinishUpdateMenu() {
-      this.safeUiOperation(() => {
-        const menu = this.ui.createMenu('Assessment Bot')
-          .addItem('Finish Update', 'handleAuthorisation');
-        menu.addToUi();
-      }, "createFinishUpdateMenu");
-    }
-
+  createFinishUpdateMenu() {
+    this.safeUiOperation(() => {
+      const menu = this.ui
+        .createMenu('Assessment Bot')
+        .addItem('Finish Update', 'handleAuthorisation');
+      menu.addToUi();
+    }, 'createFinishUpdateMenu');
+  }
 
   /**
    * Creates the full menu for authorized state
-   * 
+   *
    */
   createAuthorisedMenu() {
     this.safeUiOperation(() => {
       const ui = this.ui;
 
       // Create the root menu
-      const menu = ui.createMenu('Assessment Bot')
-        .addItem('Analyse Cohorts', 'analyseCohorts')
+      const menu = ui.createMenu('Assessment Bot').addItem('Analyse Cohorts', 'analyseCohorts');
 
       // Add a sub-menu for Google Classrooms operations
-      const classroomsSubMenu = ui.createMenu('Google Classrooms')
+      const classroomsSubMenu = ui
+        .createMenu('Google Classrooms')
         .addItem('Fetch Classrooms', 'handleFetchGoogleClassrooms')
         .addItem('Create Classrooms', 'handleCreateGoogleClassrooms')
-        //.addItem('Update Classrooms', 'handleUpdateGoogleClassrooms'); 
-        .addItem('Create Assessment Records', 'createAssessmentRecords')
+        //.addItem('Update Classrooms', 'handleUpdateGoogleClassrooms');
+        .addItem('Create Assessment Records', 'createAssessmentRecords');
       menu.addSubMenu(classroomsSubMenu);
 
       // Add a sub-menu for Settings
-      const settingsSubMenu = ui.createMenu('Settings')
+      const settingsSubMenu = ui
+        .createMenu('Settings')
         .addItem('Settings', 'showConfigurationDialog')
         .addItem('Update Assessment Bot', 'showVersionSelector');
       menu.addSubMenu(settingsSubMenu);
 
       // Add a sub-menu for Debug operations
-      const debugSubMenu = ui.createMenu('Debug')
+      const debugSubMenu = ui
+        .createMenu('Debug')
         .addItem('Assess Student Work', 'showAssignmentDropdown')
         .addItem('Check Progress', 'showProgressModal');
       menu.addSubMenu(debugSubMenu);
 
       // Add the menu to the UI
       menu.addToUi();
-    }, "createAuthorisedMenu");
+    }, 'createAuthorisedMenu');
   }
 
   /**
@@ -179,9 +183,9 @@ class UIManager {
         .addItem('Check Progress', 'showProgressModal')
         .addItem('Change Class', 'showClassroomDropdown')
         .addToUi();
-      
+
       console.log('Assessment Record menu created.');
-    }, "createAssessmentRecordMenu");
+    }, 'createAssessmentRecordMenu');
   }
 
   /**
@@ -195,7 +199,7 @@ class UIManager {
 
       this.ui.showModalDialog(html, 'Configure Script Properties');
       console.log('Configuration dialog displayed.');
-    }, "showConfigurationDialog");
+    }, 'showConfigurationDialog');
   }
 
   /**
@@ -212,13 +216,11 @@ class UIManager {
       const template = HtmlService.createTemplateFromFile('UI/AssignmentDropdown');
       template.assignments = assignments; // Pass data to the HTML template
 
-      const htmlOutput = template.evaluate()
-        .setWidth(modalWidth)
-        .setHeight(250); // Adjust height as needed
+      const htmlOutput = template.evaluate().setWidth(modalWidth).setHeight(250); // Adjust height as needed
 
       this.ui.showModalDialog(htmlOutput, 'Select Assignment');
       console.log('Assignment dropdown modal displayed.');
-    }, "showAssignmentDropdown");
+    }, 'showAssignmentDropdown');
   }
 
   /**
@@ -229,7 +231,7 @@ class UIManager {
    */
   getMaxTitleLength(assignments) {
     let maxLength = 0;
-    assignments.forEach(assignment => {
+    assignments.forEach((assignment) => {
       if (assignment.title.length > maxLength) {
         maxLength = assignment.title.length;
       }
@@ -246,16 +248,16 @@ class UIManager {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(assignmentDataObj.name);
+        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(
+          assignmentDataObj.name
+        );
 
         // Load templated HTML file instead of a string
         const template = HtmlService.createTemplateFromFile('UI/SlideIdsModal');
         template.assignmentDataObj = assignmentDataObj;
         template.savedDocumentIds = savedDocumentIds;
 
-        const htmlOutput = template.evaluate()
-          .setWidth(400)
-          .setHeight(350);
+        const htmlOutput = template.evaluate().setWidth(400).setHeight(350);
 
         this.ui.showModalDialog(htmlOutput, 'Enter Slide IDs');
         console.log('Reference slide IDs modal displayed.');
@@ -263,7 +265,7 @@ class UIManager {
         console.error('Error opening reference slide modal:', error);
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
       }
-    }, "openReferenceSlideModal");
+    }, 'openReferenceSlideModal');
   }
 
   /**
@@ -283,9 +285,7 @@ class UIManager {
         htmlTemplate.classrooms = classrooms; // Pass data to the template
 
         // Evaluate the template to HTML
-        const htmlOutput = htmlTemplate.evaluate()
-          .setWidth(500)
-          .setHeight(300);
+        const htmlOutput = htmlTemplate.evaluate().setWidth(500).setHeight(300);
 
         // Display the modal dialog
         this.ui.showModalDialog(htmlOutput, 'Select Classroom');
@@ -294,13 +294,13 @@ class UIManager {
         console.error('Error displaying classroom dropdown modal:', error);
         Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
       }
-    }, "showClassroomDropdown");
+    }, 'showClassroomDropdown');
   }
 
   /**
    * Saves the reference and template slide/document IDs for a given assignment title.
    * This method now calls the updated static method in AssignmentPropertiesManager.
-   * 
+   *
    * @param {string} assignmentTitle The title of the assignment.
    * @param {Object} documentIds An object containing referenceDocumentId and templateDocumentId.
    */
@@ -308,10 +308,10 @@ class UIManager {
     try {
       // Directly call the static method from AssignmentPropertiesManager
       AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
-      this.utils.toastMessage("Document IDs saved successfully.", "Success", 3);
+      this.utils.toastMessage('Document IDs saved successfully.', 'Success', 3);
     } catch (error) {
       console.error(`Error in saveDocumentIdsForAssignment: ${error}`);
-      this.utils.toastMessage(`Failed to save document IDs: ${error.message}`, "Error", 5);
+      this.utils.toastMessage(`Failed to save document IDs: ${error.message}`, 'Error', 5);
     }
   }
 
@@ -325,7 +325,7 @@ class UIManager {
         .setHeight(160);
       this.ui.showModalDialog(html, 'Progress');
       console.log('Progress modal displayed.');
-    }, "showProgressModal");
+    }, 'showProgressModal');
   }
 
   /**
@@ -364,8 +364,9 @@ class UIManager {
         Teacher3: teacher3,
         Teacher4: teacher4,
         EnrollmentCode: enrollmentCode,
-        createAssessmentRecord: (createAssessmentRecord === true || createAssessmentRecord === 'true'),
-        TemplateFileId: templateFileId
+        createAssessmentRecord:
+          createAssessmentRecord === true || createAssessmentRecord === 'true',
+        TemplateFileId: templateFileId,
       });
     }
 
@@ -387,15 +388,15 @@ class UIManager {
     // We assume the header row is fixed in the format:
     // Classroom ID | Name | Teacher 1 | Teacher 2 | Teacher 3 | Teacher 4 | Enrollment Code | createAssessmentRecord | Template File Id
     const headerMap = {
-      'ClassroomID': 0,
-      'Name': 1,
-      'Teacher1': 2,
-      'Teacher2': 3,
-      'Teacher3': 4,
-      'Teacher4': 5,
-      'EnrollmentCode': 6,
-      'createAssessmentRecord': 7,
-      'TemplateFileId': 8
+      ClassroomID: 0,
+      Name: 1,
+      Teacher1: 2,
+      Teacher2: 3,
+      Teacher3: 4,
+      Teacher4: 5,
+      EnrollmentCode: 6,
+      createAssessmentRecord: 7,
+      TemplateFileId: 8,
     };
 
     // Build a lookup map from ClassroomID to row index
@@ -408,7 +409,7 @@ class UIManager {
     }
 
     // Update data array with new values
-    rows.forEach(rowObj => {
+    rows.forEach((rowObj) => {
       const rowIndex = idToRow[rowObj.ClassroomID];
       if (rowIndex === undefined) {
         // If ClassroomID not found, we skip or could throw an error
@@ -432,7 +433,7 @@ class UIManager {
   }
 
   /**
-   * Shows a modal dialog for editing classroom data. 
+   * Shows a modal dialog for editing classroom data.
    */
   showClassroomEditorModal() {
     this.safeUiOperation(() => {
@@ -442,16 +443,16 @@ class UIManager {
 
       this.ui.showModalDialog(html, 'Edit Classrooms');
       console.log('Classroom editor modal displayed.');
-    }, "showClassroomEditorModal");
+    }, 'showClassroomEditorModal');
   }
 
   /**
    * Displays a modal dialog for version selection.
    * Creates and shows a UI dialog that allows users to select from available versions for update.
    * Fetches version details through UpdateManager and displays them in a templated HTML modal.
-   * 
+   *
    * @throws {Error} If version details cannot be fetched
-   * 
+   *
    * @example
    * const uiManager = new UIManager();
    * uiManager.showVersionSelector();
@@ -469,26 +470,24 @@ class UIManager {
         const template = HtmlService.createTemplateFromFile('UI/VersionSelectorModal');
         template.versions = versions;
 
-        const htmlOutput = template.evaluate()
-          .setWidth(400)
-          .setHeight(250);
+        const htmlOutput = template.evaluate().setWidth(400).setHeight(250);
 
         this.ui.showModalDialog(htmlOutput, 'Select Version to Update To');
       } catch (error) {
         console.error('Error showing version selector:', error);
         Utils.toastMessage('Failed to load versions: ' + error.message, 'Error', 5);
       }
-    }, "showVersionSelector");
+    }, 'showVersionSelector');
   }
 
   /**
    * Opens a specified URL in a new browser window using Google Apps Script's UI service.
    * Creates a temporary HTML dialog that triggers the window opening and then closes itself.
-   * 
+   *
    * @param {string} url - The URL to open in the new window
    * @throws {Error} Throws an error if URL parameter is empty or undefined
    * @return {void}
-   * 
+   *
    * @example
    * // Opens Google in a new window
    * openUrlInNewWindow('https://www.google.com');
@@ -512,7 +511,7 @@ class UIManager {
         console.error(`Failed to open URL: ${error.message}`);
         throw error;
       }
-    }, "openUrlInNewWindow");
+    }, 'openUrlInNewWindow');
   }
 
   /**
@@ -524,29 +523,27 @@ class UIManager {
    */
   showGenericModal(htmlContent, title, width = 400, height = 300) {
     this.safeUiOperation(() => {
-      const html = HtmlService.createHtmlOutput(htmlContent)
-        .setWidth(width)
-        .setHeight(height);
+      const html = HtmlService.createHtmlOutput(htmlContent).setWidth(width).setHeight(height);
       this.ui.showModalDialog(html, title);
-    }, "showGenericModal");
+    }, 'showGenericModal');
   }
-  
+
   /**
    * Prompts the user when a classroom selection is missing or ClassInfo sheet doesn't exist.
    * Shows a dialog asking if they want to select a classroom now, and if confirmed,
    * opens the classroom selector dialog.
-   * 
+   *
    * @returns {boolean} True if the user chose to select a classroom, false otherwise
    */
   promptMissingClassroomSelection() {
     return this.safeUiOperation(() => {
       try {
         const response = this.ui.alert(
-          "No Classroom Selected", 
-          "No classroom has been selected for this assessment record. Would you like to select a classroom now?", 
+          'No Classroom Selected',
+          'No classroom has been selected for this assessment record. Would you like to select a classroom now?',
           this.ui.ButtonSet.YES_NO
         );
-        
+
         if (response === this.ui.Button.YES) {
           // Use the existing classroom dropdown method
           this.showClassroomDropdown();
@@ -555,10 +552,10 @@ class UIManager {
         return false;
       } catch (error) {
         const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logError("Error showing classroom selection prompt:", error);      
+        progressTracker.logError('Error showing classroom selection prompt:', error);
         return false;
       }
-    }, "promptMissingClassroomSelection");
+    }, 'promptMissingClassroomSelection');
   }
 
   /**
@@ -580,9 +577,6 @@ class UIManager {
 
       this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
       console.log('Authorization modal displayed.');
-    }, "showAuthorisationModal");
+    }, 'showAuthorisationModal');
   }
-
 }
-
-

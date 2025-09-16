@@ -1,6 +1,6 @@
 /**
  * SlidesAssignment Class
- * 
+ *
  * Represents a Google Slides-based assignment within a course.
  * Handles slide-specific task extraction and processing.
  */
@@ -32,9 +32,19 @@ class SlidesAssignment extends Assignment {
         console.log('No image artifacts to process.');
         return;
       }
-      this.progressTracker && this.progressTracker.updateProgress && this.progressTracker.updateProgress(`Found ${entries.length} image artifacts. Fetching...`, false);
+      this.progressTracker &&
+        this.progressTracker.updateProgress &&
+        this.progressTracker.updateProgress(
+          `Found ${entries.length} image artifacts. Fetching...`,
+          false
+        );
       const blobs = imageManager.fetchImagesAsBlobs(entries);
-      this.progressTracker && this.progressTracker.updateProgress && this.progressTracker.updateProgress(`Fetched ${blobs.length} image blobs. Writing content...`, false);
+      this.progressTracker &&
+        this.progressTracker.updateProgress &&
+        this.progressTracker.updateProgress(
+          `Fetched ${blobs.length} image blobs. Writing content...`,
+          false
+        );
       imageManager.writeBackBlobs(this, blobs);
       console.log(`Hydrated ${blobs.length} image artifacts.`);
     } catch (e) {
@@ -53,7 +63,7 @@ class SlidesAssignment extends Assignment {
   populateTasks() {
     const parser = new SlidesParser();
     const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
-    this.tasks = Object.fromEntries(defs.map(td => [td.getId(), td]));
+    this.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
     console.log(`Populated ${defs.length} TaskDefinitions from slides.`);
   }
 
@@ -74,14 +84,17 @@ class SlidesAssignment extends Assignment {
   processAllSubmissions() {
     const parser = new SlidesParser();
     const taskDefs = Object.values(this.tasks);
-    this.submissions.forEach(sub => {
+    this.submissions.forEach((sub) => {
       if (!sub.documentId) {
         console.warn(`No document ID for studentId: ${sub.studentId}. Skipping.`);
         return;
       }
-      this.progressTracker.updateProgress(`Extracting responses from student ${sub.studentId}...`, false);
+      this.progressTracker.updateProgress(
+        `Extracting responses from student ${sub.studentId}...`,
+        false
+      );
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
-      artifacts.forEach(a => {
+      artifacts.forEach((a) => {
         const taskDef = this.tasks[a.taskId];
         if (!taskDef) {
           console.warn('Submission artifact references unknown taskId ' + a.taskId);
@@ -90,11 +103,9 @@ class SlidesAssignment extends Assignment {
         sub.upsertItemFromExtraction(taskDef, {
           pageId: a.pageId,
           content: a.content,
-          metadata: a.metadata
+          metadata: a.metadata,
         });
       });
     });
   }
-
-
 }

@@ -8,10 +8,10 @@
  * @throws {Error} - If there is an error retrieving assignments.
  */
 function getAssignments(courseId) {
-    const googleClassroomManager = new GoogleClassroomManager();
-    return googleClassroomManager.getAssignments(courseId);
-  }
-  
+  const googleClassroomManager = new GoogleClassroomManager();
+  return googleClassroomManager.getAssignments(courseId);
+}
+
 /**
  * Fetches Google Classrooms and populates them as needed.
  */
@@ -21,7 +21,7 @@ function handleFetchGoogleClassrooms() {
     googleClassroomController.fetchGoogleClassrooms();
   } catch (error) {
     const progressTracker = ProgressTracker.getInstance();
-    progressTracker.captureError(error, "Error fetching Google Classrooms");
+    progressTracker.captureError(error, 'Error fetching Google Classrooms');
   }
 }
 
@@ -34,8 +34,8 @@ function handleCreateGoogleClassrooms() {
     googleClassroomController.createGoogleClassrooms();
   } catch (error) {
     const progressTracker = ProgressTracker.getInstance();
-    progressTracker.captureError(error, "Error creating Google Classrooms");
-    Utils.toastMessage("Failed to create classrooms: " + error.message, "Error", 5);
+    progressTracker.captureError(error, 'Error creating Google Classrooms');
+    Utils.toastMessage('Failed to create classrooms: ' + error.message, 'Error', 5);
   }
 }
 
@@ -48,8 +48,8 @@ function createAssessmentRecords() {
     googleClassroomController.createAssessmentRecords();
   } catch (error) {
     const progressTracker = ProgressTracker.getInstance();
-    progressTracker.captureError(error, "Error setting up assessment documents");
-    Utils.toastMessage("Failed to set up assessment documents: " + error.message, "Error", 5);
+    progressTracker.captureError(error, 'Error setting up assessment documents');
+    Utils.toastMessage('Failed to set up assessment documents: ' + error.message, 'Error', 5);
   }
 }
 
@@ -70,12 +70,11 @@ function saveClassroom(courseName, courseId) {
 }
 
 function getClassrooms() {
-  const googleClassroomController = new GoogleClassroomController() 
-  try {  
+  const googleClassroomController = new GoogleClassroomController();
+  try {
     return googleClassroomController.getClassrooms();
   } catch (error) {
     const progressTracker = ProgressTracker.getInstance();
     progressTracker.logAndThrowError('Failed to get classrooms. Please try again.', error);
   }
-  
 }

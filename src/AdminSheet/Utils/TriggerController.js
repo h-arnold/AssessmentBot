@@ -17,23 +17,25 @@ class TriggerController {
         triggerTime.setSeconds(triggerTime.getSeconds() + 5);
       }
 
-      const trigger = ScriptApp.newTrigger(functionName)
-        .timeBased()
-        .at(triggerTime)
-        .create();
+      const trigger = ScriptApp.newTrigger(functionName).timeBased().at(triggerTime).create();
       console.log(`Trigger created for ${functionName} to run at ${triggerTime}.`);
       const triggerId = trigger.getUniqueId();
       console.log(`Trigger Id is ${triggerId}`);
       return triggerId;
     } catch (error) {
-      if (error.message.includes("This script has too many triggers")) {
+      if (error.message.includes('This script has too many triggers')) {
         console.warn(`Too many triggers error occurred: ${error.message}`);
-        this.removeTriggers("triggerProcessSelectedAssignment");
-        console.log("Removed all triggers for 'triggerProcessSelectedAssignment'. Retrying trigger creation...");
+        this.removeTriggers('triggerProcessSelectedAssignment');
+        console.log(
+          "Removed all triggers for 'triggerProcessSelectedAssignment'. Retrying trigger creation..."
+        );
         return this.createTimeBasedTrigger(functionName);
       } else {
         const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logAndThrowError(`Error creating trigger for ${functionName}: ${error.message}`, error);
+        progressTracker.logAndThrowError(
+          `Error creating trigger for ${functionName}: ${error.message}`,
+          error
+        );
       }
     }
   }
@@ -43,7 +45,7 @@ class TriggerController {
    */
   removeOnOpenTriggers() {
     const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
+    triggers.forEach((trigger) => {
       if (trigger.getEventType() === ScriptApp.EventType.ON_OPEN) {
         ScriptApp.deleteTrigger(trigger);
         console.log(`Existing onOpen trigger deleted.`);
@@ -60,7 +62,7 @@ class TriggerController {
   createOnOpenTrigger(functionName) {
     try {
       this.removeOnOpenTriggers();
-      
+
       // Create new onOpen trigger
       const trigger = ScriptApp.newTrigger(functionName)
         .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
@@ -70,7 +72,10 @@ class TriggerController {
       return trigger.getUniqueId();
     } catch (error) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logAndThrowError(`Error creating onOpen trigger for ${functionName}: ${error.message}`, error);
+      progressTracker.logAndThrowError(
+        `Error creating onOpen trigger for ${functionName}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -81,7 +86,7 @@ class TriggerController {
    */
   removeTriggers(functionName) {
     const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
+    triggers.forEach((trigger) => {
       if (trigger.getHandlerFunction() === functionName) {
         ScriptApp.deleteTrigger(trigger);
         console.log(`Trigger for ${functionName} deleted.`);
@@ -96,7 +101,7 @@ class TriggerController {
    */
   deleteTriggerById(triggerId) {
     const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
+    triggers.forEach((trigger) => {
       if (trigger.getUniqueId() === triggerId) {
         ScriptApp.deleteTrigger(trigger);
         console.log(`Trigger with ID ${triggerId} deleted.`);

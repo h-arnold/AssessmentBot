@@ -54,12 +54,11 @@ class ProgressTracker {
    * @param {boolean} incrementStep - Whether to increment the step by 1. Defaults to true.
    */
   updateProgress(message, incrementStep = true) {
-
     if (incrementStep) {
       // Increment the step if no specific step is provided and incrementStep is true
-      this.incrementStep()
+      this.incrementStep();
     }
-    
+
     const updatedData = {
       step: this.step,
       message: message,
@@ -108,11 +107,11 @@ class ProgressTracker {
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.log('Progress tracking completed successfully.');
 
-    // As ProgressTracker.complete() is only called at the end of a significant task, 
+    // As ProgressTracker.complete() is only called at the end of a significant task,
     // it is likely that the document properties have been updated.
-    // Therefore, we serialise the properties here to ensure the latest data is saved. 
-    // This is important because there's no way of copying DocumentProperties between documents, 
-    // which is crucial for the update process. Doing this ensures that the latest properties 
+    // Therefore, we serialise the properties here to ensure the latest data is saved.
+    // This is important because there's no way of copying DocumentProperties between documents,
+    // which is crucial for the update process. Doing this ensures that the latest properties
     // are saved and can be deserialised later.
     // Only serialise properties if this isn't the Admin Sheet. The admin sheet gets its properties serialised during the update process.
 
@@ -121,7 +120,6 @@ class ProgressTracker {
       propertiesCloner.serialiseProperties(true, false); //serialise document properties only because only the admin script uses ScriptProperties.
     }
   }
-
 
   /**
    * Logs an error encountered during the process.
@@ -137,22 +135,22 @@ class ProgressTracker {
     const updatedData = {
       ...currentData,
       step: this.step,
-      error: errorMessage,  // This is what users will see in the UI
+      error: errorMessage, // This is what users will see in the UI
       message: 'An error occurred.',
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.error(`Error logged: ${errorMessage}`);
-    
+
     if (extraErrorDetails) {
       this._logDeveloperDetails(extraErrorDetails);
     }
   }
-  
+
   /**
    * Helper method to log developer-only error details.
    * This method formats different types of error details appropriately for console logging.
-   * 
+   *
    * @private
    * @param {string|Error|Object} extraErrorDetails - The error details to log for developers
    * @returns {void}
@@ -172,7 +170,7 @@ class ProgressTracker {
         if (extraErrorDetails.name) {
           console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
         }
-      } 
+      }
       // For other objects, try to stringify them
       else {
         try {
@@ -198,10 +196,10 @@ class ProgressTracker {
    */
   captureError(error, contextMessage = '', includeStackTrace = true) {
     // Create a user-friendly error message
-    const userFacingMessage = contextMessage 
+    const userFacingMessage = contextMessage
       ? `${contextMessage}: ${error.message || 'Unknown error'}`
       : `${error.message || 'Unknown error'}`;
-    
+
     // Prepare detailed developer information
     let developerDetails;
     if (includeStackTrace && error) {
@@ -209,21 +207,21 @@ class ProgressTracker {
         message: error.message,
         stack: error.stack,
         name: error.name,
-        originalError: error
+        originalError: error,
       };
     } else if (error) {
       developerDetails = error;
     }
-    
+
     // Log the error with appropriate separation of concerns
     this.logError(userFacingMessage, developerDetails);
-    
+
     return userFacingMessage;
   }
 
   /**
    * Logs an error and then throws it.
-   * Use this when you need to log an error for the user but also need to propagate 
+   * Use this when you need to log an error for the user but also need to propagate
    * the error up the call stack.
    *
    * @param {string} errorMessage - The message to log and include in the thrown error
@@ -264,7 +262,7 @@ class ProgressTracker {
         step: 0,
         message: 'No progress data found.',
         completed: false,
-        error: null
+        error: null,
       };
     }
 
@@ -282,7 +280,7 @@ class ProgressTracker {
     if (this.step !== undefined) {
       return typeof this.step === 'number' ? this.step : parseInt(this.step.toString(), 10);
     }
-    
+
     // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
     if (!progress || !progress.step) {

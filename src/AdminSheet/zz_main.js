@@ -26,17 +26,15 @@ function clearAllCacheKeys() {
  * Revokes authorization for the script.
  */
 function revokeAuthorisation() {
-  const sa = new ScriptAppManager()
+  const sa = new ScriptAppManager();
   sa.revokeAuthorisation();
 }
 
 // Below contains the two global functions that need to run upon opening the spreadsheet.
-// They've been placed here for now because GAS treats all the code in the file as one 
-// big file, with the files at the top of the list first and the bottom of the list last. 
-// Placing these last means that all other necessary classes and functions have been 
+// They've been placed here for now because GAS treats all the code in the file as one
+// big file, with the files at the top of the list first and the bottom of the list last.
+// Placing these last means that all other necessary classes and functions have been
 // defined already.
-
-
 
 function onOpen() {
   /**

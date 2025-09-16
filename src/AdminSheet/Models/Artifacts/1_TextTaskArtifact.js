@@ -1,11 +1,14 @@
 // Ensure BaseTaskArtifact is in local scope for Node (tests) while remaining
 // compatible with GAS (where classes share a global execution context).
-const BaseTaskArtifact = (typeof module !== 'undefined' && module.exports)
-  ? require('./0_BaseTaskArtifact.js')
-  : this.BaseTaskArtifact;
+const BaseTaskArtifact =
+  typeof module !== 'undefined' && module.exports
+    ? require('./99_BaseTaskArtifact.js')
+    : this.BaseTaskArtifact;
 
 class TextTaskArtifact extends BaseTaskArtifact {
-  getType() { return 'TEXT'; }
+  getType() {
+    return 'TEXT';
+  }
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') content = String(content);

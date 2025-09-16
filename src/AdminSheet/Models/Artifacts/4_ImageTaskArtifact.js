@@ -1,9 +1,12 @@
-const BaseTaskArtifact = (typeof module !== 'undefined' && module.exports)
-  ? require('./0_BaseTaskArtifact.js')
-  : this.BaseTaskArtifact;
+const BaseTaskArtifact =
+  typeof module !== 'undefined' && module.exports
+    ? require('./99_BaseTaskArtifact.js')
+    : this.BaseTaskArtifact;
 
 class ImageTaskArtifact extends BaseTaskArtifact {
-  getType() { return 'IMAGE'; }
+  getType() {
+    return 'IMAGE';
+  }
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') return null;

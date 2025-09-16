@@ -1,6 +1,6 @@
 /**
  * SlidesParser Class
- * 
+ *
  * Handles extraction and processing of content from Google Slides presentations.
  * Generates slide export URLs.
  * Handles per-document rate limiting.
@@ -21,13 +21,12 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The URL to export the slide as an image.
    */
   generateSlideImageUrl(documentId, pageId) {
-
     const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
 
     if (Utils.isValidUrl(url)) {
       return url;
     } else {
-      throw new Error(`Invalid URL produced.`)
+      throw new Error(`Invalid URL produced.`);
     }
   }
 
@@ -41,12 +40,12 @@ class SlidesParser extends DocumentParser {
    * @return {Task[]} - An array of Task instances extracted from the slides.
    * @deprecated Use extractTasks() instead
    */
-  extractTasksFromSlides(documentId, contentType = null) { // Default to null
+  extractTasksFromSlides(documentId, contentType = null) {
+    // Default to null
     // Legacy wrapper removed in Phase 2 refactor. Keep as no-op for compatibility.
     // Prefer using extractTaskDefinitions/extractSubmissionArtifacts.
     return null;
   }
-
 
   // ---- Phase 2 API ----
   /**
@@ -68,16 +67,17 @@ class SlidesParser extends DocumentParser {
     let order = 0;
 
     const processSlides = (slides, role) => {
-      slides.forEach(slide => {
+      slides.forEach((slide) => {
         const pageId = this.getPageId(slide);
         const pageElements = slide.getPageElements();
-        pageElements.forEach(pageElement => {
+        pageElements.forEach((pageElement) => {
           const description = pageElement.getDescription();
           if (!description || !description.length) return;
           const tag = description.charAt(0);
-            const tagText = description.substring(1).trim();
+          const tagText = description.substring(1).trim();
           switch (tag) {
-            case '#': { // title element -> create/find TaskDefinition
+            case '#': {
+              // title element -> create/find TaskDefinition
               const taskTitle = tagText;
               const definitionKey = taskTitle + '|' + pageId;
               let definition = definitionMap.get(definitionKey);
@@ -101,22 +101,37 @@ class SlidesParser extends DocumentParser {
                 return;
               }
               if (role === 'reference') {
-                definition.addReferenceArtifact({ type: artifactType, pageId, content: elementContent, taskIndex: definition.index });
+                definition.addReferenceArtifact({
+                  type: artifactType,
+                  pageId,
+                  content: elementContent,
+                  taskIndex: definition.index,
+                });
               } else if (role === 'template') {
-                definition.addTemplateArtifact({ type: artifactType, pageId, content: elementContent, taskIndex: definition.index });
+                definition.addTemplateArtifact({
+                  type: artifactType,
+                  pageId,
+                  content: elementContent,
+                  taskIndex: definition.index,
+                });
               }
-              break; }
-            case '^': { // notes
+              break;
+            }
+            case '^': {
+              // notes
               // Attach to existing definition matching same page by last created definition with pageId
               // Simpler: find any definition with pageId (rare multiple) and append notes
               for (const definition of definitionMap.values()) {
                 if (definition.pageId === pageId) {
                   const notesContent = this.extractTextFromPageElement(pageElement);
-                  definition.taskNotes = (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
+                  definition.taskNotes =
+                    (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
                 }
               }
-              break; }
-            case '~': { // image artifact for whole slide
+              break;
+            }
+            case '~': {
+              // image artifact for whole slide
               const taskTitle = tagText; // image title key
               const definitionKey = taskTitle + '|' + pageId;
               let definition = definitionMap.get(definitionKey);
@@ -125,10 +140,21 @@ class SlidesParser extends DocumentParser {
                 definition.index = order++;
                 definitionMap.set(definitionKey, definition);
               }
-              const url = this.generateSlideImageUrl(role === 'reference' ? referenceDocumentId : templateDocumentId, pageId);
-              const params = { type: 'IMAGE', pageId, metadata: { sourceUrl: url }, content: null, taskIndex: definition.index };
-              if (role === 'reference') definition.addReferenceArtifact(params); else definition.addTemplateArtifact(params);
-              break; }
+              const url = this.generateSlideImageUrl(
+                role === 'reference' ? referenceDocumentId : templateDocumentId,
+                pageId
+              );
+              const params = {
+                type: 'IMAGE',
+                pageId,
+                metadata: { sourceUrl: url },
+                content: null,
+                taskIndex: definition.index,
+              };
+              if (role === 'reference') definition.addReferenceArtifact(params);
+              else definition.addTemplateArtifact(params);
+              break;
+            }
             default:
               break;
           }
@@ -152,21 +178,29 @@ class SlidesParser extends DocumentParser {
     const artifacts = [];
     // Build lookup by (pageId) => list of definitions
     const defsByPage = {};
-    taskDefs.forEach(d => { if (!defsByPage[d.pageId]) defsByPage[d.pageId] = []; defsByPage[d.pageId].push(d); });
-    slides.forEach(slide => {
+    taskDefs.forEach((d) => {
+      if (!defsByPage[d.pageId]) defsByPage[d.pageId] = [];
+      defsByPage[d.pageId].push(d);
+    });
+    slides.forEach((slide) => {
       const pageId = this.getPageId(slide);
       const defs = defsByPage[pageId];
       if (!defs || !defs.length) return;
       const pageElements = slide.getPageElements();
       // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
-      defs.forEach(def => {
+      defs.forEach((def) => {
         const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
         if (!primary) return;
         const typeNeeded = primary.getType();
         let extracted = null;
-  if (typeNeeded === 'IMAGE') {
+        if (typeNeeded === 'IMAGE') {
           // For images we just supply metadata with sourceUrl again
-          extracted = { taskId: def.getId(), pageId, content: null, metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) } };
+          extracted = {
+            taskId: def.getId(),
+            pageId,
+            content: null,
+            metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) },
+          };
           artifacts.push(extracted);
           return;
         }
@@ -178,17 +212,32 @@ class SlidesParser extends DocumentParser {
           const key = desc.substring(1).trim();
           if (tag !== '#' && tag !== '~') continue;
           if (key !== def.taskTitle) continue;
-          if (typeNeeded === 'TEXT' && pe.getPageElementType() === SlidesApp.PageElementType.SHAPE) {
-            extracted = { taskId: def.getId(), pageId, content: this.extractTextFromShape(pe.asShape()) };
+          if (
+            typeNeeded === 'TEXT' &&
+            pe.getPageElementType() === SlidesApp.PageElementType.SHAPE
+          ) {
+            extracted = {
+              taskId: def.getId(),
+              pageId,
+              content: this.extractTextFromShape(pe.asShape()),
+            };
             break;
           }
-          if (typeNeeded === 'TABLE' && pe.getPageElementType() === SlidesApp.PageElementType.TABLE) {
+          if (
+            typeNeeded === 'TABLE' &&
+            pe.getPageElementType() === SlidesApp.PageElementType.TABLE
+          ) {
             // Provide raw 2D cell array for table submission content
-            extracted = { taskId: def.getId(), pageId, content: this.extractTableCells(pe.asTable()) };
+            extracted = {
+              taskId: def.getId(),
+              pageId,
+              content: this.extractTableCells(pe.asTable()),
+            };
             break;
           }
         }
-        if (extracted) artifacts.push(extracted); else {
+        if (extracted) artifacts.push(extracted);
+        else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
         }
       });
@@ -213,7 +262,7 @@ class SlidesParser extends DocumentParser {
    */
   extractTextFromShape(shape) {
     if (!shape || !shape.getText) {
-      console.log("The provided element is not a shape or does not contain text.");
+      console.log('The provided element is not a shape or does not contain text.');
       return '';
     }
 

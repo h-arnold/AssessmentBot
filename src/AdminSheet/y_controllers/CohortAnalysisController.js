@@ -12,9 +12,9 @@ class CohortAnalysisController {
     // Attempt to instantiate UIManager only in user context to avoid issues with triggers
     try {
       this.uiManager = UIManager.getInstance();
-      console.log("UIManager instantiated successfully in CohortAnalysisController.");
+      console.log('UIManager instantiated successfully in CohortAnalysisController.');
     } catch (error) {
-      console.error("UIManager cannot be instantiated: " + error);
+      console.error('UIManager cannot be instantiated: ' + error);
       this.uiManager = null; // UIManager is not available in this context
     }
   }
@@ -25,7 +25,7 @@ class CohortAnalysisController {
    * 1. Extracts data from 'Overview' sheets across all assessment records
    * 2. Creates aggregated sheets for each year group
    * 3. Generates a summary sheet with year group averages
-   * 
+   *
    * @throws {Error} If any step in the analysis process fails
    */
   analyseCohorts() {
@@ -39,11 +39,11 @@ class CohortAnalysisController {
       if (this.uiManager) {
         this.uiManager.showProgressModal();
       } else {
-        console.warn("UIManager is not available; cannot show the progress modal.");
+        console.warn('UIManager is not available; cannot show the progress modal.');
       }
 
       // Extract data from the 'Overview' sheet in each assessment record and aggregate into a JSON object
-      this.progressTracker.updateProgress("Extracting data from all assessment records.");
+      this.progressTracker.updateProgress('Extracting data from all assessment records.');
 
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       const classroomsSheet = spreadsheet.getSheetByName('Classrooms');
@@ -52,20 +52,20 @@ class CohortAnalysisController {
       const overviewData = sheetExtractor.processAllOverviewSheets();
 
       // Create aggregated sheets for each year group
-      this.progressTracker.updateProgress("Creating year group sheets.");
+      this.progressTracker.updateProgress('Creating year group sheets.');
 
       const cohortAnalysis = new CohortAnalysisSheetManager();
       cohortAnalysis.createYearGroupSheets(overviewData, spreadsheet.getId());
 
       // Create the 'Summary' sheet to display year group averages
-      this.progressTracker.updateProgress("Creating the summary sheet.");
+      this.progressTracker.updateProgress('Creating the summary sheet.');
 
       const summarySheet = new SummarySheetManager();
       summarySheet.createSummarySheet(overviewData, spreadsheet.getId());
 
       // If everything went well, complete the progress
       this.progressTracker.complete();
-      console.log("Cohort analysis completed successfully.");
+      console.log('Cohort analysis completed successfully.');
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);
     }

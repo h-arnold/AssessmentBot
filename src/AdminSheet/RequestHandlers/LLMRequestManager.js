@@ -16,30 +16,32 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
- * Wakes up the LLM backend to ensure it's ready for processing.
- */
+   * Wakes up the LLM backend to ensure it's ready for processing.
+   */
   warmUpLLM() {
-    const payload = { "input_value": "Wake Up!" };
+    const payload = { input_value: 'Wake Up!' };
     const request = {
       url: this.configManager.getWarmUpUrl(),
-      method: "post",
-      contentType: "application/json",
+      method: 'post',
+      contentType: 'application/json',
       payload: JSON.stringify(payload),
       headers: {
-        "x-api-key": this.configManager.getLangflowApiKey()
+        'x-api-key': this.configManager.getLangflowApiKey(),
       },
-      muteHttpExceptions: true
+      muteHttpExceptions: true,
     };
 
     try {
       const response = this.sendRequestWithRetries(request);
       if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
-        Utils.toastMessage("AI backend warmed up and ready to go...", "Warm-Up", 5);
+        Utils.toastMessage('AI backend warmed up and ready to go...', 'Warm-Up', 5);
       } else {
-        this.progressTracker.logAndThrowError("No successful response received from AI backend during warm-up.");
+        this.progressTracker.logAndThrowError(
+          'No successful response received from AI backend during warm-up.'
+        );
       }
     } catch (e) {
-      this.progressTracker.logAndThrowError("Failed to warm up AI backend.", e);
+      this.progressTracker.logAndThrowError('Failed to warm up AI backend.', e);
     }
   }
 
@@ -56,8 +58,8 @@ class LLMRequestManager extends BaseRequestManager {
     const baseUrl = this.configManager.getBackendUrl();
     const apiKey = this.configManager.getApiKey();
 
-    assignment.submissions.forEach(submission => {
-      Object.values(submission.items).forEach(item => {
+    assignment.submissions.forEach((submission) => {
+      Object.values(submission.items).forEach((item) => {
         const taskDef = assignment.tasks[item.taskId];
         if (!taskDef) {
           this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
@@ -69,7 +71,9 @@ class LLMRequestManager extends BaseRequestManager {
         const referenceTask = taskDef.getPrimaryReference();
         const templateTask = taskDef.getPrimaryTemplate();
         if (!referenceTask || !templateTask) {
-          this.progressTracker.logError('Missing reference/template artifacts for taskId ' + item.taskId);
+          this.progressTracker.logError(
+            'Missing reference/template artifacts for taskId ' + item.taskId
+          );
           return;
         }
         const studentArtifact = item.artifact;
@@ -85,7 +89,10 @@ class LLMRequestManager extends BaseRequestManager {
         const referenceTaskHash = referenceTask.contentHash;
         const studentResponseHash = studentArtifact.contentHash;
         if (referenceTaskHash && studentResponseHash) {
-          const cached = this.cacheManager.getCachedAssessment(referenceTaskHash, studentResponseHash);
+          const cached = this.cacheManager.getCachedAssessment(
+            referenceTaskHash,
+            studentResponseHash
+          );
           if (cached) {
             this._assignAssessmentArtifacts(item, cached);
             return;
@@ -98,7 +105,7 @@ class LLMRequestManager extends BaseRequestManager {
           taskType: type,
           reference: referenceTask.content,
           template: templateTask.content,
-          studentResponse: studentArtifact.content
+          studentResponse: studentArtifact.content,
         };
         requests.push({
           uid,
@@ -107,14 +114,13 @@ class LLMRequestManager extends BaseRequestManager {
           contentType: 'application/json',
           payload: JSON.stringify(payload),
           headers: { Authorization: `Bearer ${apiKey}` },
-          muteHttpExceptions: true
+          muteHttpExceptions: true,
         });
       });
     });
     console.log(`Generated ${requests.length} request objects for LLM.`);
     return requests;
   }
-
 
   /**
    * Processes the responses from the LLM and assigns assessments to StudentTasks.
@@ -124,7 +130,6 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment - The Assignment instance containing StudentTasks.
    */
   processResponses(responses, requests, assignment) {
-
     this.progressTracker.updateProgress(`Double-checking all assessments.`, true);
 
     responses.forEach((response, index) => {
@@ -146,29 +151,53 @@ class LLMRequestManager extends BaseRequestManager {
       return;
     }
     this.retryAttempts[uid]++;
-    this.progressTracker.logError('Validation failed for UID: ' + uid + '. Retrying attempt ' + this.retryAttempts[uid] + ' of ' + this.maxValidationRetries + '.');
+    this.progressTracker.logError(
+      'Validation failed for UID: ' +
+        uid +
+        '. Retrying attempt ' +
+        this.retryAttempts[uid] +
+        ' of ' +
+        this.maxValidationRetries +
+        '.'
+    );
     const retryResponse = this.sendRequestWithRetries(request, 3);
-    if (retryResponse && (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)) {
+    if (
+      retryResponse &&
+      (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)
+    ) {
       try {
         const assessmentData = this._extractAssessmentData(retryResponse);
         if (this.validateAssessmentData(assessmentData)) {
           // Assign
-          this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData), assignment);
+          this.assignAssessmentToStudentTask(
+            uid,
+            this.createAssessmentFromData(assessmentData),
+            assignment
+          );
           // Cache via uidIndex mapping
           if (this.uidIndex && this.uidIndex[uid]) {
             const { item, taskDef } = this.uidIndex[uid];
             const ref = taskDef.getPrimaryReference();
             const refHash = ref && ref.contentHash;
             const respHash = item.artifact && item.artifact.contentHash;
-            if (refHash && respHash) this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
+            if (refHash && respHash)
+              this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
           }
           this.retryAttempts[uid] = 0; // success reset
         } else {
-          this.progressTracker.logError('Invalid assessment data for UID: ' + uid + '. Assessment data object: ' + JSON.stringify(assessmentData));
+          this.progressTracker.logError(
+            'Invalid assessment data for UID: ' +
+              uid +
+              '. Assessment data object: ' +
+              JSON.stringify(assessmentData)
+          );
           this.handleValidationFailure(uid, request, assignment);
         }
       } catch (e) {
-        this.progressTracker.logError('Error parsing retry response for UID: ' + uid + ' - ' + e.message, e);
+        this.progressTracker.logError(
+          'Error parsing retry response for UID: ' + uid + ' - ' + e.message,
+          e
+        );
         this.handleValidationFailure(uid, request, assignment);
       }
     } else {
@@ -177,7 +206,6 @@ class LLMRequestManager extends BaseRequestManager {
     }
   }
 
-
   /**
    * Validates the structure of the assessment data returned by the LLM.
    * @param {Object} data - The assessment data.
@@ -185,10 +213,11 @@ class LLMRequestManager extends BaseRequestManager {
    */
   validateAssessmentData(data) {
     const requiredCriteria = ['completeness', 'accuracy', 'spag'];
-    return requiredCriteria.every(criterion =>
-      data.hasOwnProperty(criterion) &&
-      typeof data[criterion].score === 'number' &&
-      typeof data[criterion].reasoning === 'string'
+    return requiredCriteria.every(
+      (criterion) =>
+        data.hasOwnProperty(criterion) &&
+        typeof data[criterion].score === 'number' &&
+        typeof data[criterion].reasoning === 'string'
     );
   }
 
@@ -200,10 +229,12 @@ class LLMRequestManager extends BaseRequestManager {
    */
   processStudentResponses(requests, assignment) {
     if (!requests || requests.length === 0) {
-      console.log("No requests to send.");
+      console.log('No requests to send.');
       return;
     }
-    console.log(`Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`)
+    console.log(
+      `Sending student responses in batches of ${this.configManager.getBackendAssessorBatchSize()}.`
+    );
 
     // Use BaseRequestManager's sendRequestsInBatches method
     const responses = this.sendRequestsInBatches(requests);
@@ -232,7 +263,8 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Object} assessmentData (criterion -> Assessment instance)
    * @param {Assignment} assignment (unused but kept for signature compatibility)
    */
-  assignAssessmentToStudentTask(uid, assessmentData, assignment) { // name retained to minimise external ripple
+  assignAssessmentToStudentTask(uid, assessmentData, assignment) {
+    // name retained to minimise external ripple
     if (this.uidIndex && this.uidIndex[uid]) {
       const { item } = this.uidIndex[uid];
       this._assignAssessmentArtifacts(item, assessmentData);
@@ -257,8 +289,8 @@ class LLMRequestManager extends BaseRequestManager {
     const criteria = ['completeness', 'accuracy', 'spag'];
     const assessments = {};
 
-    criteria.forEach(criterion => {
-      assessments[criterion] = new Assessment("N", "Task not attempted");
+    criteria.forEach((criterion) => {
+      assessments[criterion] = new Assessment('N', 'Task not attempted');
     });
 
     return assessments;
@@ -283,21 +315,12 @@ class LLMRequestManager extends BaseRequestManager {
     if (code === 400) {
       // Bad request: skip and log
       console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
-      this.progressTracker.logError(
-        `Bad Request (400) for UID: ${uid}. Payload invalid.`,
-        text
-      );
+      this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
       return;
     }
     // Other errors: log and continue
-    this.progressTracker.logError(
-      `HTTP error for UID: ${uid} - Code: ${code}`,
-      text
-    );
-    this.progressTracker.updateProgress(
-      `Failed to process assessment for UID: ${uid}`,
-      false
-    );
+    this.progressTracker.logError(`HTTP error for UID: ${uid} - Code: ${code}`, text);
+    this.progressTracker.updateProgress(`Failed to process assessment for UID: ${uid}`, false);
   }
 
   /**
@@ -321,10 +344,7 @@ class LLMRequestManager extends BaseRequestManager {
           this.handleValidationFailure(uid, request, assignment);
         }
       } catch (e) {
-        this.progressTracker.logError(
-          `Error parsing response for UID: ${uid} - ${e.message}`,
-          e
-        );
+        this.progressTracker.logError(`Error parsing response for UID: ${uid} - ${e.message}`, e);
         this.handleValidationFailure(uid, request, assignment);
       }
     } else {
@@ -353,7 +373,11 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Assignment} assignment
    */
   _assignAndCacheAssessment(uid, assessmentData, request, assignment) {
-    this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData), assignment);
+    this.assignAssessmentToStudentTask(
+      uid,
+      this.createAssessmentFromData(assessmentData),
+      assignment
+    );
     if (this.uidIndex && this.uidIndex[uid]) {
       const { item, taskDef } = this.uidIndex[uid];
       const ref = taskDef.getPrimaryReference();

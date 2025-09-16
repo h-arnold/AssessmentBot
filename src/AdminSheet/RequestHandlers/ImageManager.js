@@ -32,18 +32,21 @@ class ImageManager extends BaseRequestManager {
     const results = [];
     const taskDefs = assignment.tasks || {};
     // TaskDefinition artifacts (reference/template)
-    Object.values(taskDefs).forEach(taskDefinition => {
-      ['reference','template'].forEach(role => {
-    taskDefinition.artifacts[role].forEach(artifact => {
-      if (this.isImageArtifact(artifact)) {
+    Object.values(taskDefs).forEach((taskDefinition) => {
+      ['reference', 'template'].forEach((role) => {
+        taskDefinition.artifacts[role].forEach((artifact) => {
+          if (this.isImageArtifact(artifact)) {
             const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
             if (Utils.isValidUrl(sourceUrl)) {
               results.push({
                 uid: artifact.getUid(),
                 url: sourceUrl,
-                documentId: role === 'reference' ? assignment.referenceDocumentId : assignment.templateDocumentId,
+                documentId:
+                  role === 'reference'
+                    ? assignment.referenceDocumentId
+                    : assignment.templateDocumentId,
                 scope: role,
-                taskId: taskDefinition.id
+                taskId: taskDefinition.id,
               });
             }
           }
@@ -51,12 +54,12 @@ class ImageManager extends BaseRequestManager {
       });
     });
 
-  // Submission items (current structure uses `assignment.submissions` only)
-  const submissions = assignment.submissions || [];
-  submissions.forEach(sub => {
+    // Submission items (current structure uses `assignment.submissions` only)
+    const submissions = assignment.submissions || [];
+    submissions.forEach((sub) => {
       if (!sub || !sub.documentId) return;
       const items = sub.items || {};
-      Object.values(items).forEach(item => {
+      Object.values(items).forEach((item) => {
         if (!item || !item.artifact) return;
         const art = item.artifact;
         if (this.isImageArtifact(art)) {
@@ -68,7 +71,7 @@ class ImageManager extends BaseRequestManager {
               documentId: sub.documentId,
               scope: 'submission',
               taskId: item.taskId,
-              itemId: item.id
+              itemId: item.id,
             });
           }
         }
@@ -83,7 +86,7 @@ class ImageManager extends BaseRequestManager {
    * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>}
    */
   fetchImagesAsBlobs(entries) {
-    const maxBatchSize = configurationManager.getSlidesFetchBatchSize()
+    const maxBatchSize = configurationManager.getSlidesFetchBatchSize();
 
     if (!entries || !entries.length) return [];
     // Group by documentId
@@ -108,12 +111,17 @@ class ImageManager extends BaseRequestManager {
     const results = [];
     for (let i = 0; i < merged.length; i += maxBatchSize) {
       const batch = merged.slice(i, i + maxBatchSize);
-      this.progressTracker.updateProgress(`Fetching image batch ${Math.floor(i / maxBatchSize) + 1} of ${Math.ceil(merged.length / maxBatchSize)}`, false);
-      const requests = batch.map(entry => ({
+      this.progressTracker.updateProgress(
+        `Fetching image batch ${Math.floor(i / maxBatchSize) + 1} of ${Math.ceil(
+          merged.length / maxBatchSize
+        )}`,
+        false
+      );
+      const requests = batch.map((entry) => ({
         url: entry.url,
         method: 'get',
         headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-        muteHttpExceptions: true
+        muteHttpExceptions: true,
       }));
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
       responses.forEach((resp, idx) => {
@@ -152,13 +160,13 @@ class ImageManager extends BaseRequestManager {
    * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs - blobs to apply
    */
   writeBackBlobs(assignment, blobs) {
-  if (!blobs || !blobs.length) return;
+    if (!blobs || !blobs.length) return;
 
     const artifactMap = {};
 
-    Object.values(assignment.tasks).forEach(taskDefinition => {
-      ['reference', 'template'].forEach(role => {
-        taskDefinition.artifacts[role].forEach(artifact => {
+    Object.values(assignment.tasks).forEach((taskDefinition) => {
+      ['reference', 'template'].forEach((role) => {
+        taskDefinition.artifacts[role].forEach((artifact) => {
           if (this.isImageArtifact(artifact)) {
             const uid = artifact.getUid();
             artifactMap[uid] = artifact;
@@ -167,8 +175,8 @@ class ImageManager extends BaseRequestManager {
       });
     });
 
-    assignment.submissions.forEach(submission => {
-      Object.values(submission.items).forEach(item => {
+    assignment.submissions.forEach((submission) => {
+      Object.values(submission.items).forEach((item) => {
         const artifact = item.artifact;
         if (this.isImageArtifact(artifact)) {
           const uid = artifact.getUid();
@@ -177,7 +185,7 @@ class ImageManager extends BaseRequestManager {
       });
     });
 
-  const unmatched = [];
+    const unmatched = [];
 
     blobs.forEach(({ uid, blob }) => {
       const artifact = artifactMap[uid];
@@ -185,9 +193,9 @@ class ImageManager extends BaseRequestManager {
         const beforeLen = artifact.content && artifact.content.length;
         try {
           artifact.setContentFromBlob(blob);
-      const afterLen = artifact.content && artifact.content.length; // retained variable for potential future logic
+          const afterLen = artifact.content && artifact.content.length; // retained variable for potential future logic
         } catch (e) {
-      // silent
+          // silent
         }
       } else {
         unmatched.push(uid);

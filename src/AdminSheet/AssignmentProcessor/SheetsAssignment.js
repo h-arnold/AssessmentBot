@@ -1,6 +1,6 @@
 /**
  * SlidesAssignment Class
- * 
+ *
  * Represents a Google Slides-based assignment within a course.
  * Handles slide-specific task extraction and processing.
  */
@@ -21,7 +21,7 @@ class SheetsAssignment extends Assignment {
   populateTasks() {
     const parser = new SheetsParser();
     const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
-    this.tasks = Object.fromEntries(defs.map(td => [td.getId(), td]));
+    this.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
     console.log(`Populated ${defs.length} spreadsheet TaskDefinitions.`);
   }
 
@@ -35,27 +35,34 @@ class SheetsAssignment extends Assignment {
     this.fetchSubmittedDocumentsByMimeType(SHEETS_MIME_TYPE);
   }
 
-    /**
+  /**
    * Processes all student submissions by extracting responses.
    * Implements the abstract processAllSubmissions method from the base class.
    */
   processAllSubmissions() {
     const parser = new SheetsParser();
     const taskDefs = Object.values(this.tasks);
-    this.submissions.forEach(sub => {
-      this.progressTracker.updateProgress(`Extracting work from spreadsheet for student ${sub.studentId}.`, false);
+    this.submissions.forEach((sub) => {
+      this.progressTracker.updateProgress(
+        `Extracting work from spreadsheet for student ${sub.studentId}.`,
+        false
+      );
       if (!sub.documentId) {
         console.warn(`No document ID for studentId ${sub.studentId}; skipping.`);
         return;
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
-      artifacts.forEach(a => {
+      artifacts.forEach((a) => {
         const taskDef = this.tasks[a.taskId];
         if (!taskDef) {
           console.warn('Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction');
           return;
         }
-        sub.upsertItemFromExtraction(taskDef, { pageId: a.pageId, content: a.content, metadata: a.metadata });
+        sub.upsertItemFromExtraction(taskDef, {
+          pageId: a.pageId,
+          content: a.content,
+          metadata: a.metadata,
+        });
       });
     });
   }
@@ -97,4 +104,3 @@ class SheetsAssignment extends Assignment {
     }
   }
 }
-    

@@ -1,6 +1,6 @@
 {
-  "name": "googleslidesassessor",
-  "version": "1.0.0",
+  "name": "AssessmentBot",
+  "version": "0.7.2",
   "description": "**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**",
   "main": "index.js",
   "directories": {
@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "lint": "eslint --config eslint.config.js src/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/**/*.js",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\""
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,8 @@
     "eslint": "^9.19.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
     "vitest": "^3.2.4",
-    "husky": "^8.0.0"
+    "husky": "^8.0.0",
+    "prettier": "^2.8.8"
   },
   "dependencies": {
     "clasp": "^1.0.0"

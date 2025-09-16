@@ -28,7 +28,7 @@ class SheetsParser extends DocumentParser {
     const sheets = spreadsheet.getSheets();
     sheets.forEach((sheet) => {
       const taskSheet = new TaskSheet(sheet, type);
-      if (typeof taskSheet.getAllFormulae === "function") {
+      if (typeof taskSheet.getAllFormulae === 'function') {
         taskSheet.getAllFormulae();
       }
       const taskName = taskSheet.sheetName;
@@ -47,17 +47,11 @@ class SheetsParser extends DocumentParser {
    */
   _extractRawSheetData(referenceDocumentId, templateDocumentId) {
     try {
-      const referenceTasks = this._extractFormulaeFromTaskSheets(
-        referenceDocumentId,
-        "reference"
-      );
-      const templateTasks = this._extractFormulaeFromTaskSheets(
-        templateDocumentId,
-        "template"
-      );
+      const referenceTasks = this._extractFormulaeFromTaskSheets(referenceDocumentId, 'reference');
+      const templateTasks = this._extractFormulaeFromTaskSheets(templateDocumentId, 'template');
       return { referenceTasks, templateTasks };
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to extract tasks from sheets");
+      this.progressTracker.captureError(error, 'Failed to extract tasks from sheets');
       return { referenceTasks: {}, templateTasks: {} };
     }
   }
@@ -107,8 +101,7 @@ class SheetsParser extends DocumentParser {
         const referenceSheet = referenceTasks[taskName];
         const templateSheet = templateTasks[taskName];
 
-        if (!referenceSheet.formulaArray || !templateSheet.formulaArray)
-          continue;
+        if (!referenceSheet.formulaArray || !templateSheet.formulaArray) continue;
 
         const differences = this._compareFormulaArrays(
           referenceSheet.formulaArray,
@@ -127,14 +120,12 @@ class SheetsParser extends DocumentParser {
       // Add bounding box calculations
       for (const taskName in results) {
         const sheetDifferences = results[taskName];
-        sheetDifferences.boundingBox = this._calculateBoundingBox(
-          sheetDifferences.formulas
-        );
+        sheetDifferences.boundingBox = this._calculateBoundingBox(sheetDifferences.formulas);
       }
 
       return results;
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to compare formulae between sheets");
+      this.progressTracker.captureError(error, 'Failed to compare formulae between sheets');
       return {};
     }
   }
@@ -165,22 +156,18 @@ class SheetsParser extends DocumentParser {
         // Un-escape any doubled quotes within the formula
         formula = formula.replace(/""/g, '"');
       } catch (error) {
-        this.progressTracker.captureError(error, "Error preprocessing formula");
+        this.progressTracker.captureError(error, 'Error preprocessing formula');
       }
     }
 
     // Now process the formula normally
-    let result = "";
+    let result = '';
     let inQuotes = false;
     for (let i = 0; i < formula.length; i++) {
       const char = formula.charAt(i);
       if (char === '"') {
         // Handle escaped quotes inside string literals
-        if (
-          inQuotes &&
-          i + 1 < formula.length &&
-          formula.charAt(i + 1) === '"'
-        ) {
+        if (inQuotes && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
           result += '""';
           i++; // Skip next char
         } else {
@@ -191,7 +178,7 @@ class SheetsParser extends DocumentParser {
         result += char;
       } else {
         // Trim spaces when not in quotes
-        if (char !== " ") {
+        if (char !== ' ') {
           result += char.toUpperCase();
         }
       }
@@ -218,9 +205,9 @@ class SheetsParser extends DocumentParser {
       const tempRow = row < templateArray.length ? templateArray[row] : [];
 
       for (let col = 0; col < refRow.length; col++) {
-        const refFormula = refRow[col] || "";
+        const refFormula = refRow[col] || '';
         // Template cell might not exist if template row is shorter
-        const tempFormula = tempRow[col] || "";
+        const tempFormula = tempRow[col] || '';
 
         // Check if there's a non-empty reference formula and it doesn't match the template
         if (refFormula && refFormula !== tempFormula) {
@@ -247,13 +234,10 @@ class SheetsParser extends DocumentParser {
    */
   processAndCompareSheets(referenceDocumentId, templateDocumentId) {
     try {
-      const extractedTasks = this._extractRawSheetData(
-        referenceDocumentId,
-        templateDocumentId
-      );
+      const extractedTasks = this._extractRawSheetData(referenceDocumentId, templateDocumentId);
       return this.compareFormulae(extractedTasks);
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to process and compare sheets");
+      this.progressTracker.captureError(error, 'Failed to process and compare sheets');
       return {};
     }
   }
@@ -322,29 +306,47 @@ class SheetsParser extends DocumentParser {
       const taskMetadata = {
         bbox: sheetData.boundingBox,
         referenceLocationsMap,
-        sheetId: sheetData.sheetId
+        sheetId: sheetData.sheetId,
       };
-      const def = new TaskDefinition({ taskTitle: sheetName, pageId: String(sheetData.sheetId), taskMetadata });
+      const def = new TaskDefinition({
+        taskTitle: sheetName,
+        pageId: String(sheetData.sheetId),
+        taskMetadata,
+      });
       def.index = index++;
       // Add primary reference SpreadsheetTaskArtifact: represent reference formulas as 2D array skeleton with normalised formulas
       // We convert differences list into a sparse array (leave nulls) sized to bbox dims
       const bbox = sheetData.boundingBox;
       let grid = [];
       if (bbox) {
-        for (let r = 0; r < bbox.numRows; r++) { grid[r] = new Array(bbox.numColumns).fill(null); }
-        sheetData.formulas.forEach(f => {
+        for (let r = 0; r < bbox.numRows; r++) {
+          grid[r] = new Array(bbox.numColumns).fill(null);
+        }
+        sheetData.formulas.forEach((f) => {
           const [absR, absC] = f.location;
-            const relR = absR - (bbox.startRow - 1);
-            const relC = absC - (bbox.startColumn - 1);
-            if (relR >= 0 && relR < bbox.numRows && relC >= 0 && relC < bbox.numColumns) {
-              grid[relR][relC] = f.referenceFormula || f.formula || '';
-            }
+          const relR = absR - (bbox.startRow - 1);
+          const relC = absC - (bbox.startColumn - 1);
+          if (relR >= 0 && relR < bbox.numRows && relC >= 0 && relC < bbox.numColumns) {
+            grid[relR][relC] = f.referenceFormula || f.formula || '';
+          }
         });
       }
-      def.addReferenceArtifact({ type: 'spreadsheet', pageId: String(sheetData.sheetId), content: grid, metadata: { sheetName, bbox }, taskIndex: def.index });
+      def.addReferenceArtifact({
+        type: 'spreadsheet',
+        pageId: String(sheetData.sheetId),
+        content: grid,
+        metadata: { sheetName, bbox },
+        taskIndex: def.index,
+      });
       // Template artifact: for not-attempted detection we mirror shape (all null / empty) – may extend later.
-      const tplGrid = grid.map(row => row.map(() => null));
-      def.addTemplateArtifact({ type: 'spreadsheet', pageId: String(sheetData.sheetId), content: tplGrid, metadata: { sheetName, bbox, template: true }, taskIndex: def.index });
+      const tplGrid = grid.map((row) => row.map(() => null));
+      def.addTemplateArtifact({
+        type: 'spreadsheet',
+        pageId: String(sheetData.sheetId),
+        content: tplGrid,
+        metadata: { sheetName, bbox, template: true },
+        taskIndex: def.index,
+      });
       defs.push(def);
     }
     return defs;
@@ -358,11 +360,14 @@ class SheetsParser extends DocumentParser {
     const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
     const sheets = spreadsheet.getSheets();
     const sheetById = {};
-    sheets.forEach(s => { sheetById[String(s.getSheetId())] = s; });
+    sheets.forEach((s) => {
+      sheetById[String(s.getSheetId())] = s;
+    });
     const artifacts = [];
-    taskDefs.forEach(def => {
+    taskDefs.forEach((def) => {
       const ref = def.getPrimaryReference();
-      const bbox = (def.taskMetadata && (def.taskMetadata.bbox || def.taskMetadata.boundingBox)) || null;
+      const bbox =
+        (def.taskMetadata && (def.taskMetadata.bbox || def.taskMetadata.boundingBox)) || null;
       const sheet = sheetById[def.pageId];
       if (!sheet || !bbox || !ref) return;
       const taskSheet = new TaskSheet(sheet, 'studentTask');
@@ -374,18 +379,23 @@ class SheetsParser extends DocumentParser {
         return;
       }
       // Reconstruct sparse grid like reference for hashing consistency
-      const grid = ref.content ? ref.content.map(row => row.map(() => null)) : [];
+      const grid = ref.content ? ref.content.map((row) => row.map(() => null)) : [];
       for (let r = 0; r < bbox.numRows; r++) {
         for (let c = 0; c < bbox.numColumns; c++) {
-          const absR = (bbox.startRow - 1) + r;
-          const absC = (bbox.startColumn - 1) + c;
-          const formula = (rangeFormulas[r] && rangeFormulas[r][c]) ? rangeFormulas[r][c] : '';
+          const absR = bbox.startRow - 1 + r;
+          const absC = bbox.startColumn - 1 + c;
+          const formula = rangeFormulas[r] && rangeFormulas[r][c] ? rangeFormulas[r][c] : '';
           if (formula) {
             grid[r][c] = formula; // SpreadsheetTaskArtifact will canonicalise
           }
         }
       }
-      artifacts.push({ taskId: def.getId(), pageId: def.pageId, content: grid, metadata: { sheetName: def.taskTitle } });
+      artifacts.push({
+        taskId: def.getId(),
+        pageId: def.pageId,
+        content: grid,
+        metadata: { sheetName: def.taskTitle },
+      });
     });
     return artifacts;
   }

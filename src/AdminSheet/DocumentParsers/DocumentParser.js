@@ -1,6 +1,6 @@
 /**
  * DocumentParser Class
- * 
+ *
  * Base class for all document parser implementations.
  * Provides common functionality for extracting and processing content from Google documents.
  */
@@ -26,7 +26,8 @@ class DocumentParser {
    * @param {string=} templateDocumentId
    * @return {TaskDefinition[]}
    */
-  extractTaskDefinitions(referenceDocumentId, templateDocumentId) { // eslint-disable-line no-unused-vars
+  extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
+    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
   }
 
@@ -36,7 +37,8 @@ class DocumentParser {
    * @param {TaskDefinition[]} taskDefinitions
    * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
    */
-  extractSubmissionArtifacts(documentId, taskDefinitions) { // eslint-disable-line no-unused-vars
+  extractSubmissionArtifacts(documentId, taskDefinitions) {
+    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
   }
 
@@ -47,27 +49,27 @@ class DocumentParser {
    */
   convertToMarkdownTable(tableData) {
     if (!tableData || !tableData.length || !tableData[0].length) {
-      console.log("The provided data is empty or invalid.");
+      console.log('The provided data is empty or invalid.');
       return '';
     }
 
     let markdownTable = '';
-    
+
     // Create header row
     markdownTable += '| ' + tableData[0].join(' | ') + ' |\n';
-    
+
     // Create separator row
     markdownTable += '| ' + tableData[0].map(() => '---').join(' | ') + ' |\n';
-    
+
     // Create data rows
     for (let i = 1; i < tableData.length; i++) {
       // Escape pipe characters in Markdown
-      const escapedRow = tableData[i].map(cell => 
+      const escapedRow = tableData[i].map((cell) =>
         String(cell).replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
       );
       markdownTable += '| ' + escapedRow.join(' | ') + ' |\n';
     }
-    
+
     return markdownTable;
   }
 }

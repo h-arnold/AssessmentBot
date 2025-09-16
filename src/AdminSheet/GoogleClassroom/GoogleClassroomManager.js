@@ -7,8 +7,8 @@ class GoogleClassroomManager {
   constructor() {
     this.configManager = configurationManager;
     this.classrooms = [];
-    this.templateSheetId = ""
-    this.destinationFolderId = "" 
+    this.templateSheetId = '';
+    this.destinationFolderId = '';
     this.progressTracker = ProgressTracker.getInstance();
 
     // Only instantiate the ClassroomSheetManager class if this is being run from the Admin Sheet.
@@ -39,15 +39,15 @@ class GoogleClassroomManager {
         'Teacher 3',
         'Teacher 4',
         'Enrollment Code',
-        'createAssessmentRecord'
+        'createAssessmentRecord',
       ];
       this.csm.writeHeaders(headers); // Use ClassroomSheetManager
 
       // Prepare all rows in memory before appending
-      const rows = classrooms.map(course => {
+      const rows = classrooms.map((course) => {
         // Fetch teachers for the course
         const teachers = Classroom.Courses.Teachers.list(course.id).teachers || [];
-        const teacherEmails = teachers.map(teacher => teacher.profile.emailAddress);
+        const teacherEmails = teachers.map((teacher) => teacher.profile.emailAddress);
 
         return [
           course.id || '',
@@ -57,14 +57,16 @@ class GoogleClassroomManager {
           teacherEmails[2] || '',
           teacherEmails[3] || '',
           course.enrollmentCode || '',
-          false // Default value for createAssessmentRecord
+          false, // Default value for createAssessmentRecord
         ];
       });
 
       // Append all rows in one go using batch update
       this.csm.appendRows(rows); // Use ClassroomSheetManager
 
-      console.log('Classrooms fetched and written to sheet successfully with createAssessmentRecord column.');
+      console.log(
+        'Classrooms fetched and written to sheet successfully with createAssessmentRecord column.'
+      );
     } catch (error) {
       this.progressTracker.logAndThrowError('Failed to fetch Google Classrooms', error);
     }
@@ -96,24 +98,25 @@ class GoogleClassroomManager {
         const classroom = new GoogleClassroom({
           name: row[1],
           ownerId: row[2],
-          teachers: row.slice(2, 6).filter(email => email) // Teacher emails
+          teachers: row.slice(2, 6).filter((email) => email), // Teacher emails
         });
         classroom.create();
-  // Use updateProgress to record informational messages without incrementing the step
-  this.progressTracker.updateProgress(`Classroom created: ${row[1]}`, false);
+        // Use updateProgress to record informational messages without incrementing the step
+        this.progressTracker.updateProgress(`Classroom created: ${row[1]}`, false);
 
         // Update Classroom ID in the sheet
         // Before: this.sheet.getRange(index + 1, 1).setValue(classroom.id);
         // Before: this.sheet.getRange(index + 1, row.length + 1).setValue(false);
         rowsToUpdate.push({ rowIndex: index, courseId: classroom.id });
-
       } catch (error) {
-        this.progressTracker.logError(`Failed to create classroom for row ${index + 1}: ${error.message}`);
+        this.progressTracker.logError(
+          `Failed to create classroom for row ${index + 1}: ${error.message}`
+        );
       }
     });
 
     if (rowsToUpdate.length > 0) {
-      const updateRows = rowsToUpdate.map(update => {
+      const updateRows = rowsToUpdate.map((update) => {
         const newRowData = ['', ...data[update.rowIndex].slice(1), false]; // Ensure 'createAssessmentRecord' is false
         newRowData[0] = update.courseId;
         return newRowData;
@@ -121,7 +124,9 @@ class GoogleClassroomManager {
       this.csm.writeData(updateRows, []); // Use ClassroomSheetManager to update rows
     }
 
-    console.log('Google Classrooms created successfully with createAssessmentRecord column updated.');
+    console.log(
+      'Google Classrooms created successfully with createAssessmentRecord column updated.'
+    );
   }
 
   /**
@@ -137,15 +142,16 @@ class GoogleClassroomManager {
     this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
 
     // 0) Initialise progress tracker
-  // Use the ProgressTracker directly; it will manage step increments itself
-  this.progressTracker.updateProgress('Creating Assessment Records');
+    // Use the ProgressTracker directly; it will manage step increments itself
+    this.progressTracker.updateProgress('Creating Assessment Records');
 
     // 1) Retrieve all rows
-    const data = this.csm.getData(); 
+    const data = this.csm.getData();
 
     // 2) Quick check that there's something to process
     if (data.length < 2) {
-      const errorMessage = "No classrooms in the classroom sheet. Please fetch or create them first.";
+      const errorMessage =
+        'No classrooms in the classroom sheet. Please fetch or create them first.';
       this.progressTracker.logAndThrowError(errorMessage);
     }
 
@@ -171,7 +177,6 @@ class GoogleClassroomManager {
       headers.push('Year Group');
     }
 
-
     // 6) We'll store row updates in memory for a final single batch update
     //    rowUpdates = array of { rowIndex, templateFileIdValue, spreadsheetIdValue }
     const rowUpdates = [];
@@ -194,7 +199,7 @@ class GoogleClassroomManager {
 
       if (row[createARIndex] === true) {
         try {
-          const courseId = row[0] // Gets the ClassID from column A
+          const courseId = row[0]; // Gets the ClassID from column A
           const className = row[1]; // Gets the Class Name from column B
 
           const copyResult = DriveManager.copyTemplateSheet(
@@ -209,12 +214,12 @@ class GoogleClassroomManager {
             // so we can apply them all together in a single batch update at the end.
             rowUpdates.push({
               rowIndex: i, // 0-based index in `data`
-              templateFileIdValue: newFileId
+              templateFileIdValue: newFileId,
             });
 
             //Adds the class info to the newly created assessment record.
 
-            ClassroomSheetManager.appendClassInfo(newFileId, className, courseId)
+            ClassroomSheetManager.appendClassInfo(newFileId, className, courseId);
 
             // Update progress each time we successfully copy a template
             // Let ProgressTracker increment the step automatically and record the message
@@ -222,14 +227,16 @@ class GoogleClassroomManager {
           } else if (copyResult.status === 'skipped') {
             console.log(copyResult.message);
             // Push the existing file ID to the readpsheet instead
-            const existingFiledId = copyResult.fileId
+            const existingFiledId = copyResult.fileId;
             rowUpdates.push({
               rowIndex: i, // 0-based index in `data`
-              templateFileIdValue: existingFiledId
+              templateFileIdValue: existingFiledId,
             });
 
             // Record a skipped message and allow the tracker to increment its internal step
-            this.progressTracker.updateProgress(`Skipping record for: ${className} (already exists)`);
+            this.progressTracker.updateProgress(
+              `Skipping record for: ${className} (already exists)`
+            );
           }
         } catch (error) {
           const errMsg = `Failed to copy template for row ${i + 1}: ${error.message}`;
@@ -240,7 +247,7 @@ class GoogleClassroomManager {
 
     // 8) Build our final batch requests array
     const rowsToWrite = data.map((row, index) => {
-      const update = rowUpdates.find(u => u.rowIndex === index);
+      const update = rowUpdates.find((u) => u.rowIndex === index);
       if (update) {
         const updatedRow = [...row];
         if (templateFileIdIndex < updatedRow.length) {
@@ -260,7 +267,7 @@ class GoogleClassroomManager {
     // 10) Writes updated sheet
 
     // Update headers if new columns were added
-    if (templateFileIdIndex === headers.length -1 || yearGroupIndex === headers.length -1) {
+    if (templateFileIdIndex === headers.length - 1 || yearGroupIndex === headers.length - 1) {
       this.csm.writeHeaders(headers);
     }
 
@@ -268,7 +275,7 @@ class GoogleClassroomManager {
 
     this.csm.writeData(rowsToWrite.slice(1), []); // Use ClassroomSheetManager to update rows
 
-    console.log("Assessment records created successfully where flagged.");
+    console.log('Assessment records created successfully where flagged.');
 
     // 11) Finally, share the folder with all teacher emails
     // (assuming your DriveManager has the updated shareFolder method)
@@ -277,11 +284,20 @@ class GoogleClassroomManager {
         const shareResult = DriveManager.shareFolder(this.destinationFolderId, teacherEmailsSet);
         // Use the shareResult status to update progress or log a message
         if (shareResult.status === 'complete') {
-          this.progressTracker.updateProgress(`Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`, true);
+          this.progressTracker.updateProgress(
+            `Folder shared with all ${teacherEmailsSet.size} teacher(s) successfully.`,
+            true
+          );
         } else if (shareResult.status === 'partial') {
-          this.progressTracker.updateProgress(`Some teachers shared, some failed. Check logs.`, false);
+          this.progressTracker.updateProgress(
+            `Some teachers shared, some failed. Check logs.`,
+            false
+          );
         } else if (shareResult.status === 'none') {
-          this.progressTracker.updateProgress(`No teacher emails provided; folder sharing skipped.`, false);
+          this.progressTracker.updateProgress(
+            `No teacher emails provided; folder sharing skipped.`,
+            false
+          );
         }
         console.log(shareResult.message);
       } catch (error) {
@@ -316,9 +332,7 @@ class GoogleClassroomManager {
         assignments.sort((a, b) => b.updateTime - a.updateTime);
       }
 
-      console.log(
-        `${assignments.length} assignments retrieved for courseId: ${courseId}`
-      );
+      console.log(`${assignments.length} assignments retrieved for courseId: ${courseId}`);
       return assignments;
     } catch (error) {
       const errorMessage = `Error retrieving assignments for courseId ${courseId}`;
@@ -337,12 +351,12 @@ class GoogleClassroomManager {
       do {
         const response = Classroom.Courses.list({
           pageToken: pageToken,
-          courseStates: ['ACTIVE']
+          courseStates: ['ACTIVE'],
         });
         if (response.courses && response.courses.length > 0) {
-          const activeCourses = response.courses.map(course => ({
+          const activeCourses = response.courses.map((course) => ({
             id: course.id,
-            name: course.name
+            name: course.name,
           }));
           courses = courses.concat(activeCourses);
         }
@@ -352,7 +366,8 @@ class GoogleClassroomManager {
       console.log(`${courses.length} active classrooms retrieved.`);
       return courses;
     } catch (error) {
-      const userMessage = 'Failed to retrieve active classrooms. Please ensure that the Classroom API is enabled and you have the necessary permissions.';
+      const userMessage =
+        'Failed to retrieve active classrooms. Please ensure that the Classroom API is enabled and you have the necessary permissions.';
       this.progressTracker.logAndThrowError(userMessage, error);
     }
   }
@@ -365,19 +380,21 @@ class GoogleClassroomManager {
    */
   getCourseId() {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName("ClassInfo");
-    
+    const sheet = spreadsheet.getSheetByName('ClassInfo');
+
     // If ClassInfo sheet doesn't exist or course ID is missing
-  if (!sheet || !sheet.getRange("B2").getValue()) {
-      console.error("ClassInfo sheet not found or missing course ID.");
-      
+    if (!sheet || !sheet.getRange('B2').getValue()) {
+      console.error('ClassInfo sheet not found or missing course ID.');
+
       // Create a detailed error message for logging
-      const errorMessage = "Cannot assess assignments: No classroom is selected or the ClassInfo sheet is missing.";
-      const detailedError = "The Assessment Bot requires a classroom to be selected before assessing assignments. " +
-                            "The ClassInfo sheet which contains this information is missing or incomplete.";
+      const errorMessage =
+        'Cannot assess assignments: No classroom is selected or the ClassInfo sheet is missing.';
+      const detailedError =
+        'The Assessment Bot requires a classroom to be selected before assessing assignments. ' +
+        'The ClassInfo sheet which contains this information is missing or incomplete.';
 
       this.progressTracker.logError(errorMessage, detailedError);
-      
+
       // Use UIManager to handle the classroom selection prompt
       // Attempt to show a UI prompt to help the user select a classroom. Capture any UI errors
       // so they can be included in the thrown error's developer details.
@@ -387,17 +404,16 @@ class GoogleClassroomManager {
         uiManager.promptMissingClassroomSelection();
       } catch (e) {
         uiError = e;
-        this.progressTracker.captureError(e, "Cannot show UI prompt using UIManager");
+        this.progressTracker.captureError(e, 'Cannot show UI prompt using UIManager');
       }
 
       this.progressTracker.logAndThrowError(
         errorMessage + " Please use the 'Change Class' menu option to select a classroom first.",
         uiError
       );
-
     }
-    
-    const courseId = sheet.getRange("B2").getValue();
+
+    const courseId = sheet.getRange('B2').getValue();
     return courseId.toString();
   }
 }

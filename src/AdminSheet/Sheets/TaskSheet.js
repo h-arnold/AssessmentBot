@@ -37,10 +37,11 @@ class TaskSheet extends BaseSheetManager {
       const noTypeError = `A type must be provided for sheet \"${this.sheetName}\". Valid types are 'reference', 'template', 'studentTask'.`;
       this.progressTracker.logAndThrowError(noTypeError);
     }
-    
+
     this.setType(type);
 
-    if (!this.type) { // Check if setType resulted in a null type (due to invalid input)
+    if (!this.type) {
+      // Check if setType resulted in a null type (due to invalid input)
       const invalidTypeError = `Invalid type \"${type}\" provided for sheet \"${this.sheetName}\" during construction. Valid types are 'reference', 'template', 'studentTask'.`;
       this.progressTracker.logAndThrowError(invalidTypeError);
     }
@@ -57,7 +58,9 @@ class TaskSheet extends BaseSheetManager {
     if (validTypes.includes(type)) {
       this.type = type;
     } else {
-      const errorMessage = `Invalid sheet type: \"${type}\". Must be one of ${validTypes.join(', ')}.`;
+      const errorMessage = `Invalid sheet type: \"${type}\". Must be one of ${validTypes.join(
+        ', '
+      )}.`;
       this.progressTracker.logError(errorMessage);
       // Optionally, throw an error to halt execution if an invalid type is critical
       // this.progressTracker.logAndThrowError(errorMessage);
@@ -84,7 +87,9 @@ class TaskSheet extends BaseSheetManager {
   getAllFormulae() {
     try {
       if (!this.sheet) {
-        const noSheetError = `Sheet object is not available for sheet \"${this.sheetName || 'Unknown Sheet'}\".`;
+        const noSheetError = `Sheet object is not available for sheet \"${
+          this.sheetName || 'Unknown Sheet'
+        }\".`;
         this.progressTracker.logAndThrowError(noSheetError);
       }
       const formulae = this.sheet.getDataRange().getFormulas();
@@ -100,7 +105,7 @@ class TaskSheet extends BaseSheetManager {
 
   /**
    * Retrieves data from a specific range in the sheet.
-   * @param {string|object} range - The range to fetch, either as A1 notation string (e.g., "A1:B5") 
+   * @param {string|object} range - The range to fetch, either as A1 notation string (e.g., "A1:B5")
    *                                or as {startRow, startColumn, numRows, numColumns} object.
    * @param {string} valueType - Type of data to return: 'values', 'formulas', or 'displayValues'. Defaults to 'values'.
    * @returns {Array<Array<any>>} A 2D array of values from the specified range.
@@ -109,7 +114,9 @@ class TaskSheet extends BaseSheetManager {
   getRange(range, valueType = 'values') {
     try {
       if (!this.sheet) {
-        const noSheetError = `Sheet object is not available for sheet \"${this.sheetName || 'Unknown Sheet'}\".`;
+        const noSheetError = `Sheet object is not available for sheet \"${
+          this.sheetName || 'Unknown Sheet'
+        }\".`;
         this.progressTracker.logAndThrowError(noSheetError);
       }
 
@@ -118,26 +125,32 @@ class TaskSheet extends BaseSheetManager {
       if (typeof range === 'string') {
         // A1 notation, e.g., "A1:B5"
         sheetRange = this.sheet.getRange(range);
-      } else if (typeof range === 'object' && 
-                 'startRow' in range && 
-                 'startColumn' in range && 
-                 'numRows' in range && 
-                 'numColumns' in range) {
+      } else if (
+        typeof range === 'object' &&
+        'startRow' in range &&
+        'startColumn' in range &&
+        'numRows' in range &&
+        'numColumns' in range
+      ) {
         // Object notation, e.g., {startRow: 1, startColumn: 1, numRows: 5, numColumns: 2}
         sheetRange = this.sheet.getRange(
-          range.startRow, 
-          range.startColumn, 
-          range.numRows, 
+          range.startRow,
+          range.startColumn,
+          range.numRows,
           range.numColumns
         );
       } else {
-        const invalidRangeError = 'Invalid range specification. Use A1 notation or {startRow, startColumn, numRows, numColumns} object.';
-        this.progressTracker.logError(invalidRangeError, `Dev Info: ${invalidRangeError} (getRange for sheet "${this.sheetName}")`);
+        const invalidRangeError =
+          'Invalid range specification. Use A1 notation or {startRow, startColumn, numRows, numColumns} object.';
+        this.progressTracker.logError(
+          invalidRangeError,
+          `Dev Info: ${invalidRangeError} (getRange for sheet "${this.sheetName}")`
+        );
         throw new Error(invalidRangeError);
       }
 
       // Get the requested data type
-      switch(valueType.toLowerCase()) {
+      switch (valueType.toLowerCase()) {
         case 'values':
           return sheetRange.getValues();
         case 'formulas':
@@ -146,12 +159,18 @@ class TaskSheet extends BaseSheetManager {
           return sheetRange.getDisplayValues();
         default:
           const invalidTypeError = `Invalid valueType: "${valueType}". Must be 'values', 'formulas', or 'displayValues'.`;
-          this.progressTracker.logError(invalidTypeError, `Dev Info: ${invalidTypeError} (getRange for sheet "${this.sheetName}")`);
+          this.progressTracker.logError(
+            invalidTypeError,
+            `Dev Info: ${invalidTypeError} (getRange for sheet "${this.sheetName}")`
+          );
           throw new Error(invalidTypeError);
       }
     } catch (e) {
       const errorMessage = `Error retrieving range from sheet "${this.sheetName}": ${e.message}`;
-      this.progressTracker.logError(errorMessage, `Dev Info: ${errorMessage}\nStack: ${e.stack} (getRange)`);
+      this.progressTracker.logError(
+        errorMessage,
+        `Dev Info: ${errorMessage}\nStack: ${e.stack} (getRange)`
+      );
       throw e;
     }
   }

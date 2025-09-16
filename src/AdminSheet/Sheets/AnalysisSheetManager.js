@@ -10,7 +10,7 @@ class AnalysisSheetManager extends BaseSheetManager {
     this.assignment = assignment;
     this.headers = {
       topHeaders: [],
-      subHeaders: []
+      subHeaders: [],
     };
   }
 
@@ -18,7 +18,8 @@ class AnalysisSheetManager extends BaseSheetManager {
    * Creates or retrieves the analysis sheet for the assignment.
    */
   createOrGetSheet() {
-    const sheetName = this.assignment.assignmentName || `Assignment ${this.assignment.assignmentId}`;
+    const sheetName =
+      this.assignment.assignmentName || `Assignment ${this.assignment.assignmentId}`;
     super.createOrGetSheet(sheetName);
   }
 
@@ -40,11 +41,13 @@ class AnalysisSheetManager extends BaseSheetManager {
     this.headers.topHeaders = [''];
     this.headers.subHeaders = ['Name'];
     // Deterministic order by TaskDefinition.index then id fallback
-    const taskDefs = Object.values(this.assignment.tasks || {}).sort((a,b) => {
+    const taskDefs = Object.values(this.assignment.tasks || {}).sort((a, b) => {
       if (a.index != null && b.index != null && a.index !== b.index) return a.index - b.index;
-      if (a.index != null) return -1; if (b.index != null) return 1; return a.id.localeCompare(b.id);
+      if (a.index != null) return -1;
+      if (b.index != null) return 1;
+      return a.id.localeCompare(b.id);
     });
-    taskDefs.forEach(td => {
+    taskDefs.forEach((td) => {
       this.headers.topHeaders.push(td.taskTitle, '', '');
       this.headers.subHeaders.push('Completeness', 'Accuracy', 'SPaG');
     });
@@ -69,32 +72,52 @@ class AnalysisSheetManager extends BaseSheetManager {
 
     // Add header formatting requests
     // Top row of headers listing the assignment names
-    this.requests.push(this.createHeaderFormattingRequest(sheetId, 0, 1, {
-      wordWrap: true,
-      horizontalAlignment: "CENTER"
-    },
-    0,
-    this.headers.topHeaders.length));
+    this.requests.push(
+      this.createHeaderFormattingRequest(
+        sheetId,
+        0,
+        1,
+        {
+          wordWrap: true,
+          horizontalAlignment: 'CENTER',
+        },
+        0,
+        this.headers.topHeaders.length
+      )
+    );
 
     // Second row of headers focussing on just the 'Name' column, formatted in bold, left aligned and auto resized.
 
-    this.requests.push(this.createHeaderFormattingRequest(sheetId, 1, 2, {
-      wordWrap: false,
-      horizontalAlignment: "LEFT",
-      autoResize: true
-    },
-      0,
-      1));
+    this.requests.push(
+      this.createHeaderFormattingRequest(
+        sheetId,
+        1,
+        2,
+        {
+          wordWrap: false,
+          horizontalAlignment: 'LEFT',
+          autoResize: true,
+        },
+        0,
+        1
+      )
+    );
 
     // Second row of headers containing 'Completeness', 'Accuracy' and 'SPaG' headers, rotated 45 degrees
-    this.requests.push(this.createHeaderFormattingRequest(sheetId, 1, 2, {
-      wordWrap: false,
-      horizontalAlignment: "CENTER",
-      textRotation: { angle: 45 }
-    },
-      1,
-      this.headers.subHeaders.length));
-
+    this.requests.push(
+      this.createHeaderFormattingRequest(
+        sheetId,
+        1,
+        2,
+        {
+          wordWrap: false,
+          horizontalAlignment: 'CENTER',
+          textRotation: { angle: 45 },
+        },
+        1,
+        this.headers.subHeaders.length
+      )
+    );
 
     // Add merge requests for task headers
     this.requests.push(...this.createMergeRequests(sheetId, this.headers.topHeaders));
@@ -117,10 +140,10 @@ class AnalysisSheetManager extends BaseSheetManager {
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: columnIndex,
-            endColumnIndex: columnIndex + 3
+            endColumnIndex: columnIndex + 3,
           },
-          mergeType: "MERGE_ALL"
-        }
+          mergeType: 'MERGE_ALL',
+        },
       });
       columnIndex += 3;
     }
@@ -133,10 +156,10 @@ class AnalysisSheetManager extends BaseSheetManager {
           startRowIndex: 0,
           endRowIndex: 1,
           startColumnIndex: columnIndex,
-          endColumnIndex: columnIndex + 3
+          endColumnIndex: columnIndex + 3,
         },
-        mergeType: "MERGE_ALL"
-      }
+        mergeType: 'MERGE_ALL',
+      },
     });
 
     return mergeRequests;
@@ -148,48 +171,112 @@ class AnalysisSheetManager extends BaseSheetManager {
   createDataRowsRequests() {
     const sheetId = this.sheet.getSheetId();
     const startRowIndex = 2;
-  const submissions = this.assignment.submissions || [];
+    const submissions = this.assignment.submissions || [];
     submissions.forEach((submission, studentIndex) => {
       const rowData = [];
       const notesData = [];
       const completenessCells = [];
       const accuracyCells = [];
       const spagCells = [];
-      const studentName = submission.student?.name || submission.studentName || submission.studentId || 'Unknown';
+      const studentName =
+        submission.student?.name || submission.studentName || submission.studentId || 'Unknown';
       rowData.push({ userEnteredValue: { stringValue: studentName } });
       let currentColumnIndex = 1;
-      const taskDefs = Object.values(this.assignment.tasks || {}).sort((a,b)=>{ if(a.index!=null&&b.index!=null&&a.index!==b.index) return a.index-b.index; if(a.index!=null) return -1; if(b.index!=null) return 1; return a.id.localeCompare(b.id); });
-      taskDefs.forEach(td => {
-        const item = submission.getItem ? submission.getItem(td.id) : (submission.items ? submission.items[td.id] : null);
+      const taskDefs = Object.values(this.assignment.tasks || {}).sort((a, b) => {
+        if (a.index != null && b.index != null && a.index !== b.index) return a.index - b.index;
+        if (a.index != null) return -1;
+        if (b.index != null) return 1;
+        return a.id.localeCompare(b.id);
+      });
+      taskDefs.forEach((td) => {
+        const item = submission.getItem
+          ? submission.getItem(td.id)
+          : submission.items
+          ? submission.items[td.id]
+          : null;
         const assessments = item && item.assessments ? item.assessments : {};
         const studentDisplay = this._artifactDisplayString(item && item.artifact);
         // completeness
         const completeness = assessments['completeness']?.score;
-        if (typeof completeness === 'number' && completeness > 0) { rowData.push({ userEnteredValue: { numberValue: completeness } }); } else { rowData.push({ userEnteredValue: { stringValue: 'N' } }); }
-        notesData.push({ note: this.formatNote(assessments['completeness']?.reasoning || 'No reasoning provided.', studentDisplay), columnOffset: currentColumnIndex });
-        completenessCells.push(Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1));
+        if (typeof completeness === 'number' && completeness > 0) {
+          rowData.push({ userEnteredValue: { numberValue: completeness } });
+        } else {
+          rowData.push({ userEnteredValue: { stringValue: 'N' } });
+        }
+        notesData.push({
+          note: this.formatNote(
+            assessments['completeness']?.reasoning || 'No reasoning provided.',
+            studentDisplay
+          ),
+          columnOffset: currentColumnIndex,
+        });
+        completenessCells.push(
+          Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1)
+        );
         currentColumnIndex++;
         // accuracy
         const accuracy = assessments['accuracy']?.score;
-        if (typeof accuracy === 'number' && accuracy > 0) { rowData.push({ userEnteredValue: { numberValue: accuracy } }); } else { rowData.push({ userEnteredValue: { stringValue: 'N' } }); }
-        notesData.push({ note: this.formatNote(assessments['accuracy']?.reasoning || 'No reasoning provided.', studentDisplay), columnOffset: currentColumnIndex });
-        accuracyCells.push(Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1));
+        if (typeof accuracy === 'number' && accuracy > 0) {
+          rowData.push({ userEnteredValue: { numberValue: accuracy } });
+        } else {
+          rowData.push({ userEnteredValue: { stringValue: 'N' } });
+        }
+        notesData.push({
+          note: this.formatNote(
+            assessments['accuracy']?.reasoning || 'No reasoning provided.',
+            studentDisplay
+          ),
+          columnOffset: currentColumnIndex,
+        });
+        accuracyCells.push(
+          Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1)
+        );
         currentColumnIndex++;
         // spag
         const spag = assessments['spag']?.score;
-        if (typeof spag === 'number' && spag > 0) { rowData.push({ userEnteredValue: { numberValue: spag } }); } else { rowData.push({ userEnteredValue: { stringValue: 'N' } }); }
-        notesData.push({ note: this.formatNote(assessments['spag']?.reasoning || 'No reasoning provided.', studentDisplay), columnOffset: currentColumnIndex });
-        spagCells.push(Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1));
+        if (typeof spag === 'number' && spag > 0) {
+          rowData.push({ userEnteredValue: { numberValue: spag } });
+        } else {
+          rowData.push({ userEnteredValue: { stringValue: 'N' } });
+        }
+        notesData.push({
+          note: this.formatNote(
+            assessments['spag']?.reasoning || 'No reasoning provided.',
+            studentDisplay
+          ),
+          columnOffset: currentColumnIndex,
+        });
+        spagCells.push(
+          Utils.getColumnLetter(currentColumnIndex) + (startRowIndex + studentIndex + 1)
+        );
         currentColumnIndex++;
       });
-  const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),1),"E")`;
-  const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),1),"N")`;
-  const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),1),"N")`;
+      const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),1),"E")`;
+      const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),1),"N")`;
+      const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),1),"N")`;
       rowData.push({ userEnteredValue: { formulaValue: completenessFormula } });
       rowData.push({ userEnteredValue: { formulaValue: accuracyFormula } });
       rowData.push({ userEnteredValue: { formulaValue: spagFormula } });
-      this.requests.push({ updateCells: { rows: [{ values: rowData }], fields: 'userEnteredValue', start: { sheetId, rowIndex: startRowIndex + studentIndex, columnIndex: 0 } } });
-      notesData.forEach(noteData => { this.requests.push({ updateCells: { rows: [{ values: [{ note: noteData.note }] }], fields: 'note', start: { sheetId, rowIndex: startRowIndex + studentIndex, columnIndex: noteData.columnOffset } } }); });
+      this.requests.push({
+        updateCells: {
+          rows: [{ values: rowData }],
+          fields: 'userEnteredValue',
+          start: { sheetId, rowIndex: startRowIndex + studentIndex, columnIndex: 0 },
+        },
+      });
+      notesData.forEach((noteData) => {
+        this.requests.push({
+          updateCells: {
+            rows: [{ values: [{ note: noteData.note }] }],
+            fields: 'note',
+            start: {
+              sheetId,
+              rowIndex: startRowIndex + studentIndex,
+              columnIndex: noteData.columnOffset,
+            },
+          },
+        });
+      });
     });
   }
 
@@ -223,8 +310,10 @@ class AnalysisSheetManager extends BaseSheetManager {
     const t = type; // expected uppercase
 
     if (t === 'TEXT') return artifact.content;
-    if (t === 'TABLE') return typeof artifact.content === 'string' ? artifact.content : String(artifact.content);
-    if (t === 'SPREADSHEET') return artifact.content.map(r => r.map(c => (c == null ? '' : c)).join('\t')).join('\n');
+    if (t === 'TABLE')
+      return typeof artifact.content === 'string' ? artifact.content : String(artifact.content);
+    if (t === 'SPREADSHEET')
+      return artifact.content.map((r) => r.map((c) => (c == null ? '' : c)).join('\t')).join('\n');
     if (t === 'IMAGE') return artifact.content ? '[image]' : '';
     return '';
   }
@@ -234,7 +323,7 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   applyFormatting() {
     const sheetId = this.sheet.getSheetId();
-  const submissions = this.assignment.submissions || [];
+    const submissions = this.assignment.submissions || [];
     const numRows = submissions.length + 2; // header rows
     const numColumns = this.headers.subHeaders.length;
 
@@ -246,16 +335,16 @@ class AnalysisSheetManager extends BaseSheetManager {
           startRowIndex: 2, // After headers
           endRowIndex: numRows,
           startColumnIndex: 1,
-          endColumnIndex: numColumns
+          endColumnIndex: numColumns,
         },
         cell: {
           userEnteredFormat: {
-            horizontalAlignment: "CENTER",
-            verticalAlignment: "MIDDLE"
-          }
+            horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE',
+          },
         },
-        fields: "userEnteredFormat(horizontalAlignment, verticalAlignment)"
-      }
+        fields: 'userEnteredFormat(horizontalAlignment, verticalAlignment)',
+      },
     });
 
     // Create conditional formatting requests
@@ -291,7 +380,7 @@ class AnalysisSheetManager extends BaseSheetManager {
       startRowIndex: startRowIndex,
       startColumnIndex: startColumnIndex,
       endRowIndex: endRowIndex,
-      endColumnIndex: endColumnIndex
+      endColumnIndex: endColumnIndex,
     };
 
     // Gradient formatting based on score
@@ -302,23 +391,23 @@ class AnalysisSheetManager extends BaseSheetManager {
           gradientRule: {
             minpoint: {
               color: { red: 1, green: 0, blue: 0 }, // Red for 0
-              type: "NUMBER",
-              value: "0"
+              type: 'NUMBER',
+              value: '0',
             },
             midpoint: {
               color: { red: 1, green: 1, blue: 0 }, // Yellow for 2.5
-              type: "NUMBER",
-              value: "2.5"
+              type: 'NUMBER',
+              value: '2.5',
             },
             maxpoint: {
               color: { red: 0, green: 1, blue: 0 }, // Green for 5
-              type: "NUMBER",
-              value: "5"
-            }
-          }
+              type: 'NUMBER',
+              value: '5',
+            },
+          },
         },
-        index: 0
-      }
+        index: 0,
+      },
     });
 
     // Formatting for 'N' values
@@ -328,16 +417,16 @@ class AnalysisSheetManager extends BaseSheetManager {
           ranges: [range],
           booleanRule: {
             condition: {
-              type: "TEXT_EQ",
-              values: [{ userEnteredValue: "N" }]
+              type: 'TEXT_EQ',
+              values: [{ userEnteredValue: 'N' }],
             },
             format: {
-              backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } // Gray for 'N'
-            }
-          }
+              backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }, // Gray for 'N'
+            },
+          },
         },
-        index: 0
-      }
+        index: 0,
+      },
     });
 
     return requests;
@@ -366,20 +455,23 @@ class AnalysisSheetManager extends BaseSheetManager {
    */
   addClassAverageRow() {
     const sheetId = this.sheet.getSheetId();
-  const submissions = this.assignment.submissions || [];
+    const submissions = this.assignment.submissions || [];
     const lastRowIndex = submissions.length + 2;
     // Add blank row
     this.requests.push({
       updateCells: {
         rows: [{}],
         fields: 'userEnteredValue',
-        start: { sheetId: sheetId, rowIndex: lastRowIndex, columnIndex: 0 }
-      }
+        start: { sheetId: sheetId, rowIndex: lastRowIndex, columnIndex: 0 },
+      },
     });
 
     // Prepare Class Average row
     const rowData = [
-      { userEnteredValue: { stringValue: 'Class Average' }, userEnteredFormat: { textFormat: { bold: true } } }
+      {
+        userEnteredValue: { stringValue: 'Class Average' },
+        userEnteredFormat: { textFormat: { bold: true } },
+      },
     ];
 
     const numColumns = this.headers.subHeaders.length;
@@ -394,8 +486,8 @@ class AnalysisSheetManager extends BaseSheetManager {
       updateCells: {
         rows: [{ values: rowData }],
         fields: 'userEnteredValue,userEnteredFormat.textFormat',
-        start: { sheetId: sheetId, rowIndex: lastRowIndex + 1, columnIndex: 0 }
-      }
+        start: { sheetId: sheetId, rowIndex: lastRowIndex + 1, columnIndex: 0 },
+      },
     });
   }
 
@@ -430,7 +522,7 @@ class AnalysisSheetManager extends BaseSheetManager {
   storeAverageRanges() {
     const documentProperties = PropertiesService.getDocumentProperties();
     const sheetName = this.sheet.getName();
-  const submissions = this.assignment.submissions || [];
+    const submissions = this.assignment.submissions || [];
     const numStudents = submissions.length;
     const firstDataRow = 2; // Data starts from row index 2 (3rd row)
     const lastDataRow = firstDataRow + numStudents - 1;
@@ -441,9 +533,15 @@ class AnalysisSheetManager extends BaseSheetManager {
     const spagColIndex = this.headers.subHeaders.length - 1;
 
     const studentNameRange = `${sheetName}!A${firstDataRow + 1}:A${lastDataRow + 1}`;
-    const completenessRange = `${sheetName}!${Utils.getColumnLetter(completenessColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(completenessColIndex)}${lastDataRow + 1}`;
-    const accuracyRange = `${sheetName}!${Utils.getColumnLetter(accuracyColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(accuracyColIndex)}${lastDataRow + 1}`;
-    const spagRange = `${sheetName}!${Utils.getColumnLetter(spagColIndex)}${firstDataRow + 1}:${Utils.getColumnLetter(spagColIndex)}${lastDataRow + 1}`;
+    const completenessRange = `${sheetName}!${Utils.getColumnLetter(completenessColIndex)}${
+      firstDataRow + 1
+    }:${Utils.getColumnLetter(completenessColIndex)}${lastDataRow + 1}`;
+    const accuracyRange = `${sheetName}!${Utils.getColumnLetter(accuracyColIndex)}${
+      firstDataRow + 1
+    }:${Utils.getColumnLetter(accuracyColIndex)}${lastDataRow + 1}`;
+    const spagRange = `${sheetName}!${Utils.getColumnLetter(spagColIndex)}${
+      firstDataRow + 1
+    }:${Utils.getColumnLetter(spagColIndex)}${lastDataRow + 1}`;
 
     // Retrieve existing ranges
     const existingRanges = documentProperties.getProperty('averagesRanges');
@@ -454,7 +552,7 @@ class AnalysisSheetManager extends BaseSheetManager {
       studentName: studentNameRange,
       completeness: completenessRange,
       accuracy: accuracyRange,
-      spag: spagRange
+      spag: spagRange,
     };
 
     // Store updated ranges
@@ -467,7 +565,10 @@ class AnalysisSheetManager extends BaseSheetManager {
   createAnalysisSheet() {
     this.createOrGetSheet();
     this.prepareData();
-    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
+    BatchUpdateUtility.executeBatchUpdate(
+      this.requests,
+      SpreadsheetApp.getActiveSpreadsheet().getId()
+    );
     // After creating the sheet, store the average ranges
     this.storeAverageRanges();
   }

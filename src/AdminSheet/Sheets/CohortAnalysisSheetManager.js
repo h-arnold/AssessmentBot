@@ -1,7 +1,6 @@
 // CohortAnalysisSheetManager.js
 
 class CohortAnalysisSheetManager extends BaseSheetManager {
-
   /**
    * Creates or updates a Year Group sheet for each yearGroup in overviewData,
    * writing numeric columns as actual numbers, and text columns as strings.
@@ -26,43 +25,54 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       const headerRequest = this.createHeaderValuesRequest(sheetId, headers, 0);
 
       // Format the name column
-      const nameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
-      {
-        horizontalAlignment: "LEFT",
-        verticalAlignment: "BOTTOM",
-        autoResize: true
-      },
-      0,
-      1);
-
+      const nameHeaderFormattingRequest = this.createHeaderFormattingRequest(
+        sheetId,
+        0,
+        1,
+        {
+          horizontalAlignment: 'LEFT',
+          verticalAlignment: 'BOTTOM',
+          autoResize: true,
+        },
+        0,
+        1
+      );
 
       // Format the criterion columns
-      const criterionFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
-      {
-        horizontalAlignment: "CENTER",
-        textRotation: {angle: 45}
-      },
-      1,
-      5);
+      const criterionFormattingRequest = this.createHeaderFormattingRequest(
+        sheetId,
+        0,
+        1,
+        {
+          horizontalAlignment: 'CENTER',
+          textRotation: { angle: 45 },
+        },
+        1,
+        5
+      );
 
       // Format the class name header
-      const classNameHeaderFormattingRequest = this.createHeaderFormattingRequest(sheetId, 0, 1, 
-      {
-        horizontalAlignment: "CENTER",
-        verticalAlignment: "BOTTOM",
-        autoResize: true
-      },
-      5,
-      6);
+      const classNameHeaderFormattingRequest = this.createHeaderFormattingRequest(
+        sheetId,
+        0,
+        1,
+        {
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'BOTTOM',
+          autoResize: true,
+        },
+        5,
+        6
+      );
 
       // Push the header requests to the main request array
 
-      this.requests.push(headerRequest,
+      this.requests.push(
+        headerRequest,
         ...nameHeaderFormattingRequest,
         ...classNameHeaderFormattingRequest,
-        ...criterionFormattingRequest);
-
-
+        ...criterionFormattingRequest
+      );
 
       // 5. Identify which columns should be numeric - this enables us to work out which columns to conditionally format
       const numericColumnIndices = this._identifyNumericColumns(headers);
@@ -75,8 +85,8 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
         appendCells: {
           sheetId,
           rows: rowData,
-          fields: 'userEnteredValue'
-        }
+          fields: 'userEnteredValue',
+        },
       };
       this.requests.push(appendRowsRequest);
 
@@ -84,9 +94,14 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       const freezeRequest = this.createFreezeRequest(sheetId, 1, 1);
       this.requests.push(freezeRequest);
 
-      this.requests.push(...this.createYearGroupConditionalFormattingRequests(sheetId, rows.length, headers.length, numericColumnIndices))
-
-
+      this.requests.push(
+        ...this.createYearGroupConditionalFormattingRequests(
+          sheetId,
+          rows.length,
+          headers.length,
+          numericColumnIndices
+        )
+      );
     }
 
     // 9. Execute batch for writing
@@ -99,17 +114,18 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
    * @param {string[]} headers - An array of header titles (e.g. ["Student Name", "Class Name", "Completeness", ...])
    * @returns {number[]} numericColumnIndices - The 0-based indices of columns we treat as numbers
    */
-  _identifyNumericColumns(headers, numericHeaders = ["Completeness", "Accuracy", "SPaG", "Average"]) {
+  _identifyNumericColumns(
+    headers,
+    numericHeaders = ['Completeness', 'Accuracy', 'SPaG', 'Average']
+  ) {
     // OR, you can specifically look for certain header names:
     // e.g. Only columns named "Completeness", "Accuracy", "SPaG", "Average" are numeric:
-    return headers
-      .map((h, i) => numericHeaders.includes(h) ? i : -1)
-      .filter(i => i !== -1);
+    return headers.map((h, i) => (numericHeaders.includes(h) ? i : -1)).filter((i) => i !== -1);
   }
 
   /**
-   * Converts each row array into a set of CellData objects, 
-   * forcing columns listed in numericColumnIndices to be { numberValue: ... } 
+   * Converts each row array into a set of CellData objects,
+   * forcing columns listed in numericColumnIndices to be { numberValue: ... }
    * (except if it's "N" or empty).
    *
    * @param {Array<Array<any>>} rows - e.g. [ ["Alice","7A1",5,4,3,4.0], ["Bob","7B2","N",2.5,1,"N"] ]
@@ -117,7 +133,7 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
    * @returns {Array<{ values: Array<CellData> }>} rowData for batch update
    */
   _mapRowArraysToRowData(rows, numericColumnIndices) {
-    return rows.map(row => {
+    return rows.map((row) => {
       const cellValues = row.map((value, colIndex) => {
         // If column is numeric
         if (numericColumnIndices.includes(colIndex)) {
@@ -137,8 +153,7 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
           }
           // Fallback: store as string
           return { userEnteredValue: { stringValue: String(value) } };
-        }
-        else {
+        } else {
           // Non-numeric columns
           // e.g. Student Name, Class Name
           // If it's a formula, handle that
@@ -153,7 +168,6 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
     });
   }
 
-
   /**
    * Private helper method that transforms a single year group’s
    * class-and-student object data into tabular format.
@@ -167,33 +181,27 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
     const allHeaders = new Set();
     for (const singleClassObj of Object.values(classData)) {
       for (const studentData of Object.values(singleClassObj)) {
-        Object.keys(studentData).forEach(key => allHeaders.add(key));
+        Object.keys(studentData).forEach((key) => allHeaders.add(key));
       }
     }
     // Convert the Set to an array
     const subHeaders = Array.from(allHeaders);
 
     // 2. Build final headers (e.g. "Student Name", then the sub-headers, then Class Name)
-    const headers = ["Student Name", ...subHeaders, "Class Name"];
+    const headers = ['Student Name', ...subHeaders, 'Class Name'];
 
     // 3. Build row data
     const rows = [];
     for (const [className, students] of Object.entries(classData)) {
       for (const [studentName, studentValues] of Object.entries(students)) {
         // For each sub-header, get the student value or default to ""
-        const subHeaderValues = subHeaders.map(h => studentValues[h] ?? "");
-        rows.push([
-          studentName,
-          ...subHeaderValues,
-          className
-        ]);
+        const subHeaderValues = subHeaders.map((h) => studentValues[h] ?? '');
+        rows.push([studentName, ...subHeaderValues, className]);
       }
     }
 
     return { headers, rows };
   }
-
-
 
   /**
    * Creates conditional formatting requests for the main data region in a Year Group sheet.
@@ -206,7 +214,12 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
    * @param {number} numericColumnIndices - Which columns to apply conditional formatting to.
    * @returns {Array<Object>} - An array of conditional formatting requests.
    */
-  createYearGroupConditionalFormattingRequests(sheetId, dataRowCount, totalColumns, numericColumnIndices) {
+  createYearGroupConditionalFormattingRequests(
+    sheetId,
+    dataRowCount,
+    totalColumns,
+    numericColumnIndices
+  ) {
     const requests = [];
 
     // --- Define your row indices ---
@@ -218,8 +231,8 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
     // --- Define your column indices ---
     // This current works because the numeric columns are all together. This will need modifying in the future if there's a mix of numeric and non-numeric columns.
     const startColumnIndex = numericColumnIndices[0]; //Gets the column to conditionally format
-    const lastNumericColumnIndex = numericColumnIndices.length - 1 //Gets the last value in the numericColumnIndices array 
-    const endColumnIndex = numericColumnIndices[lastNumericColumnIndex] + startColumnIndex// Gets the last column index to conditionally format;
+    const lastNumericColumnIndex = numericColumnIndices.length - 1; //Gets the last value in the numericColumnIndices array
+    const endColumnIndex = numericColumnIndices[lastNumericColumnIndex] + startColumnIndex; // Gets the last column index to conditionally format;
 
     // --- Build the grid range ---
     const range = {
@@ -227,7 +240,7 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
       startRowIndex: startRowIndex,
       endRowIndex: endRowIndex,
       startColumnIndex: startColumnIndex,
-      endColumnIndex: endColumnIndex
+      endColumnIndex: endColumnIndex,
     };
 
     // Push conditional formatting rules
@@ -239,22 +252,22 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
             minpoint: {
               color: { red: 1, green: 0, blue: 0 }, // Red
               type: 'NUMBER',
-              value: '0'
+              value: '0',
             },
             midpoint: {
               color: { red: 1, green: 1, blue: 0 }, // Yellow
               type: 'NUMBER',
-              value: '2.5'
+              value: '2.5',
             },
             maxpoint: {
               color: { red: 0, green: 1, blue: 0 }, // Green
               type: 'NUMBER',
-              value: '5'
-            }
-          }
+              value: '5',
+            },
+          },
         },
-        index: startColumnIndex
-      }
+        index: startColumnIndex,
+      },
     });
 
     // 2) Highlight 'N' with a different background color
@@ -266,18 +279,17 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
           booleanRule: {
             condition: {
               type: 'TEXT_EQ',
-              values: [{ userEnteredValue: 'N' }]
+              values: [{ userEnteredValue: 'N' }],
             },
             format: {
-              backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 } // Gray
-            }
-          }
+              backgroundColor: { red: 0.8, green: 0.8, blue: 0.8 }, // Gray
+            },
+          },
         },
-        index: startColumnIndex
-      }
+        index: startColumnIndex,
+      },
     });
 
     return requests;
   }
-
 }

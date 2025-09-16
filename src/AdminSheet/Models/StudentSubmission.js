@@ -29,7 +29,7 @@ class StudentSubmissionItem {
     } catch (e) {
       uid = null;
     }
-    if (!uid) uid = (this.artifact && this.artifact.contentHash) ? this.artifact.contentHash : '';
+    if (!uid) uid = this.artifact && this.artifact.contentHash ? this.artifact.contentHash : '';
     const base = `${this.taskId}::${uid}`;
     return 'ssi_' + Utils.generateHash(base).substring(0, 16);
   }
@@ -67,7 +67,9 @@ class StudentSubmissionItem {
     return this.feedback[type] || null;
   }
 
-  getType() { return this.artifact.getType(); }
+  getType() {
+    return this.artifact.getType();
+  }
 
   toJSON() {
     return {
@@ -104,7 +106,8 @@ class StudentSubmission {
    * @param {string=} documentId
    */
   constructor(studentId, assignmentId, documentId = null) {
-    if (!studentId || !assignmentId) throw new Error('StudentSubmission requires studentId & assignmentId');
+    if (!studentId || !assignmentId)
+      throw new Error('StudentSubmission requires studentId & assignmentId');
     this.studentId = studentId;
     this.assignmentId = assignmentId;
     this.documentId = documentId;
@@ -122,7 +125,9 @@ class StudentSubmission {
     this.updatedAt = base + '#' + this._updateCounter;
   }
 
-  getItem(taskId) { return this.items[taskId]; }
+  getItem(taskId) {
+    return this.items[taskId];
+  }
 
   /**
    * Upsert item from primitive extraction results
@@ -137,7 +142,9 @@ class StudentSubmission {
 
     if (!item) {
       // Construct a submission-specific UID including the studentId to avoid collisions
-      const uid = `${taskId}-${this.studentId}-${pageId != null ? pageId : (taskDef.pageId || 'na')}-0`;
+      const uid = `${taskId}-${this.studentId}-${
+        pageId != null ? pageId : taskDef.pageId || 'na'
+      }-0`;
       const artifact = ArtifactFactory.create({
         type: this._inferTypeFromTask(taskDef),
         taskId,
@@ -145,7 +152,7 @@ class StudentSubmission {
         pageId: pageId != null ? pageId : taskDef.pageId,
         content,
         metadata,
-        uid
+        uid,
       });
       item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
       this.items[taskId] = item;
@@ -170,10 +177,10 @@ class StudentSubmission {
   _inferTypeFromTask(taskDef) {
     // Attempt to infer from primary reference artifact if present
     const ref = taskDef.getPrimaryReference();
-  if (ref) return ref.getType();
+    if (ref) return ref.getType();
     // fallback: check metadata hints
-  if (taskDef.taskMetadata && taskDef.taskMetadata.taskType) return taskDef.taskMetadata.taskType;
-  return 'TEXT';
+    if (taskDef.taskMetadata && taskDef.taskMetadata.taskType) return taskDef.taskMetadata.taskType;
+    return 'TEXT';
   }
 
   toJSON() {
@@ -181,9 +188,9 @@ class StudentSubmission {
       studentId: this.studentId,
       assignmentId: this.assignmentId,
       documentId: this.documentId,
-      items: Object.fromEntries(Object.entries(this.items).map(([k,v]) => [k, v.toJSON()])),
+      items: Object.fromEntries(Object.entries(this.items).map(([k, v]) => [k, v.toJSON()])),
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      updatedAt: this.updatedAt,
     };
   }
 
@@ -193,8 +200,8 @@ class StudentSubmission {
     sub.updatedAt = json.updatedAt || sub.createdAt;
     if (json.items) {
       for (const [taskId, itemJson] of Object.entries(json.items)) {
-  const item = StudentSubmissionItem.fromJSON(itemJson);
-  sub.items[taskId] = item;
+        const item = StudentSubmissionItem.fromJSON(itemJson);
+        sub.items[taskId] = item;
       }
     }
     return sub;

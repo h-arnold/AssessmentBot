@@ -29,8 +29,8 @@ class UpdateManager extends BaseUpdateAndInit {
     let adminSheet = {};
     const adminSheetName = `Assessment Bot v${this.versionNo}`;
     adminSheet[adminSheetName] = {
-      "originalSheetId": this.sheet.getId(),
-      "newSheetId": this.adminSheetTemplateId
+      originalSheetId: this.sheet.getId(),
+      newSheetId: this.adminSheetTemplateId,
     };
     this.adminSheetsDetails = adminSheet;
     return adminSheet;
@@ -40,7 +40,6 @@ class UpdateManager extends BaseUpdateAndInit {
    * Updates the 'Classrooms' sheet in the new Admin Spreadsheet with new Assessment Record file IDs.
    */
   updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets) {
-
     // Gets the 'Classrooms' Sheet in the Admin Sheet.
     const newClassroomSheet = new ClassroomSheetManager('Classrooms');
 
@@ -53,12 +52,12 @@ class UpdateManager extends BaseUpdateAndInit {
     arFileIdColumnIndex = arFileIdColumnIndex.arfileid;
 
     // Update Classroom Sheet Array with new Sheet Values
-    Object.keys(newAssessmentRecordSheets).forEach(className => {
+    Object.keys(newAssessmentRecordSheets).forEach((className) => {
       const sheetDetails = this.assessmentRecordSheets[className];
       for (const row of updatedValues) {
         if (row.includes(sheetDetails.originalSheetId)) {
           row[arFileIdColumnIndex] = sheetDetails.newSheetId;
-          break;  // Stop iterating once updated
+          break; // Stop iterating once updated
         }
       }
     });
@@ -76,21 +75,23 @@ class UpdateManager extends BaseUpdateAndInit {
 
     // If no array is passed, default to the assessmentRecordSheets details.
     if (!assessmentRecordFileIds) {
-      assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
+      assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(
+        (item) => item.originalSheetId
+      );
     }
-    
+
     // Filter files that don't already have "ARCHIVED" in their names
     // This avoids an issue where if the update process is run multiple times, for whatever reason, the template files
-    // end up getting multiple `ARCHIVED - {date}` suffixes which eventually leads to errors with the Drive API when 
+    // end up getting multiple `ARCHIVED - {date}` suffixes which eventually leads to errors with the Drive API when
     // the file names get too long.
     const filesToRename = [];
     const filesToMoveOnly = [];
-    
-    assessmentRecordFileIds.forEach(fileId => {
+
+    assessmentRecordFileIds.forEach((fileId) => {
       try {
         const file = DriveApp.getFileById(fileId);
         const fileName = file.getName();
-        
+
         if (fileName.includes('ARCHIVED')) {
           // If already archived, just move without renaming
           filesToMoveOnly.push(fileId);
@@ -102,12 +103,12 @@ class UpdateManager extends BaseUpdateAndInit {
         console.error(`Error checking file ${fileId}: ${error.message}`);
       }
     });
-    
+
     // Move all files to the archive folder
     if (filesToMoveOnly.length > 0) {
       DriveManager.moveFiles(archiveFolder.newFolderId, filesToMoveOnly, ''); // Move without renaming
     }
-    
+
     if (filesToRename.length > 0) {
       DriveManager.moveFiles(archiveFolder.newFolderId, filesToRename, ` - ARCHIVED - ${date}`);
     }
@@ -166,12 +167,12 @@ class UpdateManager extends BaseUpdateAndInit {
     sheetsData.shift();
 
     let assessmentRecordSheets = {};
-    sheetsData.forEach(row => {
+    sheetsData.forEach((row) => {
       // Adds an element to the assessmentRecordSheets object if there's a file ID in the row.
       if (row[headerIndices.arfileid]) {
         assessmentRecordSheets[row[headerIndices.name]] = {
-          "originalSheetId": row[headerIndices.arfileid],
-          "newSheetId": "" // leave this attribute blank for now
+          originalSheetId: row[headerIndices.arfileid],
+          newSheetId: '', // leave this attribute blank for now
         };
       }
     });
@@ -205,7 +206,9 @@ class UpdateManager extends BaseUpdateAndInit {
 
     // Archive old assessment record sheets.
     this.progressTracker.updateProgress('Archiving old Assessment Record sheets');
-    const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(item => item.originalSheetId);
+    const assessmentRecordFileIds = Object.values(this.assessmentRecordSheets).map(
+      (item) => item.originalSheetId
+    );
     this.archiveOldVersions(assessmentRecordFileIds);
 
     // Clone the assessment record sheets.
@@ -213,7 +216,9 @@ class UpdateManager extends BaseUpdateAndInit {
     const newAssessmentRecordSheets = this.cloneSheets(this.assessmentRecordSheets);
 
     // Update the Classroom Sheet with the new Assessment Record file IDs.
-    this.progressTracker.updateProgress('Updating Classroom Sheet with new Assessment Record File IDs');
+    this.progressTracker.updateProgress(
+      'Updating Classroom Sheet with new Assessment Record File IDs'
+    );
     this.updateClassroomSheetWithNewAssessmentRecords(newAssessmentRecordSheets);
 
     // Marks the task as complete.
@@ -238,7 +243,9 @@ class UpdateManager extends BaseUpdateAndInit {
 
     // Store the fileId of the 'local' copy of the assessment record in the config files.
     configurationManager.setAssessmentRecordTemplateId(this.assessmentRecordTemplateId);
-    const assessmentRecordTemplateUrl = this.getAssessmentRecordTemplateUrl(this.assessmentRecordTemplateId);
+    const assessmentRecordTemplateUrl = this.getAssessmentRecordTemplateUrl(
+      this.assessmentRecordTemplateId
+    );
 
     // Retrieve the Script ID.
     const sa = new ScriptAppManager();

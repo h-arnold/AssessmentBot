@@ -1,4 +1,4 @@
-/** 
+/**
  * Sheets Feedback Class
  * This class is responsible for handling the provision of feedback to student spreadsheets when completing a spreadsheet task.
  * At some point this will need to be split off into a `BaseFeedback` class and a `SlidesFeedback` class will also be necessary.
@@ -24,13 +24,18 @@ class SheetsFeedback {
   applyFeedback() {
     try {
       const batchUpdates = [];
-      (this.submissions || []).forEach(sub => {
+      (this.submissions || []).forEach((sub) => {
         if (!sub || !sub.documentId) {
-          console.warn(`Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`);
+          console.warn(
+            `Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`
+          );
           return;
         }
         const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
-        this.progressTracker.updateProgress(`Generating feedback for ${studentLabel}'s spreadsheet.`, false);
+        this.progressTracker.updateProgress(
+          `Generating feedback for ${studentLabel}'s spreadsheet.`,
+          false
+        );
         const requests = this.generateBatchRequestsForSubmission(sub);
         if (requests && requests.length) {
           batchUpdates.push({ requests, spreadsheetId: sub.documentId });
@@ -39,7 +44,10 @@ class SheetsFeedback {
       this.progressTracker.updateProgress(`Applying feedback to student sheets`);
       if (batchUpdates.length) {
         BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
-        this.progressTracker.updateProgress(`Applied cell colour feedback to ${batchUpdates.length} student sheets.`, false);
+        this.progressTracker.updateProgress(
+          `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
+          false
+        );
       } else {
         this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
       }
@@ -57,12 +65,14 @@ class SheetsFeedback {
   generateBatchRequestsForSubmission(sub) {
     const requests = [];
     const items = sub.items || {};
-    Object.values(items).forEach(item => {
+    Object.values(items).forEach((item) => {
       if (!item || !item.feedback || item.pageId === undefined || item.pageId === null) return;
       const sheetId = item.pageId; // spreadsheet sheetId
-      const cellFeedback = item.getFeedback ? item.getFeedback('cellReference') : (item.feedback.cellReference || null);
+      const cellFeedback = item.getFeedback
+        ? item.getFeedback('cellReference')
+        : item.feedback.cellReference || null;
       if (cellFeedback && cellFeedback.getItems) {
-        cellFeedback.getItems().forEach(cfItem => {
+        cellFeedback.getItems().forEach((cfItem) => {
           const rowIndex = cfItem.location[0] || 0;
           const colIndex = cfItem.location[1] || 0;
           const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
@@ -88,21 +98,21 @@ class SheetsFeedback {
       startRowIndex: rowIndex,
       endRowIndex: rowIndex + 1,
       startColumnIndex: colIndex,
-      endColumnIndex: colIndex + 1
+      endColumnIndex: colIndex + 1,
     };
 
     // Get the appropriate color format based on status
     const userEnteredFormat = this.getFormatForStatus(status);
-    
+
     // Return the complete request
     return {
       repeatCell: {
         range: gridRange,
         cell: {
-          userEnteredFormat: userEnteredFormat
+          userEnteredFormat: userEnteredFormat,
         },
-        fields: "userEnteredFormat.backgroundColor"
-      }
+        fields: 'userEnteredFormat.backgroundColor',
+      },
     };
   }
 
@@ -116,29 +126,29 @@ class SheetsFeedback {
       case 'correct':
         return {
           backgroundColor: {
-            red: 0.7137,    // #b6
-            green: 0.8431,  // #d7
-            blue: 0.6588,   // #a8
-            alpha: 1.0
-          }
+            red: 0.7137, // #b6
+            green: 0.8431, // #d7
+            blue: 0.6588, // #a8
+            alpha: 1.0,
+          },
         };
       case 'incorrect':
         return {
           backgroundColor: {
-            red: 0.9176,    // #ea
-            green: 0.6,     // #99
-            blue: 0.6,      // #99
-            alpha: 1.0
-          }
+            red: 0.9176, // #ea
+            green: 0.6, // #99
+            blue: 0.6, // #99
+            alpha: 1.0,
+          },
         };
       case 'notAttempted':
         return {
           backgroundColor: {
-            red: 1.0,       // #ff
-            green: 0.898,   // #e5
-            blue: 0.6,      // #99
-            alpha: 1.0
-          }
+            red: 1.0, // #ff
+            green: 0.898, // #e5
+            blue: 0.6, // #99
+            alpha: 1.0,
+          },
         };
       default:
         return {
@@ -146,8 +156,8 @@ class SheetsFeedback {
             red: 1.0,
             green: 1.0,
             blue: 1.0,
-            alpha: 1.0
-          }
+            alpha: 1.0,
+          },
         };
     }
   }

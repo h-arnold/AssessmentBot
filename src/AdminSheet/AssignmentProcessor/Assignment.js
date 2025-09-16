@@ -1,6 +1,6 @@
 /**
  * Assignment Class
- * 
+ *
  * Base class representing an assignment within a course, managing tasks and student submissions.
  */
 class Assignment {
@@ -9,7 +9,7 @@ class Assignment {
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
    * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
-   * @param {Date} dueDate - to be implemented later 
+   * @param {Date} dueDate - to be implemented later
    * @param {object} assignmentMetadata - to be implemented later
    * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
    */
@@ -17,15 +17,15 @@ class Assignment {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.assignmentWeighting = null //will be implemented later.
-    this.assignmentMetadata = null //will be implemented later.
-    this.dueDate = null //to be implemented later with the homework tracker. 
+    this.assignmentWeighting = null; //will be implemented later.
+    this.assignmentMetadata = null; //will be implemented later.
+    this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.lastUpdated = null;
     // New model: tasks keyed by stable taskId -> TaskDefinition
-    this.tasks = {};           // { [taskId: string]: TaskDefinition }
+    this.tasks = {}; // { [taskId: string]: TaskDefinition }
     // New model: submissions array of StudentSubmission
-    this.submissions = [];     // Array<StudentSubmission>
+    this.submissions = []; // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
     this.progressTracker = ProgressTracker.getInstance();
   }
@@ -46,7 +46,7 @@ class Assignment {
       })
     );
 
-    const submissions = (this.submissions || []).map(sub => {
+    const submissions = (this.submissions || []).map((sub) => {
       if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
       // Fallback serialization for StudentSubmission-like objects
       const out = {};
@@ -58,7 +58,7 @@ class Assignment {
         if (sub.updatedAt instanceof Date) out.updatedAt = sub.updatedAt.toISOString();
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
-        Object.keys(sub).forEach(k => {
+        Object.keys(sub).forEach((k) => {
           if (!out.hasOwnProperty(k)) out[k] = sub[k];
         });
       }
@@ -88,7 +88,8 @@ class Assignment {
    * @return {Assignment}
    */
   static fromJSON(data) {
-    if (!data || typeof data !== 'object') throw new Error('Invalid data supplied to Assignment.fromJSON');
+    if (!data || typeof data !== 'object')
+      throw new Error('Invalid data supplied to Assignment.fromJSON');
 
     const inst = Object.create(Assignment.prototype);
     inst.courseId = data.courseId;
@@ -96,14 +97,18 @@ class Assignment {
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
     inst.assignmentWeighting = data.assignmentWeighting ?? null;
     inst.assignmentMetadata = data.assignmentMetadata ?? null;
-  inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-  inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
+    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
     inst.tasks = {};
     inst.submissions = [];
     // restore tasks
     if (data.tasks && typeof data.tasks === 'object') {
       Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
-        if (typeof TaskDefinition !== 'undefined' && TaskDefinition && typeof TaskDefinition.fromJSON === 'function') {
+        if (
+          typeof TaskDefinition !== 'undefined' &&
+          TaskDefinition &&
+          typeof TaskDefinition.fromJSON === 'function'
+        ) {
           try {
             inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
             return;
@@ -125,8 +130,12 @@ class Assignment {
 
     // restore submissions
     if (Array.isArray(data.submissions)) {
-      data.submissions.forEach(subObj => {
-        if (typeof StudentSubmission !== 'undefined' && StudentSubmission && typeof StudentSubmission.fromJSON === 'function') {
+      data.submissions.forEach((subObj) => {
+        if (
+          typeof StudentSubmission !== 'undefined' &&
+          StudentSubmission &&
+          typeof StudentSubmission.fromJSON === 'function'
+        ) {
           try {
             inst.submissions.push(StudentSubmission.fromJSON(subObj));
             return;
@@ -136,10 +145,16 @@ class Assignment {
         }
         if (typeof StudentSubmission !== 'undefined' && StudentSubmission) {
           try {
-            const sub = new StudentSubmission(subObj.studentId || subObj.userId || null, inst.assignmentId, subObj.documentId || null);
+            const sub = new StudentSubmission(
+              subObj.studentId || subObj.userId || null,
+              inst.assignmentId,
+              subObj.documentId || null
+            );
             // copy fields
-            Object.keys(subObj || {}).forEach(k => {
-              if (k === 'updatedAt' && subObj.updatedAt) sub.updatedAt = subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
+            Object.keys(subObj || {}).forEach((k) => {
+              if (k === 'updatedAt' && subObj.updatedAt)
+                sub.updatedAt =
+                  subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
               else if (k in sub) sub[k] = subObj[k];
               else sub[k] = subObj[k];
             });
@@ -157,7 +172,12 @@ class Assignment {
     }
 
     // restore progress tracker singleton if available
-    inst.progressTracker = (typeof ProgressTracker !== 'undefined' && ProgressTracker && typeof ProgressTracker.getInstance === 'function') ? ProgressTracker.getInstance() : null;
+    inst.progressTracker =
+      typeof ProgressTracker !== 'undefined' &&
+      ProgressTracker &&
+      typeof ProgressTracker.getInstance === 'function'
+        ? ProgressTracker.getInstance()
+        : null;
 
     return inst;
   }
@@ -228,7 +248,7 @@ class Assignment {
       return null;
     }
     // Avoid duplicates
-    const existing = this.submissions.find(s => s.studentId === studentId);
+    const existing = this.submissions.find((s) => s.studentId === studentId);
     if (existing) return existing;
     const submission = new StudentSubmission(studentId, this.assignmentId, null);
     // Attach original student metadata for any legacy code (non-persisted)
@@ -244,7 +264,10 @@ class Assignment {
   fetchSubmittedDocumentsByMimeType(mimeType) {
     try {
       // Fetch all student submissions for the specific assignment
-      const response = Classroom.Courses.CourseWork.StudentSubmissions.list(this.courseId, this.assignmentId);
+      const response = Classroom.Courses.CourseWork.StudentSubmissions.list(
+        this.courseId,
+        this.assignmentId
+      );
       const submissions = response.studentSubmissions;
 
       if (!submissions || submissions.length === 0) {
@@ -252,12 +275,12 @@ class Assignment {
         return;
       }
 
-      submissions.forEach(submission => {
+      submissions.forEach((submission) => {
         const studentId = submission.userId; // Google Classroom Student ID (string)
         const attachments = submission.assignmentSubmission?.attachments;
 
         if (attachments && attachments.length > 0) {
-          attachments.forEach(attachment => {
+          attachments.forEach((attachment) => {
             if (attachment.driveFile && attachment.driveFile.id) {
               const driveFileId = attachment.driveFile.id;
               try {
@@ -267,22 +290,27 @@ class Assignment {
                 if (this.isValidMimeType(fileMimeType, mimeType)) {
                   const documentId = driveFileId;
                   // New model: submissions array holds StudentSubmission objects with studentId
-                  const submissionObj = this.submissions.find(sub => sub.studentId === studentId);
+                  const submissionObj = this.submissions.find((sub) => sub.studentId === studentId);
                   if (submissionObj) {
                     submissionObj.documentId = documentId;
                     // Keep updatedAt coherent if method exists
-                    if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
+                    if (typeof submissionObj.touchUpdated === 'function')
+                      submissionObj.touchUpdated();
                   } else {
                     console.log(`No matching submission found for student ID: ${studentId}`);
                   }
                 } else {
-                  console.log(`Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`);
+                  console.log(
+                    `Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`
+                  );
                 }
               } catch (fileError) {
                 console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
               }
             } else {
-              console.log(`Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`);
+              console.log(
+                `Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`
+              );
             }
           });
         } else {
