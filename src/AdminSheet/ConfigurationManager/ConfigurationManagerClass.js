@@ -263,18 +263,14 @@ class ConfigurationManager {
     return value;
   }
 
-  static validateBoolean(value) {
+  static validateBoolean(label, value) {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {
       const lower = value.toLowerCase();
       if (lower === 'true') return true;
       if (lower === 'false') return false;
     }
-    throw new Error('Value must be boolean (true/false).');
-  }
-
-  static toBooleanString(value) {
-    return ConfigurationManager.validateBoolean(value) ? 'true' : 'false';
+    throw new Error(`${label} must be a boolean (true/false).`);
   }
 
   static validateApiKey(value) {
