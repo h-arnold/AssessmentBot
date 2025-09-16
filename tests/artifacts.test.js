@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ArtifactFactory, TableTaskArtifact } from '../src/AdminSheet/Models/Artifacts.js';
+import { ArtifactFactory, TableTaskArtifact } from '../src/AdminSheet/Models/Artifacts';
 
 describe('Artifacts', () => {
   it('normalises text content and hashes immediately for reference/template', () => {
