@@ -103,7 +103,7 @@ function saveConfiguration(config) {
       // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
       // Log only a generic error identifier and mark the detailed message as redacted.
       console.error(
-        `Error saving configuration value for ${name}: ${err && err.name ? err.name : 'Error'}`
+        `Error saving configuration value for ${name}: REDACTED`
       );
       errors.push(`${name}: REDACTED`);
       return false;
