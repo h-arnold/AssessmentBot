@@ -27,7 +27,12 @@ class Assignment {
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
-    this.progressTracker = ProgressTracker.getInstance();
+    this.progressTracker =
+      typeof ProgressTracker !== 'undefined' &&
+      ProgressTracker &&
+      typeof ProgressTracker.getInstance === 'function'
+        ? ProgressTracker.getInstance()
+        : null;
   }
 
   /**
@@ -41,7 +46,7 @@ class Assignment {
     const tasks = Object.fromEntries(
       Object.entries(this.tasks || {}).map(([taskId, task]) => {
         if (task && typeof task.toJSON === 'function') return [taskId, task.toJSON()];
-        if (task && typeof task === 'object') return [taskId, Object.assign({}, task)];
+        if (task && typeof task === 'object') return [taskId, { ...task }];
         return [taskId, task];
       })
     );
@@ -113,7 +118,7 @@ class Assignment {
             inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
             return;
           } catch (e) {
-            // fallback to raw object
+            console.warn(`TaskDefinition.fromJSON failed for taskId=${taskId}:`, e);
           }
         }
         if (typeof TaskDefinition !== 'undefined' && TaskDefinition) {
@@ -121,7 +126,7 @@ class Assignment {
             inst.tasks[taskId] = new TaskDefinition(taskObj);
             return;
           } catch (e) {
-            // fallback
+            console.warn(`TaskDefinition constructor failed for taskId=${taskId}:`, e);
           }
         }
         inst.tasks[taskId] = taskObj;
@@ -140,7 +145,12 @@ class Assignment {
             inst.submissions.push(StudentSubmission.fromJSON(subObj));
             return;
           } catch (e) {
-            // fallback
+            console.warn(
+              `StudentSubmission.fromJSON failed for studentId=${
+                subObj && (subObj.studentId || subObj.userId)
+              }:`,
+              e
+            );
           }
         }
         if (typeof StudentSubmission !== 'undefined' && StudentSubmission) {
@@ -161,11 +171,16 @@ class Assignment {
             inst.submissions.push(sub);
             return;
           } catch (e) {
-            // fallback
+            console.warn(
+              `StudentSubmission constructor failed for studentId=${
+                subObj && (subObj.studentId || subObj.userId)
+              }:`,
+              e
+            );
           }
         }
         // raw fallback
-        const raw = Object.assign({}, subObj);
+        const raw = { ...subObj };
         if (raw.updatedAt) raw.updatedAt = new Date(raw.updatedAt);
         inst.submissions.push(raw);
       });
@@ -258,6 +273,47 @@ class Assignment {
   }
 
   /**
+   * Process a single attachment for a student's submission.
+   * Separated out to reduce cognitive complexity in the parent method.
+   * @param {object} attachment
+   * @param {string} studentId
+   * @param {string} mimeType
+   */
+  _processAttachmentForSubmission(attachment, studentId, mimeType) {
+    const driveFileId = attachment?.driveFile?.id;
+    if (!driveFileId) {
+      console.log(
+        `Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`
+      );
+      return;
+    }
+
+    try {
+      // Fetch the Drive file using DriveApp
+      const file = DriveApp.getFileById(driveFileId);
+      const fileMimeType = file.getMimeType();
+      if (this.isValidMimeType(fileMimeType, mimeType)) {
+        const documentId = driveFileId;
+        // New model: submissions array holds StudentSubmission objects with studentId
+        const submissionObj = this.submissions.find((sub) => sub.studentId === studentId);
+        if (submissionObj) {
+          submissionObj.documentId = documentId;
+          // Keep updatedAt coherent if method exists
+          if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
+        } else {
+          console.log(`No matching submission found for student ID: ${studentId}`);
+        }
+      } else {
+        console.log(
+          `Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`
+        );
+      }
+    } catch (fileError) {
+      console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
+    }
+  }
+
+  /**
    * Fetches and assigns submitted Google Drive documents for each student, filtered by the provided MIME type.
    * @param {string} mimeType - The Google Drive MIME type to filter for (e.g., MimeType.GOOGLE_SLIDES, MimeType.GOOGLE_SHEETS).
    */
@@ -280,39 +336,9 @@ class Assignment {
         const attachments = submission.assignmentSubmission?.attachments;
 
         if (attachments && attachments.length > 0) {
-          attachments.forEach((attachment) => {
-            if (attachment.driveFile && attachment.driveFile.id) {
-              const driveFileId = attachment.driveFile.id;
-              try {
-                // Fetch the Drive file using DriveApp
-                const file = DriveApp.getFileById(driveFileId);
-                const fileMimeType = file.getMimeType();
-                if (this.isValidMimeType(fileMimeType, mimeType)) {
-                  const documentId = driveFileId;
-                  // New model: submissions array holds StudentSubmission objects with studentId
-                  const submissionObj = this.submissions.find((sub) => sub.studentId === studentId);
-                  if (submissionObj) {
-                    submissionObj.documentId = documentId;
-                    // Keep updatedAt coherent if method exists
-                    if (typeof submissionObj.touchUpdated === 'function')
-                      submissionObj.touchUpdated();
-                  } else {
-                    console.log(`No matching submission found for student ID: ${studentId}`);
-                  }
-                } else {
-                  console.log(
-                    `Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`
-                  );
-                }
-              } catch (fileError) {
-                console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
-              }
-            } else {
-              console.log(
-                `Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`
-              );
-            }
-          });
+          attachments.forEach((attachment) =>
+            this._processAttachmentForSubmission(attachment, studentId, mimeType)
+          );
         } else {
           console.log(`No attachments found for student ID: ${studentId}`);
         }
