@@ -1,3 +1,8 @@
+if (typeof module !== 'undefined') {
+  // Required for testing in a Node.js environment with Vitest
+  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+}
+
 class ImageTaskArtifact extends BaseTaskArtifact {
   getType() {
     return 'IMAGE';

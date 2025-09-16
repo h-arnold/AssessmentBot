@@ -1,29 +1,23 @@
-// Aggregator for artifact-related classes so tests (and any Node code) can
-// import from 'Models/Artifacts' without using individual require statements.
-// This keeps per-file globals pattern (for GAS) untouched while providing a
-// CommonJS/ESM-friendly entry point for Vitest.
-// Note: this file has been added to .claspignore so as not to cause issues in a GAS environment.
+// This file is not used in the GAS environment.
+// It is only used for testing in the Node environment.
+if (typeof module === 'undefined') {
+  // This code will not run in Node
+} else {
+  const BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+  const TextTaskArtifact = require('./1_TextTaskArtifact.js');
+  const TableTaskArtifact = require('./2_TableTaskArtifact.js');
+  const SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
+  const ImageTaskArtifact = require('./4_ImageTaskArtifact.js');
+  const ArtifactFactory = require('./5_ArtifactFactory.js');
 
-const BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
-const TextTaskArtifact = require('./1_TextTaskArtifact.js');
-const TableTaskArtifact = require('./2_TableTaskArtifact.js');
-const SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
-const ImageTaskArtifact = require('./4_ImageTaskArtifact.js');
-const ArtifactFactory = require('./5_ArtifactFactory.js');
+  const exported = {
+    BaseTaskArtifact,
+    TextTaskArtifact,
+    TableTaskArtifact,
+    SpreadsheetTaskArtifact,
+    ImageTaskArtifact,
+    ArtifactFactory,
+  };
 
-const exported = {
-  BaseTaskArtifact,
-  TextTaskArtifact,
-  TableTaskArtifact,
-  SpreadsheetTaskArtifact,
-  ImageTaskArtifact,
-  ArtifactFactory,
-};
-
-// Support both CommonJS and (via Vitest) ESM named import interop.
-if (typeof module !== 'undefined' && module.exports) {
   module.exports = exported;
 }
-
-// Provide a default export for ESM compatibility if transpiled.
-exports.default = exported;

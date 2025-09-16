@@ -1,3 +1,12 @@
+if (typeof module !== 'undefined') {
+  // Required for testing in a Node.js environment with Vitest
+  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+  TextTaskArtifact = require('./1_TextTaskArtifact.js');
+  TableTaskArtifact = require('./2_TableTaskArtifact.js');
+  SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
+  ImageTaskArtifact = require('./4_ImageTaskArtifact.js');
+}
+
 class ArtifactFactory {
   static create(params) {
     const rawType = (params.type || '').toString();
@@ -30,4 +39,10 @@ class ArtifactFactory {
   static image(params) {
     return this.create({ ...params, type: 'IMAGE' });
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ArtifactFactory;
+} else {
+  this.ArtifactFactory = ArtifactFactory;
 }
