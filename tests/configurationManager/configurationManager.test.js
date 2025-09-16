@@ -171,11 +171,6 @@ describe('ConfigurationManager setProperty', () => {
   });
 
   describe('API_KEY validation', () => {
-    beforeEach(() => {
-      // Mock the isValidApiKey method to return true by default
-      vi.spyOn(configManager, 'isValidApiKey').mockReturnValue(true);
-    });
-
     it('should accept valid API key', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'sk-abc123');
@@ -188,10 +183,8 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should reject invalid API key', () => {
-      configManager.isValidApiKey.mockReturnValue(false);
-
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'invalid-key');
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'invalid-key-');
       }).toThrow('API Key must be a valid string of alphanumeric characters and hyphens');
     });
 
@@ -450,13 +443,13 @@ describe('ConfigurationManager setProperty', () => {
     it('should reject invalid boolean values', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 'invalid');
-      }).toThrow('Is Admin Sheet must be a boolean');
+      }).toThrow('Value must be boolean (true/false)');
     });
 
     it('should reject numeric values', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, 123);
-      }).toThrow('Script Authorised must be a boolean');
+      }).toThrow('Value must be boolean (true/false)');
     });
   });
 
