@@ -17,20 +17,21 @@ class SheetsAssessor {
    */
   assessResponses() {
     this.submissions.forEach((submission) => {
-      // Essential check - skip if student task or responses don't exist
-      if (!submission || !submission.responses) {
+      // Essential check - skip if student task or items don't exist
+      if (!submission || !submission.items) {
         console.warn(
-          `Submission or responses missing for student: ${submission?.student?.name || 'Unknown'}`
+          `Submission or items missing for student: ${
+            submission?.student?.name || submission.studentId || 'Unknown'
+          }`
         );
         return;
       }
 
-      this.progressTracker.updateProgress(
-        `Assessing ${studentTask.student.name}'s spreadsheet.`,
-        false
-      );
+      const studentName = submission.student?.name || submission.studentId || 'Unknown';
 
-      Object.entries(studentTask.responses).forEach(([taskKey, studentResponseEntry]) => {
+      this.progressTracker.updateProgress(`Assessing ${studentName}'s spreadsheet.`, false);
+
+      Object.entries(submission.items).forEach(([taskKey, studentResponseEntry]) => {
         // Skip null responses (intentionally not attempted tasks)
         if (studentResponseEntry === null) {
           return;
@@ -45,7 +46,7 @@ class SheetsAssessor {
         const referenceTask = this.tasks[taskKey];
         if (!referenceTask) {
           this.progressTracker.logAndThrowError(
-            `Reference task missing for ${taskKey}, student ${studentTask.student.name}`
+            `Reference task missing for ${taskKey}, student ${studentName}`
           );
         }
 
@@ -54,29 +55,26 @@ class SheetsAssessor {
           studentResponseEntry,
           referenceTask,
           taskKey,
-          studentTask.student.name
+          studentName
         );
 
         if (!assessmentResults) {
           return;
         }
 
-        // Add assessments to the student task
-        studentTask.addAssessment(
-          taskKey,
-          'completeness',
-          assessmentResults.completenessAssessment
-        );
-        studentTask.addAssessment(taskKey, 'accuracy', assessmentResults.accuracyAssessment);
-        studentTask.addAssessment(taskKey, 'spag', assessmentResults.spagAssessment);
+        // Add assessments to the submission
+        submission.addAssessment(taskKey, 'completeness', assessmentResults.completenessAssessment);
+        submission.addAssessment(taskKey, 'accuracy', assessmentResults.accuracyAssessment);
+        submission.addAssessment(taskKey, 'spag', assessmentResults.spagAssessment);
 
-        // Add formula comparison results directly - addAssessment ensures assessments object exists
+        // Ensure assessments container exists and add formula comparison results
+        studentResponseEntry.assessments = studentResponseEntry.assessments || {};
         studentResponseEntry.assessments.formulaComparison =
           assessmentResults.formulaComparisonResults;
 
         // Add cell reference feedback to the response using the feedback model
         if (assessmentResults.formulaComparisonResults.cellReferenceFeedback) {
-          studentTask.addFeedback(
+          submission.addFeedback(
             taskKey,
             assessmentResults.formulaComparisonResults.cellReferenceFeedback
           );
