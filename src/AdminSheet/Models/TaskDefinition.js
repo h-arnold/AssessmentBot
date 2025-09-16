@@ -13,14 +13,16 @@ class TaskDefinition {
    * @param {Object=} params.taskMetadata
    * @param {string=} params.id - Stable ID (if omitted, derived then hashed from title+pageId once).
    * @param {number=} params.index - Positional index within source document
+   * @param {number=} params.taskWeighting - not yet implemented. Will be used to determine the weighting given to this task when calculating the average score.
    */
-  constructor({ taskTitle, pageId = null, taskNotes = null, taskMetadata = {}, id = null, index = null } = {}) {
+  constructor({ taskTitle, pageId = null, taskNotes = null, taskMetadata = {}, id = null, index = null } = {}, taskWeighting = null) {
     if (!taskTitle) throw new Error('TaskDefinition requires taskTitle');
     this.taskTitle = taskTitle;
     this.pageId = pageId;
     this.taskNotes = taskNotes;
     this.taskMetadata = taskMetadata || {};
     this.index = index; // set by parser / assignment population stage
+  this.taskWeighting = taskWeighting;
 
     // Stable id: if provided, use it; else create deterministic hash from title+pageId.
     this.id = id || this._deriveId(taskTitle, pageId);
@@ -79,6 +81,7 @@ class TaskDefinition {
       pageId: this.pageId,
       taskNotes: this.taskNotes,
       taskMetadata: this.taskMetadata,
+      taskWeighting: this.taskWeighting,
       index: this.index,
       artifacts: {
         reference: this.artifacts.reference.map(a => a.toJSON()),
@@ -96,6 +99,8 @@ class TaskDefinition {
       id: json.id,
       index: json.index
     });
+    // If taskWeighting was stored, set it on the instance (constructor accepts it as second arg)
+    if (json.taskWeighting != null) td.taskWeighting = json.taskWeighting;
     if (json.artifacts) {
       if (json.artifacts.reference) {
         json.artifacts.reference.forEach(refJson => {

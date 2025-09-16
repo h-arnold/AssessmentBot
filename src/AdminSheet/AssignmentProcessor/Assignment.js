@@ -8,17 +8,153 @@ class Assignment {
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
+   * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
+   * @param {Date} dueDate - to be implemented later 
+   * @param {object} assignmentMetadata - to be implemented later
    */
   constructor(courseId, assignmentId) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
+    this.assignmentWeighting = null //will be implemented later.
+    this.assignmentMetadata = null //will be implemented later.
+    this.dueDate = null //to be implemented later with the homework tracker. 
     // New model: tasks keyed by stable taskId -> TaskDefinition
     this.tasks = {};           // { [taskId: string]: TaskDefinition }
     // New model: submissions array of StudentSubmission
     this.submissions = [];     // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
     this.progressTracker = ProgressTracker.getInstance();
+  }
+
+  /**
+   * Serialize this Assignment to a plain JSON-friendly object.
+   * - Dates are converted to ISO strings.
+   * - If TaskDefinition or StudentSubmission provide toJSON, those are used.
+   * - progressTracker is intentionally not serialized (singleton/session-specific).
+   * @return {object}
+   */
+  toJSON() {
+    const tasks = Object.fromEntries(
+      Object.entries(this.tasks || {}).map(([taskId, task]) => {
+        if (task && typeof task.toJSON === 'function') return [taskId, task.toJSON()];
+        if (task && typeof task === 'object') return [taskId, Object.assign({}, task)];
+        return [taskId, task];
+      })
+    );
+
+    const submissions = (this.submissions || []).map(sub => {
+      if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
+      // Fallback serialization for StudentSubmission-like objects
+      const out = {};
+      if (sub && typeof sub === 'object') {
+        out.studentId = sub.studentId || sub.userId || null;
+        if ('documentId' in sub) out.documentId = sub.documentId;
+        if ('score' in sub) out.score = sub.score;
+        if ('feedback' in sub) out.feedback = sub.feedback;
+        if (sub.updatedAt instanceof Date) out.updatedAt = sub.updatedAt.toISOString();
+        else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
+        // copy any other enumerable properties (non-enumerable like methods are ignored)
+        Object.keys(sub).forEach(k => {
+          if (!out.hasOwnProperty(k)) out[k] = sub[k];
+        });
+      }
+      return out;
+    });
+
+    return {
+      courseId: this.courseId,
+      assignmentId: this.assignmentId,
+      assignmentName: this.assignmentName,
+      assignmentWeighting: this.assignmentWeighting,
+      assignmentMetadata: this.assignmentMetadata,
+      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      tasks,
+      submissions,
+    };
+  }
+
+  /**
+   * Rehydrate an Assignment instance from a JSON object previously produced by toJSON().
+   * This avoids calling the constructor (which may hit external APIs) by creating
+   * a prototype-backed object and populating fields directly.
+   * The method will attempt to use TaskDefinition.fromJSON / StudentSubmission.fromJSON
+   * if available, or fall back to basic reconstruction.
+   * @param {object} data
+   * @return {Assignment}
+   */
+  static fromJSON(data) {
+    if (!data || typeof data !== 'object') throw new Error('Invalid data supplied to Assignment.fromJSON');
+
+    const inst = Object.create(Assignment.prototype);
+    inst.courseId = data.courseId;
+    inst.assignmentId = data.assignmentId;
+    inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
+    inst.assignmentWeighting = data.assignmentWeighting ?? null;
+    inst.assignmentMetadata = data.assignmentMetadata ?? null;
+    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    inst.tasks = {};
+    inst.submissions = [];
+    // restore tasks
+    if (data.tasks && typeof data.tasks === 'object') {
+      Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
+        if (typeof TaskDefinition !== 'undefined' && TaskDefinition && typeof TaskDefinition.fromJSON === 'function') {
+          try {
+            inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
+            return;
+          } catch (e) {
+            // fallback to raw object
+          }
+        }
+        if (typeof TaskDefinition !== 'undefined' && TaskDefinition) {
+          try {
+            inst.tasks[taskId] = new TaskDefinition(taskObj);
+            return;
+          } catch (e) {
+            // fallback
+          }
+        }
+        inst.tasks[taskId] = taskObj;
+      });
+    }
+
+    // restore submissions
+    if (Array.isArray(data.submissions)) {
+      data.submissions.forEach(subObj => {
+        if (typeof StudentSubmission !== 'undefined' && StudentSubmission && typeof StudentSubmission.fromJSON === 'function') {
+          try {
+            inst.submissions.push(StudentSubmission.fromJSON(subObj));
+            return;
+          } catch (e) {
+            // fallback
+          }
+        }
+        if (typeof StudentSubmission !== 'undefined' && StudentSubmission) {
+          try {
+            const sub = new StudentSubmission(subObj.studentId || subObj.userId || null, inst.assignmentId, subObj.documentId || null);
+            // copy fields
+            Object.keys(subObj || {}).forEach(k => {
+              if (k === 'updatedAt' && subObj.updatedAt) sub.updatedAt = subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
+              else if (k in sub) sub[k] = subObj[k];
+              else sub[k] = subObj[k];
+            });
+            inst.submissions.push(sub);
+            return;
+          } catch (e) {
+            // fallback
+          }
+        }
+        // raw fallback
+        const raw = Object.assign({}, subObj);
+        if (raw.updatedAt) raw.updatedAt = new Date(raw.updatedAt);
+        inst.submissions.push(raw);
+      });
+    }
+
+    // restore progress tracker singleton if available
+    inst.progressTracker = (typeof ProgressTracker !== 'undefined' && ProgressTracker && typeof ProgressTracker.getInstance === 'function') ? ProgressTracker.getInstance() : null;
+
+    return inst;
   }
 
   /**
