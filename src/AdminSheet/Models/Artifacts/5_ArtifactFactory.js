@@ -18,7 +18,7 @@ const ImageTaskArtifact =
     : this.ImageTaskArtifact;
 const BaseTaskArtifact =
   typeof module !== 'undefined' && module.exports
-    ? require('./99_BaseTaskArtifact.js')
+    ? require('./0_BaseTaskArtifact.js')
     : this.BaseTaskArtifact;
 
 class ArtifactFactory {

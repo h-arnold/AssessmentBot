@@ -2,7 +2,7 @@
 // compatible with GAS (where classes share a global execution context).
 const BaseTaskArtifact =
   typeof module !== 'undefined' && module.exports
-    ? require('./99_BaseTaskArtifact.js')
+    ? require('./0_BaseTaskArtifact.js')
     : this.BaseTaskArtifact;
 
 class TextTaskArtifact extends BaseTaskArtifact {

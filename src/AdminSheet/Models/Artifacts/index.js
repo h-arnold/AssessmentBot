@@ -4,7 +4,7 @@
 // CommonJS/ESM-friendly entry point for Vitest.
 // Note: this file has been added to .claspignore so as not to cause issues in a GAS environment.
 
-const BaseTaskArtifact = require('./99_BaseTaskArtifact.js');
+const BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 const TextTaskArtifact = require('./1_TextTaskArtifact.js');
 const TableTaskArtifact = require('./2_TableTaskArtifact.js');
 const SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
