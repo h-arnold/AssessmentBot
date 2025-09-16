@@ -28,7 +28,7 @@ class SheetsParser extends DocumentParser {
     const sheets = spreadsheet.getSheets();
     sheets.forEach((sheet) => {
       const taskSheet = new TaskSheet(sheet, type);
-      if (typeof taskSheet.getAllFormulae === "function") {
+      if (typeof taskSheet.getAllFormulae === 'function') {
         taskSheet.getAllFormulae();
       }
       const taskName = taskSheet.sheetName;
@@ -47,76 +47,16 @@ class SheetsParser extends DocumentParser {
    */
   _extractRawSheetData(referenceDocumentId, templateDocumentId) {
     try {
-      const referenceTasks = this._extractFormulaeFromTaskSheets(
-        referenceDocumentId,
-        "reference"
-      );
-      const templateTasks = this._extractFormulaeFromTaskSheets(
-        templateDocumentId,
-        "template"
-      );
+      const referenceTasks = this._extractFormulaeFromTaskSheets(referenceDocumentId, 'reference');
+      const templateTasks = this._extractFormulaeFromTaskSheets(templateDocumentId, 'template');
       return { referenceTasks, templateTasks };
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to extract tasks from sheets");
+      this.progressTracker.captureError(error, 'Failed to extract tasks from sheets');
       return { referenceTasks: {}, templateTasks: {} };
     }
   }
 
-  /**
-   * Extracts Task instances from Google Sheets documents.
-   * Implementation of the abstract method from DocumentParser.
-   * @param {string} referenceDocumentId - The ID of the reference document.
-   * @param {string} templateDocumentId - The ID of the template document.
-   * @return {Task[]} - An array of Task instances extracted from the sheets.
-   */
-  extractTasks(referenceDocumentId, templateDocumentId) {
-    try {
-      // Get formula differences with bounding boxes
-      const formulaDifferences = this.processAndCompareSheets(
-        referenceDocumentId,
-        templateDocumentId
-      );
-      const tasks = [];
-
-      // Iterate through each sheet/challenge
-      for (const sheetName in formulaDifferences) {
-        const sheetData = formulaDifferences[sheetName];
-
-        // Create reference locations map for faster lookup during student task extraction
-        const referenceLocationsMap = this._createReferenceLocationsMap(
-          sheetData.formulas
-        );
-
-        // Create task metadata with bounding box information
-        const taskMetadata = {
-          boundingBox: sheetData.boundingBox,
-          totalFormulas: sheetData.formulas.length,
-          referenceLocationsMap: referenceLocationsMap,
-        };
-
-        // Create a Task object for each sheet with formula differences
-        const task = new Task(
-          sheetName, // key (sheet name like "Challenge 1")
-          "spreadsheet", // taskType always "spreadsheet"
-          sheetData.sheetId, // pageId is the sheetId
-          null, // imageCategory is null
-          sheetData.formulas, // taskReference is the array of formulae and locations
-          null, // taskNotes is null
-          null, // templateContent is null
-          Utils.generateHash(JSON.stringify(sheetData.formulas)), // contentHash
-          null, // templateContentHash is null
-          taskMetadata // Add the taskMetadata with bounding box and reference locations map
-        );
-
-        tasks.push(task);
-      }
-
-      return tasks;
-    } catch (error) {
-      this.progressTracker.captureError(error, "Failed to extract tasks from sheets");
-      return [];
-    }
-  }
+  // Legacy extractTasks removed; replaced by extractTaskDefinitions per refactor.
 
   /**
    * Creates a map of reference formula locations for efficient lookup.
@@ -161,8 +101,7 @@ class SheetsParser extends DocumentParser {
         const referenceSheet = referenceTasks[taskName];
         const templateSheet = templateTasks[taskName];
 
-        if (!referenceSheet.formulaArray || !templateSheet.formulaArray)
-          continue;
+        if (!referenceSheet.formulaArray || !templateSheet.formulaArray) continue;
 
         const differences = this._compareFormulaArrays(
           referenceSheet.formulaArray,
@@ -181,14 +120,12 @@ class SheetsParser extends DocumentParser {
       // Add bounding box calculations
       for (const taskName in results) {
         const sheetDifferences = results[taskName];
-        sheetDifferences.boundingBox = this._calculateBoundingBox(
-          sheetDifferences.formulas
-        );
+        sheetDifferences.boundingBox = this._calculateBoundingBox(sheetDifferences.formulas);
       }
 
       return results;
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to compare formulae between sheets");
+      this.progressTracker.captureError(error, 'Failed to compare formulae between sheets');
       return {};
     }
   }
@@ -219,22 +156,18 @@ class SheetsParser extends DocumentParser {
         // Un-escape any doubled quotes within the formula
         formula = formula.replace(/""/g, '"');
       } catch (error) {
-        this.progressTracker.captureError(error, "Error preprocessing formula");
+        this.progressTracker.captureError(error, 'Error preprocessing formula');
       }
     }
 
     // Now process the formula normally
-    let result = "";
+    let result = '';
     let inQuotes = false;
     for (let i = 0; i < formula.length; i++) {
       const char = formula.charAt(i);
       if (char === '"') {
         // Handle escaped quotes inside string literals
-        if (
-          inQuotes &&
-          i + 1 < formula.length &&
-          formula.charAt(i + 1) === '"'
-        ) {
+        if (inQuotes && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
           result += '""';
           i++; // Skip next char
         } else {
@@ -245,7 +178,7 @@ class SheetsParser extends DocumentParser {
         result += char;
       } else {
         // Trim spaces when not in quotes
-        if (char !== " ") {
+        if (char !== ' ') {
           result += char.toUpperCase();
         }
       }
@@ -272,9 +205,9 @@ class SheetsParser extends DocumentParser {
       const tempRow = row < templateArray.length ? templateArray[row] : [];
 
       for (let col = 0; col < refRow.length; col++) {
-        const refFormula = refRow[col] || "";
+        const refFormula = refRow[col] || '';
         // Template cell might not exist if template row is shorter
-        const tempFormula = tempRow[col] || "";
+        const tempFormula = tempRow[col] || '';
 
         // Check if there's a non-empty reference formula and it doesn't match the template
         if (refFormula && refFormula !== tempFormula) {
@@ -301,13 +234,10 @@ class SheetsParser extends DocumentParser {
    */
   processAndCompareSheets(referenceDocumentId, templateDocumentId) {
     try {
-      const extractedTasks = this._extractRawSheetData(
-        referenceDocumentId,
-        templateDocumentId
-      );
+      const extractedTasks = this._extractRawSheetData(referenceDocumentId, templateDocumentId);
       return this.compareFormulae(extractedTasks);
     } catch (error) {
-      this.progressTracker.captureError(error, "Failed to process and compare sheets");
+      this.progressTracker.captureError(error, 'Failed to process and compare sheets');
       return {};
     }
   }
@@ -361,112 +291,112 @@ class SheetsParser extends DocumentParser {
    * @param {Task[]} referenceTasks - Array of reference Task instances to compare against.
    * @return {Task[]} - An array of Task instances extracted from the student's sheets.
    */
-  extractStudentTasks(studentDocumentId, referenceTasks) {
-    try {
-      const studentTasks = [];
+  // Legacy extractStudentTasks removed – replaced by extractSubmissionArtifacts.
 
-      if (!studentDocumentId) {
-        this.progressTracker.logAndThrowError("No student document ID provided");
-        return studentTasks;
-      }
-
-      // Create a map of task titles to reference tasks for quick lookup
-      const taskTitleMap = {};
-      referenceTasks.forEach((task) => {
-        taskTitleMap[task.taskTitle] = task;
+  /**
+   * New Phase 2: create TaskDefinitions for spreadsheet tasks.
+   */
+  extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
+    const diffs = this.processAndCompareSheets(referenceDocumentId, templateDocumentId);
+    const defs = [];
+    let index = 0;
+    for (const sheetName in diffs) {
+      const sheetData = diffs[sheetName];
+      const referenceLocationsMap = this._createReferenceLocationsMap(sheetData.formulas);
+      const taskMetadata = {
+        bbox: sheetData.boundingBox,
+        referenceLocationsMap,
+        sheetId: sheetData.sheetId,
+      };
+      const def = new TaskDefinition({
+        taskTitle: sheetName,
+        pageId: String(sheetData.sheetId),
+        taskMetadata,
       });
-
-      // Open the student's spreadsheet
-      const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
-      const sheets = spreadsheet.getSheets();
-
-      // Process each sheet in the student document
-      sheets.forEach((sheet) => {
-        const sheetName = sheet.getName();
-
-        // Check if this sheet matches any reference task
-        if (taskTitleMap[sheetName]) {
-          const referenceTask = taskTitleMap[sheetName];
-
-          // Create a TaskSheet object for the student's sheet
-          const taskSheet = new TaskSheet(sheet, "studentTask");
-
-          // Extract the bounding box from the reference task metadata
-          const boundingBox = referenceTask.taskMetadata.boundingBox;
-          if (!boundingBox) {
-            this.progressTracker.logError(`No bounding box found for task: ${sheetName}`);
-            return; // Skip this task
-          }
-
-          // Extract student formulas from the bounding box region
-          const studentFormulas = [];
-          try {
-            // Get formulas from the specific bounding box region
-            const rangeFormulas = taskSheet.getRange(boundingBox, "formulas");
-
-            // Only extract formulas from locations that exist in the reference task
-            referenceTask.taskReference.forEach((refItem) => {
-              const [refRow, refCol] = refItem.location;
-
-              // Calculate the relative position within our extracted range
-              const rangeRow = refRow - (boundingBox.startRow - 1);
-              const rangeCol = refCol - (boundingBox.startColumn - 1);
-
-              // Check if this position is within our extracted range
-              let formula = "";
-              if (
-                rangeRow >= 0 &&
-                rangeRow < rangeFormulas.length &&
-                rangeCol >= 0 &&
-                rangeCol < (rangeFormulas[rangeRow] || []).length
-              ) {
-                formula = rangeFormulas[rangeRow][rangeCol] || "";
-              }
-
-              // Normalise if needed
-              let normalisedStudentFormula = formula;
-              if (formula) {
-                normalisedStudentFormula = this._normaliseFormulaCase(formula);
-              }
-
-              studentFormulas.push({
-                formula: normalisedStudentFormula || "", // Store empty string if formula is null/undefined
-                location: [refRow, refCol], // Use the original reference location
-              });
-            });
-          } catch (error) {
-            this.progressTracker.captureError(
-              error,
-              `Failed to extract formulas from ${sheetName}`
-            );
-          }
-
-          // Create a Task object for this student submission
-          const studentTask = new Task(
-            sheetName, // taskTitle (same as reference)
-            "spreadsheet", // taskType
-            sheet.getSheetId(), // pageId
-            null, // imageCategory
-            studentFormulas, // taskReference contains the student's formulas
-            null, // taskNotes
-            null, // templateContent
-            Utils.generateHash(JSON.stringify(studentFormulas)), // contentHash
-            null, // templateContentHash
-            {
-              // taskMetadata
-              boundingBox: boundingBox, // Use same boundingBox as reference
-              totalFormulas: studentFormulas.length,
-            }
-          );
-
-          studentTasks.push(studentTask);
+      def.index = index++;
+      // Add primary reference SpreadsheetTaskArtifact: represent reference formulas as 2D array skeleton with normalised formulas
+      // We convert differences list into a sparse array (leave nulls) sized to bbox dims
+      const bbox = sheetData.boundingBox;
+      let grid = [];
+      if (bbox) {
+        for (let r = 0; r < bbox.numRows; r++) {
+          grid[r] = new Array(bbox.numColumns).fill(null);
         }
+        sheetData.formulas.forEach((f) => {
+          const [absR, absC] = f.location;
+          const relR = absR - (bbox.startRow - 1);
+          const relC = absC - (bbox.startColumn - 1);
+          if (relR >= 0 && relR < bbox.numRows && relC >= 0 && relC < bbox.numColumns) {
+            grid[relR][relC] = f.referenceFormula || f.formula || '';
+          }
+        });
+      }
+      def.addReferenceArtifact({
+        type: 'spreadsheet',
+        pageId: String(sheetData.sheetId),
+        content: grid,
+        metadata: { sheetName, bbox },
+        taskIndex: def.index,
       });
-
-      return studentTasks;
-    } catch (error) {
-      this.progressTracker.captureError(error, "Failed to extract student tasks from sheets");
-      return [];
+      // Template artifact: for not-attempted detection we mirror shape (all null / empty) – may extend later.
+      const tplGrid = grid.map((row) => row.map(() => null));
+      def.addTemplateArtifact({
+        type: 'spreadsheet',
+        pageId: String(sheetData.sheetId),
+        content: tplGrid,
+        metadata: { sheetName, bbox, template: true },
+        taskIndex: def.index,
+      });
+      defs.push(def);
     }
+    return defs;
+  }
+
+  /**
+   * Extract student submission artifacts by reading only reference formula locations.
+   */
+  extractSubmissionArtifacts(studentDocumentId, taskDefs) {
+    if (!studentDocumentId) return [];
+    const spreadsheet = SpreadsheetApp.openById(studentDocumentId);
+    const sheets = spreadsheet.getSheets();
+    const sheetById = {};
+    sheets.forEach((s) => {
+      sheetById[String(s.getSheetId())] = s;
+    });
+    const artifacts = [];
+    taskDefs.forEach((def) => {
+      const ref = def.getPrimaryReference();
+      const bbox =
+        (def.taskMetadata && (def.taskMetadata.bbox || def.taskMetadata.boundingBox)) || null;
+      const sheet = sheetById[def.pageId];
+      if (!sheet || !bbox || !ref) return;
+      const taskSheet = new TaskSheet(sheet, 'studentTask');
+      let rangeFormulas = [];
+      try {
+        rangeFormulas = taskSheet.getRange(bbox, 'formulas');
+      } catch (e) {
+        this.progressTracker?.logError('Failed to read formulas for sheet ' + def.taskTitle, e);
+        return;
+      }
+      // Reconstruct sparse grid like reference for hashing consistency
+      const grid = ref.content ? ref.content.map((row) => row.map(() => null)) : [];
+      for (let r = 0; r < bbox.numRows; r++) {
+        for (let c = 0; c < bbox.numColumns; c++) {
+          const absR = bbox.startRow - 1 + r;
+          const absC = bbox.startColumn - 1 + c;
+          const formula = rangeFormulas[r] && rangeFormulas[r][c] ? rangeFormulas[r][c] : '';
+          if (formula) {
+            grid[r][c] = formula; // SpreadsheetTaskArtifact will canonicalise
+          }
+        }
+      }
+      artifacts.push({
+        taskId: def.getId(),
+        pageId: def.pageId,
+        content: grid,
+        metadata: { sheetName: def.taskTitle },
+      });
+    });
+    return artifacts;
   }
 }

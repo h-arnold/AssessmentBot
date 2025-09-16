@@ -1,11 +1,11 @@
 /**
  * Represents a single class assessment spreadsheet
  * and provides methods to extract data from it.
- * Used by MultiSheetExtractor to process multiple assessment records, enabling analysis of data from entire cohorts. 
+ * Used by MultiSheetExtractor to process multiple assessment records, enabling analysis of data from entire cohorts.
  */
 class ClassAssessmentSheet {
   /**
-   * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet 
+   * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
    *        The Spreadsheet object for this class assessment.
    * @param {string} [className]  (Optional) A descriptive class/assessment name.
    * @param {string} [yearGroup]  (Optional) The year group or other metadata.
@@ -38,7 +38,8 @@ class ClassAssessmentSheet {
 
       // Build an object *excluding* the 'Name' header
       const studentData = headers.reduce((obj, header, index) => {
-        if (header !== 'Name') { // skip the 'Name' column
+        if (header !== 'Name') {
+          // skip the 'Name' column
           obj[header] = row[index];
         }
         return obj;
@@ -47,6 +48,5 @@ class ClassAssessmentSheet {
       acc[studentName] = studentData;
       return acc;
     }, {});
-
   }
 }

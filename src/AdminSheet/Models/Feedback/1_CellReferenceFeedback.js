@@ -35,7 +35,7 @@ class CellReferenceFeedback extends Feedback {
    * @return {Array} Array of feedback items with the specified status.
    */
   getItemsByStatus(status) {
-    return this.items.filter(item => item.status === status);
+    return this.items.filter((item) => item.status === status);
   }
 
   /**
@@ -54,7 +54,7 @@ class CellReferenceFeedback extends Feedback {
   toJSON() {
     return {
       ...super.toJSON(),
-      items: this.items
+      items: this.items,
     };
   }
 

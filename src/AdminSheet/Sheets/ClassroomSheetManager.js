@@ -12,18 +12,17 @@ class ClassroomSheetManager extends BaseSheetManager {
    * @param {string} spreadsheetId - The spreadsheet attached to the sheet to manage
    */
   constructor(sheetName, spreadsheetId) {
-    // This class should only be run from an admin sheet. 
+    // This class should only be run from an admin sheet.
     // As this sheet can be instantiated from the configuration manager, it's set to silently fail to instantiate rather than throw an error.
     if (!Utils.validateIsAdminSheet(false)) {
-      return;      
-   // If the sheetName and spreadsheetId parameters have been supplied, we're creating a class info sheet in another spreadsheet. Otherwise, we're working with the 'Classrooms sheet in the admin page.   
-   } else if (sheetName && spreadsheetId) {
-    super(sheetName, spreadsheetId)
-   } else {
-    super('Classrooms')
-   }
+      return;
+      // If the sheetName and spreadsheetId parameters have been supplied, we're creating a class info sheet in another spreadsheet. Otherwise, we're working with the 'Classrooms sheet in the admin page.
+    } else if (sheetName && spreadsheetId) {
+      super(sheetName, spreadsheetId);
+    } else {
+      super('Classrooms');
+    }
   }
-
 
   /**
    * Retrieves all data from the sheet.
@@ -33,11 +32,11 @@ class ClassroomSheetManager extends BaseSheetManager {
     return this.sheet.getDataRange().getValues();
   }
 
-  /** 
+  /**
    * Writes all data in an array back to a sheet
    * @param {Array} - the array of values to write to the Classroom sheet.
    */
-  setData(values){
+  setData(values) {
     return this.sheet.getDataRange().setValues(values);
   }
 
@@ -54,13 +53,23 @@ class ClassroomSheetManager extends BaseSheetManager {
 
     // Create header value and formatting requests
     const headerValuesRequest = this.createHeaderValuesRequest(sheetId, headers, headerRowIndex);
-    const headerFormattingRequest = this.createHeaderFormattingRequest(sheetId, headerRowIndex, headerRowIndex + 1, {}, 0, headers.length);
+    const headerFormattingRequest = this.createHeaderFormattingRequest(
+      sheetId,
+      headerRowIndex,
+      headerRowIndex + 1,
+      {},
+      0,
+      headers.length
+    );
 
     // Add requests to the queue
     this.requests.push(headerValuesRequest, ...headerFormattingRequest);
 
     // Execute all batch requests
-    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
+    BatchUpdateUtility.executeBatchUpdate(
+      this.requests,
+      SpreadsheetApp.getActiveSpreadsheet().getId()
+    );
   }
 
   /**
@@ -72,9 +81,9 @@ class ClassroomSheetManager extends BaseSheetManager {
     const startRowIndex = this.sheet.getLastRow();
 
     // Prepare row data for batch update
-    const rowData = rows.map(row => {
+    const rowData = rows.map((row) => {
       return {
-        values: row.map(cell => ({ userEnteredValue: { stringValue: cell.toString() } }))
+        values: row.map((cell) => ({ userEnteredValue: { stringValue: cell.toString() } })),
       };
     });
 
@@ -82,12 +91,15 @@ class ClassroomSheetManager extends BaseSheetManager {
       appendCells: {
         sheetId: sheetId,
         rows: rowData,
-        fields: 'userEnteredValue'
-      }
+        fields: 'userEnteredValue',
+      },
     };
 
     this.requests.push(appendRowsRequest);
-    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
+    BatchUpdateUtility.executeBatchUpdate(
+      this.requests,
+      SpreadsheetApp.getActiveSpreadsheet().getId()
+    );
   }
 
   /**
@@ -109,20 +121,20 @@ class ClassroomSheetManager extends BaseSheetManager {
               {
                 values: [
                   { userEnteredValue: { stringValue: 'Class' } },
-                  { userEnteredValue: { stringValue: className } }
-                ]
+                  { userEnteredValue: { stringValue: className } },
+                ],
               },
               {
                 values: [
                   { userEnteredValue: { stringValue: 'Course ID' } },
-                  { userEnteredValue: { stringValue: courseId } }
-                ]
-              }
+                  { userEnteredValue: { stringValue: courseId } },
+                ],
+              },
             ],
             fields: 'userEnteredValue',
-            start: { sheetId: classInfoSheetId, rowIndex: 0, columnIndex: 0 }
-          }
-        }
+            start: { sheetId: classInfoSheetId, rowIndex: 0, columnIndex: 0 },
+          },
+        },
       ];
 
       assessmentRecordSheet.requests.push(...requests);
@@ -143,9 +155,11 @@ class ClassroomSheetManager extends BaseSheetManager {
   getTeacherEmails() {
     const data = this.getData();
     const teacherEmails = new Set();
-    for (let i = 1; i < data.length; i++) { // Start from row 2
+    for (let i = 1; i < data.length; i++) {
+      // Start from row 2
       const row = data[i];
-      for (let j = 2; j <= 5; j++) { // Columns C to F
+      for (let j = 2; j <= 5; j++) {
+        // Columns C to F
         const email = row[j];
         if (email && email.trim() !== '') {
           teacherEmails.add(email.trim());
@@ -163,7 +177,8 @@ class ClassroomSheetManager extends BaseSheetManager {
   getActiveCourses() {
     const data = this.getData();
     const courses = [];
-    for (let i = 1; i < data.length; i++) { // Start from row 2
+    for (let i = 1; i < data.length; i++) {
+      // Start from row 2
       const row = data[i];
       const courseId = row[0];
       const courseName = row[1];
@@ -185,9 +200,9 @@ class ClassroomSheetManager extends BaseSheetManager {
     const sheetId = this.sheet.getSheetId();
 
     // Append rows
-    const rowData = rows.map(row => {
+    const rowData = rows.map((row) => {
       return {
-        values: row.map(cell => ({ userEnteredValue: { stringValue: cell.toString() } }))
+        values: row.map((cell) => ({ userEnteredValue: { stringValue: cell.toString() } })),
       };
     });
 
@@ -195,8 +210,8 @@ class ClassroomSheetManager extends BaseSheetManager {
       appendCells: {
         sheetId: sheetId,
         rows: rowData,
-        fields: 'userEnteredValue'
-      }
+        fields: 'userEnteredValue',
+      },
     });
 
     // Optionally set column widths
@@ -210,6 +225,9 @@ class ClassroomSheetManager extends BaseSheetManager {
     this.requests.push(freezeRequest);
 
     // Execute all batch requests
-    BatchUpdateUtility.executeBatchUpdate(this.requests, SpreadsheetApp.getActiveSpreadsheet().getId());
+    BatchUpdateUtility.executeBatchUpdate(
+      this.requests,
+      SpreadsheetApp.getActiveSpreadsheet().getId()
+    );
   }
 }

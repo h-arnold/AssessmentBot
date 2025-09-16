@@ -15,19 +15,19 @@ class BatchUpdateUtility {
   static executeBatchUpdate(requests, spreadsheetId) {
     if (!requests || requests.length === 0) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError("No batch requests to execute.");
+      progressTracker.logError('No batch requests to execute.');
       return;
     }
 
     const progressTracker = ProgressTracker.getInstance();
-    
+
     if (!spreadsheetId) {
-      progressTracker.logAndThrowError("Spreadsheet ID is required for batch updates.");
+      progressTracker.logAndThrowError('Spreadsheet ID is required for batch updates.');
     }
 
     try {
       const response = Sheets.Spreadsheets.batchUpdate({ requests }, spreadsheetId);
-      console.log("Batch update executed successfully.");
+      console.log('Batch update executed successfully.');
       return response;
     } catch (e) {
       progressTracker.logAndThrowError(`Error applying batch update.`, e);
@@ -42,29 +42,36 @@ class BatchUpdateUtility {
    */
   static executeMultipleBatchUpdates(batchUpdates) {
     const progressTracker = ProgressTracker.getInstance();
-    
+
     if (!Array.isArray(batchUpdates) || batchUpdates.length === 0) {
-      progressTracker.logAndThrowError("No batch updates provided.");
+      progressTracker.logAndThrowError('No batch updates provided.');
     }
-    
+
     const responses = [];
     for (let i = 0; i < batchUpdates.length; i++) {
       const { requests, spreadsheetId } = batchUpdates[i];
       try {
         if (!requests || requests.length === 0) {
           // Skip empty requests, but log for user-facing tracking
-          progressTracker.logError(`No batch requests to execute for index ${i}.`, { batchUpdate: batchUpdates[i] });
+          progressTracker.logError(`No batch requests to execute for index ${i}.`, {
+            batchUpdate: batchUpdates[i],
+          });
           continue;
         }
-        
+
         if (!spreadsheetId) {
-          progressTracker.logAndThrowError(`Spreadsheet ID is required for batch update at index ${i}.`);
+          progressTracker.logAndThrowError(
+            `Spreadsheet ID is required for batch update at index ${i}.`
+          );
         }
-        
+
         const response = Sheets.Spreadsheets.batchUpdate({ requests }, spreadsheetId);
         responses.push(response);
       } catch (e) {
-        progressTracker.logAndThrowError(`Error applying batch update at index ${i}.`, { error: e, batchUpdate: batchUpdates[i] });
+        progressTracker.logAndThrowError(`Error applying batch update at index ${i}.`, {
+          error: e,
+          batchUpdate: batchUpdates[i],
+        });
       }
     }
     return responses;

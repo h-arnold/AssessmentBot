@@ -14,7 +14,7 @@ class DriveManager {
    *   fileId: string | null,
    *   message: string
    * }} An object describing the outcome.
-   * 
+   *
    * Possible statuses:
    *   - 'copied': The file was copied successfully.
    *   - 'skipped': A file with the same name already exists; nothing was copied.
@@ -34,7 +34,7 @@ class DriveManager {
           status: 'skipped',
           file: existingFile,
           fileId: existingFile.getId(),
-          message
+          message,
         };
       }
 
@@ -47,7 +47,7 @@ class DriveManager {
         status: 'copied',
         file: copiedSheetFile,
         fileId: copiedSheetFile.getId(),
-        message: successMsg
+        message: successMsg,
       };
     } catch (error) {
       console.error(`Failed to copy template sheet: ${error.message}`);
@@ -69,7 +69,7 @@ class DriveManager {
    *     message: string
    *   }>
    * }} An object describing the overall result.
-   * 
+   *
    * Possible statuses:
    *   - 'complete': All emails were shared successfully.
    *   - 'partial': Some emails succeeded, some failed.
@@ -87,14 +87,14 @@ class DriveManager {
       return {
         status: 'none',
         message: noEmailsMsg,
-        details
+        details,
       };
     }
 
     try {
       const destinationFolder = DriveApp.getFolderById(destinationFolderId);
 
-      emails.forEach(email => {
+      emails.forEach((email) => {
         try {
           destinationFolder.addEditor(email);
           console.log(`Shared destination folder with: ${email}`);
@@ -102,7 +102,7 @@ class DriveManager {
           details.push({
             email,
             status: 'shared',
-            message: `Successfully shared with ${email}`
+            message: `Successfully shared with ${email}`,
           });
           successCount++;
         } catch (error) {
@@ -112,7 +112,7 @@ class DriveManager {
           details.push({
             email,
             status: 'failed',
-            message: failMsg
+            message: failMsg,
           });
           failCount++;
         }
@@ -138,7 +138,7 @@ class DriveManager {
     return {
       status: overallStatus, // 'complete', 'partial', or 'none'
       message: overallMsg,
-      details
+      details,
     };
   }
 
@@ -162,11 +162,17 @@ class DriveManager {
           return parentId;
         }
         // No parents via DriveApp (can happen for orphaned files or Shared Drive root)
-        console.log(`No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`);
+        console.log(
+          `No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`
+        );
         break; // proceed to fallback
       } catch (error) {
         const waitMs = 500 * Math.pow(2, attempt);
-        console.warn(`DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''}`);
+        console.warn(
+          `DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${
+            attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''
+          }`
+        );
         if (attempt < retries - 1) {
           Utilities.sleep(waitMs);
           continue;
@@ -187,7 +193,9 @@ class DriveManager {
 
       // If on a Shared Drive root, use the driveId as the parent folder id
       if (res && res.driveId) {
-        console.log(`File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`);
+        console.log(
+          `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`
+        );
         return res.driveId;
       }
 
@@ -224,10 +232,12 @@ class DriveManager {
 
       if (folders.hasNext()) {
         const existingFolder = folders.next();
-        console.log(`Folder "${folderName}" already exists under parent folder ID ${parentFolderId}. Returning existing folder ID.`);
+        console.log(
+          `Folder "${folderName}" already exists under parent folder ID ${parentFolderId}. Returning existing folder ID.`
+        );
         return {
           parentFolderId,
-          newFolderId: existingFolder.getId()
+          newFolderId: existingFolder.getId(),
         };
       }
 
@@ -235,10 +245,12 @@ class DriveManager {
       console.log(`Folder "${folderName}" created under parent folder ID ${parentFolderId}.`);
       return {
         parentFolderId,
-        newFolderId: newFolder.getId()
+        newFolderId: newFolder.getId(),
       };
     } catch (error) {
-      console.error(`Failed to create folder "${folderName}" under folder ID ${parentFolderId}: ${error.message}`);
+      console.error(
+        `Failed to create folder "${folderName}" under folder ID ${parentFolderId}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -270,7 +282,7 @@ class DriveManager {
       return {
         status: 'none',
         message: noFilesMsg,
-        details
+        details,
       };
     }
 
@@ -284,7 +296,7 @@ class DriveManager {
       throw error;
     }
 
-    fileIds.forEach(fileId => {
+    fileIds.forEach((fileId) => {
       try {
         const file = DriveApp.getFileById(fileId);
 
@@ -310,7 +322,7 @@ class DriveManager {
         details.push({
           fileId,
           status: 'moved',
-          message: successMsg
+          message: successMsg,
         });
         successCount++;
       } catch (error) {
@@ -319,7 +331,7 @@ class DriveManager {
         details.push({
           fileId,
           status: 'failed',
-          message: failMsg
+          message: failMsg,
         });
         failCount++;
       }
@@ -341,7 +353,7 @@ class DriveManager {
     return {
       status: overallStatus, // 'complete', 'partial', or 'none'
       message: overallMsg,
-      details
+      details,
     };
   }
 
@@ -356,6 +368,4 @@ class DriveManager {
     // Test if the passed string matches the regex and return the result.
     return fileIdRegex.test(fileId);
   }
-
 }
-

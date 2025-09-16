@@ -1,6 +1,6 @@
 /**
  * Assignment Class
- * 
+ *
  * Base class representing an assignment within a course, managing tasks and student submissions.
  */
 class Assignment {
@@ -8,14 +8,193 @@ class Assignment {
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
+   * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
+   * @param {Date} dueDate - to be implemented later
+   * @param {object} assignmentMetadata - to be implemented later
+   * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
    */
   constructor(courseId, assignmentId) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.tasks = {};           // { taskKey: Task }
-    this.studentTasks = [];    // Array of StudentTask instances
-    this.progressTracker = ProgressTracker.getInstance();
+    this.assignmentWeighting = null; //will be implemented later.
+    this.assignmentMetadata = null; //will be implemented later.
+    this.dueDate = null; //to be implemented later with the homework tracker.
+    // Timestamp for when this assignment was last updated. Use Date or null.
+    this.lastUpdated = null;
+    // New model: tasks keyed by stable taskId -> TaskDefinition
+    this.tasks = {}; // { [taskId: string]: TaskDefinition }
+    // New model: submissions array of StudentSubmission
+    this.submissions = []; // Array<StudentSubmission>
+    // Legacy studentTasks alias removed – callers must use this.submissions.
+    this.progressTracker =
+      typeof ProgressTracker !== 'undefined' &&
+      ProgressTracker &&
+      typeof ProgressTracker.getInstance === 'function'
+        ? ProgressTracker.getInstance()
+        : null;
+  }
+
+  /**
+   * Serialize this Assignment to a plain JSON-friendly object.
+   * - Dates are converted to ISO strings.
+   * - If TaskDefinition or StudentSubmission provide toJSON, those are used.
+   * - progressTracker is intentionally not serialized (singleton/session-specific).
+   * @return {object}
+   */
+  toJSON() {
+    const tasks = Object.fromEntries(
+      Object.entries(this.tasks || {}).map(([taskId, task]) => {
+        if (task && typeof task.toJSON === 'function') return [taskId, task.toJSON()];
+        if (task && typeof task === 'object') return [taskId, { ...task }];
+        return [taskId, task];
+      })
+    );
+
+    const submissions = (this.submissions || []).map((sub) => {
+      if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
+      // Fallback serialization for StudentSubmission-like objects
+      const out = {};
+      if (sub && typeof sub === 'object') {
+        out.studentId = sub.studentId || sub.userId || null;
+        if ('documentId' in sub) out.documentId = sub.documentId;
+        if ('score' in sub) out.score = sub.score;
+        if ('feedback' in sub) out.feedback = sub.feedback;
+        if (sub.updatedAt instanceof Date) out.updatedAt = sub.updatedAt.toISOString();
+        else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
+        // copy any other enumerable properties (non-enumerable like methods are ignored)
+        Object.keys(sub).forEach((k) => {
+          if (!out.hasOwnProperty(k)) out[k] = sub[k];
+        });
+      }
+      return out;
+    });
+
+    return {
+      courseId: this.courseId,
+      assignmentId: this.assignmentId,
+      assignmentName: this.assignmentName,
+      assignmentWeighting: this.assignmentWeighting,
+      assignmentMetadata: this.assignmentMetadata,
+      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      tasks,
+      submissions,
+    };
+  }
+
+  /**
+   * Rehydrate an Assignment instance from a JSON object previously produced by toJSON().
+   * This avoids calling the constructor (which may hit external APIs) by creating
+   * a prototype-backed object and populating fields directly.
+   * The method will attempt to use TaskDefinition.fromJSON / StudentSubmission.fromJSON
+   * if available, or fall back to basic reconstruction.
+   * @param {object} data
+   * @return {Assignment}
+   */
+  static fromJSON(data) {
+    if (!data || typeof data !== 'object')
+      throw new Error('Invalid data supplied to Assignment.fromJSON');
+
+    const inst = Object.create(Assignment.prototype);
+    inst.courseId = data.courseId;
+    inst.assignmentId = data.assignmentId;
+    inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
+    inst.assignmentWeighting = data.assignmentWeighting ?? null;
+    inst.assignmentMetadata = data.assignmentMetadata ?? null;
+    inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+    inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
+    inst.tasks = {};
+    inst.submissions = [];
+    // restore tasks
+    if (data.tasks && typeof data.tasks === 'object') {
+      Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
+        if (
+          typeof TaskDefinition !== 'undefined' &&
+          TaskDefinition &&
+          typeof TaskDefinition.fromJSON === 'function'
+        ) {
+          try {
+            inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
+            return;
+          } catch (e) {
+            console.warn(`TaskDefinition.fromJSON failed for taskId=${taskId}:`, e);
+          }
+        }
+        if (typeof TaskDefinition !== 'undefined' && TaskDefinition) {
+          try {
+            inst.tasks[taskId] = new TaskDefinition(taskObj);
+            return;
+          } catch (e) {
+            console.warn(`TaskDefinition constructor failed for taskId=${taskId}:`, e);
+          }
+        }
+        inst.tasks[taskId] = taskObj;
+      });
+    }
+
+    // restore submissions
+    if (Array.isArray(data.submissions)) {
+      data.submissions.forEach((subObj) => {
+        if (
+          typeof StudentSubmission !== 'undefined' &&
+          StudentSubmission &&
+          typeof StudentSubmission.fromJSON === 'function'
+        ) {
+          try {
+            inst.submissions.push(StudentSubmission.fromJSON(subObj));
+            return;
+          } catch (e) {
+            console.warn(
+              `StudentSubmission.fromJSON failed for studentId=${
+                subObj && (subObj.studentId || subObj.userId)
+              }:`,
+              e
+            );
+          }
+        }
+        if (typeof StudentSubmission !== 'undefined' && StudentSubmission) {
+          try {
+            const sub = new StudentSubmission(
+              subObj.studentId || subObj.userId || null,
+              inst.assignmentId,
+              subObj.documentId || null
+            );
+            // copy fields
+            Object.keys(subObj || {}).forEach((k) => {
+              if (k === 'updatedAt' && subObj.updatedAt)
+                sub.updatedAt =
+                  subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
+              else if (k in sub) sub[k] = subObj[k];
+              else sub[k] = subObj[k];
+            });
+            inst.submissions.push(sub);
+            return;
+          } catch (e) {
+            console.warn(
+              `StudentSubmission constructor failed for studentId=${
+                subObj && (subObj.studentId || subObj.userId)
+              }:`,
+              e
+            );
+          }
+        }
+        // raw fallback
+        const raw = { ...subObj };
+        if (raw.updatedAt) raw.updatedAt = new Date(raw.updatedAt);
+        inst.submissions.push(raw);
+      });
+    }
+
+    // restore progress tracker singleton if available
+    inst.progressTracker =
+      typeof ProgressTracker !== 'undefined' &&
+      ProgressTracker &&
+      typeof ProgressTracker.getInstance === 'function'
+        ? ProgressTracker.getInstance()
+        : null;
+
+    return inst;
   }
 
   /**
@@ -35,12 +214,103 @@ class Assignment {
   }
 
   /**
+   * Update the lastUpdated timestamp to the current date/time.
+   * Call this whenever the assignment is modified in-memory.
+   * @return {Date} the new lastUpdated value
+   */
+  touchUpdated() {
+    // Use setLastUpdated to centralize validation/copying behavior.
+    return this.setLastUpdated(new Date());
+  }
+
+  /**
+   * Returns the lastUpdated Date or null if not set.
+   * @return {Date|null}
+   */
+  getLastUpdated() {
+    return this.lastUpdated || null;
+  }
+
+  /**
+   * Set the lastUpdated timestamp from a JavaScript Date object (or null to clear).
+   * The method copies the provided Date to avoid external mutation.
+   * @param {Date|null} date
+   * @throws {TypeError} if the provided value is not a Date or null
+   * @return {Date|null} the stored Date instance or null
+   */
+  setLastUpdated(date) {
+    if (date === null) {
+      this.lastUpdated = null;
+      return null;
+    }
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+      throw new TypeError('setLastUpdated expects a valid Date or null');
+    }
+    // store a copy to avoid outside mutation
+    this.lastUpdated = new Date(date.getTime());
+    return this.lastUpdated;
+  }
+
+  /**
    * Adds a student to the assignment.
    * @param {Student} student - The Student instance to add.
    */
   addStudent(student) {
-    const studentTask = new StudentTask(student, this.assignmentId, null);
-    this.studentTasks.push(studentTask);
+    // Expect student object with id
+    const studentId = student.id || student.studentId || student.userId;
+    if (!studentId) {
+      console.warn('addStudent called without resolvable studentId');
+      return null;
+    }
+    // Avoid duplicates
+    const existing = this.submissions.find((s) => s.studentId === studentId);
+    if (existing) return existing;
+    const submission = new StudentSubmission(studentId, this.assignmentId, null);
+    // Attach original student metadata for any legacy code (non-persisted)
+    submission._legacyStudent = student;
+    this.submissions.push(submission);
+    return submission;
+  }
+
+  /**
+   * Process a single attachment for a student's submission.
+   * Separated out to reduce cognitive complexity in the parent method.
+   * @param {object} attachment
+   * @param {string} studentId
+   * @param {string} mimeType
+   */
+  _processAttachmentForSubmission(attachment, studentId, mimeType) {
+    const driveFileId = attachment?.driveFile?.id;
+    if (!driveFileId) {
+      console.log(
+        `Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`
+      );
+      return;
+    }
+
+    try {
+      // Fetch the Drive file using DriveApp
+      const file = DriveApp.getFileById(driveFileId);
+      const fileMimeType = file.getMimeType();
+      if (this.isValidMimeType(fileMimeType, mimeType)) {
+        const documentId = driveFileId;
+        // New model: submissions array holds StudentSubmission objects with studentId
+        const submissionObj = this.submissions.find((sub) => sub.studentId === studentId);
+        if (submissionObj) {
+          submissionObj.documentId = documentId;
+          // Keep updatedAt coherent if method exists
+          if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
+        } else {
+          console.log(`No matching submission found for student ID: ${studentId}`);
+        }
+      } else {
+        console.log(
+          `Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`
+        );
+      }
+    } catch (fileError) {
+      console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
+    }
   }
 
   /**
@@ -50,7 +320,10 @@ class Assignment {
   fetchSubmittedDocumentsByMimeType(mimeType) {
     try {
       // Fetch all student submissions for the specific assignment
-      const response = Classroom.Courses.CourseWork.StudentSubmissions.list(this.courseId, this.assignmentId);
+      const response = Classroom.Courses.CourseWork.StudentSubmissions.list(
+        this.courseId,
+        this.assignmentId
+      );
       const submissions = response.studentSubmissions;
 
       if (!submissions || submissions.length === 0) {
@@ -58,37 +331,14 @@ class Assignment {
         return;
       }
 
-      submissions.forEach(submission => {
+      submissions.forEach((submission) => {
         const studentId = submission.userId; // Google Classroom Student ID (string)
         const attachments = submission.assignmentSubmission?.attachments;
 
         if (attachments && attachments.length > 0) {
-          attachments.forEach(attachment => {
-            if (attachment.driveFile && attachment.driveFile.id) {
-              const driveFileId = attachment.driveFile.id;
-              try {
-                // Fetch the Drive file using DriveApp
-                const file = DriveApp.getFileById(driveFileId);
-                const fileMimeType = file.getMimeType();
-                if (this.isValidMimeType(fileMimeType, mimeType)) {
-                  const documentId = driveFileId;
-                  // Find the corresponding StudentTask instance
-                  const studentTask = this.studentTasks.find(st => st.student.id === studentId);
-                  if (studentTask) {
-                    studentTask.documentId = documentId;
-                  } else {
-                    console.log(`No matching student found for student ID: ${studentId}`);
-                  }
-                } else {
-                  console.log(`Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`);
-                }
-              } catch (fileError) {
-                console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
-              }
-            } else {
-              console.log(`Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`);
-            }
-          });
+          attachments.forEach((attachment) =>
+            this._processAttachmentForSubmission(attachment, studentId, mimeType)
+          );
         } else {
           console.log(`No attachments found for student ID: ${studentId}`);
         }
@@ -137,26 +387,27 @@ class Assignment {
    * @return {Object[]} - An array of request objects.
    */
   generateLLMRequests() {
-    // Utilize the singleton instance of LLMRequestManager
-    const requests = llmRequestManager.generateRequestObjects(this);
-    return requests;
+    // Delegate to LLMRequestManager (new model aware)
+    const manager = new LLMRequestManager();
+    return manager.generateRequestObjects(this);
   }
 
   /**
    * Assesses student responses by interacting with the LLM.
    */
   assessResponses() {
-    // Utilize the singleton instance of LLMRequestManager
-    const llmRequestManager = new LLMRequestManager();
-
-    // Generate LLM Requests
-    const requests = llmRequestManager.generateRequestObjects(this);
-    if (requests.length === 0) {
-      Utils.toastMessage("No LLM requests to send.", "Info", 3);
+    // Base Assignment only handles non-spreadsheet (text/table/image) via LLM
+    const manager = new LLMRequestManager();
+    const requests = manager.generateRequestObjects(this);
+    if (!requests || requests.length === 0) {
+      Utils.toastMessage('No LLM requests to send.', 'Info', 3);
       return;
     }
-
-    // Send Requests in Batches and adds the responses to the assignment instance
-    llmRequestManager.processStudentResponses(requests, this);
+    manager.processStudentResponses(requests, this);
   }
+}
+
+// Export for Node/Vitest environment (ignored in GAS runtime)
+if (typeof module !== 'undefined') {
+  module.exports = Assignment;
 }

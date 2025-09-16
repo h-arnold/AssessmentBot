@@ -5,7 +5,6 @@
  * Year Group-level aggregates (e.g. averages) across all the Year Group sheets.
  */
 class SummarySheetManager extends BaseSheetManager {
-
   /**
    * Creates or updates the "Summary" sheet that displays the per-Year-Group
    * averages (or other aggregates).
@@ -29,12 +28,12 @@ class SummarySheetManager extends BaseSheetManager {
     // Add requests for header values & formatting
     const headerRequest = this.createHeaderValuesRequest(sheetId, headers, 0);
     const headerFormattingRequest = this.createHeaderFormattingRequest(
-      sheetId, 
-      0,  // startRowIndex
-      1,  // endRowIndex (exclusive; 1 means just the first row)
+      sheetId,
+      0, // startRowIndex
+      1, // endRowIndex (exclusive; 1 means just the first row)
       {}, // formatOptions
-      0,  // startColumnIndex
-      headers.length  // endColumnIndex
+      0, // startColumnIndex
+      headers.length // endColumnIndex
     );
     this.requests.push(headerRequest, ...headerFormattingRequest);
 
@@ -42,15 +41,15 @@ class SummarySheetManager extends BaseSheetManager {
     const summaryRows = this._buildSummaryRowData(overviewData);
 
     // 5. Convert the rows into rowData objects for batch update
-    const rowData = summaryRows.map(row => ({
-      values: row.map(cell => {
+    const rowData = summaryRows.map((row) => ({
+      values: row.map((cell) => {
         // If cell is a formula (i.e. starts with "="), store as formula
         if (typeof cell === 'string' && cell.trim().startsWith('=')) {
           return { userEnteredValue: { formulaValue: cell.trim() } };
         }
         // Otherwise store as a string
         return { userEnteredValue: { stringValue: String(cell) } };
-      })
+      }),
     }));
 
     // 6. Append these rows below the header
@@ -58,8 +57,8 @@ class SummarySheetManager extends BaseSheetManager {
       appendCells: {
         sheetId,
         rows: rowData,
-        fields: 'userEnteredValue'
-      }
+        fields: 'userEnteredValue',
+      },
     };
     this.requests.push(appendRowsRequest);
 
@@ -69,7 +68,11 @@ class SummarySheetManager extends BaseSheetManager {
 
     // 8. Add conditional formatting requests if desired
     this.requests.push(
-       ...this._createSummaryConditionalFormattingRequests(sheetId, summaryRows.length, headers.length)
+      ...this._createSummaryConditionalFormattingRequests(
+        sheetId,
+        summaryRows.length,
+        headers.length
+      )
     );
 
     // 9. Execute batch update
@@ -78,27 +81,27 @@ class SummarySheetManager extends BaseSheetManager {
 
   /**
    * Helper method to build the header row for the "Summary" sheet.
-   * 
+   *
    * @returns {string[]} Array of header names.
    */
   _buildSummaryHeaders() {
-    // For example, you might want: 
+    // For example, you might want:
     //    ["Year Group", "Completeness Avg", "Accuracy Avg", "SPaG Avg", "Overall Avg"]
     // Adjust these to your own naming conventions.
     return [
-      "Year Group",
-      "Completeness (Avg)",
-      "Accuracy (Avg)",
-      "SPaG (Avg)",
-      "Average (Overall)"
+      'Year Group',
+      'Completeness (Avg)',
+      'Accuracy (Avg)',
+      'SPaG (Avg)',
+      'Average (Overall)',
     ];
   }
 
   /**
    * Helper method that builds an array of row data for each Year Group in overviewData.
-   * Each row includes the Year Group name and formulas referencing the respective 
+   * Each row includes the Year Group name and formulas referencing the respective
    * Y<yearGroup> sheet columns.
-   * 
+   *
    * @param {Object} overviewData - e.g. { "7": {...}, "8": {...}, ... }
    * @returns {Array<Array<string>>} The row data (arrays of strings/formulas).
    */
@@ -109,16 +112,16 @@ class SummarySheetManager extends BaseSheetManager {
     // (Remember to convert them to strings if needed).
     for (const yearGroupKey of Object.keys(overviewData)) {
       // Build a single row
-      // Cell 0: "Y7", "Y8", etc. 
+      // Cell 0: "Y7", "Y8", etc.
       // The rest are formulas referencing the columns in the Y7 sheet (for example).
       // Assumes numeric data in columns B, C, D, E
       // TODO: Refactor the SheetManagers more generally to consolidate duplicated functionality and make the below much more flexible.
       const row = [
-        `Y${yearGroupKey}`,                                 // e.g. "Y7"
-        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!B2:B), 2), "N/A")`,  // Completeness
-        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!C2:C), 2), "N/A")`,  // Accuracy
-        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!D2:D), 2), "N/A")`,  // SPaG
-        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!E2:E), 2), "N/A")`   // Overall
+        `Y${yearGroupKey}`, // e.g. "Y7"
+        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!B2:B), 2), "N/A")`, // Completeness
+        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!C2:C), 2), "N/A")`, // Accuracy
+        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!D2:D), 2), "N/A")`, // SPaG
+        `=IFERROR(ROUND(AVERAGE('Y${yearGroupKey}'!E2:E), 2), "N/A")`, // Overall
       ];
 
       rows.push(row);
@@ -128,9 +131,9 @@ class SummarySheetManager extends BaseSheetManager {
   }
 
   /**
-   * @param {number} sheetId 
-   * @param {number} dataRowCount 
-   * @param {number} totalColumns 
+   * @param {number} sheetId
+   * @param {number} dataRowCount
+   * @param {number} totalColumns
    * @returns {Array<Object>}
    */
   _createSummaryConditionalFormattingRequests(sheetId, dataRowCount, totalColumns) {
@@ -139,30 +142,30 @@ class SummarySheetManager extends BaseSheetManager {
     const startRowIndex = 1;
     const endRowIndex = startRowIndex + dataRowCount;
     const startColumnIndex = 1; // "Completeness (Avg)"
-    const endColumnIndex = totalColumns; 
+    const endColumnIndex = totalColumns;
     const range = {
-       sheetId,
-       startRowIndex,
-       endRowIndex,
-       startColumnIndex,
-       endColumnIndex
-      };
+      sheetId,
+      startRowIndex,
+      endRowIndex,
+      startColumnIndex,
+      endColumnIndex,
+    };
     //
     // // Add a simple gradient rule
-     requests.push({
-       addConditionalFormatRule: {
-         rule: {
-           ranges: [range],
-           gradientRule: {
-             minpoint: { color: { red: 1, green: 0, blue: 0 }, type: 'NUMBER', value: '0' },
-             midpoint: { color: { red: 1, green: 1, blue: 0 }, type: 'NUMBER', value: '2.5' },
-             maxpoint: { color: { red: 0, green: 1, blue: 0 }, type: 'NUMBER', value: '5' }
-           }
-         },
-         index: 0
-       }
-     });
-    
+    requests.push({
+      addConditionalFormatRule: {
+        rule: {
+          ranges: [range],
+          gradientRule: {
+            minpoint: { color: { red: 1, green: 0, blue: 0 }, type: 'NUMBER', value: '0' },
+            midpoint: { color: { red: 1, green: 1, blue: 0 }, type: 'NUMBER', value: '2.5' },
+            maxpoint: { color: { red: 0, green: 1, blue: 0 }, type: 'NUMBER', value: '5' },
+          },
+        },
+        index: 0,
+      },
+    });
+
     return requests;
   }
 }

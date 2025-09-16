@@ -1,10 +1,10 @@
 {
-    "recommendations": [
-        "ms-vscode.js-debug",
-        "github.copilot",
-        "github.copilot-chat",
-        "esbenp.prettier-vscode",
-        "dbaeumer.vscode-eslint",
-        "yzhang.markdown-all-in-one"
-    ]
+  "recommendations": [
+    "ms-vscode.js-debug",
+    "github.copilot",
+    "github.copilot-chat",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "yzhang.markdown-all-in-one"
+  ]
 }

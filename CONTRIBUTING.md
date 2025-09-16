@@ -34,6 +34,27 @@ Please modify my code/documentation to match with the style guide provided. Ensu
 - **Consistency**: Ensure code and documentation align with the style and structure of the existing project.
 - **Testing**: Thoroughly test code in the Apps Script Editor with mock data or test spreadsheets, and preview documentation to ensure layout and links are correct.
 
+## Testing in Node (unit tests)
+
+When running unit tests locally with Node (Vitest/Jest) it's common to hit missing Google Apps Script globals
+such as `Classroom`, `DriveApp`, or project singletons like `ProgressTracker`. Many classes in this repository
+call those globals in their constructors which will cause tests to fail.
+
+Tip: prefer creating instances via their `fromJSON()` (or similar rehydration) methods inside unit tests. These
+methods restore an instance's state without invoking the constructor and avoid GAS dependencies, making tests
+hermetic and fast. Example:
+
+```javascript
+// Bad: may throw because Classroom/ProgressTracker aren't defined in Node
+// const a = new Assignment('courseId', 'assignmentId');
+
+// Good: rehydrates without invoking constructor
+const a = Assignment.fromJSON({ courseId: 'c1', assignmentId: 'as1' });
+```
+
+If a class has no `fromJSON()` helper and you need constructor behavior, consider mocking the required globals in
+your test setup or refactoring the class to split side-effecting logic out of the constructor.
+
 ---
 
 # 🖥️ Contributing Code 
@@ -357,4 +378,21 @@ By following this, you can ensure your contributions remain consistent with my s
 ---
 
 Thank you again for contributing to the Google Slides AI Assessor! Every contribution helps make this project better, and your efforts are greatly appreciated.
+
+
+## Git hooks (Husky)
+
+This project uses Husky to provide Git hooks for contributors. On a fresh checkout, install dependencies with `npm install` which will run `npm run prepare` and create the Git hooks automatically.
+
+The repository ships a `pre-commit` hook which runs `npm run lint`. If you want to (re)install the hooks manually, run:
+
+```bash
+npx husky install
+```
+
+To add or update hooks locally, use the `npx husky add` command. For example:
+
+```bash
+npx husky add .husky/pre-commit "npm run lint"
+```
 

@@ -6,8 +6,8 @@
  * @return {Object} Result of the update operation
  */
 function handleVersionUpdate(versionData) {
-    const updateController = new UpdateController();
-    return updateController.updateAdminSheet(versionData);
+  const updateController = new UpdateController();
+  return updateController.updateAdminSheet(versionData);
 }
 
 /**
@@ -16,16 +16,16 @@ function handleVersionUpdate(versionData) {
  * of UpdateManager and then calls the runAssessmentRecordUpdateWizard method.
  */
 function showUpdateAssessmentRecordWizard() {
-    const updateManager = new UpdateManager();
-    updateManager.runAssessmentRecordUpdateWizard();
-  }
-  
-  /**
-   * Global function called from the wizard when the user clicks "Finish".
-   * This creates a new UpdateManager instance, loads the saved state, and then calls its updateAssessmentRecords method.
-   */
-  function updateAssessmentRecordsFromWizard() {
-    const updateManager = new UpdateManager();
-    updateManager.loadState();
-    updateManager.updateAssessmentRecords();
-  }
+  const updateManager = new UpdateManager();
+  updateManager.runAssessmentRecordUpdateWizard();
+}
+
+/**
+ * Global function called from the wizard when the user clicks "Finish".
+ * This creates a new UpdateManager instance, loads the saved state, and then calls its updateAssessmentRecords method.
+ */
+function updateAssessmentRecordsFromWizard() {
+  const updateManager = new UpdateManager();
+  updateManager.loadState();
+  updateManager.updateAssessmentRecords();
+}

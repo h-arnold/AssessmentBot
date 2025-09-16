@@ -27,7 +27,7 @@ class Feedback {
   toJSON() {
     return {
       type: this.type,
-      createdAt: this.createdAt
+      createdAt: this.createdAt,
     };
   }
 
@@ -37,7 +37,7 @@ class Feedback {
    * @return {Feedback} A feedback instance of the appropriate subclass.
    */
   static fromJSON(json) {
-    switch(json.type) {
+    switch (json.type) {
       case 'cellReference':
         return CellReferenceFeedback.fromJSON(json);
       // Add cases for future feedback types

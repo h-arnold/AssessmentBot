@@ -19,14 +19,16 @@ class Utils {
     }
 
     const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, inputBytes);
-    const hash = rawHash.map(e => {
-      const hex = (e < 0 ? e + 256 : e).toString(16);
-      return hex.length === 1 ? "0" + hex : hex;
-    }).join("");
+    const hash = rawHash
+      .map((e) => {
+        const hex = (e < 0 ? e + 256 : e).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      })
+      .join('');
 
     if (hash == null) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logAndThrowError("Hash is null. Please check debugger to find out why.");
+      progressTracker.logAndThrowError('Hash is null. Please check debugger to find out why.');
     } else {
       return hash;
     }
@@ -39,7 +41,7 @@ class Utils {
    */
   static getColumnLetter(columnIndex) {
     let temp;
-    let letter = "";
+    let letter = '';
     while (columnIndex >= 0) {
       temp = columnIndex % 26;
       letter = String.fromCharCode(temp + 65) + letter;
@@ -88,7 +90,7 @@ class Utils {
    * @param {string} [title=''] - Optional title for the toast.
    * @param {number} [timeoutSeconds=3] - Duration for which the toast is visible.
    */
-  static toastMessage(message, title = "", timeoutSeconds = 3) {
+  static toastMessage(message, title = '', timeoutSeconds = 3) {
     try {
       const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       if (activeSpreadsheet) {
@@ -98,11 +100,11 @@ class Utils {
         );
       } else {
         const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logError("No active spreadsheet found for toast message.");
+        progressTracker.logError('No active spreadsheet found for toast message.');
       }
     } catch (error) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.captureError(error, "Error displaying toast message");
+      progressTracker.captureError(error, 'Error displaying toast message');
     }
   }
 
@@ -117,32 +119,33 @@ class Utils {
     }
     const urlPattern = new RegExp(
       '^' +
-      // Protocol identifier (required)
-      '(?:(?:https?|ftp)://)' +
-      // User:Pass authentication (optional)
-      '(?:\\S+(?::\\S*)?@)?' +
-      '(?:' +
-      // IP address exclusion (private & local networks)
-      '(?!(?:10|127)(?:\\.\\d{1,3}){3})' +
-      '(?!(?:169\\.254|192\\.168)(?:\\.\\d{1,3}){2})' +
-      '(?!172\\.(?:1[6-9]|2\\d|3[0-1])(?:\\.\\d{1,3}){2})' +
-      // IP address dotted notation octets
-      '(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])' +
-      '(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}' +
-      '(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-5]))' +
-      '|' +
-      // Hostname
-      '(?:(?:[a-zA-Z\\d]-*)*[a-zA-Z\\d]+)' +
-      // Domain name
-      '(?:\\.[a-zA-Z\\d]+(?:-[a-zA-Z\\d]+)*)*' +
-      // TLD identifier
-      '(?:\\.(?:[a-zA-Z]{2,}))' +
-      ')' +
-      // Port number (optional)
-      '(?::\\d{2,5})?' +
-      // Resource path (optional)
-      '(?:/\\S*)?' +
-      '$', 'i'
+        // Protocol identifier (required)
+        '(?:(?:https?|ftp)://)' +
+        // User:Pass authentication (optional)
+        '(?:\\S+(?::\\S*)?@)?' +
+        '(?:' +
+        // IP address exclusion (private & local networks)
+        '(?!(?:10|127)(?:\\.\\d{1,3}){3})' +
+        '(?!(?:169\\.254|192\\.168)(?:\\.\\d{1,3}){2})' +
+        '(?!172\\.(?:1[6-9]|2\\d|3[0-1])(?:\\.\\d{1,3}){2})' +
+        // IP address dotted notation octets
+        '(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])' +
+        '(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}' +
+        '(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-5]))' +
+        '|' +
+        // Hostname
+        '(?:(?:[a-zA-Z\\d]-*)*[a-zA-Z\\d]+)' +
+        // Domain name
+        '(?:\\.[a-zA-Z\\d]+(?:-[a-zA-Z\\d]+)*)*' +
+        // TLD identifier
+        '(?:\\.(?:[a-zA-Z]{2,}))' +
+        ')' +
+        // Port number (optional)
+        '(?::\\d{2,5})?' +
+        // Resource path (optional)
+        '(?:/\\S*)?' +
+        '$',
+      'i'
     );
 
     const result = urlPattern.test(url);
@@ -156,8 +159,8 @@ class Utils {
   }
 
   /**
- * Gets the date in DD/MM/YYYY format for appending to various file names
- */
+   * Gets the date in DD/MM/YYYY format for appending to various file names
+   */
   static getDate() {
     const dateObj = new Date();
     const timeZone = Session.getScriptTimeZone();
@@ -167,10 +170,10 @@ class Utils {
   }
 
   /**
- * Validates if current sheet is admin sheet
- * @param {boolean} throwError - Whether to throw error or just log warning
- * @returns {boolean} True if admin sheet
- */
+   * Validates if current sheet is admin sheet
+   * @param {boolean} throwError - Whether to throw error or just log warning
+   * @returns {boolean} True if admin sheet
+   */
   static validateIsAdminSheet(throwError = true) {
     const isAdmin = configurationManager.getIsAdminSheet();
     if (!isAdmin) {
@@ -187,24 +190,19 @@ class Utils {
   }
 
   /**
- * Converts a number of days into a future date.
- *
- * @param {number} days - The number of days into the future.
- * @returns {Date} - A Date object representing the future date.
- */
+   * Converts a number of days into a future date.
+   *
+   * @param {number} days - The number of days into the future.
+   * @returns {Date} - A Date object representing the future date.
+   */
   static getFutureDate(days) {
     if (typeof days !== 'number' || days < 0) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logAndThrowError("Days must be a non-negative number.");
+      progressTracker.logAndThrowError('Days must be a non-negative number.');
     }
 
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
     return futureDate;
   }
-
-
-
-
 }
-

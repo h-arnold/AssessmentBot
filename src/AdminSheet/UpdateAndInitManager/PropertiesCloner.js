@@ -11,7 +11,7 @@ class PropertiesCloner extends BaseSheetManager {
    */
   constructor(sheet = 'propertiesStore', spreadSheetId = null) {
     super(sheet, spreadSheetId); // calls BaseSheetManager constructor
-    
+
     // Retrieve references to Document and Script properties upfront
     this.docProperties = PropertiesService.getDocumentProperties();
     this.scriptProperties = PropertiesService.getScriptProperties();
@@ -33,7 +33,7 @@ class PropertiesCloner extends BaseSheetManager {
     // Document Properties
     if (serialiseDocProps) {
       const docKeys = this.docProperties.getKeys();
-      docKeys.forEach(key => {
+      docKeys.forEach((key) => {
         // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
         // Skip 'revokeAuthTriggerSet' for the same reason. Otherwise an auth revocation trigger won't be created.
         if (key !== 'scriptAuthorised' || key !== 'revokeAuthTriggerSet') {
@@ -45,17 +45,18 @@ class PropertiesCloner extends BaseSheetManager {
     // Script Properties
     if (serialiseScriptProps) {
       const scriptKeys = this.scriptProperties.getKeys();
-      scriptKeys.forEach(key => {
-      
-      // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
-      if (key !== 'scriptAuthorised') {
-        data.push(['SCRIPT', key, this.scriptProperties.getProperty(key)]);
-      }
+      scriptKeys.forEach((key) => {
+        // Skip 'scriptAuthorised' because this prevents the initialisation routine from working after the script has been updated and a new one needs to be authorised.
+        if (key !== 'scriptAuthorised') {
+          data.push(['SCRIPT', key, this.scriptProperties.getProperty(key)]);
+        }
       });
     }
 
     if (!serialiseDocProps && !serialiseScriptProps) {
-      console.log('You have selected false for serialising document and script properties so nothing will be saved.');
+      console.log(
+        'You have selected false for serialising document and script properties so nothing will be saved.'
+      );
       return;
     }
 
@@ -74,15 +75,15 @@ class PropertiesCloner extends BaseSheetManager {
     // Remove the header row
     const rows = allValues.slice(1);
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const [type, key, value] = row;
       // Skip 'scriptAuthorised' property and 'revokeAuthTriggerSet'.
       if (key === 'scriptAuthorised' || key === 'revokeAuthTriggerSet') return;
-      
+
       if (type === 'DOCUMENT') {
-      this.docProperties.setProperty(key, value);
+        this.docProperties.setProperty(key, value);
       } else if (type === 'SCRIPT') {
-      this.scriptProperties.setProperty(key, value);
+        this.scriptProperties.setProperty(key, value);
       }
     });
 

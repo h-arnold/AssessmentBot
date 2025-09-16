@@ -1,6 +1,6 @@
 /**
  * BaseUpdateAndInit Class
- * 
+ *
  * Serves as the superclass for both UpdateManager and FirstRunManager.
  * Contains shared attributes and common functionality such as:
  * - Initialising the active sheet and UI manager.
@@ -16,7 +16,7 @@ class BaseUpdateAndInit {
     // Set up common properties
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();
     this.uiManager = UIManager.getInstance();
-    this.destinationFolderId = ""; // to be set later from configuration or during the process
+    this.destinationFolderId = ''; // to be set later from configuration or during the process
     this.versionNo = '0.7.1';
     // This needs to before getting the new template Ids otherwise they'll stay with whatever value was set before.
     this.versionDetails = this.fetchVersionDetails();
@@ -45,22 +45,22 @@ class BaseUpdateAndInit {
   fetchVersionDetails() {
     const updateDetailsUrl = configurationManager.getUpdateDetailsUrl();
     if (!updateDetailsUrl) {
-      const msg = "Update_Details_Url not found in configuration.";
+      const msg = 'Update_Details_Url not found in configuration.';
       console.error(msg);
       throw new Error(msg);
     }
 
     const request = {
       url: updateDetailsUrl,
-      method: "GET",
-      muteHttpExceptions: true
+      method: 'GET',
+      muteHttpExceptions: true,
     };
 
     const requestManager = new BaseRequestManager();
     const response = requestManager.sendRequestWithRetries(request, 1);
 
     if (!response) {
-      const msg = "Failed to fetch assessmentBotVersions.json after 1 attempt.";
+      const msg = 'Failed to fetch assessmentBotVersions.json after 1 attempt.';
       console.error(msg);
       throw new Error(msg);
     }
@@ -80,7 +80,7 @@ class BaseUpdateAndInit {
       throw new Error(errorMessage);
     }
   }
-  
+
   /**
    * Clones sheets provided in the sheetsObject using the specified template.
    * @param {Object} sheetsObject - An object where keys are names and values have at least an "originalSheetId".
@@ -90,29 +90,36 @@ class BaseUpdateAndInit {
    * @description For each class name in the sheetsObject, creates a new sheet
    * based on the template and copies all properties from the source sheet.
    */
-  cloneSheets(sheetsObject, destinationFolderId = this.destinationFolderId, templateSheetId = this.assessmentRecordTemplateId) {
-    const numberOfSheets = sheetsObject.length
-    let sheetsCount = 0
-    Object.keys(sheetsObject).forEach(className => {
+  cloneSheets(
+    sheetsObject,
+    destinationFolderId = this.destinationFolderId,
+    templateSheetId = this.assessmentRecordTemplateId
+  ) {
+    const numberOfSheets = sheetsObject.length;
+    let sheetsCount = 0;
+    Object.keys(sheetsObject).forEach((className) => {
       if (this.progressTracker) {
-        this.progressTracker.updateProgress(`Cloning the assessment record for ${className}. ( ${sheetsCount} of ${numberOfSheets} )`, false);
+        this.progressTracker.updateProgress(
+          `Cloning the assessment record for ${className}. ( ${sheetsCount} of ${numberOfSheets} )`,
+          false
+        );
       }
-      
+
       const newSheet = SheetCloner.cloneEverything({
-        "templateSheetId": templateSheetId,
-        "newSpreadsheetName": className,
-        "sourceSpreadsheetId": sheetsObject[className].originalSheetId,
-        "copyDocProps": true,
-        "copyScriptProps": true,
-        "destinationFolderId": destinationFolderId
+        templateSheetId: templateSheetId,
+        newSpreadsheetName: className,
+        sourceSpreadsheetId: sheetsObject[className].originalSheetId,
+        copyDocProps: true,
+        copyScriptProps: true,
+        destinationFolderId: destinationFolderId,
       });
-      
+
       sheetsObject[className].newSheetId = newSheet.fileId;
     });
-    
+
     return sheetsObject;
   }
-  
+
   /**
    * Returns the URL for the given assessment record template.
    * @param {string} assessmentRecordTemplateId - The template ID.
@@ -122,7 +129,7 @@ class BaseUpdateAndInit {
     const template = SpreadsheetApp.openById(assessmentRecordTemplateId);
     return template.getUrl();
   }
-  
+
   /**
    * Copies the latest Assessment Record template into the destination folder.
    * @returns {string} The new template's file ID.
@@ -134,9 +141,9 @@ class BaseUpdateAndInit {
       this.destinationFolderId,
       `Assessment Record Template v${this.versionNo}`
     );
-    return this.assessmentRecordTemplateId = copiedTemplate.fileId;
+    return (this.assessmentRecordTemplateId = copiedTemplate.fileId);
   }
-  
+
   /**
    * Retrieves the latest Assessment Record template ID from the version details.
    * @param {string} [versionNo=this.versionNo]
@@ -144,12 +151,16 @@ class BaseUpdateAndInit {
    * @throws {Error} if the template is not found.
    */
   getLatestAssessmentRecordTemplateId(versionNo = this.versionNo) {
-    if (!this.versionDetails || !this.versionDetails[versionNo] || !this.versionDetails[versionNo].assessmentRecordTemplateFileId) {
+    if (
+      !this.versionDetails ||
+      !this.versionDetails[versionNo] ||
+      !this.versionDetails[versionNo].assessmentRecordTemplateFileId
+    ) {
       throw new Error(`Assessment Record template for v${versionNo} not found.`);
     }
     return this.versionDetails[versionNo].assessmentRecordTemplateFileId;
   }
-  
+
   /**
    * Retrieves the latest Admin Sheet template ID from the version details.
    * @param {string} [versionNo=this.versionNo]
@@ -157,12 +168,16 @@ class BaseUpdateAndInit {
    * @throws {Error} if the template is not found.
    */
   getLatestAdminSheetTemplateId(versionNo = this.versionNo) {
-    if (!this.versionDetails || !this.versionDetails[versionNo] || !this.versionDetails[versionNo].adminSheetFileId) {
+    if (
+      !this.versionDetails ||
+      !this.versionDetails[versionNo] ||
+      !this.versionDetails[versionNo].adminSheetFileId
+    ) {
       throw new Error(`Admin Sheet template for v${versionNo} not found.`);
     }
     return this.versionDetails[versionNo].adminSheetFileId;
   }
-  
+
   /**
    * Retrieves and validates the template file IDs for the current version.
    * Validates the retrieved file IDs using DriveManager.isValidGoogleDriveFileId().
@@ -173,7 +188,7 @@ class BaseUpdateAndInit {
     const versionData = this.fetchVersionDetails();
 
     if (!versionData) {
-      console.error("Failed to retrieve version details.");
+      console.error('Failed to retrieve version details.');
       return;
     }
 
@@ -206,7 +221,7 @@ class BaseUpdateAndInit {
 
     console.log(`Successfully set the file IDs for version ${versionNumber}.`);
   }
-  
+
   /**
    * Saves selected state properties to the Script Properties so that they can be restored
    * on subsequent calls.
@@ -216,12 +231,15 @@ class BaseUpdateAndInit {
       versionNo: this.versionNo,
       destinationFolderId: this.destinationFolderId,
       assessmentRecordTemplateId: this.assessmentRecordTemplateId,
-      adminSheetTemplateId: this.adminSheetTemplateId
+      adminSheetTemplateId: this.adminSheetTemplateId,
     };
-    PropertiesService.getScriptProperties().setProperty('baseAdminManagerState', JSON.stringify(state));
-    console.log("BaseAdminManager state saved: " + JSON.stringify(state));
+    PropertiesService.getScriptProperties().setProperty(
+      'baseAdminManagerState',
+      JSON.stringify(state)
+    );
+    console.log('BaseAdminManager state saved: ' + JSON.stringify(state));
   }
-  
+
   /**
    * Loads state properties from the Script Properties into the current instance.
    */
@@ -233,13 +251,11 @@ class BaseUpdateAndInit {
       this.destinationFolderId = state.destinationFolderId;
       this.assessmentRecordTemplateId = state.assessmentRecordTemplateId;
       this.adminSheetTemplateId = state.adminSheetTemplateId;
-      console.log("BaseAdminManager state loaded: " + JSON.stringify(state));
+      console.log('BaseAdminManager state loaded: ' + JSON.stringify(state));
       // Removes state from Script Properties after loading.
       PropertiesService.getScriptProperties().deleteProperty('baseAdminManagerState');
     } else {
-      console.warn("No saved state found for BaseAdminManager.");
+      console.warn('No saved state found for BaseAdminManager.');
     }
   }
 }
-
-

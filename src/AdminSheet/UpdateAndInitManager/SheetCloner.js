@@ -1,6 +1,6 @@
 /**
  * SheetCloner Class
- * 
+ *
  * This class should only be run from an admin sheet. An error will be thrown if it's run from an assessment record.
  * Manages the process of cloning spreadsheets, including:
  * 1) Creating a copy of a template spreadsheet.
@@ -9,8 +9,7 @@
  */
 class SheetCloner {
   constructor() {
-
-    // Ensure this is only run from the admin sheet. Throws an error if not.   
+    // Ensure this is only run from the admin sheet. Throws an error if not.
     Utils.validateIsAdminSheet(true);
   }
 
@@ -48,33 +47,29 @@ class SheetCloner {
 
     const sourceSheets = source.getSheets();
 
-    sourceSheets.forEach(sheet => {
+    sourceSheets.forEach((sheet) => {
       const sheetName = sheet.getName();
 
-    
-      if (sheetName !== "Sheet1") {
+      if (sheetName !== 'Sheet1') {
+        const newSheet = sheet.copyTo(target);
+        // Rename the sheet in the target to match the source (copyTo calls it "Copy of X" by default)
+        try {
+          newSheet.setName(sheetName);
+        } catch (e) {
+          // If a sheet of the same name already exists, rename it and then rename the new copy to the correct name.
+          if (e.message.indexOf(`already exists. Please enter another name.`) !== -1) {
+            const targetSheet = target.getSheetByName(sheetName);
+            const date = Utils.getDate();
+            targetSheet.setName(`${sheetName} ${date}`);
 
-      const newSheet = sheet.copyTo(target);
-      // Rename the sheet in the target to match the source (copyTo calls it "Copy of X" by default)
-      try {
-        newSheet.setName(sheetName);
-      } catch (e) {
-
-        // If a sheet of the same name already exists, rename it and then rename the new copy to the correct name.
-        if (e.message.indexOf(`already exists. Please enter another name.`) !== -1) {
-          const targetSheet = target.getSheetByName(sheetName);
-          const date = Utils.getDate();
-          targetSheet.setName(`${sheetName} ${date}`);
-
-          newSheet.setName(sheetName)
-        } else {
-          throw new Error(e.message);
+            newSheet.setName(sheetName);
+          } else {
+            throw new Error(e.message);
+          }
         }
-      }
       }
     });
   }
-
 
   /**
    * End-to-end method to clone a spreadsheet, including:
@@ -87,7 +82,7 @@ class SheetCloner {
    * @param {string} params.newSpreadsheetName - The name for the new spreadsheet.
    * @param {string} params.sourceSpreadsheetId - The ID of the spreadsheet whose sheets you want to clone.
    * @param {string} [params.destinationFolderId] - The ID of the folder to place the new copy. Optional.
-   * @returns {{ file: GoogleAppsScript.Drive.File, fileId: string }} 
+   * @returns {{ file: GoogleAppsScript.Drive.File, fileId: string }}
    *     An object with the new file object and its ID.
    */
   static cloneEverything(params) {
@@ -104,7 +99,7 @@ class SheetCloner {
 
     return {
       file: newFile,
-      fileId: newSpreadsheetId
+      fileId: newSpreadsheetId,
     };
   }
 }

@@ -13,9 +13,21 @@
  * @param {string} referenceSlideId - The ID of the reference slide.
  * @param {string} emptySlideId - The ID of the empty slide.
  */
-function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId) {
+function saveStartAndShowProgress(
+  assignmentTitle,
+  slideIds,
+  assignmentId,
+  referenceSlideId,
+  emptySlideId
+) {
   const controller = new AssignmentController();
-  return controller.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, emptySlideId);
+  return controller.saveStartAndShowProgress(
+    assignmentTitle,
+    slideIds,
+    assignmentId,
+    referenceSlideId,
+    emptySlideId
+  );
 }
 
 /**

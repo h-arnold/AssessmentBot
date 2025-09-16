@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+coverage/
+.clasp.json
+/.github/
+docs/images/
+**/*.min.js
+*.lock

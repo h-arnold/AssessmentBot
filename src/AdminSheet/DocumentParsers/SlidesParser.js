@@ -1,6 +1,6 @@
 /**
  * SlidesParser Class
- * 
+ *
  * Handles extraction and processing of content from Google Slides presentations.
  * Generates slide export URLs.
  * Handles per-document rate limiting.
@@ -21,100 +21,16 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The URL to export the slide as an image.
    */
   generateSlideImageUrl(documentId, pageId) {
-
     const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
 
     if (Utils.isValidUrl(url)) {
       return url;
     } else {
-      throw new Error(`Invalid URL produced.`)
+      throw new Error(`Invalid URL produced.`);
     }
   }
 
-  /**
-   * Extracts Task instances from a Google Slides presentation.
-   * Implementation of the abstract method from DocumentParser.
-   * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
-   * @return {Task[]} - An array of Task instances extracted from the slides.
-   */
-  extractTasks(documentId, contentType = null) {
-    const presentation = SlidesApp.openById(documentId);
-    const slides = presentation.getSlides();
-    let tasks = [];
-    let lastTask = null; // To keep track of the last parsed Task for assigning notes
-
-    slides.forEach((slide) => {
-      const pageElements = slide.getPageElements();
-      const currentPageId = this.getPageId(slide); // Retrieve page ID using helper
-
-      pageElements.forEach(pageElement => {
-        const description = pageElement.getDescription();
-
-        if (!description || description.length === 0) {
-          return; // Skip elements without descriptions
-        }
-
-        const tag = description.charAt(0);
-        const key = description.substring(1).trim(); // Remove the tag and trim
-
-        switch (tag) {
-          case '#': // Text-Based Task Title
-            // Existing logic for handling text-based task titles
-            let content = '';
-            let taskType = '';
-            const type = pageElement.getPageElementType();
-
-            if (type === SlidesApp.PageElementType.SHAPE) {
-              content = this.extractTextFromShape(pageElement.asShape());
-              taskType = "Text"; // Capitalize to match expected values
-            } else if (type === SlidesApp.PageElementType.TABLE) {
-              content = this.extractTextFromTable(pageElement.asTable());
-              taskType = "Table";
-            } else {
-              console.log(`Unsupported PageElementType for text-based task title: ${type}`);
-              return; // Skip unsupported types
-            }
-
-            // Parse the task and add to the tasks array
-            const task = this.parseTask(key, content, currentPageId, taskType, contentType);
-            if (task) {
-              tasks.push(task);
-              lastTask = task; // Update the lastTask reference
-            }
-            break;
-
-          case '^': // Notes
-            if (lastTask) {
-              const notesContent = this.extractTextFromPageElement(pageElement);
-              lastTask.taskNotes = notesContent;
-            } else {
-              console.warn(`Note found without an associated task. Description: ${description}`);
-            }
-            break;
-
-         case '~': // Entire Slide Image
-            // For slide images, generate the slide export URL instead of fetching the image Blob
-            const slideImageUrl = this.generateSlideImageUrl(documentId, currentPageId);
-            const slideImageTask = this.parseTask(key, slideImageUrl, currentPageId, "Image", contentType);
-            if (slideImageTask) {
-              tasks.push(slideImageTask);
-              lastTask = slideImageTask; // Update the lastTask reference
-            } else {
-              console.log(`Failed to create task for page ID ${currentPageId}`);
-            }
-            break;
-
-          default:
-            // Unsupported tag
-            console.log(`Unsupported tag "${tag}" in description: ${description}`);
-            break;
-        }
-      });
-    });
-
-    return tasks;
-  }
+  // LEGACY extractTasks removed in refactor – replaced by extractTaskDefinitions.
 
   /**
    * Extracts Task instances from a Google Slides presentation.
@@ -124,50 +40,209 @@ class SlidesParser extends DocumentParser {
    * @return {Task[]} - An array of Task instances extracted from the slides.
    * @deprecated Use extractTasks() instead
    */
-  extractTasksFromSlides(documentId, contentType = null) { // Default to null
-    this.extractTasks(documentId, contentType);
+  extractTasksFromSlides(documentId, contentType = null) {
+    // Default to null
+    // Legacy wrapper removed in Phase 2 refactor. Keep as no-op for compatibility.
+    // Prefer using extractTaskDefinitions/extractSubmissionArtifacts.
+    return null;
   }
 
+  // ---- Phase 2 API ----
+  /**
+   * Build TaskDefinitions from reference/template slide decks.
+   * Tags:
+   *   #TitleElement  (shape/table) -> creates/updates TaskDefinition
+   *   ^NotesElement  -> attaches taskNotes
+   *   ~ImageId       -> adds Image artifact using slide export URL
+   * Page ordering establishes TaskDefinition.index.
+   */
+  extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
+    const referencePresentation = SlidesApp.openById(referenceDocumentId);
+    const templatePresentation = templateDocumentId ? SlidesApp.openById(templateDocumentId) : null;
+    const referenceSlides = referencePresentation.getSlides();
+    const templateSlides = templatePresentation ? templatePresentation.getSlides() : [];
+
+    // Map: key = title + '|' + pageId (slide id) for stability
+    const definitionMap = new Map();
+    let order = 0;
+
+    const processSlides = (slides, role) => {
+      slides.forEach((slide) => {
+        const pageId = this.getPageId(slide);
+        const pageElements = slide.getPageElements();
+        pageElements.forEach((pageElement) => {
+          const description = pageElement.getDescription();
+          if (!description || !description.length) return;
+          const tag = description.charAt(0);
+          const tagText = description.substring(1).trim();
+          switch (tag) {
+            case '#': {
+              // title element -> create/find TaskDefinition
+              const taskTitle = tagText;
+              const definitionKey = taskTitle + '|' + pageId;
+              let definition = definitionMap.get(definitionKey);
+              if (!definition) {
+                definition = new TaskDefinition({ taskTitle, pageId });
+                definition.index = order++;
+                definitionMap.set(definitionKey, definition);
+              }
+              // Extract content (text/table) as primitive
+              let elementContent = '';
+              const elementType = pageElement.getPageElementType();
+              let artifactType = 'TEXT';
+              if (elementType === SlidesApp.PageElementType.SHAPE) {
+                elementContent = this.extractTextFromShape(pageElement.asShape());
+                artifactType = 'TEXT';
+              } else if (elementType === SlidesApp.PageElementType.TABLE) {
+                // Return raw 2D cell array so TableTaskArtifact can normalise instead of markdown string
+                elementContent = this.extractTableCells(pageElement.asTable());
+                artifactType = 'TABLE';
+              } else {
+                return;
+              }
+              if (role === 'reference') {
+                definition.addReferenceArtifact({
+                  type: artifactType,
+                  pageId,
+                  content: elementContent,
+                  taskIndex: definition.index,
+                });
+              } else if (role === 'template') {
+                definition.addTemplateArtifact({
+                  type: artifactType,
+                  pageId,
+                  content: elementContent,
+                  taskIndex: definition.index,
+                });
+              }
+              break;
+            }
+            case '^': {
+              // notes
+              // Attach to existing definition matching same page by last created definition with pageId
+              // Simpler: find any definition with pageId (rare multiple) and append notes
+              for (const definition of definitionMap.values()) {
+                if (definition.pageId === pageId) {
+                  const notesContent = this.extractTextFromPageElement(pageElement);
+                  definition.taskNotes =
+                    (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
+                }
+              }
+              break;
+            }
+            case '~': {
+              // image artifact for whole slide
+              const taskTitle = tagText; // image title key
+              const definitionKey = taskTitle + '|' + pageId;
+              let definition = definitionMap.get(definitionKey);
+              if (!definition) {
+                definition = new TaskDefinition({ taskTitle, pageId });
+                definition.index = order++;
+                definitionMap.set(definitionKey, definition);
+              }
+              const url = this.generateSlideImageUrl(
+                role === 'reference' ? referenceDocumentId : templateDocumentId,
+                pageId
+              );
+              const params = {
+                type: 'IMAGE',
+                pageId,
+                metadata: { sourceUrl: url },
+                content: null,
+                taskIndex: definition.index,
+              };
+              if (role === 'reference') definition.addReferenceArtifact(params);
+              else definition.addTemplateArtifact(params);
+              break;
+            }
+            default:
+              break;
+          }
+        });
+      });
+    };
+
+    processSlides(referenceSlides, 'reference');
+    if (templateSlides.length) processSlides(templateSlides, 'template');
+
+    return Array.from(definitionMap.values());
+  }
 
   /**
-  * Parses raw task content to create a Task instance.
-  * @param {string} key - The task key extracted from the slide.
-  * @param {string} content - The raw content of the task (string or URL).
-  * @param {string} pageId - The ID of the page where the task is located (slide ID for presentations or sheet tab ID for spreadsheets).
-  * @param {string} taskType - The type of the task: "Text", "Table", "Image".
-  * @param {string|null} contentType - Type of content: "reference", "template", or null for default.
-  * @return {Task|null} - The Task instance or null if parsing fails.
-  * @deprecated Use the superclass parseTask() method instead
-  */
-  parseTask(key, content, pageId, taskType, contentType) {
-    let taskReference = null;
-    let templateContent = null;
-    let taskNotes = null;
-    let contentHash = null;
-    let templateContentHash = null;
-
-    if (contentType === "reference") {
-      taskReference = content;
-      contentHash = Utils.generateHash(content);
-    } else if (contentType === "template") {
-      templateContent = content;
-      templateContentHash = Utils.generateHash(content);
-    } else {
-      taskReference = content;
-      contentHash = Utils.generateHash(content);
-    }
-
-    return new Task(
-      key,
-      taskType,
-      pageId,
-      null,          // imageCategory
-      taskReference,
-      taskNotes,     // Will be assigned separately if present
-      templateContent,
-      contentHash,
-      templateContentHash
-    );
+   * Extract student submission artifacts as primitives.
+   * Returns array of { taskId, pageId, content, metadata }
+   */
+  extractSubmissionArtifacts(documentId, taskDefs) {
+    const presentation = SlidesApp.openById(documentId);
+    const slides = presentation.getSlides();
+    const artifacts = [];
+    // Build lookup by (pageId) => list of definitions
+    const defsByPage = {};
+    taskDefs.forEach((d) => {
+      if (!defsByPage[d.pageId]) defsByPage[d.pageId] = [];
+      defsByPage[d.pageId].push(d);
+    });
+    slides.forEach((slide) => {
+      const pageId = this.getPageId(slide);
+      const defs = defsByPage[pageId];
+      if (!defs || !defs.length) return;
+      const pageElements = slide.getPageElements();
+      // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
+      defs.forEach((def) => {
+        const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
+        if (!primary) return;
+        const typeNeeded = primary.getType();
+        let extracted = null;
+        if (typeNeeded === 'IMAGE') {
+          // For images we just supply metadata with sourceUrl again
+          extracted = {
+            taskId: def.getId(),
+            pageId,
+            content: null,
+            metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) },
+          };
+          artifacts.push(extracted);
+          return;
+        }
+        // Traverse page elements to find first matching element (# tag with same title)
+        for (const pe of pageElements) {
+          const desc = pe.getDescription();
+          if (!desc) continue;
+          const tag = desc.charAt(0);
+          const key = desc.substring(1).trim();
+          if (tag !== '#' && tag !== '~') continue;
+          if (key !== def.taskTitle) continue;
+          if (
+            typeNeeded === 'TEXT' &&
+            pe.getPageElementType() === SlidesApp.PageElementType.SHAPE
+          ) {
+            extracted = {
+              taskId: def.getId(),
+              pageId,
+              content: this.extractTextFromShape(pe.asShape()),
+            };
+            break;
+          }
+          if (
+            typeNeeded === 'TABLE' &&
+            pe.getPageElementType() === SlidesApp.PageElementType.TABLE
+          ) {
+            // Provide raw 2D cell array for table submission content
+            extracted = {
+              taskId: def.getId(),
+              pageId,
+              content: this.extractTableCells(pe.asTable()),
+            };
+            break;
+          }
+        }
+        if (extracted) artifacts.push(extracted);
+        else {
+          artifacts.push({ taskId: def.getId(), pageId, content: null });
+        }
+      });
+    });
+    return artifacts;
   }
 
   /**
@@ -187,7 +262,7 @@ class SlidesParser extends DocumentParser {
    */
   extractTextFromShape(shape) {
     if (!shape || !shape.getText) {
-      console.log("The provided element is not a shape or does not contain text.");
+      console.log('The provided element is not a shape or does not contain text.');
       return '';
     }
 
@@ -195,56 +270,7 @@ class SlidesParser extends DocumentParser {
     return text.trim();
   }
 
-  /**
-   * Converts a Google Slides Table to a Markdown-formatted string.
-   * @param {GoogleAppsScript.Slides.Table} table - The table element to convert.
-   * @return {string} - The Markdown-formatted table.
-   * @deprecated Use the superclass convertToMarkdownTable() method instead
-   */
-  convertTableToMarkdown(table) {
-    if (!table || !(table.getNumRows() && table.getNumColumns())) {
-      console.log("The provided element is not a table or is empty.");
-      return '';
-    }
-
-    const numRows = table.getNumRows();
-    const numCols = table.getNumColumns();
-    let markdownTable = '';
-
-    // Extract all rows' data
-    let rows = [];
-    for (let i = 0; i < numRows; i++) {
-      let row = [];
-      for (let j = 0; j < numCols; j++) {
-        const cell = table.getCell(i, j);
-        const text = cell.getText().asString().trim();
-        // Escape pipe characters in Markdown
-        const escapedText = text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
-        row.push(escapedText);
-      }
-      rows.push(row);
-    }
-
-    if (rows.length === 0) return '';
-
-    // Assume first row as header
-    const header = rows[0];
-    const separator = header.map(() => '---');
-    const dataRows = rows.slice(1);
-
-    // Create header row
-    markdownTable += '| ' + header.join(' | ') + ' |\n';
-
-    // Create separator row
-    markdownTable += '| ' + separator.join(' | ') + ' |\n';
-
-    // Create data rows
-    dataRows.forEach(row => {
-      markdownTable += '| ' + row.join(' | ') + ' |\n';
-    });
-
-    return markdownTable;
-  }
+  // Legacy convertTableToMarkdown removed; use DocumentParser.convertToMarkdownTable(tableData)
 
   /**
    * Extracts text from a table element and converts it to Markdown.
@@ -252,7 +278,40 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The extracted Markdown text from the table.
    */
   extractTextFromTable(table) {
-    return this.convertTableToMarkdown(table);
+    // Delegate to DocumentParser helper which accepts 2D arrays. We extract cells then convert.
+    const cells = this.extractTableCells(table);
+    return super.convertToMarkdownTable(cells);
+  }
+
+  /**
+   * Extract raw 2D cell array from a Slides table (preferred for TABLE artifacts).
+   * @param {GoogleAppsScript.Slides.Table} table
+   * @return {Array<Array<string|null>>} Cell values trimmed; empty cells as '' (later normalised to null by TableTaskArtifact)
+   */
+  extractTableCells(table) {
+    try {
+      if (!table || !(table.getNumRows && table.getNumColumns)) return [];
+      const rows = [];
+      const numRows = table.getNumRows();
+      const numCols = table.getNumColumns();
+      for (let r = 0; r < numRows; r++) {
+        const row = [];
+        for (let c = 0; c < numCols; c++) {
+          try {
+            const cell = table.getCell(r, c);
+            const text = cell && cell.getText ? cell.getText().asString().trim() : '';
+            row.push(text);
+          } catch (e) {
+            row.push('');
+          }
+        }
+        rows.push(row);
+      }
+      return rows;
+    } catch (e) {
+      console.error('extractTableCells failed', e);
+      return [];
+    }
   }
 
   /**

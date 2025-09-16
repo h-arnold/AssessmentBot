@@ -1,12 +1,12 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
-// Below are placeholder functions which call the respective global function from the library. 
-// Where you see a `return` it is because a value needs to be passed to the frontend HTML 
+// Below are placeholder functions which call the respective global function from the library.
+// Where you see a `return` it is because a value needs to be passed to the frontend HTML
 // code.
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 // Initialisation functions
 
-// 
+//
 
 function onOpen() {
   AssessmentBot.onOpen();
@@ -26,7 +26,7 @@ function assessAssignment() {
 
 // Gets a list of all assignments set in the Google Classroom associated with the Google Sheet.
 function getAssignments(courseId) {
-  return AssessmentBot.getAssignments(courseId)
+  return AssessmentBot.getAssignments(courseId);
 }
 
 // Helper function for the above
@@ -34,15 +34,14 @@ function createAssignmentDropdownHtml(assignments) {
   return AssessmentBot.createAssignmentDropdownHtml(assignments);
 }
 
-
 // Opens the reference slide modal which comes after the assignment selection
 function openReferenceSlideModal(assignmentId) {
-  return AssessmentBot.openReferenceSlideModal(assignmentId)
+  return AssessmentBot.openReferenceSlideModal(assignmentId);
 }
 
 // Helper function to generate and display html for the reference slide modal
 function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
-  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId)
+  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId);
 }
 
 /**
@@ -52,7 +51,7 @@ function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
  * @return {void}
  */
 function saveSlideIdsForAssignment(assignmentId, documentIds) {
-  return AssessmentBot.saveDocumentIdsForAssignment(assignmentId, documentIds)
+  return AssessmentBot.saveDocumentIdsForAssignment(assignmentId, documentIds);
 }
 
 /**
@@ -63,8 +62,20 @@ function saveSlideIdsForAssignment(assignmentId, documentIds) {
  * @param {string} referenceSlideId - The ID of the reference slide.
  * @param {string} templateSlideId - The ID of the template slide.
  */
-function saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId) {
-  AssessmentBot.saveStartAndShowProgress(assignmentTitle, slideIds, assignmentId, referenceSlideId, templateSlideId);
+function saveStartAndShowProgress(
+  assignmentTitle,
+  slideIds,
+  assignmentId,
+  referenceSlideId,
+  templateSlideId
+) {
+  AssessmentBot.saveStartAndShowProgress(
+    assignmentTitle,
+    slideIds,
+    assignmentId,
+    referenceSlideId,
+    templateSlideId
+  );
 }
 
 /**
@@ -96,13 +107,11 @@ function showClassroomDropdown() {
 }
 
 function saveClassroom(courseName, courseId) {
-  AssessmentBot.saveClassroom(courseName, courseId)
+  AssessmentBot.saveClassroom(courseName, courseId);
 }
-
 
 function removeTrigger(functionName) {
   AssessmentBot.removeTrigger(functionName);
-
 }
 
 // Is the function without parameters to call processSelectedAssignment. Retrieves assignment details from document properties.
@@ -112,7 +121,7 @@ function triggerProcessSelectedAssignment() {
 
 // Called by the above with the retrieved parameters.
 function processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId) {
-  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId)
+  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId);
 }
 
 //
@@ -123,7 +132,6 @@ function openConfigurationDialog() {
   AssessmentBot.showConfigurationDialog();
 }
 
-
 function saveConfiguration(formData) {
   return AssessmentBot.saveConfiguration(formData);
 }
@@ -131,4 +139,3 @@ function saveConfiguration(formData) {
 function getConfiguration() {
   return AssessmentBot.getConfiguration();
 }
-
