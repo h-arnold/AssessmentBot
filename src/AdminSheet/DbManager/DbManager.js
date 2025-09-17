@@ -7,26 +7,29 @@
  * - Exposes convenient helpers for fetching and saving collections
  * - Centralises error handling via ProgressTracker
  */
-class DbManager extends BaseSingleton {
-  // Follow BaseSingleton convention: constructor receives (isSingletonCreator, options)
-  constructor(isSingletonCreator = false, options = {}) {
-    super();
-    if (!isSingletonCreator) {
-      // Defensive: discourage direct construction
-      throw new Error('DbManager must be created via DbManager.getInstance()');
-    }
-    this.progressTracker = ProgressTracker.getInstance();
-    this._db = null;
-    this._options = options; // allow injection/overrides for tests or advanced scenarios
+class DbManager {
+  constructor(options = {}) {
+    if (!DbManager._instance) {
+      this.progressTracker = ProgressTracker.getInstance();
+      this._db = null;
+      this._options = options; // allow injection/overrides for tests or advanced scenarios
 
-    // Validate library presence up-front (fail-fast), but don't initialise DB yet
-    this._assertLibraryAvailable();
+      // Validate library presence up-front (fail-fast), but don't initialise DB yet
+      this._assertLibraryAvailable();
+
+      DbManager._instance = this;
+    }
   }
 
   /**
    * Singleton accessor (mirrors style used across the code base)
    */
-  // Inherit BaseSingleton's default factory and getInstance implementation.
+  static getInstance(opts = {}) {
+    if (!DbManager._instance) {
+      DbManager._instance = new DbManager(opts);
+    }
+    return DbManager._instance;
+  }
 
   /**
    * Default configuration values. These will be superseded by future
