@@ -134,7 +134,7 @@ class AssignmentController {
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
     this.progressTracker.updateProgress('Fetching all students.');
-    const students = Student.fetchAllStudents(courseId);
+    const students = ClassroomManager.fetchAllStudents(courseId);
     this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
 
     this.progressTracker.updateProgress('Adding students to the assignment.');
@@ -183,7 +183,7 @@ class AssignmentController {
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
     this.progressTracker.updateProgress('Fetching all students.');
-    const students = Student.fetchAllStudents(courseId);
+    const students = ClassroomManager.fetchAllStudents(courseId);
     this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
 
     this.progressTracker.updateProgress('Adding students to the assignment.');
