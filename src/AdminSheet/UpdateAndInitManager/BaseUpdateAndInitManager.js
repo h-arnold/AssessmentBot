@@ -35,7 +35,7 @@ class BaseUpdateAndInit {
       }
     }
     this.adminSheetTemplateId = null; // will be set from version details
-    this.progressTracker = new ProgressTracker(); // May be used during long-running tasks
+  this.progressTracker = ProgressTracker.getInstance(); // May be used during long-running tasks
   }
 
   /**

@@ -191,7 +191,7 @@ class UpdateManager extends BaseUpdateAndInit {
    * @throws {Error} If any step in the process fails.
    */
   updateAssessmentRecords() {
-    this.progressTracker = new ProgressTracker();
+  this.progressTracker = ProgressTracker.getInstance();
     const uiManager = UIManager.getInstance();
     uiManager.showProgressModal();
 
