@@ -1,11 +1,12 @@
 <!-- UI/AssignmentDropdown.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <base target="_top">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <style>
+  <title>Select Assignment</title>
+  <style>
       .modal-content {
         padding: 20px;
       }
@@ -36,9 +37,9 @@
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {
-        // Initialise Materialise select
+        // Initialise Materialise select (return value intentionally unused)
         var elems = document.querySelectorAll('select');
-        var instances = M.FormSelect.init(elems);
+        M.FormSelect.init(elems);
       });
 
       function go() {
