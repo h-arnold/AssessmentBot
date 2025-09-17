@@ -4,20 +4,16 @@
  */
 class ProgressTracker {
   constructor() {
-    // Ensure only one instance exists (singleton enforcement)
-    if (ProgressTracker._instance) {
-      return ProgressTracker._instance;
-    }
-
     // Initialize properties
     this.properties = PropertiesService.getDocumentProperties();
     this.propertyKey = 'ProgressTracker';
     this.step = 0; // Add step as class attribute
 
-    // Store the instance
-    ProgressTracker._instance = this;
-
-    console.log('ProgressTracker instance created.');
+    // Store the instance if this is the first construction
+    if (!ProgressTracker._instance) {
+      ProgressTracker._instance = this;
+      console.log('ProgressTracker instance created.');
+    }
   }
 
   /**
@@ -27,7 +23,7 @@ class ProgressTracker {
    */
   static getInstance() {
     if (!ProgressTracker._instance) {
-      new ProgressTracker(); // Automatically creates and stores the instance
+      ProgressTracker._instance = new ProgressTracker();
     }
     return ProgressTracker._instance;
   }
@@ -83,13 +79,11 @@ class ProgressTracker {
    */
   resetSteps() {
     this.step = 0;
-    const currentData = this.getCurrentProgress() || {};
-    const updatedData = {
-      ...currentData,
-      step: this.step,
-      timestamp: new Date().toISOString(),
-    };
-    this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
+    // Update stored progress while preserving any existing fields
+    const progress = this.getCurrentProgress() || {};
+    progress.step = this.step;
+    progress.timestamp = new Date().toISOString();
+    this.properties.setProperty(this.propertyKey, JSON.stringify(progress));
     console.log('Steps reset to 0.');
   }
 
@@ -99,6 +93,7 @@ class ProgressTracker {
   complete() {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
+      ...currentData,
       step: this.step,
       completed: true,
       message: 'Task completed successfully.',
@@ -159,30 +154,31 @@ class ProgressTracker {
     // These details are only for developers, not exposed in the UI
     // Format details as strings to avoid serialization issues
     if (typeof extraErrorDetails === 'object') {
-      // If it's an Error object or has a stack property
+      // If it's an Error-like object with a stack, print stack first
       if (extraErrorDetails.stack) {
         console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
-      }
-      // If it's our custom developer details object
-      else if (extraErrorDetails.message && extraErrorDetails.stack) {
-        console.error(`Developer details - Message: ${extraErrorDetails.message}`);
-        console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
+        if (extraErrorDetails.message) {
+          console.error(`Developer details - Message: ${extraErrorDetails.message}`);
+        }
         if (extraErrorDetails.name) {
           console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
         }
+        return;
       }
-      // For other objects, try to stringify them
-      else {
-        try {
-          console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
-        } catch (e) {
-          console.error(`Developer details: [Object could not be stringified]`);
-        }
+
+      // For other objects, try to stringify them safely
+      try {
+        console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
+      } catch (stringifyError) {
+        // If stringify fails, at least log that there was an unserializable object
+        console.error('Developer details: [Object could not be stringified]', extraErrorDetails);
+        console.error('Stringify error:', stringifyError);
       }
-    } else {
-      // For strings or other primitive types
-      console.error(`Developer details: ${extraErrorDetails}`);
+      return;
     }
+
+    // For strings or other primitive types
+    console.error(`Developer details: ${extraErrorDetails}`);
   }
 
   /**
@@ -242,7 +238,6 @@ class ProgressTracker {
   getCurrentProgress() {
     const progressJson = this.properties.getProperty(this.propertyKey);
     if (progressJson) {
-      //console.log('Current progress retrieved.'); //Uncomment to debug
       return JSON.parse(progressJson);
     }
     console.log('No progress data found.');
@@ -283,7 +278,7 @@ class ProgressTracker {
 
     // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
-    if (!progress || !progress.step) {
+    if (!progress?.step) {
       console.log('No step data available.');
       return null;
     }

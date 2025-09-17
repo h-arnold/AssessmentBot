@@ -10,7 +10,7 @@
  * @returns {Object} The current progress data.
  */
 function requestStatus() {
-  const progressTracker = new ProgressTracker();
+  const progressTracker = ProgressTracker.getInstance();
   return progressTracker.getStatus();
 }
 
