@@ -1279,10 +1279,12 @@ describe('ConfigurationManager', () => {
         'https://example.com'
       );
 
-      configManager.setAssessmentRecordTemplateId('template-id');
+      // Ensure validation passes for the sheet ID in this test
+      vi.spyOn(configManager, 'isValidGoogleSheetId').mockReturnValue(true);
+      configManager.setAssessmentRecordTemplateId('1T7FcpXG24JOK0hI7SaaRbmQpkpfIugBLwEREwt4lNao');
       expect(setPropertySpy).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-        'template-id'
+        '1T7FcpXG24JOK0hI7SaaRbmQpkpfIugBLwEREwt4lNao'
       );
 
       configManager.setAssessmentRecordDestinationFolder('folder-id');
