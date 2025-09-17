@@ -102,9 +102,7 @@ function saveConfiguration(config) {
     } catch (err) {
       // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
       // Log only a generic error identifier and mark the detailed message as redacted.
-      console.error(
-        `Error saving configuration value for ${name}: REDACTED`
-      );
+      console.error(`Error saving configuration value for ${name}: REDACTED`);
       errors.push(`${name}: REDACTED`);
       return false;
     }
@@ -113,7 +111,7 @@ function saveConfiguration(config) {
   // Save classroom data if provided
   if (config.classroom) {
     try {
-      this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
+      saveClassroom(config.classroom.courseName, config.classroom.courseId);
       delete config.classroom; // Remove classroom data before saving other configs
     } catch (err) {
       console.error('Error saving classroom configuration:', err);
