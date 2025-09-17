@@ -9,6 +9,7 @@ module.exports = {
       'tests/requestHandlers/**/*.test.js',
       'tests/assignment/**/*.test.js',
       'tests/parsers/**/*.test.js',
+      'tests/configurationManager/**/*.test.js',
     ],
   },
 };

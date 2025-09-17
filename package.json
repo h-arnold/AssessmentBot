@@ -20,9 +20,10 @@
   "devDependencies": {
     "eslint": "^9.19.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
-    "vitest": "^3.2.4",
     "husky": "^8.0.0",
-    "prettier": "^2.8.8"
+    "jsdom": "^27.0.0",
+    "prettier": "^2.8.8",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "clasp": "^1.0.0"

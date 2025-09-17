@@ -380,3 +380,8 @@ class ConfigurationManager {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
   }
 }
+
+// For module exports (testing)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ConfigurationManager;
+}
