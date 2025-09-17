@@ -6,3 +6,4 @@
 
 const configurationManager = new ConfigurationManager();
 const initController = new InitController();
+const dbManager = DbManager.getInstance();
