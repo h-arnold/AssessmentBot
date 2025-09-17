@@ -79,6 +79,9 @@ describe('ConfigurationManager', () => {
 
     // Create new instance
     configManager = new ConfigurationManager();
+
+    // Clear the cache after construction to avoid test interference
+    configManager.configCache = null;
   });
 
   describe('Singleton Pattern', () => {

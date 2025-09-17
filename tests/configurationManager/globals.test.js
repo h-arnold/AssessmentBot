@@ -378,7 +378,7 @@ describe('Configuration Globals', () => {
 
       const config = globals.getConfiguration();
 
-      expect(global.console.error).toHaveBeenCalledWith(
+      expect(context.console.error).toHaveBeenCalledWith(
         'Error retrieving configuration value for apiKey: ValidationError'
       );
       expect(config.loadError).toBe('apiKey: API key sk-sensitive123 is invalid');
@@ -394,7 +394,7 @@ describe('Configuration Globals', () => {
 
       const config = globals.getConfiguration();
 
-      expect(global.console.error).toHaveBeenCalledWith(
+      expect(context.console.error).toHaveBeenCalledWith(
         'Error retrieving configuration value for backendUrl: Error'
       );
     });
@@ -496,7 +496,7 @@ describe('Configuration Globals', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('classroom: Classroom save failed');
-      expect(global.console.error).toHaveBeenCalledWith(
+      expect(context.console.error).toHaveBeenCalledWith(
         'Error saving classroom configuration:',
         expect.any(Error)
       );
@@ -541,7 +541,7 @@ describe('Configuration Globals', () => {
 
       const result = globals.saveConfiguration(sampleConfig);
 
-      expect(global.console.error).toHaveBeenCalledWith(
+      expect(context.console.error).toHaveBeenCalledWith(
         'Error saving configuration value for apiKey: REDACTED'
       );
       expect(result.error).toContain('apiKey: REDACTED');
@@ -551,14 +551,14 @@ describe('Configuration Globals', () => {
       const result = globals.saveConfiguration(sampleConfig);
 
       expect(result.success).toBe(true);
-      expect(global.console.log).toHaveBeenCalledWith('Configuration saved successfully.');
+      expect(context.console.log).toHaveBeenCalledWith('Configuration saved successfully.');
     });
 
     it('should handle empty configuration object', () => {
       const result = globals.saveConfiguration({});
 
       expect(result.success).toBe(true);
-      expect(global.console.log).toHaveBeenCalledWith('Configuration saved successfully.');
+      expect(context.console.log).toHaveBeenCalledWith('Configuration saved successfully.');
     });
 
     it('should remove classroom data before saving other configs', () => {
