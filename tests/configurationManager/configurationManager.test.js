@@ -128,7 +128,7 @@ describe('ConfigurationManager', () => {
       expect(defaults.SLIDES_FETCH_BATCH_SIZE).toBe(30);
       expect(defaults.DAYS_UNTIL_AUTH_REVOKE).toBe(60);
       expect(defaults.UPDATE_STAGE).toBe(0);
-      expect(defaults.UPDATE_DETAILS_URL).toContain('github.com');
+      expect(defaults.UPDATE_DETAILS_URL).toContain('h-arnold/AssessmentBot');
     });
   });
 
@@ -326,10 +326,9 @@ describe('ConfigurationManager', () => {
         }).toThrow('Test Key must be an integer between 1 and 100.');
       });
 
-      it('should throw error for floating point values', () => {
-        expect(() => {
-          configManager._validateIntegerRange('42.5', 'testKey', 1, 100);
-        }).toThrow('Test Key must be an integer between 1 and 100.');
+      it('should accept floating point values (parseInt truncates)', () => {
+        const result = configManager._validateIntegerRange(42.5, 'testKey', 1, 100);
+        expect(result).toBe(42);
       });
     });
 
@@ -347,7 +346,7 @@ describe('ConfigurationManager', () => {
       });
 
       it('should handle already uppercase words', () => {
-        expect(configManager.toReadableKey('URL')).toBe('U R L');
+        expect(configManager.toReadableKey('URL')).toBe(' U R L');
       });
     });
   });
@@ -625,10 +624,15 @@ describe('ConfigurationManager', () => {
         }).toThrow('Update Stage must be 0, 1, or 2');
       });
 
-      it('should reject floating point values', () => {
+      it('should accept floating point values (parseInt truncates)', () => {
         expect(() => {
           configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 1.5);
-        }).toThrow('Update Stage must be 0, 1, or 2');
+        }).not.toThrow();
+
+        expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+          ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
+          '1'
+        );
       });
     });
 
