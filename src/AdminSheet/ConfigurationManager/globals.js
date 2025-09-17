@@ -184,3 +184,8 @@ function saveConfiguration(config) {
   console.log('Configuration saved successfully.');
   return { success: true };
 }
+
+// Export functions for Node test environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { getConfiguration, saveConfiguration };
+}

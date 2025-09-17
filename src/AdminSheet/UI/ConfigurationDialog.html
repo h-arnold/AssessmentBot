@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+  <title>Assessment Bot — Configuration</title>
   <base target="_top">
   <!-- Materialize CSS for styling -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -193,8 +194,24 @@
         console.error('Configuration load errors:', data.loadError);
         M.toast({ html: `Some configuration values failed to load: ${data.loadError}`, classes: 'orange', displayLength: 8000 });
       }
-      document.getElementById('apiKey').value = data.apiKey || '';
-      document.getElementById('backendUrl').value = data.backendUrl || '';
+      // Handle API key specially: backend returns a redacted API key and a `hasApiKey` boolean.
+      // We rely on `hasApiKey` to determine whether a key exists. If a key exists, show the
+      // masked apiKey as a placeholder (so the user sees that a key is stored) but do NOT
+      // populate the input value with that masked string. If the user leaves the field blank
+      // it will be interpreted as "keep existing key". If they enter a value it's treated as
+      // a new key. If they explicitly clear the field (and the original had no key) it will
+      // attempt to save an empty string (explicit clear).
+      const apiKeyEl = document.getElementById('apiKey');
+      window._apiKeyWasRedacted = !!data.hasApiKey;
+      if (data.hasApiKey) {
+        // Show masked representation as placeholder; do not set value.
+        apiKeyEl.value = '';
+        apiKeyEl.placeholder = data.apiKey || 'Saved (hidden)';
+      } else {
+        apiKeyEl.value = data.apiKey || '';
+        apiKeyEl.placeholder = '';
+      }
+  document.getElementById('backendUrl').value = data.backendUrl || '';
       // Populate renamed backend assessor batch size
       const backendBatchInput = document.getElementById('backendAssessorBatchSize');
       if (backendBatchInput) {
@@ -260,7 +277,8 @@
             tabsInstance.select('backendTab');
           }
         } catch (e) {
-          // ignore
+          // Log for debugging; do not surface errors to users
+          console.debug('focusBackendTab: failed to select backend tab', e?.message || e);
         }
       }
 
@@ -271,7 +289,8 @@
             tabsInstance.select(tabId);
           }
         } catch (e) {
-          // ignore
+          // Log for debugging; do not surface errors to users
+          console.debug('focusTab: failed to select tab', tabId, e?.message || e);
         }
       }
 
@@ -285,11 +304,15 @@
           new URL(u);
           return true;
         } catch (e) {
+          console.debug('isValidUrl: invalid URL', u, e?.message || e);
           return false;
         }
       }
 
-      if (!apiKeyEl.value.trim()) {
+      // Require an API key only if none is present on the server and the user hasn't provided one.
+      // If the server already has a key (data.hasApiKey true), leaving the field empty means
+      // "keep existing key" and should be allowed.
+      if (!window._apiKeyWasRedacted && !apiKeyEl.value.trim()) {
         focusBackendTab();
         M.toast({ html: 'API Key is required.', classes: 'orange' });
         apiKeyEl.focus();
@@ -318,7 +341,19 @@
       } : null;
 
       const formData = {
-        apiKey: document.getElementById('apiKey').value.trim(),
+        // Only include apiKey in payload if the user actually entered a value. If the backend
+        // returned a redacted value and the user didn't change the input, we leave apiKey
+        // undefined so the server knows to keep the existing key.
+        // Note: we still allow the user to clear the key by entering an empty string explicitly
+        // (if you want to prevent clearing, adjust logic accordingly).
+        apiKey: (function () {
+          const v = document.getElementById('apiKey').value.trim();
+          if (v) return v; // user provided a new key
+          // no value entered — if the original was redacted, omit apiKey from payload
+          if (window._apiKeyWasRedacted) return undefined;
+          // original wasn't redacted and user cleared the field -> send empty string (explicit clear)
+          return '';
+        })(),
         backendUrl: document.getElementById('backendUrl').value.trim(),
         backendAssessorBatchSize: backendBatchVal,
         updateDetailsUrl: document.getElementById('updateDetailsUrl').value.trim(),
