@@ -110,7 +110,8 @@ class ConfigurationManager {
   setProperty(key, value) {
     switch (key) {
       case ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE:
-        this._validateIntegerRange(value, key, 1, 500);
+        // Parse and use the validated integer value so we persist an integer string
+        value = this._validateIntegerRange(value, key, 1, 500);
         break;
       case ConfigurationManager.CONFIG_KEYS.API_KEY:
         if (typeof value !== 'string' || !this.isValidApiKey(value)) {
@@ -150,10 +151,13 @@ class ConfigurationManager {
         }
         break;
       case ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE:
-        const stage = parseInt(value);
+        // Allow floating point values but store as truncated integer (parseInt behavior).
+        // Keep the explicit error message the tests expect when out of range or invalid.
+        const stage = parseInt(value, 10);
         if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
           throw new Error('Update Stage must be 0, 1, or 2');
         }
+        value = stage;
         break;
       case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
       case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED:
@@ -165,10 +169,12 @@ class ConfigurationManager {
         return;
       case ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE:
         // Frontend enforces a max of 365 days; validate here as well (1-365)
-        this._validateIntegerRange(value, key, 1, 365);
+        // Use the parsed integer returned by the validator so we persist an integer string.
+        value = this._validateIntegerRange(value, key, 1, 365);
         break;
       case ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE:
-        this._validateIntegerRange(value, key, 1, 100);
+        // Ensure we persist an integer value (parse/truncate floats) and validate range
+        value = this._validateIntegerRange(value, key, 1, 100);
         break;
       default:
         // No specific validation
@@ -257,7 +263,11 @@ class ConfigurationManager {
   }
 
   getSlidesFetchBatchSize() {
-    const raw = this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE);
+    // Read the latest script properties directly so callers that change the
+    // underlying properties (e.g., tests mocking getProperties) get the fresh
+    // value. Validation/rounding is applied as integer parsing.
+    const props = this.scriptProperties.getProperties();
+    const raw = props[ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE];
     const parsed = parseInt(raw, 10);
     if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 100) {
       return parsed;
