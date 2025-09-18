@@ -15,12 +15,17 @@ class CacheManager {
    * @return {string} - The cache key.
    */
   generateCacheKey(contentHashReference, contentHashResponse) {
+    // If either input is falsy, return null to indicate no usable key.
     if (!contentHashReference || !contentHashResponse) {
       return null;
     }
 
-    //Hashing the hashes to ensure they stay within the character limit
-    return Utils.generateHash(contentHashReference + contentHashResponse);
+    // Use a clear separator between the two hashes to make the raw key unambiguous
+    // before hashing. We still hash the combined string so the final cache key is
+    // a fixed-length SHA-256 hex string (64 chars) which stays well under Apps
+    // Script's 250-character cache key limit.
+    const raw = `${contentHashReference}|${contentHashResponse}`;
+    return Utils.generateHash(raw);
   }
 
   /**
@@ -31,16 +36,21 @@ class CacheManager {
    */
   getCachedAssessment(contentHashReference, contentHashResponse) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
+    if (!cacheKey) return null;
+
+    try {
+      const cached = this.cache.get(cacheKey);
+      if (!cached) return null;
       try {
         return JSON.parse(cached);
       } catch (e) {
         console.error('Error parsing cached assessment data:', e);
         return null;
       }
+    } catch (e) {
+      console.error('Error retrieving cached assessment:', e);
+      return null;
     }
-    return null;
   }
 
   /**
@@ -51,8 +61,15 @@ class CacheManager {
    */
   setCachedAssessment(contentHashReference, contentHashResponse, assessmentData) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
+    if (!cacheKey) return;
+
     const serialized = JSON.stringify(assessmentData);
     const cacheExpirationInSeconds = 6 * 60 * 60; // 6 hours
-    this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
+    try {
+      this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
+    } catch (e) {
+      console.error('Error storing cached assessment data:', e);
+      // Don't throw — caching should be best-effort.
+    }
   }
 }

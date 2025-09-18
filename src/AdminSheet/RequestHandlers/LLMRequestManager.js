@@ -372,7 +372,7 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {Object} request
    * @param {Assignment} assignment
    */
-  _assignAndCacheAssessment(uid, assessmentData, request, assignment) {
+  _assignAndCacheAssessment(uid, assessmentData, assignment) {
     this.assignAssessmentToStudentTask(
       uid,
       this.createAssessmentFromData(assessmentData),

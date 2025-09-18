@@ -16,8 +16,8 @@ class StudentSubmissionItem {
     if (!artifact) throw new Error('StudentSubmissionItem requires artifact');
     this.taskId = taskId;
     this.artifact = artifact;
-  this.assessments = {}; // criterion -> { score, reasoning }
-  this.feedback = {}; // type -> feedback JSON or object
+    this.assessments = {}; // criterion -> { score, reasoning }
+    this.feedback = {}; // type -> feedback JSON or object
     this.id = this._deriveId();
   }
 
@@ -104,13 +104,15 @@ class StudentSubmission {
    * @param {string} studentId
    * @param {string} assignmentId
    * @param {string=} documentId
+   * @param {string=} studentName
    */
-  constructor(studentId, assignmentId, documentId = null) {
+  constructor(studentId, assignmentId, documentId = null, studentName = null) {
     if (!studentId || !assignmentId)
       throw new Error('StudentSubmission requires studentId & assignmentId');
     this.studentId = studentId;
     this.assignmentId = assignmentId;
     this.documentId = documentId;
+    this.studentName = studentName; //Temporary addition for V0.7.2 - will be removed later.
     this.items = {}; // taskId -> StudentSubmissionItem
     const now = new Date().toISOString();
     this.createdAt = now;
@@ -186,6 +188,7 @@ class StudentSubmission {
   toJSON() {
     return {
       studentId: this.studentId,
+      studentName: this.studentName,
       assignmentId: this.assignmentId,
       documentId: this.documentId,
       items: Object.fromEntries(Object.entries(this.items).map(([k, v]) => [k, v.toJSON()])),
@@ -195,7 +198,12 @@ class StudentSubmission {
   }
 
   static fromJSON(json) {
-    const sub = new StudentSubmission(json.studentId, json.assignmentId, json.documentId);
+    const sub = new StudentSubmission(
+      json.studentId,
+      json.assignmentId,
+      json.documentId,
+      json.studentName || null
+    );
     sub.createdAt = json.createdAt || new Date().toISOString();
     sub.updatedAt = json.updatedAt || sub.createdAt;
     if (json.items) {

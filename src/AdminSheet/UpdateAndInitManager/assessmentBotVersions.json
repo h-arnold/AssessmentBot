@@ -1,10 +1,14 @@
 {
+  "0.7.2": {
+    "assessmentRecordTemplateFileId": "1oETQ9TFncSVKap2q1k2iNOM4iAF5ERoNCriBJW-Q7ZI",
+    "adminSheetFileId": "1JzDxlR4qT8rtCZ_xLZrUZZcoF0yjYtt8k2Im_mXMv7k"
+  },
   "0.7.1": {
     "assessmentRecordTemplateFileId": "1T7FcpXG24JOK0hI7SaaRbmQpkpfIugBLwEREwt4lNao",
-    "adminSheetFileId": "1KFdjv6bKGI__K3P1xAXwtcUuBZsr7uWOfdz4hOEORU0"
+    "adminSheetFileId": "1JzDxlR4qT8rtCZ_xLZrUZZcoF0yjYtt8k2Im_mXMv7k"
   },
   "0.7.0": {
-    "assessmentRecordTemplateFileId": "12aR89oj4AlOfeggHETxD27gvEv35bXqPtw1UsQa_Tv0",
+    "assessmentRecordTemplateFileId": "1oETQ9TFncSVKap2q1k2iNOM4iAF5ERoNCriBJW-Q7ZI",
     "adminSheetFileId": "1OanfKPQ3058n-0Ffw2V43mAJ-NiVnZa2IreFBZyp5h4"
   },
   "0.6.1": {
