@@ -158,7 +158,8 @@ class Assignment {
             const sub = new StudentSubmission(
               subObj.studentId || subObj.userId || null,
               inst.assignmentId,
-              subObj.documentId || null
+              subObj.documentId || null,
+              subObj.studentName || subObj.name || null
             );
             // copy fields
             Object.keys(subObj || {}).forEach((k) => {
@@ -265,7 +266,11 @@ class Assignment {
     // Avoid duplicates
     const existing = this.submissions.find((s) => s.studentId === studentId);
     if (existing) return existing;
-    const submission = new StudentSubmission(studentId, this.assignmentId, null);
+    const studentName =
+      student && (student.name || student.studentName || student.fullName)
+        ? student.name || student.studentName || student.fullName
+        : null;
+    const submission = new StudentSubmission(studentId, this.assignmentId, null, studentName);
     // Attach original student metadata for any legacy code (non-persisted)
     submission._legacyStudent = student;
     this.submissions.push(submission);
