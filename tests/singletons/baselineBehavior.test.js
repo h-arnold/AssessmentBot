@@ -8,8 +8,16 @@
  * They serve as documentation of desired behavior and regression protection.
  */
 
-import { describe, test, expect, beforeEach } from 'vitest';
-import { SingletonTestHarness } from './SingletonTestHarness.js';
+const { SingletonTestHarness } = require('./SingletonTestHarness.js');
+
+// Helper functions to avoid deep nesting in tests
+function mockUIManagerGetInstance() {
+  // track constructor-like call
+  harness.trackConstructorCall('UIManager');
+  return { mockUIManager: true };
+}
+
+function noop() {}
 
 const harness = new SingletonTestHarness();
 
@@ -91,10 +99,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
       await harness.withFreshSingletons(() => {
         // Mock UIManager for this test
         global.UIManager = {
-          getInstance: () => {
-            harness.trackConstructorCall('UIManager');
-            return { mockUIManager: true };
-          },
+          getInstance: mockUIManagerGetInstance,
         };
 
         // Import InitController after setting up UIManager mock
@@ -146,7 +151,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
 
           // Call a UI method that doesn't need classroom
           if (uiManager.safeUiOperation) {
-            uiManager.safeUiOperation(() => {}, 'test');
+            uiManager.safeUiOperation(noop, 'test');
           }
 
           // Still should not have created GoogleClassroomManager
@@ -273,8 +278,9 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
 
     // Test GoogleClassroomManager mock
     expect(global.GoogleClassroomManager).toBeDefined();
+    // Use the created instance to avoid linter warning about unused instantiation
     const classroomManager = new global.GoogleClassroomManager();
-    expect(classroomManager).toBeDefined();
+    expect(classroomManager._instanceId).toBeDefined();
     expect(harness.getClassroomManagerInstanceCount()).toBe(1);
   });
 
@@ -285,7 +291,8 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     // Make some calls
     global.PropertiesService.getScriptProperties();
     global.SpreadsheetApp.getUi();
-    new global.GoogleClassroomManager();
+    const classroomManager2 = new global.GoogleClassroomManager();
+    expect(classroomManager2._instanceId).toBeDefined();
 
     // Verify tracking
     expect(harness.wasPropertiesServiceAccessed()).toBe(true);

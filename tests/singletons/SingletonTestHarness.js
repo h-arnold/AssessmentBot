@@ -33,14 +33,15 @@ class SingletonTestHarness {
     for (const className of singletonClasses) {
       try {
         const ClassRef = global[className];
-        if (ClassRef && ClassRef.instance) {
+        if (ClassRef?.instance) {
           ClassRef.instance = null;
         }
-        if (ClassRef && ClassRef._instance) {
+        if (ClassRef?._instance) {
           ClassRef._instance = null;
         }
       } catch (e) {
-        // Class might not be loaded, that's OK
+        // Class might not be loaded, that's OK — log for visibility in tests
+        console.debug(`Could not reset singleton ${className}: ${e.message}`);
       }
     }
 
