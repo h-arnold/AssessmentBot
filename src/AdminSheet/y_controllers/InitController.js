@@ -59,8 +59,9 @@ class InitController {
    * Adds custom menus to the UI when the document is opened.
    */
   onOpen() {
-    const isScriptAuthorised = configurationManager.getScriptAuthorised();
-    const isAdminSheet = configurationManager.getIsAdminSheet();
+    const cfg = ConfigurationManager.getInstance();
+    const isScriptAuthorised = cfg.getScriptAuthorised();
+    const isAdminSheet = cfg.getIsAdminSheet();
     console.log('Script authorization status:', isScriptAuthorised);
 
     const uiManager = this.getUiManager();
@@ -88,8 +89,9 @@ class InitController {
    * Determines if this is an Admin Sheet or Assessment Record and calls the appropriate initialisation method.
    */
   handleScriptInit() {
-    const scriptAuthorised = configurationManager.getScriptAuthorised();
-    const isAdminSheet = configurationManager.getIsAdminSheet();
+    const cfg = ConfigurationManager.getInstance();
+    const scriptAuthorised = cfg.getScriptAuthorised();
+    const isAdminSheet = cfg.getIsAdminSheet();
 
     // If script isn't authorised, run the first run initialisation regardless of sheet type
     if (!scriptAuthorised) {
@@ -116,8 +118,9 @@ class InitController {
    */
   adminScriptInit() {
     // Gets the update stage.
-    const updateStage = configurationManager.getUpdateStage();
-    const scriptAuthorised = configurationManager.getScriptAuthorised();
+    const cfg = ConfigurationManager.getInstance();
+    const updateStage = cfg.getUpdateStage();
+    const scriptAuthorised = cfg.getScriptAuthorised();
     this.setupAuthRevokeTimer();
 
     // If everything is up to date and the script is authorised, create the menu and finish.
@@ -179,7 +182,7 @@ class InitController {
     triggerController.createOnOpenTrigger(`handleScriptInit`);
 
     // Set script authorised to true to avoid calling the auth process again.
-    configurationManager.setScriptAuthorised(true);
+    ConfigurationManager.getInstance().setScriptAuthorised(true);
 
     //If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
     this.setDefaultAssessmentRecordTemplateId();
@@ -197,10 +200,11 @@ class InitController {
    * This avoids an infinite loop scenario in ConfigurationManager.getAssessmentRecordTemplateId() where if it's not set, it will instaniate BaseUpdateAndInit to use the getAssessmentRecordTemplateId() method, where the constructor for that class calls the Assessment Record Template ID from ConfigurationManager.
    */
   setDefaultAssessmentRecordTemplateId() {
-    if (!configurationManager.getAssessmentRecordTemplateId) {
+    const cfg = ConfigurationManager.getInstance();
+    if (!cfg.getAssessmentRecordTemplateId) {
       const baseInitManager = new BaseUpdateAndInit();
       const assessmentRecordTemplateId = baseInitManager.getLatestAssessmentRecordTemplateId();
-      configurationManager.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
+      cfg.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
     }
   }
 
@@ -226,7 +230,7 @@ class InitController {
    */
   setupAuthRevokeTimer() {
     // Check if trigger is already set
-    const triggerAlreadySet = configurationManager.getRevokeAuthTriggerSet();
+    const triggerAlreadySet = ConfigurationManager.getInstance().getRevokeAuthTriggerSet();
 
     if (triggerAlreadySet) {
       console.log('Auth revoke trigger already exists. No new trigger created.');
@@ -235,7 +239,7 @@ class InitController {
 
     try {
       // Get the number of days until revocation
-      const daysUntilRevoke = configurationManager.getDaysUntilAuthRevoke();
+      const daysUntilRevoke = ConfigurationManager.getInstance().getDaysUntilAuthRevoke();
 
       // Calculate the trigger time (current time + specified days)
       const triggerTime = new Date();
@@ -246,7 +250,7 @@ class InitController {
       triggerController.createTimeBasedTrigger('revokeAuthorisation', triggerTime);
 
       // Update the flag to indicate the trigger has been set
-      configurationManager.setRevokeAuthTriggerSet(true);
+      ConfigurationManager.getInstance().setRevokeAuthTriggerSet(true);
 
       console.log(`Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`);
       return true;

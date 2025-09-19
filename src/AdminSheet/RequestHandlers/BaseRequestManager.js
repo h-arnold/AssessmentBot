@@ -5,7 +5,7 @@
  */
 class BaseRequestManager {
   constructor() {
-    this.configManager = configurationManager; // Reference to the singleton ConfigurationManager
+    this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
     this.cache = CacheService.getScriptCache(); // Initialize the script cache
     this.progressTracker = ProgressTracker.getInstance();
   }
@@ -69,7 +69,7 @@ class BaseRequestManager {
    * @return {HTTPResponse[]} - An array of HTTPResponse objects.
    */
   sendRequestsInBatches(requests) {
-    const batchSize = configurationManager.getBackendAssessorBatchSize();
+    const batchSize = ConfigurationManager.getInstance().getBackendAssessorBatchSize();
     const batches = [];
 
     // Split requests into batches

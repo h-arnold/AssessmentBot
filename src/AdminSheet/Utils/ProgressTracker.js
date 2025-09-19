@@ -123,7 +123,7 @@ class ProgressTracker {
     // are saved and can be deserialised later.
     // Only serialise properties if this isn't the Admin Sheet. The admin sheet gets its properties serialised during the update process.
 
-    if (!configurationManager.getIsAdminSheet()) {
+    if (!ConfigurationManager.getInstance().getIsAdminSheet()) {
       const propertiesCloner = new PropertiesCloner();
       propertiesCloner.serialiseProperties(true, false); //serialise document properties only because only the admin script uses ScriptProperties.
     }

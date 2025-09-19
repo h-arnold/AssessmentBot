@@ -175,7 +175,7 @@ class Utils {
    * @returns {boolean} True if admin sheet
    */
   static validateIsAdminSheet(throwError = true) {
-    const isAdmin = configurationManager.getIsAdminSheet();
+    const isAdmin = ConfigurationManager.getInstance().getIsAdminSheet();
     if (!isAdmin) {
       const message = 'This operation can only be performed from the admin sheet.';
       if (throwError) {

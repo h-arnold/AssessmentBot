@@ -102,19 +102,19 @@ Eliminate `const configurationManager = new ConfigurationManager();` etc. Replac
 
 ### Tasks
 
-- [ ] Search & replace references:
-  - [ ] `configurationManager.` → `ConfigurationManager.getInstance().`
-  - [ ] `initController.` → `InitController.getInstance().`
-  - [ ] Any direct `new ConfigurationManager()` (keep only inside tests where intentionally verifying constructor behaviour; otherwise swap).
-- [ ] Remove lazy accessor or constant definitions in `z_singletons.js`.
-- [ ] Replace file contents with a comment explaining deprecated role or delete file if safe.
-- [ ] Update any HTML Service templates that might refer to globals (ensure front-end calls server-side functions that internally call `getInstance()`).
-- [ ] Run full test suite.
+- [x] Search & replace references:
+  - [x] `configurationManager.` → `ConfigurationManager.getInstance().`
+  - [x] `initController.` → `InitController.getInstance().`
+  - [x] Any direct `new ConfigurationManager()` (kept only inside defining class & tests).
+- [x] Remove lazy accessor or constant definitions in `z_singletons.js`.
+- [x] Replace file contents with a comment explaining deprecated role.
+- [x] Update any HTML Service templates that might refer to globals (N/A – none referenced these identifiers).
+- [x] Run full test suite.
 
 ### Tests
 
-- [ ] Add regression test ensuring that no forbidden global identifiers remain (simple regex scan in a test or lint rule).
-- [ ] Optional ESLint custom rule or config update to disallow banned identifiers.
+- [x] Add regression test ensuring that no forbidden global identifiers remain.
+- [x] Optional ESLint custom rule or config update to disallow banned identifiers. (Deferred – covered by regression test for now)
 
 ---
 

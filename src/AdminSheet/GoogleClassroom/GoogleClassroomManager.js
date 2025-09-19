@@ -5,7 +5,7 @@ Manages Google Classroom operations and associated tasks.
 */
 class GoogleClassroomManager {
   constructor() {
-    this.configManager = configurationManager;
+    this.configManager = ConfigurationManager.getInstance();
     this.classrooms = [];
     this.templateSheetId = '';
     this.destinationFolderId = '';
@@ -138,8 +138,9 @@ class GoogleClassroomManager {
    * Finally, shares the destination folder with all teacher emails found in the sheet.
    */
   createAssessmentRecords() {
-    this.templateSheetId = configurationManager.getAssessmentRecordTemplateId();
-    this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
+    this.templateSheetId = ConfigurationManager.getInstance().getAssessmentRecordTemplateId();
+    this.destinationFolderId =
+      ConfigurationManager.getInstance().getAssessmentRecordDestinationFolder();
 
     // 0) Initialise progress tracker
     // Use the ProgressTracker directly; it will manage step increments itself

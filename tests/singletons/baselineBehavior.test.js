@@ -35,6 +35,8 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
       try {
         ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
         if (ConfigurationManager.default) ConfigurationManager = ConfigurationManager.default;
+        // Expose class globally to mimic Apps Script runtime
+        global.ConfigurationManager = ConfigurationManager;
       } catch (e) {
         console.warn('Could not load ConfigurationManager:', e.message);
       }
@@ -110,7 +112,8 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
         };
 
         // Provide configurationManager global via new pattern
-        global.configurationManager = ConfigurationManager.getInstance();
+        // No longer needed: global.configurationManager. Ensure class exists globally instead.
+        global.ConfigurationManager = ConfigurationManager;
         // Import InitController after setting up UIManager mock
         let InitController;
         try {
