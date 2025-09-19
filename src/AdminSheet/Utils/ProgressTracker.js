@@ -158,25 +158,22 @@ class ProgressTracker {
   _logDeveloperDetails(extraErrorDetails) {
     // These details are only for developers, not exposed in the UI
     // Format details as strings to avoid serialization issues
-    if (typeof extraErrorDetails === 'object') {
+    if (typeof extraErrorDetails === 'object' && extraErrorDetails !== null) {
       // If it's an Error object or has a stack property
       if (extraErrorDetails.stack) {
         console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
-      }
-      // If it's our custom developer details object
-      else if (extraErrorDetails.message && extraErrorDetails.stack) {
-        console.error(`Developer details - Message: ${extraErrorDetails.message}`);
-        console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
+        if (extraErrorDetails.message) {
+          console.error(`Developer details - Message: ${extraErrorDetails.message}`);
+        }
         if (extraErrorDetails.name) {
           console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
         }
-      }
-      // For other objects, try to stringify them
-      else {
+      } else {
+        // For other objects, try to stringify them
         try {
           console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
         } catch (e) {
-          console.error(`Developer details: [Object could not be stringified]`);
+          console.error('Developer details: [Object could not be stringified]');
         }
       }
     } else {
@@ -242,7 +239,6 @@ class ProgressTracker {
   getCurrentProgress() {
     const progressJson = this.properties.getProperty(this.propertyKey);
     if (progressJson) {
-      //console.log('Current progress retrieved.'); //Uncomment to debug
       return JSON.parse(progressJson);
     }
     console.log('No progress data found.');
