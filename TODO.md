@@ -274,9 +274,9 @@ These items were identified after completing Phase 3. They are grouped to stream
 
 #### Singleton Infrastructure
 
-- [ ] Introduce lightweight `BaseSingleton` (or mixin function) providing `getInstance()`, `resetForTests()`, optional freeze hook
-- [ ] Convert `CONFIG_KEYS` & `CONFIG_SCHEMA` to static frozen properties (avoid re-allocating objects on access)
-- [ ] Align `ProgressTracker` with lazy pattern: move `PropertiesService.getDocumentProperties()` into `ensureInitialized()`
+- [x] Introduce lightweight `BaseSingleton` (or mixin function) providing `getInstance()`, `resetForTests()`, optional freeze hook
+- [x] Convert `CONFIG_KEYS` & `CONFIG_SCHEMA` to static frozen properties (avoid re-allocating objects on access)
+- [x] Align `ProgressTracker` with lazy pattern: move `PropertiesService.getDocumentProperties()` into `ensureInitialized()`
 
 #### UI Lazy & Logging Improvements
 

@@ -1,25 +1,42 @@
+// Idempotent BaseSingleton guard (mirrors ConfigurationManager). Avoids lexical redeclaration.
+if (typeof globalThis.BaseSingleton === 'undefined') {
+  globalThis.BaseSingleton = class {
+    static getInstance() {
+      if (!this._instance) this._instance = new this(true);
+      return this._instance;
+    }
+    constructor() {}
+    static resetForTests() {
+      this._instance = null;
+    }
+    static _maybeFreeze(_) {}
+  };
+}
+//
 /**
  * ProgressTracker class to manage progress updates.
  * Implemented as a Singleton to ensure only one instance exists.
  */
-class ProgressTracker {
-  constructor() {
+class ProgressTracker extends BaseSingleton {
+  constructor(isSingletonCreator = false) {
+    super();
     /**
      * JSDoc Singleton Banner
      * Use ProgressTracker.getInstance(); do not call constructor directly.
      */
     // Singleton guard: constructor should only execute once via getInstance()
-    if (ProgressTracker._instance) {
-      return; // ignore duplicate constructions
+    if (!isSingletonCreator && ProgressTracker._instance) {
+      return; // no-op if already constructed
     }
 
-    // Initialize properties
-    this.properties = PropertiesService.getDocumentProperties();
+    // Defer heavy work (PropertiesService access) until ensureInitialized()
+    this.properties = null;
     this.propertyKey = 'ProgressTracker';
-    this.step = 0; // Add step as class attribute
-
-    // Store the instance
-    ProgressTracker._instance = this;
+    this.step = 0;
+    this._initialized = false;
+    if (!ProgressTracker._instance) {
+      ProgressTracker._instance = this;
+    }
 
     console.log('ProgressTracker instance created.');
   }
@@ -30,10 +47,18 @@ class ProgressTracker {
    * @returns {ProgressTracker} The singleton instance of ProgressTracker.
    */
   static getInstance() {
-    if (!ProgressTracker._instance) {
-      new ProgressTracker(); // Automatically creates and stores the instance
+    return super.getInstance();
+  }
+
+  /** One-time boundary for acquiring document properties */
+  ensureInitialized() {
+    if (this._initialized) return;
+    if (globalThis.__TRACE_SINGLETON__) {
+      console.log('[TRACE][HeavyInit] ProgressTracker.ensureInitialized');
     }
-    return ProgressTracker._instance;
+    this.properties = PropertiesService.getDocumentProperties();
+    this._initialized = true;
+    BaseSingleton._maybeFreeze(this);
   }
 
   /**
@@ -47,6 +72,7 @@ class ProgressTracker {
    * Initializes the progress tracking by resetting any existing progress data.
    */
   startTracking() {
+    this.ensureInitialized();
     this.resetSteps();
     const initialData = {
       step: this.step,
@@ -65,6 +91,7 @@ class ProgressTracker {
    * @param {boolean} incrementStep - Whether to increment the step by 1. Defaults to true.
    */
   updateProgress(message, incrementStep = true) {
+    this.ensureInitialized();
     if (incrementStep) {
       // Increment the step if no specific step is provided and incrementStep is true
       this.incrementStep();
@@ -93,7 +120,9 @@ class ProgressTracker {
    * Resets the step counter to 0.
    */
   resetSteps() {
+    this.ensureInitialized();
     this.step = 0;
+    this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
@@ -108,6 +137,7 @@ class ProgressTracker {
    * Marks the task as complete.
    */
   complete() {
+    this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
@@ -249,6 +279,7 @@ class ProgressTracker {
    * @returns {Object|null} The current progress data or null if not found.
    */
   getCurrentProgress() {
+    this.ensureInitialized();
     const progressJson = this.properties.getProperty(this.propertyKey);
     if (progressJson) {
       return JSON.parse(progressJson);
@@ -305,6 +336,7 @@ class ProgressTracker {
    * Clears all progress data.
    */
   clearProgress() {
+    this.ensureInitialized();
     this.properties.deleteProperty(this.propertyKey);
     console.log('All progress data cleared.');
   }
