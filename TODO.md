@@ -59,7 +59,7 @@ Make every singleton class expose a canonical `static getInstance()` without sid
 - [x] `UIManager`:
   - [x] Ensure `static getInstance()` pattern symmetrical.
   - [x] Move `GoogleClassroomManager` creation to `ensureClassroomManager()`.
-  - [x] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()`).
+  - [x] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()` — exact method name in `UIManager.js`).
 - [x] Confirm `ProgressTracker` already conforms—add minor internal consistency comments.
 - [x] Add `resetForTests()` static method to each singleton (used by harness).
 - [x] Update ESLint globals if needed (remove now-unused global singleton variable names later in Phase 3).
