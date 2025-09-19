@@ -97,10 +97,10 @@ class InitController {
       // Create appropriate menu after first run init
       if (isAdminSheet) {
         const uiManager = this.getUiManager();
-        uiManager && uiManager.createAuthorisedMenu();
+        uiManager?.createAuthorisedMenu();
       } else {
         const uiManager = this.getUiManager();
-        uiManager && uiManager.createAssessmentRecordMenu();
+        uiManager?.createAssessmentRecordMenu();
       }
     }
 
@@ -110,7 +110,6 @@ class InitController {
     } else {
       this.assessmentRecordScriptInit();
     }
-    return;
   }
 
   /**
@@ -126,7 +125,7 @@ class InitController {
     // If everything is up to date and the script is authorised, create the menu and finish.
     if (updateStage === 2 && scriptAuthorised) {
       const uiManager = this.getUiManager();
-      uiManager && uiManager.createAuthorisedMenu();
+      uiManager?.createAuthorisedMenu();
       return;
     }
 
@@ -140,11 +139,15 @@ class InitController {
 
       // Assuming the script didn't end early at any of the above points, create the authorised menu.
       const uiManager = this.getUiManager();
-      uiManager && uiManager.createAuthorisedMenu();
+      uiManager?.createAuthorisedMenu();
     } catch (error) {
       const uiManager = this.getUiManager();
-      uiManager && uiManager.createAuthorisedMenu();
-      throw new Error(`Error during admin script initialisation: ${error.message}`);
+      uiManager?.createAuthorisedMenu();
+      throw new Error(
+        `Error during admin script initialisation: ${
+          error && error.message ? error.message : error
+        }`
+      );
     }
   }
 
@@ -156,15 +159,19 @@ class InitController {
     try {
       // Create the assessment record menu
       const uiManager = this.getUiManager();
-      uiManager && uiManager.createAssessmentRecordMenu();
+      uiManager?.createAssessmentRecordMenu();
 
       // Set up the authorisation revocation timer
       this.setupAuthRevokeTimer();
     } catch (error) {
       // Ensure menu is created even if there's an error
       const uiManager = this.getUiManager();
-      uiManager && uiManager.createAssessmentRecordMenu();
-      throw new Error(`Error during assessment record initialisation: ${error.message}`);
+      uiManager?.createAssessmentRecordMenu();
+      throw new Error(
+        `Error during assessment record initialisation: ${
+          error && error.message ? error.message : error
+        }`
+      );
     }
   }
 
@@ -181,7 +188,7 @@ class InitController {
     // Trigger the authorisation process if needed
     if (authStatus.needsAuth) {
       const uiManager = this.getUiManager();
-      uiManager && uiManager.showAuthorisationModal(authStatus.authUrl);
+      uiManager?.showAuthorisationModal(authStatus.authUrl);
     }
 
     // Assuming auth flow has taken place, add a trigger to call this method.

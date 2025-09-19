@@ -116,7 +116,9 @@ class UIManager {
     if (this.uiAvailable) {
       try {
         this.ui = SpreadsheetApp.getUi();
-      } catch (e) {
+      } catch (err) {
+        // Log the reason UI couldn't be acquired and keep ui in limited mode
+        console.error('Failed to acquire Spreadsheet UI:', err && err.message ? err.message : err);
         this.uiAvailable = false;
         this.ui = null;
       }
