@@ -31,14 +31,14 @@ class UIManager {
    * @returns {UIManager} The singleton UIManager instance
    */
   static getInstance() {
-    if (!UIManager.instance) {
-      UIManager.instance = new UIManager(true);
+    if (!UIManager._instance) {
+      UIManager._instance = new UIManager(true);
     }
-    return UIManager.instance;
+    return UIManager._instance;
   }
   /** Test helper */
   static resetForTests() {
-    UIManager.instance = null;
+    UIManager._instance = null;
   }
 
   /**
@@ -59,12 +59,13 @@ class UIManager {
   }
 
   constructor(isSingletonCreator = false) {
-    // The constructor return pattern doesn't work in JavaScript
-    // Instead we use a more reliable approach with a private parameter
-    if (!isSingletonCreator && UIManager.instance) {
-      console.log('UIManager already exists - returning existing instance via getInstance()');
-      // We can't actually return the instance here, that's why we need the static method
-      return;
+    /**
+     * JSDoc Singleton Banner
+     * Use UIManager.getInstance(); do not call constructor directly.
+     */
+    // Singleton guard: constructor should only run once via getInstance()
+    if (!isSingletonCreator && UIManager._instance) {
+      return; // silently ignore extra constructions
     }
 
     // Instead of throwing an error, set an availability flag
@@ -85,8 +86,8 @@ class UIManager {
     this.classroomManager = null; // Defer classroom manager creation until first classroom-related call
 
     // Store the instance only if we don't already have one
-    if (!UIManager.instance) {
-      UIManager.instance = this;
+    if (!UIManager._instance) {
+      UIManager._instance = this;
     }
   }
 
@@ -127,11 +128,31 @@ class UIManager {
   ensureClassroomManager() {
     if (!this.classroomManager) {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE] UIManager.ensureClassroomManager() heavy boundary');
+        console.log('[TRACE][HeavyInit] UIManager.ensureClassroomManager');
       this.classroomManager = new GoogleClassroomManager();
       console.log('GoogleClassroomManager lazily instantiated.');
     }
     return this.classroomManager;
+  }
+
+  /**
+   * Internal helper to DRY modal template instantiation.
+   * @param {string} file - Template file path relative to root (e.g. 'UI/AssignmentDropdown')
+   * @param {Object} data - Key/values assigned onto the template before evaluation.
+   * @param {string} title - Dialog title
+   * @param {{width?:number,height?:number}} opts - Dimensions (defaults applied if absent)
+   */
+  _showTemplateDialog(file, data, title, { width = 400, height = 300 } = {}) {
+    this.safeUiOperation(() => {
+      const template = HtmlService.createTemplateFromFile(file);
+      if (data && typeof data === 'object') {
+        Object.keys(data).forEach((k) => {
+          template[k] = data[k];
+        });
+      }
+      const htmlOutput = template.evaluate().setWidth(width).setHeight(height);
+      this.ui.showModalDialog(htmlOutput, title);
+    }, `_showTemplateDialog:${title}`);
   }
 
   /**
@@ -234,22 +255,16 @@ class UIManager {
    * Shows a modal dialog with a dropdown of assignments to choose from.
    */
   showAssignmentDropdown() {
-    this.safeUiOperation(() => {
-      const cm = this.ensureClassroomManager();
-      const courseId = cm.getCourseId();
-      const assignments = cm.getAssignments(courseId);
-      const maxTitleLength = this.getMaxTitleLength(assignments);
-      const modalWidth = Math.max(300, maxTitleLength * 10); // Minimum width 300px, approx 10px per character
-
-      // Instead of embedded HTML, load the templated HTML file:
-      const template = HtmlService.createTemplateFromFile('UI/AssignmentDropdown');
-      template.assignments = assignments; // Pass data to the HTML template
-
-      const htmlOutput = template.evaluate().setWidth(modalWidth).setHeight(250); // Adjust height as needed
-
-      this.ui.showModalDialog(htmlOutput, 'Select Assignment');
-      console.log('Assignment dropdown modal displayed.');
-    }, 'showAssignmentDropdown');
+    const cm = this.ensureClassroomManager();
+    const courseId = cm.getCourseId();
+    const assignments = cm.getAssignments(courseId);
+    const maxTitleLength = this.getMaxTitleLength(assignments);
+    const modalWidth = Math.max(300, maxTitleLength * 10);
+    this._showTemplateDialog('UI/AssignmentDropdown', { assignments }, 'Select Assignment', {
+      width: modalWidth,
+      height: 250,
+    });
+    console.log('Assignment dropdown modal displayed.');
   }
 
   /**
@@ -280,15 +295,12 @@ class UIManager {
         const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(
           assignmentDataObj.name
         );
-
-        // Load templated HTML file instead of a string
-        const template = HtmlService.createTemplateFromFile('UI/SlideIdsModal');
-        template.assignmentDataObj = assignmentDataObj;
-        template.savedDocumentIds = savedDocumentIds;
-
-        const htmlOutput = template.evaluate().setWidth(400).setHeight(350);
-
-        this.ui.showModalDialog(htmlOutput, 'Enter Slide IDs');
+        this._showTemplateDialog(
+          'UI/SlideIdsModal',
+          { assignmentDataObj, savedDocumentIds },
+          'Enter Slide IDs',
+          { width: 400, height: 350 }
+        );
         console.log('Reference slide IDs modal displayed.');
       } catch (error) {
         console.error('Error opening reference slide modal:', error);
@@ -303,22 +315,13 @@ class UIManager {
   showClassroomDropdown() {
     this.safeUiOperation(() => {
       try {
-        // Retrieve active classrooms using GoogleClassroomManager (lazy)
         const cm = this.ensureClassroomManager();
         const classrooms = cm.getActiveClassrooms();
-
-        // Sort classrooms alphabetically by name
         classrooms.sort((a, b) => a.name.localeCompare(b.name));
-
-        // Create a template from the HTML file and pass the classrooms data
-        const htmlTemplate = HtmlService.createTemplateFromFile('UI/ClassroomDropdown');
-        htmlTemplate.classrooms = classrooms; // Pass data to the template
-
-        // Evaluate the template to HTML
-        const htmlOutput = htmlTemplate.evaluate().setWidth(500).setHeight(300);
-
-        // Display the modal dialog
-        this.ui.showModalDialog(htmlOutput, 'Select Classroom');
+        this._showTemplateDialog('UI/ClassroomDropdown', { classrooms }, 'Select Classroom', {
+          width: 500,
+          height: 300,
+        });
         console.log('Classroom dropdown modal displayed.');
       } catch (error) {
         console.error('Error displaying classroom dropdown modal:', error);
@@ -492,17 +495,13 @@ class UIManager {
       try {
         const updateManager = new UpdateManager();
         const versions = updateManager.fetchVersionDetails();
-
-        if (!versions) {
-          throw new Error('Failed to fetch version details');
-        }
-
-        const template = HtmlService.createTemplateFromFile('UI/VersionSelectorModal');
-        template.versions = versions;
-
-        const htmlOutput = template.evaluate().setWidth(400).setHeight(250);
-
-        this.ui.showModalDialog(htmlOutput, 'Select Version to Update To');
+        if (!versions) throw new Error('Failed to fetch version details');
+        this._showTemplateDialog(
+          'UI/VersionSelectorModal',
+          { versions },
+          'Select Version to Update To',
+          { width: 400, height: 250 }
+        );
       } catch (error) {
         console.error('Error showing version selector:', error);
         Utils.toastMessage('Failed to load versions: ' + error.message, 'Error', 5);

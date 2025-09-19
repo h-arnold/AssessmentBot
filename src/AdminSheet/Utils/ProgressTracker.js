@@ -4,9 +4,13 @@
  */
 class ProgressTracker {
   constructor() {
-    // Ensure only one instance exists (singleton enforcement)
+    /**
+     * JSDoc Singleton Banner
+     * Use ProgressTracker.getInstance(); do not call constructor directly.
+     */
+    // Singleton guard: constructor should only execute once via getInstance()
     if (ProgressTracker._instance) {
-      return ProgressTracker._instance;
+      return; // ignore duplicate constructions
     }
 
     // Initialize properties

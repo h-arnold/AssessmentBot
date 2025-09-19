@@ -22,6 +22,10 @@ class ConfigurationManager {
    * The constructor is intentionally lightweight so tests can assert no side‑effects before first real use.
    */
   constructor(isSingletonCreator = false) {
+    /**
+     * JSDoc Singleton Banner
+     * Use ConfigurationManager.getInstance(); do not call constructor directly.
+     */
     if (!isSingletonCreator && ConfigurationManager._instance) {
       // Guard: discourage direct construction after first instance
       return ConfigurationManager._instance;
@@ -34,6 +38,16 @@ class ConfigurationManager {
     if (!ConfigurationManager._instance) {
       ConfigurationManager._instance = this;
     }
+  }
+
+  /** Shared patterns (extracted for DRY). */
+  static get API_KEY_PATTERN() {
+    // Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens
+    return /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+  }
+  static get DRIVE_ID_PATTERN() {
+    // Basic Google drive file/folder id heuristic
+    return /^[A-Za-z0-9-_]{10,}$/;
   }
 
   /**
@@ -57,9 +71,16 @@ class ConfigurationManager {
     this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
     // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
-      console.log('[TRACE] ConfigurationManager.ensureInitialized() heavy boundary');
+      console.log('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this.maybeDeserializeProperties();
     this._initialized = true;
+    if (globalThis.FREEZE_SINGLETONS) {
+      try {
+        Object.freeze(this);
+      } catch (_) {
+        /* ignore */
+      }
+    }
   }
 
   /** Test helper */
@@ -171,43 +192,44 @@ class ConfigurationManager {
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
   maybeDeserializeProperties() {
-    // This method is now called only from ensureInitialized().
+    const safeGetKeys = (store) => {
+      if (!store) return [];
+      try {
+        return store.getKeys ? store.getKeys() : [];
+      } catch (e) {
+        if (globalThis.__TRACE_SINGLETON__)
+          console.debug(
+            '[TRACE] ConfigurationManager.maybeDeserializeProperties safeGetKeys error:',
+            e?.message ?? e
+          );
+        return [];
+      }
+    };
     try {
-      // Only attempt deserialisation if neither script nor document properties exist.
-      // (Access kept minimal – one getKeys() per store.)
-      let hasScriptProperties = false;
+      const hasScript = safeGetKeys(this.scriptProperties).length > 0;
+      const hasDoc = safeGetKeys(this.documentProperties).length > 0;
+      if (hasScript || hasDoc) return; // early return – nothing to do
       try {
-        hasScriptProperties = this.scriptProperties.getKeys().length > 0;
-      } catch (e) {
-        // Some test/mocked environments may not implement getKeys(); record debug info but continue.
-        if (globalThis.__TRACE_SINGLETON__)
-          console.debug('[TRACE] scriptProperties.getKeys() failed:', e?.message ?? e);
-        hasScriptProperties = false;
-      }
-      let hasDocumentProperties = false;
-      try {
-        hasDocumentProperties = this.documentProperties.getKeys().length > 0;
-      } catch (e) {
-        if (globalThis.__TRACE_SINGLETON__)
-          console.debug('[TRACE] documentProperties.getKeys() failed:', e?.message ?? e);
-        hasDocumentProperties = false;
-      }
-      if (!hasScriptProperties && !hasDocumentProperties) {
-        try {
-          const propertiesCloner = new PropertiesCloner();
-          if (propertiesCloner.sheet) {
-            propertiesCloner.deserialiseProperties();
-            console.log('Successfully copied properties from propertiesStore');
-          } else {
-            console.log('No propertiesStore sheet found');
-          }
-        } catch (error) {
-          // Log error for observability but don't crash initialisation.
-          console.error('Error initializing properties:', error?.message ?? error);
+        const propertiesCloner = new PropertiesCloner();
+        if (propertiesCloner.sheet) {
+          propertiesCloner.deserialiseProperties();
+          console.log('Successfully copied properties from propertiesStore');
+        } else {
+          console.log('No propertiesStore sheet found');
+        }
+      } catch (inner) {
+        if (typeof logError === 'function') {
+          logError('ConfigurationManager.maybeDeserializeProperties.init', inner);
+        } else {
+          console.error('Error initializing properties:', inner?.message ?? inner);
         }
       }
     } catch (outer) {
-      console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
+      if (typeof logError === 'function') {
+        logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
+      } else {
+        console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
+      }
     }
   }
 
@@ -228,17 +250,17 @@ class ConfigurationManager {
 
   getProperty(key) {
     this.ensureInitialized();
-    if (!this.configCache) {
-      this.getAllConfigurations();
+    this.getAllConfigurations();
+    switch (key) {
+      case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
+      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
+      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED: {
+        const v = this.documentProperties.getProperty(key);
+        return v == null ? false : v;
+      }
+      default:
+        return this.configCache[key] || '';
     }
-    if (
-      key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
-      key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
-      key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED
-    ) {
-      return this.documentProperties.getProperty(key) || false;
-    }
-    return this.configCache[key] || '';
   }
 
   setProperty(key, value) {
@@ -334,10 +356,8 @@ class ConfigurationManager {
   }
 
   static validateApiKey(value) {
-    // Accept API keys that are alphanumeric with optional single hyphens between segments.
-    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-    if (typeof value !== 'string' || !apiKeyPattern.test(value.trim())) {
+    const pattern = ConfigurationManager.API_KEY_PATTERN;
+    if (typeof value !== 'string' || !pattern.test(value.trim())) {
       throw new Error(
         'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.'
       );
@@ -346,21 +366,18 @@ class ConfigurationManager {
   }
 
   isValidApiKey(apiKey) {
-    // Accept API keys that are alphanumeric with optional single hyphens between segments.
-    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-    return apiKeyPattern.test(apiKey.trim());
+    const pattern = ConfigurationManager.API_KEY_PATTERN;
+    return typeof apiKey === 'string' && pattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
     // Guard: Only touch Drive when explicitly validating. Accept cheap format heuristic first.
     if (!sheetId || typeof sheetId !== 'string') return false;
     const trimmed = sheetId.trim();
-    // Heuristic: Google file IDs are typically 20+ chars of allowed charset. Avoid DriveApp call for obviously bad values.
-    if (!/^[A-Za-z0-9-_]{10,}$/.test(trimmed)) return false;
+    if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE] ConfigurationManager.isValidGoogleSheetId() Drive access');
+        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
       const file = DriveApp.getFileById(trimmed);
       return !!(file?.getMimeType?.() === MimeType.GOOGLE_SHEETS);
     } catch (error) {
@@ -373,10 +390,10 @@ class ConfigurationManager {
   isValidGoogleDriveFolderId(folderId) {
     if (!folderId || typeof folderId !== 'string') return false;
     const trimmed = folderId.trim();
-    if (!/^[A-Za-z0-9-_]{10,}$/.test(trimmed)) return false;
+    if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE] ConfigurationManager.isValidGoogleDriveFolderId() Drive access');
+        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
@@ -390,11 +407,11 @@ class ConfigurationManager {
   }
 
   getBackendAssessorBatchSize() {
-    const value = parseInt(
-      this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE),
-      10
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE,
+      ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE,
+      { min: 1, max: 500 }
     );
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE : value;
   }
 
   static get DEFAULTS() {
@@ -409,12 +426,11 @@ class ConfigurationManager {
   }
 
   getSlidesFetchBatchSize() {
-    const raw = this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE);
-    const parsed = parseInt(raw, 10);
-    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 100) {
-      return parsed;
-    }
-    return ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE;
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE,
+      ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE,
+      { min: 1, max: 100 }
+    );
   }
 
   getApiKey() {
@@ -426,16 +442,17 @@ class ConfigurationManager {
   }
 
   getRevokeAuthTriggerSet() {
-    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET);
-    return value.toString().toLowerCase() === 'true';
+    return ConfigurationManager.toBoolean(
+      this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET)
+    );
   }
 
   getDaysUntilAuthRevoke() {
-    const value = parseInt(
-      this.getProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE),
-      10
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE,
+      ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE,
+      { min: 1, max: 365 }
     );
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE : value;
   }
 
   getUpdateDetailsUrl() {
@@ -444,8 +461,11 @@ class ConfigurationManager {
   }
 
   getUpdateStage() {
-    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE), 10);
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.UPDATE_STAGE : value;
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
+      ConfigurationManager.DEFAULTS.UPDATE_STAGE,
+      { min: 0, max: 2 }
+    );
   }
 
   getAssessmentRecordTemplateId() {
@@ -474,9 +494,9 @@ class ConfigurationManager {
   }
 
   getScriptAuthorised() {
-    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED);
-    // Explicitly convert string to boolean
-    return value.toString().toLowerCase() === 'true';
+    return ConfigurationManager.toBoolean(
+      this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED)
+    );
   }
 
   setBackendAssessorBatchSize(batchSize) {
@@ -515,12 +535,17 @@ class ConfigurationManager {
   }
 
   setIsAdminSheet(isAdmin) {
-    const boolValue = Boolean(isAdmin);
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, boolValue);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
+      ConfigurationManager.toBoolean(isAdmin)
+    );
   }
 
   setRevokeAuthTriggerSet(flag) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, flag);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
+      ConfigurationManager.toBoolean(flag)
+    );
   }
 
   setDaysUntilAuthRevoke(days) {
@@ -529,7 +554,38 @@ class ConfigurationManager {
 
   // New setter for scriptAuthorised
   setScriptAuthorised(flag) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED,
+      ConfigurationManager.toBoolean(flag)
+    );
+  }
+
+  /**
+   * Helper: normalize truthy/falsey to strict boolean.
+   */
+  static toBoolean(value) {
+    if (typeof value === 'boolean') return value;
+    if (value == null) return false;
+    if (typeof value === 'number') return value !== 0;
+    const s = String(value).trim().toLowerCase();
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    return Boolean(s);
+  }
+  static toBooleanString(value) {
+    return ConfigurationManager.toBoolean(value) ? 'true' : 'false';
+  }
+
+  /** Generic integer accessor with validation and fallback */
+  getIntConfig(
+    key,
+    fallback,
+    { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}
+  ) {
+    const raw = this.getProperty(key);
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
+    return fallback;
   }
 }
 

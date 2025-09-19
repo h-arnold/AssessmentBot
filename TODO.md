@@ -231,13 +231,80 @@ Remove transitional code, enforce invariants.
 (Use these master checkboxes as you move through phases.)
 
 - [x] Phase 0 – Test scaffolding
-- [ ] Phase 1 – Standardise getInstance
+- [x] Phase 1 – Standardise getInstance
 - [x] Phase 2 – Extract heavy init
-- [ ] Phase 3 – Remove global singletons
+- [x] Phase 3 – Remove global singletons
 - [ ] Phase 4 – Documentation & DX
 - [ ] Phase 5 – Performance verification
 - [ ] Phase 6 – Cleanup & hardening
 - [ ] Phase 7 – (Optional backlog items)
+
+---
+
+## Refactor Follow‑Ups (Short & Medium Term)
+
+These items were identified after completing Phase 3. They are grouped to streamline implementation. Tackle Short‑Term items first (low risk / high clarity), then Medium‑Term. Strategic / long‑term items already live under Phase 7 backlog.
+
+### Short‑Term (Quick Wins)
+
+#### Consistency & Documentation
+
+- [x] Add uniform JSDoc banner to all singleton constructors: "Use Class.getInstance(); do not call constructor directly." (`ConfigurationManager`, `InitController`, `UIManager`, `ProgressTracker`)
+- [x] Standardise singleton static field name (`UIManager.instance` → `_instance`) OR document intentional divergence
+- [x] Normalize constructor guard comment across singletons (single standard line)
+
+#### DRY / Readability
+
+- [x] Extract shared `API_KEY_PATTERN` constant in `ConfigurationManager` (used in validate + isValid)
+- [x] Extract shared `DRIVE_ID_PATTERN` constant (Google file/folder ID regex)
+- [x] Create `ConfigurationManager.toBoolean(value)` helper and use for boolean doc properties
+- [x] Introduce `getIntConfig(key, fallback, {min,max})` helper for numeric getters (batch size, days, update stage)
+- [x] Simplify `getProperty()` to rely directly on `getAllConfigurations()` (remove redundant cache check)
+- [x] Early return refactor for `maybeDeserializeProperties()` (reduce nesting) + small helper for `safeGetKeys(store)`
+- [x] Unify `[TRACE]` heavy-boundary log format: `[TRACE][HeavyInit] Class.method`
+- [x] Add helper in `UIManager` (e.g. `_showTemplateDialog(file, data, title, {width,height})`) to remove repeated template modal code
+
+#### Minor Housekeeping
+
+- [x] Update Tracking Progress checkboxes to reflect completed Phases (1 & 3 now done)
+- [x] Add optional `Object.freeze(instance)` after first successful `ensureInitialized()` in `ConfigurationManager` (guard structure) – gated by a flag if needed
+- [ ] Add a central `logError(context, error)` utility (or reuse existing `ProgressTracker` pattern) for consistent error output
+
+### Medium‑Term Refactors
+
+#### Singleton Infrastructure
+
+- [ ] Introduce lightweight `BaseSingleton` (or mixin function) providing `getInstance()`, `resetForTests()`, optional freeze hook
+- [ ] Convert `CONFIG_KEYS` & `CONFIG_SCHEMA` to static frozen properties (avoid re-allocating objects on access)
+- [ ] Align `ProgressTracker` with lazy pattern: move `PropertiesService.getDocumentProperties()` into `ensureInitialized()`
+
+#### UI Lazy & Logging Improvements
+
+- [ ] Defer UI availability probe: remove `isUiAvailable()` call from `UIManager` constructor; probe on first `safeUiOperation`
+- [ ] Make `safeUiOperation()` call `probeUiIfNeeded()` internally (drop manual probe usage elsewhere)
+- [ ] Replace ad-hoc UI debug logs with gated `debugUi(msg)` when `globalThis.DEBUG_UI` is truthy
+
+#### Validation & Caching
+
+- [ ] Add memoization cache for Drive ID validators (sheet + folder) with positive-result caching (and optionally short-lived negative caching)
+- [ ] Refactor Drive validators to use a single internal `_validateDriveEntity(kind, id, runner)` helper
+
+#### Error Handling & Utilities
+
+- [ ] Centralize validation helpers (`validateIntegerInRange`, `validateUrl`, etc.) into a `ValidationUtils` module (imported by `ConfigurationManager`)
+- [ ] Introduce unified error logger: `[ERROR][Context] message` with optional stack when `DEBUG_ERRORS`
+
+#### Classroom & Data Helpers
+
+- [ ] Extract `headerMap` constant used by `UIManager.getClassroomData()` & `saveClassroomData()`; reuse to avoid duplication
+- [ ] Provide accessor helpers: `mapRowToClassroom(row)` & `applyRowUpdates(data, rows, headerMap)` for clarity
+
+### Notes
+
+- Short‑Term items should not alter observable behaviour (except improved trace formatting / logs). Bundle them into small PR(s) to keep review manageable.
+- Medium‑Term items introduce structural changes—add/update tests (especially for newly lazy `ProgressTracker` & UI probing changes).
+
+---
 
 ---
 

@@ -11,8 +11,13 @@ class InitController {
    * Use InitController.getInstance() + getUiManager() for lazy UI access.
    */
   constructor(isSingletonCreator = false) {
+    /**
+     * JSDoc Singleton Banner
+     * Use InitController.getInstance(); do not call constructor directly.
+     */
+    // Singleton guard: constructor should only execute once via getInstance()
     if (!isSingletonCreator && InitController._instance) {
-      return InitController._instance;
+      return; // ignore subsequent direct calls
     }
     this._initialized = false; // future hook if we add heavy init
     this.uiManager = null; // defer until needed
