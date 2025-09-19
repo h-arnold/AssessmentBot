@@ -43,7 +43,7 @@ class InitController {
         this.uiManager = UIManager.getInstance();
         console.log('UIManager lazily instantiated.');
       } catch (error) {
-        console.error('UIManager cannot be instantiated: ' + error);
+        console.error('UIManager cannot be instantiated:', error?.message ?? error);
         this.uiManager = null;
       }
     }
@@ -138,11 +138,7 @@ class InitController {
       this._withUI((ui) => ui.createAuthorisedMenu());
     } catch (error) {
       this._withUI((ui) => ui.createAuthorisedMenu());
-      throw new Error(
-        `Error during admin script initialisation: ${
-          error && error.message ? error.message : error
-        }`
-      );
+      throw new Error(`Error during admin script initialisation: ${error?.message ?? error}`);
     }
   }
 
@@ -160,11 +156,7 @@ class InitController {
     } catch (error) {
       // Ensure menu is created even if there's an error
       this._withUI((ui) => ui.createAssessmentRecordMenu());
-      throw new Error(
-        `Error during assessment record initialisation: ${
-          error && error.message ? error.message : error
-        }`
-      );
+      throw new Error(`Error during assessment record initialisation: ${error?.message ?? error}`);
     }
   }
 

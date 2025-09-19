@@ -53,7 +53,7 @@ class UIManager {
       ui.createMenu('Test');
       return true;
     } catch (error) {
-      console.log('UI operations are not available in this context: ' + error.message);
+      console.log('UI operations are not available in this context:', error?.message ?? error);
       return false;
     }
   }
@@ -118,7 +118,7 @@ class UIManager {
         this.ui = SpreadsheetApp.getUi();
       } catch (err) {
         // Log the reason UI couldn't be acquired and keep ui in limited mode
-        console.error('Failed to acquire Spreadsheet UI:', err && err.message ? err.message : err);
+        console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
         this.uiAvailable = false;
         this.ui = null;
       }

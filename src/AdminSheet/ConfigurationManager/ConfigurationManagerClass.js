@@ -179,13 +179,18 @@ class ConfigurationManager {
       try {
         hasScriptProperties = this.scriptProperties.getKeys().length > 0;
       } catch (e) {
-        // ignore – mock environments may not fully implement
+        // Some test/mocked environments may not implement getKeys(); record debug info but continue.
+        if (globalThis.__TRACE_SINGLETON__)
+          console.debug('[TRACE] scriptProperties.getKeys() failed:', e?.message ?? e);
+        hasScriptProperties = false;
       }
       let hasDocumentProperties = false;
       try {
         hasDocumentProperties = this.documentProperties.getKeys().length > 0;
       } catch (e) {
-        // ignore
+        if (globalThis.__TRACE_SINGLETON__)
+          console.debug('[TRACE] documentProperties.getKeys() failed:', e?.message ?? e);
+        hasDocumentProperties = false;
       }
       if (!hasScriptProperties && !hasDocumentProperties) {
         try {
@@ -197,6 +202,7 @@ class ConfigurationManager {
             console.log('No propertiesStore sheet found');
           }
         } catch (error) {
+          // Log error for observability but don't crash initialisation.
           console.error('Error initializing properties:', error?.message ?? error);
         }
       }
@@ -215,7 +221,9 @@ class ConfigurationManager {
 
   hasProperty(key) {
     this.getAllConfigurations();
-    return Object.prototype.hasOwnProperty.call(this.configCache, key);
+    return Object.hasOwn
+      ? Object.has(this.configCache, key)
+      : Object.prototype.hasOwnProperty.call(this.configCache, key);
   }
 
   getProperty(key) {
@@ -354,10 +362,10 @@ class ConfigurationManager {
       if (globalThis.__TRACE_SINGLETON__)
         console.log('[TRACE] ConfigurationManager.isValidGoogleSheetId() Drive access');
       const file = DriveApp.getFileById(trimmed);
-      return !!(file && file.getMimeType && file.getMimeType() === MimeType.GOOGLE_SHEETS);
+      return !!(file?.getMimeType?.() === MimeType.GOOGLE_SHEETS);
     } catch (error) {
       // Keep log concise
-      console.error(`Invalid Google Sheet ID: ${error && error.message ? error.message : error}`);
+      console.error(`Invalid Google Sheet ID: ${error?.message ?? error}`);
       return false;
     }
   }
@@ -372,9 +380,7 @@ class ConfigurationManager {
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
-      console.error(
-        `Invalid Google Drive Folder ID: ${error && error.message ? error.message : error}`
-      );
+      console.error(`Invalid Google Drive Folder ID: ${error?.message ?? error}`);
       return false;
     }
   }
