@@ -15,7 +15,7 @@ This document is a structured, multi-phase implementation plan to migrate from e
 
 ---
 
-## Phase 0: Test & Measurement Foundation
+## Phase 0: Test & Measurement Foundation ✅
 
 ### ✅ Goals
 
@@ -24,18 +24,18 @@ This document is a structured, multi-phase implementation plan to migrate from e
 
 ### Tasks
 
-- [ ] Add lightweight _instrumentation helpers_ (test-only) to count constructor runs & heavy init calls.
-- [ ] Create a `__mocks__/` (or inline mocks) layer for Apps Script globals used in singleton constructors: `PropertiesService`, `SpreadsheetApp`, `DriveApp`, `HtmlService` (only minimal methods).
-- [ ] Add a `SingletonTestHarness` utility to:
-  - [ ] Reset static `_instance` fields (e.g. `ConfigurationManager._instance = null`).
-  - [ ] Provide `withFreshSingleton(Class, fn)` wrapper to run code in a clean state.
-- [ ] Write baseline tests (they will initially FAIL once we enforce laziness; mark with `.skip` until refactor lands):
-  - [ ] `configurationManager does not touch PropertiesService until first getter is called`.
-  - [ ] `InitController does not instantiate UIManager until UI method invoked`.
-  - [ ] `UIManager does not create GoogleClassroomManager until a classroom-related method is called`.
-  - [ ] `ProgressTracker remains already-lazy (control test)`.
-- [ ] Add performance smoke test (non‑assertive): measure timestamps around first access vs. second access (log only for now).
-- [ ] Document how to run only singleton tests (e.g. `npm test -- singleton`).
+- [x] Add lightweight _instrumentation helpers_ (test-only) to count constructor runs & heavy init calls.
+- [x] Create a `__mocks__/` (or inline mocks) layer for Apps Script globals used in singleton constructors: `PropertiesService`, `SpreadsheetApp`, `DriveApp`, `HtmlService` (only minimal methods).
+- [x] Add a `SingletonTestHarness` utility to:
+  - [x] Reset static `_instance` fields (e.g. `ConfigurationManager._instance = null`).
+  - [x] Provide `withFreshSingleton(Class, fn)` wrapper to run code in a clean state.
+- [x] Write baseline tests (they will initially FAIL once we enforce laziness; mark with `.skip` until refactor lands):
+  - [x] `configurationManager does not touch PropertiesService until first getter is called`.
+  - [x] `InitController does not instantiate UIManager until UI method invoked`.
+  - [x] `UIManager does not create GoogleClassroomManager until a classroom-related method is called`.
+  - [x] `ProgressTracker remains already-lazy (control test)`.
+- [x] Add performance smoke test (non‑assertive): measure timestamps around first access vs. second access (log only for now).
+- [x] Document how to run only singleton tests (e.g. `npm test -- singleton`).
 
 ---
 
@@ -47,27 +47,27 @@ Make every singleton class expose a canonical `static getInstance()` without sid
 
 ### Tasks
 
-- [ ] `ConfigurationManager`:
-  - [ ] Add / confirm `static getInstance()` returning `_instance`.
-  - [ ] Remove heavy work from constructor (move deserialisation call out).
-  - [ ] Introduce `_initialized = false` + `ensureInitialized()`.
-  - [ ] Ensure all getters/setters call `ensureInitialized()` at start (or only those that need persisted properties—decide and document).
-- [ ] `InitController`:
-  - [ ] Add `static getInstance()`.
-  - [ ] Remove eager UI construction.
-  - [ ] Add `getUiManager()` lazy wrapper.
-- [ ] `UIManager`:
-  - [ ] Ensure `static getInstance()` pattern symmetrical.
-  - [ ] Move `GoogleClassroomManager` creation to `ensureClassroomManager()`.
-  - [ ] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()`).
-- [ ] Confirm `ProgressTracker` already conforms—add minor internal consistency comments.
-- [ ] Add `resetForTests()` static method to each singleton (used by harness).
-- [ ] Update ESLint globals if needed (remove now-unused global singleton variable names later in Phase 3).
+- [x] `ConfigurationManager`:
+  - [x] Add / confirm `static getInstance()` returning `_instance`.
+  - [x] Remove heavy work from constructor (move deserialisation call out).
+  - [x] Introduce `_initialized = false` + `ensureInitialized()`.
+  - [x] Ensure all getters/setters call `ensureInitialized()` at start.
+- [x] `InitController`:
+  - [x] Add `static getInstance()`.
+  - [x] Remove eager UI construction.
+  - [x] Add `getUiManager()` lazy wrapper.
+- [x] `UIManager`:
+  - [x] Ensure `static getInstance()` pattern symmetrical.
+  - [x] Move `GoogleClassroomManager` creation to `ensureClassroomManager()`.
+  - [x] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()` — exact method name in `UIManager.js`).
+- [x] Confirm `ProgressTracker` already conforms—add minor internal consistency comments.
+- [x] Add `resetForTests()` static method to each singleton (used by harness).
+- [x] Update ESLint globals if needed (remove now-unused global singleton variable names later in Phase 3).
 
 ### Tests
 
-- [ ] Update previously skipped tests to active; ensure they now pass for adjusted classes.
-- [ ] Add new tests for multi-call idempotency: calling `getInstance()` 10x returns same object & constructor only once.
+- [x] Update previously skipped tests to active; ensure they now pass for adjusted classes.
+- [x] Add new tests for multi-call idempotency: calling `getInstance()` 10x returns same object & constructor only once.
 
 ---
 
@@ -79,18 +79,18 @@ Anything that performs I/O, property deserialisation, Drive or Classroom interac
 
 ### Tasks
 
-- [ ] `ConfigurationManager.maybeDeserializeProperties()` is only called inside `ensureInitialized()`.
-- [ ] Guard any Drive access in `ConfigurationManager` (e.g. `isValidGoogleSheetId`) so they are only invoked when those specific validators run (normal usage unaffected).
-- [ ] In `UIManager`, wrap Classroom operations:
-  - [ ] Replace direct `this.classroomManager` usages with `const cm = this.ensureClassroomManager();`.
-  - [ ] Ensure non-classroom UI calls (like showing generic modal) don’t instantiate classroom manager.
-- [ ] For `InitController`, ensure methods that don’t need UI (maybe later) skip UI instantiation (e.g. pure config logic).
-- [ ] Optional: Add a feature flag environment var (test-only) to assert when heavy paths are crossed (e.g. `global.__TRACE_SINGLETON__ = true`).
+- [x] `ConfigurationManager.maybeDeserializeProperties()` is only called inside `ensureInitialized()`.
+- [x] Guard any Drive access in `ConfigurationManager` (e.g. `isValidGoogleSheetId`) so they are only invoked when those specific validators run (normal usage unaffected).
+- [x] In `UIManager`, wrap Classroom operations:
+  - [x] Replace direct `this.classroomManager` usages with `const cm = this.ensureClassroomManager();`.
+  - [x] Ensure non-classroom UI calls (like showing generic modal) don’t instantiate classroom manager.
+- [x] For `InitController`, ensure methods that don’t need UI skip UI instantiation (pure config logic uses helper `_withUI`).
+- [x] Optional: Add a feature flag environment var (test-only) to assert when heavy paths are crossed (e.g. `global.__TRACE_SINGLETON__ = true`).
 
 ### Tests
 
-- [ ] Assert that calling a config setter that touches only script properties triggers initialisation (if by design) or does not (if selectively lazy—document expected behaviour explicitly in test name).
-- [ ] Assert `showAssignmentDropdown()` creates classroom manager (exactly once) and subsequent calls don’t recreate it.
+- [x] Assert that calling a config setter that touches only script properties triggers initialisation (if by design) or does not (if selectively lazy—document expected behaviour explicitly in test name).
+- [x] Assert `showAssignmentDropdown()` creates classroom manager (exactly once) and subsequent calls don’t recreate it.
 
 ---
 
@@ -230,9 +230,9 @@ Remove transitional code, enforce invariants.
 
 (Use these master checkboxes as you move through phases.)
 
-- [ ] Phase 0 – Test scaffolding
+- [x] Phase 0 – Test scaffolding
 - [ ] Phase 1 – Standardise getInstance
-- [ ] Phase 2 – Extract heavy init
+- [x] Phase 2 – Extract heavy init
 - [ ] Phase 3 – Remove global singletons
 - [ ] Phase 4 – Documentation & DX
 - [ ] Phase 5 – Performance verification

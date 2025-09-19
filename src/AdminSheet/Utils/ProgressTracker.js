@@ -33,6 +33,13 @@ class ProgressTracker {
   }
 
   /**
+   * Test helper to reset singleton between tests (Phase 1 convention).
+   */
+  static resetForTests() {
+    ProgressTracker._instance = null;
+  }
+
+  /**
    * Initializes the progress tracking by resetting any existing progress data.
    */
   startTracking() {
@@ -99,6 +106,7 @@ class ProgressTracker {
   complete() {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
+      ...currentData,
       step: this.step,
       completed: true,
       message: 'Task completed successfully.',
@@ -172,13 +180,13 @@ class ProgressTracker {
         // For other objects, try to stringify them
         try {
           console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
-        } catch (e) {
-          console.error('Developer details: [Object could not be stringified]');
+        } catch (err) {
+          console.error('Developer details: [Object could not be stringified]', err);
         }
       }
     } else {
-      // For strings or other primitive types
-      console.error(`Developer details: ${extraErrorDetails}`);
+      // For strings or other primitive types – avoid default object stringification
+      console.error('Developer details:', extraErrorDetails);
     }
   }
 
@@ -279,7 +287,7 @@ class ProgressTracker {
 
     // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
-    if (!progress || !progress.step) {
+    if (!progress?.step) {
       console.log('No step data available.');
       return null;
     }
@@ -296,4 +304,12 @@ class ProgressTracker {
     this.properties.deleteProperty(this.propertyKey);
     console.log('All progress data cleared.');
   }
+}
+
+// Export for Node (module.exports) and attach to global when running in GAS.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ProgressTracker;
+} else {
+  // Use globalThis instead of `this` so linters and strict environments are happy.
+  globalThis.ProgressTracker = ProgressTracker; // global assignment for GAS
 }

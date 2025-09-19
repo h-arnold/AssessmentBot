@@ -6,15 +6,52 @@
  */
 
 class InitController {
-  constructor() {
-    // Attempt to instantiate UIManager only in user context to avoid issues with triggers
-    try {
-      this.uiManager = UIManager.getInstance();
-      console.log('UIManager instantiated successfully.');
-    } catch (error) {
-      console.error('UIManager cannot be instantiated: ' + error);
-      this.uiManager = null; // UIManager is not available in this context
+  /**
+   * Constructor is intentionally lightweight (Phase 1). Do not perform UI work here.
+   * Use InitController.getInstance() + getUiManager() for lazy UI access.
+   */
+  constructor(isSingletonCreator = false) {
+    if (!isSingletonCreator && InitController._instance) {
+      return InitController._instance;
     }
+    this._initialized = false; // future hook if we add heavy init
+    this.uiManager = null; // defer until needed
+    if (!InitController._instance) {
+      InitController._instance = this;
+    }
+  }
+
+  static getInstance() {
+    if (!InitController._instance) {
+      new InitController(true);
+    }
+    return InitController._instance;
+  }
+
+  ensureInitialized() {
+    if (this._initialized) return;
+    // (Currently no heavy work to do; placeholder for Phase 2.)
+    this._initialized = true;
+  }
+
+  /**
+   * Lazily obtain UIManager. Safe to call repeatedly.
+   */
+  getUiManager() {
+    if (!this.uiManager) {
+      try {
+        this.uiManager = UIManager.getInstance();
+        console.log('UIManager lazily instantiated.');
+      } catch (error) {
+        console.error('UIManager cannot be instantiated:', error?.message ?? error);
+        this.uiManager = null;
+      }
+    }
+    return this.uiManager;
+  }
+
+  static resetForTests() {
+    InitController._instance = null;
   }
 
   /**
@@ -26,22 +63,23 @@ class InitController {
     const isAdminSheet = configurationManager.getIsAdminSheet();
     console.log('Script authorization status:', isScriptAuthorised);
 
-    if (!this.uiManager) {
+    const uiManager = this.getUiManager();
+    if (!uiManager) {
       console.error('UIManager is not available to add custom menus.');
       return;
     }
 
     if (isScriptAuthorised && isAdminSheet) {
       console.log('Script is already authorised. Creating authorised menu.');
-      this.uiManager.createAuthorisedMenu();
+      uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
       console.log(
         'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
       );
-      this.uiManager.createAssessmentRecordMenu();
+      uiManager.createAssessmentRecordMenu();
     } else {
       console.log('Script not authorised. Creating unauthorised menu.');
-      this.uiManager.createUnauthorisedMenu();
+      uiManager.createUnauthorisedMenu();
     }
   }
 
@@ -58,9 +96,9 @@ class InitController {
       this.doFirstRunInit();
       // Create appropriate menu after first run init
       if (isAdminSheet) {
-        this.uiManager.createAuthorisedMenu();
+        this._withUI((ui) => ui.createAuthorisedMenu());
       } else {
-        this.uiManager.createAssessmentRecordMenu();
+        this._withUI((ui) => ui.createAssessmentRecordMenu());
       }
     }
 
@@ -70,7 +108,6 @@ class InitController {
     } else {
       this.assessmentRecordScriptInit();
     }
-    return;
   }
 
   /**
@@ -85,7 +122,7 @@ class InitController {
 
     // If everything is up to date and the script is authorised, create the menu and finish.
     if (updateStage === 2 && scriptAuthorised) {
-      this.uiManager.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
       return;
     }
 
@@ -98,10 +135,10 @@ class InitController {
       }
 
       // Assuming the script didn't end early at any of the above points, create the authorised menu.
-      this.uiManager.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
     } catch (error) {
-      this.uiManager.createAuthorisedMenu();
-      throw new Error(`Error during admin script initialisation: ${error.message}`);
+      this._withUI((ui) => ui.createAuthorisedMenu());
+      throw new Error(`Error during admin script initialisation: ${error?.message ?? error}`);
     }
   }
 
@@ -112,14 +149,14 @@ class InitController {
   assessmentRecordScriptInit() {
     try {
       // Create the assessment record menu
-      this.uiManager.createAssessmentRecordMenu();
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
 
       // Set up the authorisation revocation timer
       this.setupAuthRevokeTimer();
     } catch (error) {
       // Ensure menu is created even if there's an error
-      this.uiManager.createAssessmentRecordMenu();
-      throw new Error(`Error during assessment record initialisation: ${error.message}`);
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
+      throw new Error(`Error during assessment record initialisation: ${error?.message ?? error}`);
     }
   }
 
@@ -135,7 +172,7 @@ class InitController {
 
     // Trigger the authorisation process if needed
     if (authStatus.needsAuth) {
-      this.uiManager.showAuthorisationModal(authStatus.authUrl);
+      this._withUI((ui) => ui.showAuthorisationModal(authStatus.authUrl));
     }
 
     // Assuming auth flow has taken place, add a trigger to call this method.
@@ -164,6 +201,21 @@ class InitController {
       const baseInitManager = new BaseUpdateAndInit();
       const assessmentRecordTemplateId = baseInitManager.getLatestAssessmentRecordTemplateId();
       configurationManager.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
+    }
+  }
+
+  /**
+   * Internal helper to execute a function only if UI can be instantiated (avoids forcing UI for pure config paths)
+   * @param {(ui: UIManager) => void} fn
+   */
+  _withUI(fn) {
+    try {
+      const ui = this.getUiManager();
+      if (ui) fn(ui);
+    } catch (e) {
+      // Swallow to keep pure logic paths resilient in headless/triggers
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] InitController._withUI suppressed UI error');
     }
   }
 
@@ -203,4 +255,9 @@ class InitController {
       return false;
     }
   }
+}
+
+// Export for Node test environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = InitController;
 }
