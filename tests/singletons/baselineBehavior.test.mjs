@@ -7,8 +7,6 @@
  * NOTE: These tests will initially FAIL once lazy initialization is enforced.
  * They serve as documentation of desired behavior and regression protection.
  */
-
-import { describe, test, expect, beforeEach } from 'vitest';
 import { SingletonTestHarness } from './SingletonTestHarness.js';
 
 const harness = new SingletonTestHarness();
@@ -54,7 +52,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           // Now call a getter that needs properties
           config.getApiKey();
 
-          // Should have accessed PropertiesService
+            // Should have accessed PropertiesService
           expect(harness.wasPropertiesServiceAccessed()).toBe(true);
         }
       });
@@ -153,7 +151,6 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           expect(harness.wasClassroomManagerInstantiated()).toBe(false);
 
           // Call a method that would need classroom manager
-          // (This will depend on the actual API, but conceptually...)
           if (uiManager.showAssignmentDropdown) {
             uiManager.showAssignmentDropdown();
           }
@@ -222,11 +219,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           harness.startTiming('ConfigurationManager_warm');
           const c2 = new ConfigurationManager();
           harness.endTiming('ConfigurationManager_warm');
-          console.log(
-            'ConfigurationManager cold/warm (ms):',
+          console.log('ConfigurationManager cold/warm (ms):',
             harness.getTimingDuration('ConfigurationManager_cold'),
-            harness.getTimingDuration('ConfigurationManager_warm')
-          );
+            harness.getTimingDuration('ConfigurationManager_warm'));
           expect(c1).toBe(c2);
         }
         if (ProgressTracker) {
@@ -236,11 +231,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           harness.startTiming('ProgressTracker_warm');
           const t2 = ProgressTracker.getInstance();
           harness.endTiming('ProgressTracker_warm');
-          console.log(
-            'ProgressTracker cold/warm (ms):',
+          console.log('ProgressTracker cold/warm (ms):',
             harness.getTimingDuration('ProgressTracker_cold'),
-            harness.getTimingDuration('ProgressTracker_warm')
-          );
+            harness.getTimingDuration('ProgressTracker_warm'));
           expect(t1).toBe(t2);
         }
         expect(true).toBe(true);

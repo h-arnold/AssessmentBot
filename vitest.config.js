@@ -3,6 +3,7 @@ module.exports = {
   test: {
     environment: 'node',
     setupFiles: ['tests/setupGlobals.js'],
+    globals: true,
     include: [
       'tests/**/*.test.js',
       'tests/models/**/*.test.js',

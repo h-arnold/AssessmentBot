@@ -297,3 +297,10 @@ class ProgressTracker {
     console.log('All progress data cleared.');
   }
 }
+
+// Export for Node (module.exports) and attach to global when running in GAS.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ProgressTracker;
+} else {
+  this.ProgressTracker = ProgressTracker; // global assignment for GAS
+}

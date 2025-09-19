@@ -61,6 +61,7 @@ class SingletonTestHarness {
     if (gasMocks.PropertiesService._calls) gasMocks.PropertiesService._calls.length = 0;
     if (gasMocks.SpreadsheetApp._calls) gasMocks.SpreadsheetApp._calls.length = 0;
     if (gasMocks.HtmlService._calls) gasMocks.HtmlService._calls.length = 0;
+    if (gasMocks.DriveApp._calls) gasMocks.DriveApp._calls.length = 0;
     gasMocks.GoogleClassroomManager._constructorCalls = 0;
     gasMocks.PropertiesCloner._constructorCalls = 0;
     if (gasMocks.PropertiesCloner._calls) gasMocks.PropertiesCloner._calls.length = 0;
@@ -73,6 +74,7 @@ class SingletonTestHarness {
     global.PropertiesService = gasMocks.PropertiesService;
     global.SpreadsheetApp = gasMocks.SpreadsheetApp;
     global.HtmlService = gasMocks.HtmlService;
+    global.DriveApp = gasMocks.DriveApp;
     global.GoogleClassroomManager = gasMocks.GoogleClassroomManager;
     global.PropertiesCloner = gasMocks.PropertiesCloner;
   }
@@ -181,6 +183,14 @@ class SingletonTestHarness {
    */
   wasUIAccessed() {
     return gasMocks.SpreadsheetApp._calls.length > 0;
+  }
+
+  /**
+   * Check if DriveApp was accessed
+   * @returns {boolean}
+   */
+  wasDriveAccessed() {
+    return gasMocks.DriveApp._calls.length > 0;
   }
 
   /**

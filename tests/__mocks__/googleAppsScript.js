@@ -106,6 +106,25 @@ const mockHtmlService = {
   },
 };
 
+// Mock DriveApp
+const mockDriveApp = {
+  _calls: [],
+  getFileById(id) {
+    this._calls.push(`getFileById:${id}`);
+    return {
+      getId: () => id,
+      getName: () => `MockFile-${id}`,
+    };
+  },
+  getFolderById(id) {
+    this._calls.push(`getFolderById:${id}`);
+    return {
+      getId: () => id,
+      getName: () => `MockFolder-${id}`,
+    };
+  },
+};
+
 // Mock GoogleClassroomManager (simple stub)
 const mockGoogleClassroomManager = function () {
   mockGoogleClassroomManager._constructorCalls =
@@ -130,6 +149,7 @@ module.exports = {
   PropertiesService: mockPropertiesService,
   SpreadsheetApp: mockSpreadsheetApp,
   HtmlService: mockHtmlService,
+  DriveApp: mockDriveApp,
   GoogleClassroomManager: mockGoogleClassroomManager,
   PropertiesCloner: mockPropertiesCloner,
 };
