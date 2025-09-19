@@ -126,6 +126,8 @@ class UIManager {
   }
   ensureClassroomManager() {
     if (!this.classroomManager) {
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] UIManager.ensureClassroomManager() heavy boundary');
       this.classroomManager = new GoogleClassroomManager();
       console.log('GoogleClassroomManager lazily instantiated.');
     }
@@ -301,8 +303,9 @@ class UIManager {
   showClassroomDropdown() {
     this.safeUiOperation(() => {
       try {
-        // Retrieve active classrooms using GoogleClassroomManager
-        const classrooms = this.classroomManager.getActiveClassrooms();
+        // Retrieve active classrooms using GoogleClassroomManager (lazy)
+        const cm = this.ensureClassroomManager();
+        const classrooms = cm.getActiveClassrooms();
 
         // Sort classrooms alphabetically by name
         classrooms.sort((a, b) => a.name.localeCompare(b.name));

@@ -96,11 +96,9 @@ class InitController {
       this.doFirstRunInit();
       // Create appropriate menu after first run init
       if (isAdminSheet) {
-        const uiManager = this.getUiManager();
-        uiManager?.createAuthorisedMenu();
+        this._withUI((ui) => ui.createAuthorisedMenu());
       } else {
-        const uiManager = this.getUiManager();
-        uiManager?.createAssessmentRecordMenu();
+        this._withUI((ui) => ui.createAssessmentRecordMenu());
       }
     }
 
@@ -124,8 +122,7 @@ class InitController {
 
     // If everything is up to date and the script is authorised, create the menu and finish.
     if (updateStage === 2 && scriptAuthorised) {
-      const uiManager = this.getUiManager();
-      uiManager?.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
       return;
     }
 
@@ -138,11 +135,9 @@ class InitController {
       }
 
       // Assuming the script didn't end early at any of the above points, create the authorised menu.
-      const uiManager = this.getUiManager();
-      uiManager?.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
     } catch (error) {
-      const uiManager = this.getUiManager();
-      uiManager?.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
       throw new Error(
         `Error during admin script initialisation: ${
           error && error.message ? error.message : error
@@ -158,15 +153,13 @@ class InitController {
   assessmentRecordScriptInit() {
     try {
       // Create the assessment record menu
-      const uiManager = this.getUiManager();
-      uiManager?.createAssessmentRecordMenu();
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
 
       // Set up the authorisation revocation timer
       this.setupAuthRevokeTimer();
     } catch (error) {
       // Ensure menu is created even if there's an error
-      const uiManager = this.getUiManager();
-      uiManager?.createAssessmentRecordMenu();
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
       throw new Error(
         `Error during assessment record initialisation: ${
           error && error.message ? error.message : error
@@ -187,8 +180,7 @@ class InitController {
 
     // Trigger the authorisation process if needed
     if (authStatus.needsAuth) {
-      const uiManager = this.getUiManager();
-      uiManager?.showAuthorisationModal(authStatus.authUrl);
+      this._withUI((ui) => ui.showAuthorisationModal(authStatus.authUrl));
     }
 
     // Assuming auth flow has taken place, add a trigger to call this method.
@@ -217,6 +209,21 @@ class InitController {
       const baseInitManager = new BaseUpdateAndInit();
       const assessmentRecordTemplateId = baseInitManager.getLatestAssessmentRecordTemplateId();
       configurationManager.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
+    }
+  }
+
+  /**
+   * Internal helper to execute a function only if UI can be instantiated (avoids forcing UI for pure config paths)
+   * @param {(ui: UIManager) => void} fn
+   */
+  _withUI(fn) {
+    try {
+      const ui = this.getUiManager();
+      if (ui) fn(ui);
+    } catch (e) {
+      // Swallow to keep pure logic paths resilient in headless/triggers
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] InitController._withUI suppressed UI error');
     }
   }
 

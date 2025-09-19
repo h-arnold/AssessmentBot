@@ -79,18 +79,18 @@ Anything that performs I/O, property deserialisation, Drive or Classroom interac
 
 ### Tasks
 
-- [ ] `ConfigurationManager.maybeDeserializeProperties()` is only called inside `ensureInitialized()`.
-- [ ] Guard any Drive access in `ConfigurationManager` (e.g. `isValidGoogleSheetId`) so they are only invoked when those specific validators run (normal usage unaffected).
-- [ ] In `UIManager`, wrap Classroom operations:
-  - [ ] Replace direct `this.classroomManager` usages with `const cm = this.ensureClassroomManager();`.
-  - [ ] Ensure non-classroom UI calls (like showing generic modal) don’t instantiate classroom manager.
-- [ ] For `InitController`, ensure methods that don’t need UI (maybe later) skip UI instantiation (e.g. pure config logic).
-- [ ] Optional: Add a feature flag environment var (test-only) to assert when heavy paths are crossed (e.g. `global.__TRACE_SINGLETON__ = true`).
+- [x] `ConfigurationManager.maybeDeserializeProperties()` is only called inside `ensureInitialized()`.
+- [x] Guard any Drive access in `ConfigurationManager` (e.g. `isValidGoogleSheetId`) so they are only invoked when those specific validators run (normal usage unaffected).
+- [x] In `UIManager`, wrap Classroom operations:
+  - [x] Replace direct `this.classroomManager` usages with `const cm = this.ensureClassroomManager();`.
+  - [x] Ensure non-classroom UI calls (like showing generic modal) don’t instantiate classroom manager.
+- [x] For `InitController`, ensure methods that don’t need UI skip UI instantiation (pure config logic uses helper `_withUI`).
+- [x] Optional: Add a feature flag environment var (test-only) to assert when heavy paths are crossed (e.g. `global.__TRACE_SINGLETON__ = true`).
 
 ### Tests
 
-- [ ] Assert that calling a config setter that touches only script properties triggers initialisation (if by design) or does not (if selectively lazy—document expected behaviour explicitly in test name).
-- [ ] Assert `showAssignmentDropdown()` creates classroom manager (exactly once) and subsequent calls don’t recreate it.
+- [x] Assert that calling a config setter that touches only script properties triggers initialisation (if by design) or does not (if selectively lazy—document expected behaviour explicitly in test name).
+- [x] Assert `showAssignmentDropdown()` creates classroom manager (exactly once) and subsequent calls don’t recreate it.
 
 ---
 
@@ -232,7 +232,7 @@ Remove transitional code, enforce invariants.
 
 - [x] Phase 0 – Test scaffolding
 - [ ] Phase 1 – Standardise getInstance
-- [ ] Phase 2 – Extract heavy init
+- [x] Phase 2 – Extract heavy init
 - [ ] Phase 3 – Remove global singletons
 - [ ] Phase 4 – Documentation & DX
 - [ ] Phase 5 – Performance verification

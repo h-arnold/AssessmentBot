@@ -100,8 +100,43 @@ const mockHtmlService = {
   createHtmlOutputFromFile(filename) {
     this._calls.push(`createHtmlOutputFromFile:${filename}`);
     return {
-      setWidth: (width) => this,
-      setHeight: (height) => this,
+      setWidth: function () {
+        return this;
+      },
+      setHeight: function () {
+        return this;
+      },
+      evaluate: function () {
+        return this;
+      },
+    };
+  },
+  createTemplateFromFile(name) {
+    this._calls.push(`createTemplateFromFile:${name}`);
+    return {
+      assignments: [],
+      versions: [],
+      evaluate: function () {
+        return {
+          setWidth: function () {
+            return this;
+          },
+          setHeight: function () {
+            return this;
+          },
+        };
+      },
+    };
+  },
+  createHtmlOutput(html) {
+    this._calls.push('createHtmlOutput');
+    return {
+      setWidth: function () {
+        return this;
+      },
+      setHeight: function () {
+        return this;
+      },
     };
   },
 };
@@ -125,11 +160,39 @@ const mockDriveApp = {
   },
 };
 
-// Mock GoogleClassroomManager (simple stub)
+// Mock GoogleClassroomManager with required methods
 const mockGoogleClassroomManager = function () {
   mockGoogleClassroomManager._constructorCalls =
     (mockGoogleClassroomManager._constructorCalls || 0) + 1;
   this._instanceId = mockGoogleClassroomManager._constructorCalls;
+  this.getCourseId = () => 'course-123';
+  this.getAssignments = () => [
+    { title: 'Assignment One' },
+    { title: 'Assignment Two With Longer Title' },
+  ];
+  this.getActiveClassrooms = () => [
+    { name: 'Class A', id: 'cA' },
+    { name: 'Class B', id: 'cB' },
+  ];
+  this.sheet = {
+    getDataRange: () => ({
+      getValues: () => [
+        [
+          'Classroom ID',
+          'Name',
+          'Teacher 1',
+          'Teacher 2',
+          'Teacher 3',
+          'Teacher 4',
+          'Enrollment Code',
+          'createAssessmentRecord',
+          'Template File Id',
+        ],
+        ['cA', 'Class A', 'T1', '', '', '', '', 'true', 'tmpl1'],
+      ],
+    }),
+    getRange: () => ({ setValues: () => {} }),
+  };
 };
 mockGoogleClassroomManager._constructorCalls = 0;
 
@@ -152,4 +215,5 @@ module.exports = {
   DriveApp: mockDriveApp,
   GoogleClassroomManager: mockGoogleClassroomManager,
   PropertiesCloner: mockPropertiesCloner,
+  Utils: { isValidUrl: (u) => typeof u === 'string' && /^https?:\/\//.test(u) },
 };

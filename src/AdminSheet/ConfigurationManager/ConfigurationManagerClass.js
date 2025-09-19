@@ -56,6 +56,8 @@ class ConfigurationManager {
     this.scriptProperties = this.scriptProperties || PropertiesService.getScriptProperties();
     this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
     // Perform potential deserialisation only once
+    if (globalThis.__TRACE_SINGLETON__)
+      console.log('[TRACE] ConfigurationManager.ensureInitialized() heavy boundary');
     this.maybeDeserializeProperties();
     this._initialized = true;
   }
@@ -309,7 +311,11 @@ class ConfigurationManager {
   }
 
   static validateUrl(label, value) {
-    if (typeof value !== 'string' || !Utils.isValidUrl(value)) {
+    const hasValidator = globalThis.Utils && typeof globalThis.Utils.isValidUrl === 'function';
+    const isValid =
+      typeof value === 'string' &&
+      (hasValidator ? globalThis.Utils.isValidUrl(value) : /^https?:\/\//.test(value));
+    if (!isValid) {
       throw new Error(`${label} must be a valid URL string.`);
     }
     return value;
@@ -345,24 +351,36 @@ class ConfigurationManager {
   }
 
   isValidGoogleSheetId(sheetId) {
+    // Guard: Only touch Drive when explicitly validating. Accept cheap format heuristic first.
+    if (!sheetId || typeof sheetId !== 'string') return false;
+    const trimmed = sheetId.trim();
+    // Heuristic: Google file IDs are typically 20+ chars of allowed charset. Avoid DriveApp call for obviously bad values.
+    if (!/^[A-Za-z0-9-_]{10,}$/.test(trimmed)) return false;
     try {
-      const file = DriveApp.getFileById(sheetId);
-      if (file && file.getMimeType() === MimeType.GOOGLE_SHEETS) {
-        return true;
-      }
-      return false;
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] ConfigurationManager.isValidGoogleSheetId() Drive access');
+      const file = DriveApp.getFileById(trimmed);
+      return !!(file && file.getMimeType && file.getMimeType() === MimeType.GOOGLE_SHEETS);
     } catch (error) {
-      console.error(`Invalid Google Sheet ID: ${error.message}`);
+      // Keep log concise
+      console.error(`Invalid Google Sheet ID: ${error && error.message ? error.message : error}`);
       return false;
     }
   }
 
   isValidGoogleDriveFolderId(folderId) {
+    if (!folderId || typeof folderId !== 'string') return false;
+    const trimmed = folderId.trim();
+    if (!/^[A-Za-z0-9-_]{10,}$/.test(trimmed)) return false;
     try {
-      const folder = DriveApp.getFolderById(folderId);
-      return folder !== null;
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] ConfigurationManager.isValidGoogleDriveFolderId() Drive access');
+      const folder = DriveApp.getFolderById(trimmed);
+      return !!folder;
     } catch (error) {
-      console.error(`Invalid Google Drive Folder ID: ${error.message}`);
+      console.error(
+        `Invalid Google Drive Folder ID: ${error && error.message ? error.message : error}`
+      );
       return false;
     }
   }
