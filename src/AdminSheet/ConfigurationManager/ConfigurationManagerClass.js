@@ -15,20 +15,54 @@
  * config.setLangflowApiKey('sk-abc123');
  */
 class ConfigurationManager {
-  constructor() {
-    if (ConfigurationManager.instance) {
-      return ConfigurationManager.instance;
+  /**
+   * NOTE (Phase 1 Refactor): Do NOT perform any heavy work (PropertiesService access, deserialisation)
+   * in the constructor. Use ConfigurationManager.getInstance() to obtain the singleton and all
+   * getters/setters will transparently call ensureInitialized() before touching persisted state.
+   * The constructor is intentionally lightweight so tests can assert no side‑effects before first real use.
+   */
+  constructor(isSingletonCreator = false) {
+    if (!isSingletonCreator && ConfigurationManager._instance) {
+      // Guard: discourage direct construction after first instance
+      return ConfigurationManager._instance;
     }
+    // Defer PropertiesService access & deserialisation
+    this.scriptProperties = null;
+    this.documentProperties = null;
+    this.configCache = null;
+    this._initialized = false;
+    if (!ConfigurationManager._instance) {
+      ConfigurationManager._instance = this;
+    }
+  }
 
-    this.scriptProperties = PropertiesService.getScriptProperties();
-    this.documentProperties = PropertiesService.getDocumentProperties();
+  /**
+   * Canonical accessor – always use this instead of `new`.
+   */
+  static getInstance() {
+    if (!ConfigurationManager._instance) {
+      new ConfigurationManager(true); // create lightweight shell
+    }
+    return ConfigurationManager._instance;
+  }
 
-    this.configCache = null; // Initialize cache early
-
+  /**
+   * Internal one‑time initialisation boundary. Safe to call multiple times.
+   * Performs first access to Apps Script services and property deserialisation.
+   */
+  ensureInitialized() {
+    if (this._initialized) return;
+    // Acquire handles lazily
+    this.scriptProperties = this.scriptProperties || PropertiesService.getScriptProperties();
+    this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
+    // Perform potential deserialisation only once
     this.maybeDeserializeProperties();
+    this._initialized = true;
+  }
 
-    ConfigurationManager.instance = this;
-    return this;
+  /** Test helper */
+  static resetForTests() {
+    ConfigurationManager._instance = null;
   }
 
   static get CONFIG_KEYS() {
@@ -121,8 +155,7 @@ class ConfigurationManager {
       },
       [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
         storage: 'document',
-        validate: (v) =>
-          ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
+        validate: (v) => ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
         normalize: ConfigurationManager.toBooleanString,
       },
     };
@@ -136,30 +169,42 @@ class ConfigurationManager {
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
   maybeDeserializeProperties() {
-    let hasScriptProperties = null;
-
-    if (this.getIsAdminSheet()) {
-      hasScriptProperties = this.scriptProperties.getKeys().length > 0;
-    }
-
-    const hasDocumentProperties = this.documentProperties.getKeys().length > 0;
-
-    if (!hasScriptProperties && !hasDocumentProperties) {
+    // This method is now called only from ensureInitialized().
+    try {
+      // Only attempt deserialisation if neither script nor document properties exist.
+      // (Access kept minimal – one getKeys() per store.)
+      let hasScriptProperties = false;
       try {
-        const propertiesCloner = new PropertiesCloner();
-        if (propertiesCloner.sheet) {
-          propertiesCloner.deserialiseProperties();
-          console.log('Successfully copied properties from propertiesStore');
-        } else {
-          console.log('No propertiesStore sheet found');
-        }
-      } catch (error) {
-        console.error('Error initializing properties:', error);
+        hasScriptProperties = this.scriptProperties.getKeys().length > 0;
+      } catch (e) {
+        // ignore – mock environments may not fully implement
       }
+      let hasDocumentProperties = false;
+      try {
+        hasDocumentProperties = this.documentProperties.getKeys().length > 0;
+      } catch (e) {
+        // ignore
+      }
+      if (!hasScriptProperties && !hasDocumentProperties) {
+        try {
+          const propertiesCloner = new PropertiesCloner();
+          if (propertiesCloner.sheet) {
+            propertiesCloner.deserialiseProperties();
+            console.log('Successfully copied properties from propertiesStore');
+          } else {
+            console.log('No propertiesStore sheet found');
+          }
+        } catch (error) {
+          console.error('Error initializing properties:', error);
+        }
+      }
+    } catch (outer) {
+      console.error('maybeDeserializeProperties unexpected error:', outer);
     }
   }
 
   getAllConfigurations() {
+    this.ensureInitialized();
     if (!this.configCache) {
       this.configCache = this.scriptProperties.getProperties();
     }
@@ -168,15 +213,14 @@ class ConfigurationManager {
 
   hasProperty(key) {
     this.getAllConfigurations();
-    return this.configCache.hasOwnProperty(key);
+    return Object.prototype.hasOwnProperty.call(this.configCache, key);
   }
 
   getProperty(key) {
+    this.ensureInitialized();
     if (!this.configCache) {
       this.getAllConfigurations();
     }
-
-    // Properties that should be stored as document properties
     if (
       key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
       key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
@@ -188,6 +232,7 @@ class ConfigurationManager {
   }
 
   setProperty(key, value) {
+    this.ensureInitialized();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
 
     if (!spec) {

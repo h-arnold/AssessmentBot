@@ -47,27 +47,27 @@ Make every singleton class expose a canonical `static getInstance()` without sid
 
 ### Tasks
 
-- [ ] `ConfigurationManager`:
-  - [ ] Add / confirm `static getInstance()` returning `_instance`.
-  - [ ] Remove heavy work from constructor (move deserialisation call out).
-  - [ ] Introduce `_initialized = false` + `ensureInitialized()`.
-  - [ ] Ensure all getters/setters call `ensureInitialized()` at start (or only those that need persisted properties—decide and document).
-- [ ] `InitController`:
-  - [ ] Add `static getInstance()`.
-  - [ ] Remove eager UI construction.
-  - [ ] Add `getUiManager()` lazy wrapper.
-- [ ] `UIManager`:
-  - [ ] Ensure `static getInstance()` pattern symmetrical.
-  - [ ] Move `GoogleClassroomManager` creation to `ensureClassroomManager()`.
-  - [ ] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()`).
-- [ ] Confirm `ProgressTracker` already conforms—add minor internal consistency comments.
-- [ ] Add `resetForTests()` static method to each singleton (used by harness).
-- [ ] Update ESLint globals if needed (remove now-unused global singleton variable names later in Phase 3).
+- [x] `ConfigurationManager`:
+  - [x] Add / confirm `static getInstance()` returning `_instance`.
+  - [x] Remove heavy work from constructor (move deserialisation call out).
+  - [x] Introduce `_initialized = false` + `ensureInitialized()`.
+  - [x] Ensure all getters/setters call `ensureInitialized()` at start.
+- [x] `InitController`:
+  - [x] Add `static getInstance()`.
+  - [x] Remove eager UI construction.
+  - [x] Add `getUiManager()` lazy wrapper.
+- [x] `UIManager`:
+  - [x] Ensure `static getInstance()` pattern symmetrical.
+  - [x] Move `GoogleClassroomManager` creation to `ensureClassroomManager()`.
+  - [x] Optionally defer UI availability probe until first UI op (`probeUiIfNeeded()`).
+- [x] Confirm `ProgressTracker` already conforms—add minor internal consistency comments.
+- [x] Add `resetForTests()` static method to each singleton (used by harness).
+- [x] Update ESLint globals if needed (remove now-unused global singleton variable names later in Phase 3).
 
 ### Tests
 
-- [ ] Update previously skipped tests to active; ensure they now pass for adjusted classes.
-- [ ] Add new tests for multi-call idempotency: calling `getInstance()` 10x returns same object & constructor only once.
+- [x] Update previously skipped tests to active; ensure they now pass for adjusted classes.
+- [x] Add new tests for multi-call idempotency: calling `getInstance()` 10x returns same object & constructor only once.
 
 ---
 

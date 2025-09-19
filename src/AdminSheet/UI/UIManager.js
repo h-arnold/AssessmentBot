@@ -36,6 +36,10 @@ class UIManager {
     }
     return UIManager.instance;
   }
+  /** Test helper */
+  static resetForTests() {
+    UIManager.instance = null;
+  }
 
   /**
    * Static method to check if UI is available in the current execution context
@@ -78,7 +82,7 @@ class UIManager {
     }
 
     // Always initialize this regardless of UI availability
-    this.classroomManager = new GoogleClassroomManager();
+    this.classroomManager = null; // Defer classroom manager creation until first classroom-related call
 
     // Store the instance only if we don't already have one
     if (!UIManager.instance) {
@@ -104,6 +108,26 @@ class UIManager {
       console.error(`Error in ${operationName}: ${error}`);
       return null;
     }
+  }
+  probeUiIfNeeded() {
+    if (this._uiProbed) return;
+    this._uiProbed = true;
+    this.uiAvailable = UIManager.isUiAvailable();
+    if (this.uiAvailable) {
+      try {
+        this.ui = SpreadsheetApp.getUi();
+      } catch (e) {
+        this.uiAvailable = false;
+        this.ui = null;
+      }
+    }
+  }
+  ensureClassroomManager() {
+    if (!this.classroomManager) {
+      this.classroomManager = new GoogleClassroomManager();
+      console.log('GoogleClassroomManager lazily instantiated.');
+    }
+    return this.classroomManager;
   }
 
   /**
@@ -207,8 +231,9 @@ class UIManager {
    */
   showAssignmentDropdown() {
     this.safeUiOperation(() => {
-      const courseId = this.classroomManager.getCourseId();
-      const assignments = this.classroomManager.getAssignments(courseId);
+      const cm = this.ensureClassroomManager();
+      const courseId = cm.getCourseId();
+      const assignments = cm.getAssignments(courseId);
       const maxTitleLength = this.getMaxTitleLength(assignments);
       const modalWidth = Math.max(300, maxTitleLength * 10); // Minimum width 300px, approx 10px per character
 
@@ -333,7 +358,7 @@ class UIManager {
    * Returns an array of objects representing rows.
    */
   getClassroomData() {
-    const sheet = this.classroomManager.sheet;
+    const sheet = this.ensureClassroomManager().sheet;
     const data = sheet.getDataRange().getValues();
 
     if (data.length < 2) {
@@ -378,7 +403,7 @@ class UIManager {
    * @param {Object[]} rows - The updated rows of data.
    */
   saveClassroomData(rows) {
-    const sheet = this.classroomManager.sheet;
+    const sheet = this.ensureClassroomManager().sheet;
     const data = sheet.getDataRange().getValues();
 
     if (data.length < 2) {
@@ -579,4 +604,9 @@ class UIManager {
       console.log('Authorization modal displayed.');
     }, 'showAuthorisationModal');
   }
+}
+
+// Export for Node tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = UIManager;
 }

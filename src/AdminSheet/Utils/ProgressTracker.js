@@ -33,6 +33,13 @@ class ProgressTracker {
   }
 
   /**
+   * Test helper to reset singleton between tests (Phase 1 convention).
+   */
+  static resetForTests() {
+    ProgressTracker._instance = null;
+  }
+
+  /**
    * Initializes the progress tracking by resetting any existing progress data.
    */
   startTracking() {
