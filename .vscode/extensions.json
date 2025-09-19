@@ -5,6 +5,7 @@
     "github.copilot-chat",
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
-    "yzhang.markdown-all-in-one"
+    "yzhang.markdown-all-in-one",
+    "sonarsource.sonarlint-vscode"
   ]
 }
