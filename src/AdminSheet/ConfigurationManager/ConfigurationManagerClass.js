@@ -197,17 +197,11 @@ class ConfigurationManager {
             console.log('No propertiesStore sheet found');
           }
         } catch (error) {
-          console.error(
-            'Error initializing properties:',
-            error && error.message ? error.message : error
-          );
+          console.error('Error initializing properties:', error?.message ?? error);
         }
       }
     } catch (outer) {
-      console.error(
-        'maybeDeserializeProperties unexpected error:',
-        outer && outer.message ? outer.message : outer
-      );
+      console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
     }
   }
 
