@@ -15,7 +15,7 @@ This document is a structured, multi-phase implementation plan to migrate from e
 
 ---
 
-## Phase 0: Test & Measurement Foundation
+## Phase 0: Test & Measurement Foundation ✅
 
 ### ✅ Goals
 
@@ -24,18 +24,18 @@ This document is a structured, multi-phase implementation plan to migrate from e
 
 ### Tasks
 
-- [ ] Add lightweight _instrumentation helpers_ (test-only) to count constructor runs & heavy init calls.
-- [ ] Create a `__mocks__/` (or inline mocks) layer for Apps Script globals used in singleton constructors: `PropertiesService`, `SpreadsheetApp`, `DriveApp`, `HtmlService` (only minimal methods).
-- [ ] Add a `SingletonTestHarness` utility to:
-  - [ ] Reset static `_instance` fields (e.g. `ConfigurationManager._instance = null`).
-  - [ ] Provide `withFreshSingleton(Class, fn)` wrapper to run code in a clean state.
-- [ ] Write baseline tests (they will initially FAIL once we enforce laziness; mark with `.skip` until refactor lands):
-  - [ ] `configurationManager does not touch PropertiesService until first getter is called`.
-  - [ ] `InitController does not instantiate UIManager until UI method invoked`.
-  - [ ] `UIManager does not create GoogleClassroomManager until a classroom-related method is called`.
-  - [ ] `ProgressTracker remains already-lazy (control test)`.
-- [ ] Add performance smoke test (non‑assertive): measure timestamps around first access vs. second access (log only for now).
-- [ ] Document how to run only singleton tests (e.g. `npm test -- singleton`).
+- [x] Add lightweight _instrumentation helpers_ (test-only) to count constructor runs & heavy init calls.
+- [x] Create a `__mocks__/` (or inline mocks) layer for Apps Script globals used in singleton constructors: `PropertiesService`, `SpreadsheetApp`, `DriveApp`, `HtmlService` (only minimal methods).
+- [x] Add a `SingletonTestHarness` utility to:
+  - [x] Reset static `_instance` fields (e.g. `ConfigurationManager._instance = null`).
+  - [x] Provide `withFreshSingleton(Class, fn)` wrapper to run code in a clean state.
+- [x] Write baseline tests (they will initially FAIL once we enforce laziness; mark with `.skip` until refactor lands):
+  - [x] `configurationManager does not touch PropertiesService until first getter is called`.
+  - [x] `InitController does not instantiate UIManager until UI method invoked`.
+  - [x] `UIManager does not create GoogleClassroomManager until a classroom-related method is called`.
+  - [x] `ProgressTracker remains already-lazy (control test)`.
+- [x] Add performance smoke test (non‑assertive): measure timestamps around first access vs. second access (log only for now).
+- [x] Document how to run only singleton tests (e.g. `npm test -- singleton`).
 
 ---
 
@@ -230,7 +230,7 @@ Remove transitional code, enforce invariants.
 
 (Use these master checkboxes as you move through phases.)
 
-- [ ] Phase 0 – Test scaffolding
+- [x] Phase 0 – Test scaffolding
 - [ ] Phase 1 – Standardise getInstance
 - [ ] Phase 2 – Extract heavy init
 - [ ] Phase 3 – Remove global singletons
