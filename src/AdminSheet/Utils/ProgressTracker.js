@@ -4,16 +4,20 @@
  */
 class ProgressTracker {
   constructor() {
+    // Ensure only one instance exists (singleton enforcement)
+    if (ProgressTracker._instance) {
+      return ProgressTracker._instance;
+    }
+
     // Initialize properties
     this.properties = PropertiesService.getDocumentProperties();
     this.propertyKey = 'ProgressTracker';
     this.step = 0; // Add step as class attribute
 
-    // Store the instance if this is the first construction
-    if (!ProgressTracker._instance) {
-      ProgressTracker._instance = this;
-      console.log('ProgressTracker instance created.');
-    }
+    // Store the instance
+    ProgressTracker._instance = this;
+
+    console.log('ProgressTracker instance created.');
   }
 
   /**
@@ -23,7 +27,7 @@ class ProgressTracker {
    */
   static getInstance() {
     if (!ProgressTracker._instance) {
-      ProgressTracker._instance = new ProgressTracker();
+      new ProgressTracker(); // Automatically creates and stores the instance
     }
     return ProgressTracker._instance;
   }
@@ -79,11 +83,13 @@ class ProgressTracker {
    */
   resetSteps() {
     this.step = 0;
-    // Update stored progress while preserving any existing fields
-    const progress = this.getCurrentProgress() || {};
-    progress.step = this.step;
-    progress.timestamp = new Date().toISOString();
-    this.properties.setProperty(this.propertyKey, JSON.stringify(progress));
+    const currentData = this.getCurrentProgress() || {};
+    const updatedData = {
+      ...currentData,
+      step: this.step,
+      timestamp: new Date().toISOString(),
+    };
+    this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
     console.log('Steps reset to 0.');
   }
 
@@ -93,7 +99,6 @@ class ProgressTracker {
   complete() {
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
-      ...currentData,
       step: this.step,
       completed: true,
       message: 'Task completed successfully.',
@@ -153,8 +158,8 @@ class ProgressTracker {
   _logDeveloperDetails(extraErrorDetails) {
     // These details are only for developers, not exposed in the UI
     // Format details as strings to avoid serialization issues
-    if (typeof extraErrorDetails === 'object') {
-      // If it's an Error-like object with a stack, print stack first
+    if (typeof extraErrorDetails === 'object' && extraErrorDetails !== null) {
+      // If it's an Error object or has a stack property
       if (extraErrorDetails.stack) {
         console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
         if (extraErrorDetails.message) {
@@ -163,22 +168,18 @@ class ProgressTracker {
         if (extraErrorDetails.name) {
           console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
         }
-        return;
+      } else {
+        // For other objects, try to stringify them
+        try {
+          console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
+        } catch (e) {
+          console.error('Developer details: [Object could not be stringified]');
+        }
       }
-
-      // For other objects, try to stringify them safely
-      try {
-        console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
-      } catch (stringifyError) {
-        // If stringify fails, at least log that there was an unserializable object
-        console.error('Developer details: [Object could not be stringified]', extraErrorDetails);
-        console.error('Stringify error:', stringifyError);
-      }
-      return;
+    } else {
+      // For strings or other primitive types
+      console.error(`Developer details: ${extraErrorDetails}`);
     }
-
-    // For strings or other primitive types
-    console.error(`Developer details: ${extraErrorDetails}`);
   }
 
   /**
@@ -278,7 +279,7 @@ class ProgressTracker {
 
     // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
-    if (!progress?.step) {
+    if (!progress || !progress.step) {
       console.log('No step data available.');
       return null;
     }
