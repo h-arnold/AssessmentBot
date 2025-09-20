@@ -147,13 +147,14 @@ class GoogleClassroomManager {
     const data = this.validateAssessmentRecordsSetup();
 
     // Ensure required columns exist
-    const { headers, createARIndex, templateFileIdIndex } = this.ensureRequiredColumns(data);
+    const { headers, createARIndex, templateFileIdIndex, yearGroupIndex } =
+      this.ensureRequiredColumns(data);
 
     // Process rows and collect updates
     const { rowUpdates, teacherEmailsSet } = this.processAssessmentRecordRows(data, createARIndex);
 
     // Update the sheet with new data
-    this.updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex);
+    this.updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex, yearGroupIndex);
 
     // Share folder with teachers
     this.shareWithTeachers(teacherEmailsSet);
@@ -207,7 +208,7 @@ class GoogleClassroomManager {
       headers.push('Year Group');
     }
 
-    return { headers, createARIndex, templateFileIdIndex };
+    return { headers, createARIndex, templateFileIdIndex, yearGroupIndex };
   }
 
   /**
@@ -289,8 +290,9 @@ class GoogleClassroomManager {
    * @param {Array} headers - The updated headers
    * @param {Array} rowUpdates - Array of row updates to apply
    * @param {number} templateFileIdIndex - Index of template file ID column
+   * @param {number} yearGroupIndex - Index of year group column
    */
-  updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex) {
+  updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex, yearGroupIndex) {
     // Build our final batch requests array
     const rowsToWrite = data.map((row, index) => {
       const update = rowUpdates.find((u) => u.rowIndex === index);
@@ -310,7 +312,7 @@ class GoogleClassroomManager {
     this.csm.clearSheet();
 
     // Update headers if new columns were added
-    if (templateFileIdIndex === headers.length - 1) {
+    if (templateFileIdIndex === headers.length - 1 || yearGroupIndex === headers.length - 1) {
       this.csm.writeHeaders(headers);
     }
 
