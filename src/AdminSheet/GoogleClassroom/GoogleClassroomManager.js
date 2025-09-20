@@ -85,7 +85,6 @@ class GoogleClassroomManager {
       // Before: this.sheet.getRange(1, data[0].length + 1).setValue('createAssessmentRecord');
       const headers = [...data[0], 'createAssessmentRecord'];
       this.csm.writeHeaders(headers); // Use ClassroomSheetManager to add the header
-      hasCreateAssessmentRecord = true;
     }
 
     const rowsToUpdate = [];
@@ -100,14 +99,14 @@ class GoogleClassroomManager {
           teachers: row.slice(2, 6).filter((email) => email), // Teacher emails
         });
         classroom.create();
-  // Use updateProgress to record informational messages without incrementing the step
-  ProgressTracker.getInstance().updateProgress(`Classroom created: ${row[1]}`, false);
+        // Use updateProgress to record informational messages without incrementing the step
+        ProgressTracker.getInstance().updateProgress(`Classroom created: ${row[1]}`, false);
 
         // Update Classroom ID in the sheet
         // Before: this.sheet.getRange(index + 1, 1).setValue(classroom.id);
         // Before: this.sheet.getRange(index + 1, row.length + 1).setValue(false);
         rowsToUpdate.push({ rowIndex: index, courseId: classroom.id });
-        } catch (error) {
+      } catch (error) {
         ProgressTracker.getInstance().logError(
           `Failed to create classroom for row ${index + 1}: ${error.message}`
         );
@@ -141,21 +140,52 @@ class GoogleClassroomManager {
     this.destinationFolderId =
       ConfigurationManager.getInstance().getAssessmentRecordDestinationFolder();
 
-  // 0) Initialise progress tracker
-  // Use the ProgressTracker singleton directly; it will manage step increments itself
-  ProgressTracker.getInstance().updateProgress('Creating Assessment Records');
+    // Use the ProgressTracker singleton directly; it will manage step increments itself
+    ProgressTracker.getInstance().updateProgress('Creating Assessment Records');
 
-    // 1) Retrieve all rows
+    // Get and validate data
+    const data = this.validateAssessmentRecordsSetup();
+
+    // Ensure required columns exist
+    const { headers, createARIndex, templateFileIdIndex } = this.ensureRequiredColumns(data);
+
+    // Process rows and collect updates
+    const { rowUpdates, teacherEmailsSet } = this.processAssessmentRecordRows(data, createARIndex);
+
+    // Update the sheet with new data
+    this.updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex);
+
+    // Share folder with teachers
+    this.shareWithTeachers(teacherEmailsSet);
+
+    console.log('Assessment records created successfully where flagged.');
+  }
+
+  /**
+   * Validates setup and returns data for assessment record creation
+   * @returns {Array} The sheet data
+   */
+  validateAssessmentRecordsSetup() {
+    // Retrieve all rows
     const data = this.csm.getData();
 
-    // 2) Quick check that there's something to process
+    // Quick check that there's something to process
     if (data.length < 2) {
       const errorMessage =
         'No classrooms in the classroom sheet. Please fetch or create them first.';
       ProgressTracker.getInstance().logAndThrowError(errorMessage);
     }
 
-    // 3) Identify the header row and find createAssessmentRecord column
+    return data;
+  }
+
+  /**
+   * Ensures required columns exist and returns column information
+   * @param {Array} data - The sheet data
+   * @returns {Object} Object containing headers and column indices
+   */
+  ensureRequiredColumns(data) {
+    // Identify the header row and find createAssessmentRecord column
     const headers = data[0];
     const createARIndex = headers.indexOf('createAssessmentRecord');
     if (createARIndex === -1) {
@@ -163,36 +193,43 @@ class GoogleClassroomManager {
       ProgressTracker.getInstance().logAndThrowError(errorMessage);
     }
 
-    // 4) Check if 'Template File Id' column exists
+    // Check if 'Template File Id' column exists
     let templateFileIdIndex = headers.indexOf('AR File ID');
     if (templateFileIdIndex === -1) {
       templateFileIdIndex = headers.length; // Add it to the end
       headers.push('AR File ID');
     }
 
-    // 5) Check if 'Year Group' column exists
+    // Check if 'Year Group' column exists
     let yearGroupIndex = headers.indexOf('Year Group');
     if (yearGroupIndex === -1) {
       yearGroupIndex = headers.length;
       headers.push('Year Group');
     }
 
-    // 6) We'll store row updates in memory for a final single batch update
-    //    rowUpdates = array of { rowIndex, templateFileIdValue, spreadsheetIdValue }
+    return { headers, createARIndex, templateFileIdIndex };
+  }
+
+  /**
+   * Processes assessment record rows and returns updates
+   * @param {Array} data - The sheet data
+   * @param {number} createARIndex - Index of createAssessmentRecord column
+   * @returns {Object} Object containing rowUpdates and teacherEmailsSet
+   */
+  processAssessmentRecordRows(data, createARIndex) {
+    // Store row updates in memory for a final single batch update
     const rowUpdates = [];
 
-    // 6a) We'll also gather teacher emails from columns "Teacher 1" through "Teacher 4"
-    //     (which are columns 2..5 if the header is [Classroom ID (0), Name (1), Teacher 1 (2) ...])
-    //     Adjust indices if your sheet differs.
+    // Gather teacher emails from columns "Teacher 1" through "Teacher 4"
     const teacherEmailsSet = new Set();
 
-    // 7) Loop over all data rows and copy the template if createAssessmentRecord = true
+    // Loop over all data rows and copy the template if createAssessmentRecord = true
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
 
       // Collect any teacher emails from columns 2..5
       for (let col = 2; col <= 5; col++) {
-        if (row[col] && row[col].trim()) {
+        if (row[col]?.trim()) {
           teacherEmailsSet.add(row[col].trim());
         }
       }
@@ -210,23 +247,21 @@ class GoogleClassroomManager {
 
           if (copyResult.status === 'copied') {
             const newFileId = copyResult.fileId; // definitely not null in 'copied' case
-            // We'll store the new file's ID in both 'Template File Id' and 'Spreadsheet ID'
-            // so we can apply them all together in a single batch update at the end.
             rowUpdates.push({
               rowIndex: i, // 0-based index in `data`
               templateFileIdValue: newFileId,
             });
 
-            //Adds the class info to the newly created assessment record.
-
+            // Adds the class info to the newly created assessment record
             ClassroomSheetManager.appendClassInfo(newFileId, className, courseId);
 
             // Update progress each time we successfully copy a template
-            // Let ProgressTracker increment the step automatically and record the message
-            ProgressTracker.getInstance().updateProgress(`Created assessment record for: ${className}`);
+            ProgressTracker.getInstance().updateProgress(
+              `Created assessment record for: ${className}`
+            );
           } else if (copyResult.status === 'skipped') {
             console.log(copyResult.message);
-            // Push the existing file ID to the readpsheet instead
+            // Push the existing file ID to the spreadsheet instead
             const existingFiledId = copyResult.fileId;
             rowUpdates.push({
               rowIndex: i, // 0-based index in `data`
@@ -245,7 +280,18 @@ class GoogleClassroomManager {
       }
     }
 
-    // 8) Build our final batch requests array
+    return { rowUpdates, teacherEmailsSet };
+  }
+
+  /**
+   * Updates the sheet with new record data
+   * @param {Array} data - The original sheet data
+   * @param {Array} headers - The updated headers
+   * @param {Array} rowUpdates - Array of row updates to apply
+   * @param {number} templateFileIdIndex - Index of template file ID column
+   */
+  updateSheetWithRecords(data, headers, rowUpdates, templateFileIdIndex) {
+    // Build our final batch requests array
     const rowsToWrite = data.map((row, index) => {
       const update = rowUpdates.find((u) => u.rowIndex === index);
       if (update) {
@@ -260,25 +306,24 @@ class GoogleClassroomManager {
       return row;
     });
 
-    // 9) Clear Google Sheet otherwise the batch request appends to existing rows and creates duplicates.
-
+    // Clear Google Sheet otherwise the batch request appends to existing rows and creates duplicates
     this.csm.clearSheet();
 
-    // 10) Writes updated sheet
-
     // Update headers if new columns were added
-    if (templateFileIdIndex === headers.length - 1 || yearGroupIndex === headers.length - 1) {
+    if (templateFileIdIndex === headers.length - 1) {
       this.csm.writeHeaders(headers);
     }
 
-    // Writes other values to the sheet.
-
+    // Write other values to the sheet
     this.csm.writeData(rowsToWrite.slice(1), []); // Use ClassroomSheetManager to update rows
+  }
 
-  console.log('Assessment records created successfully where flagged.');
-
-    // 11) Finally, share the folder with all teacher emails
-    // (assuming your DriveManager has the updated shareFolder method)
+  /**
+   * Shares the destination folder with teachers
+   * @param {Set} teacherEmailsSet - Set of teacher email addresses
+   */
+  shareWithTeachers(teacherEmailsSet) {
+    // Finally, share the folder with all teacher emails
     if (teacherEmailsSet.size > 0) {
       try {
         const shareResult = DriveManager.shareFolder(this.destinationFolderId, teacherEmailsSet);
@@ -383,7 +428,7 @@ class GoogleClassroomManager {
     const sheet = spreadsheet.getSheetByName('ClassInfo');
 
     // If ClassInfo sheet doesn't exist or course ID is missing
-    if (!sheet || !sheet.getRange('B2').getValue()) {
+    if (!sheet || !sheet?.getRange('B2')?.getValue()) {
       console.error('ClassInfo sheet not found or missing course ID.');
 
       // Create a detailed error message for logging
