@@ -1,4 +1,12 @@
 // UIManager.gs
+// Ensure ABLogger is available in Node test environment
+try {
+  if (typeof ABLogger === 'undefined') {
+    globalThis.ABLogger = require('../Utils/ABLogger.js');
+  }
+} catch (e) {
+  // Swallow if not in Node / path not resolvable; GAS runtime will have global
+}
 /**
  * @class UIManager
  * @description Manages the user interface operations in Google Apps Script environment with robust error handling and context-aware UI operations.
@@ -68,19 +76,10 @@ class UIManager {
       return; // silently ignore extra constructions
     }
 
-    // Instead of throwing an error, set an availability flag
-    this.uiAvailable = UIManager.isUiAvailable();
-
-    if (this.uiAvailable) {
-      this.ui = SpreadsheetApp.getUi();
-      console.log('UIManager instantiated with full UI capabilities.');
-    } else {
-      console.log(
-        'UIManager instantiated in limited mode (no UI capabilities available in this execution context).'
-      );
-      // Set ui to null to prevent accidental usage
-      this.ui = null;
-    }
+    // Defer UI availability probe until first safe UI op (lazy probing)
+    this._uiProbed = false;
+    this.uiAvailable = false; // Unknown until probed
+    this.ui = null; // Will be set if probe succeeds
 
     // Always initialize this regardless of UI availability
     this.classroomManager = null; // Defer classroom manager creation until first classroom-related call
@@ -98,11 +97,12 @@ class UIManager {
    * @returns {*} Result of the operation or null if UI is unavailable
    */
   safeUiOperation(operation, operationName = 'UI operation') {
+    // Ensure we've probed the UI lazily
+    if (!this._uiProbed) this.probeUiIfNeeded();
     if (!this.uiAvailable) {
-      console.log(`Skipped ${operationName}: UI not available in this context`);
+        ABLogger.getInstance().debugUi(`Skipped ${operationName}: UI not available in this context`);
       return null;
     }
-
     try {
       return operation();
     } catch (error) {
@@ -113,16 +113,24 @@ class UIManager {
   probeUiIfNeeded() {
     if (this._uiProbed) return;
     this._uiProbed = true;
-    this.uiAvailable = UIManager.isUiAvailable();
-    if (this.uiAvailable) {
+    let available = false;
+    try {
+      available = UIManager.isUiAvailable();
+    } catch (e) {
+      available = false;
+    }
+    this.uiAvailable = available;
+    if (available) {
       try {
         this.ui = SpreadsheetApp.getUi();
+          ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
       } catch (err) {
-        // Log the reason UI couldn't be acquired and keep ui in limited mode
         console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
         this.uiAvailable = false;
         this.ui = null;
       }
+    } else {
+        ABLogger.getInstance().debugUi('UI probe completed: UI not available.');
     }
   }
   ensureClassroomManager() {
@@ -130,7 +138,7 @@ class UIManager {
       if (globalThis.__TRACE_SINGLETON__)
         console.log('[TRACE][HeavyInit] UIManager.ensureClassroomManager');
       this.classroomManager = new GoogleClassroomManager();
-      console.log('GoogleClassroomManager lazily instantiated.');
+        ABLogger.getInstance().debugUi('GoogleClassroomManager lazily instantiated.');
     }
     return this.classroomManager;
   }
@@ -233,7 +241,7 @@ class UIManager {
         .addItem('Change Class', 'showClassroomDropdown')
         .addToUi();
 
-      console.log('Assessment Record menu created.');
+        ABLogger.getInstance().debugUi('Assessment Record menu created.');
     }, 'createAssessmentRecordMenu');
   }
 
@@ -247,7 +255,7 @@ class UIManager {
         .setHeight(600); // Adjust the size as needed
 
       this.ui.showModalDialog(html, 'Configure Script Properties');
-      console.log('Configuration dialog displayed.');
+        ABLogger.getInstance().debugUi('Configuration dialog displayed.');
     }, 'showConfigurationDialog');
   }
 
@@ -264,7 +272,7 @@ class UIManager {
       width: modalWidth,
       height: 250,
     });
-    console.log('Assignment dropdown modal displayed.');
+      ABLogger.getInstance().debugUi('Assignment dropdown modal displayed.');
   }
 
   /**
@@ -301,7 +309,7 @@ class UIManager {
           'Enter Slide IDs',
           { width: 400, height: 350 }
         );
-        console.log('Reference slide IDs modal displayed.');
+          ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
       } catch (error) {
         console.error('Error opening reference slide modal:', error);
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
@@ -322,7 +330,7 @@ class UIManager {
           width: 500,
           height: 300,
         });
-        console.log('Classroom dropdown modal displayed.');
+          ABLogger.getInstance().debugUi('Classroom dropdown modal displayed.');
       } catch (error) {
         console.error('Error displaying classroom dropdown modal:', error);
         Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
@@ -357,7 +365,7 @@ class UIManager {
         .setWidth(400)
         .setHeight(160);
       this.ui.showModalDialog(html, 'Progress');
-      console.log('Progress modal displayed.');
+        ABLogger.getInstance().debugUi('Progress modal displayed.');
     }, 'showProgressModal');
   }
 
@@ -475,7 +483,7 @@ class UIManager {
         .setHeight(600); // Adjust width and height as needed
 
       this.ui.showModalDialog(html, 'Edit Classrooms');
-      console.log('Classroom editor modal displayed.');
+        ABLogger.getInstance().debugUi('Classroom editor modal displayed.');
     }, 'showClassroomEditorModal');
   }
 
@@ -535,7 +543,7 @@ class UIManager {
           .setHeight(1);
 
         this.ui.showModalDialog(html, 'Opening...');
-        console.log(`Opening URL in new window: ${url}`);
+  Logger.getInstance().debugUi(`Opening URL in new window: ${url}`);
       } catch (error) {
         console.error(`Failed to open URL: ${error.message}`);
         throw error;
@@ -605,7 +613,7 @@ class UIManager {
                   </div>`;
 
       this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
-      console.log('Authorization modal displayed.');
+        ABLogger.getInstance().debugUi('Authorization modal displayed.');
     }, 'showAuthorisationModal');
   }
 }

@@ -280,9 +280,9 @@ These items were identified after completing Phase 3. They are grouped to stream
 
 #### UI Lazy & Logging Improvements
 
-- [ ] Defer UI availability probe: remove `isUiAvailable()` call from `UIManager` constructor; probe on first `safeUiOperation`
-- [ ] Make `safeUiOperation()` call `probeUiIfNeeded()` internally (drop manual probe usage elsewhere)
-- [ ] Replace ad-hoc UI debug logs with gated `debugUi(msg)` when `globalThis.DEBUG_UI` is truthy
+- [x] Defer UI availability probe: remove `isUiAvailable()` call from `UIManager` constructor; probe on first `safeUiOperation`
+- [x] Make `safeUiOperation()` call `probeUiIfNeeded()` internally (drop manual probe usage elsewhere)
+- [x] Replace ad-hoc UI debug logs with gated `debugUi(msg)` when `globalThis.DEBUG_UI` is truthy
 
 #### Validation & Caching
 
