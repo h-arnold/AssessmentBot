@@ -542,7 +542,7 @@ class UIManager extends BaseSingleton {
           .setHeight(1);
 
         this.ui.showModalDialog(html, 'Opening...');
-        Logger.getInstance().debugUi(`Opening URL in new window: ${url}`);
+        ABLogger.getInstance().debugUi(`Opening URL in new window: ${url}`);
       } catch (error) {
         console.error(`Failed to open URL: ${error.message}`);
         throw error;
