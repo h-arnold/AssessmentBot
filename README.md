@@ -77,7 +77,7 @@ Your students’ privacy is a top priority. Here's how their data is protected:
 
 - **No intentional sharing of PII**: The tool only processes data within the user’s Google Workspace account, managed by the educational institution.
 - **Mitigations against accidental PII submission**:
-  - **Ephemeral image storage**: The Langflow cache folder is deployed on a **ramdisk**, ensuring uploaded images exist only temporarily.
+  - **Ephemeral image storage**: The AssessmentBot backend is stateless when deployed to a serverless platform, ensuring uploaded images exist only temporarily during processing.
   - **GDPR compliance**: The tool integrates with the GDPR-compliant version of the Gemini Flash API. While this comes with a small cost, it ensures adherence to strict privacy standards.
 - **FOSS Transparency**: The entire tool, including the Langflow backend, is **free and open-source software (FOSS)**. If you don’t trust my word, you can inspect the source code yourself!
 - **HWB Ready**: The tool works seamlessly with HWB accounts! 🏴‍☠️
@@ -134,8 +134,6 @@ Check out the [docs](./docs/README.md) for more details.
 
 Contributions are very welcome!  
 If you have ideas, improvements, or bug fixes, feel free to open a **Pull Request (PR)**.
-
-📚 **For Developers**: Please review our [singleton pattern guide](./docs/howTos/singletons.md) before modifying core classes to understand our lazy initialization patterns.
 
 Some areas we’d particularly appreciate help with:
 

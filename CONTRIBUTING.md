@@ -57,44 +57,6 @@ const a = Assignment.fromJSON({ courseId: 'c1', assignmentId: 'as1' });
 If a class has no `fromJSON()` helper and you need constructor behavior, consider mocking the required globals in
 your test setup or refactoring the class to split side-effecting logic out of the constructor.
 
-## 🏗️ Singleton Pattern Guidelines
-
-This codebase uses a **lazy singleton pattern** for core manager classes. Please review the comprehensive [singleton pattern guide](./docs/howTos/singletons.md) before working with these classes.
-
-### Quick Reference
-
-**✅ Do This:**
-
-```javascript
-// Use getInstance() method
-const config = ConfigurationManager.getInstance();
-
-// Guard heavy methods with ensureInitialized()
-getApiKey() {
-  this.ensureInitialized();
-  return this.scriptProperties.getProperty('API_KEY');
-}
-```
-
-**❌ Don't Do This:**
-
-```javascript
-// Direct constructor calls
-const config = new ConfigurationManager();
-
-// Heavy work in constructor
-constructor() {
-  this.driveFiles = DriveApp.getFiles(); // Heavy operation!
-}
-```
-
-### Key Principles
-
-- **No heavy work in constructors** - Move Drive/Properties/API calls to `ensureInitialized()`
-- **Always use `getInstance()`** - Never call singleton constructors directly
-- **Test lazy behavior** - Verify no expensive operations happen until needed
-- **Reset in tests** - Call `YourClass.resetForTests()` in test cleanup
-
 ---
 
 # 🖥️ Contributing Code
