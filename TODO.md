@@ -126,10 +126,10 @@ Ensure future contributors follow the lazy pattern and do not reintroduce eager 
 
 ### Tasks
 
-- [ ] Add `docs/howTos/singletons.md` with: pattern, anti-pattern examples, test conventions.
-- [ ] Update `README.md` (short note linking to the detailed doc).
-- [ ] Add a PR checklist item: “No eager heavy work in top-level scope”.
-- [ ] Add ESLint rule (custom or config comment) forbidding `new <Singleton>` outside its defining module or tests.
+- [x] Add `docs/howTos/singletons.md` with: pattern, anti-pattern examples, test conventions.
+- [x] Update `README.md` (short note linking to the detailed doc).
+- [x] Add a PR checklist item: “No eager heavy work in top-level scope”.
+- [x] Add ESLint rule (custom or config comment) forbidding `new <Singleton>` outside its defining module or tests.
 
 ### Tests / Tooling
 
@@ -234,7 +234,7 @@ Remove transitional code, enforce invariants.
 - [x] Phase 1 – Standardise getInstance
 - [x] Phase 2 – Extract heavy init
 - [x] Phase 3 – Remove global singletons
-- [ ] Phase 4 – Documentation & DX
+- [x] Phase 4 – Documentation & DX
 - [ ] Phase 5 – Performance verification
 - [ ] Phase 6 – Cleanup & hardening
 - [ ] Phase 7 – (Optional backlog items)

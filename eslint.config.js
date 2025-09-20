@@ -99,7 +99,8 @@ module.exports = [
             'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
         },
         {
-          selector: "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
+          selector:
+            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
           message:
             'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
         },
@@ -107,6 +108,27 @@ module.exports = [
           selector: "AssignmentExpression[left.name='BaseSingleton']",
           message:
             'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
+        },
+        // Prevent direct singleton constructor calls (except in defining modules and tests)
+        {
+          selector: "NewExpression[callee.name='ConfigurationManager']",
+          message:
+            'Use ConfigurationManager.getInstance() instead of new ConfigurationManager(). Direct constructor calls violate the singleton pattern.',
+        },
+        {
+          selector: "NewExpression[callee.name='UIManager']",
+          message:
+            'Use UIManager.getInstance() instead of new UIManager(). Direct constructor calls violate the singleton pattern.',
+        },
+        {
+          selector: "NewExpression[callee.name='ProgressTracker']",
+          message:
+            'Use ProgressTracker.getInstance() instead of new ProgressTracker(). Direct constructor calls violate the singleton pattern.',
+        },
+        {
+          selector: "NewExpression[callee.name='InitController']",
+          message:
+            'Use InitController.getInstance() instead of new InitController(). Direct constructor calls violate the singleton pattern.',
         },
       ],
     },
@@ -116,6 +138,40 @@ module.exports = [
     files: ['src/AdminSheet/00_BaseSingleton.js'],
     rules: {
       'no-restricted-syntax': 'off',
+    },
+  },
+  // Allow singleton constructor calls in their defining modules and tests.
+  {
+    files: [
+      'src/AdminSheet/ConfigurationManager/**/*.js',
+      'src/AdminSheet/UI/UIManager.js',
+      'src/AdminSheet/Utils/ProgressTracker.js',
+      'src/AdminSheet/y_controllers/InitController.js',
+      'tests/**/*.js',
+      'tests/**/*.mjs',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        // Keep BaseSingleton restrictions but remove singleton constructor restrictions
+        {
+          selector:
+            "Program:not([sourceType='module']) VariableDeclarator[id.name='BaseSingleton']",
+          message:
+            'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
+        },
+        {
+          selector:
+            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
+          message:
+            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
+        },
+        {
+          selector: "AssignmentExpression[left.name='BaseSingleton']",
+          message:
+            'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
+        },
+      ],
     },
   },
 ];
