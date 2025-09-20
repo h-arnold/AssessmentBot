@@ -327,7 +327,7 @@ class ConfigurationManager extends BaseSingleton {
 
   static get DEFAULTS() {
     return {
-      BACKEND_ASSESSOR_BATCH_SIZE: 120,
+      BACKEND_ASSESSOR_BATCH_SIZE: 200, //This seems to be the limit before you hit UrlFetchApp rate limits.
       SLIDES_FETCH_BATCH_SIZE: 30,
       DAYS_UNTIL_AUTH_REVOKE: 60,
       UPDATE_DETAILS_URL:
