@@ -1,4 +1,4 @@
-# 🚀 **Contributing** 
+# 🚀 **Contributing**
 
 Thank you for considering contributing to the Google Slides AI Assessor project! For an idea of what I'm currently working on, check out the [roadmap](./docs/roadmap.md).
 
@@ -10,9 +10,11 @@ As a one-man-band, I'm very grateful for any contributions and I'd be even more 
 
 ```markdown
 # My Code
+
 {paste your code here}
 
 # The Style Guide
+
 {paste the relevant section of the style guide here}
 
 # Task
@@ -22,13 +24,13 @@ Please modify my code/documentation to match with the style guide provided. Ensu
 
 ---
 
-# 📜 General Guidelines 
+# 📜 General Guidelines
 
 ## Writing Style (Code and Documentation)
 
 - **Be concise**: Use clear, simple, and direct language.
 - **Use British English**: Ensure spelling and grammar adhere to British English conventions.
-- **Emphasise key points**: Use bold (**bold**) or italic (*italic*) text to highlight critical information. For code, add comments to clarify complex or critical segments.
+- **Emphasise key points**: Use bold (**bold**) or italic (_italic_) text to highlight critical information. For code, add comments to clarify complex or critical segments.
 - **Add tips and notes**: Use phrases like "💡 Tip" or "⚠️ Note" to call out additional details or warnings.
 - **Clarity over complexity**: Avoid jargon. Provide meaningful names for variables, methods, and explain technical terms when they are first introduced.
 - **Consistency**: Ensure code and documentation align with the style and structure of the existing project.
@@ -55,29 +57,65 @@ const a = Assignment.fromJSON({ courseId: 'c1', assignmentId: 'as1' });
 If a class has no `fromJSON()` helper and you need constructor behavior, consider mocking the required globals in
 your test setup or refactoring the class to split side-effecting logic out of the constructor.
 
+## 🏗️ Singleton Pattern Guidelines
+
+This codebase uses a **lazy singleton pattern** for core manager classes. Please review the comprehensive [singleton pattern guide](./docs/howTos/singletons.md) before working with these classes.
+
+### Quick Reference
+
+**✅ Do This:**
+
+```javascript
+// Use getInstance() method
+const config = ConfigurationManager.getInstance();
+
+// Guard heavy methods with ensureInitialized()
+getApiKey() {
+  this.ensureInitialized();
+  return this.scriptProperties.getProperty('API_KEY');
+}
+```
+
+**❌ Don't Do This:**
+
+```javascript
+// Direct constructor calls
+const config = new ConfigurationManager();
+
+// Heavy work in constructor
+constructor() {
+  this.driveFiles = DriveApp.getFiles(); // Heavy operation!
+}
+```
+
+### Key Principles
+
+- **No heavy work in constructors** - Move Drive/Properties/API calls to `ensureInitialized()`
+- **Always use `getInstance()`** - Never call singleton constructors directly
+- **Test lazy behavior** - Verify no expensive operations happen until needed
+- **Reset in tests** - Call `YourClass.resetForTests()` in test cleanup
+
 ---
 
-# 🖥️ Contributing Code 
+# 🖥️ Contributing Code
 
 ## 🌲Folder and Code Structure
 
-``` bash
+```bash
 .
 └── src
     └── frontend
         ├── BaseClassFolder
         │   ├── BaseClass.js
         │   ├── Subclass(es).js
-        │   └── globals.js 
+        │   └── globals.js
         ├── UIManager
         │   ├── appScriptFrontendHTML.html
         │   └── UIManager.js
         └── z_Controllers
             └── BaseClassController.js
-    
+
 ```
-
-
 
 ## 🛠️ Formatting Style Guide
 
@@ -122,7 +160,7 @@ createOrGetSheet(sheetName) { ... }
 
 ```javascript
 // Ensure all tasks are processed before generating the report
-tasks.forEach(task => processTask(task));
+tasks.forEach((task) => processTask(task));
 ```
 
 ### 🚨 Error Handling 
@@ -172,8 +210,6 @@ class ExampleClass {
 }
 ```
 
-
-
 This ensures users are clearly notified of failures, while developers get detailed logs for further diagnosis.
 
 If you are not working within a class, or your class doesn't already have `ProgressTracker` instantiated, simply access it directly using:
@@ -195,8 +231,6 @@ In this example, the error will:
 2. Automatically appear in the console log for debugging purposes.
 
 This simplifies the process of handling errors, ensuring that error messages are consistently shared with both developers (via the console) and users (via progress tracking).
-
-
 
 ### Code Organisation
 
@@ -230,7 +264,7 @@ class ExampleClass {
 
 ---
 
-# 🖋️ Contributing Documentation 
+# 🖋️ Contributing Documentation
 
 ## 🛠️ Formatting Style Guide
 
@@ -306,13 +340,13 @@ Here’s a quick reference for writing new functions:
  */
 function exampleFunction(paramName) {
   // 💡 Tip: Add meaningful inline comments for clarity
-  console.log("Performing example operation");
+  console.log('Performing example operation');
 
   try {
     // Core logic here
   } catch (e) {
     // ⚠️ Note: Handle errors gracefully
-    console.error("An error occurred:", e);
+    console.error('An error occurred:', e);
   }
 
   return result;
@@ -336,7 +370,6 @@ Provide a brief description of what this document is about.
 
 1. Step one.
    <img src="images/step1_example.png" alt="Step 1 visual" width="400">
-   
 2. Step two.
    <img src="images/step2_example.png" alt="Step 2 visual" width="400">
 
@@ -350,7 +383,7 @@ Provide a brief description of what this document is about.
 
 ---
 
-# 🤖 Prompting Assistance for Style Guide Updates 
+# 🤖 Prompting Assistance for Style Guide Updates
 
 If you’re unsure how to align your code or documentation with this style guide, consider using an AI assistant like ChatGPT. Here’s how:
 
@@ -362,7 +395,20 @@ By following this, you can ensure your contributions remain consistent with my s
 
 ---
 
-# 🔄 Submitting Changes 
+# 🔄 Submitting Changes
+
+Before submitting your changes, please ensure you've followed these guidelines:
+
+## 📋 Pre-Submission Checklist
+
+- [ ] **No eager heavy work in top-level scope** - Ensure no singletons perform expensive operations (Drive/Properties/Classroom access) during file load or construction
+- [ ] **Use singleton pattern correctly** - Use `Class.getInstance()` instead of `new Class()` for singleton classes
+- [ ] **Follow coding standards** - Code adheres to the style guide outlined in this document
+- [ ] **Test thoroughly** - Changes are tested in Apps Script Editor with mock data or test spreadsheets
+- [ ] **Documentation updated** - Any new features or changes have corresponding documentation updates
+- [ ] **Singleton tests pass** - If modifying singleton classes, verify lazy initialization tests still pass
+
+## 🚀 Submission Process
 
 1. **Fork the repository** and clone it to your local machine.
 2. **Create a branch** for your changes:
@@ -374,11 +420,11 @@ By following this, you can ensure your contributions remain consistent with my s
 5. **Submit a pull request** with:
    - A clear description of your changes.
    - Steps for reviewers to test and validate your contribution.
+   - Confirmation that you've completed the pre-submission checklist above.
 
 ---
 
 Thank you again for contributing to the Google Slides AI Assessor! Every contribution helps make this project better, and your efforts are greatly appreciated.
-
 
 ## Git hooks (Husky)
 
@@ -395,4 +441,3 @@ To add or update hooks locally, use the `npx husky add` command. For example:
 ```bash
 npx husky add .husky/pre-commit "npm run lint"
 ```
-
