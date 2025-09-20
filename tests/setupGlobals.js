@@ -1,5 +1,9 @@
 // Global shims for GAS-like environment in unit tests.
 
+// Ensure canonical BaseSingleton is loaded first so tests use the real implementation
+// (prevents singleton fallbacks in individual files from being used).
+require('../src/AdminSheet/00_BaseSingleton.js');
+
 global.Utils = {
   generateHash(str) {
     let h = 0;

@@ -14,16 +14,6 @@
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
-// BaseSingleton is provided by 00_BaseSingleton.js (loaded first in GAS). For safety during
-// isolated module tests or partial imports, provide a minimal fallback only if absent.
-// This keeps production code lean (primary implementation lives in one file) while still
-// preventing reference errors in Node tests that directly require this file without the loader order.
-if (typeof globalThis.BaseSingleton === 'undefined') {
-  // Minimal no-freeze, no-reset fallback; tests that rely on resetForTests load 00_BaseSingleton.js first.
-  globalThis.BaseSingleton = class {
-    static getInstance() { return (this._instance ||= new this(true)); }
-  };
-}
 
 class ConfigurationManager extends BaseSingleton {
   /**

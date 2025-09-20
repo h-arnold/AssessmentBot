@@ -1,17 +1,3 @@
-// BaseSingleton is provided by 00_BaseSingleton.js. Provide minimal fallback only if absent
-// to keep production code lean and still allow isolated test imports.
-if (typeof globalThis.BaseSingleton === 'undefined') {
-  globalThis.BaseSingleton = class {
-    static getInstance() {
-      if (!this._instance) {
-        this._instance = new this(true);
-      }
-      return this._instance;
-    }
-    static _maybeFreeze(_) { /* noop fallback */ }
-  };
-}
-//
 /**
  * ProgressTracker class to manage progress updates.
  * Implemented as a Singleton to ensure only one instance exists.

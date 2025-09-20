@@ -89,6 +89,33 @@ module.exports = [
           ],
         },
       ],
+      // Prevent accidental redefinition of BaseSingleton outside the canonical file.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "Program:not([sourceType='module']) VariableDeclarator[id.name='BaseSingleton']",
+          message:
+            'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
+        },
+        {
+          selector: "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
+          message:
+            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
+        },
+        {
+          selector: "AssignmentExpression[left.name='BaseSingleton']",
+          message:
+            'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
+        },
+      ],
+    },
+  },
+  // Add an override to allow BaseSingleton definition in the canonical base file.
+  {
+    files: ['src/AdminSheet/00_BaseSingleton.js'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
 ];

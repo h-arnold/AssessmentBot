@@ -48,8 +48,11 @@ class BaseSingleton {
   }
 }
 
+// Always export for CommonJS and also attach to globalThis so test bootstrap
+// (which simply requires this module) guarantees `globalThis.BaseSingleton` is defined.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BaseSingleton;
-} else {
+}
+if (typeof globalThis !== 'undefined') {
   globalThis.BaseSingleton = BaseSingleton;
 }
