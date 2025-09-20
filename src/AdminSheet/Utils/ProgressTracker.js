@@ -1,15 +1,14 @@
-// Idempotent BaseSingleton guard (mirrors ConfigurationManager). Avoids lexical redeclaration.
+// BaseSingleton is provided by 00_BaseSingleton.js. Provide minimal fallback only if absent
+// to keep production code lean and still allow isolated test imports.
 if (typeof globalThis.BaseSingleton === 'undefined') {
   globalThis.BaseSingleton = class {
     static getInstance() {
-      if (!this._instance) this._instance = new this(true);
+      if (!this._instance) {
+        this._instance = new this(true);
+      }
       return this._instance;
     }
-    constructor() {}
-    static resetForTests() {
-      this._instance = null;
-    }
-    static _maybeFreeze(_) {}
+    static _maybeFreeze(_) { /* noop fallback */ }
   };
 }
 //

@@ -14,24 +14,16 @@
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
-// Lightweight, idempotent BaseSingleton guard.
-// GAS concatenates files in unpredictable order; redeclaring `let BaseSingleton` causes a SyntaxError.
-// We avoid any lexical declaration and only define a stub if the symbol is truly absent.
-// A real implementation file (00_BaseSingleton.js or similar) can overwrite this safely.
+// BaseSingleton is provided by 00_BaseSingleton.js (loaded first in GAS). For safety during
+// isolated module tests or partial imports, provide a minimal fallback only if absent.
+// This keeps production code lean (primary implementation lives in one file) while still
+// preventing reference errors in Node tests that directly require this file without the loader order.
 if (typeof globalThis.BaseSingleton === 'undefined') {
+  // Minimal no-freeze, no-reset fallback; tests that rely on resetForTests load 00_BaseSingleton.js first.
   globalThis.BaseSingleton = class {
-    static getInstance() {
-      if (!this._instance) this._instance = new this(true);
-      return this._instance;
-    }
-    constructor() {}
-    static resetForTests() {
-      this._instance = null;
-    }
-    static _maybeFreeze(_) {}
+    static getInstance() { return (this._instance ||= new this(true)); }
   };
 }
-//const BaseSingleton = globalThis.BaseSingleton;
 
 class ConfigurationManager extends BaseSingleton {
   /**
