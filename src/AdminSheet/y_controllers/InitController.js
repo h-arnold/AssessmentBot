@@ -27,10 +27,6 @@ class InitController extends BaseSingleton {
     }
   }
 
-  static getInstance() {
-    return super.getInstance();
-  }
-
   ensureInitialized() {
     if (this._initialized) return;
     // (Currently no heavy work to do; placeholder for Phase 2.)

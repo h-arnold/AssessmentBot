@@ -55,9 +55,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    * Canonical accessor – always use this instead of `new`.
    */
-  static getInstance() {
-    return super.getInstance();
-  }
 
   /**
    * Internal one‑time initialisation boundary. Safe to call multiple times.

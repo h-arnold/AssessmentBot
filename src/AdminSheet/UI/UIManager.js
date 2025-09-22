@@ -38,9 +38,6 @@ class UIManager extends BaseSingleton {
    * Static method to get the UIManager instance
    * @returns {UIManager} The singleton UIManager instance
    */
-  static getInstance() {
-    return super.getInstance();
-  }
 
   /** Test helper */
   static resetForTests() {

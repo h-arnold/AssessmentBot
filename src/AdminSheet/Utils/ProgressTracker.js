@@ -31,10 +31,6 @@ class ProgressTracker extends BaseSingleton {
    *
    * @returns {ProgressTracker} The singleton instance of ProgressTracker.
    */
-  static getInstance() {
-    return super.getInstance();
-  }
-
   /** One-time boundary for acquiring document properties */
   ensureInitialized() {
     if (this._initialized) return;

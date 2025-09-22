@@ -34,10 +34,6 @@ class ABLogger extends BaseSingleton {
     }
   }
 
-  static getInstance() {
-    return super.getInstance();
-  }
-
   /** Test helper */
   static resetForTests() {
     ABLogger._instance = null;
