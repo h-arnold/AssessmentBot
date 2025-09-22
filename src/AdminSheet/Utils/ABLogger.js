@@ -43,10 +43,48 @@ class ABLogger extends BaseSingleton {
       if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
         console.log(`[DEBUG_UI] ${msg}`);
       }
-    } catch (e) {
+    } catch {
       // Swallow any unexpected errors to avoid impacting main flow
-      void e;
     }
+  }
+
+  /**
+   * Internal: safely call console methods if available. Swallows errors.
+   * @param {'log'|'info'|'warn'|'error'|'debug'} level
+   * @param {...any} args
+   */
+  _safeConsole(level, ...args) {
+    try {
+      if (typeof console !== 'undefined' && console && typeof console[level] === 'function') {
+        // Forward multiple args using spread to satisfy lint rules
+        console[level](...args);
+      }
+    } catch {
+      // Avoid throwing from the logger
+    }
+  }
+
+  /**
+   * Shorthand wrappers for common console levels.
+   */
+  log(...args) {
+    this._safeConsole('log', ...args);
+  }
+
+  info(...args) {
+    this._safeConsole('info', ...args);
+  }
+
+  warn(...args) {
+    this._safeConsole('warn', ...args);
+  }
+
+  error(...args) {
+    this._safeConsole('error', ...args);
+  }
+
+  debug(...args) {
+    this._safeConsole('debug', ...args);
   }
 }
 
