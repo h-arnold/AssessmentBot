@@ -98,9 +98,7 @@ class ProgressTracker extends BaseSingleton {
    * Resets the step counter to 0.
    */
   resetSteps() {
-    this.ensureInitialized();
     this.step = 0;
-    this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,

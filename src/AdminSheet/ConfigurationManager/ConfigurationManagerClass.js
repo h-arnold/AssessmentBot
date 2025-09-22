@@ -150,7 +150,7 @@ class ConfigurationManager extends BaseSingleton {
 
   hasProperty(key) {
     this.getAllConfigurations();
-    return Object.hasOwn ? Object.has(this.configCache, key) : Object.hasOwn(this.configCache, key);
+    return Object.hasOwn(this.configCache, key);
   }
 
   getProperty(key) {

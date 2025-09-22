@@ -6,6 +6,7 @@ This document explains the lazy singleton pattern used throughout the Assessment
   - [📖 Overview](#-overview)
   - [✅ Correct Pattern (Do This)](#-correct-pattern-do-this)
     - [Basic Singleton Structure](#basic-singleton-structure)
+    - [Using Singletons](#using-singletons)
     - [Heavy Initialization Pattern](#heavy-initialization-pattern)
   - [❌ Anti-Patterns (Don't Do This)](#-anti-patterns-dont-do-this)
     - [Direct Constructor Calls](#direct-constructor-calls)
@@ -41,11 +42,6 @@ All singleton classes extend `BaseSingleton` and follow consistent patterns for 
 
 ### Basic Singleton Structure
 
-````javascript
-/**
- * ExampleManager - manages example functionality
- * Use ExampleManager.getInstance(); do not call constructor directly.
- */
 ```javascript
 /**
  * ExampleManager - manages example functionality
@@ -104,9 +100,7 @@ class ExampleManager extends BaseSingleton {
     ExampleManager._instance = null;
   }
 }
-````
-
-````
+```
 
 ### Using Singletons
 
@@ -119,7 +113,7 @@ const data = manager.getImportantData();
 const manager1 = ExampleManager.getInstance();
 const manager2 = ExampleManager.getInstance();
 console.log(manager1 === manager2); // true
-````
+```
 
 ### Heavy Initialization Pattern
 
