@@ -43,7 +43,7 @@ function onOpen() {
    * It calls the `onOpen` method of the `initController` instance to perform
    * any necessary initialization tasks when the document is opened.
    */
-  initController.onOpen();
+  InitController.getInstance().onOpen();
 }
 
 /**
@@ -54,5 +54,5 @@ function onOpen() {
  * @returns {void}
  */
 function handleScriptInit() {
-  initController.handleScriptInit();
+  InitController.getInstance().handleScriptInit();
 }

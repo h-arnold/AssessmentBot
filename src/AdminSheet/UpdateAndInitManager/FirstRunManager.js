@@ -12,7 +12,7 @@ class FirstRunManager extends BaseUpdateAndInit {
   constructor() {
     super();
     // For the first run, ensure the admin sheet flag is set.
-    configurationManager.setIsAdminSheet(true);
+    ConfigurationManager.getInstance().setIsAdminSheet(true);
 
     // (Optionally) re-instantiate the UI manager for first-run dialogs.
     this.uiManager = UIManager.getInstance();
@@ -26,9 +26,12 @@ class FirstRunManager extends BaseUpdateAndInit {
     this.uiManager.showConfigurationDialog();
 
     // Step 2: Copy the Assessment Record Template.
-    this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
+    this.destinationFolderId =
+      ConfigurationManager.getInstance().getAssessmentRecordDestinationFolder();
     this.assessmentRecordTemplateId = this.copyAssessmentRecordTemplate();
-    configurationManager.setAssessmentRecordTemplateId(this.assessmentRecordTemplateId);
+    ConfigurationManager.getInstance().setAssessmentRecordTemplateId(
+      this.assessmentRecordTemplateId
+    );
 
     // Step 3: Launch the wizard to set up the Assessment Record template.
     const assessmentRecordTemplateUrl = this.getAssessmentRecordTemplateUrl(

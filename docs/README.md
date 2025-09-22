@@ -21,8 +21,3 @@ This documentation provides comprehensive guidance on using, setting up, and und
 [**Pedagogical Overview**](./pedagogy/README.md) – An explanation of the teaching principles supporting the Google Slides AI Assessor and how it can enhance classroom practices.
 
 ---
-
-## 🗺️ Roadmap
-
-[**Feature Plans**](./roadmap.md) – Explore ongoing developments and planned features for the Google Slides AI Assessor.
-

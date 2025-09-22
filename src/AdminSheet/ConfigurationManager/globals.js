@@ -15,9 +15,7 @@ function getConfiguration() {
       // Avoid logging full error objects which may contain sensitive details.
       // Log a concise error identifier only. Use optional chaining to avoid
       // referencing properties on possibly undefined/null error objects.
-      console.error(
-        `Error retrieving configuration value for ${name}: ${err?.name ?? 'Error'}`
-      );
+      console.error(`Error retrieving configuration value for ${name}: ${err?.name ?? 'Error'}`);
       errors.push(`${name}: ${err?.message ?? 'REDACTED'}`);
       return fallback;
     }
@@ -30,11 +28,12 @@ function getConfiguration() {
     return '****' + s.slice(-4);
   }
 
-  const rawApiKey = safeGet(() => configurationManager.getApiKey(), 'apiKey', '');
+  const cfg = ConfigurationManager.getInstance();
+  const rawApiKey = safeGet(() => cfg.getApiKey(), 'apiKey', '');
 
   const config = {
     backendAssessorBatchSize: safeGet(
-      () => configurationManager.getBackendAssessorBatchSize(),
+      () => cfg.getBackendAssessorBatchSize(),
       'backendAssessorBatchSize',
       30
     ),
@@ -42,44 +41,28 @@ function getConfiguration() {
     apiKey: maskApiKey(rawApiKey),
     // Provide a boolean so callers can know whether a key is present without exposing it.
     hasApiKey: !!rawApiKey,
-    backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
+    backendUrl: safeGet(() => cfg.getBackendUrl(), 'backendUrl', ''),
     assessmentRecordTemplateId: safeGet(
-      () => configurationManager.getAssessmentRecordTemplateId(),
+      () => cfg.getAssessmentRecordTemplateId(),
       'assessmentRecordTemplateId',
       ''
     ),
     assessmentRecordDestinationFolder: safeGet(
-      () => configurationManager.getAssessmentRecordDestinationFolder(),
+      () => cfg.getAssessmentRecordDestinationFolder(),
       'assessmentRecordDestinationFolder',
       ''
     ),
-    updateDetailsUrl: safeGet(
-      () => configurationManager.getUpdateDetailsUrl(),
-      'updateDetailsUrl',
-      ''
-    ),
-    updateStage: safeGet(() => configurationManager.getUpdateStage(), 'updateStage', 0),
-    isAdminSheet: safeGet(() => configurationManager.getIsAdminSheet(), 'isAdminSheet', false),
+    updateDetailsUrl: safeGet(() => cfg.getUpdateDetailsUrl(), 'updateDetailsUrl', ''),
+    updateStage: safeGet(() => cfg.getUpdateStage(), 'updateStage', 0),
+    isAdminSheet: safeGet(() => cfg.getIsAdminSheet(), 'isAdminSheet', false),
     revokeAuthTriggerSet: safeGet(
-      () => configurationManager.getRevokeAuthTriggerSet(),
+      () => cfg.getRevokeAuthTriggerSet(),
       'revokeAuthTriggerSet',
       false
     ),
-    daysUntilAuthRevoke: safeGet(
-      () => configurationManager.getDaysUntilAuthRevoke(),
-      'daysUntilAuthRevoke',
-      60
-    ),
-    scriptAuthorised: safeGet(
-      () => configurationManager.getScriptAuthorised(),
-      'scriptAuthorised',
-      false
-    ),
-    slidesFetchBatchSize: safeGet(
-      () => configurationManager.getSlidesFetchBatchSize(),
-      'slidesFetchBatchSize',
-      20
-    ),
+    daysUntilAuthRevoke: safeGet(() => cfg.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
+    scriptAuthorised: safeGet(() => cfg.getScriptAuthorised(), 'scriptAuthorised', false),
+    slidesFetchBatchSize: safeGet(() => cfg.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
   };
 
   if (errors.length > 0) {
@@ -125,34 +108,43 @@ function saveConfiguration(config) {
   // Delegate configuration saving to ConfigurationManager using safeSet
   if (config.backendAssessorBatchSize !== undefined) {
     safeSet(
-      () => configurationManager.setBackendAssessorBatchSize(config.backendAssessorBatchSize),
+      () =>
+        ConfigurationManager.getInstance().setBackendAssessorBatchSize(
+          config.backendAssessorBatchSize
+        ),
       'backendAssessorBatchSize'
     );
   }
   if (config.slidesFetchBatchSize !== undefined) {
     safeSet(
-      () => configurationManager.setSlidesFetchBatchSize(config.slidesFetchBatchSize),
+      () => ConfigurationManager.getInstance().setSlidesFetchBatchSize(config.slidesFetchBatchSize),
       'slidesFetchBatchSize'
     );
   }
   if (config.apiKey !== undefined) {
-    safeSet(() => configurationManager.setApiKey(config.apiKey), 'apiKey');
+    safeSet(() => ConfigurationManager.getInstance().setApiKey(config.apiKey), 'apiKey');
   }
   if (config.backendUrl !== undefined) {
-    safeSet(() => configurationManager.setBackendUrl(config.backendUrl), 'backendUrl');
+    safeSet(
+      () => ConfigurationManager.getInstance().setBackendUrl(config.backendUrl),
+      'backendUrl'
+    );
   }
 
   // Handle Assessment Record values
   if (config.assessmentRecordTemplateId !== undefined) {
     safeSet(
-      () => configurationManager.setAssessmentRecordTemplateId(config.assessmentRecordTemplateId),
+      () =>
+        ConfigurationManager.getInstance().setAssessmentRecordTemplateId(
+          config.assessmentRecordTemplateId
+        ),
       'assessmentRecordTemplateId'
     );
   }
   if (config.assessmentRecordDestinationFolder !== undefined) {
     safeSet(
       () =>
-        configurationManager.setAssessmentRecordDestinationFolder(
+        ConfigurationManager.getInstance().setAssessmentRecordDestinationFolder(
           config.assessmentRecordDestinationFolder
         ),
       'assessmentRecordDestinationFolder'
@@ -162,7 +154,7 @@ function saveConfiguration(config) {
   // Handle updateDetailsUrl parameter
   if (config.updateDetailsUrl !== undefined) {
     safeSet(
-      () => configurationManager.setUpdateDetailsUrl(config.updateDetailsUrl),
+      () => ConfigurationManager.getInstance().setUpdateDetailsUrl(config.updateDetailsUrl),
       'updateDetailsUrl'
     );
   }
@@ -170,7 +162,7 @@ function saveConfiguration(config) {
   // Handle daysUntilAuthRevoke parameter
   if (config.daysUntilAuthRevoke !== undefined) {
     safeSet(
-      () => configurationManager.setDaysUntilAuthRevoke(config.daysUntilAuthRevoke),
+      () => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(config.daysUntilAuthRevoke),
       'daysUntilAuthRevoke'
     );
   }

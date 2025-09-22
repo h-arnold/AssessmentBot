@@ -5,16 +5,48 @@
  *
  */
 
-class InitController {
-  constructor() {
-    // Attempt to instantiate UIManager only in user context to avoid issues with triggers
-    try {
-      this.uiManager = UIManager.getInstance();
-      console.log('UIManager instantiated successfully.');
-    } catch (error) {
-      console.error('UIManager cannot be instantiated: ' + error);
-      this.uiManager = null; // UIManager is not available in this context
+class InitController extends BaseSingleton {
+  /**
+   * Constructor is intentionally lightweight (Phase 1). Do not perform UI work here.
+   * Use InitController.getInstance() + getUiManager() for lazy UI access.
+   */
+  constructor(isSingletonCreator = false) {
+    super();
+    /**
+     * JSDoc Singleton Banner
+     * Use InitController.getInstance(); do not call constructor directly.
+     */
+    // Singleton guard: constructor should only execute once via getInstance()
+    if (!isSingletonCreator && InitController._instance) {
+      return InitController._instance; // Return existing instance
     }
+    this._initialized = false; // future hook if we add heavy init
+    this.uiManager = null; // defer until needed
+    if (!InitController._instance) {
+      InitController._instance = this;
+    }
+  }
+
+  ensureInitialized() {
+    if (this._initialized) return;
+    // (Currently no heavy work to do; placeholder for Phase 2.)
+    this._initialized = true;
+  }
+
+  /**
+   * Lazily obtain UIManager. Safe to call repeatedly.
+   */
+  getUiManager() {
+    if (!this.uiManager) {
+      try {
+        this.uiManager = UIManager.getInstance();
+        console.log('UIManager lazily instantiated.');
+      } catch (error) {
+        console.error('UIManager cannot be instantiated:', error?.message ?? error);
+        this.uiManager = null;
+      }
+    }
+    return this.uiManager;
   }
 
   /**
@@ -22,26 +54,28 @@ class InitController {
    * Adds custom menus to the UI when the document is opened.
    */
   onOpen() {
-    const isScriptAuthorised = configurationManager.getScriptAuthorised();
-    const isAdminSheet = configurationManager.getIsAdminSheet();
+    const cfg = ConfigurationManager.getInstance();
+    const isScriptAuthorised = cfg.getScriptAuthorised();
+    const isAdminSheet = cfg.getIsAdminSheet();
     console.log('Script authorization status:', isScriptAuthorised);
 
-    if (!this.uiManager) {
+    const uiManager = this.getUiManager();
+    if (!uiManager) {
       console.error('UIManager is not available to add custom menus.');
       return;
     }
 
     if (isScriptAuthorised && isAdminSheet) {
       console.log('Script is already authorised. Creating authorised menu.');
-      this.uiManager.createAuthorisedMenu();
+      uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
       console.log(
         'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
       );
-      this.uiManager.createAssessmentRecordMenu();
+      uiManager.createAssessmentRecordMenu();
     } else {
       console.log('Script not authorised. Creating unauthorised menu.');
-      this.uiManager.createUnauthorisedMenu();
+      uiManager.createUnauthorisedMenu();
     }
   }
 
@@ -50,17 +84,18 @@ class InitController {
    * Determines if this is an Admin Sheet or Assessment Record and calls the appropriate initialisation method.
    */
   handleScriptInit() {
-    const scriptAuthorised = configurationManager.getScriptAuthorised();
-    const isAdminSheet = configurationManager.getIsAdminSheet();
+    const cfg = ConfigurationManager.getInstance();
+    const scriptAuthorised = cfg.getScriptAuthorised();
+    const isAdminSheet = cfg.getIsAdminSheet();
 
     // If script isn't authorised, run the first run initialisation regardless of sheet type
     if (!scriptAuthorised) {
       this.doFirstRunInit();
       // Create appropriate menu after first run init
       if (isAdminSheet) {
-        this.uiManager.createAuthorisedMenu();
+        this._withUI((ui) => ui.createAuthorisedMenu());
       } else {
-        this.uiManager.createAssessmentRecordMenu();
+        this._withUI((ui) => ui.createAssessmentRecordMenu());
       }
     }
 
@@ -70,7 +105,6 @@ class InitController {
     } else {
       this.assessmentRecordScriptInit();
     }
-    return;
   }
 
   /**
@@ -79,13 +113,14 @@ class InitController {
    */
   adminScriptInit() {
     // Gets the update stage.
-    const updateStage = configurationManager.getUpdateStage();
-    const scriptAuthorised = configurationManager.getScriptAuthorised();
+    const cfg = ConfigurationManager.getInstance();
+    const updateStage = cfg.getUpdateStage();
+    const scriptAuthorised = cfg.getScriptAuthorised();
     this.setupAuthRevokeTimer();
 
     // If everything is up to date and the script is authorised, create the menu and finish.
     if (updateStage === 2 && scriptAuthorised) {
-      this.uiManager.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
       return;
     }
 
@@ -98,10 +133,10 @@ class InitController {
       }
 
       // Assuming the script didn't end early at any of the above points, create the authorised menu.
-      this.uiManager.createAuthorisedMenu();
+      this._withUI((ui) => ui.createAuthorisedMenu());
     } catch (error) {
-      this.uiManager.createAuthorisedMenu();
-      throw new Error(`Error during admin script initialisation: ${error.message}`);
+      this._withUI((ui) => ui.createAuthorisedMenu());
+      throw new Error(`Error during admin script initialisation: ${error?.message ?? error}`);
     }
   }
 
@@ -112,14 +147,14 @@ class InitController {
   assessmentRecordScriptInit() {
     try {
       // Create the assessment record menu
-      this.uiManager.createAssessmentRecordMenu();
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
 
       // Set up the authorisation revocation timer
       this.setupAuthRevokeTimer();
     } catch (error) {
       // Ensure menu is created even if there's an error
-      this.uiManager.createAssessmentRecordMenu();
-      throw new Error(`Error during assessment record initialisation: ${error.message}`);
+      this._withUI((ui) => ui.createAssessmentRecordMenu());
+      throw new Error(`Error during assessment record initialisation: ${error?.message ?? error}`);
     }
   }
 
@@ -135,14 +170,14 @@ class InitController {
 
     // Trigger the authorisation process if needed
     if (authStatus.needsAuth) {
-      this.uiManager.showAuthorisationModal(authStatus.authUrl);
+      this._withUI((ui) => ui.showAuthorisationModal(authStatus.authUrl));
     }
 
     // Assuming auth flow has taken place, add a trigger to call this method.
     triggerController.createOnOpenTrigger(`handleScriptInit`);
 
     // Set script authorised to true to avoid calling the auth process again.
-    configurationManager.setScriptAuthorised(true);
+    ConfigurationManager.getInstance().setScriptAuthorised(true);
 
     //If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
     this.setDefaultAssessmentRecordTemplateId();
@@ -160,10 +195,26 @@ class InitController {
    * This avoids an infinite loop scenario in ConfigurationManager.getAssessmentRecordTemplateId() where if it's not set, it will instaniate BaseUpdateAndInit to use the getAssessmentRecordTemplateId() method, where the constructor for that class calls the Assessment Record Template ID from ConfigurationManager.
    */
   setDefaultAssessmentRecordTemplateId() {
-    if (!configurationManager.getAssessmentRecordTemplateId) {
+    const cfg = ConfigurationManager.getInstance();
+    if (!cfg.getAssessmentRecordTemplateId) {
       const baseInitManager = new BaseUpdateAndInit();
       const assessmentRecordTemplateId = baseInitManager.getLatestAssessmentRecordTemplateId();
-      configurationManager.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
+      cfg.setAssessmentRecordTemplateId(assessmentRecordTemplateId);
+    }
+  }
+
+  /**
+   * Internal helper to execute a function only if UI can be instantiated (avoids forcing UI for pure config paths)
+   * @param {(ui: UIManager) => void} fn
+   */
+  _withUI(fn) {
+    try {
+      const ui = this.getUiManager();
+      if (ui) fn(ui);
+    } catch (e) {
+      // Swallow to keep pure logic paths resilient in headless/triggers
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE] InitController._withUI suppressed UI error');
     }
   }
 
@@ -174,7 +225,7 @@ class InitController {
    */
   setupAuthRevokeTimer() {
     // Check if trigger is already set
-    const triggerAlreadySet = configurationManager.getRevokeAuthTriggerSet();
+    const triggerAlreadySet = ConfigurationManager.getInstance().getRevokeAuthTriggerSet();
 
     if (triggerAlreadySet) {
       console.log('Auth revoke trigger already exists. No new trigger created.');
@@ -183,7 +234,7 @@ class InitController {
 
     try {
       // Get the number of days until revocation
-      const daysUntilRevoke = configurationManager.getDaysUntilAuthRevoke();
+      const daysUntilRevoke = ConfigurationManager.getInstance().getDaysUntilAuthRevoke();
 
       // Calculate the trigger time (current time + specified days)
       const triggerTime = new Date();
@@ -194,7 +245,7 @@ class InitController {
       triggerController.createTimeBasedTrigger('revokeAuthorisation', triggerTime);
 
       // Update the flag to indicate the trigger has been set
-      configurationManager.setRevokeAuthTriggerSet(true);
+      ConfigurationManager.getInstance().setRevokeAuthTriggerSet(true);
 
       console.log(`Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`);
       return true;
@@ -203,4 +254,9 @@ class InitController {
       return false;
     }
   }
+}
+
+// Export for Node test environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = InitController;
 }
