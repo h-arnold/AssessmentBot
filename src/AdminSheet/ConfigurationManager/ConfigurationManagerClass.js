@@ -55,9 +55,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    * Canonical accessor – always use this instead of `new`.
    */
-  static getInstance() {
-    return super.getInstance();
-  }
 
   /**
    * Internal one‑time initialisation boundary. Safe to call multiple times.
@@ -85,9 +82,7 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /** Test helper */
-  static resetForTests() {
-    ConfigurationManager._instance = null;
-  }
+  static resetForTests() {}
 
   static get CONFIG_KEYS() {
     return ConfigurationManager._CONFIG_KEYS;

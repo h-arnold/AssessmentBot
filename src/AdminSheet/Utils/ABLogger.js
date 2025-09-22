@@ -34,15 +34,6 @@ class ABLogger extends BaseSingleton {
     }
   }
 
-  static getInstance() {
-    return super.getInstance();
-  }
-
-  /** Test helper */
-  static resetForTests() {
-    ABLogger._instance = null;
-  }
-
   /**
    * UI-focused debug logging gated by DEBUG_UI flag.
    * @param {string} msg
@@ -52,8 +43,9 @@ class ABLogger extends BaseSingleton {
       if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
         console.log(`[DEBUG_UI] ${msg}`);
       }
-    } catch (_) {
+    } catch (e) {
       // Swallow any unexpected errors to avoid impacting main flow
+      void e;
     }
   }
 }

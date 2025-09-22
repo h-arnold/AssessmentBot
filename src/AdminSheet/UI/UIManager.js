@@ -33,21 +33,11 @@ try {
  * }, "showAlert");
  */
 
-class UIManager {
+class UIManager extends BaseSingleton {
   /**
    * Static method to get the UIManager instance
    * @returns {UIManager} The singleton UIManager instance
    */
-  static getInstance() {
-    if (!UIManager._instance) {
-      UIManager._instance = new UIManager(true);
-    }
-    return UIManager._instance;
-  }
-  /** Test helper */
-  static resetForTests() {
-    UIManager._instance = null;
-  }
 
   /**
    * Static method to check if UI is available in the current execution context
@@ -67,13 +57,14 @@ class UIManager {
   }
 
   constructor(isSingletonCreator = false) {
+    super();
     /**
      * JSDoc Singleton Banner
      * Use UIManager.getInstance(); do not call constructor directly.
      */
     // Singleton guard: constructor should only run once via getInstance()
     if (!isSingletonCreator && UIManager._instance) {
-      return; // silently ignore extra constructions
+      return UIManager._instance; // Return existing instance
     }
 
     // Defer UI availability probe until first safe UI op (lazy probing)
@@ -100,7 +91,7 @@ class UIManager {
     // Ensure we've probed the UI lazily
     if (!this._uiProbed) this.probeUiIfNeeded();
     if (!this.uiAvailable) {
-        ABLogger.getInstance().debugUi(`Skipped ${operationName}: UI not available in this context`);
+      ABLogger.getInstance().debugUi(`Skipped ${operationName}: UI not available in this context`);
       return null;
     }
     try {
@@ -123,14 +114,14 @@ class UIManager {
     if (available) {
       try {
         this.ui = SpreadsheetApp.getUi();
-          ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
+        ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
       } catch (err) {
         console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
         this.uiAvailable = false;
         this.ui = null;
       }
     } else {
-        ABLogger.getInstance().debugUi('UI probe completed: UI not available.');
+      ABLogger.getInstance().debugUi('UI probe completed: UI not available.');
     }
   }
   ensureClassroomManager() {
@@ -138,7 +129,7 @@ class UIManager {
       if (globalThis.__TRACE_SINGLETON__)
         console.log('[TRACE][HeavyInit] UIManager.ensureClassroomManager');
       this.classroomManager = new GoogleClassroomManager();
-        ABLogger.getInstance().debugUi('GoogleClassroomManager lazily instantiated.');
+      ABLogger.getInstance().debugUi('GoogleClassroomManager lazily instantiated.');
     }
     return this.classroomManager;
   }
@@ -241,7 +232,7 @@ class UIManager {
         .addItem('Change Class', 'showClassroomDropdown')
         .addToUi();
 
-        ABLogger.getInstance().debugUi('Assessment Record menu created.');
+      ABLogger.getInstance().debugUi('Assessment Record menu created.');
     }, 'createAssessmentRecordMenu');
   }
 
@@ -255,7 +246,7 @@ class UIManager {
         .setHeight(600); // Adjust the size as needed
 
       this.ui.showModalDialog(html, 'Configure Script Properties');
-        ABLogger.getInstance().debugUi('Configuration dialog displayed.');
+      ABLogger.getInstance().debugUi('Configuration dialog displayed.');
     }, 'showConfigurationDialog');
   }
 
@@ -272,7 +263,7 @@ class UIManager {
       width: modalWidth,
       height: 250,
     });
-      ABLogger.getInstance().debugUi('Assignment dropdown modal displayed.');
+    ABLogger.getInstance().debugUi('Assignment dropdown modal displayed.');
   }
 
   /**
@@ -309,7 +300,7 @@ class UIManager {
           'Enter Slide IDs',
           { width: 400, height: 350 }
         );
-          ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
+        ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
       } catch (error) {
         console.error('Error opening reference slide modal:', error);
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
@@ -330,7 +321,7 @@ class UIManager {
           width: 500,
           height: 300,
         });
-          ABLogger.getInstance().debugUi('Classroom dropdown modal displayed.');
+        ABLogger.getInstance().debugUi('Classroom dropdown modal displayed.');
       } catch (error) {
         console.error('Error displaying classroom dropdown modal:', error);
         Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
@@ -365,7 +356,7 @@ class UIManager {
         .setWidth(400)
         .setHeight(160);
       this.ui.showModalDialog(html, 'Progress');
-        ABLogger.getInstance().debugUi('Progress modal displayed.');
+      ABLogger.getInstance().debugUi('Progress modal displayed.');
     }, 'showProgressModal');
   }
 
@@ -483,7 +474,7 @@ class UIManager {
         .setHeight(600); // Adjust width and height as needed
 
       this.ui.showModalDialog(html, 'Edit Classrooms');
-        ABLogger.getInstance().debugUi('Classroom editor modal displayed.');
+      ABLogger.getInstance().debugUi('Classroom editor modal displayed.');
     }, 'showClassroomEditorModal');
   }
 
@@ -543,7 +534,7 @@ class UIManager {
           .setHeight(1);
 
         this.ui.showModalDialog(html, 'Opening...');
-  Logger.getInstance().debugUi(`Opening URL in new window: ${url}`);
+        ABLogger.getInstance().debugUi(`Opening URL in new window: ${url}`);
       } catch (error) {
         console.error(`Failed to open URL: ${error.message}`);
         throw error;
@@ -613,7 +604,7 @@ class UIManager {
                   </div>`;
 
       this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
-        ABLogger.getInstance().debugUi('Authorization modal displayed.');
+      ABLogger.getInstance().debugUi('Authorization modal displayed.');
     }, 'showAuthorisationModal');
   }
 }

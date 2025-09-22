@@ -5,32 +5,26 @@
  *
  */
 
-class InitController {
+class InitController extends BaseSingleton {
   /**
    * Constructor is intentionally lightweight (Phase 1). Do not perform UI work here.
    * Use InitController.getInstance() + getUiManager() for lazy UI access.
    */
   constructor(isSingletonCreator = false) {
+    super();
     /**
      * JSDoc Singleton Banner
      * Use InitController.getInstance(); do not call constructor directly.
      */
     // Singleton guard: constructor should only execute once via getInstance()
     if (!isSingletonCreator && InitController._instance) {
-      return; // ignore subsequent direct calls
+      return InitController._instance; // Return existing instance
     }
     this._initialized = false; // future hook if we add heavy init
     this.uiManager = null; // defer until needed
     if (!InitController._instance) {
       InitController._instance = this;
     }
-  }
-
-  static getInstance() {
-    if (!InitController._instance) {
-      new InitController(true);
-    }
-    return InitController._instance;
   }
 
   ensureInitialized() {
@@ -53,10 +47,6 @@ class InitController {
       }
     }
     return this.uiManager;
-  }
-
-  static resetForTests() {
-    InitController._instance = null;
   }
 
   /**

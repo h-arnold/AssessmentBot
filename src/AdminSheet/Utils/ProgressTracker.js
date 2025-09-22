@@ -31,10 +31,6 @@ class ProgressTracker extends BaseSingleton {
    *
    * @returns {ProgressTracker} The singleton instance of ProgressTracker.
    */
-  static getInstance() {
-    return super.getInstance();
-  }
-
   /** One-time boundary for acquiring document properties */
   ensureInitialized() {
     if (this._initialized) return;
@@ -49,9 +45,6 @@ class ProgressTracker extends BaseSingleton {
   /**
    * Test helper to reset singleton between tests (Phase 1 convention).
    */
-  static resetForTests() {
-    ProgressTracker._instance = null;
-  }
 
   /**
    * Initializes the progress tracking by resetting any existing progress data.
