@@ -49,10 +49,6 @@ class InitController extends BaseSingleton {
     return this.uiManager;
   }
 
-  static resetForTests() {
-    // inherit BaseSingleton.resetForTests
-  }
-
   /**
    * Handles the open event of the Google Sheets document.
    * Adds custom menus to the UI when the document is opened.

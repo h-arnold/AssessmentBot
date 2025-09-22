@@ -45,7 +45,6 @@ class ProgressTracker extends BaseSingleton {
   /**
    * Test helper to reset singleton between tests (Phase 1 convention).
    */
-  // inherit BaseSingleton.resetForTests
 
   /**
    * Initializes the progress tracking by resetting any existing progress data.

@@ -39,8 +39,6 @@ class UIManager extends BaseSingleton {
    * @returns {UIManager} The singleton UIManager instance
    */
 
-  // no explicit resetForTests - inherit BaseSingleton.resetForTests
-
   /**
    * Static method to check if UI is available in the current execution context
    * @returns {boolean} True if UI is available, false otherwise

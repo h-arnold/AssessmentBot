@@ -34,8 +34,6 @@ class ABLogger extends BaseSingleton {
     }
   }
 
-  // inherit BaseSingleton.resetForTests
-
   /**
    * UI-focused debug logging gated by DEBUG_UI flag.
    * @param {string} msg
