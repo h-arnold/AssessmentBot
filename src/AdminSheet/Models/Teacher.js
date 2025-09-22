@@ -28,7 +28,15 @@ class Teacher {
    * @param {string} email
    */
   setEmail(email) {
-    this.email = email || null;
+    const val = email || null;
+    if (val === null) {
+      this.email = null;
+      return;
+    }
+    if (this._Validate && typeof this._Validate.isEmail === 'function') {
+      if (!this._Validate.isEmail(val)) throw new TypeError('Invalid email');
+    }
+    this.email = val;
   }
 
   /**
@@ -44,7 +52,15 @@ class Teacher {
    * @param {string} userId
    */
   setUserId(userId) {
-    this.userId = userId || null;
+    const val = userId || null;
+    if (val === null) {
+      this.userId = null;
+      return;
+    }
+    if (this._Validate && typeof this._Validate.isGoogleUserId === 'function') {
+      if (!this._Validate.isGoogleUserId(val)) throw new TypeError('Invalid userId');
+    }
+    this.userId = val;
   }
 
   toJSON() {
