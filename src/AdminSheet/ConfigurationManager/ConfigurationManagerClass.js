@@ -14,118 +14,81 @@
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
-class ConfigurationManager {
-  constructor() {
-    if (ConfigurationManager.instance) {
-      return ConfigurationManager.instance;
+
+class ConfigurationManager extends BaseSingleton {
+  /**
+   * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
+   * in the constructor. Use ConfigurationManager.getInstance() to obtain the singleton and all
+   * getters/setters will transparently call ensureInitialized() before touching persisted state.
+   * The constructor is intentionally lightweight so tests can assert no side‑effects before first real use.
+   */
+  constructor(isSingletonCreator = false) {
+    super();
+    /**
+     * JSDoc Singleton Banner
+     * Use ConfigurationManager.getInstance(); do not call constructor directly.
+     */
+    if (!isSingletonCreator && ConfigurationManager._instance) {
+      // Guard: discourage direct construction after first instance; maintain original object identity
+      return ConfigurationManager._instance; // returning existing is acceptable for singleton semantics
     }
-
-    this.scriptProperties = PropertiesService.getScriptProperties();
-    this.documentProperties = PropertiesService.getDocumentProperties();
-
-    this.configCache = null; // Initialize cache early
-
-    this.maybeDeserializeProperties();
-
-    ConfigurationManager.instance = this;
-    return this;
+    // Defer PropertiesService access & deserialisation
+    this.scriptProperties = null;
+    this.documentProperties = null;
+    this.configCache = null;
+    this._initialized = false;
+    if (!ConfigurationManager._instance) {
+      ConfigurationManager._instance = this;
+    }
   }
+
+  /** Shared patterns (extracted for DRY). */
+  static get API_KEY_PATTERN() {
+    // Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens
+    return /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+  }
+  static get DRIVE_ID_PATTERN() {
+    // Basic Google drive file/folder id heuristic
+    return /^[A-Za-z0-9-_]{10,}$/;
+  }
+
+  /**
+   * Canonical accessor – always use this instead of `new`.
+   */
+
+  /**
+   * Internal one‑time initialisation boundary. Safe to call multiple times.
+   * Performs first access to Apps Script services and property deserialisation.
+   */
+  ensureInitialized() {
+    if (this._initialized) return;
+    // Acquire handles lazily
+    this.scriptProperties = this.scriptProperties || PropertiesService.getScriptProperties();
+    this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
+    // Perform potential deserialisation only once
+    if (globalThis.__TRACE_SINGLETON__)
+      console.log('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
+    this.maybeDeserializeProperties();
+    this._initialized = true;
+    if (globalThis.FREEZE_SINGLETONS) {
+      try {
+        Object.freeze(this);
+      } catch (freezeErr) {
+        if (globalThis.__TRACE_SINGLETON__) {
+          console.debug('Freeze failed ConfigurationManager:', freezeErr?.message || freezeErr);
+        }
+      }
+    }
+  }
+
+  /** Test helper */
+  static resetForTests() {}
 
   static get CONFIG_KEYS() {
-    return {
-      BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
-      SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
-      API_KEY: 'apiKey',
-      BACKEND_URL: 'backendUrl',
-      ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
-      ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
-      UPDATE_DETAILS_URL: 'updateDetailsUrl',
-      UPDATE_STAGE: 'updateStage',
-      IS_ADMIN_SHEET: 'isAdminSheet',
-      REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
-      DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
-      SCRIPT_AUTHORISED: 'scriptAuthorised',
-    };
+    return ConfigurationManager._CONFIG_KEYS;
   }
-
   static get CONFIG_SCHEMA() {
-    return {
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
-        storage: 'script',
-        validate: (v) =>
-          ConfigurationManager.validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
-      },
-      [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
-        storage: 'script',
-        validate: (v) =>
-          ConfigurationManager.validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
-      },
-      [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: {
-        storage: 'script',
-        validate: (v) =>
-          ConfigurationManager.validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
-      },
-      [ConfigurationManager.CONFIG_KEYS.API_KEY]: {
-        storage: 'script',
-        validate: ConfigurationManager.validateApiKey,
-      },
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_URL]: {
-        storage: 'script',
-        validate: (v) => ConfigurationManager.validateUrl('Backend Url', v),
-      },
-      [ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL]: {
-        storage: 'script',
-        validate: (v) => ConfigurationManager.validateUrl('Update Details Url', v),
-      },
-      [ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID]: {
-        storage: 'script',
-        validate: (v, instance) => {
-          ConfigurationManager.validateNonEmptyString('Assessment Record Template Id', v);
-          if (!instance.isValidGoogleSheetId(v)) {
-            throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
-          }
-          return v;
-        },
-      },
-      [ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
-        storage: 'script',
-        validate: (v, instance) => {
-          ConfigurationManager.validateNonEmptyString('Assessment Record Destination Folder', v);
-          if (!instance.isValidGoogleDriveFolderId(v)) {
-            throw new Error(
-              'Assessment Record Destination Folder must be a valid Google Drive Folder ID.'
-            );
-          }
-          return v;
-        },
-      },
-      [ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE]: {
-        storage: 'script',
-        validate: (v) => {
-          const stage = parseInt(v, 10);
-          if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
-            throw new Error('Update Stage must be 0, 1, or 2');
-          }
-          return stage;
-        },
-      },
-      [ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET]: {
-        storage: 'document',
-        validate: (v) => ConfigurationManager.validateBoolean('Is Admin Sheet', v),
-        normalize: ConfigurationManager.toBooleanString,
-      },
-      [ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED]: {
-        storage: 'document',
-        validate: (v) => ConfigurationManager.validateBoolean('Script Authorised', v),
-        normalize: ConfigurationManager.toBooleanString,
-      },
-      [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
-        storage: 'document',
-        validate: (v) =>
-          ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
-        normalize: ConfigurationManager.toBooleanString,
-      },
-    };
+    return ConfigurationManager._CONFIG_SCHEMA;
   }
 
   /**
@@ -136,15 +99,23 @@ class ConfigurationManager {
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
   maybeDeserializeProperties() {
-    let hasScriptProperties = null;
-
-    if (this.getIsAdminSheet()) {
-      hasScriptProperties = this.scriptProperties.getKeys().length > 0;
-    }
-
-    const hasDocumentProperties = this.documentProperties.getKeys().length > 0;
-
-    if (!hasScriptProperties && !hasDocumentProperties) {
+    const safeGetKeys = (store) => {
+      if (!store) return [];
+      try {
+        return store.getKeys ? store.getKeys() : [];
+      } catch (e) {
+        if (globalThis.__TRACE_SINGLETON__)
+          console.debug(
+            '[TRACE] ConfigurationManager.maybeDeserializeProperties safeGetKeys error:',
+            e?.message ?? e
+          );
+        return [];
+      }
+    };
+    try {
+      const hasScript = safeGetKeys(this.scriptProperties).length > 0;
+      const hasDoc = safeGetKeys(this.documentProperties).length > 0;
+      if (hasScript || hasDoc) return; // early return – nothing to do
       try {
         const propertiesCloner = new PropertiesCloner();
         if (propertiesCloner.sheet) {
@@ -153,13 +124,24 @@ class ConfigurationManager {
         } else {
           console.log('No propertiesStore sheet found');
         }
-      } catch (error) {
-        console.error('Error initializing properties:', error);
+      } catch (inner) {
+        if (typeof logError === 'function') {
+          logError('ConfigurationManager.maybeDeserializeProperties.init', inner);
+        } else {
+          console.error('Error initializing properties:', inner?.message ?? inner);
+        }
+      }
+    } catch (outer) {
+      if (typeof logError === 'function') {
+        logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
+      } else {
+        console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
       }
     }
   }
 
   getAllConfigurations() {
+    this.ensureInitialized();
     if (!this.configCache) {
       this.configCache = this.scriptProperties.getProperties();
     }
@@ -168,26 +150,26 @@ class ConfigurationManager {
 
   hasProperty(key) {
     this.getAllConfigurations();
-    return this.configCache.hasOwnProperty(key);
+    return Object.hasOwn(this.configCache, key);
   }
 
   getProperty(key) {
-    if (!this.configCache) {
-      this.getAllConfigurations();
+    this.ensureInitialized();
+    this.getAllConfigurations();
+    switch (key) {
+      case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
+      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
+      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED: {
+        const v = this.documentProperties.getProperty(key);
+        return v == null ? false : v;
+      }
+      default:
+        return this.configCache[key] || '';
     }
-
-    // Properties that should be stored as document properties
-    if (
-      key === ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET ||
-      key === ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET ||
-      key === ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED
-    ) {
-      return this.documentProperties.getProperty(key) || false;
-    }
-    return this.configCache[key] || '';
   }
 
   setProperty(key, value) {
+    this.ensureInitialized();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
 
     if (!spec) {
@@ -258,7 +240,11 @@ class ConfigurationManager {
   }
 
   static validateUrl(label, value) {
-    if (typeof value !== 'string' || !Utils.isValidUrl(value)) {
+    const hasValidator = globalThis.Utils && typeof globalThis.Utils.isValidUrl === 'function';
+    const isValid =
+      typeof value === 'string' &&
+      (hasValidator ? globalThis.Utils.isValidUrl(value) : /^https?:\/\//.test(value));
+    if (!isValid) {
       throw new Error(`${label} must be a valid URL string.`);
     }
     return value;
@@ -275,10 +261,8 @@ class ConfigurationManager {
   }
 
   static validateApiKey(value) {
-    // Accept API keys that are alphanumeric with optional single hyphens between segments.
-    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-    if (typeof value !== 'string' || !apiKeyPattern.test(value.trim())) {
+    const pattern = ConfigurationManager.API_KEY_PATTERN;
+    if (typeof value !== 'string' || !pattern.test(value.trim())) {
       throw new Error(
         'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.'
       );
@@ -287,31 +271,39 @@ class ConfigurationManager {
   }
 
   isValidApiKey(apiKey) {
-    // Accept API keys that are alphanumeric with optional single hyphens between segments.
-    // Do not require an 'sk-' prefix; disallow leading/trailing hyphens and consecutive hyphens.
-    const apiKeyPattern = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-    return apiKeyPattern.test(apiKey.trim());
+    const pattern = ConfigurationManager.API_KEY_PATTERN;
+    return typeof apiKey === 'string' && pattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
+    // Guard: Only touch Drive when explicitly validating. Accept cheap format heuristic first.
+    if (!sheetId || typeof sheetId !== 'string') return false;
+    const trimmed = sheetId.trim();
+    if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
-      const file = DriveApp.getFileById(sheetId);
-      if (file && file.getMimeType() === MimeType.GOOGLE_SHEETS) {
-        return true;
-      }
-      return false;
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
+      const file = DriveApp.getFileById(trimmed);
+      const mime = file && typeof file.getMimeType === 'function' ? file.getMimeType() : '';
+      return mime === MimeType.GOOGLE_SHEETS; // explicit equality
     } catch (error) {
-      console.error(`Invalid Google Sheet ID: ${error.message}`);
+      // Keep log concise
+      console.error(`Invalid Google Sheet ID: ${error?.message ?? error}`);
       return false;
     }
   }
 
   isValidGoogleDriveFolderId(folderId) {
+    if (!folderId || typeof folderId !== 'string') return false;
+    const trimmed = folderId.trim();
+    if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
-      const folder = DriveApp.getFolderById(folderId);
-      return folder !== null;
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
+      const folder = DriveApp.getFolderById(trimmed);
+      return !!folder;
     } catch (error) {
-      console.error(`Invalid Google Drive Folder ID: ${error.message}`);
+      console.error(`Invalid Google Drive Folder ID: ${error?.message ?? error}`);
       return false;
     }
   }
@@ -321,16 +313,16 @@ class ConfigurationManager {
   }
 
   getBackendAssessorBatchSize() {
-    const value = parseInt(
-      this.getProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE),
-      10
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE,
+      ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE,
+      { min: 1, max: 500 }
     );
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE : value;
   }
 
   static get DEFAULTS() {
     return {
-      BACKEND_ASSESSOR_BATCH_SIZE: 120,
+      BACKEND_ASSESSOR_BATCH_SIZE: 200, //This seems to be the limit before you hit UrlFetchApp rate limits.
       SLIDES_FETCH_BATCH_SIZE: 30,
       DAYS_UNTIL_AUTH_REVOKE: 60,
       UPDATE_DETAILS_URL:
@@ -340,12 +332,11 @@ class ConfigurationManager {
   }
 
   getSlidesFetchBatchSize() {
-    const raw = this.getProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE);
-    const parsed = parseInt(raw, 10);
-    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 100) {
-      return parsed;
-    }
-    return ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE;
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE,
+      ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE,
+      { min: 1, max: 100 }
+    );
   }
 
   getApiKey() {
@@ -357,16 +348,17 @@ class ConfigurationManager {
   }
 
   getRevokeAuthTriggerSet() {
-    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET);
-    return value.toString().toLowerCase() === 'true';
+    return ConfigurationManager.toBoolean(
+      this.getProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET)
+    );
   }
 
   getDaysUntilAuthRevoke() {
-    const value = parseInt(
-      this.getProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE),
-      10
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE,
+      ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE,
+      { min: 1, max: 365 }
     );
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE : value;
   }
 
   getUpdateDetailsUrl() {
@@ -375,8 +367,11 @@ class ConfigurationManager {
   }
 
   getUpdateStage() {
-    const value = parseInt(this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE), 10);
-    return isNaN(value) ? ConfigurationManager.DEFAULTS.UPDATE_STAGE : value;
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
+      ConfigurationManager.DEFAULTS.UPDATE_STAGE,
+      { min: 0, max: 2 }
+    );
   }
 
   getAssessmentRecordTemplateId() {
@@ -405,9 +400,9 @@ class ConfigurationManager {
   }
 
   getScriptAuthorised() {
-    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED);
-    // Explicitly convert string to boolean
-    return value.toString().toLowerCase() === 'true';
+    return ConfigurationManager.toBoolean(
+      this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED)
+    );
   }
 
   setBackendAssessorBatchSize(batchSize) {
@@ -446,12 +441,17 @@ class ConfigurationManager {
   }
 
   setIsAdminSheet(isAdmin) {
-    const boolValue = Boolean(isAdmin);
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, boolValue);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
+      ConfigurationManager.toBoolean(isAdmin)
+    );
   }
 
   setRevokeAuthTriggerSet(flag) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, flag);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
+      ConfigurationManager.toBoolean(flag)
+    );
   }
 
   setDaysUntilAuthRevoke(days) {
@@ -460,11 +460,137 @@ class ConfigurationManager {
 
   // New setter for scriptAuthorised
   setScriptAuthorised(flag) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, flag);
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED,
+      ConfigurationManager.toBoolean(flag)
+    );
+  }
+
+  /**
+   * Helper: normalize truthy/falsey to strict boolean.
+   */
+  static toBoolean(value) {
+    if (typeof value === 'boolean') return value;
+    if (value == null) return false;
+    if (typeof value === 'number') return value !== 0;
+    const s = String(value).trim().toLowerCase();
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    return Boolean(s);
+  }
+  static toBooleanString(value) {
+    return ConfigurationManager.toBoolean(value) ? 'true' : 'false';
+  }
+
+  /** Generic integer accessor with validation and fallback */
+  getIntConfig(
+    key,
+    fallback,
+    { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}
+  ) {
+    const raw = this.getProperty(key);
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
+    return fallback;
   }
 }
 
 // For module exports (testing)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ConfigurationManager;
+}
+
+// Static one-time initialization of CONFIG_KEYS & CONFIG_SCHEMA (frozen)
+if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
+  ConfigurationManager._CONFIG_KEYS = Object.freeze({
+    BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
+    SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
+    API_KEY: 'apiKey',
+    BACKEND_URL: 'backendUrl',
+    ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
+    ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
+    UPDATE_DETAILS_URL: 'updateDetailsUrl',
+    UPDATE_STAGE: 'updateStage',
+    IS_ADMIN_SHEET: 'isAdminSheet',
+    REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
+    DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
+    SCRIPT_AUTHORISED: 'scriptAuthorised',
+  });
+  ConfigurationManager._CONFIG_SCHEMA = Object.freeze({
+    [ConfigurationManager._CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
+      storage: 'script',
+      validate: (v) =>
+        ConfigurationManager.validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
+    },
+    [ConfigurationManager._CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
+      storage: 'script',
+      validate: (v) =>
+        ConfigurationManager.validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
+    },
+    [ConfigurationManager._CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: {
+      storage: 'script',
+      validate: (v) =>
+        ConfigurationManager.validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
+    },
+    [ConfigurationManager._CONFIG_KEYS.API_KEY]: {
+      storage: 'script',
+      validate: ConfigurationManager.validateApiKey,
+    },
+    [ConfigurationManager._CONFIG_KEYS.BACKEND_URL]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateUrl('Backend Url', v),
+    },
+    [ConfigurationManager._CONFIG_KEYS.UPDATE_DETAILS_URL]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateUrl('Update Details Url', v),
+    },
+    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID]: {
+      storage: 'script',
+      validate: (v, instance) => {
+        ConfigurationManager.validateNonEmptyString('Assessment Record Template Id', v);
+        if (!instance.isValidGoogleSheetId(v)) {
+          throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
+        }
+        return v;
+      },
+    },
+    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
+      storage: 'script',
+      validate: (v, instance) => {
+        ConfigurationManager.validateNonEmptyString('Assessment Record Destination Folder', v);
+        if (!instance.isValidGoogleDriveFolderId(v)) {
+          throw new Error(
+            'Assessment Record Destination Folder must be a valid Google Drive Folder ID.'
+          );
+        }
+        return v;
+      },
+    },
+    [ConfigurationManager._CONFIG_KEYS.UPDATE_STAGE]: {
+      storage: 'script',
+      validate: (v) => {
+        const stage = parseInt(v, 10);
+        if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
+          throw new Error('Update Stage must be 0, 1, or 2');
+        }
+        return stage;
+      },
+    },
+    [ConfigurationManager._CONFIG_KEYS.IS_ADMIN_SHEET]: {
+      storage: 'document',
+      validate: (v) => ConfigurationManager.validateBoolean('Is Admin Sheet', v),
+      normalize: ConfigurationManager.toBooleanString,
+    },
+    [ConfigurationManager._CONFIG_KEYS.SCRIPT_AUTHORISED]: {
+      storage: 'document',
+      validate: (v) => ConfigurationManager.validateBoolean('Script Authorised', v),
+      normalize: ConfigurationManager.toBooleanString,
+    },
+    [ConfigurationManager._CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
+      storage: 'document',
+      validate: (v) => ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
+      normalize: ConfigurationManager.toBooleanString,
+    },
+  });
+  globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }

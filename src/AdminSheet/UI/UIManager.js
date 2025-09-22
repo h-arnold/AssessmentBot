@@ -1,4 +1,12 @@
 // UIManager.gs
+// Ensure ABLogger is available in Node test environment
+try {
+  if (typeof ABLogger === 'undefined') {
+    globalThis.ABLogger = require('../Utils/ABLogger.js');
+  }
+} catch (e) {
+  // Swallow if not in Node / path not resolvable; GAS runtime will have global
+}
 /**
  * @class UIManager
  * @description Manages the user interface operations in Google Apps Script environment with robust error handling and context-aware UI operations.
@@ -25,17 +33,11 @@
  * }, "showAlert");
  */
 
-class UIManager {
+class UIManager extends BaseSingleton {
   /**
    * Static method to get the UIManager instance
    * @returns {UIManager} The singleton UIManager instance
    */
-  static getInstance() {
-    if (!UIManager.instance) {
-      UIManager.instance = new UIManager(true);
-    }
-    return UIManager.instance;
-  }
 
   /**
    * Static method to check if UI is available in the current execution context
@@ -49,40 +51,33 @@ class UIManager {
       ui.createMenu('Test');
       return true;
     } catch (error) {
-      console.log('UI operations are not available in this context: ' + error.message);
+      console.log('UI operations are not available in this context:', error?.message ?? error);
       return false;
     }
   }
 
   constructor(isSingletonCreator = false) {
-    // The constructor return pattern doesn't work in JavaScript
-    // Instead we use a more reliable approach with a private parameter
-    if (!isSingletonCreator && UIManager.instance) {
-      console.log('UIManager already exists - returning existing instance via getInstance()');
-      // We can't actually return the instance here, that's why we need the static method
-      return;
+    super();
+    /**
+     * JSDoc Singleton Banner
+     * Use UIManager.getInstance(); do not call constructor directly.
+     */
+    // Singleton guard: constructor should only run once via getInstance()
+    if (!isSingletonCreator && UIManager._instance) {
+      return UIManager._instance; // Return existing instance
     }
 
-    // Instead of throwing an error, set an availability flag
-    this.uiAvailable = UIManager.isUiAvailable();
-
-    if (this.uiAvailable) {
-      this.ui = SpreadsheetApp.getUi();
-      console.log('UIManager instantiated with full UI capabilities.');
-    } else {
-      console.log(
-        'UIManager instantiated in limited mode (no UI capabilities available in this execution context).'
-      );
-      // Set ui to null to prevent accidental usage
-      this.ui = null;
-    }
+    // Defer UI availability probe until first safe UI op (lazy probing)
+    this._uiProbed = false;
+    this.uiAvailable = false; // Unknown until probed
+    this.ui = null; // Will be set if probe succeeds
 
     // Always initialize this regardless of UI availability
-    this.classroomManager = new GoogleClassroomManager();
+    this.classroomManager = null; // Defer classroom manager creation until first classroom-related call
 
     // Store the instance only if we don't already have one
-    if (!UIManager.instance) {
-      UIManager.instance = this;
+    if (!UIManager._instance) {
+      UIManager._instance = this;
     }
   }
 
@@ -93,17 +88,70 @@ class UIManager {
    * @returns {*} Result of the operation or null if UI is unavailable
    */
   safeUiOperation(operation, operationName = 'UI operation') {
+    // Ensure we've probed the UI lazily
+    if (!this._uiProbed) this.probeUiIfNeeded();
     if (!this.uiAvailable) {
-      console.log(`Skipped ${operationName}: UI not available in this context`);
+      ABLogger.getInstance().debugUi(`Skipped ${operationName}: UI not available in this context`);
       return null;
     }
-
     try {
       return operation();
     } catch (error) {
       console.error(`Error in ${operationName}: ${error}`);
       return null;
     }
+  }
+  probeUiIfNeeded() {
+    if (this._uiProbed) return;
+    this._uiProbed = true;
+    let available = false;
+    try {
+      available = UIManager.isUiAvailable();
+    } catch (e) {
+      available = false;
+    }
+    this.uiAvailable = available;
+    if (available) {
+      try {
+        this.ui = SpreadsheetApp.getUi();
+        ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
+      } catch (err) {
+        console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
+        this.uiAvailable = false;
+        this.ui = null;
+      }
+    } else {
+      ABLogger.getInstance().debugUi('UI probe completed: UI not available.');
+    }
+  }
+  ensureClassroomManager() {
+    if (!this.classroomManager) {
+      if (globalThis.__TRACE_SINGLETON__)
+        console.log('[TRACE][HeavyInit] UIManager.ensureClassroomManager');
+      this.classroomManager = new GoogleClassroomManager();
+      ABLogger.getInstance().debugUi('GoogleClassroomManager lazily instantiated.');
+    }
+    return this.classroomManager;
+  }
+
+  /**
+   * Internal helper to DRY modal template instantiation.
+   * @param {string} file - Template file path relative to root (e.g. 'UI/AssignmentDropdown')
+   * @param {Object} data - Key/values assigned onto the template before evaluation.
+   * @param {string} title - Dialog title
+   * @param {{width?:number,height?:number}} opts - Dimensions (defaults applied if absent)
+   */
+  _showTemplateDialog(file, data, title, { width = 400, height = 300 } = {}) {
+    this.safeUiOperation(() => {
+      const template = HtmlService.createTemplateFromFile(file);
+      if (data && typeof data === 'object') {
+        Object.keys(data).forEach((k) => {
+          template[k] = data[k];
+        });
+      }
+      const htmlOutput = template.evaluate().setWidth(width).setHeight(height);
+      this.ui.showModalDialog(htmlOutput, title);
+    }, `_showTemplateDialog:${title}`);
   }
 
   /**
@@ -184,7 +232,7 @@ class UIManager {
         .addItem('Change Class', 'showClassroomDropdown')
         .addToUi();
 
-      console.log('Assessment Record menu created.');
+      ABLogger.getInstance().debugUi('Assessment Record menu created.');
     }, 'createAssessmentRecordMenu');
   }
 
@@ -198,7 +246,7 @@ class UIManager {
         .setHeight(600); // Adjust the size as needed
 
       this.ui.showModalDialog(html, 'Configure Script Properties');
-      console.log('Configuration dialog displayed.');
+      ABLogger.getInstance().debugUi('Configuration dialog displayed.');
     }, 'showConfigurationDialog');
   }
 
@@ -206,21 +254,16 @@ class UIManager {
    * Shows a modal dialog with a dropdown of assignments to choose from.
    */
   showAssignmentDropdown() {
-    this.safeUiOperation(() => {
-      const courseId = this.classroomManager.getCourseId();
-      const assignments = this.classroomManager.getAssignments(courseId);
-      const maxTitleLength = this.getMaxTitleLength(assignments);
-      const modalWidth = Math.max(300, maxTitleLength * 10); // Minimum width 300px, approx 10px per character
-
-      // Instead of embedded HTML, load the templated HTML file:
-      const template = HtmlService.createTemplateFromFile('UI/AssignmentDropdown');
-      template.assignments = assignments; // Pass data to the HTML template
-
-      const htmlOutput = template.evaluate().setWidth(modalWidth).setHeight(250); // Adjust height as needed
-
-      this.ui.showModalDialog(htmlOutput, 'Select Assignment');
-      console.log('Assignment dropdown modal displayed.');
-    }, 'showAssignmentDropdown');
+    const cm = this.ensureClassroomManager();
+    const courseId = cm.getCourseId();
+    const assignments = cm.getAssignments(courseId);
+    const maxTitleLength = this.getMaxTitleLength(assignments);
+    const modalWidth = Math.max(300, maxTitleLength * 10);
+    this._showTemplateDialog('UI/AssignmentDropdown', { assignments }, 'Select Assignment', {
+      width: modalWidth,
+      height: 250,
+    });
+    ABLogger.getInstance().debugUi('Assignment dropdown modal displayed.');
   }
 
   /**
@@ -251,16 +294,13 @@ class UIManager {
         const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(
           assignmentDataObj.name
         );
-
-        // Load templated HTML file instead of a string
-        const template = HtmlService.createTemplateFromFile('UI/SlideIdsModal');
-        template.assignmentDataObj = assignmentDataObj;
-        template.savedDocumentIds = savedDocumentIds;
-
-        const htmlOutput = template.evaluate().setWidth(400).setHeight(350);
-
-        this.ui.showModalDialog(htmlOutput, 'Enter Slide IDs');
-        console.log('Reference slide IDs modal displayed.');
+        this._showTemplateDialog(
+          'UI/SlideIdsModal',
+          { assignmentDataObj, savedDocumentIds },
+          'Enter Slide IDs',
+          { width: 400, height: 350 }
+        );
+        ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
       } catch (error) {
         console.error('Error opening reference slide modal:', error);
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
@@ -274,22 +314,14 @@ class UIManager {
   showClassroomDropdown() {
     this.safeUiOperation(() => {
       try {
-        // Retrieve active classrooms using GoogleClassroomManager
-        const classrooms = this.classroomManager.getActiveClassrooms();
-
-        // Sort classrooms alphabetically by name
+        const cm = this.ensureClassroomManager();
+        const classrooms = cm.getActiveClassrooms();
         classrooms.sort((a, b) => a.name.localeCompare(b.name));
-
-        // Create a template from the HTML file and pass the classrooms data
-        const htmlTemplate = HtmlService.createTemplateFromFile('UI/ClassroomDropdown');
-        htmlTemplate.classrooms = classrooms; // Pass data to the template
-
-        // Evaluate the template to HTML
-        const htmlOutput = htmlTemplate.evaluate().setWidth(500).setHeight(300);
-
-        // Display the modal dialog
-        this.ui.showModalDialog(htmlOutput, 'Select Classroom');
-        console.log('Classroom dropdown modal displayed.');
+        this._showTemplateDialog('UI/ClassroomDropdown', { classrooms }, 'Select Classroom', {
+          width: 500,
+          height: 300,
+        });
+        ABLogger.getInstance().debugUi('Classroom dropdown modal displayed.');
       } catch (error) {
         console.error('Error displaying classroom dropdown modal:', error);
         Utils.toastMessage('Failed to load classrooms: ' + error.message, 'Error', 5);
@@ -324,7 +356,7 @@ class UIManager {
         .setWidth(400)
         .setHeight(160);
       this.ui.showModalDialog(html, 'Progress');
-      console.log('Progress modal displayed.');
+      ABLogger.getInstance().debugUi('Progress modal displayed.');
     }, 'showProgressModal');
   }
 
@@ -333,7 +365,7 @@ class UIManager {
    * Returns an array of objects representing rows.
    */
   getClassroomData() {
-    const sheet = this.classroomManager.sheet;
+    const sheet = this.ensureClassroomManager().sheet;
     const data = sheet.getDataRange().getValues();
 
     if (data.length < 2) {
@@ -378,7 +410,7 @@ class UIManager {
    * @param {Object[]} rows - The updated rows of data.
    */
   saveClassroomData(rows) {
-    const sheet = this.classroomManager.sheet;
+    const sheet = this.ensureClassroomManager().sheet;
     const data = sheet.getDataRange().getValues();
 
     if (data.length < 2) {
@@ -442,7 +474,7 @@ class UIManager {
         .setHeight(600); // Adjust width and height as needed
 
       this.ui.showModalDialog(html, 'Edit Classrooms');
-      console.log('Classroom editor modal displayed.');
+      ABLogger.getInstance().debugUi('Classroom editor modal displayed.');
     }, 'showClassroomEditorModal');
   }
 
@@ -462,17 +494,13 @@ class UIManager {
       try {
         const updateManager = new UpdateManager();
         const versions = updateManager.fetchVersionDetails();
-
-        if (!versions) {
-          throw new Error('Failed to fetch version details');
-        }
-
-        const template = HtmlService.createTemplateFromFile('UI/VersionSelectorModal');
-        template.versions = versions;
-
-        const htmlOutput = template.evaluate().setWidth(400).setHeight(250);
-
-        this.ui.showModalDialog(htmlOutput, 'Select Version to Update To');
+        if (!versions) throw new Error('Failed to fetch version details');
+        this._showTemplateDialog(
+          'UI/VersionSelectorModal',
+          { versions },
+          'Select Version to Update To',
+          { width: 400, height: 250 }
+        );
       } catch (error) {
         console.error('Error showing version selector:', error);
         Utils.toastMessage('Failed to load versions: ' + error.message, 'Error', 5);
@@ -506,7 +534,7 @@ class UIManager {
           .setHeight(1);
 
         this.ui.showModalDialog(html, 'Opening...');
-        console.log(`Opening URL in new window: ${url}`);
+        ABLogger.getInstance().debugUi(`Opening URL in new window: ${url}`);
       } catch (error) {
         console.error(`Failed to open URL: ${error.message}`);
         throw error;
@@ -576,7 +604,12 @@ class UIManager {
                   </div>`;
 
       this.showGenericModal(htmlContent, 'Authorization Required', 450, 250);
-      console.log('Authorization modal displayed.');
+      ABLogger.getInstance().debugUi('Authorization modal displayed.');
     }, 'showAuthorisationModal');
   }
+}
+
+// Export for Node tests
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = UIManager;
 }

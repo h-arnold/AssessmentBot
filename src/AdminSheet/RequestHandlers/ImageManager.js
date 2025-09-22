@@ -86,7 +86,7 @@ class ImageManager extends BaseRequestManager {
    * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>}
    */
   fetchImagesAsBlobs(entries) {
-    const maxBatchSize = configurationManager.getSlidesFetchBatchSize();
+    const maxBatchSize = ConfigurationManager.getInstance().getSlidesFetchBatchSize();
 
     if (!entries || !entries.length) return [];
     // Group by documentId

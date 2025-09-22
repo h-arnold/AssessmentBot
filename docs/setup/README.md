@@ -55,7 +55,7 @@ Follow these steps to set up the system.
 
 ### 🌐 Setting up the Backend
 
-The Backend has an Alpine Linux based Docker image that can be deployed to a cloud provider of your choice. Check out the deloyment instructions here: [Assessment Bot Backend Deployment Instructions](https://github.com/h-arnold/AssessmentBot-Backend/blob/master/docs/deployment/docker.md
+The Backend has an Alpine Linux based Docker image that can be deployed to a cloud provider of your choice. Check out the deloyment instructions here: [Assessment Bot Backend Deployment Instructions](https://github.com/h-arnold/AssessmentBot-Backend/blob/master/docs/deployment/docker.md)
 
 ---
 
