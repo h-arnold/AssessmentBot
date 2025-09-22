@@ -6,7 +6,6 @@ This document explains the lazy singleton pattern used throughout the Assessment
   - [📖 Overview](#-overview)
   - [✅ Correct Pattern (Do This)](#-correct-pattern-do-this)
     - [Basic Singleton Structure](#basic-singleton-structure)
-    - [Using Singletons](#using-singletons)
     - [Heavy Initialization Pattern](#heavy-initialization-pattern)
   - [❌ Anti-Patterns (Don't Do This)](#-anti-patterns-dont-do-this)
     - [Direct Constructor Calls](#direct-constructor-calls)
@@ -42,6 +41,11 @@ All singleton classes extend `BaseSingleton` and follow consistent patterns for 
 
 ### Basic Singleton Structure
 
+````javascript
+/**
+ * ExampleManager - manages example functionality
+ * Use ExampleManager.getInstance(); do not call constructor directly.
+ */
 ```javascript
 /**
  * ExampleManager - manages example functionality
@@ -50,17 +54,18 @@ All singleton classes extend `BaseSingleton` and follow consistent patterns for 
 class ExampleManager extends BaseSingleton {
   constructor(isSingletonCreator = false) {
     super();
-    if (!isSingletonCreator && ExampleManager._instance) {
-      return ExampleManager._instance;
+
+    // Prevent direct instantiation. ESLint is helpful, but runtime enforcement
+    // makes the pattern robust.
+    if (!isSingletonCreator) {
+      throw new Error(
+        'ExampleManager is a singleton. Use ExampleManager.getInstance() to get the instance.'
+      );
     }
 
     // Light initialization only - no heavy work!
     this.cache = null;
     this._initialized = false;
-
-    if (!ExampleManager._instance) {
-      ExampleManager._instance = this;
-    }
   }
 
   /**
@@ -76,7 +81,6 @@ class ExampleManager extends BaseSingleton {
   ensureInitialized() {
     if (this._initialized) return;
 
-    // Heavy work goes here (Drive access, property loading, etc.)
     if (globalThis.__TRACE_SINGLETON__) {
       console.log('[TRACE][HeavyInit] ExampleManager.ensureInitialized');
     }
@@ -100,7 +104,9 @@ class ExampleManager extends BaseSingleton {
     ExampleManager._instance = null;
   }
 }
-```
+````
+
+````
 
 ### Using Singletons
 
@@ -113,7 +119,7 @@ const data = manager.getImportantData();
 const manager1 = ExampleManager.getInstance();
 const manager2 = ExampleManager.getInstance();
 console.log(manager1 === manager2); // true
-```
+````
 
 ### Heavy Initialization Pattern
 
@@ -394,8 +400,6 @@ const apiKey = config.getApiKey();
 
 5. **Direct constructor usage**:
    - ESLint rules help catch this, but always review PRs carefully
-
----
 
 💡 **Tip**: When in doubt, check existing singleton implementations like `ConfigurationManager`, `ProgressTracker`, or `UIManager` for reference patterns.
 

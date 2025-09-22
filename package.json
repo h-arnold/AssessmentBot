@@ -11,7 +11,6 @@
     "test:watch": "vitest",
     "lint": "eslint --config eslint.config.js src/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/**/*.js",
-    "lint:singletons": "node scripts/lint-singletons.js",
     "prepare": "husky install",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\""
   },
