@@ -83,7 +83,7 @@ class ConfigurationManager extends BaseSingleton {
 
   /** Test helper */
   static resetForTests() {
-    ConfigurationManager._instance = null;
+    // inherit BaseSingleton.resetForTests
   }
 
   static get CONFIG_KEYS() {

@@ -50,7 +50,7 @@ class InitController extends BaseSingleton {
   }
 
   static resetForTests() {
-    InitController._instance = null;
+    // inherit BaseSingleton.resetForTests
   }
 
   /**
