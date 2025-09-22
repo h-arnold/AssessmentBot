@@ -125,18 +125,18 @@ class ConfigurationManager extends BaseSingleton {
           console.log('No propertiesStore sheet found');
         }
       } catch (inner) {
-        if (typeof logError === 'function') {
-          logError('ConfigurationManager.maybeDeserializeProperties.init', inner);
-        } else {
-          console.error('Error initializing properties:', inner?.message ?? inner);
-        }
+        // Developer-facing logging: ABLogger is expected to be available in GAS.
+        ABLogger.getInstance().error(
+          '[ConfigurationManager.maybeDeserializeProperties.init]',
+          inner
+        );
       }
     } catch (outer) {
-      if (typeof logError === 'function') {
-        logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
-      } else {
-        console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
-      }
+      // Developer-facing logging: ABLogger is expected to be available in GAS.
+      ABLogger.getInstance().error(
+        '[ConfigurationManager.maybeDeserializeProperties.outer]',
+        outer
+      );
     }
   }
 
