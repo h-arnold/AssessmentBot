@@ -8,6 +8,77 @@ This document captures the serialized structures produced by the models shared i
 - `StudentSubmissionItem`
 - `BaseTaskArtifact`
 
+## ABClass (root) and JsonDbApp partial hydration
+
+`ABClass` is the root object for serialized classroom data. When stored in or
+rehydrated from a lightweight JSON-backed store such as JsonDbApp, the
+container (`ABClass`) itself is usually fully populated with its direct
+properties (for example: `classId`, `className`, `cohort`, `teachers`, and
+`students`). Nested domain objects may be partially hydrated to keep reads
+fast and payloads small. In our common pattern the `assignments` array is
+frequently stored with a "partial" (summary-level) representation so that
+list and overview flows avoid rehydrating heavy artifacts until required.
+
+Example: `ABClass` rehydrated from JsonDbApp where contained `assignments`
+are partially hydrated (note `tasks` contain artifacts with `content: null`):
+
+```json
+{
+  "classId": "C123",
+  "className": "Year 10 English",
+  "cohort": "2025",
+  "courseLength": 1,
+  "yearGroup": 10,
+  "teachers": [{ "id": "T1", "name": "Ms Smith" }],
+  "students": [{ "id": "S001", "name": "Ada Lovelace" }],
+  "assignments": [
+    {
+      "assignmentId": "A1",
+      "assignmentName": "Essay 1",
+      "lastUpdated": "2025-09-10T12:34:56Z",
+      "tasks": {
+        "t_ab12": {
+          "id": "t_ab12",
+          "taskTitle": "Introduction",
+          "pageId": "p-1",
+          "taskNotes": "Focus on thesis clarity",
+          "taskMetadata": {},
+          "taskWeighting": 1,
+          "index": 0,
+          "artifacts": {
+            "reference": [
+              {
+                "taskId": "t_ab12",
+                "role": "reference",
+                "pageId": "p-1",
+                "documentId": "DriveRef123",
+                "content": null,
+                "contentHash": null,
+                "metadata": {},
+                "uid": "t_ab12-0-reference-p-1-0",
+                "type": "TEXT"
+              }
+            ],
+            "template": []
+          }
+        }
+      },
+      "submissions": []
+    }
+  ]
+}
+```
+
+Key notes:
+
+- The `ABClass` top-level fields are present and usable immediately.
+- Assignment-level payloads keep the same key structure as fully-hydrated
+  documents but elide heavy fields (for example: `artifact.content` is
+  `null`). Downstream code can detect these stubs and rehydrate on demand
+  using the `uid`/`taskId` identifiers.
+- This approach keeps server/drive calls minimal while maintaining a stable
+  schema across hydration levels.
+
 The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
 
 ## Partial Hydration (summary-level)
