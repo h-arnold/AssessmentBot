@@ -132,17 +132,25 @@ class ConfigurationManager extends BaseSingleton {
         }
       }
     } catch (outer) {
+      // Prefer a simple logError hook if present (used by tests), fall back to console.
       if (typeof logError === 'function') {
         logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
+      } else if (
+        typeof ABLogger !== 'undefined' &&
+        ABLogger &&
+        typeof ABLogger.getInstance === 'function'
+      ) {
+        try {
+          ABLogger.getInstance().error(
+            '[ConfigurationManager.maybeDeserializeProperties.outer]',
+            outer
+          );
+        } catch (abErr) {
+          console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
+        }
       } else {
         console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
       }
-    } catch (outer) {
-      // Developer-facing logging: ABLogger is expected to be available in GAS.
-      ABLogger.getInstance().error(
-        '[ConfigurationManager.maybeDeserializeProperties.outer]',
-        outer
-      );
     }
   }
 
