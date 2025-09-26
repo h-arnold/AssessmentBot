@@ -7,28 +7,28 @@
  * - Exposes convenient helpers for fetching and saving collections
  * - Centralises error handling via ProgressTracker
  */
-class DbManager {
-  constructor(options = {}) {
-    if (!DbManager._instance) {
-      this.progressTracker = ProgressTracker.getInstance();
-      this._db = null;
-      this._options = options; // allow injection/overrides for tests or advanced scenarios
+// Ensure canonical BaseSingleton implementation is loaded (it attaches to globalThis)
+require('../00_BaseSingleton.js');
 
-      // Validate library presence up-front (fail-fast), but don't initialise DB yet
-      this._assertLibraryAvailable();
-
-      DbManager._instance = this;
+class DbManager extends BaseSingleton {
+  constructor(isSingletonCreator = false) {
+    // follow BaseSingleton convention: only allow heavy construction when flag provided
+    super();
+    // Singleton guard: constructor should only execute once via getInstance()
+    if (!isSingletonCreator && this.constructor._instance) {
+      return; // no-op if already constructed
     }
-  }
 
-  /**
-   * Singleton accessor (mirrors style used across the code base)
-   */
-  static getInstance(opts = {}) {
-    if (!DbManager._instance) {
-      DbManager._instance = new DbManager(opts);
+    this.progressTracker = ProgressTracker.getInstance();
+    this._db = null;
+    this._options = {}; // legacy tests used to inject options; default to empty
+
+    // Validate library presence up-front (fail-fast), but don't initialise DB yet
+    this._assertLibraryAvailable();
+
+    if (!this.constructor._instance) {
+      this.constructor._instance = this;
     }
-    return DbManager._instance;
   }
 
   /**
@@ -152,11 +152,23 @@ class DbManager {
       console.warn('DbManager: listCollections failed; continuing.', e);
       collections = [];
     }
-    return {
+    const result = {
       ok: true,
       masterIndexKey: this._getConfig().masterIndexKey,
       collections,
     };
+
+    // Optionally freeze the instance after initialisation if BaseSingleton requests it
+    try {
+      if (typeof this.constructor._maybeFreeze === 'function') {
+        this.constructor._maybeFreeze(this);
+      }
+    } catch (freezeErr) {
+      // Don't prevent normal operation if freezing fails in some environments
+      console.warn('DbManager: _maybeFreeze failed or is unsupported.', freezeErr);
+    }
+
+    return result;
   }
 
   /**

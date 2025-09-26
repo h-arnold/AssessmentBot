@@ -48,6 +48,29 @@ class ABLogger extends BaseSingleton {
       void e;
     }
   }
+
+  // Lightweight forwards to console for tests and runtime logging
+  log(...args) {
+    console.log(...args);
+  }
+  info(...args) {
+    console.info(...args);
+  }
+  warn(...args) {
+    console.warn(...args);
+  }
+  error(...args) {
+    console.error(...args);
+  }
+  debug(...args) {
+    // generic debug that respects DEBUG_UI for consistency
+    if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
+      console.debug(...args);
+    } else {
+      // still allow debug to go to console.debug in test environments
+      console.debug(...args);
+    }
+  }
 }
 
 if (typeof module !== 'undefined' && module.exports) {
