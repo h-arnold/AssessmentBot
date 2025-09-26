@@ -394,6 +394,54 @@ class ConfigurationManager extends BaseSingleton {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
   }
 
+  /**
+   * Returns the configured Assessment Record course ID.
+   * Priority: Document Properties -> legacy GoogleClassroomManager.getCourseId() -> null
+   * Returns null when no value can be determined (useful for admin sheet behaviour).
+   * @returns {string|null}
+   */
+  getAssessmentRecordCourseId() {
+    this.ensureInitialized();
+
+    // 1) Document property (preferred)
+    try {
+      const docVal = this.documentProperties.getProperty(
+        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID
+      );
+      if (docVal != null && String(docVal).trim() !== '') {
+        return String(docVal);
+      }
+    } catch (e) {
+      // Swallow and fallback to legacy behaviour
+      if (globalThis.__TRACE_SINGLETON__) console.debug('Error reading document property:', e);
+    }
+
+    // 2) Legacy: ask GoogleClassroomManager (may throw if sheet is missing) — handle safely
+    try {
+      if (typeof GoogleClassroomManager === 'function') {
+        const gcm = new GoogleClassroomManager();
+        if (gcm && typeof gcm.getCourseId === 'function') {
+          const legacy = gcm.getCourseId();
+          return legacy ? String(legacy) : null;
+        }
+      }
+    } catch (e) {
+      // Legacy lookup failed; return null as expected for admin sheet
+      if (globalThis.__TRACE_SINGLETON__) console.debug('Legacy getCourseId failed:', e);
+    }
+
+    return null;
+  }
+
+  /**
+   * Stores the Assessment Record course ID as a document property.
+   * @param {string|null} courseId
+   */
+  setAssessmentRecordCourseId(courseId) {
+    // Use setProperty which respects CONFIG_SCHEMA (we defined storage=document for this key)
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID, courseId);
+  }
+
   getAssessmentRecordDestinationFolder() {
     if (Utils.validateIsAdminSheet(false)) {
       let destinationFolder = this.getProperty(
@@ -523,6 +571,7 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
     BACKEND_URL: 'backendUrl',
     ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
     ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
+    ASSESSMENT_RECORD_COURSE_ID: 'assessmentRecordCourseId',
     UPDATE_DETAILS_URL: 'updateDetailsUrl',
     UPDATE_STAGE: 'updateStage',
     IS_ADMIN_SHEET: 'isAdminSheet',
@@ -565,6 +614,15 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
         if (!instance.isValidGoogleSheetId(v)) {
           throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
         }
+        return v;
+      },
+    },
+    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID]: {
+      storage: 'document',
+      validate: (v) => {
+        // Allow empty/null to clear the value; otherwise accept any non-empty string.
+        if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
+        if (typeof v !== 'string') throw new Error('Assessment Record Course ID must be a string.');
         return v;
       },
     },
