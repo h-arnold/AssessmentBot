@@ -93,27 +93,6 @@ Cons:
 
 Mitigation: Document that callers **must** use the returned hydrated instance.
 
-### Option B: In-Place Deep Copy
-
-1. Fetch full document.
-2. Overwrite enumerable own properties of the _existing_ partial object.
-3. Mark `_hydrationLevel = 'full'`.
-
-Pros:
-
-- Existing references now see fresh data
-
-Cons:
-
-- Slightly higher risk of leaving behind properties that should disappear (you must also remove keys absent in the full doc)
-- Requires careful property traversal
-
-### Practical Recommendation
-
-Use **Option A** unless you have strong reference retention patterns that would make replacement error-prone. Enforce a calling convention: `const full = manager.rehydrateAssignment(abClass, id);`
-
-If later you encounter reference issues, wrap Option A with a small registry that maps `assignmentId -> current instance` so utilities always resolve the latest object.
-
 ## Rehydration Algorithm (Immutable Replace)
 
 Pseudocode:
