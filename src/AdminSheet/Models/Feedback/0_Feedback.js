@@ -27,7 +27,7 @@ class Feedback {
   toJSON() {
     return {
       type: this.type,
-      createdAt: this.createdAt,
+      createdAt: this.createdAt instanceof Date ? this.createdAt.toISOString() : this.createdAt,
     };
   }
 
