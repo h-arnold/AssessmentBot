@@ -26,6 +26,23 @@ class ABClass {
     students = [],
     assignments = []
   ) {
+    // If classId not provided, attempt to read from ConfigurationManager (Assessment Record Course Id)
+    if (!classId) {
+      try {
+        if (typeof ConfigurationManager === 'function') {
+          const cfg = ConfigurationManager.getInstance();
+          const cfgCourseId = cfg.getAssessmentRecordCourseId();
+          if (cfgCourseId) {
+            classId = String(cfgCourseId);
+          }
+        }
+      } catch (e) {
+        // swallow and allow the subsequent check to throw a consistent error
+        if (globalThis.__TRACE_SINGLETON__)
+          console.debug('ABClass constructor config lookup failed:', e);
+      }
+    }
+
     if (!classId) throw new TypeError('classId is required');
     this.classId = classId;
     this.className = className || null;
