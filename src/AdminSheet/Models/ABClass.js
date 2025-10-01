@@ -22,6 +22,7 @@ class ABClass {
     cohort = null,
     courseLength = 1,
     yearGroup = null,
+    classOwner = null,
     teachers = [],
     students = [],
     assignments = []
@@ -29,12 +30,10 @@ class ABClass {
     // If classId not provided, attempt to read from ConfigurationManager (Assessment Record Course Id)
     if (!classId) {
       try {
-        if (typeof ConfigurationManager === 'function') {
-          const cfg = ConfigurationManager.getInstance();
-          const cfgCourseId = cfg.getAssessmentRecordCourseId();
-          if (cfgCourseId) {
-            classId = String(cfgCourseId);
-          }
+        const cfg = ConfigurationManager.getInstance();
+        const cfgCourseId = cfg.getAssessmentRecordCourseId();
+        if (cfgCourseId) {
+          classId = String(cfgCourseId);
         }
       } catch (e) {
         // swallow and allow the subsequent check to throw a consistent error
@@ -46,6 +45,9 @@ class ABClass {
     if (!classId) throw new TypeError('classId is required');
     this.classId = classId;
     this.className = className || null;
+
+    // Explicit owner property (store as provided). Validation should be done via setClassOwner.
+    this.classOwner = classOwner || null;
 
     // Cohort can be a number (year) or string. Store as string for stability but expose helpers.
     this.cohort = cohort !== undefined && cohort !== null ? String(cohort) : null;
@@ -66,8 +68,29 @@ class ABClass {
     this.assignments = Array.isArray(assignments) ? assignments.slice() : [];
   }
 
+  // Owner helpers
+  getClassOwner() {
+    return this.classOwner || null;
+  }
+
+  setClassOwner(owner) {
+    const logger = ABLogger.getInstance();
+
+    if (!(owner instanceof Teacher)) {
+      const msg = 'setClassOwner requires a Teacher instance';
+      if (logger && typeof logger.error === 'function') logger.error(msg);
+      throw new TypeError(msg);
+    }
+
+    this.classOwner = owner;
+    return this.classOwner;
+  }
+
   /**
-   * Parse a value into an integer with a default. Returns defaultValue when input
+      classOwner: this.classOwner && typeof this.classOwner.toJSON === 'function'
+        ? this.classOwner.toJSON()
+        : this.classOwner,
+      teachers: serializeArray(this.teachers),
    * is null/undefined or cannot be parsed. If defaultValue is null, null will be
    * returned when input is null/undefined or non-parsable.
    * @param {*} value
@@ -200,6 +223,23 @@ class ABClass {
     inst.yearGroup = Number.isInteger(json.yearGroup)
       ? json.yearGroup
       : ABClass._parseNullableInt(json.yearGroup, null);
+
+    // Restore explicit owner (attempt Teacher.fromJSON when available)
+    try {
+      if (
+        json.classOwner &&
+        typeof Teacher === 'function' &&
+        typeof Teacher.fromJSON === 'function'
+      ) {
+        inst.classOwner = Teacher.fromJSON(json.classOwner) || json.classOwner;
+      } else {
+        inst.classOwner = json.classOwner || null;
+      }
+    } catch (e) {
+      inst.classOwner = json.classOwner || null;
+      if (globalThis.__TRACE_SINGLETON__)
+        console.debug('ABClass.fromJSON classOwner coercion failed:', e);
+    }
 
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
     inst.teachers = Array.isArray(json.teachers) ? json.teachers.slice() : [];
