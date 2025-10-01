@@ -12,6 +12,7 @@ class ABClass {
    * @param {string|number} cohort - Year the cohort started (e.g. 2025) or a string/enum
    * @param {number} courseLength - Length of the course in years (integer)
    * @param {number} yearGroup - Current year group (integer)
+   * @param {object} classOwner - The Google Classroom class owner (teacher object)
    * @param {Array} teachers - Array of teacher objects (raw or Teacher instances)
    * @param {Array} students - Array of student objects (raw or Student instances)
    * @param {Array} assignments - Array of assignment objects (raw or Assignment instances)
