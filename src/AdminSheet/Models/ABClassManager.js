@@ -148,26 +148,13 @@ class ABClassManager {
    */
   saveClass(abClass) {
     const collectionName = String(abClass.classId);
-    const serialised = typeof abClass?.toJSON === 'function' ? abClass.toJSON() : abClass;
 
     const collection = this.dbManager.getCollection(collectionName);
 
     // Normalize to an insert/update path. Prefer updateOne upsert when available.
     try {
-      if (collection.updateOne && serialised && '_id' in serialised) {
-        collection.updateOne({ _id: serialised._id }, { $set: serialised }, { upsert: true });
-      } else if (collection.insertOne) {
-        // Attempt to clear/replace by removing all docs first if API available
-        try {
-          if (collection.removeMany) collection.removeMany({});
-          else if (collection.clear) collection.clear();
-        } catch (err) {
-          console.warn('Collection clear attempt failed, continuing to insert', err);
-        }
-        collection.insertOne(serialised);
-      } else {
-        throw new Error('Collection API does not support insert or update operations');
-      }
+        collection.insertOne(abClass);
+
     } catch (err) {
       // Provide a clearer error path while keeping previous behavior
       console.warn('saveClass: collection operation failed', err?.message ?? err);
