@@ -101,10 +101,6 @@ class ABClassManager {
   initialise(classId, options = {}) {
     if (!classId) throw new TypeError('classId is required');
 
-    // Resolve ABClass from globalThis (set by tests or GAS environment)
-    const ABClass = globalThis.ABClass;
-    if (!ABClass) throw new Error('ABClass is not available on globalThis');
-
     // Create a fresh ABClass instance for this id
     const abClass = new ABClass(classId);
 
@@ -163,21 +159,20 @@ class ABClassManager {
 
       return newClass;
     } else {
-      // Collection exists - read all documents and pick the first one
-      const docs = collection.findMany({}) || [];
-      if (docs.length === 0) {
-        // Collection exists but is empty - initialise new class
+      // Collection exists - read the single stored document (if any)
+      const doc = collection.findOne({name: classId}) || null;
+      if (!doc) {
+        // Collection exists but has no document - initialise new class
         const newClass = this.initialise(classId);
         this.saveClass(newClass);
         return newClass;
       }
 
-      // Deserialize the first document into an ABClass instance
+      // Deserialize the document into an ABClass instance
       const ABClass = globalThis.ABClass;
       if (!ABClass) throw new Error('ABClass is not available on globalThis');
 
-      const firstDoc = docs[0];
-      const abClass = ABClass.fromJSON(firstDoc);
+      const abClass = ABClass.fromJSON(doc);
       return abClass || null;
     }
   }
@@ -191,16 +186,15 @@ class ABClassManager {
    * @returns {boolean}
    */
   saveClass(abClass) {
-    if (!abClass?.classId) throw new TypeError('abClass with classId is required');
     const collectionName = String(abClass.classId);
-    const serialized = typeof abClass?.toJSON === 'function' ? abClass.toJSON() : abClass;
+    const serialised = typeof abClass?.toJSON === 'function' ? abClass.toJSON() : abClass;
 
     const collection = this.dbManager.getCollection(collectionName);
 
     // Normalize to an insert/update path. Prefer updateOne upsert when available.
     try {
-      if (collection.updateOne && serialized && '_id' in serialized) {
-        collection.updateOne({ _id: serialized._id }, { $set: serialized }, { upsert: true });
+      if (collection.updateOne && serialised && '_id' in serialised) {
+        collection.updateOne({ _id: serialised._id }, { $set: serialised }, { upsert: true });
       } else if (collection.insertOne) {
         // Attempt to clear/replace by removing all docs first if API available
         try {
@@ -209,7 +203,7 @@ class ABClassManager {
         } catch (err) {
           console.warn('Collection clear attempt failed, continuing to insert', err);
         }
-        collection.insertOne(serialized);
+        collection.insertOne(serialised);
       } else {
         throw new Error('Collection API does not support insert or update operations');
       }
