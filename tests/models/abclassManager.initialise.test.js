@@ -7,28 +7,35 @@ const Teacher = TeacherExport.Teacher || TeacherExport;
 
 describe('ABClassManager.initialise', () => {
   let ABClassManager;
+
   beforeEach(() => {
     // Ensure domain constructors are available globally (some helpers expect globals)
     global.Student = Student;
     global.Teacher = Teacher;
-    // Lightweight DbManager mock to avoid constructing real DbManager/ProgressTracker
-    global.DbManager = {
-      getInstance: () => ({
-        getCollection: () => ({
-          insertOne: () => {},
-          save: () => {},
-          updateOne: () => {},
-          removeMany: () => {},
-          clear: () => {},
-        }),
-        readAll: () => [],
-        saveCollection: () => {},
-      }),
+    global.ABClass = ABClass;
+
+    // Mock DbManager singleton with getInstance returning a mock implementation
+    global.DbManager = class MockDbManager {
+      static getInstance() {
+        return {
+          getCollection: () => ({
+            insertOne: () => {},
+            save: () => {},
+            updateOne: () => {},
+            removeMany: () => {},
+            clear: () => {},
+          }),
+          readAll: () => [],
+          saveCollection: () => {},
+        };
+      }
     };
+
     // Minimal ABLogger mock expected by ABClass.setClassOwner
     global.ABLogger = {
       getInstance: () => ({ error: () => {}, warn: () => {}, info: () => {}, debug: () => {} }),
     };
+
     // Require ABClassManager after supplying global DbManager mock so module init uses mock
     delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassManager.js')];
     ABClassManager = require('../../src/AdminSheet/Models/ABClassManager.js');
@@ -39,6 +46,7 @@ describe('ABClassManager.initialise', () => {
     delete global.Classroom;
     delete global.Student;
     delete global.Teacher;
+    delete global.ABClass;
     delete global.DbManager;
     delete global.ABLogger;
     // Clear ABClassManager module to avoid stale singleton state between tests
@@ -80,10 +88,9 @@ describe('ABClassManager.initialise', () => {
     };
 
     const manager = new ABClassManager();
-    const ab = new ABClass('course-xyz');
 
-    // Act
-    manager.initialise(ab);
+    // Act: call initialise with classId (not an instance)
+    const ab = manager.initialise('course-xyz');
 
     // Assert
     expect(ab.className).toBe('Biology 101');
@@ -114,7 +121,6 @@ describe('ABClassManager.initialise', () => {
     };
 
     const manager = new ABClassManager();
-    const ab = new ABClass('course-abc');
 
     // Spy on saveClass by replacing with a function we can observe
     let saved = false;
@@ -127,7 +133,8 @@ describe('ABClassManager.initialise', () => {
 
     const assignments = [{ id: 'a1', title: 'Homework' }];
 
-    manager.initialise(ab, { assignments, persist: true });
+    // Act: initialise returns the populated instance
+    const ab = manager.initialise('course-abc', { assignments, persist: true });
 
     expect(saved).toBe(true);
     expect(savedObj).toBeTruthy();

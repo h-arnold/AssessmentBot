@@ -7,26 +7,9 @@
  * that collection are plain serialized ABClass objects (from ABClass.toJSON()).
  */
 
-let DbManagerRef = null;
-// Prefer an already-provided global DbManager (useful for tests). In GAS rely on globalThis.
-if (typeof globalThis !== 'undefined' && typeof globalThis.DbManager !== 'undefined') {
-  DbManagerRef = globalThis.DbManager;
-}
-// Resolve to the actual DbManager constructor/object used below
-const DbManagerCtor = DbManagerRef?.DbManager ?? DbManagerRef;
-
-// In Node tests ABClass is exported as { ABClass } from ABClass.js; in GAS it's global.
-// ABClass is provided globally in GAS or injected in tests via globalThis
-const ABClass =
-  typeof globalThis !== 'undefined' && typeof globalThis.ABClass !== 'undefined'
-    ? globalThis.ABClass.ABClass ?? globalThis.ABClass
-    : undefined;
-
 class ABClassManager {
   constructor() {
-    this.dbManager = DbManagerCtor?.getInstance
-      ? DbManagerCtor.getInstance()
-      : new DbManagerCtor(true);
+    this.dbManager = DbManager.getInstance();
   }
 
   // Helper: fetch and apply course metadata (name, owner)
@@ -41,17 +24,23 @@ class ABClassManager {
 
     if (course.ownerId) {
       // Prefer to create a Teacher instance when available
-      const owner = new Teacher(null, course.ownerId);
-      if (typeof abClass.setClassOwner === 'function') {
-        abClass.setClassOwner(owner);
-      } else {
-        abClass.classOwner = owner;
+      const Teacher = globalThis.Teacher;
+      if (Teacher) {
+        const owner = new Teacher(null, course.ownerId);
+        if (typeof abClass.setClassOwner === 'function') {
+          abClass.setClassOwner(owner);
+        } else {
+          abClass.classOwner = owner;
+        }
       }
     }
   }
 
   // Helper: fetch and apply teacher list
   _applyTeachers(abClass, courseId) {
+    const Teacher = globalThis.Teacher;
+    if (!Teacher) return;
+
     const teacherResp = globalThis.Classroom.Courses.Teachers.list(courseId);
     const teachers = teacherResp.teachers || [];
     teachers.forEach((t) => {
@@ -80,6 +69,9 @@ class ABClassManager {
     }
 
     // Fallback: single-page fetch using Classroom API
+    const Student = globalThis.Student;
+    if (!Student) return;
+
     const resp = globalThis.Classroom.Courses.Students.list(courseId) || {};
     const students = resp.students || [];
     students.forEach((st) => {
@@ -109,6 +101,10 @@ class ABClassManager {
   initialise(classId, options = {}) {
     if (!classId) throw new TypeError('classId is required');
 
+    // Resolve ABClass from globalThis (set by tests or GAS environment)
+    const ABClass = globalThis.ABClass;
+    if (!ABClass) throw new Error('ABClass is not available on globalThis');
+
     // Create a fresh ABClass instance for this id
     const abClass = new ABClass(classId);
 
@@ -123,11 +119,17 @@ class ABClassManager {
       abClass.yearGroup = Number.isInteger(options.yearGroup)
         ? options.yearGroup
         : ABClass._parseNullableInt(options.yearGroup, abClass.yearGroup);
+    if (options.assignments !== undefined && Array.isArray(options.assignments)) {
+      options.assignments.forEach((assignment) => {
+        if (typeof abClass.addAssignment === 'function') abClass.addAssignment(assignment);
+        else if (Array.isArray(abClass.assignments)) abClass.assignments.push(assignment);
+      });
+    }
 
     // Populate via helpers
-    this._applyCourseMetadata(abClass, courseId);
-    this._applyTeachers(abClass, courseId);
-    this._applyStudents(abClass, courseId);
+    this._applyCourseMetadata(abClass, classId);
+    this._applyTeachers(abClass, classId);
+    this._applyStudents(abClass, classId);
 
     // Persist if requested
     if (options.persist) {
@@ -171,6 +173,9 @@ class ABClassManager {
       }
 
       // Deserialize the first document into an ABClass instance
+      const ABClass = globalThis.ABClass;
+      if (!ABClass) throw new Error('ABClass is not available on globalThis');
+
       const firstDoc = docs[0];
       const abClass = ABClass.fromJSON(firstDoc);
       return abClass || null;
