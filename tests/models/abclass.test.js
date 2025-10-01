@@ -36,8 +36,12 @@ describe('ABClass model', () => {
   });
 
   it('throws when neither classId nor ConfigurationManager provide an id', () => {
-    // Ensure no ConfigurationManager is present
-    delete globalThis.ConfigurationManager;
+    // Ensure a ConfigurationManager is present but returns no id
+    function EmptyConfigurationManager() {}
+    EmptyConfigurationManager.getInstance = () => ({
+      getAssessmentRecordCourseId: () => null,
+    });
+    globalThis.ConfigurationManager = EmptyConfigurationManager;
     expect(() => new ABClass(undefined)).toThrow(TypeError);
   });
 
