@@ -98,19 +98,19 @@ class ABClassManager {
    * classOwner, teachers and students. Additional properties (assignments,
    * cohort, courseLength, yearGroup) may be provided via options.
    *
-   * @param {ABClass|Object} abClass - ABClass instance (must have classId)
+   * @param {string} classId - classId (Google Classroom courseId)
    * @param {Object} [options]
-   * @param {Array} [options.assignments] - optional assignments to set
    * @param {string|number} [options.cohort]
    * @param {number} [options.courseLength]
    * @param {number} [options.yearGroup]
    * @param {boolean} [options.persist=false] - whether to call saveClass at end
    * @returns {ABClass} populated ABClass instance
    */
-  initialise(abClass, options = {}) {
-    if (!abClass?.classId) throw new TypeError('abClass with classId is required');
+  initialise(classId, options = {}) {
+    if (!classId) throw new TypeError('classId is required');
 
-    const courseId = String(abClass.classId);
+    // Create a fresh ABClass instance for this id
+    const abClass = new ABClass(classId);
 
     // Apply straightforward options first
     if (options.cohort !== undefined)
@@ -128,14 +128,6 @@ class ABClassManager {
     this._applyCourseMetadata(abClass, courseId);
     this._applyTeachers(abClass, courseId);
     this._applyStudents(abClass, courseId);
-
-    // Optionally apply assignments provided in options
-    if (Array.isArray(options.assignments) && options.assignments.length > 0) {
-      options.assignments.forEach((a) => {
-        if (typeof abClass.addAssignment === 'function') abClass.addAssignment(a);
-        else abClass.assignments.push(a);
-      });
-    }
 
     // Persist if requested
     if (options.persist) {
@@ -160,12 +152,16 @@ class ABClassManager {
    */
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
-    const colName = String(classId);
-    const docs = this.dbManager.readAll(colName) || [];
-    if (!docs || docs.length === 0) return null;
-    // If multiple docs exist, prefer the first (legacy behaviour)
-    const doc = docs[0];
-    return typeof ABClass?.fromJSON === 'function' ? ABClass.fromJSON(doc) : null;
+
+    const collection = this.dbManager.getCollection(classId);
+    // If no collection is returned, create a new class object and save it.
+    if (!collection) {
+      const newClass = this.initialiseClass(classId);
+      this.saveClass(newClass);
+
+      return newClass;
+    } else {
+    }
   }
 
   /**
@@ -184,24 +180,40 @@ class ABClassManager {
     const collection = this.dbManager.getCollection(colName);
 
     // Normalize to an insert/update path. Prefer updateOne upsert when available.
-    if (typeof collection.updateOne === 'function' && serialized && '_id' in serialized) {
-      collection.updateOne({ _id: serialized._id }, { $set: serialized }, { upsert: true });
-    } else if (typeof collection.insertOne === 'function') {
-      // Attempt to clear/replace by removing all docs first if API available
-      try {
-        if (typeof collection.removeMany === 'function') collection.removeMany({});
-        else if (typeof collection.clear === 'function') collection.clear();
-      } catch (err) {
-        console.warn('Collection clear attempt failed, continuing to insert', err);
+    try {
+      if (collection && collection.updateOne && serialized && '_id' in serialized) {
+        collection.updateOne({ _id: serialized._id }, { $set: serialized }, { upsert: true });
+      } else if (collection && collection.insertOne) {
+        // Attempt to clear/replace by removing all docs first if API available
+        try {
+          if (collection.removeMany) collection.removeMany({});
+          else if (collection.clear) collection.clear();
+        } catch (err) {
+          console.warn('Collection clear attempt failed, continuing to insert', err);
+        }
+        collection.insertOne(serialized);
+      } else {
+        throw new Error('Collection API does not support insert or update operations');
       }
-      collection.insertOne(serialized);
-    } else {
-      throw new Error('Collection API does not support insert or update operations');
+    } catch (err) {
+      // Provide a clearer error path while keeping previous behavior
+      console.warn('saveClass: collection operation failed', err?.message ?? err);
+      throw err;
     }
 
     // Persist changes
-    if (typeof collection.save === 'function') collection.save();
-    else this.dbManager.saveCollection(collection);
+    try {
+      if (collection && collection.save) collection.save();
+      else this.dbManager.saveCollection(collection);
+    } catch (err) {
+      console.warn('saveClass: collection persist failed, falling back', err?.message ?? err);
+      try {
+        this.dbManager.saveCollection(collection);
+      } catch (err2) {
+        console.error('saveClass: dbManager.saveCollection also failed', err2?.message ?? err2);
+        throw err2;
+      }
+    }
 
     return true;
   }

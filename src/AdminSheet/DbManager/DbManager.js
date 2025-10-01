@@ -7,8 +7,6 @@
  * - Exposes convenient helpers for fetching and saving collections
  * - Centralises error handling via ProgressTracker
  */
-// Ensure canonical BaseSingleton implementation is loaded (it attaches to globalThis)
-require('../00_BaseSingleton.js');
 
 class DbManager extends BaseSingleton {
   constructor(isSingletonCreator = false) {
