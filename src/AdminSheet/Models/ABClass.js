@@ -29,16 +29,10 @@ class ABClass {
   ) {
     // If classId not provided, attempt to read from ConfigurationManager (Assessment Record Course Id)
     if (!classId) {
-      try {
-        const cfg = ConfigurationManager.getInstance();
-        const cfgCourseId = cfg.getAssessmentRecordCourseId();
-        if (cfgCourseId) {
-          classId = String(cfgCourseId);
-        }
-      } catch (e) {
-        // swallow and allow the subsequent check to throw a consistent error
-        if (globalThis.__TRACE_SINGLETON__)
-          console.debug('ABClass constructor config lookup failed:', e);
+      const cfg = ConfigurationManager.getInstance();
+      const cfgCourseId = cfg.getAssessmentRecordCourseId();
+      if (cfgCourseId) {
+        classId = String(cfgCourseId);
       }
     }
 
