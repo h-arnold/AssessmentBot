@@ -9,10 +9,36 @@ class Teacher {
   /**
    * @param {string} email - Teacher's email address
    * @param {string} userId - Google userId for the teacher (from Classroom API)
+   * @param {string} teacherName - Optional full name of the teacher
    */
-  constructor(email, userId = null) {
-    this.email = email || null;
+  constructor(email, userId = null, teacherName = null) {
     this.userId = userId || null;
+    this.email = email || null;
+    this.teacherName = teacherName || null;
+  }
+
+  /**
+   * Get the teacher's name.
+   * @return {string|null}
+   */
+  getTeacherName() {
+    return this.teacherName;
+  }
+
+  /**
+   * Set the teacher's name.
+   * @param {string} name
+   */
+  setTeacherName(name) {
+    const val = name || null;
+    if (val === null) {
+      this.teacherName = null;
+      return;
+    }
+    if (this._Validate && typeof this._Validate.isString === 'function') {
+      if (!this._Validate.isString(val)) throw new TypeError('Invalid teacherName');
+    }
+    this.teacherName = val;
   }
 
   /**
@@ -64,15 +90,16 @@ class Teacher {
   }
 
   toJSON() {
-    return {
+    return Object.assign({
       email: this.email,
       userId: this.userId,
-    };
+    }, this.teacherName == null ? {} : { teacherName: this.teacherName });
   }
 
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
     const { email, userId } = json;
+    if ('teacherName' in json) return new Teacher(email || null, userId || null, json.teacherName);
     return new Teacher(email || null, userId || null);
   }
 }
