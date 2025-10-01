@@ -109,21 +109,21 @@ class ABClassManager {
     const abClass = new ABClass(classId);
 
     // Apply straightforward options first
-    if (options.cohort !== undefined)
+    if (options.cohort !== undefined) {
       abClass.cohort = options.cohort === null ? null : String(options.cohort);
-    if (options.courseLength !== undefined)
+    }
+    if (options.courseLength !== undefined) {
       abClass.courseLength = Number.isInteger(options.courseLength)
         ? options.courseLength
         : ABClass._parseNullableInt(options.courseLength, abClass.courseLength);
-    if (options.yearGroup !== undefined)
+    }
+    if (options.yearGroup !== undefined) {
       abClass.yearGroup = Number.isInteger(options.yearGroup)
         ? options.yearGroup
         : ABClass._parseNullableInt(options.yearGroup, abClass.yearGroup);
-    if (options.assignments !== undefined && Array.isArray(options.assignments)) {
-      options.assignments.forEach((assignment) => {
-        if (typeof abClass.addAssignment === 'function') abClass.addAssignment(assignment);
-        else if (Array.isArray(abClass.assignments)) abClass.assignments.push(assignment);
-      });
+    }
+    if (options.assignments?.length) {
+      options.assignments.forEach((assignment) => abClass.addAssignment(assignment));
     }
 
     // Populate via helpers
@@ -199,9 +199,9 @@ class ABClassManager {
 
     // Normalize to an insert/update path. Prefer updateOne upsert when available.
     try {
-      if (collection && collection.updateOne && serialized && '_id' in serialized) {
+      if (collection.updateOne && serialized && '_id' in serialized) {
         collection.updateOne({ _id: serialized._id }, { $set: serialized }, { upsert: true });
-      } else if (collection && collection.insertOne) {
+      } else if (collection.insertOne) {
         // Attempt to clear/replace by removing all docs first if API available
         try {
           if (collection.removeMany) collection.removeMany({});
@@ -220,18 +220,9 @@ class ABClassManager {
     }
 
     // Persist changes
-    try {
-      if (collection && collection.save) collection.save();
-      else this.dbManager.saveCollection(collection);
-    } catch (err) {
-      console.warn('saveClass: collection persist failed, falling back', err?.message ?? err);
-      try {
-        this.dbManager.saveCollection(collection);
-      } catch (err2) {
-        console.error('saveClass: dbManager.saveCollection also failed', err2?.message ?? err2);
-        throw err2;
-      }
-    }
+    // Persist changes - fail fast if collection is missing or malformed
+    if (collection.save) collection.save();
+    else this.dbManager.saveCollection(collection);
 
     return true;
   }
