@@ -220,9 +220,7 @@ class ABClassManager {
     }
 
     // Persist changes
-    // Persist changes - fail fast if collection is missing or malformed
-    if (collection.save) collection.save();
-    else this.dbManager.saveCollection(collection);
+    collection.save();
 
     return true;
   }
