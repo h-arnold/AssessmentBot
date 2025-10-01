@@ -192,10 +192,10 @@ class ABClassManager {
    */
   saveClass(abClass) {
     if (!abClass?.classId) throw new TypeError('abClass with classId is required');
-    const colName = String(abClass.classId);
+    const collectionName = String(abClass.classId);
     const serialized = typeof abClass?.toJSON === 'function' ? abClass.toJSON() : abClass;
 
-    const collection = this.dbManager.getCollection(colName);
+    const collection = this.dbManager.getCollection(collectionName);
 
     // Normalize to an insert/update path. Prefer updateOne upsert when available.
     try {
