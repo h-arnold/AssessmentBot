@@ -156,11 +156,24 @@ class ABClassManager {
     const collection = this.dbManager.getCollection(classId);
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
-      const newClass = this.initialiseClass(classId);
+      const newClass = this.initialise(classId);
       this.saveClass(newClass);
 
       return newClass;
     } else {
+      // Collection exists - read all documents and pick the first one
+      const docs = collection.findMany({}) || [];
+      if (docs.length === 0) {
+        // Collection exists but is empty - initialise new class
+        const newClass = this.initialise(classId);
+        this.saveClass(newClass);
+        return newClass;
+      }
+
+      // Deserialize the first document into an ABClass instance
+      const firstDoc = docs[0];
+      const abClass = ABClass.fromJSON(firstDoc);
+      return abClass || null;
     }
   }
 
