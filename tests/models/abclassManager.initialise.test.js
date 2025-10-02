@@ -4,6 +4,7 @@ const StudentExport = require('../../src/AdminSheet/Models/Student.js');
 const Student = StudentExport.Student || StudentExport;
 const TeacherExport = require('../../src/AdminSheet/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
+const { createMockClassroomApiClient } = require('../helpers/mockFactories.js');
 
 describe('ABClassManager.initialise', () => {
   let ABClassManager;
@@ -36,6 +37,9 @@ describe('ABClassManager.initialise', () => {
       getInstance: () => ({ error: () => {}, warn: () => {}, info: () => {}, debug: () => {} }),
     };
 
+    // Mock ClassroomApiClient used by ABClassManager._applyCourseMetadata
+    global.ClassroomApiClient = createMockClassroomApiClient();
+
     // Require ABClassManager after supplying global DbManager mock so module init uses mock
     delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassManager.js')];
     ABClassManager = require('../../src/AdminSheet/Models/ABClassManager.js');
@@ -44,6 +48,7 @@ describe('ABClassManager.initialise', () => {
   afterEach(() => {
     // Clean up globals to avoid cross-test pollution
     delete global.Classroom;
+    delete global.ClassroomApiClient;
     delete global.Student;
     delete global.Teacher;
     delete global.ABClass;
