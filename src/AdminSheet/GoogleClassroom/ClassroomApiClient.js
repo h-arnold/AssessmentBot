@@ -140,6 +140,40 @@ class ClassroomApiClient {
   }
 
   /**
+   * Fetches all active classrooms with pagination.
+   * Iterates through all pages until there is no nextPageToken.
+   * @returns {Array<Object>} An array of objects containing course IDs and names.
+   */
+  static fetchAllActiveClassrooms() {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      let courses = [];
+      let pageToken;
+      do {
+        const response = Classroom.Courses.list({
+          pageToken: pageToken,
+          courseStates: ['ACTIVE'],
+        });
+        if (response.courses && response.courses.length > 0) {
+          const activeCourses = response.courses.map((course) => ({
+            id: course.id,
+            name: course.name,
+            enrollmentCode: course.enrollmentCode,
+          }));
+          courses = courses.concat(activeCourses);
+        }
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+
+      ABLogger.getInstance().info('Active classrooms retrieved', { count: courses.length });
+      return courses;
+    } catch (error) {
+      progressTracker.logError(`Failed to retrieve active classrooms: ${error.message}`, error);
+      return [];
+    }
+  }
+
+  /**
    * Fetch a single course by ID.
    * @param {string} courseId
    * @returns {GoogleAppsScript.Classroom.Schema.Course|null}

@@ -44,9 +44,9 @@ class GoogleClassroomManager {
 
       // Prepare all rows in memory before appending
       const rows = classrooms.map((course) => {
-        // Fetch teachers for the course
-        const teachers = Classroom.Courses.Teachers.list(course.id).teachers || [];
-        const teacherEmails = teachers.map((teacher) => teacher.profile.emailAddress);
+        // Fetch teachers for the course using ClassroomApiClient
+        const teachers = ClassroomApiClient.fetchTeachers(course.id) || [];
+        const teacherEmails = teachers.map((teacher) => teacher.email);
 
         return [
           course.id || '',
@@ -393,24 +393,7 @@ class GoogleClassroomManager {
    */
   getActiveClassrooms() {
     try {
-      let courses = [];
-      let pageToken;
-      do {
-        const response = Classroom.Courses.list({
-          pageToken: pageToken,
-          courseStates: ['ACTIVE'],
-        });
-        if (response.courses && response.courses.length > 0) {
-          const activeCourses = response.courses.map((course) => ({
-            id: course.id,
-            name: course.name,
-          }));
-          courses = courses.concat(activeCourses);
-        }
-        pageToken = response.nextPageToken;
-      } while (pageToken);
-
-      console.log(`${courses.length} active classrooms retrieved.`);
+      const courses = ClassroomApiClient.fetchAllActiveClassrooms();
       return courses;
     } catch (error) {
       const userMessage =
