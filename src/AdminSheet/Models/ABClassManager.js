@@ -14,7 +14,8 @@ class ABClassManager {
 
   // Helper: fetch and apply course metadata (name, owner)
   _applyCourseMetadata(abClass, courseId) {
-    const course = Classroom.Courses.get(courseId);
+    // Call the ClassroomApiClient static method directly and allow errors to surface
+    const course = ClassroomApiClient.fetchCourse(courseId);
     if (!course) return;
 
     if (course.name) {
@@ -30,15 +31,15 @@ class ABClassManager {
 
   // Helper: fetch and apply teacher list
   _applyTeachers(abClass, courseId) {
-    const teacherResp = Classroom.Courses.Teachers.list(courseId);
-    const teachers = teacherResp.teachers || [];
-    teachers.forEach((t) => {
-      const name = t.profile.name.fullName;
-      const email = t.profile.emailAddress;
-      const userId = t.profile.id;
-      const teacherObj = new Teacher(email, userId, name);
+    // Call the ClassroomApiClient static method directly and allow errors to surface
+    const teachers = ClassroomApiClient.fetchTeachers(courseId) || [];
 
-      if (abClass.classOwner.userId === t.profile.id) {
+    teachers.forEach((teacherObj) => {
+      // Support both new behaviour (Teacher instances) and legacy raw API objects.
+      if (!teacherObj) return; // nothing to apply
+
+      // If this teacher matches the course owner, set as owner
+      if (abClass.classOwner && abClass.classOwner.userId === teacherObj.userId) {
         abClass.setClassOwner(teacherObj);
       } else {
         abClass.addTeacher(teacherObj);
@@ -48,21 +49,8 @@ class ABClassManager {
 
   // Helper: fetch and apply students
   _applyStudents(abClass, courseId) {
-    // Use ClassroomApiClient helper which handles paging and API details.
-    // In the node test environment ClassroomApiClient may not be global, so require it as a fallback.
-    const client =
-      typeof ClassroomApiClient !== 'undefined'
-        ? ClassroomApiClient
-        : typeof require === 'function'
-        ? require('../GoogleClassroom/ClassroomApiClient.js').ClassroomApiClient ||
-          require('../GoogleClassroom/ClassroomApiClient.js')
-        : null;
-
-    if (!client || typeof client.fetchAllStudents !== 'function') {
-      throw new Error('ClassroomApiClient.fetchAllStudents is not available');
-    }
-
-    const students = client.fetchAllStudents(courseId);
+    // Call the ClassroomApiClient static method directly; it handles paging. Let errors bubble up.
+    const students = ClassroomApiClient.fetchAllStudents(courseId) || [];
 
     students.forEach((st) => {
       abClass.addStudent(st);

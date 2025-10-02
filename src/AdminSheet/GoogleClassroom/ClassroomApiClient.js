@@ -140,6 +140,66 @@ class ClassroomApiClient {
   }
 
   /**
+   * Fetch a single course by ID.
+   * @param {string} courseId
+   * @returns {GoogleAppsScript.Classroom.Schema.Course|null}
+   */
+  static fetchCourse(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const course = Classroom.Courses.get(courseId);
+      return course || null;
+    } catch (error) {
+      progressTracker.logError(`Failed to fetch course (${courseId}): ${error.message}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch teachers for a given course.
+   * Returns the raw teacher objects as provided by the API (so callers can
+   * inspect profile fields).
+   * @param {string} courseId
+   * @returns {Array<Object>} array of teacher resource objects
+   */
+  static fetchTeachers(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const resp = Classroom.Courses.Teachers.list(courseId) || {};
+      const raw = resp.teachers || [];
+
+      // Map raw API teacher resources to local Teacher model instances.
+      // Keep the original raw objects available to callers by returning
+      // Teacher instances (which contain email, userId and name).
+      const teachers = raw
+        .map((t) => {
+          try {
+            const name = t?.profile?.name?.fullName || null;
+            const email = t?.profile?.emailAddress || null;
+            const userId = t?.profile?.id || null;
+            return new Teacher(email, userId, name);
+          } catch (err) {
+            // If mapping fails for any entry, log and skip that entry.
+            progressTracker.logError(
+              `Failed to map teacher resource for course (${courseId}): ${err.message}`,
+              err
+            );
+            return null;
+          }
+        })
+        .filter(Boolean);
+
+      return teachers;
+    } catch (error) {
+      progressTracker.logError(
+        `Failed to fetch teachers for course (${courseId}): ${error.message}`,
+        error
+      );
+      return [];
+    }
+  }
+
+  /**
    * Fetches all students from Google Classroom for a given course.
    * Iterates through pages until there is no nextPageToken.
    * @param {string} courseId - The ID of the Google Classroom course.
