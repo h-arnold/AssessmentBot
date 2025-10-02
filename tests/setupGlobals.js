@@ -25,6 +25,8 @@ global.Utilities = {
 global.Logger = {
   log: (...a) => console.log('[LOG]', ...a),
 };
+// Use the shared ProgressTracker mock for tests
+global.ProgressTracker = require('./mocks/ProgressTracker.js');
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');

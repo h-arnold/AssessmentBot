@@ -48,8 +48,21 @@ class ABClassManager {
 
   // Helper: fetch and apply students
   _applyStudents(abClass, courseId) {
-    // Use ClassroomManager helper which handles paging and API details.
-    const students = ClassroomManager.fetchAllStudents(courseId);
+    // Use ClassroomApiClient helper which handles paging and API details.
+    // In the node test environment ClassroomApiClient may not be global, so require it as a fallback.
+    const client =
+      typeof ClassroomApiClient !== 'undefined'
+        ? ClassroomApiClient
+        : typeof require === 'function'
+        ? require('../GoogleClassroom/ClassroomApiClient.js').ClassroomApiClient ||
+          require('../GoogleClassroom/ClassroomApiClient.js')
+        : null;
+
+    if (!client || typeof client.fetchAllStudents !== 'function') {
+      throw new Error('ClassroomApiClient.fetchAllStudents is not available');
+    }
+
+    const students = client.fetchAllStudents(courseId);
 
     students.forEach((st) => {
       abClass.addStudent(st);
