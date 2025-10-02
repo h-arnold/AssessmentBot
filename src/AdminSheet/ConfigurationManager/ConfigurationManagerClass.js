@@ -67,7 +67,7 @@ class ConfigurationManager extends BaseSingleton {
     this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
     // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
-      console.log('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
+      ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this.maybeDeserializeProperties();
     this._initialized = true;
     if (globalThis.FREEZE_SINGLETONS) {
@@ -105,52 +105,31 @@ class ConfigurationManager extends BaseSingleton {
         return store.getKeys ? store.getKeys() : [];
       } catch (e) {
         if (globalThis.__TRACE_SINGLETON__)
-          console.debug(
-            '[TRACE] ConfigurationManager.maybeDeserializeProperties safeGetKeys error:',
+          ABLogger.getInstance().debug(
+            '[TRACE_SINGLETON][ConfigurationManager.safeGetKeys] safeGetKeys error:',
             e?.message ?? e
           );
         return [];
       }
     };
+
     try {
       const hasScript = safeGetKeys(this.scriptProperties).length > 0;
       const hasDoc = safeGetKeys(this.documentProperties).length > 0;
       if (hasScript || hasDoc) return; // early return – nothing to do
-      try {
-        const propertiesCloner = new PropertiesCloner();
-        if (propertiesCloner.sheet) {
-          propertiesCloner.deserialiseProperties();
-          console.log('Successfully copied properties from propertiesStore');
-        } else {
-          console.log('No propertiesStore sheet found');
-        }
-      } catch (inner) {
-        if (typeof logError === 'function') {
-          logError('ConfigurationManager.maybeDeserializeProperties.init', inner);
-        } else {
-          console.error('Error initializing properties:', inner?.message ?? inner);
-        }
-      }
-    } catch (outer) {
-      // Prefer a simple logError hook if present (used by tests), fall back to console.
-      if (typeof logError === 'function') {
-        logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
-      } else if (
-        typeof ABLogger !== 'undefined' &&
-        ABLogger &&
-        typeof ABLogger.getInstance === 'function'
-      ) {
-        try {
-          ABLogger.getInstance().error(
-            '[ConfigurationManager.maybeDeserializeProperties.outer]',
-            outer
-          );
-        } catch (abErr) {
-          console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
-        }
+
+      const propertiesCloner = new PropertiesCloner();
+      if (propertiesCloner.sheet) {
+        propertiesCloner.deserialiseProperties();
+        ABLogger.getInstance().log('Successfully copied properties from propertiesStore');
       } else {
-        console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
+        ABLogger.getInstance().log('No propertiesStore sheet found');
       }
+    } catch (err) {
+      // Use ProgressTracker as the single logging contract per project guidance.
+      ProgressTracker.getInstance().logError('ConfigurationManager.maybeDeserializeProperties', {
+        err,
+      });
     }
   }
 
@@ -296,7 +275,7 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
+        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
       const file = DriveApp.getFileById(trimmed);
       const mime = file && typeof file.getMimeType === 'function' ? file.getMimeType() : '';
       return mime === MimeType.GOOGLE_SHEETS; // explicit equality
@@ -313,7 +292,7 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
+        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {

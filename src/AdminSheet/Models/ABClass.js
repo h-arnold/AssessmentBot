@@ -81,13 +81,8 @@ class ABClass {
     return this.classOwner;
   }
 
-  /**
-      classOwner: this.classOwner && typeof this.classOwner.toJSON === 'function'
-        ? this.classOwner.toJSON()
-        : this.classOwner,
-      teachers: serializeArray(this.teachers),
-   * is null/undefined or cannot be parsed. If defaultValue is null, null will be
-   * returned when input is null/undefined or non-parsable.
+
+  /*
    * @param {*} value
    * @param {number|null} defaultValue
    * @return {number|null}
