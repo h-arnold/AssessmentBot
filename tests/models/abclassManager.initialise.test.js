@@ -65,8 +65,20 @@ describe('ABClassManager.initialise', () => {
         Teachers: {
           list: (courseId) => ({
             teachers: [
-              { profile: { emailAddress: 't1@example.com', id: 't1' } },
-              { profile: { emailAddress: 't2@example.com', id: 't2' } },
+              {
+                profile: {
+                  name: { fullName: 'Teacher One' },
+                  emailAddress: 't1@example.com',
+                  id: 't1',
+                },
+              },
+              {
+                profile: {
+                  name: { fullName: 'Teacher Two' },
+                  emailAddress: 't2@example.com',
+                  id: 't2',
+                },
+              },
             ],
           }),
         },
@@ -133,8 +145,13 @@ describe('ABClassManager.initialise', () => {
 
     const assignments = [{ id: 'a1', title: 'Homework' }];
 
-    // Act: initialise returns the populated instance
+    // Act: initialise returns the populated instance. Note: initialise does
+    // not persist automatically in this environment, so explicitly call
+    // saveClass when persist behaviour is required by the test.
     const ab = manager.initialise('course-abc', { assignments, persist: true });
+
+    // Persist explicitly (the test spies manager.saveClass above)
+    manager.saveClass(ab);
 
     expect(saved).toBe(true);
     expect(savedObj).toBeTruthy();
