@@ -16,7 +16,6 @@ class Student {
     this.name = name; // string: Full name
     this.email = email; // string: Email address
     this.id = id; // string: Unique ID from Google Classroom
-    this.documentId = null; // string: Slide ID of the student's submission (to be assigned)
   }
 
   /**
@@ -28,7 +27,6 @@ class Student {
       name: this.name,
       email: this.email,
       id: this.id,
-      documentId: this.documentId,
     };
   }
 
@@ -38,9 +36,8 @@ class Student {
    * @return {Student} - The Student instance.
    */
   static fromJSON(json) {
-    const { name, email, id, documentId } = json;
+    const { name, email, id } = json;
     const student = new Student(name, email, id);
-    student.documentId = documentId || null;
     return student;
   }
 }

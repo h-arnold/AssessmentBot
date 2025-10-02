@@ -47,9 +47,9 @@ describe('ClassroomManager', () => {
     Student = StudentExport.Student || StudentExport;
     global.Student = Student;
 
-    // Load the ClassroomManager class
-    const ClassroomManagerExport = require('../../src/AdminSheet/Models/GoogleClassroom.js');
-    ClassroomManager = ClassroomManagerExport.ClassroomManager || ClassroomManagerExport;
+    // Load the ClassroomApiClient class (merged implementation)
+    const ClassroomApiClientExport = require('../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js');
+    ClassroomManager = ClassroomApiClientExport.ClassroomApiClient || ClassroomApiClientExport;
   });
 
   it('fetchAllStudents should return array of Student instances', () => {

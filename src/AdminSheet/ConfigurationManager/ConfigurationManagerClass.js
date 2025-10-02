@@ -67,7 +67,7 @@ class ConfigurationManager extends BaseSingleton {
     this.documentProperties = this.documentProperties || PropertiesService.getDocumentProperties();
     // Perform potential deserialisation only once
     if (globalThis.__TRACE_SINGLETON__)
-      console.log('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
+      ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.ensureInitialized');
     this.maybeDeserializeProperties();
     this._initialized = true;
     if (globalThis.FREEZE_SINGLETONS) {
@@ -105,38 +105,31 @@ class ConfigurationManager extends BaseSingleton {
         return store.getKeys ? store.getKeys() : [];
       } catch (e) {
         if (globalThis.__TRACE_SINGLETON__)
-          console.debug(
-            '[TRACE] ConfigurationManager.maybeDeserializeProperties safeGetKeys error:',
+          ABLogger.getInstance().debug(
+            '[TRACE_SINGLETON][ConfigurationManager.safeGetKeys] safeGetKeys error:',
             e?.message ?? e
           );
         return [];
       }
     };
+
     try {
       const hasScript = safeGetKeys(this.scriptProperties).length > 0;
       const hasDoc = safeGetKeys(this.documentProperties).length > 0;
       if (hasScript || hasDoc) return; // early return – nothing to do
-      try {
-        const propertiesCloner = new PropertiesCloner();
-        if (propertiesCloner.sheet) {
-          propertiesCloner.deserialiseProperties();
-          console.log('Successfully copied properties from propertiesStore');
-        } else {
-          console.log('No propertiesStore sheet found');
-        }
-      } catch (inner) {
-        if (typeof logError === 'function') {
-          logError('ConfigurationManager.maybeDeserializeProperties.init', inner);
-        } else {
-          console.error('Error initializing properties:', inner?.message ?? inner);
-        }
-      }
-    } catch (outer) {
-      if (typeof logError === 'function') {
-        logError('ConfigurationManager.maybeDeserializeProperties.outer', outer);
+
+      const propertiesCloner = new PropertiesCloner();
+      if (propertiesCloner.sheet) {
+        propertiesCloner.deserialiseProperties();
+        ABLogger.getInstance().log('Successfully copied properties from propertiesStore');
       } else {
-        console.error('maybeDeserializeProperties unexpected error:', outer?.message ?? outer);
+        ABLogger.getInstance().log('No propertiesStore sheet found');
       }
+    } catch (err) {
+      // Use ProgressTracker as the single logging contract per project guidance.
+      ProgressTracker.getInstance().logError('ConfigurationManager.maybeDeserializeProperties', {
+        err,
+      });
     }
   }
 
@@ -282,7 +275,7 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
+        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
       const file = DriveApp.getFileById(trimmed);
       const mime = file && typeof file.getMimeType === 'function' ? file.getMimeType() : '';
       return mime === MimeType.GOOGLE_SHEETS; // explicit equality
@@ -299,7 +292,7 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
+        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
@@ -378,6 +371,54 @@ class ConfigurationManager extends BaseSingleton {
     // Simply return the stored property (empty string if unset). Fallback logic is now handled
     // by BaseUpdateAndInit to avoid recursive instantiation between the two classes.
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
+  }
+
+  /**
+   * Returns the configured Assessment Record course ID.
+   * Priority: Document Properties -> legacy GoogleClassroomManager.getCourseId() -> null
+   * Returns null when no value can be determined (useful for admin sheet behaviour).
+   * @returns {string|null}
+   */
+  getAssessmentRecordCourseId() {
+    this.ensureInitialized();
+
+    // 1) Document property (preferred)
+    try {
+      const docVal = this.documentProperties.getProperty(
+        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID
+      );
+      if (docVal != null && String(docVal).trim() !== '') {
+        return String(docVal);
+      }
+    } catch (e) {
+      // Swallow and fallback to legacy behaviour
+      if (globalThis.__TRACE_SINGLETON__) console.debug('Error reading document property:', e);
+    }
+
+    // 2) Legacy: ask GoogleClassroomManager (may throw if sheet is missing) — handle safely
+    try {
+      if (typeof GoogleClassroomManager === 'function') {
+        const gcm = new GoogleClassroomManager();
+        if (gcm && typeof gcm.getCourseId === 'function') {
+          const legacy = gcm.getCourseId();
+          return legacy ? String(legacy) : null;
+        }
+      }
+    } catch (e) {
+      // Legacy lookup failed; return null as expected for admin sheet
+      if (globalThis.__TRACE_SINGLETON__) console.debug('Legacy getCourseId failed:', e);
+    }
+
+    return null;
+  }
+
+  /**
+   * Stores the Assessment Record course ID as a document property.
+   * @param {string|null} courseId
+   */
+  setAssessmentRecordCourseId(courseId) {
+    // Use setProperty which respects CONFIG_SCHEMA (we defined storage=document for this key)
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID, courseId);
   }
 
   getAssessmentRecordDestinationFolder() {
@@ -509,6 +550,7 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
     BACKEND_URL: 'backendUrl',
     ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
     ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
+    ASSESSMENT_RECORD_COURSE_ID: 'assessmentRecordCourseId',
     UPDATE_DETAILS_URL: 'updateDetailsUrl',
     UPDATE_STAGE: 'updateStage',
     IS_ADMIN_SHEET: 'isAdminSheet',
@@ -551,6 +593,15 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
         if (!instance.isValidGoogleSheetId(v)) {
           throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
         }
+        return v;
+      },
+    },
+    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID]: {
+      storage: 'document',
+      validate: (v) => {
+        // Allow empty/null to clear the value; otherwise accept any non-empty string.
+        if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
+        if (typeof v !== 'string') throw new Error('Assessment Record Course ID must be a string.');
         return v;
       },
     },

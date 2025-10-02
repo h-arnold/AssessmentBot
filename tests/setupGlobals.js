@@ -25,7 +25,50 @@ global.Utilities = {
 global.Logger = {
   log: (...a) => console.log('[LOG]', ...a),
 };
+// Use the shared ProgressTracker mock for tests
+global.ProgressTracker = require('./mocks/ProgressTracker.js');
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory;
+
+// Lightweight ClassroomManager shim used by some modules. Tests often mock
+// Classroom.Courses.Students.list directly, so prefer that when available.
+global.ClassroomManager = {
+  fetchAllStudents(courseId) {
+    // If the Classroom API is mocked in tests, convert returned student
+    // profiles into the shape expected by the rest of the code/tests
+    // (Student instances or plain objects with name/email/id).
+    if (
+      typeof Classroom !== 'undefined' &&
+      Classroom.Courses &&
+      Classroom.Courses.Students &&
+      typeof Classroom.Courses.Students.list === 'function'
+    ) {
+      const resp = Classroom.Courses.Students.list(courseId) || {};
+      const list = Array.isArray(resp.students) ? resp.students : [];
+
+      // Try to use the Student model when available so consumers get instances
+      let StudentModel = null;
+      try {
+        const StudentExport = require('../src/AdminSheet/Models/Student.js');
+        StudentModel = StudentExport.Student || StudentExport;
+      } catch (e) {
+        StudentModel = null;
+      }
+
+      return list.map((s) => {
+        const profile = s && s.profile ? s.profile : {};
+        const name = profile.name && profile.name.fullName ? profile.name.fullName : null;
+        const email = profile.emailAddress || null;
+        const id = profile.id || null;
+
+        if (StudentModel && typeof StudentModel === 'function')
+          return new StudentModel(name, email, id);
+        return { name, email, id };
+      });
+    }
+
+    return [];
+  },
+};

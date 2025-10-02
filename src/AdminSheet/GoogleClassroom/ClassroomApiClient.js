@@ -138,4 +138,113 @@ class ClassroomApiClient {
       progressTracker.logAndThrowError(`Failed to fetch classrooms: ${error.message}`, error);
     }
   }
+
+  /**
+   * Fetch a single course by ID.
+   * @param {string} courseId
+   * @returns {GoogleAppsScript.Classroom.Schema.Course|null}
+   */
+  static fetchCourse(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const course = Classroom.Courses.get(courseId);
+      return course || null;
+    } catch (error) {
+      progressTracker.logError(`Failed to fetch course (${courseId}): ${error.message}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch teachers for a given course.
+   * Returns the raw teacher objects as provided by the API (so callers can
+   * inspect profile fields).
+   * @param {string} courseId
+   * @returns {Array<Object>} array of teacher resource objects
+   */
+  static fetchTeachers(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const resp = Classroom.Courses.Teachers.list(courseId) || {};
+      const raw = resp.teachers || [];
+
+      // Map raw API teacher resources to local Teacher model instances.
+      // Keep the original raw objects available to callers by returning
+      // Teacher instances (which contain email, userId and name).
+      const teachers = raw
+        .map((t) => {
+          try {
+            const name = t?.profile?.name?.fullName || null;
+            const email = t?.profile?.emailAddress || null;
+            const userId = t?.profile?.id || null;
+            return new Teacher(email, userId, name);
+          } catch (err) {
+            // If mapping fails for any entry, log and skip that entry.
+            progressTracker.logError(
+              `Failed to map teacher resource for course (${courseId}): ${err.message}`,
+              err
+            );
+            return null;
+          }
+        })
+        .filter(Boolean);
+
+      return teachers;
+    } catch (error) {
+      progressTracker.logError(
+        `Failed to fetch teachers for course (${courseId}): ${error.message}`,
+        error
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Fetches all students from Google Classroom for a given course.
+   * Iterates through pages until there is no nextPageToken.
+   * @param {string} courseId - The ID of the Google Classroom course.
+   * @return {Student[]} - An array of Student instances.
+   */
+  static fetchAllStudents(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const studentList = [];
+      let pageToken = null;
+
+      do {
+        const params = { pageSize: 40 };
+        if (pageToken) params.pageToken = pageToken;
+
+        const response = Classroom.Courses.Students.list(courseId, params);
+
+        if (response.students && response.students.length > 0) {
+          response.students.forEach((student) => {
+            const name = student.profile.name.fullName;
+            const email = student.profile.emailAddress;
+            const id = student.profile.id;
+
+            const studentInstance = new Student(name, email, id);
+            studentList.push(studentInstance);
+          });
+        } else {
+          console.log(`No students found for course ID: ${courseId} on this page.`);
+        }
+
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+
+      return studentList;
+    } catch (error) {
+      progressTracker.logError(
+        `Error fetching students for course ID ${courseId}: ${error.message}`,
+        error
+      );
+      return [];
+    }
+  }
+}
+
+// Export for Node tests / CommonJS environment
+if (typeof module !== 'undefined') {
+  module.exports = { ClassroomApiClient };
 }

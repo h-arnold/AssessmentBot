@@ -134,7 +134,7 @@ class AssignmentController {
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
     this.progressTracker.updateProgress('Fetching all students.');
-    const students = ClassroomManager.fetchAllStudents(courseId);
+    const students = ClassroomApiClient.fetchAllStudents(courseId);
     this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
 
     this.progressTracker.updateProgress('Adding students to the assignment.');
@@ -183,7 +183,7 @@ class AssignmentController {
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
     this.progressTracker.updateProgress('Fetching all students.');
-    const students = ClassroomManager.fetchAllStudents(courseId);
+    const students = ClassroomApiClient.fetchAllStudents(courseId);
     this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
 
     this.progressTracker.updateProgress('Adding students to the assignment.');
@@ -290,6 +290,9 @@ class AssignmentController {
       console.log('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
+      const abClassManager = new ABClassManager();
+      const abClass = abClassManager.loadClass(courseId);
+
       // Process the assignment based on its type.
       let assignment;
       if (documentType === 'SLIDES') {
@@ -315,6 +318,10 @@ class AssignmentController {
       // Update lastUpdated value - when JsonDbApp is integrated, this will also be the point where the assignment data is written to the DB
 
       assignment.touchUpdated();
+
+      // Save assignment data to class
+
+      abClass.addAssignment(assignment);
 
       // Analyse assignment data
       this.analyseAssignmentData(assignment);

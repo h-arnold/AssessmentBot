@@ -369,7 +369,6 @@ class LLMRequestManager extends BaseRequestManager {
    * Assigns assessments to StudentTask and caches the result.
    * @param {string} uid
    * @param {Object} assessmentData
-   * @param {Object} request
    * @param {Assignment} assignment
    */
   _assignAndCacheAssessment(uid, assessmentData, assignment) {
