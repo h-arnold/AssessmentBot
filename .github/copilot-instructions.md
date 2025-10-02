@@ -125,11 +125,7 @@ After edits: list changed files + purpose.
 Quality gates (if code changed): run tests, note pass/fail.
 Avoid repeating unchanged plan parts.
 
-### 15. Edge Handling
-Explicitly handle: null/undefined public inputs, empty arrays/strings if meaningful, large input (avoid obvious O(n²) pitfalls).
-Defer until asked: i18n, config generalisation, multi-tenant abstractions.
-
-### 16. Top-Level Triggers Template
+### 15. Top-Level Triggers Template
 ```javascript
 try {
   // core logic
