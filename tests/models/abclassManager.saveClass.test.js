@@ -1,6 +1,6 @@
-const ABClassManager = require('../../src/AdminSheet/Models/ABClassManager');
+const ABClassController = require('../../src/AdminSheet/Models/ABClassController');
 
-describe('ABClassManager.saveClass', () => {
+describe('ABClassController.saveClass', () => {
   let manager;
   let dbManagerMock;
   let collectionMock;
@@ -20,7 +20,7 @@ describe('ABClassManager.saveClass', () => {
     // Inject mock DbManager instance
     global.DbManager = { getInstance: () => dbManagerMock };
     // Now construct manager which will call DbManager.getInstance()
-    manager = new ABClassManager();
+    manager = new ABClassController();
   });
 
   afterEach(() => {

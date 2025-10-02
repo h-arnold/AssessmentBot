@@ -6,8 +6,8 @@ const TeacherExport = require('../../src/AdminSheet/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
 const { createMockClassroomApiClient } = require('../helpers/mockFactories.js');
 
-describe('ABClassManager.initialise', () => {
-  let ABClassManager;
+describe('ABClassController.initialise', () => {
+  let ABClassController;
 
   beforeEach(() => {
     // Ensure domain constructors are available globally (some helpers expect globals)
@@ -37,12 +37,12 @@ describe('ABClassManager.initialise', () => {
       getInstance: () => ({ error: () => {}, warn: () => {}, info: () => {}, debug: () => {} }),
     };
 
-    // Mock ClassroomApiClient used by ABClassManager._applyCourseMetadata
+    // Mock ClassroomApiClient used by ABClassController._applyCourseMetadata
     global.ClassroomApiClient = createMockClassroomApiClient();
 
-    // Require ABClassManager after supplying global DbManager mock so module init uses mock
-    delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassManager.js')];
-    ABClassManager = require('../../src/AdminSheet/Models/ABClassManager.js');
+    // Require ABClassController after supplying global DbManager mock so module init uses mock
+    delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassController.js')];
+    ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
   });
 
   afterEach(() => {
@@ -54,9 +54,9 @@ describe('ABClassManager.initialise', () => {
     delete global.ABClass;
     delete global.DbManager;
     delete global.ABLogger;
-    // Clear ABClassManager module to avoid stale singleton state between tests
+    // Clear ABClassController module to avoid stale singleton state between tests
     try {
-      delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassManager.js')];
+      delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassController.js')];
     } catch (e) {
       // ignore
     }
@@ -104,7 +104,7 @@ describe('ABClassManager.initialise', () => {
       },
     };
 
-    const manager = new ABClassManager();
+    const manager = new ABClassController();
 
     // Act: call initialise with classId (not an instance)
     const ab = manager.initialise('course-xyz');
@@ -137,7 +137,7 @@ describe('ABClassManager.initialise', () => {
       },
     };
 
-    const manager = new ABClassManager();
+    const manager = new ABClassController();
 
     // Spy on saveClass by replacing with a function we can observe
     let saved = false;

@@ -6,7 +6,7 @@ instance that was loaded from JsonDbApp.
 
 ## Goals
 
-- Keep `ABClassManager.loadClass()` fast (only summary / partial assignments)
+- Keep `ABClassController.loadClass()` fast (only summary / partial assignments)
 - Hydrate **only when explicitly requested** (e.g. re‑running an assessment, export, audit)
 - Avoid subtle stale-reference bugs in JavaScript
 - Maintain a single, stable schema (partial vs full differ only in payload weight)
@@ -24,7 +24,7 @@ instance that was loaded from JsonDbApp.
 
 | Component        | Responsibility                                                                               |
 | ---------------- | -------------------------------------------------------------------------------------------- |
-| `ABClassManager` | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method. |
+| `ABClassController` | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method. |
 | Assignment Model | Pure data + business logic. It does **not** know how to talk to storage.                     |
 
 ## Collection Naming Convention
@@ -157,7 +157,7 @@ Future enhancement: catch these errors and trigger a reconstruction or assessmen
 
 ## Summary
 
-Hydration is an explicit, authoritative full replace using a dedicated per-assignment collection. We keep the model layer storage-agnostic by centralizing logic in `ABClassManager`. The immutable replace pattern minimizes subtle JS reference bugs, at the cost of requiring callers to adopt the returned instance.
+Hydration is an explicit, authoritative full replace using a dedicated per-assignment collection. We keep the model layer storage-agnostic by centralizing logic in `ABClassController`. The immutable replace pattern minimizes subtle JS reference bugs, at the cost of requiring callers to adopt the returned instance.
 
 ---
 

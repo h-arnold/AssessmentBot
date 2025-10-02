@@ -290,8 +290,8 @@ class AssignmentController {
       console.log('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
-      const abClassManager = new ABClassManager();
-      const abClass = abClassManager.loadClass(courseId);
+      const ABClassController = new ABClassController();
+      const abClass = ABClassController.loadClass(courseId);
 
       // Process the assignment based on its type.
       let assignment;

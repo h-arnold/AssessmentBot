@@ -1,5 +1,5 @@
 /**
- * ABClassManager
+ * ABClassController
  *
  * Small utility to load and save ABClass instances from the JsonDbApp-backed
  * collections managed by DbManager. The convention used here is that each
@@ -7,7 +7,7 @@
  * that collection are plain serialized ABClass objects (from ABClass.toJSON()).
  */
 
-class ABClassManager {
+class ABClassController {
   constructor() {
     this.dbManager = DbManager.getInstance();
   }
@@ -180,5 +180,5 @@ class ABClassManager {
 
 // Export for Node tests
 if (typeof module !== 'undefined') {
-  module.exports = ABClassManager;
+  module.exports = ABClassController;
 }
