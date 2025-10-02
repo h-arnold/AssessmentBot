@@ -3,7 +3,7 @@
  */
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { PerformanceMeasurement } from './PerformanceMeasurement.js';
+import { PerformanceMeasurement } from '../../src/AdminSheet/singletons/PerformanceMeasurement.js';
 
 describe('PerformanceMeasurement Utility', () => {
   let perf;
