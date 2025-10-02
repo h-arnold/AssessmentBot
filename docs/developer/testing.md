@@ -11,6 +11,7 @@ AssessmentBot uses **Vitest** as the testing framework for unit and integration 
 - **Configuration**: `vitest.config.js` (loads `tests/setupGlobals.js`)
 - **Test Runner (one-off)**: `npm test`
 - **Watch Mode**: `npm run test:watch`
+- **Module System**: Test files must use ESM `import` syntax for vitest (production code uses CommonJS `require`)
 
 ## Directory Structure
 
@@ -268,7 +269,7 @@ Available in all tests via `setupGlobals.js`:
 ### Basic Test Structure
 
 ```javascript
-const { describe, it, expect, beforeEach, afterEach } = require('vitest');
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('ComponentName', () => {
   let component;
@@ -296,6 +297,8 @@ describe('ComponentName', () => {
   });
 });
 ```
+
+**Note**: Use ESM `import` for vitest and test helpers. Production code (CommonJS modules) can still be loaded with `require()` if needed.
 
 ### Testing Serialisation
 
@@ -650,8 +653,11 @@ it('should call dependency method', () => {
 ### Testing Module Exports
 
 ```javascript
-// For modules with named exports
-const { MyClass } = require('../../src/path/to/Module.js');
+// For production modules (CommonJS): use require
+const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
+
+// For test helpers (may be CommonJS or ESM): use import
+import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
 // For modules that might have default or named exports
 const MyClassExport = require('../../src/path/to/Module.js');
