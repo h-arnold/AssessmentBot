@@ -1,63 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
-// Mock Google Apps Script services
-const mockScriptProperties = {
-  setProperty: vi.fn(),
-  getProperty: vi.fn(),
-  getProperties: vi.fn().mockReturnValue({}),
-  getKeys: vi.fn().mockReturnValue([]),
-};
-
-const mockDocumentProperties = {
-  setProperty: vi.fn(),
-  getProperty: vi.fn(),
-  getKeys: vi.fn().mockReturnValue([]),
-};
-
-const mockPropertiesService = {
-  getScriptProperties: vi.fn().mockReturnValue(mockScriptProperties),
-  getDocumentProperties: vi.fn().mockReturnValue(mockDocumentProperties),
-};
-
-const mockUtils = {
-  isValidUrl: vi.fn(),
-  validateIsAdminSheet: vi.fn(),
-};
-
-const mockDriveApp = {
-  getFileById: vi.fn(),
-  getFolderById: vi.fn(),
-};
-
-const mockMimeType = {
-  GOOGLE_SHEETS: 'application/vnd.google-apps.spreadsheet',
-};
-
-const mockSpreadsheetApp = {
-  getActiveSpreadsheet: vi.fn().mockReturnValue({
-    getId: vi.fn().mockReturnValue('test-spreadsheet-id'),
-  }),
-};
-
-const mockDriveManager = {
-  getParentFolderId: vi.fn(),
-  createFolder: vi.fn(),
-};
-
-const mockPropertiesCloner = vi.fn().mockImplementation(() => ({
-  sheet: null,
-  deserialiseProperties: vi.fn(),
-}));
-
-// Set up global mocks
-global.PropertiesService = mockPropertiesService;
-global.Utils = mockUtils;
-global.DriveApp = mockDriveApp;
-global.MimeType = mockMimeType;
-global.SpreadsheetApp = mockSpreadsheetApp;
-global.DriveManager = mockDriveManager;
-global.PropertiesCloner = mockPropertiesCloner;
-global.console = { log: vi.fn(), error: vi.fn() };
+// Set up global mocks using helper
+const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 
 // Import the class after setting up mocks
 const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
@@ -73,9 +18,9 @@ describe('ConfigurationManager setProperty', () => {
     ConfigurationManager.instance = null;
 
     // Setup default mock returns
-    mockDocumentProperties.getProperty.mockReturnValue(false);
-    mockUtils.isValidUrl.mockReturnValue(true);
-    mockUtils.validateIsAdminSheet.mockReturnValue(true);
+    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
+    mocks.Utils.isValidUrl.mockReturnValue(true);
+    mocks.Utils.validateIsAdminSheet.mockReturnValue(true);
 
     configManager = new ConfigurationManager();
   });
@@ -89,7 +34,7 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE,
         '120'
       );
@@ -126,7 +71,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE, 50);
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE,
         '50'
       );
@@ -151,7 +96,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE, 60);
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE,
         '60'
       );
@@ -176,7 +121,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'sk-abc123');
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.API_KEY,
         'sk-abc123'
       );
@@ -197,7 +142,7 @@ describe('ConfigurationManager setProperty', () => {
 
   describe('URL validation (BACKEND_URL, UPDATE_DETAILS_URL)', () => {
     it('should accept valid URL for BACKEND_URL', () => {
-      mockUtils.isValidUrl.mockReturnValue(true);
+      mocks.Utils.isValidUrl.mockReturnValue(true);
 
       expect(() => {
         configManager.setProperty(
@@ -206,14 +151,14 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.BACKEND_URL,
         'https://example.com'
       );
     });
 
     it('should reject invalid URL for BACKEND_URL', () => {
-      mockUtils.isValidUrl.mockReturnValue(false);
+      mocks.Utils.isValidUrl.mockReturnValue(false);
 
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, 'invalid-url');
@@ -221,7 +166,7 @@ describe('ConfigurationManager setProperty', () => {
     });
 
     it('should accept valid URL for UPDATE_DETAILS_URL', () => {
-      mockUtils.isValidUrl.mockReturnValue(true);
+      mocks.Utils.isValidUrl.mockReturnValue(true);
 
       expect(() => {
         configManager.setProperty(
@@ -230,14 +175,14 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL,
         'https://example.com/update'
       );
     });
 
     it('should reject invalid URL for UPDATE_DETAILS_URL', () => {
-      mockUtils.isValidUrl.mockReturnValue(false);
+      mocks.Utils.isValidUrl.mockReturnValue(false);
 
       expect(() => {
         configManager.setProperty(
@@ -262,7 +207,7 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
         'valid-sheet-id'
       );
@@ -312,7 +257,7 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
         'valid-folder-id'
       );
@@ -345,7 +290,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 0);
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
         '0'
       );
@@ -356,7 +301,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 1);
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
         '1'
       );
@@ -367,7 +312,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 2);
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
         '2'
       );
@@ -398,13 +343,13 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, true);
       }).not.toThrow();
 
-      expect(mockDocumentProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
         'true'
       );
 
       // Should return early and not call script properties
-      expect(mockScriptProperties.setProperty).not.toHaveBeenCalled();
+      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
     });
 
     it('should accept boolean false for SCRIPT_AUTHORISED and store in document properties', () => {
@@ -412,7 +357,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, false);
       }).not.toThrow();
 
-      expect(mockDocumentProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED,
         'false'
       );
@@ -423,7 +368,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, 'true');
       }).not.toThrow();
 
-      expect(mockDocumentProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
         'true'
       );
@@ -434,7 +379,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 'false');
       }).not.toThrow();
 
-      expect(mockDocumentProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
         ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
         'false'
       );
@@ -459,7 +404,7 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty('unknown_property', 'any_value');
       }).not.toThrow();
 
-      expect(mockScriptProperties.setProperty).toHaveBeenCalledWith(
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
         'unknown_property',
         'any_value'
       );
