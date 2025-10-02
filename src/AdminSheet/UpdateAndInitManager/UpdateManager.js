@@ -125,8 +125,8 @@ class UpdateManager extends BaseUpdateAndInit {
    */
   updateAdminSheet() {
     // Update configuration values prior to cloning.
-    ConfigurationManager.getInstance().setUpdateStage(1);
-    ConfigurationManager.getInstance().setIsAdminSheet(true); // Ensures that you can continue the update process in the new sheet.
+    configurationManager.setUpdateStage(1);
+    configurationManager.setIsAdminSheet(true); // Esnures that you can continue the update process in the new sheet.
 
     // Serialise existing config
     const propsCloner = new PropertiesCloner();
@@ -191,15 +191,14 @@ class UpdateManager extends BaseUpdateAndInit {
    * @throws {Error} If any step in the process fails.
    */
   updateAssessmentRecords() {
-    this.progressTracker = ProgressTracker.getInstance();
+  this.progressTracker = ProgressTracker.getInstance();
     const uiManager = UIManager.getInstance();
     uiManager.showProgressModal();
 
     this.progressTracker.startTracking('Updating all Assessment Records. This may take a while...');
 
     // Gets the assessment record template file Id - should have been set when the admin sheet was updated.
-    this.assessmentRecordTemplateId =
-      ConfigurationManager.getInstance().getAssessmentRecordTemplateId();
+    this.assessmentRecordTemplateId = configurationManager.getAssessmentRecordTemplateId();
 
     this.progressTracker.updateProgress('Fetching Assessment Record Details');
     // Get the assessment record details.
@@ -224,7 +223,7 @@ class UpdateManager extends BaseUpdateAndInit {
 
     // Marks the task as complete.
     this.progressTracker.complete();
-    ConfigurationManager.getInstance().setUpdateStage(2);
+    configurationManager.setUpdateStage(2);
   }
 
   /**
@@ -237,16 +236,13 @@ class UpdateManager extends BaseUpdateAndInit {
     propertiesCloner.deserialiseProperties(true);
 
     // Retrieve the destination folder ID from configuration.
-    this.destinationFolderId =
-      ConfigurationManager.getInstance().getAssessmentRecordDestinationFolder();
+    this.destinationFolderId = configurationManager.getAssessmentRecordDestinationFolder();
 
     // Make a local copy of the Assessment Record Template.
     this.assessmentRecordTemplateId = this.copyAssessmentRecordTemplate();
 
     // Store the fileId of the 'local' copy of the assessment record in the config files.
-    ConfigurationManager.getInstance().setAssessmentRecordTemplateId(
-      this.assessmentRecordTemplateId
-    );
+    configurationManager.setAssessmentRecordTemplateId(this.assessmentRecordTemplateId);
     const assessmentRecordTemplateUrl = this.getAssessmentRecordTemplateUrl(
       this.assessmentRecordTemplateId
     );

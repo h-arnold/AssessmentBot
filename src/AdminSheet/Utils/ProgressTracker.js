@@ -2,28 +2,18 @@
  * ProgressTracker class to manage progress updates.
  * Implemented as a Singleton to ensure only one instance exists.
  */
-class ProgressTracker extends BaseSingleton {
-  constructor(isSingletonCreator = false) {
-    super();
-    /**
-     * JSDoc Singleton Banner
-     * Use ProgressTracker.getInstance(); do not call constructor directly.
-     */
-    // Singleton guard: constructor should only execute once via getInstance()
-    if (!isSingletonCreator && ProgressTracker._instance) {
-      return; // no-op if already constructed
-    }
-
-    // Defer heavy work (PropertiesService access) until ensureInitialized()
-    this.properties = null;
+class ProgressTracker {
+  constructor() {
+    // Initialize properties
+    this.properties = PropertiesService.getDocumentProperties();
     this.propertyKey = 'ProgressTracker';
-    this.step = 0;
-    this._initialized = false;
+    this.step = 0; // Add step as class attribute
+
+    // Store the instance if this is the first construction
     if (!ProgressTracker._instance) {
       ProgressTracker._instance = this;
+      console.log('ProgressTracker instance created.');
     }
-
-    console.log('ProgressTracker instance created.');
   }
 
   /**
@@ -31,26 +21,17 @@ class ProgressTracker extends BaseSingleton {
    *
    * @returns {ProgressTracker} The singleton instance of ProgressTracker.
    */
-  /** One-time boundary for acquiring document properties */
-  ensureInitialized() {
-    if (this._initialized) return;
-    if (globalThis.__TRACE_SINGLETON__) {
-      console.log('[TRACE][HeavyInit] ProgressTracker.ensureInitialized');
+  static getInstance() {
+    if (!ProgressTracker._instance) {
+      ProgressTracker._instance = new ProgressTracker();
     }
-    this.properties = PropertiesService.getDocumentProperties();
-    this._initialized = true;
-    BaseSingleton._maybeFreeze(this);
+    return ProgressTracker._instance;
   }
-
-  /**
-   * Test helper to reset singleton between tests (Phase 1 convention).
-   */
 
   /**
    * Initializes the progress tracking by resetting any existing progress data.
    */
   startTracking() {
-    this.ensureInitialized();
     this.resetSteps();
     const initialData = {
       step: this.step,
@@ -69,7 +50,6 @@ class ProgressTracker extends BaseSingleton {
    * @param {boolean} incrementStep - Whether to increment the step by 1. Defaults to true.
    */
   updateProgress(message, incrementStep = true) {
-    this.ensureInitialized();
     if (incrementStep) {
       // Increment the step if no specific step is provided and incrementStep is true
       this.incrementStep();
@@ -99,13 +79,11 @@ class ProgressTracker extends BaseSingleton {
    */
   resetSteps() {
     this.step = 0;
-    const currentData = this.getCurrentProgress() || {};
-    const updatedData = {
-      ...currentData,
-      step: this.step,
-      timestamp: new Date().toISOString(),
-    };
-    this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
+    // Update stored progress while preserving any existing fields
+    const progress = this.getCurrentProgress() || {};
+    progress.step = this.step;
+    progress.timestamp = new Date().toISOString();
+    this.properties.setProperty(this.propertyKey, JSON.stringify(progress));
     console.log('Steps reset to 0.');
   }
 
@@ -113,7 +91,6 @@ class ProgressTracker extends BaseSingleton {
    * Marks the task as complete.
    */
   complete() {
-    this.ensureInitialized();
     const currentData = this.getCurrentProgress() || {};
     const updatedData = {
       ...currentData,
@@ -133,7 +110,7 @@ class ProgressTracker extends BaseSingleton {
     // are saved and can be deserialised later.
     // Only serialise properties if this isn't the Admin Sheet. The admin sheet gets its properties serialised during the update process.
 
-    if (!ConfigurationManager.getInstance().getIsAdminSheet()) {
+    if (!configurationManager.getIsAdminSheet()) {
       const propertiesCloner = new PropertiesCloner();
       propertiesCloner.serialiseProperties(true, false); //serialise document properties only because only the admin script uses ScriptProperties.
     }
@@ -176,8 +153,8 @@ class ProgressTracker extends BaseSingleton {
   _logDeveloperDetails(extraErrorDetails) {
     // These details are only for developers, not exposed in the UI
     // Format details as strings to avoid serialization issues
-    if (typeof extraErrorDetails === 'object' && extraErrorDetails !== null) {
-      // If it's an Error object or has a stack property
+    if (typeof extraErrorDetails === 'object') {
+      // If it's an Error-like object with a stack, print stack first
       if (extraErrorDetails.stack) {
         console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
         if (extraErrorDetails.message) {
@@ -186,18 +163,22 @@ class ProgressTracker extends BaseSingleton {
         if (extraErrorDetails.name) {
           console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
         }
-      } else {
-        // For other objects, try to stringify them
-        try {
-          console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
-        } catch (err) {
-          console.error('Developer details: [Object could not be stringified]', err);
-        }
+        return;
       }
-    } else {
-      // For strings or other primitive types – avoid default object stringification
-      console.error('Developer details:', extraErrorDetails);
+
+      // For other objects, try to stringify them safely
+      try {
+        console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
+      } catch (stringifyError) {
+        // If stringify fails, at least log that there was an unserializable object
+        console.error('Developer details: [Object could not be stringified]', extraErrorDetails);
+        console.error('Stringify error:', stringifyError);
+      }
+      return;
     }
+
+    // For strings or other primitive types
+    console.error(`Developer details: ${extraErrorDetails}`);
   }
 
   /**
@@ -255,7 +236,6 @@ class ProgressTracker extends BaseSingleton {
    * @returns {Object|null} The current progress data or null if not found.
    */
   getCurrentProgress() {
-    this.ensureInitialized();
     const progressJson = this.properties.getProperty(this.propertyKey);
     if (progressJson) {
       return JSON.parse(progressJson);
@@ -312,16 +292,7 @@ class ProgressTracker extends BaseSingleton {
    * Clears all progress data.
    */
   clearProgress() {
-    this.ensureInitialized();
     this.properties.deleteProperty(this.propertyKey);
     console.log('All progress data cleared.');
   }
-}
-
-// Export for Node (module.exports) and attach to global when running in GAS.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ProgressTracker;
-} else {
-  // Use globalThis instead of `this` so linters and strict environments are happy.
-  globalThis.ProgressTracker = ProgressTracker; // global assignment for GAS
 }
