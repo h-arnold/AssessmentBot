@@ -297,7 +297,7 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Handle HTTP errors from backend, including 400 and 401 cases.
+   * Handle HTTP errors from backend, including 400, 401, and 403 cases.
    * @param {HTTPResponse} response - The HTTP response object.
    * @param {string} uid - The UID of the request for logging.
    */
@@ -305,9 +305,17 @@ class LLMRequestManager extends BaseRequestManager {
     const code = response ? response.getResponseCode() : null;
     const text = response ? response.getContentText() : 'No response';
     if (code === 401) {
-      // Unauthorized: invalid API key, abort script
+      // Unauthorised: invalid API key, abort script
       this.progressTracker.logAndThrowError(
-        `Unauthorized (401) for UID: ${uid}. Invalid API key. Aborting script.`,
+        `Unauthorised (401) for UID: ${uid}. Invalid API key. Aborting script.`,
+        text
+      );
+      return;
+    }
+    if (code === 403) {
+      // Forbidden: insufficient permissions, abort script
+      this.progressTracker.logAndThrowError(
+        `Forbidden (403) for UID: ${uid}. Check API key permissions. Aborting script.`,
         text
       );
       return;
@@ -316,6 +324,15 @@ class LLMRequestManager extends BaseRequestManager {
       // Bad request: skip and log
       console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
+      return;
+    }
+    if (code === 413) {
+      // Payload too large: skip and log
+      console.warn(`Payload Too Large (413) for UID: ${uid}. Skipping request. Response: ${text}`);
+      this.progressTracker.logError(
+        `Payload Too Large (413) for UID: ${uid}. Request body exceeds size limit.`,
+        text
+      );
       return;
     }
     // Other errors: log and continue
