@@ -2,13 +2,14 @@
 
 ### 0. Prime Directives (Highest Priority – never violate)
 1. KISS: simplest working solution. No speculative abstraction.
-2. Only fulfil the explicit request (no scope creep). Ask ONLY if truly blocked.
-3. British English everywhere.
-4. Obey naming & style rules (below). Stay consistent with existing patterns.
-5. Never silently swallow errors. Fail fast or surface via required logging pattern.
-6. Reuse existing classes/utilities before creating new ones.
-7. Do not add production code purely for tests.
-8. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
+2. Assume all modules, classes, functions and methods are present. Do not guard against this.
+3. Only fulfil the explicit request (no scope creep). Ask ONLY if truly blocked.
+4. British English everywhere.
+5. Obey naming & style rules (below). Stay consistent with existing patterns.
+6. Never silently swallow errors. Fail fast or surface via required logging pattern.
+7. Reuse existing classes/utilities before creating new ones.
+8. Do not add production code purely for tests.
+9. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
 
 ### 1. Style & Naming
 | Item | Rule |
@@ -88,6 +89,29 @@ Inline brief comments for complex branches.
 - Overuse of optional chaining to mask logic requirements.
 - Abstractions “for future flexibility” without need.
 - Apps Script service calls inside tests.
+
+#### Example anti-pattern (swallowing errors):
+
+##### Anti pattern
+
+Unnessecary type guardd that makes code difficult to read.
+
+```javascript
+
+const client = typeof ABClass !== 'undefined' ? ABClass : require('../GoogleClassroom/ABClass.js');
+if (!client || typeof client.fetchCourse !== 'function') throw new Error('ABClass.fetchCourse is not available');
+```
+
+
+##### Correct implementation
+Directly calls the class, method or function.
+
+```javascript
+
+const abClass = new ABClass(classId)
+```
+
+Rationale: do not hide errors. Fail fast (throw) or log via ProgressTracker so failures are visible and debuggable. **Prefer uncaught exceptions over silent errors**.
 
 ### 13. Implementation Flow (LLM Macro)
 1. Parse request → enumerate explicit requirements.
