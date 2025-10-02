@@ -24,7 +24,7 @@ class CacheManager {
     // before hashing. We still hash the combined string so the final cache key is
     // a fixed-length SHA-256 hex string (64 chars) which stays well under Apps
     // Script's 250-character cache key limit.
-    const raw = `${contentHashReference}|${contentHashResponse}`;
+    const raw = `${contentHashReference}::${contentHashResponse}`;
     return Utils.generateHash(raw);
   }
 
