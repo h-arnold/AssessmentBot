@@ -1,7 +1,7 @@
 // GoogleClassroomManager.gs
 
 /**
-Manages Google Classroom operations and associated tasks.
+This class is responsible for the management of Google Classrooms for the ClassroomSheetManager - so providing the ability to edit and modify Google Classroom data from the Classroom Manager sheet. This will get refactored away at somepoint as we progress towards using JsonDbApp for everything, but for now it will remain in place as it has important functionality relating to the generation and updating of Assessment Records.
 */
 class GoogleClassroomManager {
   constructor() {

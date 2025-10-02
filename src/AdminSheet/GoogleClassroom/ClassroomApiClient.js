@@ -138,4 +138,53 @@ class ClassroomApiClient {
       progressTracker.logAndThrowError(`Failed to fetch classrooms: ${error.message}`, error);
     }
   }
+
+  /**
+   * Fetches all students from Google Classroom for a given course.
+   * Iterates through pages until there is no nextPageToken.
+   * @param {string} courseId - The ID of the Google Classroom course.
+   * @return {Student[]} - An array of Student instances.
+   */
+  static fetchAllStudents(courseId) {
+    const progressTracker = ProgressTracker.getInstance();
+    try {
+      const studentList = [];
+      let pageToken = null;
+
+      do {
+        const params = { pageSize: 40 };
+        if (pageToken) params.pageToken = pageToken;
+
+        const response = Classroom.Courses.Students.list(courseId, params);
+
+        if (response.students && response.students.length > 0) {
+          response.students.forEach((student) => {
+            const name = student.profile.name.fullName;
+            const email = student.profile.emailAddress;
+            const id = student.profile.id;
+
+            const studentInstance = new Student(name, email, id);
+            studentList.push(studentInstance);
+          });
+        } else {
+          console.log(`No students found for course ID: ${courseId} on this page.`);
+        }
+
+        pageToken = response.nextPageToken;
+      } while (pageToken);
+
+      return studentList;
+    } catch (error) {
+      progressTracker.logError(
+        `Error fetching students for course ID ${courseId}: ${error.message}`,
+        error
+      );
+      return [];
+    }
+  }
+}
+
+// Export for Node tests / CommonJS environment
+if (typeof module !== 'undefined') {
+  module.exports = { ClassroomApiClient };
 }
