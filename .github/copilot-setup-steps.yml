@@ -1,0 +1,41 @@
+name: Setup AssessmentBot Development Environment
+
+setup_steps:
+  - name: Install dependencies
+    run: npm install
+    description: Install all Node.js dependencies including Vitest, ESLint, and Prettier
+    
+  - name: Install Husky Git hooks
+    run: npm run prepare
+    description: Set up Git hooks for pre-commit linting and formatting
+    
+  - name: Verify installation
+    run: npm test
+    description: Run tests to verify the environment is set up correctly
+    
+# Optional: Pre-install script that can be run automatically
+# This ensures all tools are ready before Copilot starts making changes
+auto_run: true
+
+# Environment variables (if any are needed)
+env:
+  NODE_ENV: development
+
+# Notes for developers
+notes: |
+  This repository uses:
+  - Google Apps Script for the main application
+  - Node.js (v14+) for testing and development tools
+  - Vitest for unit testing
+  - ESLint for code linting
+  - Prettier for code formatting
+  - Husky for Git hooks
+  
+  After setup completes, you can:
+  - Run 'npm test' to execute all tests
+  - Run 'npm run test:watch' for test watch mode
+  - Run 'npm run lint' to check code style
+  - Run 'npm run format' to format code
+  
+  Tests run in Node.js and mock Google Apps Script services.
+  Production code runs in Google Apps Script environment.

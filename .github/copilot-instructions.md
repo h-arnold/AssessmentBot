@@ -1,5 +1,35 @@
 ## AssessmentBot – LLM Execution Contract (Optimised)
 
+### Project Overview
+AssessmentBot automates assessment of student work in Google Slides and Sheets by comparing submissions against reference materials. Built with Google Apps Script, it integrates with Google Classroom and uses an LLM backend for intelligent evaluation. The tool scores submissions on Completeness, Accuracy, and SPaG (Spelling, Punctuation, Grammar).
+
+**Technology Stack:**
+- Google Apps Script (GAS) for frontend/automation
+- Node.js + Vitest for unit testing
+- ESLint for linting
+- Prettier for code formatting
+
+**Key Directories:**
+- `src/AdminSheet/` - Main application code (Controllers, Models, Sheets, Utils, etc.)
+- `src/assessmentRecordTemplate/` - Template for individual assignment records
+- `tests/` - Vitest unit tests (logic only, no GAS services)
+- `docs/` - User and developer documentation
+
+**Essential Commands:**
+```bash
+npm test          # Run all tests
+npm run test:watch # Run tests in watch mode
+npm run lint      # Check code style
+npm run lint:fix  # Auto-fix linting issues
+npm run format    # Format code with Prettier
+```
+
+**Key Documentation:**
+- `./CONTRIBUTING.md` - General coding and documentation style guide
+- `./docs/developer/testing.md` - Testing patterns and best practices
+- `./docs/developer/singletons.md` - Singleton pattern implementation guide
+- `./docs/developer/DATA_SHAPES.md` - Data structure specifications
+
 ### 0. Prime Directives (Highest Priority – never violate)
 1. KISS: simplest working solution. No speculative abstraction.
 2. Assume all modules, classes, functions and methods are present. Do not guard against this.
