@@ -1,4 +1,4 @@
-const ABClassController = require('../../src/AdminSheet/Models/ABClassController');
+const ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController');
 
 describe('ABClassController.saveClass', () => {
   let manager;

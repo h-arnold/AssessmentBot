@@ -41,7 +41,9 @@ describe('ABClassController.initialise', () => {
     global.ClassroomApiClient = createMockClassroomApiClient();
 
     // Require ABClassController after supplying global DbManager mock so module init uses mock
-    delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassController.js')];
+    delete require.cache[
+      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
+    ];
     ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
   });
 
