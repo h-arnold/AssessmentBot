@@ -44,15 +44,11 @@ Else extend existing code.
 
 ### 5. Tests (Vitest: logic only)
 Add tests for any new serialisable or stateful logic:
-- Normalisation behaviour
-- Hash stability (truthiness + changes when content changes)
-- JSON round trip (`toJSON` / `fromJSON`)
-- Edge cases (empty, null, large)
 Prohibited: Apps Script services, network, timers tied to GAS.
-Artifacts in tests use primitive data only.
+Always consult testing docs at `./docs/developer/testing.md` before writing or debugging tests.
 
 ### 6. Singleton Pattern
-Always via `Class.getInstance()`. For test isolation use provided `resetForTests()` if exposed. Never `new` a singleton directly.
+Always via `Class.getInstance()`. Refer to `./docs/developer/singletons.md` when modifying or creating new Singletons.
 
 ### 7. Serialisation
 Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).

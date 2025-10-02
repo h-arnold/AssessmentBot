@@ -2,10 +2,19 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
 // Set up global mocks using helper (once at module level)
-const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
+let mocks;
+
+beforeEach(() => {
+  // Ensure singletons and global state are reset between tests
+  SingletonTestHarness.getInstance().reset();
+
+  // Create fresh GAS mocks for each test
+  mocks = setupGlobalGASMocks(vi, { mockConsole: true });
+});
 
 // Import the class after setting up mocks
 const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
+const { SingletonTestHarness } = require('../helpers/singletonTestHarness.js');
 
 describe('ConfigurationManager setProperty', () => {
   let configManager;
