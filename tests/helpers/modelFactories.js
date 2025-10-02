@@ -114,17 +114,55 @@ function createDummyConfigurationManager(overrides = {}) {
 }
 
 /**
+ * Dummy CacheManager class for testing
+ */
+class DummyCacheManager {
+  constructor() {
+    this.store = new Map();
+  }
+  getCachedAssessment(refHash, respHash) {
+    return this.store.get(refHash + '::' + respHash) || null;
+  }
+  setCachedAssessment(refHash, respHash, val) {
+    this.store.set(refHash + '::' + respHash, val);
+  }
+  clearCache() {
+    this.store.clear();
+  }
+}
+
+/**
+ * Dummy BaseRequestManager class for testing
+ */
+class DummyBaseRequestManager {
+  constructor(options = {}) {
+    this.responseCode = options.responseCode || 200;
+    this.responseBody = options.responseBody || null;
+  }
+  sendRequestsInBatches(requests) {
+    return requests.map((r) => ({
+      getResponseCode: () => this.responseCode,
+      getContentText: () =>
+        JSON.stringify(
+          this.responseBody || {
+            completeness: { score: 5, reasoning: 'ok' },
+            accuracy: { score: 4, reasoning: 'fine' },
+            spag: { score: 3, reasoning: 'avg' },
+          }
+        ),
+    }));
+  }
+  sendRequestWithRetries() {
+    return null;
+  }
+}
+
+/**
  * Create a dummy CacheManager for testing
  * @returns {Object} Dummy CacheManager instance with in-memory store
  */
 function createDummyCacheManager() {
-  const store = new Map();
-  return {
-    store,
-    getCachedAssessment: (refHash, respHash) => store.get(refHash + '::' + respHash) || null,
-    setCachedAssessment: (refHash, respHash, val) => store.set(refHash + '::' + respHash, val),
-    clearCache: () => store.clear(),
-  };
+  return new DummyCacheManager();
 }
 
 /**
@@ -133,24 +171,7 @@ function createDummyCacheManager() {
  * @returns {Object} Dummy BaseRequestManager instance
  */
 function createDummyBaseRequestManager(options = {}) {
-  const { responseCode = 200, responseBody = {} } = options;
-
-  return {
-    sendRequestsInBatches: (requests) => {
-      return requests.map((r) => ({
-        getResponseCode: () => responseCode,
-        getContentText: () =>
-          JSON.stringify(
-            responseBody || {
-              completeness: { score: 5, reasoning: 'ok' },
-              accuracy: { score: 4, reasoning: 'fine' },
-              spag: { score: 3, reasoning: 'avg' },
-            }
-          ),
-      }));
-    },
-    sendRequestWithRetries: () => null,
-  };
+  return new DummyBaseRequestManager(options);
 }
 
 /**
@@ -177,11 +198,11 @@ function setupGlobalDummyClasses() {
   }
 
   if (!global.BaseRequestManager) {
-    global.BaseRequestManager = createDummyBaseRequestManager;
+    global.BaseRequestManager = DummyBaseRequestManager;
   }
 
   if (!global.CacheManager) {
-    global.CacheManager = createDummyCacheManager;
+    global.CacheManager = DummyCacheManager;
   }
 }
 
@@ -194,4 +215,6 @@ module.exports = {
   createDummyCacheManager,
   createDummyBaseRequestManager,
   setupGlobalDummyClasses,
+  DummyCacheManager,
+  DummyBaseRequestManager,
 };

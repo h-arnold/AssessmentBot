@@ -1,4 +1,7 @@
-const { SingletonTestHarness } = require('./SingletonTestHarness.js');
+const {
+  loadSingletonsWithMocks,
+  SingletonTestHarness,
+} = require('../helpers/singletonTestSetup.js');
 
 /**
  * Phase 2 behavior tests – focus on heavy boundary guarding & classroom manager laziness.
@@ -9,16 +12,22 @@ const harness = new SingletonTestHarness();
 describe('Phase 2: Heavy boundary & classroom manager tests', () => {
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
-      harness.setupGASMocks();
-      ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
-      UIManager = require('../../src/AdminSheet/UI/UIManager.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadConfigurationManager: true,
+        loadUIManager: true,
+      });
+      ConfigurationManager = singletons.ConfigurationManager;
+      UIManager = singletons.UIManager;
       global.configurationManager = ConfigurationManager.getInstance();
     });
   });
 
   test('setting a script property triggers initialization exactly once', async () => {
     await harness.withFreshSingletons(() => {
-      ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadConfigurationManager: true,
+      });
+      ConfigurationManager = singletons.ConfigurationManager;
       const cfg = ConfigurationManager.getInstance();
 
       // Before any setter/getter: no PropertiesService access
@@ -40,7 +49,10 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
 
   test('validation of invalid sheet id uses heuristic without Drive access', async () => {
     await harness.withFreshSingletons(() => {
-      ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadConfigurationManager: true,
+      });
+      ConfigurationManager = singletons.ConfigurationManager;
       const cfg = ConfigurationManager.getInstance();
       const invalidId = 'short';
       const result = cfg.isValidGoogleSheetId(invalidId);
@@ -52,7 +64,10 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
 
   test('first classroom UI call instantiates GoogleClassroomManager exactly once', async () => {
     await harness.withFreshSingletons(() => {
-      UIManager = require('../../src/AdminSheet/UI/UIManager.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadUIManager: true,
+      });
+      UIManager = singletons.UIManager;
       const ui = UIManager.getInstance();
 
       // Non-classroom operation should not instantiate classroom manager

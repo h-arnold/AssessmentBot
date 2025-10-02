@@ -1,4 +1,8 @@
-const { SingletonTestHarness } = require('./SingletonTestHarness.js');
+const {
+  loadSingletonsWithMocks,
+  SingletonTestHarness,
+} = require('../helpers/singletonTestSetup.js');
+const { repeat } = require('../helpers/testUtils.js');
 
 /**
  * Phase 1: Idempotency tests ensuring multiple getInstance() calls do not cause
@@ -11,18 +15,19 @@ describe('Singleton getInstance() idempotency', () => {
 
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
-      harness.setupGASMocks();
-      ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
-      InitController = require('../../src/AdminSheet/y_controllers/InitController.js');
-      UIManager = require('../../src/AdminSheet/UI/UIManager.js');
-      ProgressTracker = require('../../src/AdminSheet/Utils/ProgressTracker.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadConfigurationManager: true,
+        loadInitController: true,
+        loadUIManager: true,
+        loadProgressTracker: true,
+      });
+      ConfigurationManager = singletons.ConfigurationManager;
+      InitController = singletons.InitController;
+      UIManager = singletons.UIManager;
+      ProgressTracker = singletons.ProgressTracker;
     });
     harness.resetMockCalls();
   });
-
-  function repeat(n, fn) {
-    for (let i = 0; i < n; i++) fn();
-  }
 
   test('ConfigurationManager.getInstance() returns same instance across calls', () => {
     const instances = [];

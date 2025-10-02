@@ -1,4 +1,7 @@
-const { SingletonTestHarness } = require('./SingletonTestHarness.js');
+const {
+  loadSingletonsWithMocks,
+  SingletonTestHarness,
+} = require('../helpers/singletonTestSetup.js');
 
 /**
  * Tests for lazy UI probing behavior introduced in UIManager.
@@ -10,8 +13,10 @@ describe('UIManager lazy UI probe', () => {
 
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
-      harness.setupGASMocks();
-      UIManager = require('../../src/AdminSheet/UI/UIManager.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadUIManager: true,
+      });
+      UIManager = singletons.UIManager;
     });
   });
 
