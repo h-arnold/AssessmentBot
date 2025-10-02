@@ -43,14 +43,13 @@ class ABClassManager {
       } else {
         abClass.addTeacher(teacherObj);
       }
-
     });
   }
 
   // Helper: fetch and apply students
   _applyStudents(abClass, courseId) {
     // Use ClassroomManager helper which handles paging and API details.
-    const students = ClassroomManager.fetchAllStudents(courseId)
+    const students = ClassroomManager.fetchAllStudents(courseId);
 
     students.forEach((st) => {
       abClass.addStudent(st);
@@ -151,10 +150,23 @@ class ABClassManager {
 
     const collection = this.dbManager.getCollection(collectionName);
 
-    // Normalize to an insert/update path. Prefer updateOne upsert when available.
+    // Normalize to an insert/update path. If the collection already contains
+    // a document for this classId, use replaceOne to update it. Otherwise
+    // insert a new document.
     try {
-        collection.insertOne(abClass);
+      // Try to find an existing document for this classId. JsonDbApp's
+      // collections typically store a single document per class, keyed by
+      // classId. Use a field-based query to detect existence.
+      const existing = collection.findOne({ classId: abClass.classId });
 
+      if (existing) {
+        // Replace the existing document entirely. Do not include update
+        // operators in the replacement object.
+        collection.replaceOne({ classId: abClass.classId }, abClass);
+      } else {
+        // No existing document — insert a new one.
+        collection.insertOne(abClass);
+      }
     } catch (err) {
       // Provide a clearer error path while keeping previous behavior
       console.warn('saveClass: collection operation failed', err?.message ?? err);
