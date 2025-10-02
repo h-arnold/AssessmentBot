@@ -165,7 +165,7 @@ class ClassroomApiClient {
         pageToken = response.nextPageToken;
       } while (pageToken);
 
-      console.log(`${courses.length} active classrooms retrieved.`);
+      ABLogger.getInstance().info('Active classrooms retrieved', { count: courses.length });
       return courses;
     } catch (error) {
       progressTracker.logError(`Failed to retrieve active classrooms: ${error.message}`, error);
