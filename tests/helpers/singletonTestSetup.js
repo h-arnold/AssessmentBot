@@ -14,7 +14,7 @@ const { SingletonTestHarness } = require('../singletons/SingletonTestHarness.js'
  * @param {boolean} options.loadProgressTracker - Load ProgressTracker
  * @returns {Object} Context with harness and loaded singletons
  */
-function createSingletonTestContext(options = {}) {
+function createSingletonTestContext() {
   const harness = new SingletonTestHarness();
   const context = { harness };
 
