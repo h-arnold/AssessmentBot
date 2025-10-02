@@ -113,7 +113,7 @@ class DbManager extends BaseSingleton {
     const config = this._getConfig();
 
     try {
-      const hasMaster = !!config.masterIndexKey
+      const hasMaster = !!config.masterIndexKey;
       this._db = hasMaster
         ? JsonDbApp.loadDatabase(config)
         : JsonDbApp.createAndInitialiseDatabase(config);
