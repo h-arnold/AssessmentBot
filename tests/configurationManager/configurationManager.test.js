@@ -5,16 +5,12 @@ import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 let mocks;
 
 beforeEach(() => {
-  // Ensure singletons and global state are reset between tests
-  SingletonTestHarness.getInstance().reset();
-
   // Create fresh GAS mocks for each test
   mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 });
 
 // Import the class after setting up mocks
 const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
-const { SingletonTestHarness } = require('../helpers/singletonTestHarness.js');
 
 describe('ConfigurationManager setProperty', () => {
   let configManager;
@@ -32,6 +28,11 @@ describe('ConfigurationManager setProperty', () => {
     mocks.Utils.validateIsAdminSheet.mockReturnValue(true);
 
     configManager = new ConfigurationManager();
+    
+    // Manually inject the mock properties services to ensure the test spies work
+    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
+    configManager.documentProperties = mocks.PropertiesService.documentProperties;
+    configManager._initialized = true; // Mark as initialized to skip ensureInitialized's service calls
   });
 
   describe('BACKEND_ASSESSOR_BATCH_SIZE validation', () => {
