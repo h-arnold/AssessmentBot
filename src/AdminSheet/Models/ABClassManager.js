@@ -98,9 +98,6 @@ class ABClassManager {
     this._applyTeachers(abClass, classId);
     this._applyStudents(abClass, classId);
 
-    // Save the class to the DB.
-    this.saveClass(abClass);
-
     return abClass;
   }
 
