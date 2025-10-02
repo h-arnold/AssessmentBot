@@ -1,210 +1,137 @@
-# AssessmentBot Code Schema
+## AssessmentBot – LLM Execution Contract (Optimised)
 
-## Project
+### 0. Prime Directives (Highest Priority – never violate)
+1. KISS: simplest working solution. No speculative abstraction.
+2. Only fulfil the explicit request (no scope creep). Ask ONLY if truly blocked.
+3. British English everywhere.
+4. Obey naming & style rules (below). Stay consistent with existing patterns.
+5. Never silently swallow errors. Fail fast or surface via required logging pattern.
+6. Reuse existing classes/utilities before creating new ones.
+7. Do not add production code purely for tests.
+8. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
 
-- TYPE: Google Apps Script assessment tool
-- DOMAIN: Education, Google Classroom
-- FUNCTION: Evaluate student slide submissions against references
-- ASSESSMENT_CRITERIA: {Completeness, Accuracy, SPaG}
-- MARKERS: {Text:"#", Images:"~|"}
-- DATA_STORAGE: Google Sheets
-- COMPLIANCE: GDPR (data within Google Workspace)
+### 1. Style & Naming
+| Item | Rule |
+|------|------|
+| Classes | PascalCase |
+| Methods / variables | camelCase |
+| Constants | const NAME (UPPER or clear semantic) |
+| Indent | 2 spaces |
+| Language | British English |
+| Paths | Core: `src/AdminSheet` |
+| Load order | Preserve numeric prefixes |
+Avoid abbreviations unless universally recognised (URL, ID, API).
 
-## Architecture
+### 2. Architecture Map
+Singleton base: `src/AdminSheet/00_BaseSingleton.js` (canonical). Examples: `ABLogger`, `ProgressTracker`, `ConfigurationManager`, `DbManager`.
+Domains: Controllers (`y_controllers`), Sheets, AssignmentProcessor, Models (+ Artifacts), RequestHandlers, DocumentParsers, UpdateAndInitManager, Utils.
 
-- FRONTEND: Google Apps Script
-- BACKEND: [Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)
-- STORAGE: Google Sheets - soon to be [JsonDBApp](https://github.com/h-arnold/JsonDbApp)
+### 3. Error & Logging Contract
+User-facing failure: `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`.
+Developer diagnostics: `ABLogger.getInstance().debugUi/info/warn/error(...)`.
+If dev details already provided as second param to `logError`, do NOT separately call `ABLogger.error` with the same info.
+No `console.*` in new code.
+Required value absent? Validate & throw (or log + throw). Optional deep access may use `?.` but not to hide bugs.
 
-## Code_Standards
+### 4. Creation Rules
+Create NEW component only if domain gap exists:
+- Model: new persistent domain entity.
+- Artifact: new assessable content type (mirror existing numbering pattern).
+- Sheet manager: new sheet lifecycle (create + populate + update) required.
+- Request handler: new external/batch/cached service.
+Else extend existing code.
 
-ALL NAMES: Prefer full words; avoid abbreviations unless widely recognised.
+### 5. Tests (Vitest: logic only)
+Add tests for any new serialisable or stateful logic:
+- Normalisation behaviour
+- Hash stability (truthiness + changes when content changes)
+- JSON round trip (`toJSON` / `fromJSON`)
+- Edge cases (empty, null, large)
+Prohibited: Apps Script services, network, timers tied to GAS.
+Artifacts in tests use primitive data only.
 
-- CLASS_NAMING: PascalCase
-- METHOD_NAMING: camelCase
-- VARIABLE_NAMING: camelCase
-- CONSTANTS: const
-- VARIABLES: let
-- LANGUAGE: British English
-- INDENTATION: 2 spaces
-- PATHS:
-  - CORE: /src/AdminSheet
-  - CONTROLLERS: /src/AdminSheet/z_Controllers
-- LOAD_ORDER: numeric prefixes (0BaseSheetManager.js)
+### 6. Singleton Pattern
+Always via `Class.getInstance()`. For test isolation use provided `resetForTests()` if exposed. Never `new` a singleton directly.
 
-## Implementation_Patterns
+### 7. Serialisation
+Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).
 
-- INSTANTIATION: lazy
-- DESIGN: dependency injection
-- METHODS: small, focused
-- SERVICES: singletons /src/AdminSheet/00_BaseSingleton.js
-- ERROR_HANDLING:
-  - USER_FACING: this.progressTracker.logError(errorMessage, extraErrorDetails)
-  - DEV_FACING: Use the project-wide `ABLogger` (see `src/AdminSheet/Utils/ABLogger.js`) for non-user-facing developer logs and errors. Prefer calling `ABLogger.getInstance()` (for example: `ABLogger.getInstance().debugUi(...)`) rather than `console.error` — we are gradually migrating to `ABLogger`, so all new code should use it. Do not duplicate `ABLogger.error` after `ProgressTracker.getInstance().logError`; pass extra details to `logError` as the second parameter for developer logs.
-  - STRUCTURE: try/catch blocks
- - FAIL FAST: Avoid fallbacks - better to throw or have uncaught exceptions than silent failures.
+### 8. Hashing & Equality
+Use `Utils.generateHash`. Do not assert literal hash strings. Assert existence, stability, and change upon content mutation.
 
-  - OPTIONAL CHAINING & UNHANDLED EXCEPTIONS (LLM-OPTIMISED):
-    - Use `?.` for nullable/deep property access. Do not use to silently ignore required values; validate and throw/log if required.
-    - Top-level or trigger handlers: wrap in `try/catch`, call `this.progressTracker.logError(msg, details)` and `ABLogger.getInstance().error(msg, err)`.
+### 9. Performance & Quotas
+Batch using existing utilities (e.g. `BatchUpdateUtility`). No new frameworks. Avoid premature caching—add only if duplication is measurable.
 
-## Documentation
+### 10. JSDoc Minimum
+/**
+ * Concise description.
+ * @param {Type} name - Purpose (British English).
+ * @return {Type} Meaningful result description.
+ * @remarks Edge cases only if non-obvious.
+ */
+Inline brief comments for complex branches.
 
-- FORMAT: JSDoc
-- COMPONENTS: {description, @param, @return, @remarks}
-- STYLE: British English
-- INLINE: for complex logic
+### 11. Decision Cheat Sheet
+| Situation | Action |
+|-----------|--------|
+| User-visible failure | ProgressTracker.logError(msg, details) |
+| Dev debug info | ABLogger.getInstance().debugUi(label, data) |
+| Missing required param | Validate then throw/log+throw |
+| Unsure placement | Mirror closest existing pattern |
+| New entity type? | Check Models/Artifacts first |
+| Serialisable logic added | Add tests |
 
-## Classes and paths
+### 12. Anti-Patterns (Never)
+- Empty catch blocks.
+- Parallel custom logger utilities.
+- Environment-specific values inside models.
+- Overuse of optional chaining to mask logic requirements.
+- Abstractions “for future flexibility” without need.
+- Apps Script service calls inside tests.
 
-Below is a harvested (non-exhaustive) list of classes found in the codebase and their file locations. Use these when referencing types, singletons, or when adding new code that must interoperate with existing classes.
+### 13. Implementation Flow (LLM Macro)
+1. Parse request → enumerate explicit requirements.
+2. Search for existing similar implementations.
+3. Define minimal delta (avoid broad refactor unless required).
+4. Implement change.
+5. Add/adjust tests (logic only).
+6. Run tests.
+7. Summarise changes & confirm constraints.
 
-- `BaseSingleton` - `src/AdminSheet/00_BaseSingleton.js`
-- `ABLogger` - `src/AdminSheet/Utils/ABLogger.js`
-- `ProgressTracker` - `src/AdminSheet/Utils/ProgressTracker.js`
-- `ConfigurationManager` - `src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js`
-- `DbManager` - `src/AdminSheet/DbManager/DbManager.js`
+### 14. Response Protocol (When Acting)
+Preamble: single sentence on next action.
+Multi-step: maintain todo list (one in-progress).
+After edits: list changed files + purpose.
+Quality gates (if code changed): run tests, note pass/fail.
+Avoid repeating unchanged plan parts.
 
-- Controllers
-  - `UpdateController` - `src/AdminSheet/y_controllers/UpdateController.js`
-  - `GoogleClassroomController` - `src/AdminSheet/y_controllers/GoogleClassroomController.js`
-  - `InitController` - `src/AdminSheet/y_controllers/InitController.js`
-  - `AssignmentController` - `src/AdminSheet/y_controllers/AssignmentController.js`
-  - `CohortAnalysisController` - `src/AdminSheet/y_controllers/CohortAnalysisController.js`
+### 15. Edge Handling
+Explicitly handle: null/undefined public inputs, empty arrays/strings if meaningful, large input (avoid obvious O(n²) pitfalls).
+Defer until asked: i18n, config generalisation, multi-tenant abstractions.
 
-- Sheet managers (Base + specialised)
-  - `BaseSheetManager` - `src/AdminSheet/Sheets/0BaseSheetManager.js`
-  - `TaskSheet` - `src/AdminSheet/Sheets/TaskSheet.js`
-  - `OverviewSheetManager` - `src/AdminSheet/Sheets/OverviewSheetManager.js`
-  - `CohortAnalysisSheetManager` - `src/AdminSheet/Sheets/CohortAnalysisSheetManager.js`
-  - `ClassroomSheetManager` - `src/AdminSheet/Sheets/ClassroomSheetManager.js`
-  - `SummarySheetManager` - `src/AdminSheet/Sheets/SummarySheetManager.js`
-  - `AnalysisSheetManager` - `src/AdminSheet/Sheets/AnalysisSheetManager.js`
-  - `ClassAssessmentSheet` - `src/AdminSheet/Sheets/ClassAssessmentSheet.js`
-  - `MultiSheetExtractor` - `src/AdminSheet/Sheets/MultiSheetExtractor.js`
-
-- Update & init
-  - `BaseUpdateAndInit` - `src/AdminSheet/UpdateAndInitManager/BaseUpdateAndInitManager.js`
-  - `UpdateManager` - `src/AdminSheet/UpdateAndInitManager/UpdateManager.js`
-  - `FirstRunManager` - `src/AdminSheet/UpdateAndInitManager/FirstRunManager.js`
-  - `SheetCloner` - `src/AdminSheet/UpdateAndInitManager/SheetCloner.js`
-  - `PropertiesCloner` - `src/AdminSheet/UpdateAndInitManager/PropertiesCloner.js`
-
-- Assignment processing and assessment
-  - `Assignment` - `src/AdminSheet/AssignmentProcessor/Assignment.js`
-  - `SheetsAssignment` - `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
-  - `SlidesAssignment` - `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
-
-- Models
-  - `ABClass` - `src/AdminSheet/Models/ABClass.js`
-  - `ABClassManager` - `src/AdminSheet/Models/ABClassManager.js`
-  - `Student` - `src/AdminSheet/Models/Student.js`
-  - `Teacher` - `src/AdminSheet/Models/Teacher.js`
-  - `StudentSubmission` - `src/AdminSheet/Models/StudentSubmission.js`
-  - `Assessment` - `src/AdminSheet/Models/Assessment.js`
-  - `TaskDefinition` - `src/AdminSheet/Models/TaskDefinition.js`
-
-- Artifacts
-  - `BaseTaskArtifact` - `src/AdminSheet/Models/Artifacts/0_BaseTaskArtifact.js`
-  - `TextTaskArtifact` - `src/AdminSheet/Models/Artifacts/1_TextTaskArtifact.js`
-  - `TableTaskArtifact` - `src/AdminSheet/Models/Artifacts/2_TableTaskArtifact.js`
-  - `SpreadsheetTaskArtifact` - `src/AdminSheet/Models/Artifacts/3_SpreadsheetTaskArtifact.js`
-  - `ImageTaskArtifact` - `src/AdminSheet/Models/Artifacts/4_ImageTaskArtifact.js`
-  - `ArtifactFactory` - `src/AdminSheet/Models/Artifacts/5_ArtifactFactory.js`
-
-- Request handlers / managers
-  - `BaseRequestManager` - `src/AdminSheet/RequestHandlers/BaseRequestManager.js`
-  - `LLMRequestManager` - `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
-  - `ImageManager` - `src/AdminSheet/RequestHandlers/ImageManager.js`
-  - `CacheManager` - `src/AdminSheet/RequestHandlers/CacheManager.js`
-
-- Document parsers
-  - `DocumentParser` - `src/AdminSheet/DocumentParsers/DocumentParser.js`
-  - `SlidesParser` - `src/AdminSheet/DocumentParsers/SlidesParser.js`
-  - `SheetsParser` - `src/AdminSheet/DocumentParsers/SheetsParser.js`
-
-- Feedback & population
-  - `SheetsFeedback` - `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
-
-- Google integrations / utilities
-  - `GoogleClassroomManager` - `src/AdminSheet/GoogleClassroom/GoogleClassroomManager.js`
-  - `ClassroomApiClient` - `src/AdminSheet/GoogleClassroom/ClassroomApiClient.js`
-  - `DriveManager` - `src/AdminSheet/GoogleDriveManager/DriveManager.js`
-  - `UIManager` - `src/AdminSheet/UI/UIManager.js`
-  - `ScriptAppManager` - `src/AdminSheet/Utils/ScriptAppManager.js`
-  - `TriggerController` - `src/AdminSheet/Utils/TriggerController.js`
-
-- Misc / utilities
-  - `BatchUpdateUtility` - `src/AdminSheet/Utils/BatchUpdateUtility.js`
-  - `Utils` - `src/AdminSheet/Utils/Utils.js`
-  - `Validate` - `src/AdminSheet/Utils/Validate.js`
-  - `AssignmentPropertiesManager` - `src/AdminSheet/Utils/AssignmentPropertiesManager.js`
-
-
-## Google_APIs
-
-- SPREADSHEETS: SpreadsheetApp
-- SLIDES: SlidesApp
-- FILES: DriveApp
-- CLASSROOM: ClassroomApp
-- OPTIMIZATION: batch operations
-- LIMITS: handle rate limits and quotas
-
-## Testing Framework (Local, Non-GAS)
-
-- FRAMEWORK: Vitest (lightweight Jest-compatible runner)
-- CONFIG: `vitest.config.js` (plain object export, avoids Vite ESM import)
-- SETUP FILE: `tests/setupGlobals.js`
-  - Provides shims: `Utils.generateHash`, `Utilities.base64Encode`, `Logger.log`.
-  - Exposes `ArtifactFactory` globally for models referencing it indirectly.
-- TEST LOCATION: `tests/**/*.test.js`
-- COMMANDS:
-  - Run once: `npm test` (alias for `vitest run`)
-  - Watch mode: `npm run test:watch`
-- SCOPE: Only pure logic / model code. Do NOT invoke Google Apps Script APIs (SlidesApp, DriveApp, etc.).
-- STUBBING: If a model needs a GAS value, refactor to accept primitives or inject a stub object created inside the test.
-- HASH STABILITY: Tests assume hash function is deterministic; avoid assertions on specific hash strings, only truthiness / inequality for changed content.
-- ARTIFACTS: All artifact tests should use primitive content (strings, arrays, Uint8Array for images) to keep environment independent of GAS.
-- SERIALISATION: Round-trip tests must use `toJSON()` / `fromJSON()` only—avoid deep cloning tricks that depend on execution context.
-- NEW TESTS: When adding a new model or feature, include at least: normalisation behaviour, hashing consistency, JSON round-trip, and edge cases (empty, null, large input where applicable).
-- PROHIBITED IN TESTS: Direct use of Apps Script services, network calls, timers reliant on GAS environment.
-- FUTURE EXTENSION: Add coverage by installing `@vitest/coverage-v8` and running `vitest run --coverage` (not yet configured).
-
-## Singleton loading pattern (BaseSingleton)
-
-We centralise singleton base behaviour in a single canonical file and enforce that policy in tests and linting.
-
-- Canonical implementation: `src/AdminSheet/00_BaseSingleton.js`
-  - This file contains the complete behaviour (static `getInstance`, `_createInstance`, `resetForTests`, `_maybeFreeze`, etc.).
-  - It is the single source of truth for singleton lifecycle and test helpers.
-
-- Tests: always load the canonical base in the test bootstrap
-  - To ensure unit tests use the full behaviour, require the canonical base early in `tests/setupGlobals.js`:
-
+### 16. Top-Level Triggers Template
 ```javascript
-// tests/setupGlobals.js
-require('../src/AdminSheet/00_BaseSingleton.js');
+try {
+  // core logic
+} catch (err) {
+  ProgressTracker.getInstance().logError('Readable user message', { err });
+  ABLogger.getInstance().error('Contextual dev message', err);
+  throw err; // preserve fail-fast
+}
 ```
 
-- How to import a singleton safely in isolation **for tests only**:
-  - If you need to require a singleton module in isolation (for a quick script or one-off test), require the canonical base first, then the singleton:
+### 17. Domain Glossary
+Assessment: Evaluation of student submission vs reference artefacts.
+Artifact: Normalised extracted content unit (text, image, table, etc.).
+TaskDefinition: Specification of expected artefacts & criteria.
+Submission: Student-submitted document(s).
+Cohort: Group/class aggregate analysis.
 
-**Note**: this pattern should be used in tests only. NEVER use it in production code.
-```javascript
-require('../src/AdminSheet/00_BaseSingleton.js');
-const ConfigurationManager = require('../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
-```
+### 18. Ambiguity Rule
+State 1–2 concise assumptions, proceed with simplest compliant implementation.
 
-## Important Notes
-
-- Only implement the code requested.
-- Ask for clarification if the request is ambiguous.
-- Check for existing code before creating new methods.
-- Avoid code for tests in production files.
-- Always write in British English.
-- Update code with British English spelling if you find American English.
-
-## THE MOST IMPORTANT NOTE
-
-KISS - Keep it simple, stupid! Always prefer the simplest solution that works. Assume that the user will ask for additional validation, error handling etc if they want it. Never add extra complexity "just in case".
-
+### 19. Ultra‑Compact Quick Card
+PRIORITY: KISS > Explicit request > Style > Logging contract > Tests (logic only)
+DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic.
+DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need.
+FALLBACK: If safe+minimal implement; if required value missing validate & throw; if unclear state assumption & proceed.
