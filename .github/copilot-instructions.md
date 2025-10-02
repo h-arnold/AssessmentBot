@@ -94,7 +94,7 @@ Inline brief comments for complex branches.
 
 ##### Anti pattern
 
-Unnessecary type guardd that makes code difficult to read.
+Unnecessary type guard that makes code difficult to read.
 
 ```javascript
 
