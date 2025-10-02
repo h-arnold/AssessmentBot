@@ -28,8 +28,8 @@ ALL NAMES: Prefer full words; avoid abbreviations unless widely recognised.
 - LANGUAGE: British English
 - INDENTATION: 2 spaces
 - PATHS:
-  - CORE: /src/frontend/BaseClassFolder
-  - CONTROLLERS: /src/frontend/z_Controllers
+  - CORE: /src/AdminSheet
+  - CONTROLLERS: /src/AdminSheet/z_Controllers
 - LOAD_ORDER: numeric prefixes (0BaseSheetManager.js)
 
 ## Implementation_Patterns
@@ -42,10 +42,10 @@ ALL NAMES: Prefer full words; avoid abbreviations unless widely recognised.
   - USER_FACING: this.progressTracker.logError(errorMessage, extraErrorDetails)
   - DEV_FACING: Use the project-wide `ABLogger` (see `src/AdminSheet/Utils/ABLogger.js`) for non-user-facing developer logs and errors. Prefer calling `ABLogger.getInstance()` (for example: `ABLogger.getInstance().debugUi(...)`) rather than `console.error` — we are gradually migrating to `ABLogger`, so all new code should use it. Do not duplicate `ABLogger.error` after `ProgressTracker.getInstance().logError`; pass extra details to `logError` as the second parameter for developer logs.
   - STRUCTURE: try/catch blocks
+ - FAIL FAST: Avoid fallbacks - better to throw or have uncaught exceptions than silent failures.
 
   - OPTIONAL CHAINING & UNHANDLED EXCEPTIONS (LLM-OPTIMISED):
     - Use `?.` for nullable/deep property access. Do not use to silently ignore required values; validate and throw/log if required.
-    - Always handle promise rejections: prefer `async/await` + `try/catch` or attach `.catch()`.
     - Top-level or trigger handlers: wrap in `try/catch`, call `this.progressTracker.logError(msg, details)` and `ABLogger.getInstance().error(msg, err)`.
 
 ## Documentation
@@ -55,6 +55,92 @@ ALL NAMES: Prefer full words; avoid abbreviations unless widely recognised.
 - STYLE: British English
 - INLINE: for complex logic
 
+## Classes and paths
+
+Below is a harvested (non-exhaustive) list of classes found in the codebase and their file locations. Use these when referencing types, singletons, or when adding new code that must interoperate with existing classes.
+
+- `BaseSingleton` - `src/AdminSheet/00_BaseSingleton.js`
+- `ABLogger` - `src/AdminSheet/Utils/ABLogger.js`
+- `ProgressTracker` - `src/AdminSheet/Utils/ProgressTracker.js`
+- `ConfigurationManager` - `src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js`
+- `DbManager` - `src/AdminSheet/DbManager/DbManager.js`
+
+- Controllers
+  - `UpdateController` - `src/AdminSheet/y_controllers/UpdateController.js`
+  - `GoogleClassroomController` - `src/AdminSheet/y_controllers/GoogleClassroomController.js`
+  - `InitController` - `src/AdminSheet/y_controllers/InitController.js`
+  - `AssignmentController` - `src/AdminSheet/y_controllers/AssignmentController.js`
+  - `CohortAnalysisController` - `src/AdminSheet/y_controllers/CohortAnalysisController.js`
+
+- Sheet managers (Base + specialised)
+  - `BaseSheetManager` - `src/AdminSheet/Sheets/0BaseSheetManager.js`
+  - `TaskSheet` - `src/AdminSheet/Sheets/TaskSheet.js`
+  - `OverviewSheetManager` - `src/AdminSheet/Sheets/OverviewSheetManager.js`
+  - `CohortAnalysisSheetManager` - `src/AdminSheet/Sheets/CohortAnalysisSheetManager.js`
+  - `ClassroomSheetManager` - `src/AdminSheet/Sheets/ClassroomSheetManager.js`
+  - `SummarySheetManager` - `src/AdminSheet/Sheets/SummarySheetManager.js`
+  - `AnalysisSheetManager` - `src/AdminSheet/Sheets/AnalysisSheetManager.js`
+  - `ClassAssessmentSheet` - `src/AdminSheet/Sheets/ClassAssessmentSheet.js`
+  - `MultiSheetExtractor` - `src/AdminSheet/Sheets/MultiSheetExtractor.js`
+
+- Update & init
+  - `BaseUpdateAndInit` - `src/AdminSheet/UpdateAndInitManager/BaseUpdateAndInitManager.js`
+  - `UpdateManager` - `src/AdminSheet/UpdateAndInitManager/UpdateManager.js`
+  - `FirstRunManager` - `src/AdminSheet/UpdateAndInitManager/FirstRunManager.js`
+  - `SheetCloner` - `src/AdminSheet/UpdateAndInitManager/SheetCloner.js`
+  - `PropertiesCloner` - `src/AdminSheet/UpdateAndInitManager/PropertiesCloner.js`
+
+- Assignment processing and assessment
+  - `Assignment` - `src/AdminSheet/AssignmentProcessor/Assignment.js`
+  - `SheetsAssignment` - `src/AdminSheet/AssignmentProcessor/SheetsAssignment.js`
+  - `SlidesAssignment` - `src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
+
+- Models
+  - `ABClass` - `src/AdminSheet/Models/ABClass.js`
+  - `ABClassManager` - `src/AdminSheet/Models/ABClassManager.js`
+  - `Student` - `src/AdminSheet/Models/Student.js`
+  - `Teacher` - `src/AdminSheet/Models/Teacher.js`
+  - `StudentSubmission` - `src/AdminSheet/Models/StudentSubmission.js`
+  - `Assessment` - `src/AdminSheet/Models/Assessment.js`
+  - `TaskDefinition` - `src/AdminSheet/Models/TaskDefinition.js`
+
+- Artifacts
+  - `BaseTaskArtifact` - `src/AdminSheet/Models/Artifacts/0_BaseTaskArtifact.js`
+  - `TextTaskArtifact` - `src/AdminSheet/Models/Artifacts/1_TextTaskArtifact.js`
+  - `TableTaskArtifact` - `src/AdminSheet/Models/Artifacts/2_TableTaskArtifact.js`
+  - `SpreadsheetTaskArtifact` - `src/AdminSheet/Models/Artifacts/3_SpreadsheetTaskArtifact.js`
+  - `ImageTaskArtifact` - `src/AdminSheet/Models/Artifacts/4_ImageTaskArtifact.js`
+  - `ArtifactFactory` - `src/AdminSheet/Models/Artifacts/5_ArtifactFactory.js`
+
+- Request handlers / managers
+  - `BaseRequestManager` - `src/AdminSheet/RequestHandlers/BaseRequestManager.js`
+  - `LLMRequestManager` - `src/AdminSheet/RequestHandlers/LLMRequestManager.js`
+  - `ImageManager` - `src/AdminSheet/RequestHandlers/ImageManager.js`
+  - `CacheManager` - `src/AdminSheet/RequestHandlers/CacheManager.js`
+
+- Document parsers
+  - `DocumentParser` - `src/AdminSheet/DocumentParsers/DocumentParser.js`
+  - `SlidesParser` - `src/AdminSheet/DocumentParsers/SlidesParser.js`
+  - `SheetsParser` - `src/AdminSheet/DocumentParsers/SheetsParser.js`
+
+- Feedback & population
+  - `SheetsFeedback` - `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
+
+- Google integrations / utilities
+  - `GoogleClassroomManager` - `src/AdminSheet/GoogleClassroom/GoogleClassroomManager.js`
+  - `ClassroomApiClient` - `src/AdminSheet/GoogleClassroom/ClassroomApiClient.js`
+  - `DriveManager` - `src/AdminSheet/GoogleDriveManager/DriveManager.js`
+  - `UIManager` - `src/AdminSheet/UI/UIManager.js`
+  - `ScriptAppManager` - `src/AdminSheet/Utils/ScriptAppManager.js`
+  - `TriggerController` - `src/AdminSheet/Utils/TriggerController.js`
+
+- Misc / utilities
+  - `BatchUpdateUtility` - `src/AdminSheet/Utils/BatchUpdateUtility.js`
+  - `Utils` - `src/AdminSheet/Utils/Utils.js`
+  - `Validate` - `src/AdminSheet/Utils/Validate.js`
+  - `AssignmentPropertiesManager` - `src/AdminSheet/Utils/AssignmentPropertiesManager.js`
+
+
 ## Google_APIs
 
 - SPREADSHEETS: SpreadsheetApp
@@ -63,14 +149,6 @@ ALL NAMES: Prefer full words; avoid abbreviations unless widely recognised.
 - CLASSROOM: ClassroomApp
 - OPTIMIZATION: batch operations
 - LIMITS: handle rate limits and quotas
-
-## Security
-
-- CALLS: minimize API usage
-- PERFORMANCE: implement caching
-- AUTH: verify permissions
-- DATA: keep within Google Workspace
-- PRIVACY: GDPR compliant
 
 ## Testing Framework (Local, Non-GAS)
 
@@ -108,13 +186,10 @@ We centralise singleton base behaviour in a single canonical file and enforce th
 require('../src/AdminSheet/00_BaseSingleton.js');
 ```
 
-- Per-file fallbacks are deprecated — do not add them
-  - Do NOT add or re-introduce per-file `BaseSingleton` fallbacks inside individual singleton files (for example `ConfigurationManager` or `ProgressTracker`).
-  - The previous minimal fallback pattern (defining a tiny `globalThis.BaseSingleton` in each file) is deprecated. It was originally used to avoid reference errors during isolated imports, but it increases maintenance cost and risks inconsistencies.
-
-- How to import a singleton safely in isolation
+- How to import a singleton safely in isolation **for tests only**:
   - If you need to require a singleton module in isolation (for a quick script or one-off test), require the canonical base first, then the singleton:
 
+**Note**: this pattern should be used in tests only. NEVER use it in production code.
 ```javascript
 require('../src/AdminSheet/00_BaseSingleton.js');
 const ConfigurationManager = require('../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
@@ -131,4 +206,5 @@ const ConfigurationManager = require('../src/AdminSheet/ConfigurationManager/Con
 
 ## THE MOST IMPORTANT NOTE
 
-KISS - Keep it simple, silly! Always prefer the simplest solution that works. Avoid fallbacks, never include backwards compatibility code unless explicitly requested and work on a fail-fast basis.
+KISS - Keep it simple, stupid! Always prefer the simplest solution that works. Assume that the user will ask for additional validation, error handling etc if they want it. Never add extra complexity "just in case".
+
