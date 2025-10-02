@@ -137,6 +137,45 @@ function createMockPropertiesCloner(vi) {
 }
 
 /**
+ * Create a mock ClassroomApiClient for testing
+ * This mock wraps the global.Classroom API and converts responses to model instances.
+ * Requires Teacher and Student constructors to be available globally.
+ * @returns {Object} Mock ClassroomApiClient class with static methods
+ */
+function createMockClassroomApiClient() {
+  return class MockClassroomApiClient {
+    static fetchCourse(courseId) {
+      if (!global.Classroom) return null;
+      return global.Classroom.Courses.get(courseId);
+    }
+
+    static fetchTeachers(courseId) {
+      if (!global.Classroom?.Courses?.Teachers) return [];
+      const resp = global.Classroom.Courses.Teachers.list(courseId) || {};
+      const raw = resp.teachers || [];
+      return raw.map((t) => {
+        const name = t?.profile?.name?.fullName || null;
+        const email = t?.profile?.emailAddress || null;
+        const userId = t?.profile?.id || null;
+        return new global.Teacher(email, userId, name);
+      });
+    }
+
+    static fetchAllStudents(courseId) {
+      if (!global.Classroom?.Courses?.Students) return [];
+      const resp = global.Classroom.Courses.Students.list(courseId) || {};
+      const raw = resp.students || [];
+      return raw.map((s) => {
+        const name = s?.profile?.name?.fullName || null;
+        const email = s?.profile?.emailAddress || null;
+        const id = s?.profile?.id || null;
+        return new global.Student(name, email, id);
+      });
+    }
+  };
+}
+
+/**
  * Setup all common GAS mocks on the global object
  * @param {Object} vi - Vitest vi object for creating mocks
  * @param {Object} options - Configuration options
@@ -177,5 +216,6 @@ module.exports = {
   createMockMimeType,
   createMockDriveManager,
   createMockPropertiesCloner,
+  createMockClassroomApiClient,
   setupGlobalGASMocks,
 };
