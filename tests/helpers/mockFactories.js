@@ -3,6 +3,8 @@
  * Reduces duplication of mock setup code across tests
  */
 
+const { simpleHash } = require('./testUtils.js');
+
 /**
  * Create a mock PropertiesService with vitest spies
  * @param {Object} vi - Vitest vi object for creating mocks
@@ -43,13 +45,7 @@ function createMockUtils(vi) {
   return {
     isValidUrl: vi.fn(),
     validateIsAdminSheet: vi.fn(),
-    generateHash: vi.fn((str) => {
-      let h = 0;
-      for (let i = 0; i < str.length; i++) {
-        h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-      }
-      return Math.abs(h).toString(16);
-    }),
+    generateHash: vi.fn(simpleHash),
     normaliseKeysToLowerCase: vi.fn((obj) => {
       if (!obj || typeof obj !== 'object') return obj;
       const out = {};

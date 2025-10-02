@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 
-// Set up global mocks using helper
+// Set up global mocks using helper (once at module level)
 const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 
 // Import the class after setting up mocks
