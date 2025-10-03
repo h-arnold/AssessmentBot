@@ -8,6 +8,7 @@ class BaseRequestManager {
     this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
     this.cache = CacheService.getScriptCache(); // Initialize the script cache
     this.progressTracker = ProgressTracker.getInstance();
+    this.logger = ABLogger.getInstance();
   }
 
   /**
@@ -60,20 +61,29 @@ class BaseRequestManager {
 
         // Check if error should abort processing
         if (this._shouldAbort(responseCode)) {
+          const errorDetails = {
+            statusCode: responseCode,
+            url: request.url,
+            responseText: response.getContentText(),
+          };
           this.progressTracker.logError(
             `Request to ${request.url} failed with status ${responseCode}. Please check your API keys in the settings.`,
-            { responseCode, responseText: response.getContentText() }
+            errorDetails
           );
-          throw new Error(
-            `Request to ${
-              request.url
-            } failed with status ${responseCode}. Error message: ${response.getContentText()}`
+          this.logger.error(
+            'Aborting request due to authentication/permission error',
+            errorDetails
           );
+          throw new AbortRequestError(responseCode, request.url, response.getContentText());
         }
 
         // Check if error is non-retryable (client errors)
         if (responseCode >= 400 && responseCode < 500 && !this._isRetryableError(responseCode)) {
           // Non-retryable client errors (400, 413, etc.) - return response for caller to handle
+          this.logger.warn(`Non-retryable client error ${responseCode} for ${request.url}`, {
+            responseCode,
+            responseText: response.getContentText(),
+          });
           console.warn(
             `Request to ${
               request.url
@@ -82,32 +92,27 @@ class BaseRequestManager {
           return response;
         }
 
-        // Retryable error - log and retry
-        if (this._isRetryableError(responseCode) || responseCode >= 500) {
-          console.warn(
-            `Request to ${
-              request.url
-            } failed with status ${responseCode}. Returned message: ${response.getContentText()}. Attempt ${
-              attempt + 1
-            } of ${maxRetries + 1}.`
-          );
-        } else {
-          // Unknown error - treat as retryable but log
-          console.warn(
-            `Request to ${
-              request.url
-            } failed with status ${responseCode}. Returned message: ${response.getContentText()}. Attempt ${
-              attempt + 1
-            } of ${maxRetries + 1}.`
-          );
-        }
+        // Any error reaching this point is retryable - log once and retry
+        console.warn(
+          `Request to ${
+            request.url
+          } failed with status ${responseCode}. Returned message: ${response.getContentText()}. Attempt ${
+            attempt + 1
+          } of ${maxRetries + 1}.`
+        );
       } catch (error) {
         // Network exceptions or thrown errors
-        if (error.message && error.message.includes('failed with status')) {
-          // Re-throw abort errors
+        if (error instanceof AbortRequestError) {
+          // Re-throw abort errors to halt processing
           throw error;
         }
         // Log network errors and retry
+        this.logger.error('Network error during request', {
+          url: request.url,
+          message: error.message,
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+        });
         console.error(
           `Error during request to ${request.url}: ${error.message}. Attempt ${attempt + 1} of ${
             maxRetries + 1

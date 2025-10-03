@@ -67,6 +67,23 @@ describe('BaseRequestManager Error Handling', () => {
     };
     global.ProgressTracker = mockProgressTracker;
 
+    // Setup mock ABLogger
+    const mockABLogger = {
+      getInstance: vi.fn().mockReturnValue({
+        log: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        debugUi: vi.fn(),
+      }),
+    };
+    global.ABLogger = mockABLogger;
+
+    // Load AbortRequestError
+    const AbortRequestError = require('../../src/AdminSheet/Utils/AbortRequestError.js');
+    global.AbortRequestError = AbortRequestError;
+
     // Mock console methods to avoid noise in test output
     global.console = {
       log: vi.fn(),
@@ -88,6 +105,8 @@ describe('BaseRequestManager Error Handling', () => {
     delete global.CacheService;
     delete global.ConfigurationManager;
     delete global.ProgressTracker;
+    delete global.ABLogger;
+    delete global.AbortRequestError;
     vi.clearAllMocks();
   });
 
