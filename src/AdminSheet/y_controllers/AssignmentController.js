@@ -315,6 +315,8 @@ class AssignmentController {
       // Process the assignment based on its type.
       let assignment;
       const students = abClass.students;
+      // Use the hydrated roster directly; when attached to an Assignment instance it remains transient
+      // and must not be persisted back to storage.
 
       if (documentType === 'SLIDES') {
         assignment = this.processSlidesAssignment(

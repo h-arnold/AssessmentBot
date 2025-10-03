@@ -33,6 +33,9 @@ class Assignment {
       typeof ProgressTracker.getInstance === 'function'
         ? ProgressTracker.getInstance()
         : null;
+    // Controllers may temporarily attach `assignment.students` while an assessment run is active
+    // to keep the hydrated roster handy. That property is transient and must never be persisted
+    // (see docs/developer/DATA_SHAPES.md and rehydration.md).
   }
 
   /**
@@ -80,6 +83,7 @@ class Assignment {
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
       tasks,
       submissions,
+      // Intentionally exclude any transient `students` roster attached at runtime.
     };
   }
 
@@ -194,6 +198,9 @@ class Assignment {
       typeof ProgressTracker.getInstance === 'function'
         ? ProgressTracker.getInstance()
         : null;
+
+    // Do not populate `inst.students` here; any roster data should be sourced from ABClass at runtime
+    // and treated as ephemeral to avoid duplicate persistence.
 
     return inst;
   }
