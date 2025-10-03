@@ -120,8 +120,13 @@ function setupModal(options = {}) {
   window.google = google;
   window.alert = vi.fn();
 
-  const inlineScript = extractInlineScript(templatedHtml);
-  window.eval(inlineScript);
+  const inlineScriptTag = Array.from(window.document.querySelectorAll('script')).find(
+    (s) => !s.src && s.textContent.trim()
+  );
+  if (!inlineScriptTag) {
+    throw new Error('Inline script block not found in SlideIdsModal.html');
+  }
+  window.eval(inlineScriptTag.textContent);
 
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
 
