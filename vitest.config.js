@@ -11,6 +11,7 @@ module.exports = {
       'tests/assignment/**/*.test.js',
       'tests/parsers/**/*.test.js',
       'tests/singletons/**/*.test.js',
+      'tests/ui/**/*.test.js',
     ],
   },
 };
