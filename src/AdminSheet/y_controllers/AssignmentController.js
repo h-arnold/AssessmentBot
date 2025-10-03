@@ -44,8 +44,19 @@ class AssignmentController {
       this.startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType);
       this.progressTracker.startTracking();
 
-      const uiManager = UIManager.getInstance();
-      uiManager.showProgressModal();
+      // UIManager may not be available in non-UI contexts (e.g., time-based triggers)
+      try {
+        const uiManager = UIManager.getInstance();
+        if (uiManager && typeof uiManager.showProgressModal === 'function') {
+          uiManager.showProgressModal();
+        }
+      } catch (uiError) {
+        // Silently ignore UI errors in non-UI contexts
+        const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn('UIManager not available or failed to show progress modal:', uiError);
+        }
+      }
 
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
     } catch (error) {
