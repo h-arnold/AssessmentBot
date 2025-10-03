@@ -28,12 +28,6 @@ function renderTemplate(template, { assignmentDataObj, savedDocumentIds }) {
     );
 }
 
-function extractInlineScript(html) {
-  const match = html.match(/<script>([\s\S]*?)<\/script>/);
-  if (!match) throw new Error('Inline script block not found in SlideIdsModal.html');
-  return match[1];
-}
-
 function createMaterializeMock() {
   return {
     updateTextFields: vi.fn(),
