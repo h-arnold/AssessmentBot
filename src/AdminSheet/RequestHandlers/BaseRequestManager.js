@@ -22,7 +22,7 @@ class BaseRequestManager {
     // - 500: Internal Server Error
     // - 503: Service Unavailable
     // - Any 5xx except those that indicate permanent failures
-    return statusCode === 429 || statusCode === 500 || statusCode === 503;
+    return statusCode === 429 || statusCode >= 500;
   }
 
   /**
