@@ -124,6 +124,7 @@ class ABClassController {
       }
       throw err;
     }
+  }
 
   /**
    * Initialise an ABClass instance by populating data that can be fetched using
@@ -241,7 +242,10 @@ class ABClassController {
       }
     } catch (err) {
       // Provide a clearer error path while keeping previous behavior
-      console.warn('saveClass: collection operation failed', err?.message ?? err);
+      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+      if (logger && typeof logger.warn === 'function') {
+        logger.warn('saveClass: collection operation failed', err?.message ?? err);
+      }
       throw err;
     }
 

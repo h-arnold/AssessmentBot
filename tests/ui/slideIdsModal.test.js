@@ -188,12 +188,13 @@ describe('SlideIdsModal UI flow', () => {
   });
 
   it('requires both IDs before attempting to save', () => {
-    const { window, document, alertMock, googleRun, cleanup } = setupModal({
-      savedDocumentIds: {
-        referenceDocumentId: '',
-        templateDocumentId: '',
-      },
-    });
+    const { window, document, materializeMock, alertMock, googleRun, googleHost, cleanup } =
+      setupModal({
+        savedDocumentIds: {
+          referenceDocumentId: '',
+          templateDocumentId: '',
+        },
+      });
 
     try {
       const referenceInput = document.getElementById('referenceDocumentId');
@@ -204,10 +205,13 @@ describe('SlideIdsModal UI flow', () => {
 
       window.saveAndRun();
 
-      expect(alertMock).toHaveBeenCalledWith(
-        'Please enter both Reference Document ID and Template Document ID.'
-      );
+      expect(materializeMock.toast).toHaveBeenCalledWith({
+        html: 'Please enter both Reference Document ID and Template Document ID.',
+        classes: 'red',
+      });
+      expect(alertMock).not.toHaveBeenCalled();
       expect(googleRun.saveStartAndShowProgress).not.toHaveBeenCalled();
+      expect(googleHost.close).not.toHaveBeenCalled();
     } finally {
       cleanup();
     }
@@ -263,8 +267,8 @@ describe('SlideIdsModal UI flow', () => {
         referenceDocumentId,
         templateDocumentId,
       ]);
-      expect(googleHost.close).toHaveBeenCalledTimes(1);
       expect(materializeMock.toast).not.toHaveBeenCalled();
+      expect(googleHost.close).not.toHaveBeenCalled();
 
       googleRun.triggerSuccess();
 
@@ -272,12 +276,13 @@ describe('SlideIdsModal UI flow', () => {
         html: 'Processing started.',
         classes: 'green',
       });
+      expect(googleHost.close).toHaveBeenCalledTimes(1);
     } finally {
       cleanup();
     }
   });
 
-  it('surfaces GAS failures via the alert failure handler', () => {
+  it('surfaces GAS failures via the toast failure handler', () => {
     const { window, document, alertMock, googleRun, materializeMock, cleanup } = setupModal();
 
     try {
@@ -294,6 +299,7 @@ describe('SlideIdsModal UI flow', () => {
         html: 'Processing failed: Upstream boom',
         classes: 'red',
       });
+      expect(alertMock).not.toHaveBeenCalled();
     } finally {
       cleanup();
     }

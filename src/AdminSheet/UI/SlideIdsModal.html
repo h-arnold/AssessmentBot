@@ -74,8 +74,6 @@
     </div>
 
     <script>
-      let validationAlertState = null;
-
       function showToast(message, classes) {
         if (typeof M !== 'undefined' && M?.toast) {
           M.toast({ html: message, classes });
@@ -89,12 +87,10 @@
         const inputs = [document.getElementById('referenceDocumentId'), document.getElementById('templateDocumentId')];
 
         if (referenceDocumentId && templateDocumentId && referenceDocumentId === templateDocumentId) {
-          validationAlertState = 'duplicate';
           errorMessage.style.display = 'block';
           inputs.forEach(input => input.classList.add('invalid'));
           return false;
         } else {
-          if (referenceDocumentId && templateDocumentId) validationAlertState = 'valid';
           errorMessage.style.display = 'none';
           inputs.forEach(input => input.classList.remove('invalid'));
           return true;
