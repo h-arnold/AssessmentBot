@@ -78,6 +78,11 @@ Key notes:
   using the `uid`/`taskId` identifiers.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
+- During assessment runs it is acceptable for an `Assignment` instance to carry a
+  transient `students` array that mirrors the roster pulled from `ABClass`. This
+  field exists purely for in-flight processing and **must never be persisted** in
+  JsonDbApp or other serialized stores; doing so will duplicate roster entries
+  each time an assessment is rehydrated.
 
 The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
 

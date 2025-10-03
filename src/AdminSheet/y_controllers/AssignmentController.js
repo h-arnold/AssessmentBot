@@ -116,14 +116,25 @@ class AssignmentController {
   }
 
   /**
-   * Processes a Google Slides assignment: fetches students, adds them, populates tasks, fetches and processes submissions, images, and assesses responses.
+   * Processes a Google Sheets assignment: adds the preloaded class roster, populates tasks, fetches and processes submissions, and assesses responses.
    * @param {string} courseId - The Classroom course ID
    * @param {string} assignmentId - The assignment ID
-   * @param {string} referenceDocumentId - The reference Slides document ID
-   * @param {string} templateDocumentId - The template Slides document ID
+   * @param {string} referenceDocumentId - The reference Sheets document ID
+   * @param {string} templateDocumentId - The template Sheets document ID
+   * @param {Object[]} students - The class roster sourced from the ABClass record
    * @return {SheetsAssignment} The populated SlidesAssignment instance
    */
-  processSheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
+  processSheetsAssignment(
+    courseId,
+    assignmentId,
+    referenceDocumentId,
+    templateDocumentId,
+    students
+  ) {
+    if (!Array.isArray(students)) {
+      throw new TypeError('students must be provided as an array');
+    }
+
     this.progressTracker.updateProgress('Creating Assignment instance.');
     const assignment = new SheetsAssignment(
       courseId,
@@ -133,13 +144,12 @@ class AssignmentController {
     );
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
-    this.progressTracker.updateProgress('Fetching all students.');
-    const students = ClassroomApiClient.fetchAllStudents(courseId);
-    this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
-
-    this.progressTracker.updateProgress('Adding students to the assignment.');
+    this.progressTracker.updateProgress('Adding students from class record.');
     students.forEach((student) => assignment.addStudent(student));
-    this.progressTracker.updateProgress('All students added to the assignment.', false);
+    this.progressTracker.updateProgress(
+      `${students.length} students added to the assignment from class record.`,
+      false
+    );
 
     this.progressTracker.updateProgress('Getting the tasks from the reference document.');
     assignment.populateTasks();
@@ -165,14 +175,25 @@ class AssignmentController {
   }
 
   /**
-   * Processes a Google Slides assignment: fetches students, adds them, populates tasks, fetches and processes submissions, images, and assesses responses.
+   * Processes a Google Slides assignment: adds the preloaded class roster, populates tasks, fetches and processes submissions, images, and assesses responses.
    * @param {string} courseId - The Classroom course ID
    * @param {string} assignmentId - The assignment ID
    * @param {string} referenceDocumentId - The reference Slides document ID
    * @param {string} templateDocumentId - The template Slides document ID
+   * @param {Object[]} students - The class roster sourced from the ABClass record
    * @return {SlidesAssignment} The populated SlidesAssignment instance
    */
-  processSlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
+  processSlidesAssignment(
+    courseId,
+    assignmentId,
+    referenceDocumentId,
+    templateDocumentId,
+    students
+  ) {
+    if (!Array.isArray(students)) {
+      throw new TypeError('students must be provided as an array');
+    }
+
     this.progressTracker.updateProgress('Creating Assignment instance.');
     const assignment = new SlidesAssignment(
       courseId,
@@ -182,13 +203,12 @@ class AssignmentController {
     );
     this.progressTracker.updateProgress('Assignment instance created.', false);
 
-    this.progressTracker.updateProgress('Fetching all students.');
-    const students = ClassroomApiClient.fetchAllStudents(courseId);
-    this.progressTracker.updateProgress(`${students.length} students fetched.`, false);
-
-    this.progressTracker.updateProgress('Adding students to the assignment.');
+    this.progressTracker.updateProgress('Adding students from class record.');
     students.forEach((student) => assignment.addStudent(student));
-    this.progressTracker.updateProgress('All students added to the assignment.', false);
+    this.progressTracker.updateProgress(
+      `${students.length} students added to the assignment from class record.`,
+      false
+    );
 
     this.progressTracker.updateProgress('Getting the tasks from the reference document.');
     assignment.populateTasks();
@@ -294,20 +314,23 @@ class AssignmentController {
 
       // Process the assignment based on its type.
       let assignment;
+      const students = abClass.students;
+
       if (documentType === 'SLIDES') {
         assignment = this.processSlidesAssignment(
           courseId,
           assignmentId,
           referenceDocumentId,
           templateDocumentId,
-          documentType
+          students
         );
       } else if (documentType === 'SHEETS') {
         assignment = this.processSheetsAssignment(
           courseId,
           assignmentId,
           referenceDocumentId,
-          templateDocumentId
+          templateDocumentId,
+          students
         );
       } else {
         const errorMsg = `Document type '${documentType}' is not supported.`;

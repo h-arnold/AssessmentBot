@@ -22,10 +22,18 @@ instance that was loaded from JsonDbApp.
 
 ## Responsibilities
 
-| Component        | Responsibility                                                                               |
-| ---------------- | -------------------------------------------------------------------------------------------- |
+| Component           | Responsibility                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------- |
 | `ABClassController` | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method. |
-| Assignment Model | Pure data + business logic. It does **not** know how to talk to storage.                     |
+| Assignment Model    | Pure data + business logic. It does **not** know how to talk to storage.                     |
+
+### Transient runtime fields
+
+Assignments may expose a `students` array while an assessment run is active so
+controllers can reuse the hydrated class roster without re-fetching it. Treat
+this property as ephemeral: it exists only during processing and **must not be
+persisted** back into JsonDbApp. Persisting it would append duplicate roster
+entries every time an assignment is rehydrated.
 
 ## Collection Naming Convention
 
