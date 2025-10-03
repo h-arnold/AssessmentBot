@@ -8,6 +8,35 @@ class BaseRequestManager {
     this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
     this.cache = CacheService.getScriptCache(); // Initialize the script cache
     this.progressTracker = ProgressTracker.getInstance();
+    this.logger = ABLogger.getInstance();
+  }
+
+  /**
+   * Determines if an HTTP status code represents a retryable error.
+   * @param {number} statusCode - The HTTP status code to check.
+   * @return {boolean} - True if the error is retryable, false otherwise.
+   * @private
+   */
+  _isRetryableError(statusCode) {
+    // Retryable errors (per backend error code documentation):
+    // - 429: Too Many Requests (rate limiting)
+    // - 500: Internal Server Error
+    // - 503: Service Unavailable
+    // - Any 5xx except those that indicate permanent failures
+    return statusCode === 429 || statusCode >= 500;
+  }
+
+  /**
+   * Determines if an HTTP status code represents a client error that should abort processing.
+   * @param {number} statusCode - The HTTP status code to check.
+   * @return {boolean} - True if the error should abort processing, false otherwise.
+   * @private
+   */
+  _shouldAbort(statusCode) {
+    // Errors that should abort (per backend error code documentation):
+    // - 401: Unauthorised (invalid API key)
+    // - 403: Forbidden (insufficient permissions)
+    return statusCode === 401 || statusCode === 403;
   }
 
   /**
@@ -24,27 +53,66 @@ class BaseRequestManager {
       try {
         const response = UrlFetchApp.fetch(request.url, request);
         const responseCode = response.getResponseCode();
+
+        // Success responses - return immediately
         if (responseCode === 200 || responseCode === 201) {
           return response;
-        } else if (responseCode === 403) {
-          this.progressTracker.Error(
-            `Request to ${request.url} failed. Please check your API Keys in the settings.`
+        }
+
+        // Check if error should abort processing
+        if (this._shouldAbort(responseCode)) {
+          const errorDetails = {
+            statusCode: responseCode,
+            url: request.url,
+            responseText: response.getContentText(),
+          };
+          this.progressTracker.logError(
+            `Request to ${request.url} failed with status ${responseCode}. Please check your API keys in the settings.`,
+            errorDetails
           );
-          throw new Error(
-            `Request to ${
-              request.url
-            } failed with status 403. Error message: ${response.getContentText()}`
+          this.logger.error(
+            'Aborting request due to authentication/permission error',
+            errorDetails
           );
-        } else {
+          throw new AbortRequestError(responseCode, request.url, response.getContentText());
+        }
+
+        // Check if error is non-retryable (client errors)
+        if (responseCode >= 400 && responseCode < 500 && !this._isRetryableError(responseCode)) {
+          // Non-retryable client errors (400, 413, etc.) - return response for caller to handle
+          this.logger.warn(`Non-retryable client error ${responseCode} for ${request.url}`, {
+            responseCode,
+            responseText: response.getContentText(),
+          });
           console.warn(
             `Request to ${
               request.url
-            } failed with status ${response.getResponseCode()}. \n Returned message: ${response.getContentText()} \n Attempt ${
-              attempt + 1
-            } of ${maxRetries + 1}.`
+            } failed with non-retryable status ${responseCode}. Response: ${response.getContentText()}`
           );
+          return response;
         }
+
+        // Any error reaching this point is retryable - log once and retry
+        console.warn(
+          `Request to ${
+            request.url
+          } failed with status ${responseCode}. Returned message: ${response.getContentText()}. Attempt ${
+            attempt + 1
+          } of ${maxRetries + 1}.`
+        );
       } catch (error) {
+        // Network exceptions or thrown errors
+        if (error instanceof AbortRequestError) {
+          // Re-throw abort errors to halt processing
+          throw error;
+        }
+        // Log network errors and retry
+        this.logger.error('Network error during request', {
+          url: request.url,
+          message: error.message,
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+        });
         console.error(
           `Error during request to ${request.url}: ${error.message}. Attempt ${attempt + 1} of ${
             maxRetries + 1
@@ -122,4 +190,9 @@ class BaseRequestManager {
 
     return allResponses;
   }
+}
+
+// Export for Node/Vitest environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = BaseRequestManager;
 }

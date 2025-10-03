@@ -145,65 +145,22 @@ class LLMRequestManager extends BaseRequestManager {
    */
   handleValidationFailure(uid, request, assignment) {
     if (!this.retryAttempts[uid]) this.retryAttempts[uid] = 0;
+
     if (this.retryAttempts[uid] >= this.maxValidationRetries) {
-      this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
-      Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+      this._handleRetryLimitReached(uid);
       return;
     }
+
     this.retryAttempts[uid]++;
-    this.progressTracker.logError(
-      'Validation failed for UID: ' +
-        uid +
-        '. Retrying attempt ' +
-        this.retryAttempts[uid] +
-        ' of ' +
-        this.maxValidationRetries +
-        '.'
-    );
+    this._logValidationRetry(uid);
+
     const retryResponse = this.sendRequestWithRetries(request, 3);
-    if (
-      retryResponse &&
-      (retryResponse.getResponseCode() === 200 || retryResponse.getResponseCode() === 201)
-    ) {
-      try {
-        const assessmentData = this._extractAssessmentData(retryResponse);
-        if (this.validateAssessmentData(assessmentData)) {
-          // Assign
-          this.assignAssessmentToStudentTask(
-            uid,
-            this.createAssessmentFromData(assessmentData),
-            assignment
-          );
-          // Cache via uidIndex mapping
-          if (this.uidIndex && this.uidIndex[uid]) {
-            const { item, taskDef } = this.uidIndex[uid];
-            const ref = taskDef.getPrimaryReference();
-            const refHash = ref && ref.contentHash;
-            const respHash = item.artifact && item.artifact.contentHash;
-            if (refHash && respHash)
-              this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
-          }
-          this.retryAttempts[uid] = 0; // success reset
-        } else {
-          this.progressTracker.logError(
-            'Invalid assessment data for UID: ' +
-              uid +
-              '. Assessment data object: ' +
-              JSON.stringify(assessmentData)
-          );
-          this.handleValidationFailure(uid, request, assignment);
-        }
-      } catch (e) {
-        this.progressTracker.logError(
-          'Error parsing retry response for UID: ' + uid + ' - ' + e.message,
-          e
-        );
-        this.handleValidationFailure(uid, request, assignment);
-      }
-    } else {
-      this.progressTracker.logError('Retry failed for UID: ' + uid);
-      Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+    if (!this._isSuccessfulResponse(retryResponse)) {
+      this._handleRetryHttpFailure(uid);
+      return;
     }
+
+    this._processRetryResponse(uid, request, assignment, retryResponse);
   }
 
   /**
@@ -265,8 +222,8 @@ class LLMRequestManager extends BaseRequestManager {
    */
   assignAssessmentToStudentTask(uid, assessmentData, assignment) {
     // name retained to minimise external ripple
-    if (this.uidIndex && this.uidIndex[uid]) {
-      const { item } = this.uidIndex[uid];
+    const item = this.uidIndex?.[uid]?.item;
+    if (item) {
       this._assignAssessmentArtifacts(item, assessmentData);
     } else {
       console.warn(`No matching submission item found for UID: ${uid}`);
@@ -276,6 +233,59 @@ class LLMRequestManager extends BaseRequestManager {
   _assignAssessmentArtifacts(item, assessmentData) {
     for (const [criterion, assessment] of Object.entries(assessmentData)) {
       item.addAssessment(criterion, assessment);
+    }
+  }
+
+  _isSuccessfulResponse(response) {
+    if (!response) return false;
+    const code = response.getResponseCode();
+    return code === 200 || code === 201;
+  }
+
+  _logValidationRetry(uid) {
+    this.progressTracker.logError(
+      'Validation failed for UID: ' +
+        uid +
+        '. Retrying attempt ' +
+        this.retryAttempts[uid] +
+        ' of ' +
+        this.maxValidationRetries +
+        '.'
+    );
+  }
+
+  _handleRetryLimitReached(uid) {
+    this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
+    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+  }
+
+  _handleRetryHttpFailure(uid) {
+    this.progressTracker.logError('Retry failed for UID: ' + uid);
+    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+  }
+
+  _processRetryResponse(uid, request, assignment, response) {
+    try {
+      const assessmentData = this._extractAssessmentData(response);
+      if (!this.validateAssessmentData(assessmentData)) {
+        this.progressTracker.logError(
+          'Invalid assessment data for UID: ' +
+            uid +
+            '. Assessment data object: ' +
+            JSON.stringify(assessmentData)
+        );
+        this.handleValidationFailure(uid, request, assignment);
+        return;
+      }
+
+      this._assignAndCacheAssessment(uid, assessmentData, assignment);
+      this.retryAttempts[uid] = 0;
+    } catch (e) {
+      this.progressTracker.logError(
+        'Error parsing retry response for UID: ' + uid + ' - ' + e.message,
+        e
+      );
+      this.handleValidationFailure(uid, request, assignment);
     }
   }
 
@@ -297,7 +307,7 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Handle HTTP errors from backend, including 400 and 401 cases.
+   * Handle HTTP errors from backend, including 400, 401, and 403 cases.
    * @param {HTTPResponse} response - The HTTP response object.
    * @param {string} uid - The UID of the request for logging.
    */
@@ -305,9 +315,17 @@ class LLMRequestManager extends BaseRequestManager {
     const code = response ? response.getResponseCode() : null;
     const text = response ? response.getContentText() : 'No response';
     if (code === 401) {
-      // Unauthorized: invalid API key, abort script
+      // Unauthorised: invalid API key, abort script
       this.progressTracker.logAndThrowError(
-        `Unauthorized (401) for UID: ${uid}. Invalid API key. Aborting script.`,
+        `Unauthorised (401) for UID: ${uid}. Invalid API key. Aborting script.`,
+        text
+      );
+      return;
+    }
+    if (code === 403) {
+      // Forbidden: insufficient permissions, abort script
+      this.progressTracker.logAndThrowError(
+        `Forbidden (403) for UID: ${uid}. Check API key permissions. Aborting script.`,
         text
       );
       return;
@@ -316,6 +334,15 @@ class LLMRequestManager extends BaseRequestManager {
       // Bad request: skip and log
       console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
+      return;
+    }
+    if (code === 413) {
+      // Payload too large: skip and log
+      console.warn(`Payload Too Large (413) for UID: ${uid}. Skipping request. Response: ${text}`);
+      this.progressTracker.logError(
+        `Payload Too Large (413) for UID: ${uid}. Request body exceeds size limit.`,
+        text
+      );
       return;
     }
     // Other errors: log and continue
@@ -377,11 +404,11 @@ class LLMRequestManager extends BaseRequestManager {
       this.createAssessmentFromData(assessmentData),
       assignment
     );
-    if (this.uidIndex && this.uidIndex[uid]) {
+    if (this.uidIndex?.[uid]) {
       const { item, taskDef } = this.uidIndex[uid];
       const ref = taskDef.getPrimaryReference();
-      const refHash = ref && ref.contentHash;
-      const respHash = item.artifact && item.artifact.contentHash;
+      const refHash = ref?.contentHash;
+      const respHash = item.artifact?.contentHash;
       if (refHash && respHash) {
         this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
       }
