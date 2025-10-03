@@ -122,7 +122,7 @@ class AssignmentController {
    * @param {string} courseId - The Classroom course ID
    * @param {string} assignmentId - The assignment ID
    * @param {string} referenceDocumentId - The reference Sheets document ID
-   * @param {string} templateDocumentId - The template Sheets document ID
+   * @return {SheetsAssignment} The populated SheetsAssignment instance
    * @param {Object[]} students - The class roster sourced from the ABClass record
    * @return {SheetsAssignment} The populated SlidesAssignment instance
    */
@@ -315,6 +315,8 @@ class AssignmentController {
       lock.releaseLock();
       console.log('Lock released.');
       try {
+        // Use the hydrated roster from the class record for processing. This data is transient
+        // and must not be persisted with the Assignment to prevent data duplication.
         const properties = PropertiesService.getDocumentProperties();
         this.clearDocumentProperties(properties, [
           'assignmentId',
@@ -325,7 +327,9 @@ class AssignmentController {
         ]);
         console.log('Document properties cleaned up.');
       } catch (cleanupError) {
-        this.logError(`Failed to clean up properties: ${cleanupError.message}`, cleanupError);
+        this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
+          err: cleanupError,
+        });
       }
     }
   }
