@@ -74,17 +74,27 @@
     </div>
 
     <script>
+      let validationAlertState = null;
+
+      function showToast(message, classes) {
+        if (typeof M !== 'undefined' && M?.toast) {
+          M.toast({ html: message, classes });
+        }
+      }
+
       function validateDocumentIds() {
         const referenceDocumentId = document.getElementById('referenceDocumentId').value.trim();
         const templateDocumentId = document.getElementById('templateDocumentId').value.trim();
         const errorMessage = document.getElementById('idMatchError');
         const inputs = [document.getElementById('referenceDocumentId'), document.getElementById('templateDocumentId')];
-        
+
         if (referenceDocumentId && templateDocumentId && referenceDocumentId === templateDocumentId) {
+          validationAlertState = 'duplicate';
           errorMessage.style.display = 'block';
           inputs.forEach(input => input.classList.add('invalid'));
           return false;
         } else {
+          if (referenceDocumentId && templateDocumentId) validationAlertState = 'valid';
           errorMessage.style.display = 'none';
           inputs.forEach(input => input.classList.remove('invalid'));
           return true;
@@ -96,12 +106,12 @@
         const templateDocumentId = document.getElementById('templateDocumentId').value.trim();
 
         if (!referenceDocumentId || !templateDocumentId) {
-          alert('Please enter both Reference Document ID and Template Document ID.');
+          showToast('Please enter both Reference Document ID and Template Document ID.', 'red');
           return;
         }
         
         if (!validateDocumentIds()) {
-          M.toast({html: 'Reference and template document IDs cannot be the same.', classes: 'red'});
+          showToast('Reference and template document IDs cannot be the same.', 'red');
           return;
         }
 
@@ -115,11 +125,14 @@
 
         google.script.run
           .withFailureHandler(function(error) {
-            alert('Error: ' + error.message);
+            const message = error && error.message ? error.message : error;
+            showToast('Processing failed: ' + message, 'red');
           })
           .withSuccessHandler(function() {
             // Provide immediate visual feedback in the modal that the request was sent.
-            M.toast({ html: 'Processing started.', classes: 'green' });
+            showToast('Processing started.', 'green');
+            // Close modal now that the server acknowledged the request.
+            google.script.host.close();
           })
           .saveStartAndShowProgress(
             assignmentTitle,
@@ -128,12 +141,13 @@
             referenceDocumentId,
             templateDocumentId
           );
-
-        google.script.host.close();
       }
 
       document.addEventListener('DOMContentLoaded', function() {
-        M.updateTextFields();
+        alert('Modal DOMContentLoaded event fired.');
+        if (typeof M !== 'undefined' && M?.updateTextFields) {
+          M.updateTextFields();
+        }
         validateDocumentIds();
       });
     </script>
