@@ -296,8 +296,10 @@ describe('SlideIdsModal UI flow', () => {
 
       googleRun.triggerFailure({ message: 'Upstream boom' });
 
-      expect(alertMock).toHaveBeenCalledWith('Error: Upstream boom');
-      expect(materializeMock.toast).not.toHaveBeenCalled();
+      expect(materializeMock.toast).toHaveBeenCalledWith({
+        html: 'Processing failed: Upstream boom',
+        classes: 'red',
+      });
     } finally {
       cleanup();
     }
