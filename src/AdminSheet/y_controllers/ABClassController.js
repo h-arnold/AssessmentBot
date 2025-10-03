@@ -115,13 +115,15 @@ class ABClassController {
       collection.updateOne(filter, { $set: payload });
       collection.save();
     } catch (err) {
-      ABLogger.getInstance().logger.error('Failed to persist refreshed roster', {
-        classId: abClass.classId,
-        err,
-      });
+      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+      if (logger && typeof logger.error === 'function') {
+        logger.error('Failed to persist refreshed roster', {
+          classId: abClass.classId,
+          err,
+        });
+      }
       throw err;
     }
-  }
 
   /**
    * Initialise an ABClass instance by populating data that can be fetched using
