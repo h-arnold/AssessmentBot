@@ -57,6 +57,72 @@ class ABClassController {
     });
   }
 
+  _getCollectionMetadata(collection) {
+    if (!collection || typeof collection.getMetadata !== 'function') return null;
+
+    try {
+      return collection.getMetadata();
+    } catch (err) {
+      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+      if (logger && typeof logger.warn === 'function') {
+        logger.warn('Failed to read collection metadata', { err });
+      }
+      return null;
+    }
+  }
+
+  _buildClassroomRosterUpdatePayload(abClass) {
+    return {
+      className: abClass?.className ?? null,
+      classOwner: abClass?.classOwner ?? null,
+      teachers: Array.isArray(abClass?.teachers) ? abClass.teachers.slice() : [],
+      students: Array.isArray(abClass?.students) ? abClass.students.slice() : [],
+    };
+  }
+
+  _shouldRefreshRoster(metadata, classId) {
+    if (!metadata || !metadata.lastUpdated) return false;
+
+    const lastUpdated =
+      metadata.lastUpdated instanceof Date ? metadata.lastUpdated : new Date(metadata.lastUpdated);
+    if (!(lastUpdated instanceof Date) || Number.isNaN(lastUpdated.getTime())) return false;
+
+    const courseUpdatedAt = ClassroomApiClient.fetchCourseUpdateTime(classId);
+    if (!(courseUpdatedAt instanceof Date) || Number.isNaN(courseUpdatedAt.getTime())) return false;
+
+    return courseUpdatedAt.getTime() > lastUpdated.getTime();
+  }
+
+  _refreshRoster(abClass, classId) {
+    if (!abClass) return;
+
+    abClass.classOwner = null;
+    abClass.teachers = [];
+    abClass.students = [];
+
+    this._applyCourseMetadata(abClass, classId);
+    this._applyTeachers(abClass, classId);
+    this._applyStudents(abClass, classId);
+  }
+
+  _persistRoster(collection, existingDoc, abClass) {
+    if (!collection || !abClass) return;
+
+    const payload = this._buildClassroomRosterUpdatePayload(abClass);
+    const filter = existingDoc?._id ? { _id: existingDoc._id } : { classId: abClass.classId };
+
+    try {
+      collection.updateOne(filter, { $set: payload });
+      collection.save();
+    } catch (err) {
+      ABLogger.getInstance().logger.error('Failed to persist refreshed roster', {
+        classId: abClass.classId,
+        err,
+      });
+    }
+    throw err;
+  }
+
   /**
    * Initialise an ABClass instance by populating data that can be fetched using
    * the classId (Google Classroom courseId) alone. Populates: className,
@@ -115,6 +181,7 @@ class ABClassController {
     if (!classId) throw new TypeError('classId is required');
 
     const collection = this.dbManager.getCollection(classId);
+    const metadata = this._getCollectionMetadata(collection);
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
       const newClass = this.initialise(classId);
@@ -130,8 +197,13 @@ class ABClassController {
       return newClass;
     }
 
+    const needsRefresh = this._shouldRefreshRoster(metadata, classId);
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
+    if (needsRefresh) {
+      this._refreshRoster(abClass, classId);
+      this._persistRoster(collection, doc, abClass);
+    }
     return abClass;
   }
 
