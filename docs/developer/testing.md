@@ -7,7 +7,7 @@ AssessmentBot uses **Vitest** as the testing framework for unit and integration 
 ## Test Framework
 
 - **Framework**: Vitest v3.2.4 (see `package.json`)
-- **Environment**: Node.js (no browser DOM)
+- **Environment**: Node.js (no browser DOM by default; UI suites spin up JSDOM when required)
 - **Configuration**: `vitest.config.js` (loads `tests/setupGlobals.js`)
 - **Test Runner (one-off)**: `npm test`
 - **Watch Mode**: `npm run test:watch`
@@ -36,6 +36,7 @@ tests/
 ├── singletons/                # Singleton behaviour, lifecycle & performance tests
 │   ├── PerformanceMeasurement.js  # Test-only performance utility (not production code)
 │   └── performanceMeasurement.test.js
+├── ui/                        # UI modal/templated HTML tests (JSDOM-based)
 └── utils/                     # Utility function tests
 ```
 
@@ -72,6 +73,7 @@ Test domain models including serialisation, validation, and business logic:
 - **Artifacts**: Various artifact types (TEXT, TABLE, IMAGE, etc.)
 
 **Key patterns**:
+
 - Test `toJSON()` / `fromJSON()` round-trip serialisation
 - Validate hash stability and change detection
 - Test business logic (e.g., setters, getters, validation)
@@ -90,6 +92,7 @@ Verify singleton pattern implementation, lifecycle, and (optionally) performance
 - **performanceMeasurement**: Uses `PerformanceMeasurement.js` helper to compare timings (test-only utility)
 
 **Key patterns**:
+
 - Use `SingletonTestHarness` to control GAS mocks
 - Ensure singletons don't initialise until first `getInstance()`
 - Verify `getInstance()` idempotency (stable reference)
@@ -105,6 +108,7 @@ Test document parsing logic for Slides and Sheets:
 - Artifact creation from parsed content
 
 **Key patterns**:
+
 - Mock document structure (slides, sheets, ranges)
 - Verify artifact types and content
 - Test edge cases (empty content, malformed data)
@@ -117,6 +121,7 @@ Test API interactions and caching:
 - **imageManagerPhase5**: Image upload and management
 
 **Key patterns**:
+
 - Mock external APIs (LLM, Drive)
 - Test caching behaviour
 - Verify batch processing
@@ -139,6 +144,18 @@ Test configuration management:
 
 ### 7. Utility Tests (`tests/utils/`)
 
+### 8. UI Tests (`tests/ui/`)
+
+Exercise client-side logic that lives inside Apps Script HTML templates (e.g. modal dialogs).
+
+- **Environment**: `jsdom` (Vitest default Node runner with per-suite DOM setup).
+- **Focus**: Validation flows, interactions with `google.script.run`, side-effects such as Materialize toasts, and templated data hydration.
+- **Patterns**:
+  - Read the HTML template from `src/AdminSheet/UI/` and replace templating placeholders (`<?= ... ?>`) with fixture values before instantiating `JSDOM`.
+  - Stub Materialize (`window.M`) and GAS globals (`google.script.run`, `google.script.host`) with chainable mocks so that the modal logic can exercise success/failure callbacks.
+  - Dispatch a synthetic `DOMContentLoaded` event after loading scripts to mirror Apps Script behaviour.
+  - Keep tests focused on behaviour (DOM state, mock invocations) rather than Materialize internals.
+
 Test utility functions:
 
 - **ABLogger**: Logging functionality
@@ -151,12 +168,12 @@ Test utility functions:
 Provides factory functions for creating reusable mocks:
 
 ```javascript
-const { 
+const {
   createMockPropertiesService,
   createMockUtils,
   createMockSpreadsheetApp,
   createMockClassroomApiClient,
-  setupGlobalGASMocks 
+  setupGlobalGASMocks,
 } = require('../helpers/mockFactories.js');
 
 // Create individual mocks
@@ -169,6 +186,7 @@ const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 ```
 
 **Available factories**:
+
 - `createMockPropertiesService(vi)` - PropertiesService with script/document properties
 - `createMockUtils(vi)` - Utils with hash generation
 - `createMockDriveApp(vi)` - DriveApp for file operations
@@ -182,11 +200,11 @@ const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 Provides factory functions for creating test model instances:
 
 ```javascript
-const { 
+const {
   createTaskDefinition,
   createTextTask,
   createStudentSubmission,
-  createDummyProgressTracker 
+  createDummyProgressTracker,
 } = require('../helpers/modelFactories.js');
 
 // Create a task definition with sensible defaults
@@ -194,7 +212,7 @@ const task = createTaskDefinition({
   index: 0,
   title: 'Task 1',
   refContent: 'Reference content',
-  refType: 'TEXT'
+  refType: 'TEXT',
 });
 
 // Create a text task (convenience wrapper)
@@ -204,7 +222,7 @@ const textTask = createTextTask(0, 'Reference text', 'Template text');
 const submission = createStudentSubmission({
   studentId: 'student1',
   assignmentId: 'assignment1',
-  documentId: 'doc1'
+  documentId: 'doc1',
 });
 ```
 
@@ -227,9 +245,9 @@ const hash = simpleHash('some content');
 Helpers for singleton-specific test setup:
 
 ```javascript
-const { 
+const {
   createSingletonTestContext,
-  loadSingletonsWithMocks 
+  loadSingletonsWithMocks,
 } = require('../helpers/singletonTestSetup.js');
 
 // Create a test harness
@@ -238,7 +256,7 @@ const context = createSingletonTestContext();
 // Load specific singletons with mocks
 const singletons = loadSingletonsWithMocks(context.harness, {
   loadConfigurationManager: true,
-  loadProgressTracker: true
+  loadProgressTracker: true,
 });
 ```
 
@@ -307,12 +325,12 @@ Models should implement `toJSON()` and `fromJSON()` for persistence:
 ```javascript
 it('should serialise and deserialise correctly', () => {
   const original = new MyModel({ name: 'Test', value: 42 });
-  
+
   // Serialise to JSON
   const json = original.toJSON();
   expect(json).toEqual({
     name: 'Test',
-    value: 42
+    value: 42,
   });
 
   // Deserialise back to instance
@@ -393,10 +411,10 @@ beforeEach(() => {
   // Mock Classroom API
   global.Classroom = {
     Courses: {
-      get: (courseId) => ({ 
-        id: courseId, 
+      get: (courseId) => ({
+        id: courseId,
         name: 'Test Course',
-        ownerId: 'teacher1' 
+        ownerId: 'teacher1',
       }),
       Teachers: {
         list: (courseId) => ({
@@ -405,11 +423,11 @@ beforeEach(() => {
               profile: {
                 name: { fullName: 'Teacher One' },
                 emailAddress: 'teacher@school.edu',
-                id: 't1'
-              }
-            }
-          ]
-        })
+                id: 't1',
+              },
+            },
+          ],
+        }),
       },
       Students: {
         list: (courseId) => ({
@@ -418,13 +436,13 @@ beforeEach(() => {
               profile: {
                 name: { fullName: 'Student One' },
                 emailAddress: 'student@school.edu',
-                id: 's1'
-              }
-            }
-          ]
-        })
-      }
-    }
+                id: 's1',
+              },
+            },
+          ],
+        }),
+      },
+    },
   };
 
   // Use the centralized mock wrapper
@@ -445,10 +463,10 @@ beforeEach(() => {
           save: vi.fn(),
           updateOne: vi.fn(),
           removeMany: vi.fn(),
-          clear: vi.fn()
+          clear: vi.fn(),
         }),
         readAll: vi.fn().mockReturnValue([]),
-        saveCollection: vi.fn()
+        saveCollection: vi.fn(),
       };
     }
   };
@@ -466,8 +484,8 @@ beforeEach(() => {
     mockActiveSpreadsheet: true,
     sheetsConfig: [
       { name: 'Sheet1', id: 's1' },
-      { name: 'Sheet2', id: 's2' }
-    ]
+      { name: 'Sheet2', id: 's2' },
+    ],
   });
 });
 ```
@@ -480,10 +498,10 @@ When testing modules that maintain state, clear the require cache:
 beforeEach(() => {
   // Clear module cache to get fresh instance
   delete require.cache[require.resolve('../../src/path/to/Module.js')];
-  
+
   // Setup mocks before requiring
   global.SomeDependency = mockDependency;
-  
+
   // Now require the module
   MyModule = require('../../src/path/to/Module.js');
 });
@@ -500,6 +518,7 @@ afterEach(() => {
 ### 1. Test Logic, Not GAS Services
 
 **Do test**:
+
 - Serialisation (`toJSON`/`fromJSON`)
 - Hash generation and stability
 - Business logic and validation
@@ -507,6 +526,7 @@ afterEach(() => {
 - Edge cases (null, empty, large data)
 
 **Don't test**:
+
 - Apps Script services (SpreadsheetApp, DriveApp, etc.)
 - Network calls
 - Timers tied to GAS runtime
@@ -525,7 +545,7 @@ const task = new TaskDefinition({
   taskTitle: 'Task 0',
   pageId: 'p0',
   index: 0,
-  taskMetadata: {}
+  taskMetadata: {},
 });
 task.addReferenceArtifact({ type: 'TEXT', content: 'test' });
 ```
@@ -540,13 +560,13 @@ function createMockMyService(vi) {
   return {
     fetch: vi.fn(),
     save: vi.fn(),
-    delete: vi.fn()
+    delete: vi.fn(),
   };
 }
 
 module.exports = {
   // ... other exports
-  createMockMyService
+  createMockMyService,
 };
 
 // In tests
@@ -663,7 +683,6 @@ import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 const MyClassExport = require('../../src/path/to/Module.js');
 const MyClass = MyClassExport.MyClass || MyClassExport;
 ```
-
 
 ## Troubleshooting
 

@@ -150,6 +150,9 @@ module.exports = [
       'tests/**/*.js',
       'tests/**/*.mjs',
     ],
+    languageOptions: {
+      sourceType: 'module',
+    },
     rules: {
       'no-restricted-syntax': [
         'error',
