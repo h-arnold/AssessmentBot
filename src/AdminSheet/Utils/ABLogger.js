@@ -1,5 +1,3 @@
-// Renamed from Logger.js to ABLogger.js due to protected name conflict in GAS.
-// See original header below.
 /**
  * ABLogger - centralised (in-progress) logging facility.
  *
@@ -63,13 +61,7 @@ class ABLogger extends BaseSingleton {
     console.error(...args);
   }
   debug(...args) {
-    // generic debug that respects DEBUG_UI for consistency
-    if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
-      console.debug(...args);
-    } else {
-      // still allow debug to go to console.debug in test environments
-      console.debug(...args);
-    }
+    console.debug(...args);
   }
 }
 

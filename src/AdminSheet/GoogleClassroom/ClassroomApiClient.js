@@ -190,6 +190,39 @@ class ClassroomApiClient {
   }
 
   /**
+   * Fetches the updateTime property for a course and returns it as a JS Date.
+   * @param {string} courseId
+   * @returns {Date|null} JavaScript Date instance representing the course's updateTime, or null if not available.
+   */
+  static fetchCourseUpdateTime(courseId) {
+    try {
+      const course = Classroom.Courses.get(courseId);
+      if (!course?.updateTime) {
+        ABLogger.getInstance().error('Course updateTime not present', { courseId });
+        return null;
+      }
+
+      // updateTime is an RFC3339 timestamp (e.g. "2020-09-30T12:34:56.789Z").
+      const date = new Date(course.updateTime);
+      if (Number.isNaN(date.getTime())) {
+        ABLogger.getInstance().error('Invalid course updateTime format', {
+          courseId,
+          updateTime: course.updateTime,
+        });
+        return null;
+      }
+
+      return date;
+    } catch (error) {
+      ABLogger.getInstance().error('Failed to fetch course updateTime', {
+        courseId,
+        error: error.message,
+      });
+      return null;
+    }
+  }
+
+  /**
    * Fetch teachers for a given course.
    * Returns the raw teacher objects as provided by the API (so callers can
    * inspect profile fields).
