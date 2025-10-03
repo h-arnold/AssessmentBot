@@ -20,14 +20,29 @@ function saveStartAndShowProgress(
   referenceSlideId,
   emptySlideId
 ) {
-  const controller = new AssignmentController();
-  return controller.saveStartAndShowProgress(
+  // Diagnostic log added to help detect UI->server invocation regressions.
+  console.log('saveStartAndShowProgress invoked (globals):', {
     assignmentTitle,
     slideIds,
     assignmentId,
     referenceSlideId,
-    emptySlideId
-  );
+    emptySlideId,
+  });
+
+  const controller = new AssignmentController();
+  try {
+    return controller.saveStartAndShowProgress(
+      assignmentTitle,
+      slideIds,
+      assignmentId,
+      referenceSlideId,
+      emptySlideId
+    );
+  } catch (err) {
+    // Surface the error to server logs for easier debugging in deployed environments
+    console.error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
+    throw err;
+  }
 }
 
 /**

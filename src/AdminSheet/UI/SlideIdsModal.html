@@ -117,6 +117,10 @@
           .withFailureHandler(function(error) {
             alert('Error: ' + error.message);
           })
+          .withSuccessHandler(function() {
+            // Provide immediate visual feedback in the modal that the request was sent.
+            M.toast({ html: 'Processing started.', classes: 'green' });
+          })
           .saveStartAndShowProgress(
             assignmentTitle,
             documentIds,
