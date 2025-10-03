@@ -222,8 +222,8 @@ class LLMRequestManager extends BaseRequestManager {
    */
   assignAssessmentToStudentTask(uid, assessmentData, assignment) {
     // name retained to minimise external ripple
-    if (this.uidIndex && this.uidIndex[uid]) {
-      const { item } = this.uidIndex[uid];
+    const item = this.uidIndex?.[uid]?.item;
+    if (item) {
       this._assignAssessmentArtifacts(item, assessmentData);
     } else {
       console.warn(`No matching submission item found for UID: ${uid}`);
@@ -404,11 +404,11 @@ class LLMRequestManager extends BaseRequestManager {
       this.createAssessmentFromData(assessmentData),
       assignment
     );
-    if (this.uidIndex && this.uidIndex[uid]) {
+    if (this.uidIndex?.[uid]) {
       const { item, taskDef } = this.uidIndex[uid];
       const ref = taskDef.getPrimaryReference();
-      const refHash = ref && ref.contentHash;
-      const respHash = item.artifact && item.artifact.contentHash;
+      const refHash = ref?.contentHash;
+      const respHash = item.artifact?.contentHash;
       if (refHash && respHash) {
         this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
       }
