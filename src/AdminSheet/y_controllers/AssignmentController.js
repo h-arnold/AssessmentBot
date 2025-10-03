@@ -268,7 +268,6 @@ class AssignmentController {
       const templateDocumentId = properties.getProperty('templateDocumentId');
       const triggerId = properties.getProperty('triggerId');
       const documentType = properties.getProperty('documentType');
-      let step = 1;
 
       if (
         !assignmentId ||
@@ -290,8 +289,8 @@ class AssignmentController {
       console.log('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
-      const ABClassController = new ABClassController();
-      const abClass = ABClassController.loadClass(courseId);
+      const abClassController = new ABClassController();
+      const abClass = abClassController.loadClass(courseId);
 
       // Process the assignment based on its type.
       let assignment;
