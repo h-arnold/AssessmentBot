@@ -119,8 +119,8 @@ class ABClassController {
         classId: abClass.classId,
         err,
       });
+      throw err;
     }
-    throw err;
   }
 
   /**
