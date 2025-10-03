@@ -13,23 +13,7 @@ class AssignmentController {
     // Access the singleton instance of ProgressTracker
     this.progressTracker = ProgressTracker.getInstance();
 
-    // Instantiate TriggerController
-    this.triggerController = new TriggerController();
-
-    // Instantiate other components
-    this.llmRequestManager = new LLMRequestManager();
-
-    // Instantiate GoogleClassroomManager with necessary parameters
-    this.classroomManager = new GoogleClassroomManager();
-
-    // Attempt to instantiate UIManager only in user context to avoid issues with triggers
-    try {
-      this.uiManager = UIManager.getInstance();
-      console.log('UIManager instantiated successfully.');
-    } catch (error) {
-      console.error('UIManager cannot be instantiated: ' + error);
-      this.uiManager = null; // UIManager is not available in this context
-    }
+    // Note: Other controllers and managers are now instantiated lazily in each method
   }
 
   /**
@@ -60,13 +44,20 @@ class AssignmentController {
       this.startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType);
       this.progressTracker.startTracking();
 
-      // Null check is necessary because UIManager may be null when running from time-based triggers
-      // or when executed in contexts where UI interactions are not available
-      if (this.uiManager) {
-        this.uiManager.showProgressModal();
+      // UIManager may not be available in non-UI contexts (e.g., time-based triggers)
+      try {
+        const uiManager = UIManager.getInstance();
+        if (uiManager && typeof uiManager.showProgressModal === 'function') {
+          uiManager.showProgressModal();
+        }
+      } catch (uiError) {
+        // Silently ignore UI errors in non-UI contexts
+        const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn('UIManager not available or failed to show progress modal:', uiError);
+        }
       }
 
-      //This is a hacky way of asynchronously 'warming up' the langflow backend which from a cold start takes around 60 seconds.
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
     } catch (error) {
       this.utils.toastMessage('Failed to start processing: ' + error.message, 'Error', 5);
@@ -89,11 +80,13 @@ class AssignmentController {
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
   startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType) {
+    // Lazily instantiate TriggerController
+    const triggerController = new TriggerController();
     const properties = PropertiesService.getDocumentProperties();
     let triggerId;
 
     try {
-      triggerId = this.triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
+      triggerId = triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
       console.log(
         `Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`
       );
@@ -250,16 +243,22 @@ class AssignmentController {
         !triggerId ||
         !documentType
       ) {
-        this.triggerController.removeTriggers('triggerProcessSelectedAssignment');
+        // Lazily instantiate TriggerController to clean up pending triggers
+        const triggerController = new TriggerController();
+        triggerController.removeTriggers('triggerProcessSelectedAssignment');
         this.progressTracker.logAndThrowError('Missing parameters for processing.');
       }
 
-      this.triggerController.deleteTriggerById(triggerId);
+      // Lazily instantiate TriggerController for trigger deletion
+      const triggerController = new TriggerController();
+      triggerController.deleteTriggerById(triggerId);
       console.log('Trigger deleted after processing.');
       this.progressTracker.startTracking();
       this.progressTracker.updateProgress('Assessment run starting.');
 
-      const courseId = this.classroomManager.getCourseId();
+      // Lazily instantiate ClassroomManager
+      const classroomManager = new GoogleClassroomManager();
+      const courseId = classroomManager.getCourseId();
       console.log('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 

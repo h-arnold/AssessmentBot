@@ -20,14 +20,34 @@ function saveStartAndShowProgress(
   referenceSlideId,
   emptySlideId
 ) {
+  // Diagnostic log added to help detect UI->server invocation regressions.
+  const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
+  if (logger && typeof logger.info === 'function') {
+    logger.info('saveStartAndShowProgress invoked (globals):', {
+      assignmentTitle,
+      slideIds,
+      assignmentId,
+      referenceSlideId,
+      emptySlideId,
+    });
+  }
+
   const controller = new AssignmentController();
-  return controller.saveStartAndShowProgress(
-    assignmentTitle,
-    slideIds,
-    assignmentId,
-    referenceSlideId,
-    emptySlideId
-  );
+  try {
+    return controller.saveStartAndShowProgress(
+      assignmentTitle,
+      slideIds,
+      assignmentId,
+      referenceSlideId,
+      emptySlideId
+    );
+  } catch (err) {
+    // Surface the error to server logs for easier debugging in deployed environments
+    if (logger && typeof logger.error === 'function') {
+      logger.error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
+    }
+    throw err;
+  }
 }
 
 /**
