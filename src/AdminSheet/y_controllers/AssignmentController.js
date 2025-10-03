@@ -103,11 +103,13 @@ class AssignmentController {
     }
 
     try {
-      properties.setProperty('assignmentId', assignmentId);
-      properties.setProperty('referenceDocumentId', referenceDocumentId);
-      properties.setProperty('templateDocumentId', templateDocumentId);
-      properties.setProperty('triggerId', triggerId);
-      properties.setProperty('documentType', documentType); // Store documentType for downstream use
+      this.applyDocumentProperties(properties, {
+        assignmentId,
+        referenceDocumentId,
+        templateDocumentId,
+        triggerId,
+        documentType,
+      });
       console.log('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
@@ -135,37 +137,15 @@ class AssignmentController {
       throw new TypeError('students must be provided as an array');
     }
 
-    this.progressTracker.updateProgress('Creating Assignment instance.');
-    const assignment = new SheetsAssignment(
+    const assignment = this.createAssignmentInstance(
+      SheetsAssignment,
       courseId,
       assignmentId,
       referenceDocumentId,
       templateDocumentId
     );
-    this.progressTracker.updateProgress('Assignment instance created.', false);
 
-    this.progressTracker.updateProgress('Adding students from class record.');
-    students.forEach((student) => assignment.addStudent(student));
-    this.progressTracker.updateProgress(
-      `${students.length} students added to the assignment from class record.`,
-      false
-    );
-
-    this.progressTracker.updateProgress('Getting the tasks from the reference document.');
-    assignment.populateTasks();
-    this.progressTracker.updateProgress('Tasks populated from reference document.', false);
-
-    this.progressTracker.updateProgress('Fetching submitted documents from students.');
-    assignment.fetchSubmittedDocuments();
-    this.progressTracker.updateProgress('Submitted documents fetched.', false);
-
-    this.progressTracker.updateProgress('Extracting student work from documents.');
-    assignment.processAllSubmissions();
-    this.progressTracker.updateProgress('All student work extracted.', false);
-
-    this.progressTracker.updateProgress('Assessing student responses.');
-    assignment.assessResponses();
-    this.progressTracker.updateProgress('Responses assessed.', false);
+    this.runAssignmentPipeline(assignment, students);
 
     // Use new StudentSubmission model (assignment.submissions). Legacy studentTasks removed.
     const feedback = new SheetsFeedback(assignment.submissions);
@@ -194,41 +174,15 @@ class AssignmentController {
       throw new TypeError('students must be provided as an array');
     }
 
-    this.progressTracker.updateProgress('Creating Assignment instance.');
-    const assignment = new SlidesAssignment(
+    const assignment = this.createAssignmentInstance(
+      SlidesAssignment,
       courseId,
       assignmentId,
       referenceDocumentId,
       templateDocumentId
     );
-    this.progressTracker.updateProgress('Assignment instance created.', false);
 
-    this.progressTracker.updateProgress('Adding students from class record.');
-    students.forEach((student) => assignment.addStudent(student));
-    this.progressTracker.updateProgress(
-      `${students.length} students added to the assignment from class record.`,
-      false
-    );
-
-    this.progressTracker.updateProgress('Getting the tasks from the reference document.');
-    assignment.populateTasks();
-    this.progressTracker.updateProgress('Tasks populated from reference document.', false);
-
-    this.progressTracker.updateProgress('Fetching submitted documents from students.');
-    assignment.fetchSubmittedDocuments();
-    this.progressTracker.updateProgress('Submitted documents fetched.', false);
-
-    this.progressTracker.updateProgress('Extracting student work from documents.');
-    assignment.processAllSubmissions();
-    this.progressTracker.updateProgress('All student work extracted.', false);
-
-    this.progressTracker.updateProgress('Processing Images.');
-    assignment.processImages();
-    this.progressTracker.updateProgress('Images uploaded.', false);
-
-    this.progressTracker.updateProgress('Assessing student responses.');
-    assignment.assessResponses();
-    this.progressTracker.updateProgress('Responses assessed.', false);
+    this.runAssignmentPipeline(assignment, students, { includeImages: true });
 
     return assignment;
   }
@@ -362,16 +316,138 @@ class AssignmentController {
       console.log('Lock released.');
       try {
         const properties = PropertiesService.getDocumentProperties();
-        properties.deleteProperty('assignmentId');
-        properties.deleteProperty('referenceDocumentId');
-        properties.deleteProperty('templateDocumentId');
-        properties.deleteProperty('triggerId');
-        properties.deleteProperty('documentType'); // Clean up documentType property as well
+        this.clearDocumentProperties(properties, [
+          'assignmentId',
+          'referenceDocumentId',
+          'templateDocumentId',
+          'triggerId',
+          'documentType',
+        ]);
         console.log('Document properties cleaned up.');
       } catch (cleanupError) {
         this.logError(`Failed to clean up properties: ${cleanupError.message}`, cleanupError);
       }
     }
+  }
+
+  /**
+   * Creates an assignment instance with progress tracking.
+   * @param {Function} AssignmentClass - Constructor for the assignment type.
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID.
+   * @param {string} referenceDocumentId - The reference document ID.
+   * @param {string} templateDocumentId - The template document ID.
+   * @return {SlidesAssignment|SheetsAssignment} The instantiated assignment.
+   */
+  createAssignmentInstance(
+    AssignmentClass,
+    courseId,
+    assignmentId,
+    referenceDocumentId,
+    templateDocumentId
+  ) {
+    return this.runStage(
+      'Creating Assignment instance.',
+      () => new AssignmentClass(courseId, assignmentId, referenceDocumentId, templateDocumentId),
+      'Assignment instance created.'
+    );
+  }
+
+  /**
+   * Runs shared assignment stages with optional image processing.
+   * @param {SlidesAssignment|SheetsAssignment} assignment - Assignment instance to populate.
+   * @param {Object[]} students - Students sourced from the class record.
+   * @param {Object} [options] - Additional pipeline configuration.
+   * @param {boolean} [options.includeImages=false] - Whether to process images.
+   */
+  runAssignmentPipeline(assignment, students, options = {}) {
+    const { includeImages = false } = options;
+
+    this.runStage(
+      'Adding students from class record.',
+      () => {
+        students.forEach((student) => assignment.addStudent(student));
+      },
+      `${students.length} students added to the assignment from class record.`
+    );
+
+    this.runStage(
+      'Getting the tasks from the reference document.',
+      () => {
+        assignment.populateTasks();
+      },
+      'Tasks populated from reference document.'
+    );
+
+    this.runStage(
+      'Fetching submitted documents from students.',
+      () => {
+        assignment.fetchSubmittedDocuments();
+      },
+      'Submitted documents fetched.'
+    );
+
+    this.runStage(
+      'Extracting student work from documents.',
+      () => {
+        assignment.processAllSubmissions();
+      },
+      'All student work extracted.'
+    );
+
+    if (includeImages) {
+      this.runStage(
+        'Processing Images.',
+        () => {
+          assignment.processImages();
+        },
+        'Images uploaded.'
+      );
+    }
+
+    this.runStage(
+      'Assessing student responses.',
+      () => {
+        assignment.assessResponses();
+      },
+      'Responses assessed.'
+    );
+  }
+
+  /**
+   * Executes a pipeline stage with consistent progress updates.
+   * @param {string} startMessage - Message reported before execution.
+   * @param {Function} action - Stage function to execute.
+   * @param {string} completionMessage - Message reported after execution.
+   * @return {*} The return value of the stage function.
+   */
+  runStage(startMessage, action, completionMessage) {
+    this.progressTracker.updateProgress(startMessage);
+    const result = action();
+    if (completionMessage) {
+      this.progressTracker.updateProgress(completionMessage, false);
+    }
+    return result;
+  }
+
+  /**
+   * Sets document properties using the provided key/value map.
+   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
+   * @param {Object} propertyMap - Map of document property names to values.
+   */
+  applyDocumentProperties(properties, propertyMap) {
+    Object.keys(propertyMap).forEach((key) => {
+      properties.setProperty(key, propertyMap[key]);
+    });
+  }
+
+  /**
+   * Removes multiple document properties by key.
+   * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
+   * @param {string[]} keys - Property keys to delete.
+   */
+  clearDocumentProperties(properties, keys) {
+    keys.forEach((key) => properties.deleteProperty(key));
   }
 
   /**
