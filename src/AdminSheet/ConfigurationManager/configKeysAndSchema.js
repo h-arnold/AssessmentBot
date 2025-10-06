@@ -155,7 +155,9 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
   globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }
 
-module.exports = {
-  CONFIG_KEYS,
-  CONFIG_SCHEMA,
-};
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CONFIG_KEYS,
+    CONFIG_SCHEMA,
+  };
+}

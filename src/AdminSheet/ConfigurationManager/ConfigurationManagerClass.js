@@ -15,23 +15,6 @@
  * config.setLangflowApiKey('sk-abc123');
  */
 
-const { CONFIG_KEYS, CONFIG_SCHEMA } = require('./configKeysAndSchema');
-const { DEFAULTS } = require('./defaults');
-const {
-  API_KEY_PATTERN,
-  DRIVE_ID_PATTERN,
-  JSON_DB_LOG_LEVELS,
-  validateIntegerInRange,
-  validateNonEmptyString,
-  validateUrl,
-  validateBoolean,
-  validateLogLevel,
-  validateApiKey,
-  toBoolean,
-  toBooleanString,
-  toReadableKey: formatReadableKey,
-} = require('./validators');
-
 class ConfigurationManager extends BaseSingleton {
   /**
    * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
@@ -622,6 +605,26 @@ class ConfigurationManager extends BaseSingleton {
     if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
     return fallback;
   }
+}
+
+// When running under Node (tests) bring in the supporting constants and helpers
+// from sibling modules. In Apps Script these are expected to be available on
+// the global scope so we only require them for the test environment to avoid
+// changing runtime behaviour.
+if (typeof module !== 'undefined' && module.exports) {
+  const { CONFIG_KEYS: _CK, CONFIG_SCHEMA: _CS } = require('./configKeysAndSchema');
+  const { DEFAULTS: _DEF } = require('./defaults');
+  const validators = require('./validators');
+
+  CONFIG_KEYS = _CK;
+  CONFIG_SCHEMA = _CS;
+  DEFAULTS = _DEF;
+  API_KEY_PATTERN = validators.API_KEY_PATTERN;
+  DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
+  JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
+  toBoolean = validators.toBoolean;
+  toBooleanString = validators.toBooleanString;
+  formatReadableKey = validators.toReadableKey;
 }
 
 ConfigurationManager._CONFIG_KEYS = CONFIG_KEYS;
