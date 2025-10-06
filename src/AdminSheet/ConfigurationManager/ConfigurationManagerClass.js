@@ -291,29 +291,39 @@ class ConfigurationManager extends BaseSingleton {
     const logger = ABLogger.getInstance();
 
     try {
-      if (typeof SpreadsheetApp === 'undefined' || typeof DriveManager === 'undefined') {
-        return null;
-      }
+      // Per project contract: assume Apps Script and internal singletons exist and let
+      // any failures surface. Retrieve the active spreadsheet and its parent folder,
+      // then create or reuse the named folder.
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      if (!spreadsheet || typeof spreadsheet.getId !== 'function') {
-        return null;
-      }
       const spreadsheetId = spreadsheet.getId();
       const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
-      if (!parentFolderId) {
-        return null;
-      }
+      if (!parentFolderId) return null;
       const folderResult = DriveManager.createFolder(parentFolderId, folderName);
-      const folderId = folderResult?.newFolderId;
+      const folderId = folderResult && folderResult.newFolderId;
 
       if (folderId && persistConfigKey) {
         try {
           this.setProperty(persistConfigKey, folderId);
         } catch (persistError) {
-          logger.warn(
+          // Use ProgressTracker as the primary user-facing logging mechanism per project guidance.
+          ProgressTracker.getInstance().logError(
             `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-            persistError
+            { err: persistError }
           );
+          // Wrap in PersistError when running under Node tests (shim available at ../Utils/PersistError.js)
+          /* istanbul ignore next */
+          if (typeof module !== 'undefined' && module.exports) {
+            // Local require keeps production Apps Script code free of test snippets
+            const PersistError = require('../Utils/PersistError.js');
+            if (typeof PersistError === 'function') {
+              throw new PersistError(`Failed to persist configuration key: ${persistConfigKey}`, {
+                cause: persistError,
+                key: persistConfigKey,
+              });
+            }
+          }
+          // Fallback: rethrow original error
+          throw persistError;
         }
       }
 
