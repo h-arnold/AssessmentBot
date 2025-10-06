@@ -88,7 +88,7 @@ class ABLogger extends BaseSingleton {
       }
       return copy;
     } catch (err) {
-      console.error('ABLogger.shallowSerialiseObject logging failure', err);
+      this.error('ABLogger.shallowSerialiseObject logging failure', err);
       return obj;
     }
   }
