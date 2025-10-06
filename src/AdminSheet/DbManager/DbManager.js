@@ -40,7 +40,7 @@ class DbManager extends BaseSingleton {
       lockTimeout: 10000,
       logLevel: 'INFO',
       backupOnInitialise: false,
-      // rootFolderId will be resolved dynamically if not provided
+      rootFolderId: null,
     };
   }
 
@@ -52,8 +52,26 @@ class DbManager extends BaseSingleton {
     const defaults = DbManager.DEFAULTS;
     const provided = this._options || {};
 
+    const configManager =
+      typeof ConfigurationManager !== 'undefined' &&
+      ConfigurationManager &&
+      typeof ConfigurationManager.getInstance === 'function'
+        ? ConfigurationManager.getInstance()
+        : null;
+
+    const managerConfig = configManager
+      ? {
+          masterIndexKey: configManager.getJsonDbMasterIndexKey(),
+          autoCreateCollections: configManager.getJsonDbAutoCreateCollections(),
+          lockTimeout: configManager.getJsonDbLockTimeoutMs(),
+          logLevel: configManager.getJsonDbLogLevel(),
+          backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
+          rootFolderId: configManager.getJsonDbRootFolderId(),
+        }
+      : {};
+
     // Root folder: prefer caller-provided, else the parent of the active sheet, else Drive root
-    let rootFolderId = provided.rootFolderId;
+    let rootFolderId = provided.rootFolderId || managerConfig.rootFolderId || undefined;
     try {
       if (!rootFolderId && typeof SpreadsheetApp !== 'undefined') {
         const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
@@ -67,17 +85,26 @@ class DbManager extends BaseSingleton {
 
     // In the future, these can be read from configurationManager once keys exist.
     return {
-      masterIndexKey: provided.masterIndexKey || defaults.masterIndexKey,
+      masterIndexKey:
+        provided.masterIndexKey || managerConfig.masterIndexKey || defaults.masterIndexKey,
       autoCreateCollections:
         typeof provided.autoCreateCollections === 'boolean'
           ? provided.autoCreateCollections
+          : typeof managerConfig.autoCreateCollections === 'boolean'
+          ? managerConfig.autoCreateCollections
           : defaults.autoCreateCollections,
       lockTimeout:
-        typeof provided.lockTimeout === 'number' ? provided.lockTimeout : defaults.lockTimeout,
-      logLevel: provided.logLevel || defaults.logLevel,
+        typeof provided.lockTimeout === 'number'
+          ? provided.lockTimeout
+          : typeof managerConfig.lockTimeout === 'number'
+          ? managerConfig.lockTimeout
+          : defaults.lockTimeout,
+      logLevel: provided.logLevel || managerConfig.logLevel || defaults.logLevel,
       backupOnInitialise:
         typeof provided.backupOnInitialise === 'boolean'
           ? provided.backupOnInitialise
+          : typeof managerConfig.backupOnInitialise === 'boolean'
+          ? managerConfig.backupOnInitialise
           : defaults.backupOnInitialise,
       // Only include rootFolderId if we actually resolved one; JsonDbApp can discover a default
       ...(rootFolderId ? { rootFolderId } : {}),

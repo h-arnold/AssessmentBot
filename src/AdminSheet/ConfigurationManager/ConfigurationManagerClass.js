@@ -52,6 +52,10 @@ class ConfigurationManager extends BaseSingleton {
     return /^[A-Za-z0-9-_]{10,}$/;
   }
 
+  static get JSON_DB_LOG_LEVELS() {
+    return ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+  }
+
   /**
    * Canonical accessor – always use this instead of `new`.
    */
@@ -253,6 +257,19 @@ class ConfigurationManager extends BaseSingleton {
     throw new Error(`${label} must be a boolean (true/false).`);
   }
 
+  static validateLogLevel(label, value) {
+    if (typeof value !== 'string') {
+      throw new Error(`${label} must be a string.`);
+    }
+    const upper = value.trim().toUpperCase();
+    if (!ConfigurationManager.JSON_DB_LOG_LEVELS.includes(upper)) {
+      throw new Error(
+        `${label} must be one of: ${ConfigurationManager.JSON_DB_LOG_LEVELS.join(', ')}`
+      );
+    }
+    return upper;
+  }
+
   static validateApiKey(value) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
     if (typeof value !== 'string' || !pattern.test(value.trim())) {
@@ -275,7 +292,9 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId');
+        ABLogger.getInstance().debug(
+          '[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId'
+        );
       const file = DriveApp.getFileById(trimmed);
       const mime = file && typeof file.getMimeType === 'function' ? file.getMimeType() : '';
       return mime === MimeType.GOOGLE_SHEETS; // explicit equality
@@ -292,7 +311,9 @@ class ConfigurationManager extends BaseSingleton {
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
       if (globalThis.__TRACE_SINGLETON__)
-        ABLogger.getInstance().debug('[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId');
+        ABLogger.getInstance().debug(
+          '[TRACE][HeavyInit] ConfigurationManager.isValidGoogleDriveFolderId'
+        );
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
@@ -321,6 +342,12 @@ class ConfigurationManager extends BaseSingleton {
       UPDATE_DETAILS_URL:
         'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json',
       UPDATE_STAGE: 0,
+      JSON_DB_MASTER_INDEX_KEY: 'ASSESSMENT_BOT_DB_MASTER_INDEX',
+      JSON_DB_AUTO_CREATE_COLLECTIONS: true,
+      JSON_DB_LOCK_TIMEOUT_MS: 10000,
+      JSON_DB_LOG_LEVEL: 'INFO',
+      JSON_DB_BACKUP_ON_INITIALISE: false,
+      JSON_DB_ROOT_FOLDER_ID: null,
     };
   }
 
@@ -365,6 +392,53 @@ class ConfigurationManager extends BaseSingleton {
       ConfigurationManager.DEFAULTS.UPDATE_STAGE,
       { min: 0, max: 2 }
     );
+  }
+
+  getJsonDbMasterIndexKey() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY);
+    return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
+  }
+
+  getJsonDbAutoCreateCollections() {
+    const value = this.getProperty(
+      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS
+    );
+    if (value == null || value === '') {
+      return ConfigurationManager.DEFAULTS.JSON_DB_AUTO_CREATE_COLLECTIONS;
+    }
+    return ConfigurationManager.toBoolean(value);
+  }
+
+  getJsonDbLockTimeoutMs() {
+    return this.getIntConfig(
+      ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
+      ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS,
+      { min: 1000, max: 600000 }
+    );
+  }
+
+  getJsonDbLogLevel() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL);
+    if (!value) {
+      return ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL;
+    }
+    return String(value).trim().toUpperCase();
+  }
+
+  getJsonDbBackupOnInitialise() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE);
+    if (value == null || value === '') {
+      return ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE;
+    }
+    return ConfigurationManager.toBoolean(value);
+  }
+
+  getJsonDbRootFolderId() {
+    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID);
+    if (value == null || String(value).trim() === '') {
+      return ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
+    }
+    return String(value).trim();
   }
 
   getAssessmentRecordTemplateId() {
@@ -481,6 +555,36 @@ class ConfigurationManager extends BaseSingleton {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, stage);
   }
 
+  setJsonDbMasterIndexKey(masterIndexKey) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY, masterIndexKey);
+  }
+
+  setJsonDbAutoCreateCollections(flag) {
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
+      ConfigurationManager.toBoolean(flag)
+    );
+  }
+
+  setJsonDbLockTimeoutMs(timeoutMs) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, timeoutMs);
+  }
+
+  setJsonDbLogLevel(logLevel) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL, logLevel);
+  }
+
+  setJsonDbBackupOnInitialise(flag) {
+    this.setProperty(
+      ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
+      ConfigurationManager.toBoolean(flag)
+    );
+  }
+
+  setJsonDbRootFolderId(folderId) {
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, folderId);
+  }
+
   setIsAdminSheet(isAdmin) {
     this.setProperty(
       ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
@@ -557,6 +661,12 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
     REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
     DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
     SCRIPT_AUTHORISED: 'scriptAuthorised',
+    JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
+    JSON_DB_AUTO_CREATE_COLLECTIONS: 'jsonDbAutoCreateCollections',
+    JSON_DB_LOCK_TIMEOUT_MS: 'jsonDbLockTimeoutMs',
+    JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
+    JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
+    JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
   });
   ConfigurationManager._CONFIG_SCHEMA = Object.freeze({
     [ConfigurationManager._CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
@@ -641,6 +751,43 @@ if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
       storage: 'document',
       validate: (v) => ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
       normalize: ConfigurationManager.toBooleanString,
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateNonEmptyString('JSON DB Master Index Key', v),
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateBoolean('JSON DB Auto Create Collections', v),
+      normalize: ConfigurationManager.toBooleanString,
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
+      storage: 'script',
+      validate: (v) =>
+        ConfigurationManager.validateIntegerInRange('JSON DB Lock Timeout (ms)', v, 1000, 600000),
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateLogLevel('JSON DB Log Level', v),
+      normalize: (v) => ConfigurationManager.validateLogLevel('JSON DB Log Level', v),
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
+      storage: 'script',
+      validate: (v) => ConfigurationManager.validateBoolean('JSON DB Backup On Initialise', v),
+      normalize: ConfigurationManager.toBooleanString,
+    },
+    [ConfigurationManager._CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: {
+      storage: 'script',
+      validate: (v, instance) => {
+        if (v == null || String(v).trim() === '') {
+          return '';
+        }
+        const trimmed = String(v).trim();
+        if (!instance.isValidGoogleDriveFolderId(trimmed)) {
+          throw new Error('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
+        }
+        return trimmed;
+      },
     },
   });
   globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
