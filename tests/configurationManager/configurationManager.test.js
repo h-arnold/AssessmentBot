@@ -28,7 +28,7 @@ describe('ConfigurationManager setProperty', () => {
     mocks.Utils.validateIsAdminSheet.mockReturnValue(true);
 
     configManager = new ConfigurationManager();
-    
+
     // Manually inject the mock properties services to ensure the test spies work
     configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
     configManager.documentProperties = mocks.PropertiesService.documentProperties;
@@ -405,6 +405,188 @@ describe('ConfigurationManager setProperty', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, 123);
       }).toThrow(/must be a boolean \(true\/false\)/);
+    });
+  });
+
+  describe('ASSESSMENT_RECORD_COURSE_ID validation', () => {
+    it('should accept non-empty string and store in document properties', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
+          'course-123'
+        );
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
+        'course-123'
+      );
+      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
+    });
+
+    it('should allow empty string to clear the property', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID, '');
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
+        ''
+      );
+    });
+
+    it('should reject non-string values', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
+          123
+        );
+      }).toThrow('Assessment Record Course ID must be a string.');
+    });
+  });
+
+  describe('JSON DB configuration validations', () => {
+    it('should accept valid master index key', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY,
+          'MASTER_INDEX'
+        );
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY,
+        'MASTER_INDEX'
+      );
+    });
+
+    it('should reject empty master index key', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY, '');
+      }).toThrow('JSON DB Master Index Key must be a non-empty string.');
+    });
+
+    it('should accept boolean input for auto create collections', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
+          true
+        );
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
+        'true'
+      );
+    });
+
+    it('should reject invalid value for auto create collections', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
+          'maybe'
+        );
+      }).toThrow('JSON DB Auto Create Collections must be a boolean (true/false).');
+    });
+
+    it('should accept valid lock timeout within range', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 2000);
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
+        '2000'
+      );
+    });
+
+    it('should reject lock timeout below minimum', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 500);
+      }).toThrow('JSON DB Lock Timeout (ms) must be an integer between 1000 and 600000.');
+    });
+
+    it('should normalise log level to uppercase', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL, 'debug');
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL,
+        'DEBUG'
+      );
+    });
+
+    it('should reject invalid log level', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL, 'TRACE');
+      }).toThrow('JSON DB Log Level must be one of: DEBUG, INFO, WARN, ERROR');
+    });
+
+    it('should accept boolean for backup on initialise', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
+          'true'
+        );
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
+        'true'
+      );
+    });
+
+    it('should reject invalid value for backup on initialise', () => {
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
+          'yes'
+        );
+      }).toThrow('JSON DB Backup On Initialise must be a boolean (true/false).');
+    });
+
+    it('should accept valid JSON DB root folder id', () => {
+      const driveSpy = vi.spyOn(configManager, 'isValidGoogleDriveFolderId').mockReturnValue(true);
+
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
+          'folder-id-123'
+        );
+      }).not.toThrow();
+
+      expect(driveSpy).toHaveBeenCalledWith('folder-id-123');
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
+        'folder-id-123'
+      );
+
+      driveSpy.mockRestore();
+    });
+
+    it('should allow clearing JSON DB root folder id with blank input', () => {
+      expect(() => {
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, '   ');
+      }).not.toThrow();
+
+      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
+        ''
+      );
+    });
+
+    it('should reject invalid JSON DB root folder id', () => {
+      const driveSpy = vi.spyOn(configManager, 'isValidGoogleDriveFolderId').mockReturnValue(false);
+
+      expect(() => {
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
+          'invalid-id'
+        );
+      }).toThrow('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
+
+      driveSpy.mockRestore();
     });
   });
 
