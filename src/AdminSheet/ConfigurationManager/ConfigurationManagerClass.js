@@ -130,10 +130,8 @@ class ConfigurationManager extends BaseSingleton {
         ABLogger.getInstance().log('No propertiesStore sheet found');
       }
     } catch (err) {
-      // Use ProgressTracker as the single logging contract per project guidance.
-      ProgressTracker.getInstance().logError('ConfigurationManager.maybeDeserializeProperties', {
-        err,
-      });
+      // Log error via ABLogger
+      ABLogger.getInstance().error('ConfigurationManager.maybeDeserializeProperties failed.', err);
     }
   }
 
@@ -171,7 +169,21 @@ class ConfigurationManager extends BaseSingleton {
 
     if (!spec) {
       // Default behavior for unknown properties - no validation
-      this.scriptProperties.setProperty(key, String(value));
+      try {
+        this.scriptProperties.setProperty(key, String(value));
+      } catch (persistError) {
+        // Log persistence error
+        ABLogger.getInstance().error(
+          `ConfigurationManager: PersistError for key "${key}".`,
+          persistError
+        );
+        // Log rich persistence details (key + cause) for developer diagnostics and rethrow
+        ABLogger.getInstance().error(
+          `ConfigurationManager: Failed to persist configuration key "${key}".`,
+          { key, cause: persistError }
+        );
+        throw persistError;
+      }
       this.configCache = null;
       return;
     }
@@ -184,7 +196,21 @@ class ConfigurationManager extends BaseSingleton {
 
     // Store in the appropriate properties service
     const store = spec.storage === 'document' ? this.documentProperties : this.scriptProperties;
-    store.setProperty(key, String(normalizedValue));
+    try {
+      store.setProperty(key, String(normalizedValue));
+    } catch (persistError) {
+      // Log persistence error
+      ABLogger.getInstance().error(
+        `ConfigurationManager: PersistError for key "${key}".`,
+        persistError
+      );
+      // Log rich persistence details (key + cause) for developer diagnostics and rethrow
+      ABLogger.getInstance().error(
+        `ConfigurationManager: Failed to persist configuration key "${key}".`,
+        { key, cause: persistError }
+      );
+      throw persistError;
+    }
 
     // For document properties, we return early and don't invalidate the script cache
     // since document properties are not cached
@@ -305,24 +331,16 @@ class ConfigurationManager extends BaseSingleton {
         try {
           this.setProperty(persistConfigKey, folderId);
         } catch (persistError) {
-          // Use ProgressTracker as the primary user-facing logging mechanism per project guidance.
-          ProgressTracker.getInstance().logError(
-            `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-            { err: persistError }
+          // Log persistence error
+          ABLogger.getInstance().error(
+            `ConfigurationManager: PersistError while persisting folder id for "${folderName}".`,
+            persistError
           );
-          // Wrap in PersistError when running under Node tests (shim available at ../Utils/PersistError.js)
-          /* istanbul ignore next */
-          if (typeof module !== 'undefined' && module.exports) {
-            // Local require keeps production Apps Script code free of test snippets
-            const PersistError = require('../Utils/PersistError.js');
-            if (typeof PersistError === 'function') {
-              throw new PersistError(`Failed to persist configuration key: ${persistConfigKey}`, {
-                cause: persistError,
-                key: persistConfigKey,
-              });
-            }
-          }
-          // Fallback: rethrow original error
+          // Log rich persistence details (key + cause) for developer diagnostics and rethrow
+          ABLogger.getInstance().error(
+            `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
+            { key: persistConfigKey, cause: persistError }
+          );
           throw persistError;
         }
       }

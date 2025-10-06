@@ -59,4 +59,33 @@ describe('ABLogger', () => {
     logger.debugUi('yes');
     expect(console.log).toHaveBeenCalledWith('[DEBUG_UI] yes');
   });
+
+  it('serialises Error objects passed directly', () => {
+    const err = new Error('boom');
+    logger.error(err);
+    expect(console.error).toHaveBeenCalled();
+    const calledArgs = console.error.mock.calls[0];
+    expect(calledArgs.length).toBe(1);
+    const serial = calledArgs[0];
+    expect(serial).toBeTruthy();
+    expect(serial.name).toBe('Error');
+    expect(serial.message).toBe('boom');
+    expect(serial.stack).toBeTruthy();
+  });
+
+  it('serialises objects with cause and key properties', () => {
+    const err = new Error('disk');
+    logger.error('failed', { key: 'db', cause: err });
+    expect(console.error).toHaveBeenCalled();
+    const calledArgs = console.error.mock.calls[0];
+    // First arg is the message
+    expect(calledArgs[0]).toBe('failed');
+    // Second arg should be a shallow-serialised object with key and cause
+    const payload = calledArgs[1];
+    expect(payload).toBeTruthy();
+    expect(payload.key).toBe('db');
+    expect(payload.cause).toBeTruthy();
+    expect(payload.cause.name).toBe('Error');
+    expect(payload.cause.message).toBe('disk');
+  });
 });
