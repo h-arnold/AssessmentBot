@@ -15,6 +15,23 @@
  * config.setLangflowApiKey('sk-abc123');
  */
 
+const { CONFIG_KEYS, CONFIG_SCHEMA } = require('./configKeysAndSchema');
+const { DEFAULTS } = require('./defaults');
+const {
+  API_KEY_PATTERN,
+  DRIVE_ID_PATTERN,
+  JSON_DB_LOG_LEVELS,
+  validateIntegerInRange,
+  validateNonEmptyString,
+  validateUrl,
+  validateBoolean,
+  validateLogLevel,
+  validateApiKey,
+  toBoolean,
+  toBooleanString,
+  toReadableKey: formatReadableKey,
+} = require('./validators');
+
 class ConfigurationManager extends BaseSingleton {
   /**
    * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
@@ -45,15 +62,15 @@ class ConfigurationManager extends BaseSingleton {
   /** Shared patterns (extracted for DRY). */
   static get API_KEY_PATTERN() {
     // Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens
-    return /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
+    return API_KEY_PATTERN;
   }
   static get DRIVE_ID_PATTERN() {
     // Basic Google drive file/folder id heuristic
-    return /^[A-Za-z0-9-_]{10,}$/;
+    return DRIVE_ID_PATTERN;
   }
 
   static get JSON_DB_LOG_LEVELS() {
-    return ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+    return JSON_DB_LOG_LEVELS;
   }
 
   /**
@@ -168,16 +185,13 @@ class ConfigurationManager extends BaseSingleton {
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
 
     if (!spec) {
-      // Default behavior for unknown properties - no validation
       try {
         this.scriptProperties.setProperty(key, String(value));
       } catch (persistError) {
-        // Log persistence error
         ABLogger.getInstance().error(
           `ConfigurationManager: PersistError for key "${key}".`,
           persistError
         );
-        // Log rich persistence details (key + cause) for developer diagnostics and rethrow
         ABLogger.getInstance().error(
           `ConfigurationManager: Failed to persist configuration key "${key}".`,
           { key, cause: persistError }
@@ -188,23 +202,17 @@ class ConfigurationManager extends BaseSingleton {
       return;
     }
 
-    // Validate the value
     const canonical = spec.validate ? spec.validate(value, this) : value;
-
-    // Normalize if a normalizer is provided
     const normalizedValue = spec.normalize ? spec.normalize(canonical) : canonical;
 
-    // Store in the appropriate properties service
     const store = spec.storage === 'document' ? this.documentProperties : this.scriptProperties;
     try {
       store.setProperty(key, String(normalizedValue));
     } catch (persistError) {
-      // Log persistence error
       ABLogger.getInstance().error(
         `ConfigurationManager: PersistError for key "${key}".`,
         persistError
       );
-      // Log rich persistence details (key + cause) for developer diagnostics and rethrow
       ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
         { key, cause: persistError }
@@ -212,98 +220,11 @@ class ConfigurationManager extends BaseSingleton {
       throw persistError;
     }
 
-    // For document properties, we return early and don't invalidate the script cache
-    // since document properties are not cached
     if (spec.storage === 'document') {
       return;
     }
 
-    // Invalidate cache for script properties
     this.configCache = null;
-  }
-
-  isBoolean(value) {
-    if (typeof value === 'boolean') {
-      return true;
-    }
-    if (typeof value === 'string') {
-      const lowerValue = value.toLowerCase();
-      return lowerValue === 'true' || lowerValue === 'false';
-    }
-    return false;
-  }
-
-  /**
-   * Validate that a value is an integer within the provided inclusive range.
-   * Parses the value to an integer and throws an Error when invalid.
-   * Returns the parsed integer on success.
-   */
-  _validateIntegerRange(value, key, min, max) {
-    const parsed = parseInt(value, 10);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-      throw new Error(`${this.toReadableKey(key)} must be an integer between ${min} and ${max}.`);
-    }
-    return parsed;
-  }
-
-  // Reusable validator functions for the CONFIG_SCHEMA
-  static validateIntegerInRange(label, value, min, max) {
-    const parsed = parseInt(value, 10);
-    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-      throw new Error(`${label} must be an integer between ${min} and ${max}.`);
-    }
-    return parsed;
-  }
-
-  static validateNonEmptyString(label, value) {
-    if (typeof value !== 'string' || value.trim() === '') {
-      throw new Error(`${label} must be a non-empty string.`);
-    }
-    return value;
-  }
-
-  static validateUrl(label, value) {
-    const hasValidator = globalThis.Utils && typeof globalThis.Utils.isValidUrl === 'function';
-    const isValid =
-      typeof value === 'string' &&
-      (hasValidator ? globalThis.Utils.isValidUrl(value) : /^https?:\/\//.test(value));
-    if (!isValid) {
-      throw new Error(`${label} must be a valid URL string.`);
-    }
-    return value;
-  }
-
-  static validateBoolean(label, value) {
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'string') {
-      const lower = value.toLowerCase();
-      if (lower === 'true') return true;
-      if (lower === 'false') return false;
-    }
-    throw new Error(`${label} must be a boolean (true/false).`);
-  }
-
-  static validateLogLevel(label, value) {
-    if (typeof value !== 'string') {
-      throw new Error(`${label} must be a string.`);
-    }
-    const upper = value.trim().toUpperCase();
-    if (!ConfigurationManager.JSON_DB_LOG_LEVELS.includes(upper)) {
-      throw new Error(
-        `${label} must be one of: ${ConfigurationManager.JSON_DB_LOG_LEVELS.join(', ')}`
-      );
-    }
-    return upper;
-  }
-
-  static validateApiKey(value) {
-    const pattern = ConfigurationManager.API_KEY_PATTERN;
-    if (typeof value !== 'string' || !pattern.test(value.trim())) {
-      throw new Error(
-        'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.'
-      );
-    }
-    return value;
   }
 
   /**
@@ -401,7 +322,7 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   toReadableKey(key) {
-    return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+    return formatReadableKey(key);
   }
 
   getBackendAssessorBatchSize() {
@@ -413,20 +334,7 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   static get DEFAULTS() {
-    return {
-      BACKEND_ASSESSOR_BATCH_SIZE: 200, //This seems to be the limit before you hit UrlFetchApp rate limits.
-      SLIDES_FETCH_BATCH_SIZE: 30,
-      DAYS_UNTIL_AUTH_REVOKE: 60,
-      UPDATE_DETAILS_URL:
-        'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json',
-      UPDATE_STAGE: 0,
-      JSON_DB_MASTER_INDEX_KEY: 'ASSESSMENT_BOT_DB_MASTER_INDEX',
-      JSON_DB_AUTO_CREATE_COLLECTIONS: true,
-      JSON_DB_LOCK_TIMEOUT_MS: 10000,
-      JSON_DB_LOG_LEVEL: 'INFO',
-      JSON_DB_BACKUP_ON_INITIALISE: false,
-      JSON_DB_ROOT_FOLDER_ID: null,
-    };
+    return DEFAULTS;
   }
 
   getSlidesFetchBatchSize() {
@@ -697,16 +605,10 @@ class ConfigurationManager extends BaseSingleton {
    * Helper: normalize truthy/falsey to strict boolean.
    */
   static toBoolean(value) {
-    if (typeof value === 'boolean') return value;
-    if (value == null) return false;
-    if (typeof value === 'number') return value !== 0;
-    const s = String(value).trim().toLowerCase();
-    if (s === 'true') return true;
-    if (s === 'false') return false;
-    return Boolean(s);
+    return toBoolean(value);
   }
   static toBooleanString(value) {
-    return ConfigurationManager.toBoolean(value) ? 'true' : 'false';
+    return toBooleanString(value);
   }
 
   /** Generic integer accessor with validation and fallback */
@@ -722,155 +624,14 @@ class ConfigurationManager extends BaseSingleton {
   }
 }
 
+ConfigurationManager._CONFIG_KEYS = CONFIG_KEYS;
+ConfigurationManager._CONFIG_SCHEMA = CONFIG_SCHEMA;
+
+if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
+  globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
+}
+
 // For module exports (testing)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ConfigurationManager;
-}
-
-// Static one-time initialization of CONFIG_KEYS & CONFIG_SCHEMA (frozen)
-if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
-  ConfigurationManager._CONFIG_KEYS = Object.freeze({
-    BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
-    SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
-    API_KEY: 'apiKey',
-    BACKEND_URL: 'backendUrl',
-    ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
-    ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
-    ASSESSMENT_RECORD_COURSE_ID: 'assessmentRecordCourseId',
-    UPDATE_DETAILS_URL: 'updateDetailsUrl',
-    UPDATE_STAGE: 'updateStage',
-    IS_ADMIN_SHEET: 'isAdminSheet',
-    REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
-    DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
-    SCRIPT_AUTHORISED: 'scriptAuthorised',
-    JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
-    JSON_DB_AUTO_CREATE_COLLECTIONS: 'jsonDbAutoCreateCollections',
-    JSON_DB_LOCK_TIMEOUT_MS: 'jsonDbLockTimeoutMs',
-    JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
-    JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
-    JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
-  });
-  ConfigurationManager._CONFIG_SCHEMA = Object.freeze({
-    [ConfigurationManager._CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
-      storage: 'script',
-      validate: (v) =>
-        ConfigurationManager.validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
-    },
-    [ConfigurationManager._CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
-      storage: 'script',
-      validate: (v) =>
-        ConfigurationManager.validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
-    },
-    [ConfigurationManager._CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: {
-      storage: 'script',
-      validate: (v) =>
-        ConfigurationManager.validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
-    },
-    [ConfigurationManager._CONFIG_KEYS.API_KEY]: {
-      storage: 'script',
-      validate: ConfigurationManager.validateApiKey,
-    },
-    [ConfigurationManager._CONFIG_KEYS.BACKEND_URL]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateUrl('Backend Url', v),
-    },
-    [ConfigurationManager._CONFIG_KEYS.UPDATE_DETAILS_URL]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateUrl('Update Details Url', v),
-    },
-    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID]: {
-      storage: 'script',
-      validate: (v, instance) => {
-        ConfigurationManager.validateNonEmptyString('Assessment Record Template Id', v);
-        if (!instance.isValidGoogleSheetId(v)) {
-          throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
-        }
-        return v;
-      },
-    },
-    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID]: {
-      storage: 'document',
-      validate: (v) => {
-        // Allow empty/null to clear the value; otherwise accept any non-empty string.
-        if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
-        if (typeof v !== 'string') throw new Error('Assessment Record Course ID must be a string.');
-        return v;
-      },
-    },
-    [ConfigurationManager._CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
-      storage: 'script',
-      validate: (v, instance) => {
-        ConfigurationManager.validateNonEmptyString('Assessment Record Destination Folder', v);
-        if (!instance.isValidGoogleDriveFolderId(v)) {
-          throw new Error(
-            'Assessment Record Destination Folder must be a valid Google Drive Folder ID.'
-          );
-        }
-        return v;
-      },
-    },
-    [ConfigurationManager._CONFIG_KEYS.UPDATE_STAGE]: {
-      storage: 'script',
-      validate: (v) => {
-        const stage = parseInt(v, 10);
-        if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
-          throw new Error('Update Stage must be 0, 1, or 2');
-        }
-        return stage;
-      },
-    },
-    [ConfigurationManager._CONFIG_KEYS.IS_ADMIN_SHEET]: {
-      storage: 'document',
-      validate: (v) => ConfigurationManager.validateBoolean('Is Admin Sheet', v),
-      normalize: ConfigurationManager.toBooleanString,
-    },
-    [ConfigurationManager._CONFIG_KEYS.SCRIPT_AUTHORISED]: {
-      storage: 'document',
-      validate: (v) => ConfigurationManager.validateBoolean('Script Authorised', v),
-      normalize: ConfigurationManager.toBooleanString,
-    },
-    [ConfigurationManager._CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
-      storage: 'document',
-      validate: (v) => ConfigurationManager.validateBoolean('Revoke Auth Trigger Set', v),
-      normalize: ConfigurationManager.toBooleanString,
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateNonEmptyString('JSON DB Master Index Key', v),
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateBoolean('JSON DB Auto Create Collections', v),
-      normalize: ConfigurationManager.toBooleanString,
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
-      storage: 'script',
-      validate: (v) =>
-        ConfigurationManager.validateIntegerInRange('JSON DB Lock Timeout (ms)', v, 1000, 600000),
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateLogLevel('JSON DB Log Level', v),
-      normalize: (v) => ConfigurationManager.validateLogLevel('JSON DB Log Level', v),
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
-      storage: 'script',
-      validate: (v) => ConfigurationManager.validateBoolean('JSON DB Backup On Initialise', v),
-      normalize: ConfigurationManager.toBooleanString,
-    },
-    [ConfigurationManager._CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: {
-      storage: 'script',
-      validate: (v, instance) => {
-        if (v == null || String(v).trim() === '') {
-          return '';
-        }
-        const trimmed = String(v).trim();
-        if (!instance.isValidGoogleDriveFolderId(trimmed)) {
-          throw new Error('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
-        }
-        return trimmed;
-      },
-    },
-  });
-  globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }
