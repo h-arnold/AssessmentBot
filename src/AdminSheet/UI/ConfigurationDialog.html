@@ -58,6 +58,46 @@
     .select-dropdown li {
       padding-left: 0;
     }
+
+    /* Loading overlay (reused from VersionSelectorModal) */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .updating-text {
+      margin-top: 15px;
+      font-size: 16px;
+      color: #333;
+    }
   </style>
 </head>
 
@@ -151,6 +191,12 @@
       </div>
   </div>
   </form>
+  </div>
+
+  <!-- Loading overlay (matches VersionSelectorModal) -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+    <div class="spinner"></div>
+    <div class="updating-text">Updating...</div>
   </div>
 
   <!-- Fixed button group for configuration (applies to Langflow and Advanced tabs) -->
@@ -364,8 +410,13 @@
         classroom: classroom
       };
 
+      // Show loading overlay while saving
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) overlay.style.display = 'flex';
+
       google.script.run
         .withSuccessHandler(function (result) {
+          if (overlay) overlay.style.display = 'none';
           if (!result) {
             M.toast({ html: 'Configuration save returned no result.', classes: 'orange' });
             return;
@@ -379,6 +430,7 @@
           }
         })
         .withFailureHandler(function (error) {
+          if (overlay) overlay.style.display = 'none';
           M.toast({ html: `Error saving configuration: ${error.message}`, classes: 'red' });
         })
         .saveConfiguration(formData);
