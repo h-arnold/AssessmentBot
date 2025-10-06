@@ -28,6 +28,18 @@ global.Logger = {
 // Use the shared ProgressTracker mock for tests
 global.ProgressTracker = require('./mocks/ProgressTracker.js');
 
+// Provide a minimal ABLogger stub for tests so production code can call it directly
+global.ABLogger = {
+  getInstance: () => ({
+    debug: () => {},
+    debugUi: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    log: () => {},
+  }),
+};
+
 global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
@@ -60,8 +72,8 @@ global.ClassroomManager = {
       }
 
       return list.map((s) => {
-        const profile = s && s.profile ? s.profile : {};
-        const name = profile.name && profile.name.fullName ? profile.name.fullName : null;
+        const profile = s?.profile ? s.profile : {};
+        const name = profile?.name.fullName ? profile.name.fullName : null;
         const email = profile.emailAddress || null;
         const id = profile.id || null;
 

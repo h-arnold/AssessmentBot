@@ -288,11 +288,7 @@ class ConfigurationManager extends BaseSingleton {
    */
   _ensureAdminSheetFolder(folderName, persistConfigKey = null) {
     if (!Utils.validateIsAdminSheet(false)) return null;
-
-    const logger =
-      typeof ABLogger !== 'undefined' && ABLogger && typeof ABLogger.getInstance === 'function'
-        ? ABLogger.getInstance()
-        : null;
+    const logger = ABLogger.getInstance();
 
     try {
       if (typeof SpreadsheetApp === 'undefined' || typeof DriveManager === 'undefined') {
@@ -314,16 +310,14 @@ class ConfigurationManager extends BaseSingleton {
         try {
           this.setProperty(persistConfigKey, folderId);
         } catch (persistError) {
-          if (logger && typeof logger.warn === 'function') {
-            logger.warn(
-              `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-              persistError
-            );
-          }
+          logger.warn(
+            `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
+            persistError
+          );
         }
       }
 
-      if (folderId && logger && typeof logger.info === 'function') {
+      if (folderId) {
         logger.info(
           `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
         );
@@ -331,9 +325,7 @@ class ConfigurationManager extends BaseSingleton {
 
       return folderId || null;
     } catch (err) {
-      if (logger && typeof logger.warn === 'function') {
-        logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, err);
-      }
+      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, err);
       return null;
     }
   }

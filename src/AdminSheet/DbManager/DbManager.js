@@ -19,8 +19,6 @@ class DbManager extends BaseSingleton {
 
     this.progressTracker = ProgressTracker.getInstance();
     this._db = null;
-    this._options = {}; // legacy tests used to inject options; default to empty
-
     // Validate library presence up-front (fail-fast), but don't initialise DB yet
     this._assertLibraryAvailable();
 
@@ -30,107 +28,20 @@ class DbManager extends BaseSingleton {
   }
 
   /**
-   * Default configuration values. These will be superseded by future
-   * ConfigurationManager-backed values once added there.
-   */
-  static get DEFAULTS() {
-    return {
-      masterIndexKey: 'ASSESSMENT_BOT_DB_MASTER_INDEX',
-      autoCreateCollections: true,
-      lockTimeout: 10000,
-      logLevel: 'INFO',
-      backupOnInitialise: false,
-      rootFolderId: null,
-    };
-  }
-
-  /**
-   * Resolve configuration for JsonDbApp. Prefer provided options, then
-   * values discoverable from the environment, finally fall back to defaults.
+   * Resolve configuration for JsonDbApp from ConfigurationManager only.
+   * ConfigurationManager owns fetching, validation and defaults.
    */
   _getConfig() {
-    const defaults = DbManager.DEFAULTS;
-    const provided = this._options || {};
+    const configManager = ConfigurationManager.getInstance();
+    const rootFolderId = configManager.getJsonDbRootFolderId();
 
-    const configManager =
-      typeof ConfigurationManager !== 'undefined' &&
-      ConfigurationManager &&
-      typeof ConfigurationManager.getInstance === 'function'
-        ? ConfigurationManager.getInstance()
-        : null;
-
-    const managerConfig = configManager
-      ? {
-          masterIndexKey: configManager.getJsonDbMasterIndexKey(),
-          autoCreateCollections: configManager.getJsonDbAutoCreateCollections(),
-          lockTimeout: configManager.getJsonDbLockTimeoutMs(),
-          logLevel: configManager.getJsonDbLogLevel(),
-          backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
-          rootFolderId: configManager.getJsonDbRootFolderId(),
-        }
-      : {};
-
-    // Root folder: prefer caller-provided, else the parent of the active sheet, else Drive root
-    let rootFolderId =
-      (Validate.isNonEmptyString(provided.rootFolderId) && provided.rootFolderId) ||
-      (Validate.isNonEmptyString(managerConfig.rootFolderId) && managerConfig.rootFolderId) ||
-      undefined;
-    try {
-      if (!rootFolderId && typeof SpreadsheetApp !== 'undefined') {
-        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-        const spreadsheetId =
-          spreadsheet && typeof spreadsheet.getId === 'function' ? spreadsheet.getId() : null;
-        if (spreadsheetId) {
-          const parentId = DriveManager.getParentFolderId(spreadsheetId);
-          if (Validate.isNonEmptyString(parentId)) {
-            rootFolderId = parentId;
-          }
-        }
-      }
-    } catch (e) {
-      // Fall back quietly; Drive root will be determined by the library if omitted
-      rootFolderId = rootFolderId || undefined;
-    }
-
-    const masterIndexKey =
-      (Validate.isNonEmptyString(provided.masterIndexKey) && provided.masterIndexKey) ||
-      (Validate.isNonEmptyString(managerConfig.masterIndexKey) && managerConfig.masterIndexKey) ||
-      defaults.masterIndexKey;
-
-    const autoCreateCollections = Validate.isBoolean(provided.autoCreateCollections)
-      ? provided.autoCreateCollections
-      : Validate.isBoolean(managerConfig.autoCreateCollections)
-      ? managerConfig.autoCreateCollections
-      : defaults.autoCreateCollections;
-
-    const lockTimeout = Validate.isNumber(provided.lockTimeout)
-      ? provided.lockTimeout
-      : Validate.isNumber(managerConfig.lockTimeout)
-      ? managerConfig.lockTimeout
-      : defaults.lockTimeout;
-
-    const logLevel =
-      (Validate.isNonEmptyString(provided.logLevel) && provided.logLevel) ||
-      (Validate.isNonEmptyString(managerConfig.logLevel) && managerConfig.logLevel) ||
-      defaults.logLevel;
-
-    const backupOnInitialise = Validate.isBoolean(provided.backupOnInitialise)
-      ? provided.backupOnInitialise
-      : Validate.isBoolean(managerConfig.backupOnInitialise)
-      ? managerConfig.backupOnInitialise
-      : defaults.backupOnInitialise;
-
-    const resolvedRootFolderId = Validate.isNonEmptyString(rootFolderId) ? rootFolderId : undefined;
-
-    // In the future, these can be read from configurationManager once keys exist.
     return {
-      masterIndexKey,
-      autoCreateCollections,
-      lockTimeout,
-      logLevel,
-      backupOnInitialise,
-      // Only include rootFolderId if we actually resolved one; JsonDbApp can discover a default
-      ...(resolvedRootFolderId ? { rootFolderId: resolvedRootFolderId } : {}),
+      masterIndexKey: configManager.getJsonDbMasterIndexKey(),
+      autoCreateCollections: configManager.getJsonDbAutoCreateCollections(),
+      lockTimeout: configManager.getJsonDbLockTimeoutMs(),
+      logLevel: configManager.getJsonDbLogLevel(),
+      backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
+      ...(rootFolderId ? { rootFolderId } : {}),
     };
   }
 
