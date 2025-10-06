@@ -81,7 +81,7 @@ describe('BaseRequestManager Error Handling', () => {
     global.ABLogger = mockABLogger;
 
     // Load AbortRequestError
-    const AbortRequestError = require('../../src/AdminSheet/Utils/AbortRequestError.js');
+    const AbortRequestError = require('../../src/AdminSheet/Utils/ErrorTypes/AbortRequestError.js');
     global.AbortRequestError = AbortRequestError;
 
     // Mock console methods to avoid noise in test output
