@@ -280,6 +280,64 @@ class ConfigurationManager extends BaseSingleton {
     return value;
   }
 
+  /**
+   * Ensures a folder exists alongside the Admin sheet, optionally persisting the resulting ID.
+   * @param {string} folderName - The folder name to create or reuse.
+   * @param {string|null} persistConfigKey - Optional configuration key to persist the folder ID against.
+   * @return {string|null} The folder ID when created/resolved, else null on failure or when not an admin sheet.
+   */
+  _ensureAdminSheetFolder(folderName, persistConfigKey = null) {
+    if (!Utils.validateIsAdminSheet(false)) return null;
+
+    const logger =
+      typeof ABLogger !== 'undefined' && ABLogger && typeof ABLogger.getInstance === 'function'
+        ? ABLogger.getInstance()
+        : null;
+
+    try {
+      if (typeof SpreadsheetApp === 'undefined' || typeof DriveManager === 'undefined') {
+        return null;
+      }
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (!spreadsheet || typeof spreadsheet.getId !== 'function') {
+        return null;
+      }
+      const spreadsheetId = spreadsheet.getId();
+      const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
+      if (!parentFolderId) {
+        return null;
+      }
+      const folderResult = DriveManager.createFolder(parentFolderId, folderName);
+      const folderId = folderResult?.newFolderId;
+
+      if (folderId && persistConfigKey) {
+        try {
+          this.setProperty(persistConfigKey, folderId);
+        } catch (persistError) {
+          if (logger && typeof logger.warn === 'function') {
+            logger.warn(
+              `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
+              persistError
+            );
+          }
+        }
+      }
+
+      if (folderId && logger && typeof logger.info === 'function') {
+        logger.info(
+          `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
+        );
+      }
+
+      return folderId || null;
+    } catch (err) {
+      if (logger && typeof logger.warn === 'function') {
+        logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, err);
+      }
+      return null;
+    }
+  }
+
   isValidApiKey(apiKey) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
     return typeof apiKey === 'string' && pattern.test(apiKey.trim());
@@ -436,7 +494,11 @@ class ConfigurationManager extends BaseSingleton {
   getJsonDbRootFolderId() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID);
     if (value == null || String(value).trim() === '') {
-      return ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
+      const folderId = this._ensureAdminSheetFolder(
+        'Assessment Bot Database Files',
+        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID
+      );
+      return folderId || ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
     }
     return String(value).trim();
   }
@@ -501,10 +563,10 @@ class ConfigurationManager extends BaseSingleton {
         ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER
       );
       if (!destinationFolder) {
-        const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
-        const newFolder = DriveManager.createFolder(parentFolderId, 'Assessment Records');
-        destinationFolder = newFolder.newFolderId;
+        destinationFolder = this._ensureAdminSheetFolder(
+          'Assessment Records',
+          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER
+        );
       }
       return destinationFolder;
     }

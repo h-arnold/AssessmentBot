@@ -71,43 +71,66 @@ class DbManager extends BaseSingleton {
       : {};
 
     // Root folder: prefer caller-provided, else the parent of the active sheet, else Drive root
-    let rootFolderId = provided.rootFolderId || managerConfig.rootFolderId || undefined;
+    let rootFolderId =
+      (Validate.isNonEmptyString(provided.rootFolderId) && provided.rootFolderId) ||
+      (Validate.isNonEmptyString(managerConfig.rootFolderId) && managerConfig.rootFolderId) ||
+      undefined;
     try {
       if (!rootFolderId && typeof SpreadsheetApp !== 'undefined') {
-        const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        rootFolderId = DriveManager.getParentFolderId(spreadsheetId);
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const spreadsheetId =
+          spreadsheet && typeof spreadsheet.getId === 'function' ? spreadsheet.getId() : null;
+        if (spreadsheetId) {
+          const parentId = DriveManager.getParentFolderId(spreadsheetId);
+          if (Validate.isNonEmptyString(parentId)) {
+            rootFolderId = parentId;
+          }
+        }
       }
     } catch (e) {
       // Fall back quietly; Drive root will be determined by the library if omitted
-      console.warn('DbManager: Unable to resolve parent folder; falling back to default.', e);
       rootFolderId = rootFolderId || undefined;
     }
 
+    const masterIndexKey =
+      (Validate.isNonEmptyString(provided.masterIndexKey) && provided.masterIndexKey) ||
+      (Validate.isNonEmptyString(managerConfig.masterIndexKey) && managerConfig.masterIndexKey) ||
+      defaults.masterIndexKey;
+
+    const autoCreateCollections = Validate.isBoolean(provided.autoCreateCollections)
+      ? provided.autoCreateCollections
+      : Validate.isBoolean(managerConfig.autoCreateCollections)
+      ? managerConfig.autoCreateCollections
+      : defaults.autoCreateCollections;
+
+    const lockTimeout = Validate.isNumber(provided.lockTimeout)
+      ? provided.lockTimeout
+      : Validate.isNumber(managerConfig.lockTimeout)
+      ? managerConfig.lockTimeout
+      : defaults.lockTimeout;
+
+    const logLevel =
+      (Validate.isNonEmptyString(provided.logLevel) && provided.logLevel) ||
+      (Validate.isNonEmptyString(managerConfig.logLevel) && managerConfig.logLevel) ||
+      defaults.logLevel;
+
+    const backupOnInitialise = Validate.isBoolean(provided.backupOnInitialise)
+      ? provided.backupOnInitialise
+      : Validate.isBoolean(managerConfig.backupOnInitialise)
+      ? managerConfig.backupOnInitialise
+      : defaults.backupOnInitialise;
+
+    const resolvedRootFolderId = Validate.isNonEmptyString(rootFolderId) ? rootFolderId : undefined;
+
     // In the future, these can be read from configurationManager once keys exist.
     return {
-      masterIndexKey:
-        provided.masterIndexKey || managerConfig.masterIndexKey || defaults.masterIndexKey,
-      autoCreateCollections:
-        typeof provided.autoCreateCollections === 'boolean'
-          ? provided.autoCreateCollections
-          : typeof managerConfig.autoCreateCollections === 'boolean'
-          ? managerConfig.autoCreateCollections
-          : defaults.autoCreateCollections,
-      lockTimeout:
-        typeof provided.lockTimeout === 'number'
-          ? provided.lockTimeout
-          : typeof managerConfig.lockTimeout === 'number'
-          ? managerConfig.lockTimeout
-          : defaults.lockTimeout,
-      logLevel: provided.logLevel || managerConfig.logLevel || defaults.logLevel,
-      backupOnInitialise:
-        typeof provided.backupOnInitialise === 'boolean'
-          ? provided.backupOnInitialise
-          : typeof managerConfig.backupOnInitialise === 'boolean'
-          ? managerConfig.backupOnInitialise
-          : defaults.backupOnInitialise,
+      masterIndexKey,
+      autoCreateCollections,
+      lockTimeout,
+      logLevel,
+      backupOnInitialise,
       // Only include rootFolderId if we actually resolved one; JsonDbApp can discover a default
-      ...(rootFolderId ? { rootFolderId } : {}),
+      ...(resolvedRootFolderId ? { rootFolderId: resolvedRootFolderId } : {}),
     };
   }
 

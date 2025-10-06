@@ -28,6 +28,8 @@ global.Logger = {
 // Use the shared ProgressTracker mock for tests
 global.ProgressTracker = require('./mocks/ProgressTracker.js');
 
+global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
+
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory;
