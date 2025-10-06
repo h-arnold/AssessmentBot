@@ -2,15 +2,12 @@
  * Configuration keys and schema definitions for ConfigurationManager.
  */
 
-const {
-  validateIntegerInRange,
-  validateNonEmptyString,
-  validateUrl,
-  validateBoolean,
-  validateLogLevel,
-  validateApiKey,
-  toBooleanString,
-} = require('./validators');
+// Validator functions are provided by a shared module in tests and at runtime
+// through the global scope (Apps Script global-like environment). Do not
+// require them here to avoid duplicate declaration errors when running in
+// the GAS runtime where these are already present on the global object.
+// Tests will populate these on globalThis in `tests/setupGlobals.js`.
+/* global validateIntegerInRange, validateNonEmptyString, validateUrl, validateBoolean, validateLogLevel, validateApiKey, toBooleanString */
 
 const CONFIG_KEYS = Object.freeze({
   BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
