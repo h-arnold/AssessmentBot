@@ -85,17 +85,19 @@ function toReadableKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 }
 
-module.exports = {
-  API_KEY_PATTERN,
-  DRIVE_ID_PATTERN,
-  JSON_DB_LOG_LEVELS,
-  validateIntegerInRange,
-  validateNonEmptyString,
-  validateUrl,
-  validateBoolean,
-  validateLogLevel,
-  validateApiKey,
-  toBoolean,
-  toBooleanString,
-  toReadableKey,
-};
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    API_KEY_PATTERN,
+    DRIVE_ID_PATTERN,
+    JSON_DB_LOG_LEVELS,
+    validateIntegerInRange,
+    validateNonEmptyString,
+    validateUrl,
+    validateBoolean,
+    validateLogLevel,
+    validateApiKey,
+    toBoolean,
+    toBooleanString,
+    toReadableKey,
+  };
+}

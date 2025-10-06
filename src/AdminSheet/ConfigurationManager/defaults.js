@@ -17,4 +17,6 @@ const DEFAULTS = Object.freeze({
   JSON_DB_ROOT_FOLDER_ID: null,
 });
 
-module.exports = { DEFAULTS };
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { DEFAULTS };
+}
