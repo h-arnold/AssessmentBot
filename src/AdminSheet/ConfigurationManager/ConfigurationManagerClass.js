@@ -172,10 +172,6 @@ class ConfigurationManager extends BaseSingleton {
         this.scriptProperties.setProperty(key, String(value));
       } catch (persistError) {
         ABLogger.getInstance().error(
-          `ConfigurationManager: PersistError for key "${key}".`,
-          persistError
-        );
-        ABLogger.getInstance().error(
           `ConfigurationManager: Failed to persist configuration key "${key}".`,
           { key, cause: persistError }
         );
