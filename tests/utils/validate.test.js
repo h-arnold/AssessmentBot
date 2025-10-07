@@ -2,6 +2,32 @@ import { describe, it, expect } from 'vitest';
 import { Validate } from '../../src/AdminSheet/Utils/Validate.js';
 
 describe('Validate utility', () => {
+  describe('primitive helpers', () => {
+    it('checks for strings', () => {
+      expect(Validate.isString('hello')).toBe(true);
+      expect(Validate.isString(123)).toBe(false);
+      expect(Validate.isString(null)).toBe(false);
+    });
+
+    it('checks for non-empty strings', () => {
+      expect(Validate.isNonEmptyString('hello')).toBe(true);
+      expect(Validate.isNonEmptyString('   ')).toBe(false);
+      expect(Validate.isNonEmptyString(undefined)).toBe(false);
+    });
+
+    it('checks for numbers', () => {
+      expect(Validate.isNumber(42)).toBe(true);
+      expect(Validate.isNumber(NaN)).toBe(false);
+      expect(Validate.isNumber('42')).toBe(false);
+    });
+
+    it('checks for booleans', () => {
+      expect(Validate.isBoolean(true)).toBe(true);
+      expect(Validate.isBoolean(false)).toBe(true);
+      expect(Validate.isBoolean('true')).toBe(false);
+    });
+  });
+
   describe('isEmail', () => {
     it('accepts valid emails', () => {
       expect(Validate.isEmail('teacher@example.com')).toBe(true);

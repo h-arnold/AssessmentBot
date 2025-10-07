@@ -28,9 +28,51 @@ global.Logger = {
 // Use the shared ProgressTracker mock for tests
 global.ProgressTracker = require('./mocks/ProgressTracker.js');
 
+// Provide a minimal ABLogger stub for tests so production code can call it directly
+global.ABLogger = {
+  getInstance: () => ({
+    debug: () => {},
+    debugUi: () => {},
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    log: () => {},
+  }),
+};
+
+global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
+
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
 const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory;
+
+// Load and expose ConfigurationManager validators as globals so modules that
+// expect Apps Script-style globals won't redeclare them during runtime. This
+// avoids duplicate declaration errors when the same functions are present in
+// both tests and the GAS runtime. Tests should ensure these are present before
+// requiring ConfigurationManager modules.
+try {
+  const validators = require('../src/AdminSheet/ConfigurationManager/validators.js');
+  // Attach individual functions/values to the global scope (globalThis) so
+  // source files can reference them without importing. Use the same names
+  // exported by the validators module.
+  globalThis.API_KEY_PATTERN = validators.API_KEY_PATTERN;
+  globalThis.DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
+  globalThis.JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
+  globalThis.validateIntegerInRange = validators.validateIntegerInRange;
+  globalThis.validateNonEmptyString = validators.validateNonEmptyString;
+  globalThis.validateUrl = validators.validateUrl;
+  globalThis.validateBoolean = validators.validateBoolean;
+  globalThis.validateLogLevel = validators.validateLogLevel;
+  globalThis.validateApiKey = validators.validateApiKey;
+  globalThis.toBoolean = validators.toBoolean;
+  globalThis.toBooleanString = validators.toBooleanString;
+  globalThis.toReadableKey = validators.toReadableKey;
+} catch (e) {
+  // If validators can't be loaded for some reason, let tests fail later
+  // with clearer messages. Do not swallow the error silently in logs.
+  throw e;
+}
 
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
@@ -58,8 +100,8 @@ global.ClassroomManager = {
       }
 
       return list.map((s) => {
-        const profile = s && s.profile ? s.profile : {};
-        const name = profile.name && profile.name.fullName ? profile.name.fullName : null;
+        const profile = s?.profile ? s.profile : {};
+        const name = profile?.name.fullName ? profile.name.fullName : null;
         const email = profile.emailAddress || null;
         const id = profile.id || null;
 

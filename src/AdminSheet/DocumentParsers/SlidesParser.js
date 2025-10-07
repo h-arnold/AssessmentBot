@@ -130,7 +130,8 @@ class SlidesParser extends DocumentParser {
               }
               break;
             }
-            case '~': {
+            case '~':
+            case '|': {
               // image artifact for whole slide
               const taskTitle = tagText; // image title key
               const definitionKey = taskTitle + '|' + pageId;

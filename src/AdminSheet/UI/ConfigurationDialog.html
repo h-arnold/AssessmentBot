@@ -109,13 +109,16 @@
       <div class="row">
         <div class="col s12">
           <ul class="tabs">
-            <li class="tab col s4">
+            <li class="tab col s3">
               <a href="#backendTab" class="active">Backend</a>
             </li>
-            <li class="tab col s4">
+            <li class="tab col s3">
               <a href="#advancedTab">Advanced</a>
             </li>
-            <li class="tab col s4">
+            <li class="tab col s3">
+              <a href="#databaseTab">Database Settings</a>
+            </li>
+            <li class="tab col s3">
               <a href="#debugTab">Debug</a>
             </li>
           </ul>
@@ -174,7 +177,64 @@
         </div>
       </div>
 
-      <!-- Tab 3: Debug (Classroom Selector) -->
+      <!-- Tab 3: Database Settings -->
+      <div id="databaseTab" class="col s12">
+        <h5>Database Settings</h5>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="jsonDbMasterIndexKey" name="jsonDbMasterIndexKey" type="text" required>
+            <label for="jsonDbMasterIndexKey">Master Index Key</label>
+            <span class="helper-text">Unique key used to identify the JsonDb master index.</span>
+          </div>
+          <div class="input-field col s12 m6">
+            <input id="jsonDbRootFolderId" name="jsonDbRootFolderId" type="text">
+            <label for="jsonDbRootFolderId">Root Folder ID (optional)</label>
+            <span class="helper-text">Leave blank to allow automatic discovery of the Drive folder.</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="input-field col s12 m6">
+            <input id="jsonDbLockTimeoutMs" name="jsonDbLockTimeoutMs" type="number" min="1000" max="600000">
+            <label for="jsonDbLockTimeoutMs">Lock Timeout (ms, 1,000–600,000)</label>
+          </div>
+          <div class="input-field col s12 m6">
+            <select id="jsonDbLogLevel" name="jsonDbLogLevel">
+              <option value="" disabled selected>Select a log level</option>
+              <option value="DEBUG">Debug</option>
+              <option value="INFO">Info</option>
+              <option value="WARN">Warn</option>
+              <option value="ERROR">Error</option>
+            </select>
+            <label for="jsonDbLogLevel">Log Level</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col s12 m6">
+            <div class="switch">
+              <label>
+                Off
+                <input id="jsonDbAutoCreateCollections" name="jsonDbAutoCreateCollections" type="checkbox">
+                <span class="lever"></span>
+                On
+              </label>
+            </div>
+            <span class="helper-text">Automatically create missing collections when accessed.</span>
+          </div>
+          <div class="col s12 m6">
+            <div class="switch">
+              <label>
+                Off
+                <input id="jsonDbBackupOnInitialise" name="jsonDbBackupOnInitialise" type="checkbox">
+                <span class="lever"></span>
+                On
+              </label>
+            </div>
+            <span class="helper-text">Create a backup of the database the first time it initialises.</span>
+          </div>
+        </div>
+      </div>
+
+  <!-- Tab 4: Debug (Classroom Selector) -->
       <div id="debugTab" class="col s12">
         <h5>Select Your Classroom</h5>
         <div class="input-field">
@@ -257,7 +317,7 @@
         apiKeyEl.value = data.apiKey || '';
         apiKeyEl.placeholder = '';
       }
-  document.getElementById('backendUrl').value = data.backendUrl || '';
+      document.getElementById('backendUrl').value = data.backendUrl || '';
       // Populate renamed backend assessor batch size
       const backendBatchInput = document.getElementById('backendAssessorBatchSize');
       if (backendBatchInput) {
@@ -268,6 +328,16 @@
       document.getElementById('assessmentRecordTemplateId').value = data.assessmentRecordTemplateId || '';
       document.getElementById('assessmentRecordDestinationFolder').value = data.assessmentRecordDestinationFolder || '';
       document.getElementById('daysUntilAuthRevoke').value = data.daysUntilAuthRevoke || 60;
+      document.getElementById('jsonDbMasterIndexKey').value = data.jsonDbMasterIndexKey || '';
+      document.getElementById('jsonDbRootFolderId').value = data.jsonDbRootFolderId || '';
+      document.getElementById('jsonDbLockTimeoutMs').value = data.jsonDbLockTimeoutMs || 10000;
+      const logLevelSelect = document.getElementById('jsonDbLogLevel');
+      if (logLevelSelect) {
+        logLevelSelect.value = data.jsonDbLogLevel || '';
+        M.FormSelect.init(logLevelSelect);
+      }
+      document.getElementById('jsonDbAutoCreateCollections').checked = !!data.jsonDbAutoCreateCollections;
+      document.getElementById('jsonDbBackupOnInitialise').checked = !!data.jsonDbBackupOnInitialise;
       M.updateTextFields();
     }
 
@@ -344,6 +414,10 @@
         focusTab('advancedTab');
       }
 
+      function focusDatabaseTab() {
+        focusTab('databaseTab');
+      }
+
       function isValidUrl(u) {
         if (!u) return false;
         try {
@@ -369,6 +443,36 @@
         focusBackendTab();
         M.toast({ html: 'Please provide a valid Backend URL.', classes: 'orange' });
         backendUrlEl.focus();
+        return;
+      }
+
+      const masterIndexInput = document.getElementById('jsonDbMasterIndexKey');
+      const masterIndexKey = masterIndexInput.value.trim();
+      if (!masterIndexKey) {
+        focusDatabaseTab();
+        M.toast({ html: 'Master Index Key is required.', classes: 'orange' });
+        masterIndexInput.focus();
+        return;
+      }
+
+      const logLevelValue = document.getElementById('jsonDbLogLevel').value;
+      const allowedLogLevels = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+      if (!allowedLogLevels.includes(logLevelValue)) {
+        focusDatabaseTab();
+        M.toast({ html: 'Please select a valid log level.', classes: 'orange' });
+        return;
+      }
+
+      const lockTimeoutVal = validateIntRange('jsonDbLockTimeoutMs', 1000, 600000, 'Lock Timeout (ms)', focusDatabaseTab);
+      if (lockTimeoutVal === null) return;
+
+      const rootFolderInput = document.getElementById('jsonDbRootFolderId');
+      const rootFolderId = rootFolderInput.value.trim();
+      const driveIdPattern = /^[A-Za-z0-9-_]{10,}$/;
+      if (rootFolderId && !driveIdPattern.test(rootFolderId)) {
+        focusDatabaseTab();
+        M.toast({ html: 'Root Folder ID must be a valid Google Drive identifier.', classes: 'orange' });
+        rootFolderInput.focus();
         return;
       }
 
@@ -407,6 +511,12 @@
         assessmentRecordDestinationFolder: document.getElementById('assessmentRecordDestinationFolder').value.trim(),
         slidesFetchBatchSize: slidesVal,
         daysUntilAuthRevoke: daysUntilAuthRevokeVal,
+        jsonDbMasterIndexKey: masterIndexKey,
+        jsonDbAutoCreateCollections: document.getElementById('jsonDbAutoCreateCollections').checked,
+        jsonDbLockTimeoutMs: lockTimeoutVal,
+        jsonDbLogLevel: logLevelValue,
+        jsonDbBackupOnInitialise: document.getElementById('jsonDbBackupOnInitialise').checked,
+        jsonDbRootFolderId: rootFolderId,
         classroom: classroom
       };
 

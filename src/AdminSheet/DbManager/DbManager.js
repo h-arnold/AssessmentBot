@@ -19,8 +19,6 @@ class DbManager extends BaseSingleton {
 
     this.progressTracker = ProgressTracker.getInstance();
     this._db = null;
-    this._options = {}; // legacy tests used to inject options; default to empty
-
     // Validate library presence up-front (fail-fast), but don't initialise DB yet
     this._assertLibraryAvailable();
 
@@ -30,56 +28,19 @@ class DbManager extends BaseSingleton {
   }
 
   /**
-   * Default configuration values. These will be superseded by future
-   * ConfigurationManager-backed values once added there.
-   */
-  static get DEFAULTS() {
-    return {
-      masterIndexKey: 'ASSESSMENT_BOT_DB_MASTER_INDEX',
-      autoCreateCollections: true,
-      lockTimeout: 10000,
-      logLevel: 'INFO',
-      backupOnInitialise: false,
-      // rootFolderId will be resolved dynamically if not provided
-    };
-  }
-
-  /**
-   * Resolve configuration for JsonDbApp. Prefer provided options, then
-   * values discoverable from the environment, finally fall back to defaults.
+   * Resolve configuration for JsonDbApp from ConfigurationManager only.
+   * ConfigurationManager owns fetching, validation and defaults.
    */
   _getConfig() {
-    const defaults = DbManager.DEFAULTS;
-    const provided = this._options || {};
+    const configManager = ConfigurationManager.getInstance();
+    const rootFolderId = configManager.getJsonDbRootFolderId();
 
-    // Root folder: prefer caller-provided, else the parent of the active sheet, else Drive root
-    let rootFolderId = provided.rootFolderId;
-    try {
-      if (!rootFolderId && typeof SpreadsheetApp !== 'undefined') {
-        const spreadsheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        rootFolderId = DriveManager.getParentFolderId(spreadsheetId);
-      }
-    } catch (e) {
-      // Fall back quietly; Drive root will be determined by the library if omitted
-      console.warn('DbManager: Unable to resolve parent folder; falling back to default.', e);
-      rootFolderId = rootFolderId || undefined;
-    }
-
-    // In the future, these can be read from configurationManager once keys exist.
     return {
-      masterIndexKey: provided.masterIndexKey || defaults.masterIndexKey,
-      autoCreateCollections:
-        typeof provided.autoCreateCollections === 'boolean'
-          ? provided.autoCreateCollections
-          : defaults.autoCreateCollections,
-      lockTimeout:
-        typeof provided.lockTimeout === 'number' ? provided.lockTimeout : defaults.lockTimeout,
-      logLevel: provided.logLevel || defaults.logLevel,
-      backupOnInitialise:
-        typeof provided.backupOnInitialise === 'boolean'
-          ? provided.backupOnInitialise
-          : defaults.backupOnInitialise,
-      // Only include rootFolderId if we actually resolved one; JsonDbApp can discover a default
+      masterIndexKey: configManager.getJsonDbMasterIndexKey(),
+      autoCreateCollections: configManager.getJsonDbAutoCreateCollections(),
+      lockTimeout: configManager.getJsonDbLockTimeoutMs(),
+      logLevel: configManager.getJsonDbLogLevel(),
+      backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
       ...(rootFolderId ? { rootFolderId } : {}),
     };
   }

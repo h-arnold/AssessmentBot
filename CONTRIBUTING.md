@@ -34,7 +34,7 @@ Please modify my code/documentation to match with the style guide provided. Ensu
 - **Add tips and notes**: Use phrases like "💡 Tip" or "⚠️ Note" to call out additional details or warnings.
 - **Clarity over complexity**: Avoid jargon. Provide meaningful names for variables, methods, and explain technical terms when they are first introduced.
 - **Consistency**: Ensure code and documentation align with the style and structure of the existing project.
-- **Testing**: Thoroughly test code in the Apps Script Editor with mock data or test spreadsheets, and preview documentation to ensure layout and links are correct.
+- **Testing**: Run Node unit tests locally (npm test) and avoid GAS services in unit tests; for end-to-end/manual checks, verify in the Apps Script Editor with mock data or test spreadsheets. Preview documentation to ensure layout and links are correct.
 
 ## Testing in Node (unit tests)
 
@@ -125,74 +125,61 @@ createOrGetSheet(sheetName) { ... }
 tasks.forEach((task) => processTask(task));
 ```
 
-### 🚨 Error Handling 
+### 🚨 Error Handling
 
-- Use `try...catch` for critical operations and log descriptive error messages to ensure user-friendly error handling.
+- Use `try...catch` for top-level triggers and critical operations only. Follow the logging contract: user-facing failures go via `ProgressTracker`, developer diagnostics via `ABLogger`. Do not double-log the same error and do not use `console.*`.
 
 ```javascript
 try {
   Sheets.Spreadsheets.batchUpdate({ requests: this.requests }, spreadsheetId);
-} catch (e) {
-  this.progressTracker.logError(`Batch update failed: ${e.message}`);
-  throw new Error(`Batch update failed: ${e.message}`);
+} catch (err) {
+  ProgressTracker.getInstance().logError('Batch update failed', { err });
+  ABLogger.getInstance().error('Batch update failed', err);
+  throw err; // preserve fail-fast
 }
 ```
 
-#### Using ProgressTracker for User-Facing Error Logging 
+#### Using ProgressTracker (user-facing) and ABLogger (developer)
 
-The `ProgressTracker` class tracks progress, manages status updates, and handles user-facing errors. Use it only for messages that users need to see.&#x20;
+The `ProgressTracker` class tracks progress and user-facing errors. Use it for messages users need to see. Use `ABLogger` for developer diagnostics (`debugUi`, `info`, `warn`, `error`). Do not use `console.*` in new code.
 
-⚠️ **Note**: For more detailed or technical logs, continue to use `console.log` or `console.error`. To share user-relevant errors and ensure proper logging, use `logError` as shown above.
+##### Important Notes
 
-##### Important Notes:
+- Pick one: either log via `ProgressTracker.logError(userMsg, { err, devContext })` or via `ABLogger.*` for developer diagnostics. Do not duplicate the same error details in both unless you are passing dev details into `logError` as the second parameter.
+- Prefer failing fast. Do not wrap known internal/GAS calls in existence or feature checks to avoid exceptions.
 
-- Use `this.progressTracker.logError()` for user-facing errors. `logError` also logs to the console automatically, so no need for separate console logging.
-
-##### 📝 Example Usage of ProgressTracker 
-
-⚠️ **Note**: Instantiate `ProgressTracker` before using it in a new class.&#x20;
-
-💡 **Tip**: Example of instantiating and using `ProgressTracker`:
+##### 📝 Example
 
 ```javascript
 class ExampleClass {
-  constructor() {
-    // Instantiate ProgressTracker if not already available
-    this.progressTracker = ProgressTracker.getInstance();
-  }
-
   performCriticalOperation() {
     try {
       someCriticalFunction();
-    } catch (error) {
-      this.progressTracker.logError(`Critical function failed: ${error.message}`);
-      throw new Error(`Critical function failed: ${error.message}`);
+    } catch (err) {
+      ProgressTracker.getInstance().logError('Critical function failed', { err });
+      ABLogger.getInstance().error('Critical function failed', err);
+      throw err;
     }
   }
 }
 ```
 
-This ensures users are clearly notified of failures, while developers get detailed logs for further diagnosis.
-
-If you are not working within a class, or your class doesn't already have `ProgressTracker` instantiated, simply access it directly using:
+Outside a class:
 
 ```javascript
 try {
   someCriticalFunction();
-} catch (error) {
-  this.progressTrackerlogError(`Critical function failed: ${error.message}`);
-  throw new Error(`Critical function failed: ${error.message}`);
+} catch (err) {
+  ProgressTracker.getInstance().logError('Critical function failed', { err });
+  ABLogger.getInstance().error('Critical function failed', err);
+  throw err;
 }
 ```
 
-This ensures error messages are consistently communicated to both users and developers, maintaining transparency without redundancy.
+### 🛡️ Defensive Guards
 
-In this example, the error will:
-
-1. Be logged in the user-facing progress as an error state.
-2. Automatically appear in the console log for debugging purposes.
-
-This simplifies the process of handling errors, ensuring that error messages are consistently shared with both developers (via the console) and users (via progress tracking).
+- Do not add defensive runtime guards (existence checks, `typeof`/feature detection, optional chaining as a gate) for internal calls or GAS services.
+- Only validate direct function parameters for public APIs. Assume project singletons and GAS APIs exist; let misconfigurations throw so issues are visible.
 
 ### Code Organisation
 
@@ -302,13 +289,15 @@ Here’s a quick reference for writing new functions:
  */
 function exampleFunction(paramName) {
   // 💡 Tip: Add meaningful inline comments for clarity
-  console.log('Performing example operation');
+  ABLogger.getInstance().info('Performing example operation');
 
   try {
     // Core logic here
-  } catch (e) {
-    // ⚠️ Note: Handle errors gracefully
-    console.error('An error occurred:', e);
+  } catch (err) {
+    // ⚠️ Note: Handle errors gracefully following the logging contract
+    ProgressTracker.getInstance().logError('Example operation failed', { err });
+    ABLogger.getInstance().error('Example operation failed', err);
+    throw err;
   }
 
   return result;

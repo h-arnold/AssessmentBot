@@ -7,6 +7,42 @@
  */
 class Validate {
   /**
+   * Determines whether a value is a string.
+   * @param {*} value
+   * @returns {boolean}
+   */
+  static isString(value) {
+    return typeof value === 'string';
+  }
+
+  /**
+   * Determines whether a value is a non-empty string (after trimming whitespace).
+   * @param {*} value
+   * @returns {boolean}
+   */
+  static isNonEmptyString(value) {
+    return Validate.isString(value) && value.trim().length > 0;
+  }
+
+  /**
+   * Determines whether a value is a finite number.
+   * @param {*} value
+   * @returns {boolean}
+   */
+  static isNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+  }
+
+  /**
+   * Determines whether a value is a boolean.
+   * @param {*} value
+   * @returns {boolean}
+   */
+  static isBoolean(value) {
+    return typeof value === 'boolean';
+  }
+
+  /**
    * Validates an email address using a permissive but practical regex.
    * @param {string} email
    * @return {boolean}

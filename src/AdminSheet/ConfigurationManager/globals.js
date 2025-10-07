@@ -63,6 +63,32 @@ function getConfiguration() {
     daysUntilAuthRevoke: safeGet(() => cfg.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
     scriptAuthorised: safeGet(() => cfg.getScriptAuthorised(), 'scriptAuthorised', false),
     slidesFetchBatchSize: safeGet(() => cfg.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
+    jsonDbMasterIndexKey: safeGet(
+      () => cfg.getJsonDbMasterIndexKey(),
+      'jsonDbMasterIndexKey',
+      ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY
+    ),
+    jsonDbAutoCreateCollections: safeGet(
+      () => cfg.getJsonDbAutoCreateCollections(),
+      'jsonDbAutoCreateCollections',
+      ConfigurationManager.DEFAULTS.JSON_DB_AUTO_CREATE_COLLECTIONS
+    ),
+    jsonDbLockTimeoutMs: safeGet(
+      () => cfg.getJsonDbLockTimeoutMs(),
+      'jsonDbLockTimeoutMs',
+      ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
+    ),
+    jsonDbLogLevel: safeGet(
+      () => cfg.getJsonDbLogLevel(),
+      'jsonDbLogLevel',
+      ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL
+    ),
+    jsonDbBackupOnInitialise: safeGet(
+      () => cfg.getJsonDbBackupOnInitialise(),
+      'jsonDbBackupOnInitialise',
+      ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
+    ),
+    jsonDbRootFolderId: safeGet(() => cfg.getJsonDbRootFolderId(), 'jsonDbRootFolderId', ''),
   };
 
   if (errors.length > 0) {
@@ -164,6 +190,54 @@ function saveConfiguration(config) {
     safeSet(
       () => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(config.daysUntilAuthRevoke),
       'daysUntilAuthRevoke'
+    );
+  }
+
+  if (config.jsonDbMasterIndexKey !== undefined) {
+    safeSet(
+      () => ConfigurationManager.getInstance().setJsonDbMasterIndexKey(config.jsonDbMasterIndexKey),
+      'jsonDbMasterIndexKey'
+    );
+  }
+
+  if (config.jsonDbAutoCreateCollections !== undefined) {
+    safeSet(
+      () =>
+        ConfigurationManager.getInstance().setJsonDbAutoCreateCollections(
+          config.jsonDbAutoCreateCollections
+        ),
+      'jsonDbAutoCreateCollections'
+    );
+  }
+
+  if (config.jsonDbLockTimeoutMs !== undefined) {
+    safeSet(
+      () => ConfigurationManager.getInstance().setJsonDbLockTimeoutMs(config.jsonDbLockTimeoutMs),
+      'jsonDbLockTimeoutMs'
+    );
+  }
+
+  if (config.jsonDbLogLevel !== undefined) {
+    safeSet(
+      () => ConfigurationManager.getInstance().setJsonDbLogLevel(config.jsonDbLogLevel),
+      'jsonDbLogLevel'
+    );
+  }
+
+  if (config.jsonDbBackupOnInitialise !== undefined) {
+    safeSet(
+      () =>
+        ConfigurationManager.getInstance().setJsonDbBackupOnInitialise(
+          config.jsonDbBackupOnInitialise
+        ),
+      'jsonDbBackupOnInitialise'
+    );
+  }
+
+  if (config.jsonDbRootFolderId !== undefined) {
+    safeSet(
+      () => ConfigurationManager.getInstance().setJsonDbRootFolderId(config.jsonDbRootFolderId),
+      'jsonDbRootFolderId'
     );
   }
 
