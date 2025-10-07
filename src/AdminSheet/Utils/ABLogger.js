@@ -42,8 +42,15 @@ class ABLogger extends BaseSingleton {
         console.log(`[DEBUG_UI] ${msg}`);
       }
     } catch (e) {
-      // Swallow any unexpected errors to avoid impacting main flow, but surface in debug
-      console.error('ABLogger.debugUi logging failure', e);
+      // Use a recursion guard to avoid re-entrant logging loops and surface via ProgressTracker
+      try {
+        if (!ABLogger._inLoggingFailure) {
+          ABLogger._inLoggingFailure = true;
+          ProgressTracker.getInstance().logError('ABLogger.debugUi logging failure', { err: e });
+        }
+      } finally {
+        ABLogger._inLoggingFailure = false;
+      }
     }
   }
 
