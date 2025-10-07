@@ -189,10 +189,6 @@ class ConfigurationManager extends BaseSingleton {
       store.setProperty(key, String(normalizedValue));
     } catch (persistError) {
       ABLogger.getInstance().error(
-        `ConfigurationManager: PersistError for key "${key}".`,
-        persistError
-      );
-      ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
         { key, cause: persistError }
       );
@@ -225,7 +221,7 @@ class ConfigurationManager extends BaseSingleton {
       const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
       if (!parentFolderId) return null;
       const folderResult = DriveManager.createFolder(parentFolderId, folderName);
-      const folderId = folderResult && folderResult.newFolderId;
+      const folderId = folderResult?.newFolderId;
 
       if (folderId && persistConfigKey) {
         try {
@@ -233,22 +229,15 @@ class ConfigurationManager extends BaseSingleton {
         } catch (persistError) {
           // Log persistence error
           ABLogger.getInstance().error(
-            `ConfigurationManager: PersistError while persisting folder id for "${folderName}".`,
-            persistError
-          );
-          // Log rich persistence details (key + cause) for developer diagnostics and rethrow
-          ABLogger.getInstance().error(
             `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
             { key: persistConfigKey, cause: persistError }
           );
-          throw persistError;
         }
-      }
-
-      if (folderId) {
-        logger.info(
-          `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
-        );
+        if (folderId) {
+          logger.info(
+            `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
+          );
+        }
       }
 
       return folderId || null;
@@ -298,10 +287,6 @@ class ConfigurationManager extends BaseSingleton {
       console.error(`Invalid Google Drive Folder ID: ${error?.message ?? error}`);
       return false;
     }
-  }
-
-  toReadableKey(key) {
-    return formatReadableKey(key);
   }
 
   getBackendAssessorBatchSize() {
@@ -620,7 +605,6 @@ if (typeof module !== 'undefined' && module.exports) {
   JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
   toBoolean = validators.toBoolean;
   toBooleanString = validators.toBooleanString;
-  formatReadableKey = validators.toReadableKey;
 }
 
 ConfigurationManager._CONFIG_KEYS = CONFIG_KEYS;

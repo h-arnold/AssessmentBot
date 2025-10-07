@@ -107,25 +107,23 @@ Batch using existing utilities (e.g. `BatchUpdateUtility`). No new frameworks. A
 
 ### 9. JSDoc Minimum
 
-/\*\*
+```javascript
+/**
+ * Concise description.
+ * @param {Type} name - Purpose (British English).
+ * @return {Type} Meaningful result description.
+ * @remarks Edge cases only if non-obvious.
+ */
+```
 
-- Concise description.
-- @param {Type} name - Purpose (British English).
-- @return {Type} Meaningful result description.
-- @remarks Edge cases only if non-obvious.
-  \*/
-  Inline brief comments for complex branches.
-
-### 10. Decision Cheat Sheet
-
-| Situation                | Action                                      |
+Inline brief comments for complex branches.
 | ------------------------ | ------------------------------------------- |
-| User-visible failure     | ProgressTracker.logError(msg, details)      |
-| Dev debug info           | ABLogger.getInstance().debugUi(label, data) |
-| Missing required param   | Validate then throw/log+throw               |
-| Unsure placement         | Mirror closest existing pattern             |
-| New entity type?         | Check Models/Artifacts first                |
-| Serialisable logic added | Add tests                                   |
+| User-visible failure | ProgressTracker.logError(msg, details) |
+| Dev debug info | ABLogger.getInstance().debugUi(label, data) |
+| Missing required param | Validate then throw/log+throw |
+| Unsure placement | Mirror closest existing pattern |
+| New entity type? | Check Models/Artifacts first |
+| Serialisable logic added | Add tests |
 
 ### 11. Anti-Patterns (Never)
 
