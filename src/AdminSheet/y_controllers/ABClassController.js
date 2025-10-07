@@ -106,22 +106,44 @@ class ABClassController {
   }
 
   _persistRoster(collection, existingDoc, abClass) {
-    if (!collection || !abClass) return;
+    const logger = ABLogger.getInstance();
+    if (!collection || !abClass) {
+      // Log at info level that nothing to persist due to missing args
+      logger.error('_persistRoster: nothing to persist - missing collection or abClass', {
+        hasCollection: !!collection,
+        hasAbClass: !!abClass,
+      });
+      return;
+    }
 
     const payload = this._buildClassroomRosterUpdatePayload(abClass);
     const filter = existingDoc?._id ? { _id: existingDoc._id } : { classId: abClass.classId };
 
     try {
+      // Log intent to persist
+      logger.info('_persistRoster: persisting roster', {
+        classId: abClass.classId,
+        filter,
+        payloadSummary: {
+          className: payload.className,
+          teachers: Array.isArray(payload.teachers) ? payload.teachers.length : 0,
+          students: Array.isArray(payload.students) ? payload.students.length : 0,
+        },
+      });
+
       collection.updateOne(filter, { $set: payload });
       collection.save();
+
+      // Log success
+      logger.info('_persistRoster: roster persisted successfully', {
+        classId: abClass.classId,
+        filter,
+      });
     } catch (err) {
-      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-      if (logger && typeof logger.error === 'function') {
-        logger.error('Failed to persist refreshed roster', {
-          classId: abClass.classId,
-          err,
-        });
-      }
+      logger.error('Failed to persist refreshed roster', {
+        classId: abClass.classId,
+        err,
+      });
       throw err;
     }
   }
@@ -182,11 +204,17 @@ class ABClassController {
    */
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
+    const logger = ABLogger.getInstance();
+    if (logger && typeof logger.info !== 'function') {
+      logger.info = function () {};
+    }
 
     const collection = this.dbManager.getCollection(classId);
     const metadata = this._getCollectionMetadata(collection);
+    logger.info('loadClass: called', { classId, hasCollection: !!collection });
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
+      logger.info('loadClass: no collection found - initialising new class', { classId });
       const newClass = this.initialise(classId);
       return newClass;
     }
@@ -195,6 +223,9 @@ class ABClassController {
     const doc = collection.findOne({ classId: classId }) || null;
     if (!doc) {
       // Collection exists but has no document - initialise new class
+      logger.info('loadClass: collection exists but no document stored - creating new class', {
+        classId,
+      });
       const newClass = this.initialise(classId);
       this.saveClass(newClass);
       return newClass;
@@ -204,8 +235,14 @@ class ABClassController {
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
     if (needsRefresh) {
+      logger.info('loadClass: metadata indicates refresh required - refreshing roster', {
+        classId,
+      });
       this._refreshRoster(abClass, classId);
       this._persistRoster(collection, doc, abClass);
+      logger.info('loadClass: refresh completed and persisted', { classId });
+    } else {
+      logger.info('loadClass: loaded class from collection without refresh', { classId });
     }
     return abClass;
   }
