@@ -61,8 +61,26 @@ class SlidesAssignment extends Assignment {
   populateTasks() {
     const parser = new SlidesParser();
     const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
-    this.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
-    console.log(`Populated ${defs.length} TaskDefinitions from slides.`);
+    const validDefs = [];
+
+    defs.forEach((definition) => {
+      const validation = definition.validate();
+      if (!validation.ok) {
+        const message = `Task "${definition.taskTitle}" is missing required slide artifacts.`;
+        this.progressTracker.logError(message, {
+          taskId: definition.getId(),
+          pageId: definition.pageId,
+          errors: validation.errors,
+        });
+        return;
+      }
+      validDefs.push(definition);
+    });
+
+    this.tasks = Object.fromEntries(validDefs.map((td) => [td.getId(), td]));
+    ABLogger.getInstance().info(
+      `Populated ${validDefs.length} TaskDefinitions from slides (input: ${defs.length}).`
+    );
   }
 
   /**

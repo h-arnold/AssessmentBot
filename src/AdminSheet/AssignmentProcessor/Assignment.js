@@ -27,12 +27,7 @@ class Assignment {
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
-    this.progressTracker =
-      typeof ProgressTracker !== 'undefined' &&
-      ProgressTracker &&
-      typeof ProgressTracker.getInstance === 'function'
-        ? ProgressTracker.getInstance()
-        : null;
+    this.progressTracker = ProgressTracker.getInstance();
     // Controllers may temporarily attach `assignment.students` while an assessment run is active
     // to keep the hydrated roster handy. That property is transient and must never be persisted
     // (see docs/developer/DATA_SHAPES.md and rehydration.md).
@@ -113,24 +108,20 @@ class Assignment {
     // restore tasks
     if (data.tasks && typeof data.tasks === 'object') {
       Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
-        if (
-          typeof TaskDefinition !== 'undefined' &&
-          TaskDefinition &&
-          typeof TaskDefinition.fromJSON === 'function'
-        ) {
-          try {
-            inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
-            return;
-          } catch (e) {
-            console.warn(`TaskDefinition.fromJSON failed for taskId=${taskId}:`, e);
-          }
-        }
-        if (typeof TaskDefinition !== 'undefined' && TaskDefinition) {
+        try {
+          inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
+          return;
+        } catch (e) {
+          // Log the primary reconstruction error so it isn't an unhandled/ignored exception
+          ABLogger.getInstance().warn(`TaskDefinition.fromJSON threw for taskId=${taskId}:`, e);
           try {
             inst.tasks[taskId] = new TaskDefinition(taskObj);
             return;
-          } catch (e) {
-            console.warn(`TaskDefinition constructor failed for taskId=${taskId}:`, e);
+          } catch (e2) {
+            ABLogger.getInstance().warn(
+              `TaskDefinition reconstruction failed for taskId=${taskId}:`,
+              e2
+            );
           }
         }
         inst.tasks[taskId] = taskObj;
@@ -140,24 +131,17 @@ class Assignment {
     // restore submissions
     if (Array.isArray(data.submissions)) {
       data.submissions.forEach((subObj) => {
-        if (
-          typeof StudentSubmission !== 'undefined' &&
-          StudentSubmission &&
-          typeof StudentSubmission.fromJSON === 'function'
-        ) {
-          try {
-            inst.submissions.push(StudentSubmission.fromJSON(subObj));
-            return;
-          } catch (e) {
-            console.warn(
-              `StudentSubmission.fromJSON failed for studentId=${
-                subObj && (subObj.studentId || subObj.userId)
-              }:`,
-              e
-            );
-          }
-        }
-        if (typeof StudentSubmission !== 'undefined' && StudentSubmission) {
+        try {
+          inst.submissions.push(StudentSubmission.fromJSON(subObj));
+          return;
+        } catch (e) {
+          // Log the primary reconstruction error so it isn't an unhandled/ignored exception
+          ABLogger.getInstance().warn(
+            `StudentSubmission.fromJSON threw for studentId=${
+              subObj && (subObj.studentId || subObj.userId)
+            }:`,
+            e
+          );
           try {
             const sub = new StudentSubmission(
               subObj.studentId || subObj.userId || null,
@@ -175,12 +159,12 @@ class Assignment {
             });
             inst.submissions.push(sub);
             return;
-          } catch (e) {
-            console.warn(
-              `StudentSubmission constructor failed for studentId=${
+          } catch (e2) {
+            ABLogger.getInstance().warn(
+              `StudentSubmission reconstruction failed for studentId=${
                 subObj && (subObj.studentId || subObj.userId)
               }:`,
-              e
+              e2
             );
           }
         }
@@ -192,12 +176,7 @@ class Assignment {
     }
 
     // restore progress tracker singleton if available
-    inst.progressTracker =
-      typeof ProgressTracker !== 'undefined' &&
-      ProgressTracker &&
-      typeof ProgressTracker.getInstance === 'function'
-        ? ProgressTracker.getInstance()
-        : null;
+    inst.progressTracker = ProgressTracker.getInstance();
 
     // Do not populate `inst.students` here; any roster data should be sourced from ABClass at runtime
     // and treated as ephemeral to avoid duplicate persistence.
@@ -216,7 +195,7 @@ class Assignment {
       const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
       return courseWork.title || `Assignment ${assignmentId}`;
     } catch (error) {
-      console.error(`Error fetching assignment name for ID ${assignmentId}:`, error);
+      ABLogger.getInstance().error(`Error fetching assignment name for ID ${assignmentId}:`, error);
       return `Assignment ${assignmentId}`;
     }
   }
@@ -267,7 +246,7 @@ class Assignment {
     // Expect student object with id
     const studentId = student.id || student.studentId || student.userId;
     if (!studentId) {
-      console.warn('addStudent called without resolvable studentId');
+      ABLogger.getInstance().warn('addStudent called without resolvable studentId');
       return null;
     }
     // Avoid duplicates
@@ -294,7 +273,7 @@ class Assignment {
   _processAttachmentForSubmission(attachment, studentId, mimeType) {
     const driveFileId = attachment?.driveFile?.id;
     if (!driveFileId) {
-      console.log(
+      ABLogger.getInstance().info(
         `Attachment for student ID ${studentId} is not a Drive File or lacks a valid ID.`
       );
       return;
@@ -313,15 +292,15 @@ class Assignment {
           // Keep updatedAt coherent if method exists
           if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
         } else {
-          console.log(`No matching submission found for student ID: ${studentId}`);
+          ABLogger.getInstance().info(`No matching submission found for student ID: ${studentId}`);
         }
       } else {
-        console.log(
+        ABLogger.getInstance().info(
           `Attachment with Drive File ID ${driveFileId} is not a supported document (MIME type: ${fileMimeType}).`
         );
       }
     } catch (fileError) {
-      console.error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
+      ABLogger.getInstance().error(`Error fetching Drive file with ID ${driveFileId}:`, fileError);
     }
   }
 
@@ -339,7 +318,7 @@ class Assignment {
       const submissions = response.studentSubmissions;
 
       if (!submissions || submissions.length === 0) {
-        console.log(`No submissions found for assignment ID: ${this.assignmentId}`);
+        ABLogger.getInstance().info(`No submissions found for assignment ID: ${this.assignmentId}`);
         return;
       }
 
@@ -352,11 +331,14 @@ class Assignment {
             this._processAttachmentForSubmission(attachment, studentId, mimeType)
           );
         } else {
-          console.log(`No attachments found for student ID: ${studentId}`);
+          ABLogger.getInstance().info(`No attachments found for student ID: ${studentId}`);
         }
       });
     } catch (error) {
-      console.error(`Error fetching submissions for assignment ID ${this.assignmentId}:`, error);
+      ABLogger.getInstance().error(
+        `Error fetching submissions for assignment ID ${this.assignmentId}:`,
+        error
+      );
     }
   }
 

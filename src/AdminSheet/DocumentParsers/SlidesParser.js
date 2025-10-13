@@ -30,24 +30,6 @@ class SlidesParser extends DocumentParser {
     }
   }
 
-  // LEGACY extractTasks removed in refactor – replaced by extractTaskDefinitions.
-
-  /**
-   * Extracts Task instances from a Google Slides presentation.
-   * Differentiates between task titles, images, notes, and entire slide images based on slide element descriptions.
-   * @param {string} documentId - The ID of the Google Slides presentation.
-   * @param {string|null} contentType - Type of content to extract: "reference", "template", or null for default.
-   * @return {Task[]} - An array of Task instances extracted from the slides.
-   * @deprecated Use extractTasks() instead
-   */
-  extractTasksFromSlides(documentId, contentType = null) {
-    // Default to null
-    // Legacy wrapper removed in Phase 2 refactor. Keep as no-op for compatibility.
-    // Prefer using extractTaskDefinitions/extractSubmissionArtifacts.
-    return null;
-  }
-
-  // ---- Phase 2 API ----
   /**
    * Build TaskDefinitions from reference/template slide decks.
    * Tags:
@@ -240,6 +222,9 @@ class SlidesParser extends DocumentParser {
         if (extracted) artifacts.push(extracted);
         else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
+          ABLogger.getInstance().error(
+            `Failed to extract artifact for task "${def.taskTitle}" on page ${pageId}.`
+          );
         }
       });
     });
@@ -268,6 +253,11 @@ class SlidesParser extends DocumentParser {
     }
 
     const text = shape.getText().asString();
+
+    // If there's an empty string often the case with template slides, return an empty string rather than null.
+    if (!text) {
+      return '';
+    }
     return text.trim();
   }
 

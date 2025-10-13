@@ -3,6 +3,9 @@ if (typeof module !== 'undefined') {
   BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
+const TABLE_MAX_ROWS = 50;
+const TABLE_MAX_COLUMNS = 50;
+
 /**
  * TableTaskArtifact
  *
@@ -13,12 +16,12 @@ if (typeof module !== 'undefined') {
  * Behavior summary:
  * - getType() always returns the literal 'TABLE'.
  * - normalizeContent(content):
- *   - null -> returns null
- *   - string -> trimmed string, empty -> null
- *   - Array (rows) -> each cell is normalized via _normCell, trailing empty
- *     rows and fully-empty trailing columns are removed via _trimEmpty. If no
- *     rows remain, returns null. Otherwise sets this._rows and returns a
- *     Markdown table string produced by toMarkdown(trimmedRows).
+ *   - null -> throws after logging via ProgressTracker (fatal input)
+ *   - string -> trimmed string, _rows cleared
+ *   - Array (rows) -> cells normalised via _normCell, shape preserved (empty
+ *     rows/columns retained) and padded to the widest row. Hard limit of 50x50
+ *     enforced. Result stored in this._rows and returned as Markdown via
+ *     toMarkdown.
  * - getRows() returns a shallow copy of the internal rows array (array of row
  *   arrays) to avoid external mutation of internal state.
  * - toMarkdown(rowsOverride) converts a rows array (or this.content if no
@@ -27,17 +30,14 @@ if (typeof module !== 'undefined') {
  *
  * Internal normalization helpers (prefixed with _) are private and mutate the
  * provided rows in-place where appropriate:
- * - _normCell(cell): numbers are kept, null/empty strings become null, other
- *   values are stringified and trimmed.
- * - _trimEmpty(rows): removes trailing empty rows and removes any trailing
- *   columns that are empty in every remaining row.
- * - _rowEmpty(row) / _cellEmpty(cell): utility predicates used by trimming.
+ * - _normCell(cell): numbers are kept, null/empty strings become empty string,
+ *   other values are stringified and trimmed.
  *
  * Notes:
  * - The class expects a BaseTaskArtifact superclass (not shown) that may
  *   provide construction and other shared behavior. The constructor is expected
  *   to accept an options object that may include a `content` property.
- * - _rows is an internal property (Array<Array<string|number|null>>) that is
+ * - _rows is an internal property (Array<Array<string|number>>) that is
  *   set by normalizeContent when an array of rows is provided and accepted.
  *
  * @class
@@ -54,33 +54,17 @@ if (typeof module !== 'undefined') {
  *
  * @method normalizeContent
  * @param {null|string|Array<Array<any>>} content - content to normalize
- * @returns {string|null} Normalized Markdown string, or null when content is
- *                        considered empty/invalid.
+ * @returns {string} Normalized Markdown string.
  *
  * @method getRows
- * @returns {Array<Array<string|number|null>>} A copy of the internal rows
- *                                           representation (never null).
+ * @returns {Array<Array<string|number>>} A copy of the internal rows
+ *                                        representation (never null).
  *
  * @method _normCell
  * @private
  * @param {any} cell
- * @returns {string|number|null} Normalized cell value: numbers preserved,
- *                              trimmed strings, or null for empty.
- *
- * @method _trimEmpty
- * @private
- * @param {Array<Array<any>>} rows - Mutated in-place to remove empty rows/cols
- * @returns {Array<Array<any>>} The same rows array after trimming.
- *
- * @method _rowEmpty
- * @private
- * @param {Array<any>} row
- * @returns {boolean} True if all cells in the row are empty.
- *
- * @method _cellEmpty
- * @private
- * @param {any} cell
- * @returns {boolean} True if cell is null or empty string.
+ * @returns {string|number} Normalized cell value: numbers preserved,
+ *                              trimmed strings, or empty string for empty.
  *
  * @method toMarkdown
  * @param {Array<Array<any>>} [rowsOverride] - optional rows to convert; when
@@ -107,26 +91,77 @@ class TableTaskArtifact extends BaseTaskArtifact {
    * Normalize table-like content into internal rows and return a Markdown
    * string representation. Accepts null, string, or 2D array input.
    * @param {null|string|Array<Array<any>>} content
-   * @returns {string|null}
+   * @returns {string}
    */
   normalizeContent(content) {
-    if (content == null) return null;
+    if (content == null) {
+      const err = new Error('TableTaskArtifact.normalizeContent received null content');
+      ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
+        reason: 'content_null',
+        err,
+      });
+    }
     if (typeof content === 'string') {
       const s = content.trim();
-      return s === '' ? null : s;
+      this._rows = null;
+      return s;
     }
-    if (!Array.isArray(content)) return null;
-    const rows = content.map((row) =>
-      Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
-    );
-    const trimmed = this._trimEmpty(rows);
-    if (!trimmed.length) return null;
-    this._rows = trimmed;
-    return this.toMarkdown(trimmed);
+    if (!Array.isArray(content)) {
+      this._rows = null;
+      return '';
+    }
+
+    if (content.length > TABLE_MAX_ROWS) {
+      const err = new Error(
+        `TableTaskArtifact.normalizeContent row limit exceeded: ${content.length} > ${TABLE_MAX_ROWS}`
+      );
+      ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
+        reason: 'row_limit_exceeded',
+        rowCount: content.length,
+        maxRows: TABLE_MAX_ROWS,
+        err,
+      });
+    }
+
+    const normalisedRows = [];
+    let widestRow = 0;
+    for (let r = 0; r < content.length; r++) {
+      const rawRow = Array.isArray(content[r]) ? content[r] : [];
+      const normalisedRow = rawRow.map((cell) => this._normCell(cell));
+      if (normalisedRow.length > TABLE_MAX_COLUMNS) {
+        const err = new Error(
+          `TableTaskArtifact.normalizeContent column limit exceeded on row ${r}: ${normalisedRow.length} > ${TABLE_MAX_COLUMNS}`
+        );
+        ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
+          reason: 'column_limit_exceeded',
+          rowIndex: r,
+          columnCount: normalisedRow.length,
+          maxColumns: TABLE_MAX_COLUMNS,
+          err,
+        });
+      }
+      widestRow = Math.max(widestRow, normalisedRow.length);
+      normalisedRows.push(normalisedRow);
+    }
+
+    const targetWidth = Math.max(1, widestRow);
+    if (!normalisedRows.length) {
+      normalisedRows.push(new Array(targetWidth).fill(''));
+    }
+
+    const paddedRows = normalisedRows.map((row) => {
+      if (row.length === targetWidth) return row;
+      const padded = row.slice();
+      while (padded.length < targetWidth) padded.push('');
+      return padded;
+    });
+
+    this._rows = paddedRows;
+    return this.toMarkdown(paddedRows);
   }
   /**
    * Return a shallow copy of the normalized rows.
-   * @returns {Array<Array<any>>}
+   * @returns {Array<Array<string|number>>}
    */
   getRows() {
     if (this._rows && Array.isArray(this._rows)) return this._rows.map((r) => r.slice());
@@ -136,56 +171,12 @@ class TableTaskArtifact extends BaseTaskArtifact {
    * Normalize an individual cell value.
    * @private
    * @param {*} cell
-   * @returns {string|number|null}
+   * @returns {string|number}
    */
   _normCell(cell) {
-    if (cell == null) return null;
+    if (cell == null) return '';
     if (typeof cell === 'number') return cell;
-    let s = String(cell).trim();
-    return s === '' ? null : s;
-  }
-  /**
-   * Remove trailing empty rows and fully-empty trailing columns in-place.
-   * @private
-   * @param {Array<Array<any>>} rows
-   * @returns {Array<Array<any>>}
-   */
-  _trimEmpty(rows) {
-    while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
-    if (rows.length) {
-      let colCount = Math.max(...rows.map((r) => r.length));
-      for (let c = colCount - 1; c >= 0; c--) {
-        let allEmpty = true;
-        for (const row of rows) {
-          if (!this._cellEmpty(row[c])) {
-            allEmpty = false;
-            break;
-          }
-        }
-        if (allEmpty) {
-          for (const row of rows) row.splice(c, 1);
-        }
-      }
-    }
-    return rows;
-  }
-  /**
-   * Predicate: is the row empty?
-   * @private
-   * @param {Array<any>} row
-   * @returns {boolean}
-   */
-  _rowEmpty(row) {
-    return !row.some((c) => !this._cellEmpty(c));
-  }
-  /**
-   * Predicate: is the cell empty?
-   * @private
-   * @param {*} c
-   * @returns {boolean}
-   */
-  _cellEmpty(c) {
-    return c == null || c === '';
+    return String(cell).trim();
   }
   /**
    * Convert rows (or current content) into a Markdown table string.
@@ -193,8 +184,13 @@ class TableTaskArtifact extends BaseTaskArtifact {
    * @returns {string}
    */
   toMarkdown(rowsOverride) {
-    const candidate = this && this.content !== undefined ? this.content : undefined;
-    let src = rowsOverride !== undefined ? rowsOverride : candidate;
+    const candidate =
+      rowsOverride !== undefined
+        ? rowsOverride
+        : this._rows && this._rows.length
+        ? this._rows
+        : this.content;
+    let src = candidate;
     if (!src) return '';
     if (typeof src === 'string') return src.trim();
     if (!Array.isArray(src) || !src.length) return '';

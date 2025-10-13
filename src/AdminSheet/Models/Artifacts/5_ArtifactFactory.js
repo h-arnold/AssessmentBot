@@ -1,12 +1,3 @@
-if (typeof module !== 'undefined') {
-  // Required for testing in a Node.js environment with Vitest
-  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
-  TextTaskArtifact = require('./1_TextTaskArtifact.js');
-  TableTaskArtifact = require('./2_TableTaskArtifact.js');
-  SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
-  ImageTaskArtifact = require('./4_ImageTaskArtifact.js');
-}
-
 class ArtifactFactory {
   /**
    * Create an artifact instance based on the provided params.type.
@@ -60,4 +51,12 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = ArtifactFactory;
 } else {
   this.ArtifactFactory = ArtifactFactory;
+}
+if (typeof module !== 'undefined') {
+  // Required for testing in a Node.js environment with Vitest
+  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
+  TextTaskArtifact = require('./1_TextTaskArtifact.js');
+  TableTaskArtifact = require('./2_TableTaskArtifact.js');
+  SpreadsheetTaskArtifact = require('./3_SpreadsheetTaskArtifact.js');
+  ImageTaskArtifact = require('./4_ImageTaskArtifact.js');
 }
