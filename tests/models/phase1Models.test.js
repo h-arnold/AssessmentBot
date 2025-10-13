@@ -52,10 +52,10 @@ describe('Phase1 Model Requirements', () => {
     art.ensureHash(); // idempotent
     expect(art.contentHash).toBe(firstHash); // stable
     const empty = ArtifactFactory.text({ taskId: 'tY', role: 'reference', content: '   ' });
-    expect(empty.content).toBeNull();
+    expect(empty.content).toBe('');
   });
 
-  it('TableTaskArtifact trimming, internal rows storage and markdown header separator count', () => {
+  it('TableTaskArtifact preserves empty structure and renders markdown consistently', () => {
     const table = ArtifactFactory.table({
       taskId: 'tTable',
       role: 'reference',
@@ -67,16 +67,33 @@ describe('Phase1 Model Requirements', () => {
       ],
     });
     const rows = table.getRows();
-    // internal cells trimmed
+    expect(rows.length).toBe(4);
     expect(rows[1][0]).toBe('a');
-    // trailing empty rows removed (should not include rows with all empties)
-    expect(rows.length).toBe(2);
-    // trailing empty column removed
-    expect(rows[0].length).toBe(2);
-    const md = table.content; // already markdown
+    rows.forEach((r) => expect(r.length).toBe(3));
+    const md = table.content;
     const lines = md.split('\n');
+    expect(lines.length).toBe(5);
     const sepCount = lines[1].split('|').filter((s) => s.trim() === '---').length;
     expect(sepCount).toBe(rows[0].length);
+    expect(lines[3]).toBe('|  |  |  |');
+  });
+
+  it('TableTaskArtifact throws when given null content', () => {
+    expect(() =>
+      ArtifactFactory.table({ taskId: 'tNull', role: 'reference', content: null })
+    ).toThrow(/received null content/);
+  });
+
+  it('TableTaskArtifact enforces 50x50 size limit', () => {
+    const tooManyRows = Array.from({ length: 51 }, () => ['']);
+    expect(() =>
+      ArtifactFactory.table({ taskId: 'tRows', role: 'reference', content: tooManyRows })
+    ).toThrow(/row limit exceeded/);
+
+    const tooManyCols = [Array.from({ length: 51 }, (_, i) => `c${i}`)];
+    expect(() =>
+      ArtifactFactory.table({ taskId: 'tCols', role: 'reference', content: tooManyCols })
+    ).toThrow(/column limit exceeded/);
   });
 
   it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {
