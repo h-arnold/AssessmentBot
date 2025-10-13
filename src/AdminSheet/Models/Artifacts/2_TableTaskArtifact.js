@@ -96,11 +96,10 @@ class TableTaskArtifact extends BaseTaskArtifact {
   normalizeContent(content) {
     if (content == null) {
       const err = new Error('TableTaskArtifact.normalizeContent received null content');
-      ProgressTracker.getInstance().logError('Failed to normalise table content', {
+      ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
         reason: 'content_null',
         err,
       });
-      throw err;
     }
     if (typeof content === 'string') {
       const s = content.trim();
@@ -116,13 +115,12 @@ class TableTaskArtifact extends BaseTaskArtifact {
       const err = new Error(
         `TableTaskArtifact.normalizeContent row limit exceeded: ${content.length} > ${TABLE_MAX_ROWS}`
       );
-      ProgressTracker.getInstance().logError('Failed to normalise table content', {
+      ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
         reason: 'row_limit_exceeded',
         rowCount: content.length,
         maxRows: TABLE_MAX_ROWS,
         err,
       });
-      throw err;
     }
 
     const normalisedRows = [];
@@ -134,14 +132,13 @@ class TableTaskArtifact extends BaseTaskArtifact {
         const err = new Error(
           `TableTaskArtifact.normalizeContent column limit exceeded on row ${r}: ${normalisedRow.length} > ${TABLE_MAX_COLUMNS}`
         );
-        ProgressTracker.getInstance().logError('Failed to normalise table content', {
+        ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
           reason: 'column_limit_exceeded',
           rowIndex: r,
           columnCount: normalisedRow.length,
           maxColumns: TABLE_MAX_COLUMNS,
           err,
         });
-        throw err;
       }
       widestRow = Math.max(widestRow, normalisedRow.length);
       normalisedRows.push(normalisedRow);

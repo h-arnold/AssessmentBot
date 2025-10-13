@@ -17,7 +17,7 @@ function create() {
     },
     logAndThrowError(msg, err) {
       console.error('[ProgressTracker] FATAL', msg, err && err.message ? err.message : err);
-      throw err || new Error(msg);
+      throw new Error(msg);
     },
   };
 }

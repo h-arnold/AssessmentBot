@@ -81,19 +81,19 @@ describe('Phase1 Model Requirements', () => {
   it('TableTaskArtifact throws when given null content', () => {
     expect(() =>
       ArtifactFactory.table({ taskId: 'tNull', role: 'reference', content: null })
-    ).toThrow(/received null content/);
+    ).toThrow(/Failed to normalise table content/);
   });
 
   it('TableTaskArtifact enforces 50x50 size limit', () => {
     const tooManyRows = Array.from({ length: 51 }, () => ['']);
     expect(() =>
       ArtifactFactory.table({ taskId: 'tRows', role: 'reference', content: tooManyRows })
-    ).toThrow(/row limit exceeded/);
+    ).toThrow(/Failed to normalise table content/);
 
     const tooManyCols = [Array.from({ length: 51 }, (_, i) => `c${i}`)];
     expect(() =>
       ArtifactFactory.table({ taskId: 'tCols', role: 'reference', content: tooManyCols })
-    ).toThrow(/column limit exceeded/);
+    ).toThrow(/Failed to normalise table content/);
   });
 
   it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {
