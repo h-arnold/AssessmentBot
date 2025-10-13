@@ -49,7 +49,10 @@ class LLMRequestManager extends BaseRequestManager {
         const studentArtifact = item.artifact;
 
         // Not attempted detection: submission hash equals template hash
-        if (studentArtifact.contentHash === templateTask.contentHash) {
+        if (
+          studentArtifact.contentHash === templateTask.contentHash ||
+          studentArtifact.content === ''
+        ) {
           const notAttempted = this.createNotAttemptedAssessment();
           this._assignAssessmentArtifacts(item, notAttempted);
           return;
