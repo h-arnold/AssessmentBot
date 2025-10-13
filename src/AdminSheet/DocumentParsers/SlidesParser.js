@@ -7,14 +7,6 @@
  */
 class SlidesParser extends DocumentParser {
   /**
-   * Constructs a SlidesParser instance.
-   */
-  constructor() {
-    super(); // Call parent constructor
-    // No need for requestManager since we're not fetching images here
-  }
-
-  /**
    * Generates a slide export URL for a given slide in a Google Slides presentation.
    * @param {string} documentId - The ID of the Google Slides presentation.
    * @param {string} pageId - The ID of the specific slide within the presentation.
@@ -54,7 +46,7 @@ class SlidesParser extends DocumentParser {
         const pageElements = slide.getPageElements();
         pageElements.forEach((pageElement) => {
           const description = pageElement.getDescription();
-          if (!description || !description.length) return;
+          if (!description?.length) return;
           const tag = description.charAt(0);
           const tagText = description.substring(1).trim();
           switch (tag) {
@@ -71,10 +63,8 @@ class SlidesParser extends DocumentParser {
               // Extract content (text/table) as primitive
               let elementContent = '';
               const elementType = pageElement.getPageElementType();
-              let artifactType = 'TEXT';
               if (elementType === SlidesApp.PageElementType.SHAPE) {
                 elementContent = this.extractTextFromShape(pageElement.asShape());
-                artifactType = 'TEXT';
               } else if (elementType === SlidesApp.PageElementType.TABLE) {
                 // Return raw 2D cell array so TableTaskArtifact can normalise instead of markdown string
                 elementContent = this.extractTableCells(pageElement.asTable());
@@ -168,7 +158,7 @@ class SlidesParser extends DocumentParser {
     slides.forEach((slide) => {
       const pageId = this.getPageId(slide);
       const defs = defsByPage[pageId];
-      if (!defs || !defs.length) return;
+      if (!defs?.length) return;
       const pageElements = slide.getPageElements();
       // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
       defs.forEach((def) => {
@@ -247,7 +237,7 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The extracted text from the shape.
    */
   extractTextFromShape(shape) {
-    if (!shape || !shape.getText) {
+    if (!shape?.getText) {
       console.log('The provided element is not a shape or does not contain text.');
       return '';
     }
@@ -288,13 +278,9 @@ class SlidesParser extends DocumentParser {
       for (let r = 0; r < numRows; r++) {
         const row = [];
         for (let c = 0; c < numCols; c++) {
-          try {
-            const cell = table.getCell(r, c);
-            const text = cell && cell.getText ? cell.getText().asString().trim() : '';
-            row.push(text);
-          } catch (e) {
-            row.push('');
-          }
+          const cell = table.getCell(r, c);
+          const text = cell?.getText ? cell.getText().asString().trim() : '';
+          row.push(text);
         }
         rows.push(row);
       }
