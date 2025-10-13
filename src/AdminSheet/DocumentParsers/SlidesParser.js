@@ -174,7 +174,7 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
-   * Extract content and artefact type for a definition element.
+   * Extract content and Artifact type for a definition element.
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged element.
    * @return {{artifactType: string, elementContent: *}|null} - Content details or null when unsupported.
    */
@@ -196,10 +196,10 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
-   * Attach artefact parameters to a definition with role awareness.
+   * Attach Artifact parameters to a definition with role awareness.
    * @param {TaskDefinition} definition - Task definition to update.
    * @param {string} role - Either 'reference' or 'template'.
-   * @param {Object} params - Artefact payload.
+   * @param {Object} params - Artifact payload.
    * @return {void}
    */
   addArtifactToDefinition(definition, role, params) {
@@ -272,9 +272,9 @@ class SlidesParser extends DocumentParser {
    * Collect the submission artifact content for a definition from slide elements.
    * @param {TaskDefinition} definition - Definition being matched.
    * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
-   * @param {string} typeNeeded - Artefact type expected (TEXT/TABLE).
+   * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE).
    * @param {string} pageId - Slide page ID.
-   * @return {{taskId: string, pageId: string, content: *, metadata?: Object}|null} - Artefact payload or null.
+   * @return {{taskId: string, pageId: string, content: *, metadata?: Object}|null} - Artifact payload or null.
    */
   collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId) {
     for (const pageElement of pageElements) {
