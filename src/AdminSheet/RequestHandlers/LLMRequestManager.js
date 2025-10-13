@@ -16,36 +16,6 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Wakes up the LLM backend to ensure it's ready for processing.
-   */
-  warmUpLLM() {
-    const payload = { input_value: 'Wake Up!' };
-    const request = {
-      url: this.configManager.getWarmUpUrl(),
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      headers: {
-        'x-api-key': this.configManager.getLangflowApiKey(),
-      },
-      muteHttpExceptions: true,
-    };
-
-    try {
-      const response = this.sendRequestWithRetries(request);
-      if (response && (response.getResponseCode() === 200 || response.getResponseCode() === 201)) {
-        Utils.toastMessage('AI backend warmed up and ready to go...', 'Warm-Up', 5);
-      } else {
-        this.progressTracker.logAndThrowError(
-          'No successful response received from AI backend during warm-up.'
-        );
-      }
-    } catch (e) {
-      this.progressTracker.logAndThrowError('Failed to warm up AI backend.', e);
-    }
-  }
-
-  /**
    * Generates an array of request objects based on the Assignment instance.
    * Utilizes caching to avoid redundant requests.
    * @param {Assignment} assignment - The Assignment instance containing student tasks.
