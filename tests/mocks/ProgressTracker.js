@@ -13,10 +13,10 @@ function create() {
       // noop for tests
     },
     logError(msg, err) {
-      console.error('[ProgressTracker] ERROR', msg, err && err.message ? err.message : err);
+      console.error('[ProgressTracker] ERROR', msg, err?.message ? err.message : err);
     },
     logAndThrowError(msg, err) {
-      console.error('[ProgressTracker] FATAL', msg, err && err.message ? err.message : err);
+      console.error('[ProgressTracker] FATAL', msg, err?.message ? err.message : err);
       throw new Error(msg);
     },
   };

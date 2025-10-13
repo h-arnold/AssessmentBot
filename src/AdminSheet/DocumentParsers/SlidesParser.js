@@ -7,14 +7,6 @@
  */
 class SlidesParser extends DocumentParser {
   /**
-   * Constructs a SlidesParser instance.
-   */
-  constructor() {
-    super(); // Call parent constructor
-    // No need for requestManager since we're not fetching images here
-  }
-
-  /**
    * Generates a slide export URL for a given slide in a Google Slides presentation.
    * @param {string} documentId - The ID of the Google Slides presentation.
    * @param {string} pageId - The ID of the specific slide within the presentation.
@@ -46,109 +38,176 @@ class SlidesParser extends DocumentParser {
 
     // Map: key = title + '|' + pageId (slide id) for stability
     const definitionMap = new Map();
-    let order = 0;
-
-    const processSlides = (slides, role) => {
-      slides.forEach((slide) => {
-        const pageId = this.getPageId(slide);
-        const pageElements = slide.getPageElements();
-        pageElements.forEach((pageElement) => {
-          const description = pageElement.getDescription();
-          if (!description || !description.length) return;
-          const tag = description.charAt(0);
-          const tagText = description.substring(1).trim();
-          switch (tag) {
-            case '#': {
-              // title element -> create/find TaskDefinition
-              const taskTitle = tagText;
-              const definitionKey = taskTitle + '|' + pageId;
-              let definition = definitionMap.get(definitionKey);
-              if (!definition) {
-                definition = new TaskDefinition({ taskTitle, pageId });
-                definition.index = order++;
-                definitionMap.set(definitionKey, definition);
-              }
-              // Extract content (text/table) as primitive
-              let elementContent = '';
-              const elementType = pageElement.getPageElementType();
-              let artifactType = 'TEXT';
-              if (elementType === SlidesApp.PageElementType.SHAPE) {
-                elementContent = this.extractTextFromShape(pageElement.asShape());
-                artifactType = 'TEXT';
-              } else if (elementType === SlidesApp.PageElementType.TABLE) {
-                // Return raw 2D cell array so TableTaskArtifact can normalise instead of markdown string
-                elementContent = this.extractTableCells(pageElement.asTable());
-                artifactType = 'TABLE';
-              } else {
-                return;
-              }
-              if (role === 'reference') {
-                definition.addReferenceArtifact({
-                  type: artifactType,
-                  pageId,
-                  content: elementContent,
-                  taskIndex: definition.index,
-                });
-              } else if (role === 'template') {
-                definition.addTemplateArtifact({
-                  type: artifactType,
-                  pageId,
-                  content: elementContent,
-                  taskIndex: definition.index,
-                });
-              }
-              break;
-            }
-            case '^': {
-              // notes
-              // Attach to existing definition matching same page by last created definition with pageId
-              // Simpler: find any definition with pageId (rare multiple) and append notes
-              for (const definition of definitionMap.values()) {
-                if (definition.pageId === pageId) {
-                  const notesContent = this.extractTextFromPageElement(pageElement);
-                  definition.taskNotes =
-                    (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
-                }
-              }
-              break;
-            }
-            case '~':
-            case '|': {
-              // image artifact for whole slide
-              const taskTitle = tagText; // image title key
-              const definitionKey = taskTitle + '|' + pageId;
-              let definition = definitionMap.get(definitionKey);
-              if (!definition) {
-                definition = new TaskDefinition({ taskTitle, pageId });
-                definition.index = order++;
-                definitionMap.set(definitionKey, definition);
-              }
-              const url = this.generateSlideImageUrl(
-                role === 'reference' ? referenceDocumentId : templateDocumentId,
-                pageId
-              );
-              const params = {
-                type: 'IMAGE',
-                pageId,
-                metadata: { sourceUrl: url },
-                content: null,
-                taskIndex: definition.index,
-              };
-              if (role === 'reference') definition.addReferenceArtifact(params);
-              else definition.addTemplateArtifact(params);
-              break;
-            }
-            default:
-              break;
-          }
-        });
-      });
+    const orderState = { value: 0 };
+    const context = {
+      definitionMap,
+      orderState,
+      referenceDocumentId,
+      templateDocumentId,
     };
 
-    processSlides(referenceSlides, 'reference');
-    if (templateSlides.length) processSlides(templateSlides, 'template');
+    this.processSlidesForDefinitions(referenceSlides, 'reference', context);
+    if (templateSlides.length) {
+      this.processSlidesForDefinitions(templateSlides, 'template', context);
+    }
 
     return Array.from(definitionMap.values());
+  }
+
+  /**
+   * Process slides to populate task definitions from tagged elements.
+   * @param {GoogleAppsScript.Slides.Slide[]} slides - Slides to inspect.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  processSlidesForDefinitions(slides, role, context) {
+    slides.forEach((slide) => {
+      const pageId = this.getPageId(slide);
+      const pageElements = slide.getPageElements();
+      pageElements.forEach((pageElement) => {
+        const description = pageElement.getDescription();
+        if (!description?.length) return;
+        const tag = description.charAt(0);
+        const tagText = description.substring(1).trim();
+        switch (tag) {
+          case '#':
+            this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
+            break;
+          case '^':
+            this.appendNotesToDefinitions(pageElement, pageId, context.definitionMap);
+            break;
+          case '~':
+          case '|':
+            this.handleImageArtifactElement(tagText, pageId, role, context);
+            break;
+          default:
+            break;
+        }
+      });
+    });
+  }
+
+  /**
+   * Handle a title-tagged element to create or update a task definition.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged page element.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  handleDefinitionTitleElement(pageElement, taskTitle, pageId, role, context) {
+    const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
+    const contentDetails = this.extractDefinitionContent(pageElement);
+    if (!contentDetails) return;
+
+    const { artifactType, elementContent } = contentDetails;
+    const params = {
+      type: artifactType,
+      pageId,
+      content: elementContent,
+      taskIndex: definition.index,
+    };
+
+    this.addArtifactToDefinition(definition, role, params);
+  }
+
+  /**
+   * Append notes content to every definition on the given page.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The notes element.
+   * @param {string} pageId - Slide page ID.
+   * @param {Map<string, TaskDefinition>} definitionMap - Map of task definitions keyed by title and page.
+   * @return {void}
+   */
+  appendNotesToDefinitions(pageElement, pageId, definitionMap) {
+    for (const definition of definitionMap.values()) {
+      if (definition.pageId === pageId) {
+        const notesContent = this.extractTextFromPageElement(pageElement);
+        definition.taskNotes =
+          (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
+      }
+    }
+  }
+
+  /**
+   * Handle an image-tagged element to attach slide image artifacts.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  handleImageArtifactElement(taskTitle, pageId, role, context) {
+    const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
+    const url = this.generateSlideImageUrl(
+      role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
+      pageId
+    );
+    const params = {
+      type: 'IMAGE',
+      pageId,
+      metadata: { sourceUrl: url },
+      content: null,
+      taskIndex: definition.index,
+    };
+
+    this.addArtifactToDefinition(definition, role, params);
+  }
+
+  /**
+   * Ensure a task definition exists for the given title and page.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {TaskDefinition} - Existing or newly created task definition.
+   */
+  ensureTaskDefinition(taskTitle, pageId, context) {
+    const definitionKey = `${taskTitle}|${pageId}`;
+    let definition = definitionMap.get(definitionKey);
+    if (!definition) {
+      definition = new TaskDefinition({ taskTitle, pageId });
+      definition.index = orderState.value++;
+      definitionMap.set(definitionKey, definition);
+    }
+    return definition;
+  }
+
+  /**
+   * Extract content and Artifact type for a definition element.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged element.
+   * @return {{artifactType: string, elementContent: *}|null} - Content details or null when unsupported.
+   */
+  extractDefinitionContent(pageElement) {
+    const elementType = pageElement.getPageElementType();
+    if (elementType === SlidesApp.PageElementType.SHAPE) {
+      return {
+        artifactType: 'TEXT',
+        elementContent: this.extractTextFromShape(pageElement.asShape()),
+      };
+    }
+    if (elementType === SlidesApp.PageElementType.TABLE) {
+      return {
+        artifactType: 'TABLE',
+        elementContent: this.extractTableCells(pageElement.asTable()),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Attach Artifact parameters to a definition with role awareness.
+   * @param {TaskDefinition} definition - Task definition to update.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} params - Artifact payload.
+   * @return {void}
+   */
+  addArtifactToDefinition(definition, role, params) {
+    if (role === 'reference') {
+      definition.addReferenceArtifact(params);
+    } else if (role === 'template') {
+      definition.addTemplateArtifact(params);
+    }
   }
 
   /**
@@ -159,16 +218,11 @@ class SlidesParser extends DocumentParser {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     const artifacts = [];
-    // Build lookup by (pageId) => list of definitions
-    const defsByPage = {};
-    taskDefs.forEach((d) => {
-      if (!defsByPage[d.pageId]) defsByPage[d.pageId] = [];
-      defsByPage[d.pageId].push(d);
-    });
+    const defsByPage = this.groupDefinitionsByPage(taskDefs);
     slides.forEach((slide) => {
       const pageId = this.getPageId(slide);
       const defs = defsByPage[pageId];
-      if (!defs || !defs.length) return;
+      if (!defs?.length) return;
       const pageElements = slide.getPageElements();
       // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
       defs.forEach((def) => {
@@ -187,38 +241,7 @@ class SlidesParser extends DocumentParser {
           artifacts.push(extracted);
           return;
         }
-        // Traverse page elements to find first matching element (# tag with same title)
-        for (const pe of pageElements) {
-          const desc = pe.getDescription();
-          if (!desc) continue;
-          const tag = desc.charAt(0);
-          const key = desc.substring(1).trim();
-          if (tag !== '#' && tag !== '~') continue;
-          if (key !== def.taskTitle) continue;
-          if (
-            typeNeeded === 'TEXT' &&
-            pe.getPageElementType() === SlidesApp.PageElementType.SHAPE
-          ) {
-            extracted = {
-              taskId: def.getId(),
-              pageId,
-              content: this.extractTextFromShape(pe.asShape()),
-            };
-            break;
-          }
-          if (
-            typeNeeded === 'TABLE' &&
-            pe.getPageElementType() === SlidesApp.PageElementType.TABLE
-          ) {
-            // Provide raw 2D cell array for table submission content
-            extracted = {
-              taskId: def.getId(),
-              pageId,
-              content: this.extractTableCells(pe.asTable()),
-            };
-            break;
-          }
-        }
+        extracted = this.collectSubmissionArtifact(def, pageElements, typeNeeded, pageId);
         if (extracted) artifacts.push(extracted);
         else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
@@ -229,6 +252,47 @@ class SlidesParser extends DocumentParser {
       });
     });
     return artifacts;
+  }
+
+  /**
+   * Group task definitions by page ID for quick lookup.
+   * @param {TaskDefinition[]} taskDefs - Task definitions to index.
+   * @return {Object<string, TaskDefinition[]>} - Definitions keyed by page ID.
+   */
+  groupDefinitionsByPage(taskDefs) {
+    const defsByPage = {};
+    taskDefs.forEach((definition) => {
+      if (!defsByPage[definition.pageId]) defsByPage[definition.pageId] = [];
+      defsByPage[definition.pageId].push(definition);
+    });
+    return defsByPage;
+  }
+
+  /**
+   * Collect the submission artifact content for a definition from slide elements.
+   * @param {TaskDefinition} definition - Definition being matched.
+   * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
+   * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE).
+   * @param {string} pageId - Slide page ID.
+   * @return {{taskId: string, pageId: string, content: *, metadata?: Object}|null} - Artifact payload or null.
+   */
+  collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId) {
+    for (const pageElement of pageElements) {
+      const desc = pageElement.getDescription();
+      if (!desc) continue;
+      const tag = desc.charAt(0);
+      const key = desc.substring(1).trim();
+      if (tag !== '#' && tag !== '~') continue;
+      if (key !== definition.taskTitle) continue;
+      const contentDetails = this.extractDefinitionContent(pageElement);
+      if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+      return {
+        taskId: definition.getId(),
+        pageId,
+        content: contentDetails.elementContent,
+      };
+    }
+    return null;
   }
 
   /**
@@ -247,7 +311,7 @@ class SlidesParser extends DocumentParser {
    * @return {string} - The extracted text from the shape.
    */
   extractTextFromShape(shape) {
-    if (!shape || !shape.getText) {
+    if (!shape?.getText) {
       console.log('The provided element is not a shape or does not contain text.');
       return '';
     }
@@ -260,8 +324,6 @@ class SlidesParser extends DocumentParser {
     }
     return text.trim();
   }
-
-  // Legacy convertTableToMarkdown removed; use DocumentParser.convertToMarkdownTable(tableData)
 
   /**
    * Extracts text from a table element and converts it to Markdown.
@@ -288,13 +350,9 @@ class SlidesParser extends DocumentParser {
       for (let r = 0; r < numRows; r++) {
         const row = [];
         for (let c = 0; c < numCols; c++) {
-          try {
-            const cell = table.getCell(r, c);
-            const text = cell && cell.getText ? cell.getText().asString().trim() : '';
-            row.push(text);
-          } catch (e) {
-            row.push('');
-          }
+          const cell = table.getCell(r, c);
+          const text = cell?.getText ? cell.getText().asString().trim() : '';
+          row.push(text);
         }
         rows.push(row);
       }
