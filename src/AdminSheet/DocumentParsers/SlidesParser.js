@@ -240,6 +240,9 @@ class SlidesParser extends DocumentParser {
         if (extracted) artifacts.push(extracted);
         else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
+          ABLogger.getInstance().error(
+            `Error in extracting task tagged: ${desc} for task ${def.taskTitle}.`
+          );
         }
       });
     });
