@@ -163,7 +163,6 @@ class SlidesParser extends DocumentParser {
    * @return {TaskDefinition} - Existing or newly created task definition.
    */
   ensureTaskDefinition(taskTitle, pageId, context) {
-    const { definitionMap, orderState } = context;
     const definitionKey = `${taskTitle}|${pageId}`;
     let definition = definitionMap.get(definitionKey);
     if (!definition) {
@@ -270,7 +269,7 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
-   * Collect the submission artefact content for a definition from slide elements.
+   * Collect the submission artifact content for a definition from slide elements.
    * @param {TaskDefinition} definition - Definition being matched.
    * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
    * @param {string} typeNeeded - Artefact type expected (TEXT/TABLE).
