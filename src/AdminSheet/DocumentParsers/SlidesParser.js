@@ -219,12 +219,7 @@ class SlidesParser extends DocumentParser {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     const artifacts = [];
-    // Build lookup by (pageId) => list of definitions
-    const defsByPage = {};
-    taskDefs.forEach((d) => {
-      if (!defsByPage[d.pageId]) defsByPage[d.pageId] = [];
-      defsByPage[d.pageId].push(d);
-    });
+    const defsByPage = this.groupDefinitionsByPage(taskDefs);
     slides.forEach((slide) => {
       const pageId = this.getPageId(slide);
       const defs = defsByPage[pageId];
@@ -247,38 +242,7 @@ class SlidesParser extends DocumentParser {
           artifacts.push(extracted);
           return;
         }
-        // Traverse page elements to find first matching element (# tag with same title)
-        for (const pe of pageElements) {
-          const desc = pe.getDescription();
-          if (!desc) continue;
-          const tag = desc.charAt(0);
-          const key = desc.substring(1).trim();
-          if (tag !== '#' && tag !== '~') continue;
-          if (key !== def.taskTitle) continue;
-          if (
-            typeNeeded === 'TEXT' &&
-            pe.getPageElementType() === SlidesApp.PageElementType.SHAPE
-          ) {
-            extracted = {
-              taskId: def.getId(),
-              pageId,
-              content: this.extractTextFromShape(pe.asShape()),
-            };
-            break;
-          }
-          if (
-            typeNeeded === 'TABLE' &&
-            pe.getPageElementType() === SlidesApp.PageElementType.TABLE
-          ) {
-            // Provide raw 2D cell array for table submission content
-            extracted = {
-              taskId: def.getId(),
-              pageId,
-              content: this.extractTableCells(pe.asTable()),
-            };
-            break;
-          }
-        }
+        extracted = this.collectSubmissionArtifact(def, pageElements, typeNeeded, pageId);
         if (extracted) artifacts.push(extracted);
         else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
@@ -289,6 +253,47 @@ class SlidesParser extends DocumentParser {
       });
     });
     return artifacts;
+  }
+
+  /**
+   * Group task definitions by page ID for quick lookup.
+   * @param {TaskDefinition[]} taskDefs - Task definitions to index.
+   * @return {Object<string, TaskDefinition[]>} - Definitions keyed by page ID.
+   */
+  groupDefinitionsByPage(taskDefs) {
+    const defsByPage = {};
+    taskDefs.forEach((definition) => {
+      if (!defsByPage[definition.pageId]) defsByPage[definition.pageId] = [];
+      defsByPage[definition.pageId].push(definition);
+    });
+    return defsByPage;
+  }
+
+  /**
+   * Collect the submission artefact content for a definition from slide elements.
+   * @param {TaskDefinition} definition - Definition being matched.
+   * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
+   * @param {string} typeNeeded - Artefact type expected (TEXT/TABLE).
+   * @param {string} pageId - Slide page ID.
+   * @return {{taskId: string, pageId: string, content: *, metadata?: Object}|null} - Artefact payload or null.
+   */
+  collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId) {
+    for (const pageElement of pageElements) {
+      const desc = pageElement.getDescription();
+      if (!desc) continue;
+      const tag = desc.charAt(0);
+      const key = desc.substring(1).trim();
+      if (tag !== '#' && tag !== '~') continue;
+      if (key !== definition.taskTitle) continue;
+      const contentDetails = this.extractDefinitionContent(pageElement);
+      if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+      return {
+        taskId: definition.getId(),
+        pageId,
+        content: contentDetails.elementContent,
+      };
+    }
+    return null;
   }
 
   /**
@@ -320,8 +325,6 @@ class SlidesParser extends DocumentParser {
     }
     return text.trim();
   }
-
-  // Legacy convertTableToMarkdown removed; use DocumentParser.convertToMarkdownTable(tableData)
 
   /**
    * Extracts text from a table element and converts it to Markdown.
