@@ -223,7 +223,7 @@ class SlidesParser extends DocumentParser {
         else {
           artifacts.push({ taskId: def.getId(), pageId, content: null });
           ABLogger.getInstance().error(
-            `Error in extracting task tagged: ${desc} for task ${def.taskTitle}.`
+            `Failed to extract artifact for task "${def.taskTitle}" on page ${pageId}.`
           );
         }
       });

@@ -43,6 +43,17 @@ class TextTaskArtifact extends BaseTaskArtifact {
    * @param {*} content
    * @returns {string|null}
    */
+  /**
+   * Normalize content by coercing non-string values to string, normalizing line endings, and trimming.
+   *
+   * - If `content` is `null` or `undefined`, returns `null`.
+   * - Non-string inputs are coerced using `String(content)`.
+   * - All CRLF (`\r\n`) and lone CR (`\r`) sequences are converted to LF (`\n`).
+   * - Leading and trailing whitespace is removed; if the result is empty, an empty string (`''`) is returned.
+   *
+   * @param {?*} content - The value to normalize. May be a string, any value coercible to string, or `null`/`undefined`.
+   * @returns {?string} The normalized string, or `null` if the input was `null`/`undefined`. Note: trimmed-empty content yields `''`, not `null`.
+   */
   normalizeContent(content) {
     if (content == null) return null;
     if (typeof content !== 'string') content = String(content);
