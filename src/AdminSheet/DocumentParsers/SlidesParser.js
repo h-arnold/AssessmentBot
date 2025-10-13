@@ -38,107 +38,177 @@ class SlidesParser extends DocumentParser {
 
     // Map: key = title + '|' + pageId (slide id) for stability
     const definitionMap = new Map();
-    let order = 0;
-
-    const processSlides = (slides, role) => {
-      slides.forEach((slide) => {
-        const pageId = this.getPageId(slide);
-        const pageElements = slide.getPageElements();
-        pageElements.forEach((pageElement) => {
-          const description = pageElement.getDescription();
-          if (!description?.length) return;
-          const tag = description.charAt(0);
-          const tagText = description.substring(1).trim();
-          switch (tag) {
-            case '#': {
-              // title element -> create/find TaskDefinition
-              const taskTitle = tagText;
-              const definitionKey = taskTitle + '|' + pageId;
-              let definition = definitionMap.get(definitionKey);
-              if (!definition) {
-                definition = new TaskDefinition({ taskTitle, pageId });
-                definition.index = order++;
-                definitionMap.set(definitionKey, definition);
-              }
-              // Extract content (text/table) as primitive
-              let elementContent = '';
-              const elementType = pageElement.getPageElementType();
-              if (elementType === SlidesApp.PageElementType.SHAPE) {
-                elementContent = this.extractTextFromShape(pageElement.asShape());
-              } else if (elementType === SlidesApp.PageElementType.TABLE) {
-                // Return raw 2D cell array so TableTaskArtifact can normalise instead of markdown string
-                elementContent = this.extractTableCells(pageElement.asTable());
-                artifactType = 'TABLE';
-              } else {
-                return;
-              }
-              if (role === 'reference') {
-                definition.addReferenceArtifact({
-                  type: artifactType,
-                  pageId,
-                  content: elementContent,
-                  taskIndex: definition.index,
-                });
-              } else if (role === 'template') {
-                definition.addTemplateArtifact({
-                  type: artifactType,
-                  pageId,
-                  content: elementContent,
-                  taskIndex: definition.index,
-                });
-              }
-              break;
-            }
-            case '^': {
-              // notes
-              // Attach to existing definition matching same page by last created definition with pageId
-              // Simpler: find any definition with pageId (rare multiple) and append notes
-              for (const definition of definitionMap.values()) {
-                if (definition.pageId === pageId) {
-                  const notesContent = this.extractTextFromPageElement(pageElement);
-                  definition.taskNotes =
-                    (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
-                }
-              }
-              break;
-            }
-            case '~':
-            case '|': {
-              // image artifact for whole slide
-              const taskTitle = tagText; // image title key
-              const definitionKey = taskTitle + '|' + pageId;
-              let definition = definitionMap.get(definitionKey);
-              if (!definition) {
-                definition = new TaskDefinition({ taskTitle, pageId });
-                definition.index = order++;
-                definitionMap.set(definitionKey, definition);
-              }
-              const url = this.generateSlideImageUrl(
-                role === 'reference' ? referenceDocumentId : templateDocumentId,
-                pageId
-              );
-              const params = {
-                type: 'IMAGE',
-                pageId,
-                metadata: { sourceUrl: url },
-                content: null,
-                taskIndex: definition.index,
-              };
-              if (role === 'reference') definition.addReferenceArtifact(params);
-              else definition.addTemplateArtifact(params);
-              break;
-            }
-            default:
-              break;
-          }
-        });
-      });
+    const orderState = { value: 0 };
+    const context = {
+      definitionMap,
+      orderState,
+      referenceDocumentId,
+      templateDocumentId,
     };
 
-    processSlides(referenceSlides, 'reference');
-    if (templateSlides.length) processSlides(templateSlides, 'template');
+    this.processSlidesForDefinitions(referenceSlides, 'reference', context);
+    if (templateSlides.length) {
+      this.processSlidesForDefinitions(templateSlides, 'template', context);
+    }
 
     return Array.from(definitionMap.values());
+  }
+
+  /**
+   * Process slides to populate task definitions from tagged elements.
+   * @param {GoogleAppsScript.Slides.Slide[]} slides - Slides to inspect.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  processSlidesForDefinitions(slides, role, context) {
+    slides.forEach((slide) => {
+      const pageId = this.getPageId(slide);
+      const pageElements = slide.getPageElements();
+      pageElements.forEach((pageElement) => {
+        const description = pageElement.getDescription();
+        if (!description?.length) return;
+        const tag = description.charAt(0);
+        const tagText = description.substring(1).trim();
+        switch (tag) {
+          case '#':
+            this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
+            break;
+          case '^':
+            this.appendNotesToDefinitions(pageElement, pageId, context.definitionMap);
+            break;
+          case '~':
+          case '|':
+            this.handleImageArtifactElement(tagText, pageId, role, context);
+            break;
+          default:
+            break;
+        }
+      });
+    });
+  }
+
+  /**
+   * Handle a title-tagged element to create or update a task definition.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged page element.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  handleDefinitionTitleElement(pageElement, taskTitle, pageId, role, context) {
+    const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
+    const contentDetails = this.extractDefinitionContent(pageElement);
+    if (!contentDetails) return;
+
+    const { artifactType, elementContent } = contentDetails;
+    const params = {
+      type: artifactType,
+      pageId,
+      content: elementContent,
+      taskIndex: definition.index,
+    };
+
+    this.addArtifactToDefinition(definition, role, params);
+  }
+
+  /**
+   * Append notes content to every definition on the given page.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The notes element.
+   * @param {string} pageId - Slide page ID.
+   * @param {Map<string, TaskDefinition>} definitionMap - Map of task definitions keyed by title and page.
+   * @return {void}
+   */
+  appendNotesToDefinitions(pageElement, pageId, definitionMap) {
+    for (const definition of definitionMap.values()) {
+      if (definition.pageId === pageId) {
+        const notesContent = this.extractTextFromPageElement(pageElement);
+        definition.taskNotes =
+          (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
+      }
+    }
+  }
+
+  /**
+   * Handle an image-tagged element to attach slide image artifacts.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {void}
+   */
+  handleImageArtifactElement(taskTitle, pageId, role, context) {
+    const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
+    const url = this.generateSlideImageUrl(
+      role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
+      pageId
+    );
+    const params = {
+      type: 'IMAGE',
+      pageId,
+      metadata: { sourceUrl: url },
+      content: null,
+      taskIndex: definition.index,
+    };
+
+    this.addArtifactToDefinition(definition, role, params);
+  }
+
+  /**
+   * Ensure a task definition exists for the given title and page.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {string} pageId - Slide page ID.
+   * @param {Object} context - Shared state for definition creation.
+   * @return {TaskDefinition} - Existing or newly created task definition.
+   */
+  ensureTaskDefinition(taskTitle, pageId, context) {
+    const { definitionMap, orderState } = context;
+    const definitionKey = `${taskTitle}|${pageId}`;
+    let definition = definitionMap.get(definitionKey);
+    if (!definition) {
+      definition = new TaskDefinition({ taskTitle, pageId });
+      definition.index = orderState.value++;
+      definitionMap.set(definitionKey, definition);
+    }
+    return definition;
+  }
+
+  /**
+   * Extract content and artefact type for a definition element.
+   * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged element.
+   * @return {{artifactType: string, elementContent: *}|null} - Content details or null when unsupported.
+   */
+  extractDefinitionContent(pageElement) {
+    const elementType = pageElement.getPageElementType();
+    if (elementType === SlidesApp.PageElementType.SHAPE) {
+      return {
+        artifactType: 'TEXT',
+        elementContent: this.extractTextFromShape(pageElement.asShape()),
+      };
+    }
+    if (elementType === SlidesApp.PageElementType.TABLE) {
+      return {
+        artifactType: 'TABLE',
+        elementContent: this.extractTableCells(pageElement.asTable()),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Attach artefact parameters to a definition with role awareness.
+   * @param {TaskDefinition} definition - Task definition to update.
+   * @param {string} role - Either 'reference' or 'template'.
+   * @param {Object} params - Artefact payload.
+   * @return {void}
+   */
+  addArtifactToDefinition(definition, role, params) {
+    if (role === 'reference') {
+      definition.addReferenceArtifact(params);
+    } else if (role === 'template') {
+      definition.addTemplateArtifact(params);
+    }
   }
 
   /**
