@@ -2,6 +2,40 @@
  * Update Manager Class
  * Extends BaseAdminManager to handle updating the Admin Sheet and associated Assessment Record sheets.
  */
+/**
+ * UpdateManager
+ *
+ * Orchestrates creating a new Admin Spreadsheet version and updating all Assessment Record spreadsheets
+ * to the latest templates. Responsibilities include:
+ *  - Validating execution context (must run from an Admin Sheet).
+ *  - Managing Classroom sheet interactions for reading and writing Assessment Record file IDs.
+ *  - Cloning the Admin Sheet from a template and transferring the propertiesStore sheet contents.
+ *  - Archiving old Admin and Assessment Record files into an "Archive {date}" folder (with safe renaming).
+ *  - Cloning Assessment Record spreadsheets into the latest template and updating references in the Classroom sheet.
+ *  - Driving the UI flow for the update wizard and showing progress via ProgressTracker/UIManager.
+ *
+ * Implementation notes:
+ *  - Extends BaseUpdateAndInit and depends on helpers/singletons: DriveManager, ConfigurationManager,
+ *    PropertiesCloner, ProgressTracker, UIManager, ScriptAppManager, ABLogger and ClassroomSheetManager.
+ *  - Methods perform I/O with Google Drive and Sheets and may surface API errors.
+ *  - Archiving logic avoids repeatedly appending "ARCHIVED" to filenames.
+ *
+ * Properties (not exhaustive):
+ *  - classroomSheet: ClassroomSheetManager - manager for the "Classrooms" sheet in the current admin sheet.
+ *  - adminSheetTemplateId: string - file ID of the admin sheet template used for cloning.
+ *  - assessmentRecordSheets: Object.<string, {originalSheetId:string, newSheetId:string}> - mapping of class names
+ *      to their assessment record file IDs.
+ *  - adminSheetsDetails: Object - mapping used when cloning the admin sheet (original/new IDs).
+ *
+ * Example usage:
+ *  const mgr = new UpdateManager();
+ *  mgr.updateAdminSheet(); // clones admin sheet, transfers propertiesStore, archives old admin sheet, opens new sheet
+ *
+ * @class UpdateManager
+ * @extends {BaseUpdateAndInit}
+ * @constructor
+ * @returns {UpdateManager} The initialized UpdateManager instance.
+ */
 class UpdateManager extends BaseUpdateAndInit {
   constructor() {
     // Call the superclass constructor.
@@ -118,15 +152,27 @@ class UpdateManager extends BaseUpdateAndInit {
    * Ensures the propertiesStore sheet from the old admin sheet is transferred to the new one.
    * Checks if the new admin sheet has an existing propertiesStore sheet (from template),
    * and if so, overwrites its contents with the data from the old admin sheet.
-   * @param {string} oldAdminSheetId - The ID of the old admin sheet.
-   * @param {string} newAdminSheetId - The ID of the new admin sheet.
-   */
-  ensurePropertiesStoreTransferred(oldAdminSheetId, newAdminSheetId) {
-    const oldSpreadsheet = SpreadsheetApp.openById(oldAdminSheetId);
-    const newSpreadsheet = SpreadsheetApp.openById(newAdminSheetId);
+        // Only write if oldData is non-empty and has at least one column
+        if (oldData.length > 0 && oldData[0]) {
+          newPropertiesStore.getRange(1, 1, oldData.length, oldData[0].length).setValues(oldData);
 
-    const oldPropertiesStore = oldSpreadsheet.getSheetByName('propertiesStore');
-    const newPropertiesStore = newSpreadsheet.getSheetByName('propertiesStore');
+          // Preserve hidden state if the old sheet was hidden
+          if (oldPropertiesStore.isSheetHidden()) {
+            newPropertiesStore.hideSheet();
+          }
+
+          ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
+        } else {
+          ABLogger.getInstance().info(
+            'Old propertiesStore sheet data is malformed or empty, skipping transfer'
+          );
+        }
+          ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
+        } else {
+          ABLogger.getInstance().info(
+            'Old propertiesStore sheet exists but contains no data, skipping transfer'
+          );
+        }
 
     // If the old admin sheet doesn't have a propertiesStore, nothing to transfer
     if (!oldPropertiesStore) {
