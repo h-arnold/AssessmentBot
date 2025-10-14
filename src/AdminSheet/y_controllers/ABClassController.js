@@ -16,11 +16,9 @@ class ABClassController {
   _applyCourseMetadata(abClass, courseId) {
     // Call the ClassroomApiClient static method directly and allow errors to surface
     const course = ClassroomApiClient.fetchCourse(courseId);
-    if (!course) return;
 
     if (course.name) {
-      if (typeof abClass.setClassName === 'function') abClass.setClassName(course.name);
-      else abClass.className = course.name;
+      abClass.setClassName(course.name);
     }
 
     if (course.ownerId) {
@@ -32,12 +30,10 @@ class ABClassController {
   // Helper: fetch and apply teacher list
   _applyTeachers(abClass, courseId) {
     // Call the ClassroomApiClient static method directly and allow errors to surface
-    const teachers = ClassroomApiClient.fetchTeachers(courseId) || [];
+    const teachers = ClassroomApiClient.fetchTeachers(courseId);
 
+    // Support both new behaviour (Teacher instances) and legacy raw API objects.
     teachers.forEach((teacherObj) => {
-      // Support both new behaviour (Teacher instances) and legacy raw API objects.
-      if (!teacherObj) return; // nothing to apply
-
       // If this teacher matches the course owner, set as owner
       if (abClass.classOwner && abClass.classOwner.userId === teacherObj.userId) {
         abClass.setClassOwner(teacherObj);
@@ -50,7 +46,7 @@ class ABClassController {
   // Helper: fetch and apply students
   _applyStudents(abClass, courseId) {
     // Call the ClassroomApiClient static method directly; it handles paging. Let errors bubble up.
-    const students = ClassroomApiClient.fetchAllStudents(courseId) || [];
+    const students = ClassroomApiClient.fetchAllStudents(courseId);
 
     students.forEach((st) => {
       abClass.addStudent(st);
@@ -58,15 +54,10 @@ class ABClassController {
   }
 
   _getCollectionMetadata(collection) {
-    if (!collection || typeof collection.getMetadata !== 'function') return null;
-
     try {
       return collection.getMetadata();
     } catch (err) {
-      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-      if (logger && typeof logger.warn === 'function') {
-        logger.warn('Failed to read collection metadata', { err });
-      }
+      ABLogger.getInstance().warn('Failed to read collection metadata', { err });
       return null;
     }
   }
@@ -107,15 +98,6 @@ class ABClassController {
 
   _persistRoster(collection, existingDoc, abClass) {
     const logger = ABLogger.getInstance();
-    if (!collection || !abClass) {
-      // Log at info level that nothing to persist due to missing args
-      logger.error('_persistRoster: nothing to persist - missing collection or abClass', {
-        hasCollection: !!collection,
-        hasAbClass: !!abClass,
-      });
-      return;
-    }
-
     const payload = this._buildClassroomRosterUpdatePayload(abClass);
     const filter = existingDoc?._id ? { _id: existingDoc._id } : { classId: abClass.classId };
 
@@ -205,9 +187,6 @@ class ABClassController {
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
     const logger = ABLogger.getInstance();
-    if (logger && typeof logger.info !== 'function') {
-      logger.info = function () {};
-    }
 
     const collection = this.dbManager.getCollection(classId);
     const metadata = this._getCollectionMetadata(collection);
@@ -231,7 +210,7 @@ class ABClassController {
       return newClass;
     }
 
-    const needsRefresh = this._shouldRefreshRoster(metadata, classId);
+    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); (this was the old logic, but it doesn't work so I'm leaving this here as reference for now until I figure out a better way of handling this. See Issue #88)
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
     if (needsRefresh) {
