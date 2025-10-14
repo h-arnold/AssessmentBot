@@ -81,7 +81,7 @@ class ABClassController {
   }
 
   _shouldRefreshRoster(metadata, classId) {
-    if (!metadata || !metadata.lastUpdated) return false;
+    if (metadata?.lastUpdated) return false;
 
     const lastUpdated =
       metadata.lastUpdated instanceof Date ? metadata.lastUpdated : new Date(metadata.lastUpdated);
