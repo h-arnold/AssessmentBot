@@ -16,7 +16,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "devDependencies": {
     "eslint": "^9.37.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
