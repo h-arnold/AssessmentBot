@@ -144,19 +144,29 @@ class UpdateManager extends BaseUpdateAndInit {
       newPropertiesStore.clear();
       newPropertiesStore.clearFormats();
 
-      // Get all data from old propertiesStore
-      const oldData = oldPropertiesStore.getDataRange().getValues();
+      // Check if old propertiesStore has actual data
+      const lastRow = oldPropertiesStore.getLastRow();
+      const lastColumn = oldPropertiesStore.getLastColumn();
 
-      // Write to new propertiesStore
-      if (oldData.length > 0 && oldData[0].length > 0) {
-        newPropertiesStore.getRange(1, 1, oldData.length, oldData[0].length).setValues(oldData);
+      if (lastRow > 0 && lastColumn > 0) {
+        // Get all data from old propertiesStore
+        const oldData = oldPropertiesStore.getRange(1, 1, lastRow, lastColumn).getValues();
 
-        // Preserve hidden state if the old sheet was hidden
-        if (oldPropertiesStore.isSheetHidden()) {
-          newPropertiesStore.hideSheet();
+        // Write to new propertiesStore
+        if (oldData.length > 0 && oldData[0] && oldData[0].length > 0) {
+          newPropertiesStore.getRange(1, 1, oldData.length, oldData[0].length).setValues(oldData);
+
+          // Preserve hidden state if the old sheet was hidden
+          if (oldPropertiesStore.isSheetHidden()) {
+            newPropertiesStore.hideSheet();
+          }
+
+          ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
         }
-
-        ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
+      } else {
+        ABLogger.getInstance().info(
+          'Old propertiesStore sheet exists but contains no data, skipping transfer'
+        );
       }
     } else {
       ABLogger.getInstance().info(
