@@ -164,6 +164,7 @@ class SlidesParser extends DocumentParser {
    */
   ensureTaskDefinition(taskTitle, pageId, context) {
     const definitionKey = `${taskTitle}|${pageId}`;
+    const { definitionMap, orderState } = context;
     let definition = definitionMap.get(definitionKey);
     if (!definition) {
       definition = new TaskDefinition({ taskTitle, pageId });
