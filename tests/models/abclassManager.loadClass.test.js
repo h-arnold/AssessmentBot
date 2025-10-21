@@ -17,6 +17,8 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
+      debugUi: vi.fn(),
+      info: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
@@ -100,6 +102,7 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-123');
 
+    // Currently always refreshes roster (see Issue #88)
     expect(ClassroomApiClient.fetchCourseUpdateTime).not.toHaveBeenCalled();
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-123');
@@ -153,6 +156,13 @@ describe('ABClassController.loadClass', () => {
       documentCount: 1,
     });
 
+    const existingTeacher = new Teacher('existing@example.com', 't-existing', 'Existing Teacher');
+    const existingStudent = new Student(
+      'Existing Student',
+      'existing@student.example.com',
+      's-existing'
+    );
+
     // NOTE: ABClassController.loadClass always fetches fresh roster data from
     // ClassroomApiClient, regardless of collection metadata age. This is by design
     // (see Issue #88). The previous caching optimisation (_shouldRefreshRoster)
@@ -172,6 +182,13 @@ describe('ABClassController.loadClass', () => {
     ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-03-10T00:00:00Z'));
     ClassroomApiClient.fetchCourse.mockReturnValue({
       id: 'course-456',
+      name: 'Stable Name',
+      ownerId: 't-existing',
+    });
+    ClassroomApiClient.fetchTeachers.mockReturnValue([existingTeacher]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([existingStudent]);
+    ClassroomApiClient.fetchCourse.mockReturnValue({
+      id: 'course-456',
       name: 'Fresh Course Name',
       ownerId: 'owner-fresh',
     });
@@ -180,6 +197,11 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-456');
 
+    // Currently always refreshes roster (see Issue #88)
+    expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
+    expect(collectionMock.updateOne).toHaveBeenCalled();
     // Even though metadata is "up to date", roster API calls are always made
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
@@ -188,6 +210,10 @@ describe('ABClassController.loadClass', () => {
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
+    // Teacher is the owner, so should be classOwner not in teachers array
+    expect(abClass.classOwner).toBeTruthy();
+    expect(abClass.classOwner.email).toBe('existing@example.com');
+    expect(abClass.teachers).toHaveLength(0); // Owner is not in teachers array
     // Returned ABClass contains fresh data from API, not stored data
     expect(abClass.className).toBe('Fresh Course Name');
     expect(abClass.teachers).toHaveLength(1);
