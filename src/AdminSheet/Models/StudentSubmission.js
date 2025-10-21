@@ -156,6 +156,13 @@ class StudentSubmission {
         metadata,
         uid,
       });
+      // Flag up null content that isn't an image. That means a student has probably deleted their tag.
+      // We skip image tasks because they will always be null at this stage. We extract image tasks later.
+      if (artifact.content == null && type !== 'IMAGE') {
+        ABLogger.getInstance().warn(
+          `No content found for ${this.studentName} for task '${taskDef.taskTitle}'.`
+        );
+      }
       item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
       this.items[taskId] = item;
       mutated = true;

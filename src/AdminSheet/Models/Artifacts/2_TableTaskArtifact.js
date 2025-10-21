@@ -95,11 +95,12 @@ class TableTaskArtifact extends BaseTaskArtifact {
    */
   normalizeContent(content) {
     if (content == null) {
-      const err = new Error('TableTaskArtifact.normalizeContent received null content');
-      ProgressTracker.getInstance().logAndThrowError('Failed to normalise table content', {
-        reason: 'content_null',
-        err,
-      });
+      // If the content is null, the liklihood is that either there's an issue with tagging consistency between the reference and templates tasks or
+      // the student has deleted the tag or the object or the tag. Either way, this issue needs to be handled further up the stack.
+      ABLogger.getInstance().warn(
+        `Table task content which is null was sent to be normalised. This means that something isn't being caught further up the stack.`
+      );
+      return null;
     }
     if (typeof content === 'string') {
       const s = content.trim();
@@ -188,8 +189,8 @@ class TableTaskArtifact extends BaseTaskArtifact {
       rowsOverride !== undefined
         ? rowsOverride
         : this._rows && this._rows.length
-        ? this._rows
-        : this.content;
+          ? this._rows
+          : this.content;
     let src = candidate;
     if (!src) return '';
     if (typeof src === 'string') return src.trim();
