@@ -167,8 +167,8 @@ class StudentSubmission {
       this.items[taskId] = item;
       mutated = true;
     } else {
-      // Update existing artifact content if changed (skip if undefined or null)
-      if (content !== undefined || content !== null) {
+      // Update existing artifact content if changed
+      if (content !== undefined) {
         item.artifact.content = item.artifact.normalizeContent(content);
         item.artifact.ensureHash();
         mutated = true;
