@@ -17,8 +17,11 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
+      debugUi: vi.fn(),
+      info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
+      debug: vi.fn(),
     };
     global.ABLogger = { getInstance: () => loggerInstance };
 
@@ -63,7 +66,7 @@ describe('ABClassController.loadClass', () => {
     ];
   });
 
-  it('refreshes roster when course update time is newer than collection metadata', () => {
+  it('refreshes roster when loading an existing class (always refreshes - Issue #88)', () => {
     const storedDoc = {
       _id: 'doc-1',
       classId: 'course-123',
@@ -98,7 +101,7 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-123');
 
-    expect(ClassroomApiClient.fetchCourseUpdateTime).toHaveBeenCalledWith('course-123');
+    // Currently always refreshes roster (see Issue #88)
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-123');
@@ -134,8 +137,9 @@ describe('ABClassController.loadClass', () => {
     expect($set.students[0].email).toBe('new@student.example.com');
   });
 
-  it('returns stored class when metadata is up to date', () => {
+  it('loads stored class and refreshes roster (always refreshes - Issue #88)', () => {
     const storedDoc = {
+      _id: 'doc-2',
       classId: 'course-456',
       className: 'Stable Name',
       teachers: [{ email: 'existing@example.com', userId: 't-existing' }],
@@ -152,20 +156,34 @@ describe('ABClassController.loadClass', () => {
       documentCount: 1,
     });
 
+    const existingTeacher = new Teacher('existing@example.com', 't-existing', 'Existing Teacher');
+    const existingStudent = new Student(
+      'Existing Student',
+      'existing@student.example.com',
+      's-existing'
+    );
+
     ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-03-10T00:00:00Z'));
-    ClassroomApiClient.fetchCourse.mockReturnValue({});
-    ClassroomApiClient.fetchTeachers.mockReturnValue([]);
-    ClassroomApiClient.fetchAllStudents.mockReturnValue([]);
+    ClassroomApiClient.fetchCourse.mockReturnValue({
+      id: 'course-456',
+      name: 'Stable Name',
+      ownerId: 't-existing',
+    });
+    ClassroomApiClient.fetchTeachers.mockReturnValue([existingTeacher]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([existingStudent]);
 
     const abClass = controller.loadClass('course-456');
 
-    expect(ClassroomApiClient.fetchCourse).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchTeachers).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchAllStudents).not.toHaveBeenCalled();
-    expect(collectionMock.updateOne).not.toHaveBeenCalled();
+    // Currently always refreshes roster (see Issue #88)
+    expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
+    expect(collectionMock.updateOne).toHaveBeenCalled();
 
-    expect(abClass.teachers).toHaveLength(1);
-    expect(abClass.teachers[0].email).toBe('existing@example.com');
+    // Teacher is the owner, so should be classOwner not in teachers array
+    expect(abClass.classOwner).toBeTruthy();
+    expect(abClass.classOwner.email).toBe('existing@example.com');
+    expect(abClass.teachers).toHaveLength(0); // Owner is not in teachers array
     expect(abClass.students).toHaveLength(1);
     expect(abClass.students[0].email).toBe('existing@student.example.com');
   });

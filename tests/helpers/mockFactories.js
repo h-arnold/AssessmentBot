@@ -176,6 +176,21 @@ function createMockClassroomApiClient() {
 }
 
 /**
+ * Create a mock ABLogger for testing
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @returns {Object} Mock ABLogger instance with spies for all methods
+ */
+function createMockABLogger(vi) {
+  return {
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debugUi: vi.fn(),
+    debug: vi.fn(),
+  };
+}
+
+/**
  * Setup all common GAS mocks on the global object
  * @param {Object} vi - Vitest vi object for creating mocks
  * @param {Object} options - Configuration options
@@ -217,5 +232,6 @@ module.exports = {
   createMockDriveManager,
   createMockPropertiesCloner,
   createMockClassroomApiClient,
+  createMockABLogger,
   setupGlobalGASMocks,
 };
