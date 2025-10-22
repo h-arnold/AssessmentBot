@@ -352,9 +352,8 @@ class SlidesParser extends DocumentParser {
         const row = [];
         for (let c = 0; c < numCols; c++) {
           const cell = table.getCell(r, c);
-          const text = cell?.getText().asString();
-          const trimmedText = text?.trim();
-          row.push(trimmedText);
+          const text = this.extractCellText(cell);
+          row.push(text);
         }
         rows.push(row);
       }
@@ -363,6 +362,24 @@ class SlidesParser extends DocumentParser {
       ABLogger.getInstance().error('extractTableCells failed', e);
       return [];
     }
+  }
+
+  /**
+   * Extract text from a table cell, handling merged cells correctly.
+   * @param {GoogleAppsScript.Slides.TableCell} cell - The cell to extract text from.
+   * @return {string} - Trimmed text content, or empty string for merged non-head cells.
+   */
+  extractCellText(cell) {
+    const mergeState = cell.getCellMergeState();
+    if (mergeState === SlidesApp.CellMergeState.MERGED) {
+      ABLogger.getInstance().debug('Merged cell skipped', {
+        message: 'Non-head merged cell returned as empty string',
+        mergeState: 'MERGED',
+      });
+      return '';
+    }
+    const text = cell.getText().asString();
+    return text?.trim() || '';
   }
 
   /**
