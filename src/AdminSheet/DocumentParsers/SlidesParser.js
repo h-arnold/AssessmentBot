@@ -313,7 +313,7 @@ class SlidesParser extends DocumentParser {
    */
   extractTextFromShape(shape) {
     if (!shape?.getText) {
-      console.log('The provided element is not a shape or does not contain text.');
+      ABLogger.getInstance().warn('The provided element is not a shape or does not contain text.');
       return '';
     }
 
@@ -352,14 +352,15 @@ class SlidesParser extends DocumentParser {
         const row = [];
         for (let c = 0; c < numCols; c++) {
           const cell = table.getCell(r, c);
-          const text = cell?.getText ? cell.getText().asString().trim() : '';
-          row.push(text);
+          const text = cell?.getText().asString();
+          const trimmedText = text?.trim();
+          row.push(trimmedText);
         }
         rows.push(row);
       }
       return rows;
     } catch (e) {
-      console.error('extractTableCells failed', e);
+      ABLogger.getInstance().error('extractTableCells failed', e);
       return [];
     }
   }
@@ -379,7 +380,7 @@ class SlidesParser extends DocumentParser {
     } else if (type === SlidesApp.PageElementType.IMAGE) {
       return this.extractImageDescription(pageElement.asImage());
     } else {
-      console.log(`Unsupported PageElementType for notes: ${type}`);
+      ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
       return '';
     }
   }

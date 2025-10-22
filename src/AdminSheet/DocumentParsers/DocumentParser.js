@@ -27,7 +27,6 @@ class DocumentParser {
    * @return {TaskDefinition[]}
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
   }
 
@@ -38,7 +37,6 @@ class DocumentParser {
    * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
    */
   extractSubmissionArtifacts(documentId, taskDefinitions) {
-    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
   }
 
@@ -49,7 +47,7 @@ class DocumentParser {
    */
   convertToMarkdownTable(tableData) {
     if (!tableData || !tableData.length || !tableData[0].length) {
-      console.log('The provided data is empty or invalid.');
+      ABLogger.getInstance().warn('The provided data is empty or invalid.');
       return '';
     }
 
