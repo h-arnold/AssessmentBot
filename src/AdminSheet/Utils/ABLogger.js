@@ -114,7 +114,8 @@ class ABLogger extends BaseSingleton {
     console.error(...args.map((a) => this.serialiseArg(a)));
   }
   debug(...args) {
-    console.debug(...args.map((a) => this.serialiseArg(a)));
+    // Apps Script doesn't support console.debug; use console.log and make the output explicit
+    console.log('[DEBUG]', ...args.map((a) => this.serialiseArg(a)));
   }
 }
 
