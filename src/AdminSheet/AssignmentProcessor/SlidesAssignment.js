@@ -100,15 +100,14 @@ class SlidesAssignment extends Assignment {
   processAllSubmissions() {
     const parser = new SlidesParser();
     const taskDefs = Object.values(this.tasks);
-    this.submissions.forEach((sub) => {
+    const total = this.submissions.length;
+    this.submissions.forEach((sub, i) => {
       if (!sub.documentId) {
-        console.warn(`No document ID for studentId: ${sub.studentId}. Skipping.`);
+        console.warn(`No document ID for student: ${sub.studentName}. Skipping.`);
         return;
       }
-      this.progressTracker.updateProgress(
-        `Extracting responses from student ${sub.studentId}...`,
-        false
-      );
+      // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
+      this.progressTracker.updateProgress(`Extracting response ${i + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
         const taskDef = this.tasks[a.taskId];
