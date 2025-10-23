@@ -42,11 +42,12 @@ describe('ABLogger', () => {
     logger.error('e');
     logger.debug('d');
 
-    expect(console.log).toHaveBeenCalledWith('one', 2);
+    expect(console.log).toHaveBeenNthCalledWith(1, 'one', 2);
     expect(console.info).toHaveBeenCalledWith('i');
     expect(console.warn).toHaveBeenCalledWith('w');
     expect(console.error).toHaveBeenCalledWith('e');
-    expect(console.debug).toHaveBeenCalledWith('d');
+    expect(console.log).toHaveBeenNthCalledWith(2, '[DEBUG]', 'd');
+    expect(console.debug).not.toHaveBeenCalled();
   });
 
   it('debugUi only logs when globalThis.DEBUG_UI is true', () => {

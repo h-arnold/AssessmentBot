@@ -27,7 +27,7 @@ class DocumentParser {
    * @return {TaskDefinition[]}
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
-    throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
+    throw new Error("The method 'extractTaskDefinitions' must be implemented by a subclass.");
   }
 
   /**
@@ -37,7 +37,9 @@ class DocumentParser {
    * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
    */
   extractSubmissionArtifacts(documentId, taskDefinitions) {
-    throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
+    throw new Error(
+      'DocumentParser.extractSubmissionArtifacts() is abstract and must be implemented by subclass'
+    );
   }
 
   /**

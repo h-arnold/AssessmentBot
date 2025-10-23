@@ -11,18 +11,48 @@
  * the head (upper left) cell of the merged cells" by checking merge state before
  * calling getText() on cells.
  *
- * Note: This test uses a minimal implementation of the methods under test rather
- * than loading the full SlidesParser class, as the class uses CommonJS patterns
- * that make it difficult to load in ESM test environments without complex eval
- * workarounds. The test implementation mirrors the production code exactly.
+ * Note: The test dynamically loads the production SlidesParser class after
+ * seeding required globals so we exercise the real implementation without
+ * reproducing it inline.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
 import { createMockABLogger } from '../helpers/mockFactories.js';
 
 describe('SlidesParser - Merged Cell Handling', () => {
   let SlidesParser;
   let mockLogger;
+
+  beforeAll(async () => {
+    const documentParserModule = await import(
+      '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
+    );
+    const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
+
+    const documentParser =
+      documentParserModule.DocumentParser || documentParserModule.default?.DocumentParser;
+    const taskDefinition =
+      taskDefinitionModule.TaskDefinition || taskDefinitionModule.default?.TaskDefinition;
+
+    if (!documentParser || !taskDefinition) {
+      throw new Error('Failed to load DocumentParser or TaskDefinition for SlidesParser tests');
+    }
+
+    global.DocumentParser = documentParser;
+    global.TaskDefinition = taskDefinition;
+
+    const slidesParserModule = await import('../../src/AdminSheet/DocumentParsers/SlidesParser.js');
+    SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
+
+    if (!SlidesParser) {
+      throw new Error('Failed to load SlidesParser for tests');
+    }
+  });
+
+  afterAll(() => {
+    delete global.DocumentParser;
+    delete global.TaskDefinition;
+  });
 
   beforeEach(() => {
     // Setup mock ABLogger
@@ -38,55 +68,6 @@ describe('SlidesParser - Merged Cell Handling', () => {
         HEAD: 'HEAD',
         MERGED: 'MERGED',
       },
-    };
-
-    // Create a minimal SlidesParser class for testing cell extraction methods
-    // We only need to test extractCellText and extractTableCells, not the full class
-    SlidesParser = class TestSlidesParser {
-      /**
-       * Extract text from a table cell, handling merged cells correctly.
-       * @param {Object} cell - The cell to extract text from.
-       * @return {string} - Trimmed text content, or empty string for merged non-head cells.
-       */
-      extractCellText(cell) {
-        const mergeState = cell.getCellMergeState();
-        if (mergeState === global.SlidesApp.CellMergeState.MERGED) {
-          global.ABLogger.getInstance().debug('Merged cell skipped', {
-            message: 'Non-head merged cell returned as empty string',
-            mergeState: 'MERGED',
-          });
-          return '';
-        }
-        const text = cell.getText().asString();
-        return text?.trim() || '';
-      }
-
-      /**
-       * Extract raw 2D cell array from a Slides table (preferred for TABLE artifacts).
-       * @param {Object} table
-       * @return {Array<Array<string|null>>} Cell values trimmed; empty cells as ''
-       */
-      extractTableCells(table) {
-        try {
-          if (!table || !(table.getNumRows && table.getNumColumns)) return [];
-          const rows = [];
-          const numRows = table.getNumRows();
-          const numCols = table.getNumColumns();
-          for (let r = 0; r < numRows; r++) {
-            const row = [];
-            for (let c = 0; c < numCols; c++) {
-              const cell = table.getCell(r, c);
-              const text = this.extractCellText(cell);
-              row.push(text);
-            }
-            rows.push(row);
-          }
-          return rows;
-        } catch (e) {
-          global.ABLogger.getInstance().error('extractTableCells failed', e);
-          return [];
-        }
-      }
     };
   });
 

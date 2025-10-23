@@ -370,6 +370,9 @@ class SlidesParser extends DocumentParser {
    * @return {string} - Trimmed text content, or empty string for merged non-head cells.
    */
   extractCellText(cell) {
+    if (!cell) {
+      return '';
+    }
     const mergeState = cell.getCellMergeState();
     if (mergeState === SlidesApp.CellMergeState.MERGED) {
       ABLogger.getInstance().debug('Merged cell skipped', {
@@ -413,4 +416,8 @@ class SlidesParser extends DocumentParser {
     const description = image.getDescription();
     return description ? description.trim() : '';
   }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SlidesParser };
 }
