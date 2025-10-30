@@ -1,0 +1,51 @@
+{
+  "name": "AssessmentBot Development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:latest",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "sonarsource.sonarlint-vscode",
+        "github.copilot",
+        "github.copilot-chat",
+        "yzhang.markdown-all-in-one",
+        "ms-vscode.js-debug"
+      ],
+      "settings": {
+        "editor.wordWrap": "on",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[markdown]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "eslint.validate": ["javascript"],
+        "git.autofetch": true,
+        "git.enableSmartCommit": true,
+        "keyboard.layout": "gb",
+        "github.copilot.chat.localeOverride": "en",
+        "github.copilot.chat.codesearch.enabled": true,
+        "github.copilot.chat.agent.thinkingTool": true,
+        "github.copilot.chat.generateTests.codeLens": true,
+        "github.copilot.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
+        "github.copilot.chat.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
+        "github.copilot.chat.edits.temporalContext.enabled": true
+      }
+    }
+  },
+
+  "postCreateCommand": "npm install",
+
+  "remoteUser": "node",
+
+  "mounts": [
+    "source=${localWorkspaceFolder}/.git,target=/workspaces/${localWorkspaceFolderBasename}/.git,type=bind,consistency=cached"
+  ]
+}
