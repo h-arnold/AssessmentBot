@@ -108,15 +108,15 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
   - [x] `it('should not serialize progressTracker even if present')`
   - [x] `it('should not serialize _hydrationLevel even if present')`
     - [ ] **Update Existing Tests:**
-      - [ ] Review `tests/requestHandlers/assignmentPhase3.test.js`:
-        - [ ] Currently calls `new Assignment(...)` directly which will break (Classroom API call).
-        - [ ] Either add comprehensive Classroom/DriveApp mocks or refactor to use `Assignment.fromJSON()`.
-        - [ ] If updating to use factory pattern, ensure mocks for `AssignmentController`'s dependencies are correct.
-      - [ ] Review `tests/assignment/assignmentLastUpdated.test.js`:
-        - [ ] Currently uses `Assignment.fromJSON()` without `documentType` - this will test **legacy fallback** path.
-        - [ ] Add explicit test: `it('should support legacy data without documentType (creates base Assignment)')`.
-        - [ ] Verify that lastUpdated behavior works identically for base Assignment and subclasses.
-        - [ ] Optionally add variant tests using `createSlidesAssignment()` and `createSheetsAssignment()` to verify subclass behavior.
+      - [x] Review `tests/requestHandlers/assignmentPhase3.test.js`:
+        - [x] Currently calls `new Assignment(...)` directly which will break (Classroom API call).
+        - [x] Either add comprehensive Classroom/DriveApp mocks or refactor to use `Assignment.fromJSON()`.
+        - [x] If updating to use factory pattern, ensure mocks for `AssignmentController`'s dependencies are correct.
+      - [x] Review `tests/assignment/assignmentLastUpdated.test.js`:
+        - [x] Currently uses `Assignment.fromJSON()` without `documentType` - this will test **legacy fallback** path.
+        - [x] Add explicit test: `it('should support legacy data without documentType (creates base Assignment)')`.
+        - [x] Verify that lastUpdated behavior works identically for base Assignment and subclasses.
+        - [x] Optionally add variant tests using `createSlidesAssignment()` and `createSheetsAssignment()` to verify subclass behavior.
 
 - **Assignment Model Serialisation**
   - Override `toJSON()` in `SlidesAssignment` and `SheetsAssignment` to:
