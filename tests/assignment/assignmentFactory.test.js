@@ -27,11 +27,19 @@ try {
 let originalLoggerGetInstance;
 
 beforeEach(() => {
-  originalLoggerGetInstance = ABLogger.getInstance;
+  // Save original ABLogger.getInstance if ABLogger is already defined in the test environment.
+  if (typeof ABLogger !== 'undefined' && ABLogger && typeof ABLogger.getInstance === 'function') {
+    originalLoggerGetInstance = ABLogger.getInstance;
+  } else {
+    originalLoggerGetInstance = undefined;
+  }
 });
 
 afterEach(() => {
-  ABLogger.getInstance = originalLoggerGetInstance;
+  // Restore ABLogger.getInstance if ABLogger exists and we saved a reference
+  if (typeof ABLogger !== 'undefined' && originalLoggerGetInstance !== undefined) {
+    ABLogger.getInstance = originalLoggerGetInstance;
+  }
   vi.restoreAllMocks();
 });
 

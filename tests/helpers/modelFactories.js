@@ -93,7 +93,7 @@ function createStudentSubmission(options = {}) {
  * @param {string} props.assignmentName - Assignment name (default: 'Test Slides Assignment')
  * @param {Object} props.tasks - Tasks object (default: {})
  * @param {Array} props.submissions - Submissions array (default: [])
- * @returns {Assignment} Created SlidesAssignment instance
+ * @returns {SlidesAssignment} Created SlidesAssignment instance
  */
 function createSlidesAssignment(props = {}) {
   const {
