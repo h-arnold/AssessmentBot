@@ -150,7 +150,9 @@ class Assignment {
     inst.assignmentMetadata = data.assignmentMetadata ?? null;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
-    inst.documentType = data.documentType ?? null;
+    if ('documentType' in data) {
+      inst.documentType = data.documentType;
+    }
     inst.tasks = {};
     inst.submissions = [];
     // restore tasks
