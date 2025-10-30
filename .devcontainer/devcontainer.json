@@ -36,8 +36,7 @@
         "github.copilot.chat.generateTests.codeLens": true,
         "github.copilot.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
         "github.copilot.chat.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
-        "github.copilot.chat.edits.temporalContext.enabled": true,
-        "github.copilot.chat.languageContext.fix.typescript.enabled": true
+        "github.copilot.chat.edits.temporalContext.enabled": true
       }
     }
   },
