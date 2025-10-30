@@ -12,6 +12,7 @@ const {
   createDummyConfigurationManager,
   DummyCacheManager,
   DummyBaseRequestManager,
+  createSlidesAssignment,
 } = require('../helpers/modelFactories.js');
 
 // Minimal global Utils & dependencies stubs required by artifacts & manager (non-GAS)
@@ -55,16 +56,18 @@ global.StudentSubmission = StudentSubmission;
 
 // Now that globals exist, require runtime-dependent classes
 const LLMRequestManagerFresh = require('../../src/AdminSheet/RequestHandlers/LLMRequestManager.js');
-const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
 
 describe('Phase 3 LLMRequestManager integration (new model)', () => {
   let assignment, manager;
 
   beforeEach(() => {
-    // Fresh assignment instance using new student submission model
-    assignment = new Assignment('course1', 'assign1');
-    // Replace generated name dependency
-    assignment.assignmentName = 'Test Assignment';
+    assignment = createSlidesAssignment({
+      courseId: 'course1',
+      assignmentId: 'assign1',
+      referenceDocumentId: 'ref-slides-1',
+      templateDocumentId: 'tpl-slides-1',
+      assignmentName: 'Test Assignment',
+    });
 
     // Inject tasks
     const td1 = createTextTask(1, 'Reference Answer', 'Template Text');

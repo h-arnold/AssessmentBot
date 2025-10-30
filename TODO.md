@@ -39,12 +39,13 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
       - Test legacy fallback for backward compatibility.
       - Use `test.each` patterns to reduce duplication in round-trip tests.
       - Focus on serialization/deserialization logic, not GAS API interactions.
-    - [ ] **Update `tests/helpers/modelFactories.js`**:
-      - [ ] Add `createSlidesAssignment(props)` and `createSheetsAssignment(props)` helper functions to ensure tests are DRY and setup is consistent.
-      - [ ] **CRITICAL**: Factory functions must use `Assignment.fromJSON()` internally (not constructors) to avoid GAS service calls (`fetchAssignmentName` → `Classroom.Courses.CourseWork.get`).
-      - [ ] Provide sensible defaults: `courseId='c1'`, `assignmentId='a1'`, `referenceDocumentId='ref1'`, `templateDocumentId='tpl1'`, `assignmentName='Test Assignment'`, `documentType='SLIDES'|'SHEETS'`.
-      - [ ] Accept props object with overrides for all fields plus nested data (tasks, submissions).
-      - [ ] **Example implementation pattern**:
+    - [x] **Update `tests/helpers/modelFactories.js`:**
+      - [x] Add `createSlidesAssignment(props)` and `createSheetsAssignment(props)` helper functions to ensure tests are DRY and setup is consistent.
+      - [x] **CRITICAL**: Factory functions must use `Assignment.fromJSON()` internally (not constructors) to avoid GAS service calls (`fetchAssignmentName` → `Classroom.Courses.CourseWork.get`).
+      - [x] Provide sensible defaults: `courseId='c1'`, `assignmentId='a1'`, `referenceDocumentId='ref1'`, `templateDocumentId='tpl1'`, `assignmentName='Test Assignment'`, `documentType='SLIDES'|'SHEETS'`.
+      - [x] Accept props object with overrides for all fields plus nested data (tasks, submissions).
+  - [x] **Example implementation pattern**:
+
         ```javascript
         function createSlidesAssignment(props = {}) {
           const {
@@ -71,50 +72,54 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
           });
         }
         ```
-    - [ ] **Create new test suite `tests/assignment/assignmentFactory.test.js`**:
-      - [ ] **`Assignment.create()` Factory Method:**
-        - [ ] `it('should create a SlidesAssignment for documentType SLIDES')`
-        - [ ] `it('should create a SheetsAssignment for documentType SHEETS')`
-        - [ ] `it('should throw an error for an unknown documentType')`
-        - [ ] `it('should throw for null/undefined documentType')`
-        - [ ] `it('should pass all constructor arguments correctly to the subclass')`
-        - [ ] `it('should set documentType field on created instance')`
-        - [ ] `it('should return instance of correct subclass (instanceof check)')`
+
+    - [x] **Create new test suite `tests/assignment/assignmentFactory.test.js`:**
+      - [x] **`Assignment.create()` Factory Method:**
+        - [x] `it('should create a SlidesAssignment for documentType SLIDES')`
+        - [x] `it('should create a SheetsAssignment for documentType SHEETS')`
+        - [x] `it('should throw an error for an unknown documentType')`
+        - [x] `it('should throw for null/undefined documentType')`
+        - [x] `it('should pass all constructor arguments correctly to the subclass')`
+        - [x] `it('should set documentType field on created instance')`
+        - [x] `it('should return instance of correct subclass (instanceof check)')`
         - [ ] **Note**: These tests will invoke constructors and require proper Classroom API mocks. Consider whether testing via `fromJSON()` polymorphism is sufficient.
-      - [ ] **`Assignment.fromJSON()` Polymorphic Deserialization:**
-        - [ ] `it('should deserialize to a SlidesAssignment when data.documentType is SLIDES')`
-        - [ ] `it('should deserialize to a SheetsAssignment when data.documentType is SHEETS')`
-        - [ ] `it('should fall back to creating a base Assignment for legacy data without a documentType')`
-        - [ ] `it('should correctly restore all base properties (courseId, assignmentId, assignmentName, etc.)')`
-        - [ ] `it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)')`
-        - [ ] `it('should throw or fallback gracefully for invalid documentType (e.g., "INVALID")')`
-        - [ ] `it('should handle malformed data (null, undefined, empty object) with clear error messages')`
-        - [ ] `it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization')`
-        - [ ] `it('should verify transient fields are never present in deserialized JSON')`
-      - [ ] **Polymorphic Round-Trip:**
-        - [ ] `it('should preserve type and data for a SlidesAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
-        - [ ] `it('should preserve type and data for a SheetsAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
-        - [ ] **DRY alternative**: Use `test.each([['SLIDES', SlidesAssignment], ['SHEETS', SheetsAssignment]])` pattern to reduce duplication.
-        - [ ] `it('should preserve complex nested data (tasks with artifacts, submissions with items) through round-trip')`
-        - [ ] `it('should explicitly verify documentType field survives round-trip')`
-      - [ ] **Subclass-Specific Serialization:**
-        - [ ] `it('should include documentType, referenceDocumentId, templateDocumentId in SlidesAssignment.toJSON()')`
-        - [ ] `it('should include documentType, referenceDocumentId, templateDocumentId in SheetsAssignment.toJSON()')`
-        - [ ] `it('should call super.toJSON() and merge subclass fields')`
-      - [ ] **Transient Field Exclusion:**
-        - [ ] `it('should not serialize students array even if present at runtime')`
-        - [ ] `it('should not serialize progressTracker even if present')`
-        - [ ] `it('should not serialize _hydrationLevel even if present')`
+      - [x] **`Assignment.fromJSON()` Polymorphic Deserialization:**
+        - [x] `it('should deserialize to a SlidesAssignment when data.documentType is SLIDES')`
+        - [x] `it('should deserialize to a SheetsAssignment when data.documentType is SHEETS')`
+        - [x] `it('should fall back to creating a base Assignment for legacy data without a documentType')`
+        - [x] `it('should correctly restore all base properties (courseId, assignmentId, assignmentName, etc.)')`
+        - [x] `it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)')`
+
+        - [x] `it('should throw or fallback gracefully for invalid documentType (e.g., "INVALID")')`
+        - [x] `it('should handle malformed data (null, undefined, empty object) with clear error messages')`
+        - [x] `it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization')`
+        - [x] `it('should verify transient fields are never present in deserialized JSON')`
+
+    - [x] **Polymorphic Round-Trip:**
+      - [x] `it('should preserve type and data for a SlidesAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
+      - [x] `it('should preserve type and data for a SheetsAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
+
+  - [ ] **DRY alternative**: Use `test.each([['SLIDES', SlidesAssignment], ['SHEETS', SheetsAssignment]])` pattern to reduce duplication.
+  - [x] `it('should preserve complex nested data (tasks with artifacts, submissions with items) through round-trip')`
+  - [x] `it('should explicitly verify documentType field survives round-trip')`
+    - [x] **Subclass-Specific Serialization:**
+      - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SlidesAssignment.toJSON()')`
+      - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SheetsAssignment.toJSON()')`
+  - [x] `it('should call super.toJSON() and merge subclass fields')`
+    - [ ] **Transient Field Exclusion:**
+  - [x] `it('should not serialize students array even if present at runtime')`
+  - [x] `it('should not serialize progressTracker even if present')`
+  - [x] `it('should not serialize _hydrationLevel even if present')`
     - [ ] **Update Existing Tests:**
-      - [ ] Review `tests/requestHandlers/assignmentPhase3.test.js`:
-        - [ ] Currently calls `new Assignment(...)` directly which will break (Classroom API call).
-        - [ ] Either add comprehensive Classroom/DriveApp mocks or refactor to use `Assignment.fromJSON()`.
-        - [ ] If updating to use factory pattern, ensure mocks for `AssignmentController`'s dependencies are correct.
-      - [ ] Review `tests/assignment/assignmentLastUpdated.test.js`:
-        - [ ] Currently uses `Assignment.fromJSON()` without `documentType` - this will test **legacy fallback** path.
-        - [ ] Add explicit test: `it('should support legacy data without documentType (creates base Assignment)')`.
-        - [ ] Verify that lastUpdated behavior works identically for base Assignment and subclasses.
-        - [ ] Optionally add variant tests using `createSlidesAssignment()` and `createSheetsAssignment()` to verify subclass behavior.
+      - [x] Review `tests/requestHandlers/assignmentPhase3.test.js`:
+        - [x] Currently calls `new Assignment(...)` directly which will break (Classroom API call).
+        - [x] Either add comprehensive Classroom/DriveApp mocks or refactor to use `Assignment.fromJSON()`.
+        - [x] If updating to use factory pattern, ensure mocks for `AssignmentController`'s dependencies are correct.
+      - [x] Review `tests/assignment/assignmentLastUpdated.test.js`:
+        - [x] Currently uses `Assignment.fromJSON()` without `documentType` - this will test **legacy fallback** path.
+        - [x] Add explicit test: `it('should support legacy data without documentType (creates base Assignment)')`.
+        - [x] Verify that lastUpdated behavior works identically for base Assignment and subclasses.
+        - [x] Optionally add variant tests using `createSlidesAssignment()` and `createSheetsAssignment()` to verify subclass behavior.
 
 - **Assignment Model Serialisation**
   - Override `toJSON()` in `SlidesAssignment` and `SheetsAssignment` to:
