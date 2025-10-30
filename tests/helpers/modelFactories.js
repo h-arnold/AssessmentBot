@@ -6,6 +6,7 @@
 const { TaskDefinition } = require('../../src/AdminSheet/Models/TaskDefinition.js');
 const { StudentSubmission } = require('../../src/AdminSheet/Models/StudentSubmission.js');
 const { ArtifactFactory } = require('../../src/AdminSheet/Models/Artifacts/index.js');
+const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
 
 /**
  * Create a TaskDefinition for testing with sensible defaults
@@ -80,6 +81,80 @@ function createStudentSubmission(options = {}) {
   const { studentId = 'student1', assignmentId = 'assignment1', documentId = 'doc1' } = options;
 
   return new StudentSubmission(studentId, assignmentId, documentId);
+}
+
+/**
+ * Create a SlidesAssignment for testing using fromJSON to avoid GAS service calls.
+ * @param {Object} props - Configuration properties
+ * @param {string} props.courseId - Course ID (default: 'c1')
+ * @param {string} props.assignmentId - Assignment ID (default: 'a1')
+ * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
+ * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
+ * @param {string} props.assignmentName - Assignment name (default: 'Test Slides Assignment')
+ * @param {Object} props.tasks - Tasks object (default: {})
+ * @param {Array} props.submissions - Submissions array (default: [])
+ * @returns {Assignment} Created SlidesAssignment instance
+ */
+function createSlidesAssignment(props = {}) {
+  const {
+    courseId = 'c1',
+    assignmentId = 'a1',
+    referenceDocumentId = 'ref1',
+    templateDocumentId = 'tpl1',
+    assignmentName = 'Test Slides Assignment',
+    tasks = {},
+    submissions = [],
+    ...rest
+  } = props;
+
+  return Assignment.fromJSON({
+    courseId,
+    assignmentId,
+    referenceDocumentId,
+    templateDocumentId,
+    assignmentName,
+    documentType: 'SLIDES',
+    tasks,
+    submissions,
+    ...rest,
+  });
+}
+
+/**
+ * Create a SheetsAssignment for testing using fromJSON to avoid GAS service calls.
+ * @param {Object} props - Configuration properties
+ * @param {string} props.courseId - Course ID (default: 'c1')
+ * @param {string} props.assignmentId - Assignment ID (default: 'a1')
+ * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
+ * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
+ * @param {string} props.assignmentName - Assignment name (default: 'Test Sheets Assignment')
+ * @param {Object} props.tasks - Tasks object (default: {})
+ * @param {Array} props.submissions - Submissions array (default: [])
+ * @returns {Assignment} Created SheetsAssignment instance
+ */
+function createSheetsAssignment(props = {}) {
+  const {
+    courseId = 'c1',
+    assignmentId = 'a1',
+    referenceDocumentId = 'ref1',
+    templateDocumentId = 'tpl1',
+    assignmentName = 'Test Sheets Assignment',
+    tasks = {},
+    submissions = [],
+    ...rest
+  } = props;
+
+  return Assignment.fromJSON({
+    courseId,
+    assignmentId,
+    referenceDocumentId,
+    templateDocumentId,
+    assignmentName,
+    documentType: 'SHEETS',
+    tasks,
+    submissions,
+    ...rest,
+  });
 }
 
 /**
@@ -206,97 +281,17 @@ function setupGlobalDummyClasses() {
   }
 }
 
-/**
- * Create a SlidesAssignment for testing using fromJSON to avoid GAS service calls
- * @param {Object} props - Configuration options
- * @param {string} props.courseId - Course ID (default: 'c1')
- * @param {string} props.assignmentId - Assignment ID (default: 'a1')
- * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
- * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
- * @param {string} props.assignmentName - Assignment name (default: 'Test Slides Assignment')
- * @param {Object} props.tasks - Tasks object (default: {})
- * @param {Array} props.submissions - Submissions array (default: [])
- * @returns {Assignment} SlidesAssignment instance created via fromJSON
- */
-function createSlidesAssignment(props = {}) {
-  const {
-    courseId = 'c1',
-    assignmentId = 'a1',
-    referenceDocumentId = 'ref1',
-    templateDocumentId = 'tpl1',
-    assignmentName = 'Test Slides Assignment',
-    tasks = {},
-    submissions = [],
-    ...rest
-  } = props;
-
-  // Import Assignment dynamically to access fromJSON
-  const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
-
-  return Assignment.fromJSON({
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    assignmentName,
-    documentType: 'SLIDES',
-    tasks,
-    submissions,
-    ...rest,
-  });
-}
-
-/**
- * Create a SheetsAssignment for testing using fromJSON to avoid GAS service calls
- * @param {Object} props - Configuration options
- * @param {string} props.courseId - Course ID (default: 'c1')
- * @param {string} props.assignmentId - Assignment ID (default: 'a1')
- * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
- * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
- * @param {string} props.assignmentName - Assignment name (default: 'Test Sheets Assignment')
- * @param {Object} props.tasks - Tasks object (default: {})
- * @param {Array} props.submissions - Submissions array (default: [])
- * @returns {Assignment} SheetsAssignment instance created via fromJSON
- */
-function createSheetsAssignment(props = {}) {
-  const {
-    courseId = 'c1',
-    assignmentId = 'a1',
-    referenceDocumentId = 'ref1',
-    templateDocumentId = 'tpl1',
-    assignmentName = 'Test Sheets Assignment',
-    tasks = {},
-    submissions = [],
-    ...rest
-  } = props;
-
-  // Import Assignment dynamically to access fromJSON
-  const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
-
-  return Assignment.fromJSON({
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    assignmentName,
-    documentType: 'SHEETS',
-    tasks,
-    submissions,
-    ...rest,
-  });
-}
-
 module.exports = {
   createTaskDefinition,
   createTextTask,
   createStudentSubmission,
+  createSlidesAssignment,
+  createSheetsAssignment,
   createDummyProgressTracker,
   createDummyConfigurationManager,
   createDummyCacheManager,
   createDummyBaseRequestManager,
   setupGlobalDummyClasses,
-  createSlidesAssignment,
-  createSheetsAssignment,
   DummyCacheManager,
   DummyBaseRequestManager,
 };
