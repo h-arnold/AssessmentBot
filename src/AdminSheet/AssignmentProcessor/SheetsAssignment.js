@@ -1,23 +1,16 @@
 /**
- * SlidesAssignment Class
+ * SheetsAssignment Class
  *
- * Represents a Google Slides-based assignment within a course.
- * Handles slide-specific task extraction and processing.
+ * Represents a Google Sheets-based assignment within a course.
+ * Handles spreadsheet-specific task extraction and processing.
  */
-
-// Node.js/Vitest imports (ignored in GAS runtime)
-if (typeof require !== 'undefined' && typeof Assignment === 'undefined') {
-  // eslint-disable-next-line no-global-assign
-  Assignment = require('./Assignment.js');
-}
-
 class SheetsAssignment extends Assignment {
   /**
-   * Constructs a SheetsAsignment instance.
+   * Constructs a SheetsAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference slides document.
-   * @param {string} templateDocumentId - The ID of the template slides document.
+   * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
+   * @param {string} templateDocumentId - The ID of the template spreadsheet document.
    */
   constructor(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
     super(courseId, assignmentId);

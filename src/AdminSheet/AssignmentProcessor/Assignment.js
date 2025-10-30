@@ -3,12 +3,6 @@
  *
  * Base class representing an assignment within a course, managing tasks and student submissions.
  */
-
-// Node.js/Vitest imports (ignored in GAS runtime)
-// These imports must come after the class definitions, so we'll handle the circular dependency
-// by importing at the bottom of the file where static methods reference them.
-let SlidesAssignment, SheetsAssignment;
-
 class Assignment {
   /**
    * Constructs an Assignment instance.
@@ -110,18 +104,10 @@ class Assignment {
     const type = documentType.toUpperCase();
 
     if (type === 'SLIDES') {
-      // Lazy load in Node environment
-      if (!SlidesAssignment && typeof require !== 'undefined') {
-        SlidesAssignment = require('./SlidesAssignment.js');
-      }
       return new SlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
     }
 
     if (type === 'SHEETS') {
-      // Lazy load in Node environment
-      if (!SheetsAssignment && typeof require !== 'undefined') {
-        SheetsAssignment = require('./SheetsAssignment.js');
-      }
       return new SheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
     }
 
@@ -273,18 +259,10 @@ class Assignment {
       const type = docType.toUpperCase();
 
       if (type === 'SLIDES') {
-        // Lazy load in Node environment
-        if (!SlidesAssignment && typeof require !== 'undefined') {
-          SlidesAssignment = require('./SlidesAssignment.js');
-        }
         return SlidesAssignment.fromJSON(data);
       }
 
       if (type === 'SHEETS') {
-        // Lazy load in Node environment
-        if (!SheetsAssignment && typeof require !== 'undefined') {
-          SheetsAssignment = require('./SheetsAssignment.js');
-        }
         return SheetsAssignment.fromJSON(data);
       }
 

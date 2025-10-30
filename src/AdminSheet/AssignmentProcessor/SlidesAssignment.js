@@ -4,13 +4,6 @@
  * Represents a Google Slides-based assignment within a course.
  * Handles slide-specific task extraction and processing.
  */
-
-// Node.js/Vitest imports (ignored in GAS runtime)
-if (typeof require !== 'undefined' && typeof Assignment === 'undefined') {
-  // eslint-disable-next-line no-global-assign
-  Assignment = require('./Assignment.js');
-}
-
 class SlidesAssignment extends Assignment {
   /**
    * Constructs a SlidesAssignment instance.
