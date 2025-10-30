@@ -20,12 +20,13 @@
   "devDependencies": {
     "eslint": "^9.37.0",
     "eslint-plugin-googleappsscript": "^1.0.5",
-    "vitest": "^3.2.4",
     "husky": "^9.1.7",
+    "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
-    "jsdom": "^27.0.0"
+    "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@google/gemini-cli": "^0.11.0",
     "clasp": "^1.0.0"
   }
 }
