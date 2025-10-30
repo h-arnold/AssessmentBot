@@ -288,9 +288,10 @@ describe('Polymorphic Round-Trip', () => {
 
     expect(restored.documentType).toBe('SLIDES');
     expect(restored.tasks).toHaveProperty(taskId);
-    // Note: TaskDefinition reconstruction may fall back to plain objects if fromJSON fails
-    // The factory pattern ensures Assignment structure is preserved, but nested object
-    // reconstruction depends on those objects' own fromJSON implementations
+    // Note: This test verifies the Assignment factory pattern preserves data structure.
+    // TaskDefinition.fromJSON may fail if required fields are missing or invalid,
+    // causing fallback to plain objects with all properties preserved but no methods.
+    // This is acceptable as it maintains data integrity while gracefully degrading functionality.
     const restoredTask = restored.tasks[taskId];
     expect(restoredTask).toBeDefined();
     expect(restoredTask).toHaveProperty('id', taskId);
@@ -340,8 +341,10 @@ describe('Subclass-Specific Serialization', () => {
   });
 
   it('should call super.toJSON() and merge subclass fields', () => {
-    // This test verifies that subclass toJSON includes both base and subclass fields
-    // which demonstrates that super.toJSON() is being used properly
+    // This test verifies that subclass toJSON includes both base and subclass fields.
+    // Direct field verification is more reliable than spy-based verification because
+    // Object.setPrototypeOf() used in fromJSON can interfere with Vitest's prototype spying.
+    // Testing behavior (presence of all fields) is more valuable than testing implementation (spy on super call).
     const assignment = createSlidesAssignment({
       courseId: 'c-super',
       assignmentId: 'a-super',
