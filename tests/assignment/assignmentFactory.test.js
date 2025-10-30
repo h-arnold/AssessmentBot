@@ -14,6 +14,40 @@ import {
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
 
+/**
+ * Helper function to create standard test data for deserialization tests.
+ * @param {string} docType - Document type (SLIDES or SHEETS)
+ * @param {string} courseId - Course ID prefix
+ * @return {object} Standard test data
+ */
+function createTestData(docType, courseId) {
+  return {
+    courseId,
+    assignmentId: courseId.replace('c', 'a'),
+    assignmentName: 'Test Assignment',
+    documentType: docType,
+    referenceDocumentId: courseId.replace('c', 'ref'),
+    templateDocumentId: courseId.replace('c', 'tpl'),
+    tasks: {},
+    submissions: [],
+  };
+}
+
+/**
+ * Helper function to assert basic assignment properties.
+ * @param {object} assignment - The assignment to check
+ * @param {string} docType - Expected document type
+ * @param {string} courseId - Expected course ID
+ */
+function assertAssignmentProperties(assignment, docType, courseId) {
+  expect(assignment).toBeDefined();
+  expect(assignment.documentType).toBe(docType);
+  expect(assignment.courseId).toBe(courseId);
+  expect(assignment.assignmentId).toBe(courseId.replace('c', 'a'));
+  expect(assignment.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
+  expect(assignment.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
+}
+
 // Note: These imports will need to exist for tests to pass
 // They are expected to fail in RED phase
 let SlidesAssignment, SheetsAssignment;
@@ -44,49 +78,25 @@ afterEach(() => {
 });
 
 describe('Assignment.create() Factory Method', () => {
-  it('should create a SlidesAssignment for documentType SLIDES', () => {
-    // RED: Assignment.create does not exist yet
-    const assignment = Assignment.create('SLIDES', 'c1', 'a1', 'ref1', 'tpl1');
+  const testCases = [
+    { docType: 'SLIDES', courseId: 'c1', assignmentId: 'a1', refId: 'ref1', tplId: 'tpl1' },
+    { docType: 'SHEETS', courseId: 'c2', assignmentId: 'a2', refId: 'ref2', tplId: 'tpl2' },
+  ];
 
-    expect(assignment).toBeDefined();
-    expect(assignment.documentType).toBe('SLIDES');
-    expect(assignment.courseId).toBe('c1');
-    expect(assignment.assignmentId).toBe('a1');
-    expect(assignment.referenceDocumentId).toBe('ref1');
-    expect(assignment.templateDocumentId).toBe('tpl1');
-
-    // Verify it's the correct subclass
-    if (SlidesAssignment) {
-      expect(assignment instanceof SlidesAssignment).toBe(true);
-    }
-  });
-
-  it('should create a SheetsAssignment for documentType SHEETS', () => {
-    // RED: Assignment.create does not exist yet
-    const assignment = Assignment.create('SHEETS', 'c2', 'a2', 'ref2', 'tpl2');
-
-    expect(assignment).toBeDefined();
-    expect(assignment.documentType).toBe('SHEETS');
-    expect(assignment.courseId).toBe('c2');
-    expect(assignment.assignmentId).toBe('a2');
-    expect(assignment.referenceDocumentId).toBe('ref2');
-    expect(assignment.templateDocumentId).toBe('tpl2');
-
-    // Verify it's the correct subclass
-    if (SheetsAssignment) {
-      expect(assignment instanceof SheetsAssignment).toBe(true);
-    }
+  testCases.forEach(({ docType, courseId, assignmentId, refId, tplId }) => {
+    it(`should create a ${docType}Assignment for documentType ${docType}`, () => {
+      const assignment = Assignment.create(docType, courseId, assignmentId, refId, tplId);
+      assertAssignmentProperties(assignment, docType, courseId);
+    });
   });
 
   it('should throw an error for an unknown documentType', () => {
-    // RED: Assignment.create does not exist yet
     expect(() => {
       Assignment.create('INVALID', 'c1', 'a1', 'ref1', 'tpl1');
     }).toThrow(/unknown.*documentType/i);
   });
 
   it('should throw for null/undefined documentType', () => {
-    // RED: Assignment.create does not exist yet
     expect(() => {
       Assignment.create(null, 'c1', 'a1', 'ref1', 'tpl1');
     }).toThrow();
@@ -98,69 +108,21 @@ describe('Assignment.create() Factory Method', () => {
 });
 
 describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
-  it('should deserialize to a SlidesAssignment when data.documentType is SLIDES', () => {
-    // RED: Polymorphic fromJSON routing not implemented yet
-    const data = {
-      courseId: 'c1',
-      assignmentId: 'a1',
-      assignmentName: 'Test Assignment',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref1',
-      templateDocumentId: 'tpl1',
-      tasks: {},
-      submissions: [],
-    };
+  const testCases = [
+    { docType: 'SLIDES', courseId: 'c1' },
+    { docType: 'SHEETS', courseId: 'c2' },
+  ];
 
-    const assignment = Assignment.fromJSON(data);
-
-    expect(assignment).toBeDefined();
-    expect(assignment.documentType).toBe('SLIDES');
-    expect(assignment.referenceDocumentId).toBe('ref1');
-    expect(assignment.templateDocumentId).toBe('tpl1');
-
-    if (SlidesAssignment) {
-      expect(assignment instanceof SlidesAssignment).toBe(true);
-    }
-  });
-
-  it('should deserialize to a SheetsAssignment when data.documentType is SHEETS', () => {
-    // RED: Polymorphic fromJSON routing not implemented yet
-    const data = {
-      courseId: 'c2',
-      assignmentId: 'a2',
-      assignmentName: 'Test Assignment',
-      documentType: 'SHEETS',
-      referenceDocumentId: 'ref2',
-      templateDocumentId: 'tpl2',
-      tasks: {},
-      submissions: [],
-    };
-
-    const assignment = Assignment.fromJSON(data);
-
-    expect(assignment).toBeDefined();
-    expect(assignment.documentType).toBe('SHEETS');
-    expect(assignment.referenceDocumentId).toBe('ref2');
-    expect(assignment.templateDocumentId).toBe('tpl2');
-
-    if (SheetsAssignment) {
-      expect(assignment instanceof SheetsAssignment).toBe(true);
-    }
+  testCases.forEach(({ docType, courseId }) => {
+    it(`should deserialize to a ${docType}Assignment when data.documentType is ${docType}`, () => {
+      const data = createTestData(docType, courseId);
+      const assignment = Assignment.fromJSON(data);
+      assertAssignmentProperties(assignment, docType, courseId);
+    });
   });
 
   it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)', () => {
-    // RED: Subclass properties not restored yet
-    const data = {
-      courseId: 'c5',
-      assignmentId: 'a5',
-      assignmentName: 'Test Assignment',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref5',
-      templateDocumentId: 'tpl5',
-      tasks: {},
-      submissions: [],
-    };
-
+    const data = createTestData('SLIDES', 'c5');
     const assignment = Assignment.fromJSON(data);
 
     expect(assignment.referenceDocumentId).toBe('ref5');
@@ -333,36 +295,40 @@ describe('Polymorphic Round-Trip', () => {
 });
 
 describe('Subclass-Specific Serialization', () => {
-  it('should include documentType, referenceDocumentId, templateDocumentId in SlidesAssignment.toJSON()', () => {
-    // RED: Subclass toJSON not implemented yet
-    const assignment = createSlidesAssignment({
+  const testCases = [
+    {
+      createFn: createSlidesAssignment,
+      docType: 'SLIDES',
       courseId: 'c1',
       assignmentId: 'a1',
-      referenceDocumentId: 'ref1',
-      templateDocumentId: 'tpl1',
-    });
-
-    const json = assignment.toJSON();
-
-    expect(json.documentType).toBe('SLIDES');
-    expect(json.referenceDocumentId).toBe('ref1');
-    expect(json.templateDocumentId).toBe('tpl1');
-  });
-
-  it('should include documentType, referenceDocumentId, templateDocumentId in SheetsAssignment.toJSON()', () => {
-    // RED: Subclass toJSON not implemented yet
-    const assignment = createSheetsAssignment({
+      refId: 'ref1',
+      tplId: 'tpl1',
+    },
+    {
+      createFn: createSheetsAssignment,
+      docType: 'SHEETS',
       courseId: 'c2',
       assignmentId: 'a2',
-      referenceDocumentId: 'ref2',
-      templateDocumentId: 'tpl2',
+      refId: 'ref2',
+      tplId: 'tpl2',
+    },
+  ];
+
+  testCases.forEach(({ createFn, docType, courseId, assignmentId, refId, tplId }) => {
+    it(`should include documentType, referenceDocumentId, templateDocumentId in ${docType}Assignment.toJSON()`, () => {
+      const assignment = createFn({
+        courseId,
+        assignmentId,
+        referenceDocumentId: refId,
+        templateDocumentId: tplId,
+      });
+
+      const json = assignment.toJSON();
+
+      expect(json.documentType).toBe(docType);
+      expect(json.referenceDocumentId).toBe(refId);
+      expect(json.templateDocumentId).toBe(tplId);
     });
-
-    const json = assignment.toJSON();
-
-    expect(json.documentType).toBe('SHEETS');
-    expect(json.referenceDocumentId).toBe('ref2');
-    expect(json.templateDocumentId).toBe('tpl2');
   });
 
   it('should call super.toJSON() and merge subclass fields', () => {
