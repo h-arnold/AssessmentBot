@@ -44,7 +44,7 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
       - [x] **CRITICAL**: Factory functions must use `Assignment.fromJSON()` internally (not constructors) to avoid GAS service calls (`fetchAssignmentName` → `Classroom.Courses.CourseWork.get`).
       - [x] Provide sensible defaults: `courseId='c1'`, `assignmentId='a1'`, `referenceDocumentId='ref1'`, `templateDocumentId='tpl1'`, `assignmentName='Test Assignment'`, `documentType='SLIDES'|'SHEETS'`.
       - [x] Accept props object with overrides for all fields plus nested data (tasks, submissions).
-      - [ ] **Example implementation pattern**:
+  - [x] **Example implementation pattern**:
 
         ```javascript
         function createSlidesAssignment(props = {}) {
@@ -89,24 +89,24 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
         - [x] `it('should fall back to creating a base Assignment for legacy data without a documentType')`
         - [x] `it('should correctly restore all base properties (courseId, assignmentId, assignmentName, etc.)')`
         - [x] `it('should correctly restore subclass-specific properties (referenceDocumentId, templateDocumentId)')`
-        - [ ] `it('should throw or fallback gracefully for invalid documentType (e.g., "INVALID")')`
-        - [ ] `it('should handle malformed data (null, undefined, empty object) with clear error messages')`
-        - [ ] `it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization')`
-        - [ ] `it('should verify transient fields are never present in deserialized JSON')`
-      - [x] **Polymorphic Round-Trip:**
-        - [x] `it('should preserve type and data for a SlidesAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
-        - [x] `it('should preserve type and data for a SheetsAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
-        - [ ] **DRY alternative**: Use `test.each([['SLIDES', SlidesAssignment], ['SHEETS', SheetsAssignment]])` pattern to reduce duplication.
-        - [ ] `it('should preserve complex nested data (tasks with artifacts, submissions with items) through round-trip')`
-        - [x] `it('should explicitly verify documentType field survives round-trip')`
-      - [x] **Subclass-Specific Serialization:**
-        - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SlidesAssignment.toJSON()')`
-        - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SheetsAssignment.toJSON()')`
-        - [ ] `it('should call super.toJSON() and merge subclass fields')`
-      - [ ] **Transient Field Exclusion:**
-        - [ ] `it('should not serialize students array even if present at runtime')`
-        - [ ] `it('should not serialize progressTracker even if present')`
-        - [ ] `it('should not serialize _hydrationLevel even if present')`
+
+  - [x] `it('should throw or fallback gracefully for invalid documentType (e.g., "INVALID")')`
+  - [x] `it('should handle malformed data (null, undefined, empty object) with clear error messages')`
+  - [x] `it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization')`
+  - [x] `it('should verify transient fields are never present in deserialized JSON')`
+    - [x] **Polymorphic Round-Trip:**
+      - [x] `it('should preserve type and data for a SlidesAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
+      - [x] `it('should preserve type and data for a SheetsAssignment after a toJSON() -> fromJSON() round-trip')` - verify instanceof, documentType, referenceDocumentId, templateDocumentId.
+  - [ ] **DRY alternative**: Use `test.each([['SLIDES', SlidesAssignment], ['SHEETS', SheetsAssignment]])` pattern to reduce duplication.
+  - [x] `it('should preserve complex nested data (tasks with artifacts, submissions with items) through round-trip')` - [x] `it('should explicitly verify documentType field survives round-trip')`
+    - [x] **Subclass-Specific Serialization:**
+      - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SlidesAssignment.toJSON()')`
+      - [x] `it('should include documentType, referenceDocumentId, templateDocumentId in SheetsAssignment.toJSON()')`
+  - [x] `it('should call super.toJSON() and merge subclass fields')`
+    - [ ] **Transient Field Exclusion:**
+  - [x] `it('should not serialize students array even if present at runtime')`
+  - [x] `it('should not serialize progressTracker even if present')`
+  - [x] `it('should not serialize _hydrationLevel even if present')`
     - [ ] **Update Existing Tests:**
       - [ ] Review `tests/requestHandlers/assignmentPhase3.test.js`:
         - [ ] Currently calls `new Assignment(...)` directly which will break (Classroom API call).
