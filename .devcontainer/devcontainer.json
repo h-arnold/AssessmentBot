@@ -34,9 +34,7 @@
         "github.copilot.chat.codesearch.enabled": true,
         "github.copilot.chat.agent.thinkingTool": true,
         "github.copilot.chat.generateTests.codeLens": true,
-        "github.copilot.codeGeneration.instructionsPath": "./.github/.copilot-codeGeneration-instructions.md",
         "github.copilot.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
-        "github.copilot.chat.codeGeneration.instructionsPath": "./.github/.copilot-codeGeneration-instructions.md",
         "github.copilot.chat.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
         "github.copilot.chat.edits.temporalContext.enabled": true,
         "github.copilot.chat.languageContext.fix.typescript.enabled": true
