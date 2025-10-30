@@ -3,6 +3,12 @@
  *
  * Base class representing an assignment within a course, managing tasks and student submissions.
  */
+
+// Node.js/Vitest imports (ignored in GAS runtime)
+// These imports must come after the class definitions, so we'll handle the circular dependency
+// by importing at the bottom of the file where static methods reference them.
+let SlidesAssignment, SheetsAssignment;
+
 class Assignment {
   /**
    * Constructs an Assignment instance.
@@ -22,6 +28,8 @@ class Assignment {
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.lastUpdated = null;
+    // Document type identifier set by subclasses (e.g., 'SLIDES', 'SHEETS')
+    this.documentType = null;
     // New model: tasks keyed by stable taskId -> TaskDefinition
     this.tasks = {}; // { [taskId: string]: TaskDefinition }
     // New model: submissions array of StudentSubmission
@@ -58,7 +66,8 @@ class Assignment {
         if ('documentId' in sub) out.documentId = sub.documentId;
         if ('score' in sub) out.score = sub.score;
         if ('feedback' in sub) out.feedback = sub.feedback;
-        if (sub.updatedAt instanceof Date) out.updatedAt = sub.updatedAt.toISOString();
+        if (sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime()))
+          out.updatedAt = sub.updatedAt.toISOString();
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
         Object.keys(sub).forEach((k) => {
@@ -76,6 +85,7 @@ class Assignment {
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      documentType: this.documentType,
       tasks,
       submissions,
       // Intentionally exclude any transient `students` roster attached at runtime.
@@ -83,17 +93,54 @@ class Assignment {
   }
 
   /**
-   * Rehydrate an Assignment instance from a JSON object previously produced by toJSON().
-   * This avoids calling the constructor (which may hit external APIs) by creating
-   * a prototype-backed object and populating fields directly.
-   * The method will attempt to use TaskDefinition.fromJSON / StudentSubmission.fromJSON
-   * if available, or fall back to basic reconstruction.
-   * @param {object} data
-   * @return {Assignment}
+   * Factory method to create the correct Assignment subclass based on documentType.
+   * @param {string} documentType - Document type ('SLIDES' or 'SHEETS')
+   * @param {string} courseId - The ID of the course
+   * @param {string} assignmentId - The ID of the assignment
+   * @param {string} referenceDocumentId - The ID of the reference document
+   * @param {string} templateDocumentId - The ID of the template document
+   * @return {Assignment} Instance of appropriate subclass
+   * @throws {Error} If documentType is invalid or unknown
    */
-  static fromJSON(data) {
+  static create(documentType, courseId, assignmentId, referenceDocumentId, templateDocumentId) {
+    if (!documentType || typeof documentType !== 'string') {
+      throw new Error('documentType is required and must be a string');
+    }
+
+    const type = documentType.toUpperCase();
+
+    if (type === 'SLIDES') {
+      // Lazy load in Node environment
+      if (!SlidesAssignment && typeof require !== 'undefined') {
+        SlidesAssignment = require('./SlidesAssignment.js');
+      }
+      return new SlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+    }
+
+    if (type === 'SHEETS') {
+      // Lazy load in Node environment
+      if (!SheetsAssignment && typeof require !== 'undefined') {
+        SheetsAssignment = require('./SheetsAssignment.js');
+      }
+      return new SheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+    }
+
+    throw new Error(`Unknown documentType: ${documentType}`);
+  }
+
+  /**
+   * Internal helper to restore base Assignment fields from JSON data.
+   * Used by both base Assignment and subclass fromJSON methods.
+   * @param {object} data - JSON data object
+   * @return {Assignment} Assignment instance with base fields populated
+   */
+  static _baseFromJSON(data) {
     if (!data || typeof data !== 'object')
-      throw new Error('Invalid data supplied to Assignment.fromJSON');
+      throw new Error('Invalid data supplied to Assignment._baseFromJSON');
+
+    if (!data.courseId || !data.assignmentId) {
+      throw new Error('courseId and assignmentId are required fields in Assignment data');
+    }
 
     const inst = Object.create(Assignment.prototype);
     inst.courseId = data.courseId;
@@ -103,6 +150,7 @@ class Assignment {
     inst.assignmentMetadata = data.assignmentMetadata ?? null;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
+    inst.documentType = data.documentType ?? null;
     inst.tasks = {};
     inst.submissions = [];
     // restore tasks
@@ -178,10 +226,75 @@ class Assignment {
     // restore progress tracker singleton if available
     inst.progressTracker = ProgressTracker.getInstance();
 
+    // Copy any additional fields that aren't already handled (e.g., referenceDocumentId, templateDocumentId for graceful degradation)
+    const knownFields = new Set([
+      'courseId',
+      'assignmentId',
+      'assignmentName',
+      'assignmentWeighting',
+      'assignmentMetadata',
+      'dueDate',
+      'lastUpdated',
+      'documentType',
+      'tasks',
+      'submissions',
+      'students', // Transient, don't restore
+      'progressTracker', // Transient, don't restore
+      '_hydrationLevel', // Transient, don't restore
+    ]);
+    Object.keys(data).forEach((key) => {
+      if (!knownFields.has(key)) {
+        inst[key] = data[key];
+      }
+    });
+
     // Do not populate `inst.students` here; any roster data should be sourced from ABClass at runtime
     // and treated as ephemeral to avoid duplicate persistence.
 
     return inst;
+  }
+
+  /**
+   * Polymorphic deserialization routing based on documentType field.
+   * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
+   * @param {object} data - JSON data object
+   * @return {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment)
+   */
+  static fromJSON(data) {
+    if (!data || typeof data !== 'object')
+      throw new Error('Invalid data supplied to Assignment.fromJSON');
+
+    const docType = data.documentType;
+
+    // Route to subclass fromJSON if documentType is present
+    if (docType) {
+      const type = docType.toUpperCase();
+
+      if (type === 'SLIDES') {
+        // Lazy load in Node environment
+        if (!SlidesAssignment && typeof require !== 'undefined') {
+          SlidesAssignment = require('./SlidesAssignment.js');
+        }
+        return SlidesAssignment.fromJSON(data);
+      }
+
+      if (type === 'SHEETS') {
+        // Lazy load in Node environment
+        if (!SheetsAssignment && typeof require !== 'undefined') {
+          SheetsAssignment = require('./SheetsAssignment.js');
+        }
+        return SheetsAssignment.fromJSON(data);
+      }
+
+      // Invalid documentType: log warning and fall back to base Assignment
+      ABLogger.getInstance().warn(
+        `Invalid documentType '${docType}' in Assignment.fromJSON; falling back to base Assignment`,
+        { documentType: docType, data }
+      );
+    }
+
+    // Legacy fallback: no documentType field, create base Assignment
+    return Assignment._baseFromJSON(data);
   }
 
   /**
