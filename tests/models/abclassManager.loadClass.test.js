@@ -17,7 +17,6 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
-      debugUi: vi.fn(),
       info: vi.fn(),
       debug: vi.fn(),
     };
@@ -152,13 +151,6 @@ describe('ABClassController.loadClass', () => {
       lastUpdated: new Date('2023-03-15T00:00:00Z'),
       documentCount: 1,
     });
-
-    const existingTeacher = new Teacher('existing@example.com', 't-existing', 'Existing Teacher');
-    const existingStudent = new Student(
-      'Existing Student',
-      'existing@student.example.com',
-      's-existing'
-    );
 
     // NOTE: ABClassController.loadClass always fetches fresh roster data from
     // ClassroomApiClient, regardless of collection metadata age. This is by design
