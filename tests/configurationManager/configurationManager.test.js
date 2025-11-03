@@ -347,7 +347,7 @@ describe('ConfigurationManager setProperty', () => {
     });
   });
 
-  describe('Boolean properties (IS_ADMIN_SHEET, SCRIPT_AUTHORISED, REVOKE_AUTH_TRIGGER_SET)', () => {
+  describe('Boolean properties (IS_ADMIN_SHEET, REVOKE_AUTH_TRIGGER_SET)', () => {
     it('should accept boolean true for IS_ADMIN_SHEET and store in document properties', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, true);
@@ -360,17 +360,6 @@ describe('ConfigurationManager setProperty', () => {
 
       // Should return early and not call script properties
       expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
-    });
-
-    it('should accept boolean false for SCRIPT_AUTHORISED and store in document properties', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, false);
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED,
-        'false'
-      );
     });
 
     it('should accept string "true" for REVOKE_AUTH_TRIGGER_SET', () => {
@@ -401,9 +390,9 @@ describe('ConfigurationManager setProperty', () => {
       }).toThrow(/must be a boolean \(true\/false\)/);
     });
 
-    it('should reject numeric values', () => {
+    it('should reject numeric values for boolean properties', () => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED, 123);
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 123);
       }).toThrow(/must be a boolean \(true\/false\)/);
     });
   });

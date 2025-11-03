@@ -17,6 +17,7 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
+      info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
     };
@@ -98,7 +99,7 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-123');
 
-    expect(ClassroomApiClient.fetchCourseUpdateTime).toHaveBeenCalledWith('course-123');
+    expect(ClassroomApiClient.fetchCourseUpdateTime).not.toHaveBeenCalled();
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-123');
@@ -137,11 +138,9 @@ describe('ABClassController.loadClass', () => {
   it('returns stored class when metadata is up to date', () => {
     const storedDoc = {
       classId: 'course-456',
-      className: 'Stable Name',
-      teachers: [{ email: 'existing@example.com', userId: 't-existing' }],
-      students: [
-        { name: 'Existing Student', email: 'existing@student.example.com', id: 's-existing' },
-      ],
+      className: 'Stored Name',
+      teachers: [{ email: 'stored@example.com', userId: 't-stored' }],
+      students: [{ name: 'Stored Student', email: 'stored@student.example.com', id: 's-stored' }],
       assignments: [],
     };
 
@@ -152,22 +151,47 @@ describe('ABClassController.loadClass', () => {
       documentCount: 1,
     });
 
+    // NOTE: ABClassController.loadClass always fetches fresh roster data from
+    // ClassroomApiClient, regardless of collection metadata age. This is by design
+    // (see Issue #88). The previous caching optimisation (_shouldRefreshRoster)
+    // was disabled because it did not work reliably. Consequently, every loadClass
+    // call triggers API calls, and the stored roster is always overwritten with
+    // fresh data from Classroom.
+    const refreshedTeacher = {
+      email: 'fresh@example.com',
+      userId: 't-fresh',
+    };
+    const refreshedStudent = {
+      name: 'Fresh Student',
+      email: 'fresh@student.example.com',
+      id: 's-fresh',
+    };
+
     ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-03-10T00:00:00Z'));
-    ClassroomApiClient.fetchCourse.mockReturnValue({});
-    ClassroomApiClient.fetchTeachers.mockReturnValue([]);
-    ClassroomApiClient.fetchAllStudents.mockReturnValue([]);
+    ClassroomApiClient.fetchCourse.mockReturnValue({
+      id: 'course-456',
+      name: 'Fresh Course Name',
+      ownerId: 'owner-fresh',
+    });
+    ClassroomApiClient.fetchTeachers.mockReturnValue([refreshedTeacher]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([refreshedStudent]);
 
     const abClass = controller.loadClass('course-456');
 
-    expect(ClassroomApiClient.fetchCourse).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchTeachers).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchAllStudents).not.toHaveBeenCalled();
-    expect(collectionMock.updateOne).not.toHaveBeenCalled();
+    // Even though metadata is "up to date", roster API calls are always made
+    expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
+    // Collection is updated with fresh data
+    expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
+    expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
+    // Returned ABClass contains fresh data from API, not stored data
+    expect(abClass.className).toBe('Fresh Course Name');
     expect(abClass.teachers).toHaveLength(1);
-    expect(abClass.teachers[0].email).toBe('existing@example.com');
+    expect(abClass.teachers[0].email).toBe('fresh@example.com');
     expect(abClass.students).toHaveLength(1);
-    expect(abClass.students[0].email).toBe('existing@student.example.com');
+    expect(abClass.students[0].email).toBe('fresh@student.example.com');
   });
 
   // No fallback path: schema must support updateOne.
