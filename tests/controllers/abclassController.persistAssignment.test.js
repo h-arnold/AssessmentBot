@@ -66,16 +66,16 @@ beforeEach(() => {
     }
   };
 
-  // Load modules after mocks are in place
-  delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClass.js')];
-  delete require.cache[require.resolve('../../src/AdminSheet/AssignmentProcessor/Assignment.js')];
-  delete require.cache[require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')];
-
-  ABClass = require('../../src/AdminSheet/Models/ABClass.js').ABClass;
-  Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
-  ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
-});
-
+  // Dynamically import modules after mocks are in place (ESM pattern)
+  return Promise.all([
+    import('../../src/AdminSheet/Models/ABClass.js'),
+    import('../../src/AdminSheet/AssignmentProcessor/Assignment.js'),
+    import('../../src/AdminSheet/y_controllers/ABClassController.js'),
+  ]).then(([abClassModule, assignmentModule, abClassControllerModule]) => {
+    ABClass = abClassModule.ABClass;
+    Assignment = assignmentModule;
+    ABClassController = abClassControllerModule;
+  });
 afterEach(() => {
   delete globalThis.DbManager;
   delete globalThis.ABLogger;
