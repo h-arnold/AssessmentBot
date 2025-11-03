@@ -160,6 +160,22 @@ describe('ABClassController.loadClass', () => {
       's-existing'
     );
 
+    // NOTE: ABClassController.loadClass always fetches fresh roster data from
+    // ClassroomApiClient, regardless of collection metadata age. This is by design
+    // (see Issue #88). The previous caching optimisation (_shouldRefreshRoster)
+    // was disabled because it did not work reliably. Consequently, every loadClass
+    // call triggers API calls, and the stored roster is always overwritten with
+    // fresh data from Classroom.
+    const refreshedTeacher = {
+      email: 'fresh@example.com',
+      userId: 't-fresh',
+    };
+    const refreshedStudent = {
+      name: 'Fresh Student',
+      email: 'fresh@student.example.com',
+      id: 's-fresh',
+    };
+
     ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-03-10T00:00:00Z'));
     ClassroomApiClient.fetchCourse.mockReturnValue({
       id: 'course-456',
