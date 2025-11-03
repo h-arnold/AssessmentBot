@@ -1,8 +1,25 @@
+/**
+ * Husky pre-commit helper.
+ *
+ * Reads OAuth scopes from src/AdminSheet/appsscript.json and:
+ * - copies the full appsscript.json to src/AssessmentRecordTemplate/appsscript.json;
+ * - updates TriggerController.REQUIRED_SCOPES in
+ *   src/AdminSheet/Utils/TriggerController.js to match the oauthScopes array
+ *   from the AdminSheet config (only the scopes array is written there).
+ *
+ * This ensures the OAuth scopes remain consistent across the project.
+ */
+
 const fs = require('fs');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
 const adminAppScriptPath = path.join(rootDir, 'src', 'AdminSheet', 'appsscript.json');
+/**
+ * Path to the Apps Script configuration file for the Assessment Record Template.
+ * Constructed by joining the root directory with the relative path to appsscript.json.
+ * @type {string}
+ */
 const templateAppScriptPath = path.join(
   rootDir,
   'src',
@@ -30,6 +47,26 @@ function writeJson(filePath, data) {
 /**
  * Replace the REQUIRED_SCOPES array in TriggerController.js with the provided scopes.
  * @param {string[]} scopes - OAuth scopes sourced from appsscript.json.
+ */
+/**
+ * Update the TriggerController.REQUIRED_SCOPES block in the TriggerController source file.
+ *
+ * Reads the file at `triggerControllerPath`, locates the existing
+ * `TriggerController.REQUIRED_SCOPES = [...]` block using a regular expression, and
+ * replaces it with a newly constructed array built from the provided `scopes`.
+ * Each scope is written as a single-quoted, comma-terminated string on its own line.
+ * Ensures the file ends with a single trailing newline.
+ *
+ * Notes:
+ * - This function has side effects: it performs synchronous file I/O via `fs`.
+ * - It expects `triggerControllerPath` and `fs` to be available in the enclosing module.
+ *
+ * @param {string[]} scopes - An array of scope strings to be written into the REQUIRED_SCOPES array.
+ *
+ * @throws {Error} If the REQUIRED_SCOPES block cannot be found in the TriggerController file.
+ * @throws {Error} Any file system error thrown by `fs.readFileSync` or `fs.writeFileSync`.
+ *
+ * @returns {void}
  */
 function updateTriggerControllerScopes(scopes) {
   const triggerSource = fs.readFileSync(triggerControllerPath, 'utf8');
