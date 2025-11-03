@@ -18,69 +18,35 @@ import {
   createTextTask,
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
+import {
+  setupControllerTestMocks,
+  cleanupControllerTestMocks,
+} from '../helpers/mockFactories.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
 
-beforeEach(() => {
-  // Mock collection with find/findOne support
-  mockCollection = {
-    insertOne: vi.fn(),
-    replaceOne: vi.fn(),
-    save: vi.fn(),
-    findOne: vi.fn(),
-    find: vi.fn().mockReturnValue([]),
-    removeMany: vi.fn(),
-  };
+beforeEach(async () => {
+  // Setup controller test mocks
+  const mocks = setupControllerTestMocks(vi);
+  mockDbManager = mocks.mockDbManager;
+  mockCollection = mocks.mockCollection;
+  mockABLogger = mocks.mockABLogger;
 
-  mockDbManager = {
-    getCollection: vi.fn().mockReturnValue(mockCollection),
-    saveCollection: vi.fn(),
-  };
+  // Dynamically import modules after mocks are in place (ESM pattern)
+  const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
+    import('../../src/AdminSheet/Models/ABClass.js'),
+    import('../../src/AdminSheet/AssignmentProcessor/Assignment.js'),
+    import('../../src/AdminSheet/y_controllers/ABClassController.js'),
+  ]);
 
-  globalThis.DbManager = class {
-    static getInstance() {
-      return mockDbManager;
-    }
-  };
-
-  // Mock ABLogger
-  mockABLogger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debugUi: vi.fn(),
-  };
-
-  globalThis.ABLogger = class {
-    static getInstance() {
-      return mockABLogger;
-    }
-  };
-
-  // Mock ConfigurationManager for ABClass constructor
-  globalThis.ConfigurationManager = class {
-    static getInstance() {
-      return {
-        getAssessmentRecordCourseId: () => 'test-course-default',
-      };
-    }
-  };
-
-  // Load modules after mocks are in place
-  delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClass.js')];
-  delete require.cache[require.resolve('../../src/AdminSheet/AssignmentProcessor/Assignment.js')];
-  delete require.cache[require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')];
-
-  ABClass = require('../../src/AdminSheet/Models/ABClass.js').ABClass;
-  Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
-  ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
+  ABClass = abClassModule.ABClass;
+  Assignment = assignmentModule.default || assignmentModule;
+  ABClassController = abClassControllerModule.default || abClassControllerModule;
 });
 
 afterEach(() => {
-  delete globalThis.DbManager;
-  delete globalThis.ABLogger;
-  delete globalThis.ConfigurationManager;
+  cleanupControllerTestMocks();
   vi.restoreAllMocks();
 });
 

@@ -17,69 +17,35 @@ import {
   createTextTask,
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
+import {
+  setupControllerTestMocks,
+  cleanupControllerTestMocks,
+} from '../helpers/mockFactories.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
 
-beforeEach(() => {
-  // Mock DbManager with collection support
-  mockCollection = {
-    insertOne: vi.fn(),
-    replaceOne: vi.fn(),
-    save: vi.fn(),
-    findOne: vi.fn(),
-    find: vi.fn().mockReturnValue([]),
-    removeMany: vi.fn(),
-  };
-
-  mockDbManager = {
-    getCollection: vi.fn().mockReturnValue(mockCollection),
-    saveCollection: vi.fn(),
-  };
-
-  globalThis.DbManager = class {
-    static getInstance() {
-      return mockDbManager;
-    }
-  };
-
-  // Mock ABLogger
-  mockABLogger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debugUi: vi.fn(),
-  };
-
-  globalThis.ABLogger = class {
-    static getInstance() {
-      return mockABLogger;
-    }
-  };
-
-  // Mock ConfigurationManager for ABClass constructor
-  globalThis.ConfigurationManager = class {
-    static getInstance() {
-      return {
-        getAssessmentRecordCourseId: () => 'test-course-default',
-      };
-    }
-  };
+beforeEach(async () => {
+  // Setup controller test mocks
+  const mocks = setupControllerTestMocks(vi);
+  mockDbManager = mocks.mockDbManager;
+  mockCollection = mocks.mockCollection;
+  mockABLogger = mocks.mockABLogger;
 
   // Dynamically import modules after mocks are in place (ESM pattern)
-  return Promise.all([
+  const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
     import('../../src/AdminSheet/Models/ABClass.js'),
     import('../../src/AdminSheet/AssignmentProcessor/Assignment.js'),
     import('../../src/AdminSheet/y_controllers/ABClassController.js'),
-  ]).then(([abClassModule, assignmentModule, abClassControllerModule]) => {
-    ABClass = abClassModule.ABClass;
-    Assignment = assignmentModule;
-    ABClassController = abClassControllerModule;
-  });
+  ]);
+
+  ABClass = abClassModule.ABClass;
+  Assignment = assignmentModule.default || assignmentModule;
+  ABClassController = abClassControllerModule.default || abClassControllerModule;
+});
+
 afterEach(() => {
-  delete globalThis.DbManager;
-  delete globalThis.ABLogger;
-  delete globalThis.ConfigurationManager;
+  cleanupControllerTestMocks();
   vi.restoreAllMocks();
 });
 
