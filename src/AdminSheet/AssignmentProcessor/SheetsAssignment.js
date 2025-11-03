@@ -119,12 +119,12 @@ class SheetsAssignment extends Assignment {
   assessResponses() {
     // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
     // Placeholder: integrate AssessmentEngineRouter in later phase.
-    if (typeof SheetsAssessor !== 'undefined') {
+    if (typeof SheetsAssessor === 'undefined') {
+      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
+    } else {
       const assessor = new SheetsAssessor(this.tasks, this.submissions); //
       // Use optional chaining to call assessResponses if present
       assessor.assessResponses?.();
-    } else {
-      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
     }
   }
 }

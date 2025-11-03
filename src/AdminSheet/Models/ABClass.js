@@ -76,13 +76,9 @@ class ABClass {
     // preserve fields like email and teacherName.
     let ownerInstance = owner;
     if (!(owner instanceof Teacher)) {
-      try {
-        if (owner && typeof owner === 'object' && typeof Teacher.fromJSON === 'function') {
-          ownerInstance = Teacher.fromJSON(owner) || owner;
-        }
-      } catch (e) {
-        // Fall back to throwing below if coercion didn't produce a Teacher
-        ownerInstance = owner;
+      if (owner && typeof owner === 'object' && typeof Teacher.fromJSON === 'function') {
+        // Prefer fail-fast: allow Teacher.fromJSON to throw if coercion fails
+        ownerInstance = Teacher.fromJSON(owner) || owner;
       }
     }
 
