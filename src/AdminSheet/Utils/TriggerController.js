@@ -1,24 +1,9 @@
 class TriggerController {
   constructor() {
     /**
-     * OAuth scopes required for trigger operations.
-     * These match the scopes defined in appsscript.json.
-     * @constant
-     * @type {string[]}
+     * Constructor intentionally empty — use TriggerController.REQUIRED_SCOPES (static)
+     * instead of creating an instance property so the scopes array is not recreated per instance.
      */
-    this.REQUIRED_SCOPES = [
-      'https://www.googleapis.com/auth/presentations',
-      'https://www.googleapis.com/auth/classroom.courses',
-      'https://www.googleapis.com/auth/classroom.rosters',
-      'https://www.googleapis.com/auth/classroom.profile.emails',
-      'https://www.googleapis.com/auth/classroom.profile.photos',
-      'https://www.googleapis.com/auth/classroom.coursework.students',
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/script.external_request',
-      'https://www.googleapis.com/auth/script.container.ui',
-      'https://www.googleapis.com/auth/script.scriptapp',
-    ];
   }
 
   /**
@@ -31,7 +16,7 @@ class TriggerController {
   createTimeBasedTrigger(functionName, triggerTime) {
     try {
       // Ensure user has granted required permissions for trigger installation and execution
-      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, this.REQUIRED_SCOPES);
+      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, TriggerController.REQUIRED_SCOPES);
 
       if (!triggerTime) {
         triggerTime = new Date();
@@ -83,7 +68,7 @@ class TriggerController {
   createOnOpenTrigger(functionName) {
     try {
       // Ensure user has granted required permissions for trigger installation and execution
-      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, this.REQUIRED_SCOPES);
+      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, TriggerController.REQUIRED_SCOPES);
 
       this.removeOnOpenTriggers();
 
@@ -133,3 +118,19 @@ class TriggerController {
     });
   }
 }
+
+// Static: required OAuth scopes for trigger installation and execution.
+// Defined as a static property to avoid recreating the array per instance.
+TriggerController.REQUIRED_SCOPES = [
+  'https://www.googleapis.com/auth/presentations',
+  'https://www.googleapis.com/auth/classroom.courses',
+  'https://www.googleapis.com/auth/classroom.rosters',
+  'https://www.googleapis.com/auth/classroom.profile.emails',
+  'https://www.googleapis.com/auth/classroom.profile.photos',
+  'https://www.googleapis.com/auth/classroom.coursework.students',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/script.external_request',
+  'https://www.googleapis.com/auth/script.container.ui',
+  'https://www.googleapis.com/auth/script.scriptapp',
+];
