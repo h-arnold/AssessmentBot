@@ -34,16 +34,55 @@ function markUserAsAuthorised() {
   userProps.setProperty('authorised', 'true');
 }
 
+/**
+ * Creates the unauthorised menu with an Authorise button.
+ * This menu is displayed when the user has not yet authorised the assessment record.
+ */
+function createUnauthorisedMenu() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Assessment Bot').addItem('Authorise App', 'handleScriptInit').addToUi();
+}
+
+/**
+ * Creates the assessment record menu with all available options.
+ * This menu is displayed after the user has authorised the assessment record.
+ */
+function createAssessmentRecordMenu() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Assessment Bot')
+    .addItem('Assess Assignment', 'assessAssignment')
+    .addItem('Check Progress', 'showProgressModal')
+    .addItem('Change Class', 'showClassroomDropdown')
+    .addToUi();
+}
+
 function onOpen() {
-  // User authorisation status will be checked in the library via User Properties
-  AssessmentBot.onOpen();
+  // Check if the current user has authorised this assessment record
+  const userAuthorisedThisDoc = hasUserAuthorisedThisDocument();
+
+  // Create appropriate menu based on authorisation state
+  if (userAuthorisedThisDoc) {
+    createAssessmentRecordMenu();
+  } else {
+    createUnauthorisedMenu();
+  }
 }
 
 function handleScriptInit() {
-  AssessmentBot.handleScriptInit();
+  try {
+    // Call the library to handle the authorisation process
+    // This will create triggers and set up the auth revoke timer
+    AssessmentBot.handleAssessmentRecordAuth();
 
-  // Mark the user as authorised after successful initialisation
-  markUserAsAuthorised();
+    // Mark the user as authorised after successful initialisation
+    markUserAsAuthorised();
+
+    // Create the assessment record menu now that auth is complete
+    createAssessmentRecordMenu();
+  } catch (error) {
+    SpreadsheetApp.getUi().alert('Error during authorisation: ' + error.message);
+    throw error;
+  }
 }
 
 // Placeholder functions for the 'Assess Assignment Menu Option
@@ -182,6 +221,9 @@ function revokeAuthorisation() {
   if (result.success) {
     const userProps = PropertiesService.getUserProperties();
     userProps.deleteProperty('authorised');
+
+    // Recreate the unauthorised menu
+    createUnauthorisedMenu();
   }
 
   return result;
