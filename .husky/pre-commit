@@ -4,6 +4,11 @@
 # Format staged JavaScript and JSON files with Prettier, add them back to the commit,
 # then run ESLint --fix. This keeps formatting consistent for committed files.
 
+# Synchronise Apps Script manifests and trigger scopes before linting/formatting.
+echo "Synchronising Apps Script configuration."
+node scripts/sync-appsscript.js
+git add src/AssessmentRecordTemplate/appsscript.json src/AdminSheet/Utils/TriggerController.js
+
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|json|md)$" || true)
 
