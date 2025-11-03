@@ -87,6 +87,57 @@ class Assignment {
   }
 
   /**
+   * Produce a lightweight JSON payload with heavy artifact fields redacted.
+   * @return {object}
+   */
+  toPartialJSON() {
+    const fullJson = this.toJSON();
+
+    const redactArtifact = (artifact) => ({
+      ...artifact,
+      content: null,
+      contentHash: null,
+    });
+
+    const redactTask = (task) => {
+      const artifacts = task.artifacts || {};
+      return {
+        ...task,
+        artifacts: {
+          reference: (artifacts.reference || []).map(redactArtifact),
+          template: (artifacts.template || []).map(redactArtifact),
+        },
+      };
+    };
+
+    const redactItem = (item) => ({
+      ...item,
+      artifact: redactArtifact(item.artifact),
+    });
+
+    const partialTasks = Object.fromEntries(
+      Object.entries(fullJson.tasks || {}).map(([taskId, task]) => [taskId, redactTask(task)])
+    );
+
+    const partialSubmissions = (fullJson.submissions || []).map((submission) => {
+      if (!submission || typeof submission !== 'object') return submission;
+      const items = Object.fromEntries(
+        Object.entries(submission.items || {}).map(([taskId, item]) => [taskId, redactItem(item)])
+      );
+      return {
+        ...submission,
+        items,
+      };
+    });
+
+    return {
+      ...fullJson,
+      tasks: partialTasks,
+      submissions: partialSubmissions,
+    };
+  }
+
+  /**
    * Factory method to create the correct Assignment subclass based on documentType.
    * @param {string} documentType - Document type ('SLIDES' or 'SHEETS')
    * @param {string} courseId - The ID of the course

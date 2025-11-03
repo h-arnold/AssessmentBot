@@ -28,12 +28,14 @@ class BaseTaskArtifact {
     this.role = role; // reference|template|submission
     this.pageId = pageId;
     this.documentId = documentId;
-    this.metadata = metadata || {};
+    this.metadata = metadata ?? {};
     this.content = this.normalizeContent(content);
     if (contentHash) {
       this.contentHash = contentHash;
+    } else if (this.content === null || this.content === undefined) {
+      this.contentHash = null;
     } else {
-      this.contentHash = this.content != null ? this.ensureHash() : null;
+      this.contentHash = this.ensureHash();
     }
     this._uid = uid || this._defaultUid(taskIndex, artifactIndex);
   }
@@ -45,9 +47,7 @@ class BaseTaskArtifact {
    * @returns {string} Generated UID string.
    */
   _defaultUid(taskIndex, artifactIndex) {
-    return `${this.taskId}-${taskIndex != null ? taskIndex : '0'}-${this.role}-${
-      this.pageId || 'na'
-    }-${artifactIndex}`;
+    return `${this.taskId}-${taskIndex ?? '0'}-${this.role}-${this.pageId || 'na'}-${artifactIndex}`;
   }
 
   /**
@@ -108,7 +108,7 @@ class BaseTaskArtifact {
   _stableStringify(obj) {
     if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
     if (Array.isArray(obj)) return '[' + obj.map((i) => this._stableStringify(i)).join(',') + ']';
-    const keys = Object.keys(obj).sort();
+    const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b));
     return (
       '{' + keys.map((k) => JSON.stringify(k) + ':' + this._stableStringify(obj[k])).join(',') + '}'
     );
@@ -133,6 +133,17 @@ class BaseTaskArtifact {
   }
 
   /**
+   * Return a partial JSON representation with heavy fields redacted.
+   * @return {Object}
+   */
+  toPartialJSON() {
+    const json = this.toJSON();
+    json.content = null;
+    json.contentHash = null;
+    return json;
+  }
+
+  /**
    * Construct a BaseTaskArtifact directly from a plain JSON-like object.
    * @param {Object} json
    * @returns {BaseTaskArtifact}
@@ -146,5 +157,5 @@ class BaseTaskArtifact {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = BaseTaskArtifact;
 } else {
-  this.BaseTaskArtifact = BaseTaskArtifact; // global assignment for GAS
+  globalThis.BaseTaskArtifact = BaseTaskArtifact; // global assignment for GAS
 }
