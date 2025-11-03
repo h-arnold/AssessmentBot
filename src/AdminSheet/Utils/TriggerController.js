@@ -1,6 +1,24 @@
 class TriggerController {
   constructor() {
-    // Initialization logic can be added here if needed
+    /**
+     * OAuth scopes required for trigger operations.
+     * These match the scopes defined in appsscript.json.
+     * @constant
+     * @type {string[]}
+     */
+    this.REQUIRED_SCOPES = [
+      'https://www.googleapis.com/auth/presentations',
+      'https://www.googleapis.com/auth/classroom.courses',
+      'https://www.googleapis.com/auth/classroom.rosters',
+      'https://www.googleapis.com/auth/classroom.profile.emails',
+      'https://www.googleapis.com/auth/classroom.profile.photos',
+      'https://www.googleapis.com/auth/classroom.coursework.students',
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/script.external_request',
+      'https://www.googleapis.com/auth/script.container.ui',
+      'https://www.googleapis.com/auth/script.scriptapp',
+    ];
   }
 
   /**
@@ -12,6 +30,9 @@ class TriggerController {
    */
   createTimeBasedTrigger(functionName, triggerTime) {
     try {
+      // Ensure user has granted required permissions for trigger installation and execution
+      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, this.REQUIRED_SCOPES);
+
       if (!triggerTime) {
         triggerTime = new Date();
         triggerTime.setSeconds(triggerTime.getSeconds() + 5);
@@ -61,6 +82,9 @@ class TriggerController {
    */
   createOnOpenTrigger(functionName) {
     try {
+      // Ensure user has granted required permissions for trigger installation and execution
+      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, this.REQUIRED_SCOPES);
+
       this.removeOnOpenTriggers();
 
       // Create new onOpen trigger

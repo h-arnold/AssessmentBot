@@ -159,27 +159,19 @@ class InitController extends BaseSingleton {
   }
 
   /**
-   * This method does the first run init procedure of triggering the auth process, creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
+   * This method does the first run init procedure of creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
+   * Note: Authorization is now handled automatically by TriggerController.createOnOpenTrigger() via ScriptApp.requireScopes().
    */
   doFirstRunInit() {
-    const sa = new ScriptAppManager();
     const triggerController = new TriggerController();
 
-    // This should trigger the auth process if it hasn't been granted.
-    const authStatus = sa.handleAuthFlow();
-
-    // Trigger the authorisation process if needed
-    if (authStatus.needsAuth) {
-      this._withUI((ui) => ui.showAuthorisationModal(authStatus.authUrl));
-    }
-
-    // Assuming auth flow has taken place, add a trigger to call this method.
+    // Create onOpen trigger. This will automatically prompt for authorization via requireScopes().
     triggerController.createOnOpenTrigger(`handleScriptInit`);
 
-    // Set script authorised to true to avoid calling the auth process again.
+    // Set script authorised to true to avoid calling the first run init again.
     ConfigurationManager.getInstance().setScriptAuthorised(true);
 
-    //If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
+    // If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
     this.setDefaultAssessmentRecordTemplateId();
   }
 
