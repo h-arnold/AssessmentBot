@@ -29,8 +29,9 @@ class ScriptAppManager {
    * @returns {string} The current authorization mode (NONE, LIMITED, or FULL)
    */
   checkAuthMode() {
-    console.log(`Authorisation Status is: ${JSON.stringify(this.authInfo.getAuthorizationStatus)}`);
-    return this.authInfo.getAuthorizationStatus();
+    const authStatus = this.authInfo.getAuthorizationStatus();
+    console.log(`Authorisation Status is: ${JSON.stringify(authStatus)}`);
+    return authStatus;
   }
 
   /**
