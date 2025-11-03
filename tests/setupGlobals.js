@@ -13,7 +13,7 @@ global.Utils = {
   generateHash(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
-      h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+      h = (Math.imul(31, h) + str.codePointAt(i)) | 0;
     }
     return Math.abs(h).toString(16);
   },

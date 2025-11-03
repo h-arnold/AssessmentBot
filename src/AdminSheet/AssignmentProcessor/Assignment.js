@@ -60,7 +60,7 @@ class Assignment {
         if ('documentId' in sub) out.documentId = sub.documentId;
         if ('score' in sub) out.score = sub.score;
         if ('feedback' in sub) out.feedback = sub.feedback;
-        if (sub.updatedAt instanceof Date && !isNaN(sub.updatedAt.getTime()))
+        if (sub.updatedAt instanceof Date && !Number.isNaN(sub.updatedAt.getTime()))
           out.updatedAt = sub.updatedAt.toISOString();
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
@@ -157,10 +157,10 @@ class Assignment {
           try {
             inst.tasks[taskId] = new TaskDefinition(taskObj);
             return;
-          } catch (e2) {
+          } catch (error_) {
             ABLogger.getInstance().warn(
               `TaskDefinition reconstruction failed for taskId=${taskId}:`,
-              e2
+              error_
             );
           }
         }
@@ -199,12 +199,12 @@ class Assignment {
             });
             inst.submissions.push(sub);
             return;
-          } catch (e2) {
+          } catch (error_) {
             ABLogger.getInstance().warn(
               `StudentSubmission reconstruction failed for studentId=${
                 subObj && (subObj.studentId || subObj.userId)
               }:`,
-              e2
+              error_
             );
           }
         }
@@ -331,11 +331,11 @@ class Assignment {
       this.lastUpdated = null;
       return null;
     }
-    if (!(date instanceof Date) || isNaN(date.getTime())) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
       throw new TypeError('setLastUpdated expects a valid Date or null');
     }
     // store a copy to avoid outside mutation
-    this.lastUpdated = new Date(date.getTime());
+    this.lastUpdated = new Date(date);
     return this.lastUpdated;
   }
 

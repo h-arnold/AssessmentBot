@@ -103,10 +103,7 @@ class SheetsAssignment extends Assignment {
    */
   hasValidStudentResponse(studentResponseEntry) {
     // Use optional chaining to check presence of response property and ensure it's not null/undefined
-    return (
-      typeof studentResponseEntry?.response !== 'undefined' &&
-      studentResponseEntry?.response !== null
-    );
+    return studentResponseEntry?.response !== undefined && studentResponseEntry?.response !== null;
   }
 
   /**
@@ -116,9 +113,7 @@ class SheetsAssignment extends Assignment {
    */
   hasValidReferenceTask(referenceTask) {
     // Optional chaining for concise existence check
-    return (
-      typeof referenceTask?.taskReference !== 'undefined' && referenceTask?.taskReference !== null
-    );
+    return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
   }
 
   assessResponses() {

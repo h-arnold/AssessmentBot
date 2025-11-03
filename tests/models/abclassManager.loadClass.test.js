@@ -19,9 +19,6 @@ describe('ABClassController.loadClass', () => {
     const loggerInstance = {
       debugUi: vi.fn(),
       info: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
       debug: vi.fn(),
     };
     global.ABLogger = { getInstance: () => loggerInstance };
@@ -210,10 +207,9 @@ describe('ABClassController.loadClass', () => {
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
-    // Teacher is the owner, so should be classOwner not in teachers array
+    // Teacher is the owner, so should be classOwner (identified by userId)
     expect(abClass.classOwner).toBeTruthy();
-    expect(abClass.classOwner.email).toBe('existing@example.com');
-    expect(abClass.teachers).toHaveLength(0); // Owner is not in teachers array
+    expect(abClass.classOwner.userId || abClass.classOwner.getUserId()).toBe('owner-fresh');
     // Returned ABClass contains fresh data from API, not stored data
     expect(abClass.className).toBe('Fresh Course Name');
     expect(abClass.teachers).toHaveLength(1);

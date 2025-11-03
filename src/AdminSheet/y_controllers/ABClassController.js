@@ -34,11 +34,26 @@ class ABClassController {
 
     // Support both new behaviour (Teacher instances) and legacy raw API objects.
     teachers.forEach((teacherObj) => {
-      // If this teacher matches the course owner, set as owner
+      // Ensure we operate on a Teacher instance so setClassOwner's instanceof
+      // check in ABClass doesn't throw. Support both Teacher instances and
+      // plain objects returned by legacy API mocks.
+      let teacherInstance = teacherObj;
+      try {
+        if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+          teacherInstance = Teacher.fromJSON(teacherObj) || teacherObj;
+        }
+      } catch (e) {
+        // If coercion fails, fall back to raw object - let downstream code decide
+        teacherInstance = teacherObj;
+      }
+
+      // If this teacher matches the course owner, set as owner (using a
+      // Teacher instance). Otherwise add to teachers list.
       if (abClass.classOwner && abClass.classOwner.userId === teacherObj.userId) {
-        abClass.setClassOwner(teacherObj);
+        // Prefer the instance we coerced where possible
+        abClass.setClassOwner(teacherInstance);
       } else {
-        abClass.addTeacher(teacherObj);
+        abClass.addTeacher(teacherInstance);
       }
     });
   }
