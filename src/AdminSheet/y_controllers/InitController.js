@@ -72,19 +72,10 @@ class InitController extends BaseSingleton {
       ABLogger.getInstance().info('Script is already authorised. Creating authorised menu.');
       uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
-      // For assessment records, check if this specific user has authorised this document
-      const userProps = PropertiesService.getUserProperties();
-      const userAuthorisedThisDoc = userProps.getProperty('authorised') === 'true';
-
       ABLogger.getInstance().info(
-        `Script is authorised and appears to be an Assessment Record. User has authorised this doc: ${userAuthorisedThisDoc}`
+        'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
       );
-
-      if (userAuthorisedThisDoc) {
-        uiManager.createAssessmentRecordMenu();
-      } else {
-        uiManager.createUnauthorisedMenu();
-      }
+      uiManager.createAssessmentRecordMenu();
     } else {
       ABLogger.getInstance().info('Script not authorised. Creating unauthorised menu.');
       uiManager.createUnauthorisedMenu();
@@ -186,6 +177,30 @@ class InitController extends BaseSingleton {
       this._withUI((ui) => ui.createAssessmentRecordMenu());
       throw new Error(`Error during assessment record initialisation: ${error?.message ?? error}`);
     }
+  }
+
+  /**
+   * Handles the authorisation process for Assessment Record templates.
+   * This method is called from the assessment record template's menus.js file.
+   * It sets up triggers and the auth revoke timer, but does NOT create menus
+   * (those are created in the template context after this completes).
+   */
+  handleAssessmentRecordAuth() {
+    const sa = new ScriptAppManager();
+    const scriptAuthorised = sa.isAuthorised();
+    ABLogger.getInstance().info(
+      `InitController.handleAssessmentRecordAuth() - User authorized: ${scriptAuthorised}`
+    );
+
+    // If script isn't authorised, run the first run initialisation
+    if (!scriptAuthorised) {
+      this.doFirstRunInit();
+    }
+
+    // Set up the authorisation revocation timer
+    this.setupAuthRevokeTimer();
+
+    ABLogger.getInstance().info('Assessment record authorisation complete.');
   }
 
   /**
