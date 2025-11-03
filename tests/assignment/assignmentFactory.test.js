@@ -129,33 +129,59 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     expect(assignment.templateDocumentId).toBe('tpl5');
   });
 
-  it('should fall back gracefully for invalid documentType values', () => {
-    const warnSpy = vi.fn();
-    ABLogger.getInstance = () => ({
-      debug: vi.fn(),
-      debugUi: vi.fn(),
-      info: vi.fn(),
-      warn: warnSpy,
-      error: vi.fn(),
-      log: vi.fn(),
+  it('should throw a user-facing error via ProgressTracker for invalid documentType values', () => {
+    const tracker = globalThis.ProgressTracker.getInstance();
+    const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
+      throw new Error(`ProgressTracker: ${msg}`);
     });
 
-    const assignment = Assignment.fromJSON({
-      courseId: 'c-invalid',
-      assignmentId: 'a-invalid',
-      assignmentName: 'Invalid Assignment',
-      documentType: 'INVALID',
-      referenceDocumentId: 'ref-invalid',
-      templateDocumentId: 'tpl-invalid',
-      tasks: {},
-      submissions: [],
+    expect(() =>
+      Assignment.fromJSON({
+        courseId: 'c-invalid',
+        assignmentId: 'a-invalid',
+        assignmentName: 'Invalid Assignment',
+        documentType: 'INVALID',
+        referenceDocumentId: 'ref-invalid',
+        templateDocumentId: 'tpl-invalid',
+        tasks: {},
+        submissions: [],
+      })
+    ).toThrow(
+      /ProgressTracker: Unknown assignment documentType 'INVALID' for courseId=c-invalid, assignmentId=a-invalid/
+    );
+
+    expect(logAndThrowSpy).toHaveBeenCalledWith(
+      expect.stringContaining("documentType 'INVALID'"),
+      expect.objectContaining({ documentType: 'INVALID' })
+    );
+  });
+
+  it('should throw a user-facing error via ProgressTracker when documentType is missing', () => {
+    const tracker = globalThis.ProgressTracker.getInstance();
+    const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
+      throw new Error(`ProgressTracker: ${msg}`);
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/invalid/i), expect.anything());
-    expect(assignment).toBeInstanceOf(Assignment);
-    expect(assignment.documentType).toBe('INVALID');
-    expect(assignment.referenceDocumentId).toBe('ref-invalid');
-    expect(assignment.templateDocumentId).toBe('tpl-invalid');
+    expect(() =>
+      Assignment.fromJSON({
+        courseId: 'c-missing',
+        assignmentId: 'a-missing',
+        assignmentName: 'Missing DocType Assignment',
+        referenceDocumentId: 'ref-missing',
+        templateDocumentId: 'tpl-missing',
+        tasks: {},
+        submissions: [],
+      })
+    ).toThrow(
+      /ProgressTracker: Assignment data missing documentType for courseId=c-missing, assignmentId=a-missing/
+    );
+
+    expect(logAndThrowSpy).toHaveBeenCalledWith(
+      expect.stringContaining('missing documentType'),
+      expect.objectContaining({
+        data: expect.objectContaining({ courseId: 'c-missing', assignmentId: 'a-missing' }),
+      })
+    );
   });
 
   it('should handle malformed data with clear error messages', () => {

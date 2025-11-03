@@ -98,7 +98,9 @@ class Assignment {
    */
   static create(documentType, courseId, assignmentId, referenceDocumentId, templateDocumentId) {
     if (!documentType || typeof documentType !== 'string') {
-      throw new Error('documentType is required and must be a string');
+      throw new TypeError(
+        'documentType is required and must be a string: accepted values are "SLIDES" or "SHEETS". See docs/developer/DATA_SHAPES.md for accepted values.'
+      );
     }
 
     const type = documentType.toUpperCase();
@@ -111,7 +113,9 @@ class Assignment {
       return new SheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
     }
 
-    throw new Error(`Unknown documentType: ${documentType}`);
+    throw new Error(
+      `Unknown documentType: ${documentType}. Valid types are 'SLIDES' or 'SHEETS'. See docs/developer/DATA_SHAPES.md for details.`
+    );
   }
 
   /**
@@ -252,29 +256,33 @@ class Assignment {
     if (!data || typeof data !== 'object')
       throw new Error('Invalid data supplied to Assignment.fromJSON');
 
+    if (!data.courseId || !data.assignmentId) {
+      throw new Error('courseId and assignmentId are required fields in Assignment data');
+    }
+
     const docType = data.documentType;
 
-    // Route to subclass fromJSON if documentType is present
-    if (docType) {
-      const type = docType.toUpperCase();
-
-      if (type === 'SLIDES') {
-        return SlidesAssignment.fromJSON(data);
-      }
-
-      if (type === 'SHEETS') {
-        return SheetsAssignment.fromJSON(data);
-      }
-
-      // Invalid documentType: log warning and fall back to base Assignment
-      ABLogger.getInstance().warn(
-        `Invalid documentType '${docType}' in Assignment.fromJSON; falling back to base Assignment`,
-        { documentType: docType, data }
+    if (!docType || typeof docType !== 'string') {
+      ProgressTracker.getInstance().logAndThrowError(
+        `Assignment data missing documentType for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
+        { data }
       );
     }
 
-    // Legacy fallback: no documentType field, create base Assignment
-    return Assignment._baseFromJSON(data);
+    const type = docType.toUpperCase();
+
+    if (type === 'SLIDES') {
+      return SlidesAssignment.fromJSON(data);
+    }
+
+    if (type === 'SHEETS') {
+      return SheetsAssignment.fromJSON(data);
+    }
+
+    ProgressTracker.getInstance().logAndThrowError(
+      `Unknown assignment documentType '${docType}' for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
+      { documentType: docType, data }
+    );
   }
 
   /**
