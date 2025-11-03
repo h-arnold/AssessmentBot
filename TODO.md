@@ -105,7 +105,6 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
     - Clear examples of full vs partial hydration showing nulled fields in artifacts.
     - Note that `_hydrationLevel` is transient and never persisted.
     - Clarify that subclasses set `documentType` in their constructors (not passed as parameter).
-    - Document backward compatibility: legacy data without `documentType` handled by fallback in `fromJSON()`.
   - Update `docs/developer/rehydration.md` with:
     - Factory pattern usage: `Assignment.create()` centralizes type-to-class mapping that mirrors `Assignment.fromJSON()` routing logic.
     - Explain that factory doesn't eliminate conditionals but centralizes type discrimination alongside deserialization.
