@@ -39,9 +39,9 @@ const triggerControllerPath = path.join(
  * @param {string} filePath - Target file path.
  * @param {Object} data - Parsed JSON content to serialise.
  */
-function writeJson(filePath, data) {
+function writeJson(filePath, data, fsModule = fs) {
   const serialised = `${JSON.stringify(data, null, 2)}\n`;
-  fs.writeFileSync(filePath, serialised, 'utf8');
+  fsModule.writeFileSync(filePath, serialised, 'utf8');
 }
 
 /**
@@ -68,8 +68,11 @@ function writeJson(filePath, data) {
  *
  * @returns {void}
  */
-function updateTriggerControllerScopes(scopes) {
-  const triggerSource = fs.readFileSync(triggerControllerPath, 'utf8');
+function updateTriggerControllerScopes(
+  scopes,
+  { fsModule = fs, filePath = triggerControllerPath } = {}
+) {
+  const triggerSource = fsModule.readFileSync(filePath, 'utf8');
   const blockRegex = /TriggerController\.REQUIRED_SCOPES = \[[\s\S]*?\];/;
 
   if (!blockRegex.test(triggerSource)) {
@@ -81,20 +84,49 @@ function updateTriggerControllerScopes(scopes) {
   const updatedSource = triggerSource.replace(blockRegex, replacement);
   const finalSource = updatedSource.endsWith('\n') ? updatedSource : `${updatedSource}\n`;
 
-  fs.writeFileSync(triggerControllerPath, finalSource, 'utf8');
+  fsModule.writeFileSync(filePath, finalSource, 'utf8');
 }
 
-function main() {
-  const adminConfig = JSON.parse(fs.readFileSync(adminAppScriptPath, 'utf8'));
+/**
+ * Synchronise Apps Script configuration across project artefacts.
+ * @param {Object} [options] - Optional overrides for dependency injection.
+ * @param {import('fs')} [options.fsModule] - File system interface.
+ * @param {string} [options.adminPath] - Path to AdminSheet appsscript.json.
+ * @param {string} [options.templatePath] - Path to template appsscript.json.
+ * @param {string} [options.triggerPath] - Path to TriggerController source file.
+ */
+function syncAppsscript({
+  fsModule = fs,
+  adminPath = adminAppScriptPath,
+  templatePath = templateAppScriptPath,
+  triggerPath = triggerControllerPath,
+} = {}) {
+  const adminConfig = JSON.parse(fsModule.readFileSync(adminPath, 'utf8'));
 
   if (!Array.isArray(adminConfig.oauthScopes)) {
     throw new Error('AdminSheet appsscript.json must define an oauthScopes array.');
   }
 
-  writeJson(templateAppScriptPath, adminConfig);
-  updateTriggerControllerScopes(adminConfig.oauthScopes);
+  writeJson(templatePath, adminConfig, fsModule);
+  updateTriggerControllerScopes(adminConfig.oauthScopes, {
+    fsModule,
+    filePath: triggerPath,
+  });
+}
+
+function main() {
+  syncAppsscript();
 
   console.log('Synced appsscript configuration and trigger scopes.');
 }
 
-main();
+module.exports = {
+  writeJson,
+  updateTriggerControllerScopes,
+  syncAppsscript,
+  main,
+};
+
+if (require.main === module) {
+  main();
+}
