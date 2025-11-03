@@ -113,7 +113,7 @@ describe('ABClassController Rehydrate Assignment', () => {
 
       // Should read from the correct collection
       expect(mockDbManager.getCollection).toHaveBeenCalledWith(
-        expect.stringMatching(/assign_full_course-read_assign-read/)
+        expect.stringContaining('assign_full_course-read_assign-read')
       );
       expect(mockCollection.findOne).toHaveBeenCalled();
 
