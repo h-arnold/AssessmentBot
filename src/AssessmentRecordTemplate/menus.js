@@ -8,12 +8,33 @@
 
 //
 
+/**
+ * Checks if the current user has authorised this assessment record.
+ * @return {boolean} True if the user has previously authorised this document, false otherwise.
+ */
+function hasUserAuthorisedThisDocument() {
+  const userProps = PropertiesService.getUserProperties();
+  return userProps.getProperty('authorised') === 'true';
+}
+
+/**
+ * Marks the current user as authorised for this assessment record.
+ */
+function markUserAsAuthorised() {
+  const userProps = PropertiesService.getUserProperties();
+  userProps.setProperty('authorised', 'true');
+}
+
 function onOpen() {
+  // User authorisation status will be checked in the library via User Properties
   AssessmentBot.onOpen();
 }
 
 function handleScriptInit() {
   AssessmentBot.handleScriptInit();
+
+  // Mark the user as authorised after successful initialisation
+  markUserAsAuthorised();
 }
 
 // Placeholder functions for the 'Assess Assignment Menu Option
@@ -138,4 +159,21 @@ function saveConfiguration(formData) {
 
 function getConfiguration() {
   return AssessmentBot.getConfiguration();
+}
+
+/**
+ * Revokes the current user's authorisation for this assessment record.
+ * Calls the library function and clears the user's authorisation flag from User Properties.
+ * @return {Object} Status object indicating success or failure
+ */
+function revokeAuthorisation() {
+  const result = AssessmentBot.revokeAuthorisation();
+
+  // Clear the user's authorisation flag for this document
+  if (result.success) {
+    const userProps = PropertiesService.getUserProperties();
+    userProps.deleteProperty('authorised');
+  }
+
+  return result;
 }
