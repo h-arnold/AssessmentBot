@@ -66,9 +66,6 @@ class ScriptAppManager {
   revokeAuthorisation() {
     try {
       ScriptApp.invalidateAuth();
-
-      //Make sure we set the scriptAuthorised property to false so as not to break the init routine when the script next loads.
-      ConfigurationManager.getInstance().setScriptAuthorised(false);
       return {
         success: true,
         message: 'Authorization successfully revoked',
@@ -79,5 +76,14 @@ class ScriptAppManager {
         message: 'Failed to revoke authorization: ' + error.message,
       };
     }
+  }
+
+  /**
+   * Checks if the current user is authorized to run the script.
+   * @returns {boolean} True if authorized (NOT_REQUIRED), false if authorization is required.
+   */
+  isAuthorised() {
+    const authStatus = this.checkAuthMode();
+    return authStatus !== ScriptApp.AuthorizationStatus.REQUIRED;
   }
 }

@@ -468,12 +468,6 @@ class ConfigurationManager extends BaseSingleton {
     return this.getProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) || false;
   }
 
-  getScriptAuthorised() {
-    return ConfigurationManager.toBoolean(
-      this.getProperty(ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED)
-    );
-  }
-
   setBackendAssessorBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
   }
@@ -555,14 +549,6 @@ class ConfigurationManager extends BaseSingleton {
 
   setDaysUntilAuthRevoke(days) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE, days);
-  }
-
-  // New setter for scriptAuthorised
-  setScriptAuthorised(flag) {
-    this.setProperty(
-      ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED,
-      ConfigurationManager.toBoolean(flag)
-    );
   }
 
   /**

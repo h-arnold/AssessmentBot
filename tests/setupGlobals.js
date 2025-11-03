@@ -40,6 +40,32 @@ global.ABLogger = {
   }),
 };
 
+// Mock ScriptAppManager for tests
+global.ScriptAppManager = class ScriptAppManager {
+  constructor() {
+    this.authInfo = null;
+    this.scriptId = 'test-script-id';
+  }
+  getScriptId() {
+    return this.scriptId;
+  }
+  checkAuthMode() {
+    return 'NOT_REQUIRED';
+  }
+  getAuthorisationUrl() {
+    return 'https://example.com/auth';
+  }
+  handleAuthFlow() {
+    return { needsAuth: false, authUrl: null };
+  }
+  revokeAuthorisation() {
+    return { success: true, message: 'Authorization successfully revoked' };
+  }
+  isAuthorised() {
+    return true;
+  }
+};
+
 global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)

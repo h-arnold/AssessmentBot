@@ -55,7 +55,8 @@ class InitController extends BaseSingleton {
    */
   onOpen() {
     const cfg = ConfigurationManager.getInstance();
-    const isScriptAuthorised = cfg.getScriptAuthorised();
+    const sa = new ScriptAppManager();
+    const isScriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
     console.log('Script authorization status:', isScriptAuthorised);
 
@@ -85,7 +86,8 @@ class InitController extends BaseSingleton {
    */
   handleScriptInit() {
     const cfg = ConfigurationManager.getInstance();
-    const scriptAuthorised = cfg.getScriptAuthorised();
+    const sa = new ScriptAppManager();
+    const scriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
 
     // If script isn't authorised, run the first run initialisation regardless of sheet type
@@ -114,8 +116,9 @@ class InitController extends BaseSingleton {
   adminScriptInit() {
     // Gets the update stage.
     const cfg = ConfigurationManager.getInstance();
+    const sa = new ScriptAppManager();
     const updateStage = cfg.getUpdateStage();
-    const scriptAuthorised = cfg.getScriptAuthorised();
+    const scriptAuthorised = sa.isAuthorised();
     this.setupAuthRevokeTimer();
 
     // If everything is up to date and the script is authorised, create the menu and finish.
@@ -159,7 +162,7 @@ class InitController extends BaseSingleton {
   }
 
   /**
-   * This method does the first run init procedure of creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
+   * This method does the first run init procedure of creating an installable onOpen trigger.
    * Note: Authorization is now handled automatically by TriggerController.createOnOpenTrigger() via ScriptApp.requireScopes().
    */
   doFirstRunInit() {
@@ -167,9 +170,6 @@ class InitController extends BaseSingleton {
 
     // Create onOpen trigger. This will automatically prompt for authorization via requireScopes().
     triggerController.createOnOpenTrigger(`handleScriptInit`);
-
-    // Set script authorised to true to avoid calling the first run init again.
-    ConfigurationManager.getInstance().setScriptAuthorised(true);
 
     // If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
     this.setDefaultAssessmentRecordTemplateId();
