@@ -1,21 +1,50 @@
 /**
- * SlidesAssignment Class
+ * SheetsAssignment Class
  *
- * Represents a Google Slides-based assignment within a course.
- * Handles slide-specific task extraction and processing.
+ * Represents a Google Sheets-based assignment within a course.
+ * Handles spreadsheet-specific task extraction and processing.
  */
 class SheetsAssignment extends Assignment {
   /**
-   * Constructs a SheetsAsignment instance.
+   * Constructs a SheetsAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference slides document.
-   * @param {string} templateDocumentId - The ID of the template slides document.
+   * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
+   * @param {string} templateDocumentId - The ID of the template spreadsheet document.
    */
   constructor(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
     super(courseId, assignmentId);
     this.referenceDocumentId = referenceDocumentId;
     this.templateDocumentId = templateDocumentId;
+    this.documentType = 'SHEETS';
+  }
+
+  /**
+   * Serialize SheetsAssignment to JSON, including subclass-specific fields.
+   * @return {object} JSON representation including documentType, referenceDocumentId, templateDocumentId
+   */
+  toJSON() {
+    const base = super.toJSON();
+    return {
+      ...base,
+      documentType: this.documentType,
+      referenceDocumentId: this.referenceDocumentId,
+      templateDocumentId: this.templateDocumentId,
+    };
+  }
+
+  /**
+   * Deserialize SheetsAssignment from JSON data.
+   * @param {object} data - JSON data object
+   * @return {SheetsAssignment} Reconstructed SheetsAssignment instance
+   */
+  static fromJSON(data) {
+    const inst = Assignment._baseFromJSON(data);
+    Object.setPrototypeOf(inst, SheetsAssignment.prototype);
+    inst.referenceDocumentId = data.referenceDocumentId ?? null;
+    inst.templateDocumentId = data.templateDocumentId ?? null;
+    inst.documentType = 'SHEETS';
+    return inst;
   }
 
   populateTasks() {
@@ -74,10 +103,7 @@ class SheetsAssignment extends Assignment {
    */
   hasValidStudentResponse(studentResponseEntry) {
     // Use optional chaining to check presence of response property and ensure it's not null/undefined
-    return (
-      typeof studentResponseEntry?.response !== 'undefined' &&
-      studentResponseEntry?.response !== null
-    );
+    return studentResponseEntry?.response !== undefined && studentResponseEntry?.response !== null;
   }
 
   /**
@@ -87,20 +113,23 @@ class SheetsAssignment extends Assignment {
    */
   hasValidReferenceTask(referenceTask) {
     // Optional chaining for concise existence check
-    return (
-      typeof referenceTask?.taskReference !== 'undefined' && referenceTask?.taskReference !== null
-    );
+    return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
   }
 
   assessResponses() {
     // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
     // Placeholder: integrate AssessmentEngineRouter in later phase.
-    if (typeof SheetsAssessor !== 'undefined') {
+    if (typeof SheetsAssessor === 'undefined') {
+      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
+    } else {
       const assessor = new SheetsAssessor(this.tasks, this.submissions); //
       // Use optional chaining to call assessResponses if present
       assessor.assessResponses?.();
-    } else {
-      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
     }
   }
+}
+
+// Export for Node/Vitest environment (ignored in GAS runtime)
+if (typeof module !== 'undefined') {
+  module.exports = SheetsAssignment;
 }

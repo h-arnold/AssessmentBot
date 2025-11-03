@@ -1,0 +1,13 @@
+//////////////////////////////////////////////////////////////////////////////////////////////
+// classroom.js
+// Classroom selection helpers.
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+// Place holder code for classroom changing menu option
+function showClassroomDropdown() {
+  AI.Assess.showClassroomDropdown();
+}
+
+function saveClassroom(courseName, courseId) {
+  AssessmentBot.saveClassroom(courseName, courseId);
+}

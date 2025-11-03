@@ -71,16 +71,26 @@ class ABClass {
   setClassOwner(owner) {
     const logger = ABLogger.getInstance();
 
+    // Accept both Teacher instances and plain objects returned by legacy API
+    // calls. Coerce plain objects via Teacher.fromJSON when available to
+    // preserve fields like email and teacherName.
+    let ownerInstance = owner;
     if (!(owner instanceof Teacher)) {
+      if (owner && typeof owner === 'object' && typeof Teacher.fromJSON === 'function') {
+        // Prefer fail-fast: allow Teacher.fromJSON to throw if coercion fails
+        ownerInstance = Teacher.fromJSON(owner) || owner;
+      }
+    }
+
+    if (!(ownerInstance instanceof Teacher)) {
       const msg = 'setClassOwner requires a Teacher instance';
       if (logger && typeof logger.error === 'function') logger.error(msg);
       throw new TypeError(msg);
     }
 
-    this.classOwner = owner;
+    this.classOwner = ownerInstance;
     return this.classOwner;
   }
-
 
   /*
    * @param {*} value

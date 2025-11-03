@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
 import { createSlidesAssignment, createSheetsAssignment } from '../helpers/modelFactories.js';
 
@@ -96,8 +96,12 @@ describe('Assignment lastUpdated behavior', () => {
     expect(sheets.getLastUpdated()).toBeInstanceOf(Date);
   });
 
-  it('should support legacy data without documentType (creates base Assignment)', () => {
-    // RED: Legacy fallback path - Assignment.fromJSON should handle missing documentType
+  it('should surface an error via ProgressTracker when documentType is missing', () => {
+    const tracker = globalThis.ProgressTracker.getInstance();
+    const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
+      throw new Error(`ProgressTracker: ${msg}`);
+    });
+
     const legacyData = {
       courseId: 'c5',
       assignmentId: 'as5',
@@ -107,17 +111,13 @@ describe('Assignment lastUpdated behavior', () => {
       // No documentType field - simulates old persisted data
     };
 
-    const assignment = Assignment.fromJSON(legacyData);
+    expect(() => Assignment.fromJSON(legacyData)).toThrow(
+      /ProgressTracker: Assignment data missing documentType for courseId=c5, assignmentId=as5/
+    );
 
-    expect(assignment).toBeDefined();
-    expect(assignment.courseId).toBe('c5');
-    expect(assignment.assignmentId).toBe('as5');
-    expect(assignment.assignmentName).toBe('Legacy Assignment');
-
-    // Should be a base Assignment, not a subclass
-    expect(assignment.constructor.name).toBe('Assignment');
-
-    // Should not have documentType (or it should be undefined/null for base class)
-    expect(assignment.documentType).toBeUndefined();
+    expect(logAndThrowSpy).toHaveBeenCalledWith(
+      expect.stringContaining('missing documentType'),
+      expect.objectContaining({ data: expect.objectContaining(legacyData) })
+    );
   });
 });

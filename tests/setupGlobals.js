@@ -4,11 +4,16 @@
 // (prevents singleton fallbacks in individual files from being used).
 require('../src/AdminSheet/00_BaseSingleton.js');
 
+// Load Assignment classes so they're available globally for polymorphic factory pattern
+global.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
+global.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
+global.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+
 global.Utils = {
   generateHash(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
-      h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+      h = (Math.imul(31, h) + str.codePointAt(i)) | 0;
     }
     return Math.abs(h).toString(16);
   },
@@ -38,6 +43,32 @@ global.ABLogger = {
     error: () => {},
     log: () => {},
   }),
+};
+
+// Mock ScriptAppManager for tests
+global.ScriptAppManager = class ScriptAppManager {
+  constructor() {
+    this.authInfo = null;
+    this.scriptId = 'test-script-id';
+  }
+  getScriptId() {
+    return this.scriptId;
+  }
+  checkAuthMode() {
+    return 'NOT_REQUIRED';
+  }
+  getAuthorisationUrl() {
+    return 'https://example.com/auth';
+  }
+  handleAuthFlow() {
+    return { needsAuth: false, authUrl: null };
+  }
+  revokeAuthorisation() {
+    return { success: true, message: 'Authorization successfully revoked' };
+  }
+  isAuthorised() {
+    return true;
+  }
 };
 
 global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;

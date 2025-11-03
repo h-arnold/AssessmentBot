@@ -3,27 +3,41 @@
   "dependencies": {
     "enabledAdvancedServices": [
       {
-        "userSymbol": "Drive",
-        "version": "v3",
-        "serviceId": "drive"
+        "userSymbol": "Sheets",
+        "serviceId": "sheets",
+        "version": "v4"
       },
       {
         "userSymbol": "Classroom",
-        "version": "v1",
-        "serviceId": "classroom"
-      },
-      {
-        "userSymbol": "Sheets",
-        "version": "v4",
-        "serviceId": "sheets"
+        "serviceId": "classroom",
+        "version": "v1"
       },
       {
         "userSymbol": "Slides",
-        "version": "v1",
-        "serviceId": "slides"
+        "serviceId": "slides",
+        "version": "v1"
+      },
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v3"
       }
     ]
   },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/presentations",
+    "https://www.googleapis.com/auth/classroom.courses",
+    "https://www.googleapis.com/auth/classroom.rosters",
+    "https://www.googleapis.com/auth/classroom.profile.emails",
+    "https://www.googleapis.com/auth/classroom.profile.photos",
+    "https://www.googleapis.com/auth/classroom.coursework.students",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/script.storage",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.container.ui",
+    "https://www.googleapis.com/auth/script.scriptapp"
+  ],
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"
 }

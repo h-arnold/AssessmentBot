@@ -16,6 +16,35 @@ class SlidesAssignment extends Assignment {
     super(courseId, assignmentId);
     this.referenceDocumentId = referenceDocumentId;
     this.templateDocumentId = templateDocumentId;
+    this.documentType = 'SLIDES';
+  }
+
+  /**
+   * Serialize SlidesAssignment to JSON, including subclass-specific fields.
+   * @return {object} JSON representation including documentType, referenceDocumentId, templateDocumentId
+   */
+  toJSON() {
+    const base = super.toJSON();
+    return {
+      ...base,
+      documentType: this.documentType,
+      referenceDocumentId: this.referenceDocumentId,
+      templateDocumentId: this.templateDocumentId,
+    };
+  }
+
+  /**
+   * Deserialize SlidesAssignment from JSON data.
+   * @param {object} data - JSON data object
+   * @return {SlidesAssignment} Reconstructed SlidesAssignment instance
+   */
+  static fromJSON(data) {
+    const inst = Assignment._baseFromJSON(data);
+    Object.setPrototypeOf(inst, SlidesAssignment.prototype);
+    inst.referenceDocumentId = data.referenceDocumentId ?? null;
+    inst.templateDocumentId = data.templateDocumentId ?? null;
+    inst.documentType = 'SLIDES';
+    return inst;
   }
 
   /**
@@ -123,4 +152,9 @@ class SlidesAssignment extends Assignment {
       });
     });
   }
+}
+
+// Export for Node/Vitest environment (ignored in GAS runtime)
+if (typeof module !== 'undefined') {
+  module.exports = SlidesAssignment;
 }

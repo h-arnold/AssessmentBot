@@ -30,6 +30,42 @@ function revokeAuthorisation() {
   sa.revokeAuthorisation();
 }
 
+/**
+ * Creates the assessment record menu.
+ * Public method for assessment record templates to call directly.
+ */
+function createAssessmentRecordMenu() {
+  InitController.getInstance().createAssessmentRecordMenu();
+}
+
+/**
+ * Creates the unauthorised menu.
+ * Public method for assessment record templates to call directly.
+ */
+function createUnauthorisedMenu() {
+  InitController.getInstance().createUnauthorisedMenu();
+}
+
+/**
+ * Checks if the script is authorised.
+ * Public method for assessment record templates to call directly.
+ * @returns {boolean} True if authorised, false otherwise
+ */
+function isScriptAuthorised() {
+  const sa = new ScriptAppManager();
+  return sa.isAuthorised();
+}
+
+/**
+ * Handles the authorisation process for Assessment Record templates.
+ * Public method for assessment record templates to call during their auth flow.
+ * Sets up triggers and auth revoke timer without creating menus
+ * (menus are created in the template context).
+ */
+function handleAssessmentRecordAuth() {
+  InitController.getInstance().handleAssessmentRecordAuth();
+}
+
 // Below contains the two global functions that need to run upon opening the spreadsheet.
 // They've been placed here for now because GAS treats all the code in the file as one
 // big file, with the files at the top of the list first and the bottom of the list last.

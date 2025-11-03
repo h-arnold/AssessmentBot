@@ -40,9 +40,9 @@ class InitController extends BaseSingleton {
     if (!this.uiManager) {
       try {
         this.uiManager = UIManager.getInstance();
-        console.log('UIManager lazily instantiated.');
+        ABLogger.getInstance().info('UIManager lazily instantiated.');
       } catch (error) {
-        console.error('UIManager cannot be instantiated:', error?.message ?? error);
+        ABLogger.getInstance().error('UIManager cannot be instantiated:', error?.message ?? error);
         this.uiManager = null;
       }
     }
@@ -55,26 +55,29 @@ class InitController extends BaseSingleton {
    */
   onOpen() {
     const cfg = ConfigurationManager.getInstance();
-    const isScriptAuthorised = cfg.getScriptAuthorised();
+    const sa = new ScriptAppManager();
+    const isScriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
-    console.log('Script authorization status:', isScriptAuthorised);
+    ABLogger.getInstance().info(
+      `InitController.onOpen() - User authorized: ${isScriptAuthorised}, Is admin sheet: ${isAdminSheet}`
+    );
 
     const uiManager = this.getUiManager();
     if (!uiManager) {
-      console.error('UIManager is not available to add custom menus.');
+      ABLogger.getInstance().error('UIManager is not available to add custom menus.');
       return;
     }
 
     if (isScriptAuthorised && isAdminSheet) {
-      console.log('Script is already authorised. Creating authorised menu.');
+      ABLogger.getInstance().info('Script is already authorised. Creating authorised menu.');
       uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
-      console.log(
+      ABLogger.getInstance().info(
         'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
       );
       uiManager.createAssessmentRecordMenu();
     } else {
-      console.log('Script not authorised. Creating unauthorised menu.');
+      ABLogger.getInstance().info('Script not authorised. Creating unauthorised menu.');
       uiManager.createUnauthorisedMenu();
     }
   }
@@ -85,8 +88,12 @@ class InitController extends BaseSingleton {
    */
   handleScriptInit() {
     const cfg = ConfigurationManager.getInstance();
-    const scriptAuthorised = cfg.getScriptAuthorised();
+    const sa = new ScriptAppManager();
+    const scriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
+    ABLogger.getInstance().info(
+      `InitController.handleScriptInit() - User authorized: ${scriptAuthorised}, Is admin sheet: ${isAdminSheet}`
+    );
 
     // If script isn't authorised, run the first run initialisation regardless of sheet type
     if (!scriptAuthorised) {
@@ -101,7 +108,7 @@ class InitController extends BaseSingleton {
 
     // Route to the appropriate initialisation method based on sheet type
     if (isAdminSheet) {
-      this.adminScriptInit();
+      this.adminScriptInit(scriptAuthorised);
     } else {
       this.assessmentRecordScriptInit();
     }
@@ -110,12 +117,26 @@ class InitController extends BaseSingleton {
   /**
    * Handles initialisation specifically for Admin Sheets
    * This includes finishing any updates and creating the proper menu.
+   * @param {boolean} [scriptAuthorised] - Optional pre-computed authorization status to avoid redundant checks
    */
-  adminScriptInit() {
+  adminScriptInit(scriptAuthorised) {
     // Gets the update stage.
     const cfg = ConfigurationManager.getInstance();
     const updateStage = cfg.getUpdateStage();
-    const scriptAuthorised = cfg.getScriptAuthorised();
+
+    // Only check auth if not already provided
+    if (scriptAuthorised === undefined) {
+      ABLogger.getInstance().info(
+        'InitController.adminScriptInit() - Authorization not provided, checking now...'
+      );
+      const sa = new ScriptAppManager();
+      scriptAuthorised = sa.isAuthorised();
+    } else {
+      ABLogger.getInstance().info(
+        `InitController.adminScriptInit() - Using provided authorization status: ${scriptAuthorised}`
+      );
+    }
+
     this.setupAuthRevokeTimer();
 
     // If everything is up to date and the script is authorised, create the menu and finish.
@@ -159,27 +180,40 @@ class InitController extends BaseSingleton {
   }
 
   /**
-   * This method does the first run init procedure of triggering the auth process, creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
+   * Handles the authorisation process for Assessment Record templates.
+   * This method is called from the assessment record template's menus.js file.
+   * It sets up triggers and the auth revoke timer, but does NOT create menus
+   * (those are created in the template context after this completes).
    */
-  doFirstRunInit() {
+  handleAssessmentRecordAuth() {
     const sa = new ScriptAppManager();
-    const triggerController = new TriggerController();
+    const scriptAuthorised = sa.isAuthorised();
+    ABLogger.getInstance().info(
+      `InitController.handleAssessmentRecordAuth() - User authorized: ${scriptAuthorised}`
+    );
 
-    // This should trigger the auth process if it hasn't been granted.
-    const authStatus = sa.handleAuthFlow();
-
-    // Trigger the authorisation process if needed
-    if (authStatus.needsAuth) {
-      this._withUI((ui) => ui.showAuthorisationModal(authStatus.authUrl));
+    // If script isn't authorised, run the first run initialisation
+    if (!scriptAuthorised) {
+      this.doFirstRunInit();
     }
 
-    // Assuming auth flow has taken place, add a trigger to call this method.
+    // Set up the authorisation revocation timer
+    this.setupAuthRevokeTimer();
+
+    ABLogger.getInstance().info('Assessment record authorisation complete.');
+  }
+
+  /**
+   * This method does the first run init procedure of creating an installable onOpen trigger.
+   * Note: Authorization is now handled automatically by TriggerController.createOnOpenTrigger() via ScriptApp.requireScopes().
+   */
+  doFirstRunInit() {
+    const triggerController = new TriggerController();
+
+    // Create onOpen trigger. This will automatically prompt for authorization via requireScopes().
     triggerController.createOnOpenTrigger(`handleScriptInit`);
 
-    // Set script authorised to true to avoid calling the auth process again.
-    ConfigurationManager.getInstance().setScriptAuthorised(true);
-
-    //If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
+    // If there's no Assessment Record Template Id set in the config, set one. This avoids an infinite loop scenario explained below.
     this.setDefaultAssessmentRecordTemplateId();
   }
 
@@ -214,7 +248,7 @@ class InitController extends BaseSingleton {
     } catch (e) {
       // Swallow to keep pure logic paths resilient in headless/triggers
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE] InitController._withUI suppressed UI error');
+        ABLogger.getInstance().info('[TRACE] InitController._withUI suppressed UI error');
     }
   }
 
@@ -228,7 +262,7 @@ class InitController extends BaseSingleton {
     const triggerAlreadySet = ConfigurationManager.getInstance().getRevokeAuthTriggerSet();
 
     if (triggerAlreadySet) {
-      console.log('Auth revoke trigger already exists. No new trigger created.');
+      ABLogger.getInstance().info('Auth revoke trigger already exists. No new trigger created.');
       return false;
     }
 
@@ -247,12 +281,42 @@ class InitController extends BaseSingleton {
       // Update the flag to indicate the trigger has been set
       ConfigurationManager.getInstance().setRevokeAuthTriggerSet(true);
 
-      console.log(`Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`);
+      ABLogger.getInstance().info(
+        `Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`
+      );
       return true;
     } catch (error) {
-      console.error(`Error setting up auth revoke timer: ${error}`);
+      ABLogger.getInstance().error(`Error setting up auth revoke timer: ${error}`);
       return false;
     }
+  }
+
+  /**
+   * Creates the assessment record menu.
+   * Exposed as a public method for assessment record templates to call directly.
+   */
+  createAssessmentRecordMenu() {
+    const uiManager = this.getUiManager();
+    if (!uiManager) {
+      ABLogger.getInstance().error('UIManager is not available to create assessment record menu.');
+      return;
+    }
+    uiManager.createAssessmentRecordMenu();
+    ABLogger.getInstance().info('Assessment record menu created.');
+  }
+
+  /**
+   * Creates the unauthorised menu.
+   * Exposed as a public method for assessment record templates to call directly.
+   */
+  createUnauthorisedMenu() {
+    const uiManager = this.getUiManager();
+    if (!uiManager) {
+      ABLogger.getInstance().error('UIManager is not available to create unauthorised menu.');
+      return;
+    }
+    uiManager.createUnauthorisedMenu();
+    ABLogger.getInstance().info('Unauthorised menu created.');
   }
 }
 
