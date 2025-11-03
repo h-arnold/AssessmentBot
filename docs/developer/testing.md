@@ -226,18 +226,7 @@ Test configuration management:
 - Property serialisation/deserialisation
 - Default value handling
 
-### 7. Configuration Tests (`tests/configurationManager/`)
-
-Test configuration management:
-
-- Loading/saving configuration
-- Property serialisation/deserialisation
-- Default value handling
-
 ### 8. Utility Tests (`tests/utils/`)
-
-### 8. Utility Tests (`tests/utils/`)
-
 Test utility functions:
 
 - **ABLogger**: Logging functionality
