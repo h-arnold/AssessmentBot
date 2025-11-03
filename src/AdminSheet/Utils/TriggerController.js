@@ -1,4 +1,11 @@
 class TriggerController {
+  constructor() {
+    /**
+     * Constructor intentionally empty — use TriggerController.REQUIRED_SCOPES (static)
+     * instead of creating an instance property so the scopes array is not recreated per instance.
+     */
+  }
+
   /**
    * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
    *
@@ -123,7 +130,6 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/classroom.coursework.students',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/script.storage',
   'https://www.googleapis.com/auth/script.external_request',
   'https://www.googleapis.com/auth/script.container.ui',
   'https://www.googleapis.com/auth/script.scriptapp',
