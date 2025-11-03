@@ -21,7 +21,7 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
       - Docs: `DATA_SHAPES.md`, rehydration/how‑tos updated with migration notes for legacy data.
     - The long checklist for this section is now complete; keep this summary for reference.
 
-- **Assignment Model Serialisation**
+- **Assignment Model Serialisation** (COMPLETED)
   - Override `toJSON()` in `SlidesAssignment` and `SheetsAssignment` to:
     - Call `super.toJSON()` to get base fields.
     - Add subclass-specific fields: `documentType`, `referenceDocumentId`, `templateDocumentId`.
