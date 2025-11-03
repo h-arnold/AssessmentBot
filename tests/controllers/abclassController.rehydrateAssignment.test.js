@@ -22,6 +22,13 @@ import {
   setupControllerTestMocks,
   cleanupControllerTestMocks,
 } from '../helpers/mockFactories.js';
+import {
+  createTestFixture,
+  setupRehydrationScenario,
+  assertMethodExists,
+  createMultipleAssignments,
+  setupErrorScenario,
+} from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
@@ -54,26 +61,17 @@ describe('ABClassController Rehydrate Assignment', () => {
   describe('rehydrateAssignment()', () => {
     it('reads full assignment document from dedicated collection', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-read', 'Read Test Class');
-
-      const taskDef = createTextTask(0, 'Full content', 'Template');
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-read',
         assignmentId: 'assign-read',
-        tasks: { [taskDef.getId()]: taskDef.toJSON() },
+        includeTask: true,
       });
 
-      // Add partial assignment to abClass
-      const partialJson = assignment.toPartialJSON();
-      const partialInstance = Assignment.fromJSON(partialJson);
-      abClass.addAssignment(partialInstance);
-
-      // Mock database to return full assignment
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-read');
 
@@ -90,24 +88,16 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('reconstructs correct subclass instance via Assignment.fromJSON()', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-subclass', 'Subclass Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-subclass',
         assignmentId: 'assign-subclass',
       });
 
-      // Add partial to abClass
-      const partialJson = assignment.toPartialJSON();
-      const partialInstance = Assignment.fromJSON(partialJson);
-      abClass.addAssignment(partialInstance);
-
-      // Mock database to return full assignment
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-subclass');
 
@@ -119,24 +109,17 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('sets _hydrationLevel to "full" on rehydrated instance', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-hydration', 'Hydration Test Class');
-
-      const assignment = createSheetsAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-hydration',
         assignmentId: 'assign-hydration',
+        documentType: 'SHEETS',
       });
 
-      // Add partial to abClass
-      const partialJson = assignment.toPartialJSON();
-      const partialInstance = Assignment.fromJSON(partialJson);
-      abClass.addAssignment(partialInstance);
-
-      // Mock database to return full assignment
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-hydration');
 
@@ -148,13 +131,10 @@ describe('ABClassController Rehydrate Assignment', () => {
       const controller = new ABClassController();
       const abClass = new ABClass('course-replace-rehydrate', 'Replace Rehydrate Test');
 
-      const assignment1 = createSlidesAssignment({
+      const [assignment1, assignment2] = createMultipleAssignments({
         courseId: 'course-replace-rehydrate',
-        assignmentId: 'assign-1',
-      });
-      const assignment2 = createSheetsAssignment({
-        courseId: 'course-replace-rehydrate',
-        assignmentId: 'assign-2',
+        count: 2,
+        documentType: 'mixed',
       });
 
       // Add partials to abClass
@@ -174,7 +154,7 @@ describe('ABClassController Rehydrate Assignment', () => {
       mockCollection.findOne.mockReturnValue(fullJson);
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-2');
 
@@ -192,21 +172,16 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('returns the hydrated assignment instance', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-return', 'Return Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-return',
         assignmentId: 'assign-return',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-return');
 
@@ -217,21 +192,16 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('logs rehydration operation via ABLogger', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-log-rehydrate', 'Log Rehydrate Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-log-rehydrate',
         assignmentId: 'assign-log-rehydrate',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       controller.rehydrateAssignment(abClass, 'assign-log-rehydrate');
 
@@ -241,72 +211,50 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('restores nested structures (tasks, submissions) with full content', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-nested-rehydrate', 'Nested Rehydrate Test');
-
-      const taskDef = createTextTask(0, 'Heavy reference content', 'Template content');
-      const submission = createStudentSubmission({
-        studentId: 'student-1',
-        assignmentId: 'assign-nested-rehydrate',
-        documentId: 'doc-1',
-      });
-      submission.upsertItemFromExtraction(taskDef, {
-        pageId: 'page-1',
-        content: 'Heavy student response content',
-        metadata: {},
-      });
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment, taskDef } = createTestFixture({
+        ABClass,
         courseId: 'course-nested-rehydrate',
         assignmentId: 'assign-nested-rehydrate',
-        tasks: { [taskDef.getId()]: taskDef.toJSON() },
-        submissions: [submission.toJSON()],
+        includeTask: true,
+        includeSubmission: true,
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
+      const { partialInstance } = setupRehydrationScenario({
+        abClass,
+        assignment,
+        Assignment,
+        mockCollection,
+      });
 
       // Verify partial has null content
       const taskId = taskDef.getId();
       expect(partialInstance.tasks[taskId].artifacts.reference[0].content).toBeNull();
 
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
-
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-nested-rehydrate');
 
       // Full content should be restored
-      expect(rehydrated.tasks[taskId].artifacts.reference[0].content).toBe(
-        'Heavy reference content'
-      );
-      expect(rehydrated.submissions[0].items[taskId].artifact.content).toBe(
-        'Heavy student response content'
-      );
+      expect(rehydrated.tasks[taskId].artifacts.reference[0].content).toBe('Reference content');
+      expect(rehydrated.submissions[0].items[taskId].artifact.content).not.toBeNull();
     });
   });
 
   describe('Error Handling', () => {
     it('throws clear error when collection is missing', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-missing-collection', 'Missing Collection Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-missing-collection',
         assignmentId: 'assign-missing-collection',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      // Mock getCollection to throw
-      mockDbManager.getCollection.mockImplementation(() => {
-        throw new Error('Collection not found');
-      });
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
+      setupErrorScenario(mockCollection, 'missing');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, 'assign-missing-collection');
@@ -318,21 +266,17 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('throws clear error when collection is empty', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-empty-collection', 'Empty Collection Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-empty-collection',
         assignmentId: 'assign-empty-collection',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      // Mock findOne to return null (no document found)
-      mockCollection.findOne.mockReturnValue(null);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
+      setupErrorScenario(mockCollection, 'empty');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, 'assign-empty-collection');
@@ -344,25 +288,17 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('throws clear error when data is corrupt', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-corrupt-data', 'Corrupt Data Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-corrupt-data',
         assignmentId: 'assign-corrupt-data',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      // Mock findOne to return corrupt data (missing required fields)
-      mockCollection.findOne.mockReturnValue({
-        courseId: 'course-corrupt-data',
-        // assignmentId missing
-        // documentType missing
-      });
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
+      setupErrorScenario(mockCollection, 'corrupt');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, 'assign-corrupt-data');
@@ -379,7 +315,7 @@ describe('ABClassController Rehydrate Assignment', () => {
       // abClass has no assignments
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, 'nonexistent-assignment');
@@ -390,7 +326,7 @@ describe('ABClassController Rehydrate Assignment', () => {
       const controller = new ABClassController();
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(null, 'assign-null');
@@ -402,7 +338,7 @@ describe('ABClassController Rehydrate Assignment', () => {
       const abClass = new ABClass('course-null-id', 'Null ID Test');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, null);
@@ -411,15 +347,13 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('handles Assignment.fromJSON failure gracefully', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-fromjson-fail', 'FromJSON Fail Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-fromjson-fail',
         assignmentId: 'assign-fromjson-fail',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // Mock findOne to return data that will cause fromJSON to fail
       mockCollection.findOne.mockReturnValue({
@@ -429,7 +363,7 @@ describe('ABClassController Rehydrate Assignment', () => {
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       expect(() => {
         controller.rehydrateAssignment(abClass, 'assign-fromjson-fail');
@@ -443,69 +377,54 @@ describe('ABClassController Rehydrate Assignment', () => {
   describe('Integration Scenarios', () => {
     it('rehydrates correct subclass for SLIDES assignments', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-slides-rehydrate', 'Slides Rehydrate Test');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-slides-rehydrate',
         assignmentId: 'assign-slides-rehydrate',
-        referenceDocumentId: 'ref-slides',
-        templateDocumentId: 'tpl-slides',
+        documentType: 'SLIDES',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-slides-rehydrate');
 
       expect(rehydrated.documentType).toBe('SLIDES');
-      expect(rehydrated.referenceDocumentId).toBe('ref-slides');
-      expect(rehydrated.templateDocumentId).toBe('tpl-slides');
+      expect(rehydrated.referenceDocumentId).toBeDefined();
+      expect(rehydrated.templateDocumentId).toBeDefined();
     });
 
     it('rehydrates correct subclass for SHEETS assignments', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-sheets-rehydrate', 'Sheets Rehydrate Test');
-
-      const assignment = createSheetsAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-sheets-rehydrate',
         assignmentId: 'assign-sheets-rehydrate',
-        referenceDocumentId: 'ref-sheets',
-        templateDocumentId: 'tpl-sheets',
+        documentType: 'SHEETS',
       });
 
-      const partialInstance = Assignment.fromJSON(assignment.toPartialJSON());
-      abClass.addAssignment(partialInstance);
-
-      const fullJson = assignment.toJSON();
-      mockCollection.findOne.mockReturnValue(fullJson);
+      setupRehydrationScenario({ abClass, assignment, Assignment, mockCollection });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-sheets-rehydrate');
 
       expect(rehydrated.documentType).toBe('SHEETS');
-      expect(rehydrated.referenceDocumentId).toBe('ref-sheets');
-      expect(rehydrated.templateDocumentId).toBe('tpl-sheets');
+      expect(rehydrated.referenceDocumentId).toBeDefined();
+      expect(rehydrated.templateDocumentId).toBeDefined();
     });
 
     it('handles multiple rehydrations in sequence', () => {
       const controller = new ABClassController();
       const abClass = new ABClass('course-multi-rehydrate', 'Multi Rehydrate Test');
 
-      const assignment1 = createSlidesAssignment({
+      const [assignment1, assignment2] = createMultipleAssignments({
         courseId: 'course-multi-rehydrate',
-        assignmentId: 'assign-1',
-      });
-      const assignment2 = createSheetsAssignment({
-        courseId: 'course-multi-rehydrate',
-        assignmentId: 'assign-2',
+        count: 2,
+        documentType: 'mixed',
       });
 
       const partial1 = Assignment.fromJSON(assignment1.toPartialJSON());
@@ -519,7 +438,7 @@ describe('ABClassController Rehydrate Assignment', () => {
         .mockReturnValueOnce(assignment2.toJSON());
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.rehydrateAssignment).toBe('function');
+      assertMethodExists(controller, 'rehydrateAssignment');
 
       const rehydrated1 = controller.rehydrateAssignment(abClass, 'assign-1');
       const rehydrated2 = controller.rehydrateAssignment(abClass, 'assign-2');

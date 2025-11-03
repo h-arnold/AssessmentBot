@@ -21,6 +21,12 @@ import {
   setupControllerTestMocks,
   cleanupControllerTestMocks,
 } from '../helpers/mockFactories.js';
+import {
+  createTestFixture,
+  assertMethodExists,
+  createMultipleAssignments,
+  verifyDatabaseWrite,
+} from '../helpers/controllerTestHelpers.js';
 
 let ABClassController, ABClass, Assignment;
 let mockDbManager, mockCollection, mockABLogger;
@@ -55,7 +61,7 @@ describe('ABClassController Persist Assignment', () => {
       const controller = new ABClassController();
 
       // RED: Method doesn't exist yet
-      expect(typeof controller._getFullAssignmentCollectionName).toBe('function');
+      assertMethodExists(controller, '_getFullAssignmentCollectionName');
 
       const collectionName = controller._getFullAssignmentCollectionName('course-1', 'assign-1');
 
@@ -66,7 +72,7 @@ describe('ABClassController Persist Assignment', () => {
       const controller = new ABClassController();
 
       // RED: Method doesn't exist yet
-      expect(typeof controller._getFullAssignmentCollectionName).toBe('function');
+      assertMethodExists(controller, '_getFullAssignmentCollectionName');
 
       const name1 = controller._getFullAssignmentCollectionName('course-1', 'assign-1');
       const name2 = controller._getFullAssignmentCollectionName('course-1', 'assign-2');
@@ -81,7 +87,7 @@ describe('ABClassController Persist Assignment', () => {
       const controller = new ABClassController();
 
       // RED: Method doesn't exist yet
-      expect(typeof controller._getFullAssignmentCollectionName).toBe('function');
+      assertMethodExists(controller, '_getFullAssignmentCollectionName');
 
       const collectionName = controller._getFullAssignmentCollectionName(
         'course_with-chars.123',
@@ -96,17 +102,15 @@ describe('ABClassController Persist Assignment', () => {
   describe('persistAssignmentRun()', () => {
     it('serializes assignment to full payload and writes to dedicated collection', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-persist', 'Persist Test Class');
-
-      const taskDef = createTextTask(0, 'Reference content', 'Template content');
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-persist',
         assignmentId: 'assign-persist',
-        tasks: { [taskDef.getId()]: taskDef.toJSON() },
+        includeTask: true,
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -115,16 +119,11 @@ describe('ABClassController Persist Assignment', () => {
         expect.stringContaining('assign_full_course-persist_assign-persist')
       );
 
-      // Should use replaceOne or insertOne to write the full assignment
-      const writeCalls =
-        mockCollection.replaceOne.mock.calls.length + mockCollection.insertOne.mock.calls.length;
-      expect(writeCalls).toBeGreaterThan(0);
+      // Verify database write occurred
+      const { writeOccurred, payload } = verifyDatabaseWrite(mockCollection);
+      expect(writeOccurred).toBe(true);
 
-      // Verify the payload includes full assignment data
-      const writeCall =
-        mockCollection.replaceOne.mock.calls[0] || mockCollection.insertOne.mock.calls[0];
-      if (writeCall) {
-        const payload = writeCall[0];
+      if (payload) {
         expect(payload.courseId).toBe('course-persist');
         expect(payload.assignmentId).toBe('assign-persist');
         expect(payload.tasks).toBeDefined();
@@ -133,27 +132,19 @@ describe('ABClassController Persist Assignment', () => {
 
     it('generates partial summary via toPartialJSON()', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-partial', 'Partial Test Class');
-
-      const taskDef = createTextTask(0, 'Heavy content that will be redacted', 'Template');
-      const submission = createStudentSubmission({
-        studentId: 'student-1',
-        assignmentId: 'assign-partial',
-        documentId: 'doc-1',
-      });
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-partial',
         assignmentId: 'assign-partial',
-        tasks: { [taskDef.getId()]: taskDef.toJSON() },
-        submissions: [submission.toJSON()],
+        includeTask: true,
+        includeSubmission: true,
       });
 
       // Mock toPartialJSON to track invocation
       const toPartialJSONSpy = vi.spyOn(assignment, 'toPartialJSON');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -163,20 +154,18 @@ describe('ABClassController Persist Assignment', () => {
 
     it('reconstructs partial instance via Assignment.fromJSON()', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-recon', 'Reconstruction Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-recon',
         assignmentId: 'assign-recon',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
       // After persistence, the assignment in abClass.assignments should be a partial instance
-      // created via Assignment.fromJSON(partialJson)
       expect(abClass.assignments).toHaveLength(1);
 
       const partialAssignment = abClass.assignments[0];
@@ -189,17 +178,10 @@ describe('ABClassController Persist Assignment', () => {
       const controller = new ABClassController();
       const abClass = new ABClass('course-replace', 'Replace Test Class');
 
-      const assignment1 = createSlidesAssignment({
+      const [assignment1, assignment2, assignment3] = createMultipleAssignments({
         courseId: 'course-replace',
-        assignmentId: 'assign-1',
-      });
-      const assignment2 = createSheetsAssignment({
-        courseId: 'course-replace',
-        assignmentId: 'assign-2',
-      });
-      const assignment3 = createSlidesAssignment({
-        courseId: 'course-replace',
-        assignmentId: 'assign-3',
+        count: 3,
+        documentType: 'mixed',
       });
 
       abClass.addAssignment(assignment1);
@@ -207,7 +189,7 @@ describe('ABClassController Persist Assignment', () => {
       abClass.addAssignment(assignment3);
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       // Persist assignment2 (should replace it at index 1)
       controller.persistAssignmentRun(abClass, assignment2);
@@ -226,15 +208,14 @@ describe('ABClassController Persist Assignment', () => {
       // Mock saveClass method
       const saveClassSpy = vi.spyOn(controller, 'saveClass').mockImplementation(() => {});
 
-      const abClass = new ABClass('course-save', 'Save Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-save',
         assignmentId: 'assign-save',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -244,15 +225,14 @@ describe('ABClassController Persist Assignment', () => {
 
     it('logs all persistence operations via ABLogger', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-log', 'Logging Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-log',
         assignmentId: 'assign-log',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
@@ -262,33 +242,32 @@ describe('ABClassController Persist Assignment', () => {
 
     it('preserves full hydration in memory while storing partial summary', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-hydrate', 'Hydration Test Class');
-
-      const taskDef = createTextTask(0, 'Full content', 'Template');
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment, taskDef } = createTestFixture({
+        ABClass,
         courseId: 'course-hydrate',
         assignmentId: 'assign-hydrate',
-        tasks: { [taskDef.getId()]: taskDef.toJSON() },
+        includeTask: true,
       });
 
       // Verify assignment starts fully hydrated
       const originalTaskContent = assignment.tasks[taskDef.getId()].artifacts.reference[0].content;
-      expect(originalTaskContent).toBe('Full content');
+      expect(originalTaskContent).toBe('Reference content');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
       // The original assignment instance should remain unchanged
-      expect(assignment.tasks[taskDef.getId()].artifacts.reference[0].content).toBe('Full content');
+      expect(assignment.tasks[taskDef.getId()].artifacts.reference[0].content).toBe(
+        'Reference content'
+      );
     });
 
     it('handles database write errors gracefully', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-error', 'Error Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-error',
         assignmentId: 'assign-error',
       });
@@ -302,7 +281,7 @@ describe('ABClassController Persist Assignment', () => {
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       // Should throw or log error appropriately
       expect(() => {
@@ -315,45 +294,39 @@ describe('ABClassController Persist Assignment', () => {
 
     it('supports both replaceOne and insertOne patterns for persistence', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-upsert', 'Upsert Test Class');
-
-      const assignment = createSlidesAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-upsert',
         assignmentId: 'assign-upsert',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
-      // Should use either replaceOne or insertOne (both are valid patterns)
-      const hasReplaceOne = mockCollection.replaceOne.mock.calls.length > 0;
-      const hasInsertOne = mockCollection.insertOne.mock.calls.length > 0;
-
-      expect(hasReplaceOne || hasInsertOne).toBe(true);
+      // Verify write occurred using either pattern
+      const { writeOccurred } = verifyDatabaseWrite(mockCollection);
+      expect(writeOccurred).toBe(true);
     });
 
     it('persists correct documentType in full assignment collection', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-doctype', 'DocType Test Class');
-
-      const assignment = createSheetsAssignment({
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-doctype',
         assignmentId: 'assign-doctype',
+        documentType: 'SHEETS',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
-      // Find the write call payload
-      const writeCall =
-        mockCollection.replaceOne.mock.calls[0] || mockCollection.insertOne.mock.calls[0];
-      expect(writeCall).toBeDefined();
-
-      const payload = writeCall[0];
+      // Verify correct documentType in payload
+      const { payload } = verifyDatabaseWrite(mockCollection);
+      expect(payload).toBeDefined();
       expect(payload.documentType).toBe('SHEETS');
     });
   });
@@ -361,13 +334,14 @@ describe('ABClassController Persist Assignment', () => {
   describe('Edge Cases and Error Handling', () => {
     it('handles null or undefined abClass gracefully', () => {
       const controller = new ABClassController();
-      const assignment = createSlidesAssignment({
+      const { assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-null',
         assignmentId: 'assign-null',
       });
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       expect(() => {
         controller.persistAssignmentRun(null, assignment);
@@ -379,7 +353,7 @@ describe('ABClassController Persist Assignment', () => {
       const abClass = new ABClass('course-null-assign', 'Null Assignment Test');
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       expect(() => {
         controller.persistAssignmentRun(abClass, null);
@@ -390,7 +364,8 @@ describe('ABClassController Persist Assignment', () => {
       const controller = new ABClassController();
       const abClass = new ABClass('course-new', 'New Assignment Test');
 
-      const assignment = createSlidesAssignment({
+      const { assignment } = createTestFixture({
+        ABClass,
         courseId: 'course-new',
         assignmentId: 'assign-new',
       });
@@ -399,7 +374,7 @@ describe('ABClassController Persist Assignment', () => {
       expect(abClass.assignments).toHaveLength(0);
 
       // RED: Method doesn't exist yet
-      expect(typeof controller.persistAssignmentRun).toBe('function');
+      assertMethodExists(controller, 'persistAssignmentRun');
 
       controller.persistAssignmentRun(abClass, assignment);
 
