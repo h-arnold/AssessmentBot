@@ -7,10 +7,9 @@
 class ScriptAppManager {
   constructor() {
     this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
-    console.log(
-      `Auth info at time of instantiation is: ${JSON.stringify(
-        this.authInfo.getAuthorizationStatus()
-      )}`
+    const status = this.authInfo.getAuthorizationStatus();
+    ABLogger.getInstance().info(
+      `ScriptAppManager instantiated. Authorization status: ${JSON.stringify(status)}`
     );
     this.scriptId = '';
   }
@@ -29,8 +28,11 @@ class ScriptAppManager {
    * @returns {string} The current authorization mode (NONE, LIMITED, or FULL)
    */
   checkAuthMode() {
-    console.log(`Authorisation Status is: ${JSON.stringify(this.authInfo.getAuthorizationStatus)}`);
-    return this.authInfo.getAuthorizationStatus();
+    const authStatus = this.authInfo.getAuthorizationStatus();
+    ABLogger.getInstance().info(
+      `ScriptAppManager.checkAuthMode() called. Status: ${JSON.stringify(authStatus)}`
+    );
+    return authStatus;
   }
 
   /**
@@ -66,9 +68,6 @@ class ScriptAppManager {
   revokeAuthorisation() {
     try {
       ScriptApp.invalidateAuth();
-
-      //Make sure we set the scriptAuthorised property to false so as not to break the init routine when the script next loads.
-      ConfigurationManager.getInstance().setScriptAuthorised(false);
       return {
         success: true,
         message: 'Authorization successfully revoked',
@@ -80,4 +79,21 @@ class ScriptAppManager {
       };
     }
   }
+
+  /**
+   * Checks if the current user is authorized to run the script.
+   * @returns {boolean} True if authorized (NOT_REQUIRED), false if authorization is required.
+   */
+  isAuthorised() {
+    const authStatus = this.checkAuthMode();
+    return authStatus !== ScriptApp.AuthorizationStatus.REQUIRED;
+  }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ScriptAppManager;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.ScriptAppManager = ScriptAppManager;
 }

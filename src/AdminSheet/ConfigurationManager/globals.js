@@ -61,7 +61,6 @@ function getConfiguration() {
       false
     ),
     daysUntilAuthRevoke: safeGet(() => cfg.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
-    scriptAuthorised: safeGet(() => cfg.getScriptAuthorised(), 'scriptAuthorised', false),
     slidesFetchBatchSize: safeGet(() => cfg.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
     jsonDbMasterIndexKey: safeGet(
       () => cfg.getJsonDbMasterIndexKey(),

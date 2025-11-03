@@ -22,7 +22,6 @@ const CONFIG_KEYS = Object.freeze({
   IS_ADMIN_SHEET: 'isAdminSheet',
   REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
   DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
-  SCRIPT_AUTHORISED: 'scriptAuthorised',
   JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
   JSON_DB_AUTO_CREATE_COLLECTIONS: 'jsonDbAutoCreateCollections',
   JSON_DB_LOCK_TIMEOUT_MS: 'jsonDbLockTimeoutMs',
@@ -101,11 +100,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.IS_ADMIN_SHEET]: {
     storage: 'document',
     validate: (v) => validateBoolean('Is Admin Sheet', v),
-    normalize: toBooleanString,
-  },
-  [CONFIG_KEYS.SCRIPT_AUTHORISED]: {
-    storage: 'document',
-    validate: (v) => validateBoolean('Script Authorised', v),
     normalize: toBooleanString,
   },
   [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {

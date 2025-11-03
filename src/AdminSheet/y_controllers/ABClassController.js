@@ -189,7 +189,6 @@ class ABClassController {
     const logger = ABLogger.getInstance();
 
     const collection = this.dbManager.getCollection(classId);
-    const metadata = this._getCollectionMetadata(collection);
     logger.info('loadClass: called', { classId, hasCollection: !!collection });
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
