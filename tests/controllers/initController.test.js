@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Setup global mocks before imports
 global.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
+global.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock ScriptAppManager
 const mockScriptAppManager = {
@@ -55,7 +56,7 @@ const InitController = require('../../src/AdminSheet/y_controllers/InitControlle
 
 describe('InitController - Authorization Flow', () => {
   let initController;
-  let consoleSpy;
+  let loggerSpy;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -63,8 +64,15 @@ describe('InitController - Authorization Flow', () => {
     // Reset singleton instance
     InitController._instance = null;
 
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Mock ABLogger.getInstance() and its methods
+    const loggerInstance = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      log: vi.fn(),
+    };
+    loggerSpy = vi.spyOn(ABLogger, 'getInstance').mockReturnValue(loggerInstance);
 
     // Default mock behaviors
     mockScriptAppManager.isAuthorised.mockReturnValue(true);
@@ -77,7 +85,7 @@ describe('InitController - Authorization Flow', () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    loggerSpy.mockRestore();
   });
 
   describe('onOpen', () => {
@@ -123,7 +131,7 @@ describe('InitController - Authorization Flow', () => {
 
       initController.onOpen();
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('InitController.onOpen() - User authorized: true')
       );
     });
@@ -196,7 +204,7 @@ describe('InitController - Authorization Flow', () => {
 
       // Should not create a new ScriptAppManager when auth status is provided
       expect(global.ScriptAppManager).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('Using provided authorization status: true')
       );
     });
@@ -213,7 +221,7 @@ describe('InitController - Authorization Flow', () => {
       // Should create a new ScriptAppManager when auth status not provided
       expect(global.ScriptAppManager).toHaveBeenCalled();
       expect(mockScriptAppManager.isAuthorised).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('Authorization not provided, checking now')
       );
     });

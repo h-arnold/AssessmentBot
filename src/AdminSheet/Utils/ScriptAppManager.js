@@ -8,7 +8,9 @@ class ScriptAppManager {
   constructor() {
     this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
     const status = this.authInfo.getAuthorizationStatus();
-    console.log(`ScriptAppManager instantiated. Authorization status: ${JSON.stringify(status)}`);
+    ABLogger.getInstance().info(
+      `ScriptAppManager instantiated. Authorization status: ${JSON.stringify(status)}`
+    );
     this.scriptId = '';
   }
 
@@ -27,7 +29,9 @@ class ScriptAppManager {
    */
   checkAuthMode() {
     const authStatus = this.authInfo.getAuthorizationStatus();
-    console.log(`ScriptAppManager.checkAuthMode() called. Status: ${JSON.stringify(authStatus)}`);
+    ABLogger.getInstance().info(
+      `ScriptAppManager.checkAuthMode() called. Status: ${JSON.stringify(authStatus)}`
+    );
     return authStatus;
   }
 

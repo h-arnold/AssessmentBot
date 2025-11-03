@@ -40,9 +40,9 @@ class InitController extends BaseSingleton {
     if (!this.uiManager) {
       try {
         this.uiManager = UIManager.getInstance();
-        console.log('UIManager lazily instantiated.');
+        ABLogger.getInstance().info('UIManager lazily instantiated.');
       } catch (error) {
-        console.error('UIManager cannot be instantiated:', error?.message ?? error);
+        ABLogger.getInstance().error('UIManager cannot be instantiated:', error?.message ?? error);
         this.uiManager = null;
       }
     }
@@ -58,26 +58,26 @@ class InitController extends BaseSingleton {
     const sa = new ScriptAppManager();
     const isScriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
-    console.log(
+    ABLogger.getInstance().info(
       `InitController.onOpen() - User authorized: ${isScriptAuthorised}, Is admin sheet: ${isAdminSheet}`
     );
 
     const uiManager = this.getUiManager();
     if (!uiManager) {
-      console.error('UIManager is not available to add custom menus.');
+      ABLogger.getInstance().error('UIManager is not available to add custom menus.');
       return;
     }
 
     if (isScriptAuthorised && isAdminSheet) {
-      console.log('Script is already authorised. Creating authorised menu.');
+      ABLogger.getInstance().info('Script is already authorised. Creating authorised menu.');
       uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
-      console.log(
+      ABLogger.getInstance().info(
         'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
       );
       uiManager.createAssessmentRecordMenu();
     } else {
-      console.log('Script not authorised. Creating unauthorised menu.');
+      ABLogger.getInstance().info('Script not authorised. Creating unauthorised menu.');
       uiManager.createUnauthorisedMenu();
     }
   }
@@ -91,7 +91,7 @@ class InitController extends BaseSingleton {
     const sa = new ScriptAppManager();
     const scriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
-    console.log(
+    ABLogger.getInstance().info(
       `InitController.handleScriptInit() - User authorized: ${scriptAuthorised}, Is admin sheet: ${isAdminSheet}`
     );
 
@@ -126,11 +126,13 @@ class InitController extends BaseSingleton {
 
     // Only check auth if not already provided
     if (scriptAuthorised === undefined) {
-      console.log('InitController.adminScriptInit() - Authorization not provided, checking now...');
+      ABLogger.getInstance().info(
+        'InitController.adminScriptInit() - Authorization not provided, checking now...'
+      );
       const sa = new ScriptAppManager();
       scriptAuthorised = sa.isAuthorised();
     } else {
-      console.log(
+      ABLogger.getInstance().info(
         `InitController.adminScriptInit() - Using provided authorization status: ${scriptAuthorised}`
       );
     }
@@ -222,7 +224,7 @@ class InitController extends BaseSingleton {
     } catch (e) {
       // Swallow to keep pure logic paths resilient in headless/triggers
       if (globalThis.__TRACE_SINGLETON__)
-        console.log('[TRACE] InitController._withUI suppressed UI error');
+        ABLogger.getInstance().info('[TRACE] InitController._withUI suppressed UI error');
     }
   }
 
@@ -236,7 +238,7 @@ class InitController extends BaseSingleton {
     const triggerAlreadySet = ConfigurationManager.getInstance().getRevokeAuthTriggerSet();
 
     if (triggerAlreadySet) {
-      console.log('Auth revoke trigger already exists. No new trigger created.');
+      ABLogger.getInstance().info('Auth revoke trigger already exists. No new trigger created.');
       return false;
     }
 
@@ -255,10 +257,12 @@ class InitController extends BaseSingleton {
       // Update the flag to indicate the trigger has been set
       ConfigurationManager.getInstance().setRevokeAuthTriggerSet(true);
 
-      console.log(`Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`);
+      ABLogger.getInstance().info(
+        `Auth revoke trigger set to run in ${daysUntilRevoke} days (${triggerTime}).`
+      );
       return true;
     } catch (error) {
-      console.error(`Error setting up auth revoke timer: ${error}`);
+      ABLogger.getInstance().error(`Error setting up auth revoke timer: ${error}`);
       return false;
     }
   }

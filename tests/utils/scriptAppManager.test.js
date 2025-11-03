@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import ScriptAppManager from '../../src/AdminSheet/Utils/ScriptAppManager.js';
+import ABLogger from '../../src/AdminSheet/Utils/ABLogger.js';
 
 // Mock ScriptApp APIs
 const mockGetAuthorizationInfo = vi.fn();
@@ -12,7 +13,7 @@ const authInfoMock = {
 };
 
 describe('ScriptAppManager', () => {
-  let consoleSpy;
+  let loggerSpy;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,7 +31,15 @@ describe('ScriptAppManager', () => {
       },
     };
 
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // Mock ABLogger.getInstance() and its methods
+    const loggerInstance = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      log: vi.fn(),
+    };
+    loggerSpy = vi.spyOn(ABLogger, 'getInstance').mockReturnValue(loggerInstance);
 
     // Setup default mock behaviours
     authInfoMock.getAuthorizationStatus.mockReturnValue('NOT_REQUIRED');
@@ -41,23 +50,19 @@ describe('ScriptAppManager', () => {
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
+    loggerSpy.mockRestore();
     delete global.ScriptApp;
   });
 
   describe('constructor', () => {
     it('should initialize and log authorization status', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      const manager = new ScriptAppManager();
+      new ScriptAppManager();
 
       expect(mockGetAuthorizationInfo).toHaveBeenCalledWith('FULL');
       expect(authInfoMock.getAuthorizationStatus).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('ScriptAppManager instantiated')
       );
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -74,17 +79,14 @@ describe('ScriptAppManager', () => {
 
   describe('checkAuthMode', () => {
     it('should return authorization status and log it', () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const manager = new ScriptAppManager();
 
       const result = manager.checkAuthMode();
 
       expect(result).toBe('NOT_REQUIRED');
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('ScriptAppManager.checkAuthMode() called')
       );
-
-      consoleSpy.mockRestore();
     });
 
     it('should return REQUIRED when authorization is required', () => {
