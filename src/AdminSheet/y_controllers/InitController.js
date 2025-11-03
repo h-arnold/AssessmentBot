@@ -58,7 +58,9 @@ class InitController extends BaseSingleton {
     const sa = new ScriptAppManager();
     const isScriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
-    console.log('Script authorization status:', isScriptAuthorised);
+    console.log(
+      `InitController.onOpen() - User authorized: ${isScriptAuthorised}, Is admin sheet: ${isAdminSheet}`
+    );
 
     const uiManager = this.getUiManager();
     if (!uiManager) {
@@ -89,6 +91,9 @@ class InitController extends BaseSingleton {
     const sa = new ScriptAppManager();
     const scriptAuthorised = sa.isAuthorised();
     const isAdminSheet = cfg.getIsAdminSheet();
+    console.log(
+      `InitController.handleScriptInit() - User authorized: ${scriptAuthorised}, Is admin sheet: ${isAdminSheet}`
+    );
 
     // If script isn't authorised, run the first run initialisation regardless of sheet type
     if (!scriptAuthorised) {
@@ -103,7 +108,7 @@ class InitController extends BaseSingleton {
 
     // Route to the appropriate initialisation method based on sheet type
     if (isAdminSheet) {
-      this.adminScriptInit();
+      this.adminScriptInit(scriptAuthorised);
     } else {
       this.assessmentRecordScriptInit();
     }
@@ -112,13 +117,24 @@ class InitController extends BaseSingleton {
   /**
    * Handles initialisation specifically for Admin Sheets
    * This includes finishing any updates and creating the proper menu.
+   * @param {boolean} [scriptAuthorised] - Optional pre-computed authorization status to avoid redundant checks
    */
-  adminScriptInit() {
+  adminScriptInit(scriptAuthorised) {
     // Gets the update stage.
     const cfg = ConfigurationManager.getInstance();
-    const sa = new ScriptAppManager();
     const updateStage = cfg.getUpdateStage();
-    const scriptAuthorised = sa.isAuthorised();
+
+    // Only check auth if not already provided
+    if (scriptAuthorised === undefined) {
+      console.log('InitController.adminScriptInit() - Authorization not provided, checking now...');
+      const sa = new ScriptAppManager();
+      scriptAuthorised = sa.isAuthorised();
+    } else {
+      console.log(
+        `InitController.adminScriptInit() - Using provided authorization status: ${scriptAuthorised}`
+      );
+    }
+
     this.setupAuthRevokeTimer();
 
     // If everything is up to date and the script is authorised, create the menu and finish.
