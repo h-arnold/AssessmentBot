@@ -72,10 +72,19 @@ class InitController extends BaseSingleton {
       ABLogger.getInstance().info('Script is already authorised. Creating authorised menu.');
       uiManager.createAuthorisedMenu();
     } else if (isScriptAuthorised && !isAdminSheet) {
+      // For assessment records, check if this specific user has authorised this document
+      const userProps = PropertiesService.getUserProperties();
+      const userAuthorisedThisDoc = userProps.getProperty('authorised') === 'true';
+
       ABLogger.getInstance().info(
-        'Script is authorised and appears to be an Assessment Record. Creating Assessment Record menu.'
+        `Script is authorised and appears to be an Assessment Record. User has authorised this doc: ${userAuthorisedThisDoc}`
       );
-      uiManager.createAssessmentRecordMenu();
+
+      if (userAuthorisedThisDoc) {
+        uiManager.createAssessmentRecordMenu();
+      } else {
+        uiManager.createUnauthorisedMenu();
+      }
     } else {
       ABLogger.getInstance().info('Script not authorised. Creating unauthorised menu.');
       uiManager.createUnauthorisedMenu();
