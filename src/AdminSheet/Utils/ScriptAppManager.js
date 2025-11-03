@@ -85,3 +85,11 @@ class ScriptAppManager {
     return authStatus !== ScriptApp.AuthorizationStatus.REQUIRED;
   }
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ScriptAppManager;
+}
+
+if (typeof globalThis !== 'undefined') {
+  globalThis.ScriptAppManager = ScriptAppManager;
+}

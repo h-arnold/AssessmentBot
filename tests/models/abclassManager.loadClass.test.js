@@ -17,6 +17,7 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
+      info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
     };
