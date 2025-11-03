@@ -146,7 +146,7 @@ describe('ABClassController Persist Assignment', () => {
 
       // Verify full assignment was written to collection
       expect(mockDbManager.getCollection).toHaveBeenCalledWith(
-        expect.stringMatching(/assign_full_course-persist_assign-persist/)
+        expect.stringContaining('assign_full_course-persist_assign-persist')
       );
 
       // Should use replaceOne or insertOne to write the full assignment
