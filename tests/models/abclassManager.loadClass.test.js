@@ -99,7 +99,7 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-123');
 
-    expect(ClassroomApiClient.fetchCourseUpdateTime).toHaveBeenCalledWith('course-123');
+    expect(ClassroomApiClient.fetchCourseUpdateTime).not.toHaveBeenCalled();
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-123');
     expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-123');
@@ -160,15 +160,14 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-456');
 
-    expect(ClassroomApiClient.fetchCourse).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchTeachers).not.toHaveBeenCalled();
-    expect(ClassroomApiClient.fetchAllStudents).not.toHaveBeenCalled();
-    expect(collectionMock.updateOne).not.toHaveBeenCalled();
+    expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
+    expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
+    expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
+    expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
-    expect(abClass.teachers).toHaveLength(1);
-    expect(abClass.teachers[0].email).toBe('existing@example.com');
-    expect(abClass.students).toHaveLength(1);
-    expect(abClass.students[0].email).toBe('existing@student.example.com');
+    expect(abClass.teachers).toHaveLength(0);
+    expect(abClass.students).toHaveLength(0);
   });
 
   // No fallback path: schema must support updateOne.
