@@ -19,8 +19,6 @@ describe('ABClassController.loadClass', () => {
     const loggerInstance = {
       debugUi: vi.fn(),
       info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
       debug: vi.fn(),
     };
     global.ABLogger = { getInstance: () => loggerInstance };
