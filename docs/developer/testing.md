@@ -133,8 +133,92 @@ Test assignment-related functionality:
 - Assignment state tracking
 - Last updated timestamp logic
 - Assignment persistence
+- Factory pattern for polymorphic assignment creation
+- Assignment serialisation (full and partial)
 
-### 6. Configuration Tests (`tests/configurationManager/`)
+**Key patterns**:
+
+- Test `Assignment.create()` factory method for correct subclass instantiation
+- Test `Assignment.fromJSON()` polymorphic deserialisation
+- Verify `toPartialJSON()` redacts heavy fields while preserving identifiers
+- Test round-trip serialisation preserves types and data
+
+### 6. Controller Tests (`tests/controllers/`)
+
+Test controller logic for managing domain entities and coordinating persistence:
+
+- **ABClassController**: Loading, saving, and managing ABClass instances
+- **InitController**: Initialisation workflows
+- **Assignment Persistence**: Full and partial assignment storage workflows
+- **Assignment Rehydration**: Restoring full assignments from partial summaries
+
+**Key patterns**:
+
+- Mock DbManager and collections with `vi.fn()` for database operations
+- Mock ABLogger singleton for logging verification
+- Test both success and error paths with appropriate error handling
+- Verify method existence before testing (for RED phase tests)
+- Use factory functions to create test data
+- Test edge cases (null inputs, missing data, corrupt data)
+- Verify logging calls for all significant operations
+
+**Example controller test structure**:
+
+```javascript
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+let ControllerClass, mockDbManager, mockABLogger;
+
+beforeEach(() => {
+  // Setup mocks
+  mockDbManager = {
+    getCollection: vi.fn().mockReturnValue({
+      insertOne: vi.fn(),
+      findOne: vi.fn(),
+      // ... other collection methods
+    }),
+  };
+
+  globalThis.DbManager = class {
+    static getInstance() {
+      return mockDbManager;
+    }
+  };
+
+  mockABLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+  };
+
+  globalThis.ABLogger = class {
+    static getInstance() {
+      return mockABLogger;
+    }
+  };
+
+  // Load controller after mocks
+  delete require.cache[require.resolve('../../src/.../Controller.js')];
+  ControllerClass = require('../../src/.../Controller.js');
+});
+
+afterEach(() => {
+  delete globalThis.DbManager;
+  delete globalThis.ABLogger;
+  vi.restoreAllMocks();
+});
+
+it('performs expected operation', () => {
+  const controller = new ControllerClass();
+
+  // Test implementation
+  controller.someMethod();
+
+  expect(mockDbManager.getCollection).toHaveBeenCalled();
+  expect(mockABLogger.info).toHaveBeenCalled();
+});
+```
+
+### 7. Configuration Tests (`tests/configurationManager/`)
 
 Test configuration management:
 
@@ -142,9 +226,24 @@ Test configuration management:
 - Property serialisation/deserialisation
 - Default value handling
 
-### 7. Utility Tests (`tests/utils/`)
+### 7. Configuration Tests (`tests/configurationManager/`)
 
-### 8. UI Tests (`tests/ui/`)
+Test configuration management:
+
+- Loading/saving configuration
+- Property serialisation/deserialisation
+- Default value handling
+
+### 8. Utility Tests (`tests/utils/`)
+
+### 8. Utility Tests (`tests/utils/`)
+
+Test utility functions:
+
+- **ABLogger**: Logging functionality
+- **Validate**: Email and userId validation
+
+### 9. UI Tests (`tests/ui/`)
 
 Exercise client-side logic that lives inside Apps Script HTML templates (e.g. modal dialogs).
 
