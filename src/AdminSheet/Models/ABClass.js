@@ -193,6 +193,16 @@ class ABClass {
     return this.assignments.find(predicate) || null;
   }
 
+  /**
+   * Find the array index of an assignment matching the predicate.
+   * Supports immutable replace pattern during rehydration.
+   * @param {Function} predicate - Function that returns true for the target assignment
+   * @return {number} Index of the matching assignment, or -1 if not found
+   */
+  findAssignmentIndex(predicate) {
+    return this.assignments.findIndex(predicate);
+  }
+
   // toJSON serializes contained objects by calling toJSON if available.
   toJSON() {
     const serializeArray = (arr) =>
@@ -244,7 +254,37 @@ class ABClass {
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
     inst.teachers = Array.isArray(json.teachers) ? json.teachers.slice() : [];
     inst.students = Array.isArray(json.students) ? json.students.slice() : [];
-    inst.assignments = Array.isArray(json.assignments) ? json.assignments.slice() : [];
+
+    // Reconstruct assignments as typed instances via Assignment.fromJSON
+    inst.assignments = [];
+    if (Array.isArray(json.assignments)) {
+      json.assignments.forEach((assignmentData) => {
+        try {
+          if (typeof Assignment === 'function' && typeof Assignment.fromJSON === 'function') {
+            const assignmentInstance = Assignment.fromJSON(assignmentData);
+            inst.assignments.push(assignmentInstance);
+          } else {
+            // Fallback: preserve plain object if Assignment.fromJSON is unavailable
+            inst.assignments.push(assignmentData);
+          }
+        } catch (e) {
+          // Log reconstruction error and fall back to plain object
+          if (
+            typeof ABLogger !== 'undefined' &&
+            ABLogger.getInstance &&
+            typeof ABLogger.getInstance().warn === 'function'
+          ) {
+            ABLogger.getInstance().warn(
+              `Assignment reconstruction failed for assignmentId=${
+                assignmentData?.assignmentId || 'unknown'
+              }:`,
+              e
+            );
+          }
+          inst.assignments.push(assignmentData);
+        }
+      });
+    }
 
     return inst;
   }

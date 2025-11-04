@@ -146,6 +146,189 @@ class ABClassController {
   }
 
   /**
+   * Generate consistent collection name for full assignment persistence.
+   * @param {string} courseId - The course ID
+   * @param {string} assignmentId - The assignment ID
+   * @return {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>
+   */
+  _getFullAssignmentCollectionName(courseId, assignmentId) {
+    return `assign_full_${courseId}_${assignmentId}`;
+  }
+
+  /**
+   * Persist an assignment run by writing full payload to dedicated collection
+   * and updating the ABClass with a partial summary.
+   * @param {ABClass} abClass - The ABClass instance containing the assignment
+   * @param {Assignment} assignment - The assignment to persist
+   * @return {void}
+   */
+  persistAssignmentRun(abClass, assignment) {
+    const logger = ABLogger.getInstance();
+
+    if (!abClass || !assignment) {
+      throw new TypeError('persistAssignmentRun requires abClass and assignment');
+    }
+
+    if (!assignment.courseId || !assignment.assignmentId) {
+      throw new TypeError('Assignment must have courseId and assignmentId');
+    }
+
+    try {
+      // 1. Serialize full assignment and write to dedicated collection
+      const collectionName = this._getFullAssignmentCollectionName(
+        assignment.courseId,
+        assignment.assignmentId
+      );
+      const fullCollection = this.dbManager.getCollection(collectionName);
+      const fullPayload = assignment.toJSON();
+
+      logger.info('persistAssignmentRun: writing full assignment', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+        collectionName,
+      });
+
+      // Use replaceOne to ensure single document per assignment
+      const existing = fullCollection.findOne({
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+      });
+
+      if (existing) {
+        fullCollection.replaceOne(
+          { courseId: assignment.courseId, assignmentId: assignment.assignmentId },
+          fullPayload
+        );
+      } else {
+        fullCollection.insertOne(fullPayload);
+      }
+      fullCollection.save();
+
+      // 2. Generate partial summary and reconstruct as typed instance
+      const partialJson = assignment.toPartialJSON();
+      const partialInstance = Assignment.fromJSON(partialJson);
+
+      // 3. Find and replace assignment in abClass.assignments
+      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
+
+      if (idx >= 0) {
+        abClass.assignments[idx] = partialInstance;
+        logger.info('persistAssignmentRun: replaced existing assignment in ABClass', {
+          assignmentId: assignment.assignmentId,
+          index: idx,
+        });
+      } else {
+        abClass.assignments.push(partialInstance);
+        logger.info('persistAssignmentRun: added new assignment to ABClass', {
+          assignmentId: assignment.assignmentId,
+        });
+      }
+
+      // 4. Save updated ABClass with partial assignment
+      this.saveClass(abClass);
+
+      logger.info('persistAssignmentRun: completed successfully', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+      });
+    } catch (err) {
+      logger.error('persistAssignmentRun failed', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+        err,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Rehydrate an assignment by loading the full version from its dedicated collection.
+   * @param {ABClass} abClass - The ABClass instance
+   * @param {string} assignmentId - The assignment ID to rehydrate
+   * @return {Assignment} The fully hydrated assignment instance
+   */
+  rehydrateAssignment(abClass, assignmentId) {
+    const logger = ABLogger.getInstance();
+
+    if (!abClass || !assignmentId) {
+      throw new TypeError('rehydrateAssignment requires abClass and assignmentId');
+    }
+
+    const courseId = abClass.classId;
+
+    try {
+      // 1. Read full assignment document from dedicated collection
+      const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
+      const fullCollection = this.dbManager.getCollection(collectionName);
+
+      if (!fullCollection) {
+        throw new Error(
+          `Collection not found for assignment: ${collectionName}. Assignment may not have been persisted yet.`
+        );
+      }
+
+      const doc = fullCollection.findOne({ courseId, assignmentId });
+
+      if (!doc) {
+        throw new Error(
+          `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
+        );
+      }
+
+      logger.info('rehydrateAssignment: loading full assignment', {
+        courseId,
+        assignmentId,
+        collectionName,
+      });
+
+      // 2. Validate document has required fields before attempting reconstruction
+      if (!doc.courseId || !doc.assignmentId) {
+        throw new Error(
+          `Corrupt or invalid assignment data in ${collectionName}: missing required fields courseId or assignmentId`
+        );
+      }
+
+      if (!doc.documentType) {
+        throw new Error(
+          `Corrupt or invalid assignment data in ${collectionName}: missing required field documentType`
+        );
+      }
+
+      // 3. Reconstruct assignment via factory pattern
+      const hydratedAssignment = Assignment.fromJSON(doc);
+
+      // 4. Set hydration level marker (transient, not persisted)
+      hydratedAssignment._hydrationLevel = 'full';
+
+      // 5. Replace assignment in abClass.assignments by index
+      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+
+      if (idx >= 0) {
+        abClass.assignments[idx] = hydratedAssignment;
+        logger.info('rehydrateAssignment: replaced assignment in ABClass', {
+          assignmentId,
+          index: idx,
+        });
+      } else {
+        // If not found in assignments array, add it
+        abClass.assignments.push(hydratedAssignment);
+        logger.info('rehydrateAssignment: added rehydrated assignment to ABClass', {
+          assignmentId,
+        });
+      }
+
+      return hydratedAssignment;
+    } catch (err) {
+      logger.error('rehydrateAssignment failed', {
+        courseId,
+        assignmentId,
+        err,
+      });
+      throw err;
+    }
+  }
+
+  /**
    * Initialise an ABClass instance by populating data that can be fetched using
    * the classId (Google Classroom courseId) alone. Populates: className,
    * classOwner, teachers and students. Additional properties (assignments,
