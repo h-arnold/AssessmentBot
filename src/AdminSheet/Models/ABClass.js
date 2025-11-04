@@ -260,27 +260,16 @@ class ABClass {
     if (Array.isArray(json.assignments)) {
       json.assignments.forEach((assignmentData) => {
         try {
-          if (typeof Assignment === 'function' && typeof Assignment.fromJSON === 'function') {
-            const assignmentInstance = Assignment.fromJSON(assignmentData);
-            inst.assignments.push(assignmentInstance);
-          } else {
-            // Fallback: preserve plain object if Assignment.fromJSON is unavailable
-            inst.assignments.push(assignmentData);
-          }
+          const assignmentInstance = Assignment.fromJSON(assignmentData);
+          inst.assignments.push(assignmentInstance);
         } catch (e) {
           // Log reconstruction error and fall back to plain object
-          if (
-            typeof ABLogger !== 'undefined' &&
-            ABLogger.getInstance &&
-            typeof ABLogger.getInstance().warn === 'function'
-          ) {
-            ABLogger.getInstance().warn(
-              `Assignment reconstruction failed for assignmentId=${
-                assignmentData?.assignmentId || 'unknown'
-              }:`,
-              e
-            );
-          }
+          ABLogger.getInstance().warn(
+            `Assignment reconstruction failed for assignmentId=${
+              assignmentData?.assignmentId || 'unknown'
+            }:`,
+            e
+          );
           inst.assignments.push(assignmentData);
         }
       });

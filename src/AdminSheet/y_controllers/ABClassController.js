@@ -261,12 +261,6 @@ class ABClassController {
       const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
       const fullCollection = this.dbManager.getCollection(collectionName);
 
-      if (!fullCollection) {
-        throw new Error(
-          `Collection not found for assignment: ${collectionName}. Assignment may not have been persisted yet.`
-        );
-      }
-
       const doc = fullCollection.findOne({ courseId, assignmentId });
 
       if (!doc) {
