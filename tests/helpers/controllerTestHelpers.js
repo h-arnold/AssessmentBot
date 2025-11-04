@@ -50,6 +50,16 @@ export function createTestFixture(options = {}) {
       assignmentId,
       documentId: 'doc-1',
     });
+
+    // If we have both task and submission, add an item for the task to the submission
+    if (includeTask && taskDef) {
+      submission.upsertItemFromExtraction(taskDef, {
+        pageId: 'p0',
+        content: 'Student response content',
+        metadata: {},
+      });
+    }
+
     submissions.push(submission.toJSON());
   }
 
@@ -146,7 +156,8 @@ export function verifyDatabaseWrite(mockCollection) {
   const writeCalls =
     mockCollection.replaceOne.mock.calls.length + mockCollection.insertOne.mock.calls.length;
   const writeOccurred = writeCalls > 0;
-  const writeCall = mockCollection.replaceOne.mock.calls[0] || mockCollection.insertOne.mock.calls[0];
+  const writeCall =
+    mockCollection.replaceOne.mock.calls[0] || mockCollection.insertOne.mock.calls[0];
   const payload = writeCall ? writeCall[0] : null;
 
   return {
