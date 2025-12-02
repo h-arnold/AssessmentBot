@@ -192,8 +192,8 @@ class AnalysisSheetManager extends BaseSheetManager {
         const item = submission.getItem
           ? submission.getItem(td.id)
           : submission.items
-          ? submission.items[td.id]
-          : null;
+            ? submission.items[td.id]
+            : null;
         const assessments = item && item.assessments ? item.assessments : {};
         const studentDisplay = this._artifactDisplayString(item && item.artifact);
         // completeness
@@ -251,9 +251,9 @@ class AnalysisSheetManager extends BaseSheetManager {
         );
         currentColumnIndex++;
       });
-      const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),1),"E")`;
-      const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),1),"N")`;
-      const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),1),"N")`;
+      const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),2),"E")`;
+      const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),2),"N")`;
+      const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),2),"N")`;
       rowData.push({ userEnteredValue: { formulaValue: completenessFormula } });
       rowData.push({ userEnteredValue: { formulaValue: accuracyFormula } });
       rowData.push({ userEnteredValue: { formulaValue: spagFormula } });
@@ -477,7 +477,7 @@ class AnalysisSheetManager extends BaseSheetManager {
     const numColumns = this.headers.subHeaders.length;
     for (let col = 1; col < numColumns; col++) {
       const columnLetter = Utils.getColumnLetter(col); // Adjust to start from Column B
-      const formula = `=IFERROR(ROUND(AVERAGE(${columnLetter}3:${columnLetter}${lastRowIndex}),1),0)`;
+      const formula = `=IFERROR(ROUND(AVERAGE(${columnLetter}3:${columnLetter}${lastRowIndex}),2),0)`;
       rowData.push({ userEnteredValue: { formulaValue: formula } });
     }
 
