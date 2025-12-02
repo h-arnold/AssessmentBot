@@ -314,7 +314,7 @@ class OverviewSheetManager extends BaseSheetManager {
           userEnteredValue: {
             formulaValue: `=IFERROR(ROUND(AVERAGE(B${startRowIndex + index + 1}:D${
               startRowIndex + index + 1
-            }),1),0)`,
+            }),2),0)`,
           },
         },
       ];
@@ -359,10 +359,10 @@ class OverviewSheetManager extends BaseSheetManager {
       let formula;
       if (col === 'E') {
         // Overall average
-        formula = `=IFERROR(ROUND(AVERAGE(E2:E${lastDataRowIndex}),1),0)`;
+        formula = `=IFERROR(ROUND(AVERAGE(E2:E${lastDataRowIndex}),2),0)`;
       } else {
         // Column-specific average
-        formula = `=IFERROR(ROUND(AVERAGE(${col}2:${col}${lastDataRowIndex}),1),0)`;
+        formula = `=IFERROR(ROUND(AVERAGE(${col}2:${col}${lastDataRowIndex}),2),0)`;
       }
 
       rowData.push({
