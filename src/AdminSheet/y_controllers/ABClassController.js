@@ -29,6 +29,7 @@ class ABClassController {
 
   // Helper: fetch and apply teacher list
   _applyTeachers(abClass, courseId) {
+    const logger = ABLogger.getInstance();
     // Call the ClassroomApiClient static method directly and allow errors to surface
     const teachers = ClassroomApiClient.fetchTeachers(courseId);
 
@@ -38,13 +39,17 @@ class ABClassController {
       // check in ABClass doesn't throw. Support both Teacher instances and
       // plain objects returned by legacy API mocks.
       let teacherInstance = teacherObj;
-      try {
-        if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+      if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+        try {
           teacherInstance = Teacher.fromJSON(teacherObj) || teacherObj;
+        } catch (err) {
+          logger.error('_applyTeachers: failed to deserialize teacher payload', {
+            courseId,
+            teacherId: teacherObj?.userId,
+            err,
+          });
+          throw err;
         }
-      } catch (e) {
-        // If coercion fails, fall back to raw object - let downstream code decide
-        teacherInstance = teacherObj;
       }
 
       // If this teacher matches the course owner, set as owner (using a
@@ -86,8 +91,10 @@ class ABClassController {
     };
   }
 
+  // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
+  // keep the helper for future use once the issue is resolved.
   _shouldRefreshRoster(metadata, classId) {
-    if (metadata?.lastUpdated) return false;
+    if (!metadata?.lastUpdated) return false;
 
     const lastUpdated =
       metadata.lastUpdated instanceof Date ? metadata.lastUpdated : new Date(metadata.lastUpdated);
@@ -398,7 +405,9 @@ class ABClassController {
       return newClass;
     }
 
-    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); (this was the old logic, but it doesn't work so I'm leaving this here as reference for now until I figure out a better way of handling this. See Issue #88)
+    // Metadata-driven refresh remains disabled per Issue #88, so we force a full refresh until the
+    // underlying behaviour can be revisited and the helper re-enabled.
+    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); retained for future work.
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
     if (needsRefresh) {
