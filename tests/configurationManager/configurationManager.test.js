@@ -455,29 +455,6 @@ describe('ConfigurationManager setProperty', () => {
       }).toThrow('JSON DB Master Index Key must be a non-empty string.');
     });
 
-    it('should accept boolean input for auto create collections', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-          true
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-        'true'
-      );
-    });
-
-    it('should reject invalid value for auto create collections', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-          'maybe'
-        );
-      }).toThrow('JSON DB Auto Create Collections must be a boolean (true/false).');
-    });
-
     it('should accept valid lock timeout within range', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 2000);

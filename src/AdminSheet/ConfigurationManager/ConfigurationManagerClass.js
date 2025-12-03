@@ -349,16 +349,6 @@ class ConfigurationManager extends BaseSingleton {
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
   }
 
-  getJsonDbAutoCreateCollections() {
-    const value = this.getProperty(
-      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS
-    );
-    if (value == null || value === '') {
-      return ConfigurationManager.DEFAULTS.JSON_DB_AUTO_CREATE_COLLECTIONS;
-    }
-    return ConfigurationManager.toBoolean(value);
-  }
-
   getJsonDbLockTimeoutMs() {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
@@ -505,13 +495,6 @@ class ConfigurationManager extends BaseSingleton {
 
   setJsonDbMasterIndexKey(masterIndexKey) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY, masterIndexKey);
-  }
-
-  setJsonDbAutoCreateCollections(flag) {
-    this.setProperty(
-      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-      ConfigurationManager.toBoolean(flag)
-    );
   }
 
   setJsonDbLockTimeoutMs(timeoutMs) {

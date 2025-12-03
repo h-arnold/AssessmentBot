@@ -213,17 +213,6 @@
             <div class="switch">
               <label>
                 Off
-                <input id="jsonDbAutoCreateCollections" name="jsonDbAutoCreateCollections" type="checkbox">
-                <span class="lever"></span>
-                On
-              </label>
-            </div>
-            <span class="helper-text">Automatically create missing collections when accessed.</span>
-          </div>
-          <div class="col s12 m6">
-            <div class="switch">
-              <label>
-                Off
                 <input id="jsonDbBackupOnInitialise" name="jsonDbBackupOnInitialise" type="checkbox">
                 <span class="lever"></span>
                 On
@@ -336,7 +325,6 @@
         logLevelSelect.value = data.jsonDbLogLevel || '';
         M.FormSelect.init(logLevelSelect);
       }
-      document.getElementById('jsonDbAutoCreateCollections').checked = !!data.jsonDbAutoCreateCollections;
       document.getElementById('jsonDbBackupOnInitialise').checked = !!data.jsonDbBackupOnInitialise;
       M.updateTextFields();
     }
@@ -512,7 +500,6 @@
         slidesFetchBatchSize: slidesVal,
         daysUntilAuthRevoke: daysUntilAuthRevokeVal,
         jsonDbMasterIndexKey: masterIndexKey,
-        jsonDbAutoCreateCollections: document.getElementById('jsonDbAutoCreateCollections').checked,
         jsonDbLockTimeoutMs: lockTimeoutVal,
         jsonDbLogLevel: logLevelValue,
         jsonDbBackupOnInitialise: document.getElementById('jsonDbBackupOnInitialise').checked,

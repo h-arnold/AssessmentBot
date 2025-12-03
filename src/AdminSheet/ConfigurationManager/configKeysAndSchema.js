@@ -23,7 +23,6 @@ const CONFIG_KEYS = Object.freeze({
   REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
   DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
   JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
-  JSON_DB_AUTO_CREATE_COLLECTIONS: 'jsonDbAutoCreateCollections',
   JSON_DB_LOCK_TIMEOUT_MS: 'jsonDbLockTimeoutMs',
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
@@ -110,11 +109,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
     storage: 'script',
     validate: (v) => validateNonEmptyString('JSON DB Master Index Key', v),
-  },
-  [CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS]: {
-    storage: 'script',
-    validate: (v) => validateBoolean('JSON DB Auto Create Collections', v),
-    normalize: toBooleanString,
   },
   [CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
     storage: 'script',
