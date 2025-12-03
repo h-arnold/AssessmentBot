@@ -4,8 +4,9 @@
 
 Deliver end-to-end assignment persistence using JsonDbApp so that:
 
-- Each assessment run writes an immutable full-fidelity record to `assign_full_<courseId>_<assignmentId>`.
-- `ABClass.assignments` maintains lightweight summaries suitable for fast loading.
+- **Split Persistence Model**:
+  - Each assessment run writes an immutable **Full Fidelity** record to `assign_full_<courseId>_<assignmentId>` (up to ~20MB). This serves as a cache for lazy-loading and re-runs.
+  - `ABClass.assignments` maintains **Lightweight Summaries** (Partial) suitable for fast loading during cohort analysis and averages calculation.
 - Controllers can rehydrate full assignments on demand without schema drift or duplicate roster data.
 - Serialisation/deserialisation flows remain test-backed and aligned with documented data shapes.
 
@@ -47,13 +48,14 @@ Deliver end-to-end assignment persistence using JsonDbApp so that:
   - Update/extend unit tests (`tests/models/abclassManager.*`) to verify that assignments round-trip correctly with polymorphic types preserved and are properly reconstructed as typed instances (not plain objects).
 
 - **Persistence Workflow (ABClassController)**
+  - **Rationale**: We split persistence to keep `ABClass` lightweight for analysis while preserving full context in a separate document for assessment runs.
   - Add `_getFullAssignmentCollectionName(courseId, assignmentId)` private helper method that returns the consistent collection name pattern: `assign_full_${courseId}_${assignmentId}`.
   - Add `persistAssignmentRun(abClass, assignment)` to `src/AdminSheet/y_controllers/ABClassController.js` that:
-    1. Serialises the assignment to a full payload via `assignment.toJSON()` and writes it to the full assignment collection (using `replaceOne` or `insertOne` + `save()`).
-    2. Generates partial summary via `assignment.toPartialJSON()`.
+    1. Serialises the assignment to a **Full** payload via `assignment.toJSON()` and writes it to the full assignment collection (using `replaceOne` or `insertOne` + `save()`).
+    2. Generates **Partial** summary via `assignment.toPartialJSON()`.
     3. Uses `Assignment.fromJSON(partialJson)` (factory pattern) to create a properly-typed partial instance.
     4. Finds and replaces the assignment in `abClass.assignments` by index (using `findAssignmentIndex`).
-    5. Calls `saveClass(abClass)` to persist the updated class document with partial assignment.
+    5. Calls `saveClass(abClass)` to persist the updated class document with the partial assignment summary.
   - Introduce `rehydrateAssignment(abClass, assignmentId)` that:
     1. Reads the full assignment document from its collection.
     2. Uses `Assignment.fromJSON(doc)` (factory pattern) to reconstruct the correct subclass instance.
