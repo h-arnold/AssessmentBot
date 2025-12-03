@@ -36,7 +36,8 @@ class BaseRequestManager {
     // Errors that should abort (per backend error code documentation):
     // - 401: Unauthorised (invalid API key)
     // - 403: Forbidden (insufficient permissions)
-    return statusCode === 401 || statusCode === 403;
+    // - 404: Not Found (resource missing / incorrect endpoint)
+    return statusCode === 401 || statusCode === 403 || statusCode === 404;
   }
 
   /**

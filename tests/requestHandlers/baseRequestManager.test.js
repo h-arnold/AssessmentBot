@@ -197,6 +197,21 @@ describe('BaseRequestManager Error Handling', () => {
       expect(mockUtilities.sleep).not.toHaveBeenCalled();
     });
 
+    it('should not retry on 404 Not Found and throw error', () => {
+      const mockResponse = {
+        getResponseCode: () => 404,
+        getContentText: () => JSON.stringify({ statusCode: 404, message: 'Not found' }),
+      };
+      mockUrlFetchApp.fetch.mockReturnValue(mockResponse);
+
+      const manager = new BaseRequestManager();
+      const request = { url: 'https://api.test/endpoint', method: 'post' };
+
+      expect(() => manager.sendRequestWithRetries(request)).toThrow();
+      expect(mockUrlFetchApp.fetch).toHaveBeenCalledTimes(1);
+      expect(mockUtilities.sleep).not.toHaveBeenCalled();
+    });
+
     it('should not retry on 413 Payload Too Large', () => {
       const mockResponse = {
         getResponseCode: () => 413,
