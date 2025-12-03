@@ -191,9 +191,8 @@ class LLMRequestManager extends BaseRequestManager {
    * Assign assessments to the mapped StudentSubmissionItem via uidIndex.
    * @param {string} uid
    * @param {Object} assessmentData (criterion -> Assessment instance)
-   * @param {Assignment} assignment (unused but kept for signature compatibility)
    */
-  assignAssessmentToStudentTask(uid, assessmentData, assignment) {
+  assignAssessmentToStudentTask(uid, assessmentData) {
     // name retained to minimise external ripple
     const item = this.uidIndex?.[uid]?.item;
     if (item) {
@@ -237,6 +236,13 @@ class LLMRequestManager extends BaseRequestManager {
     Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
   }
 
+  /**
+   * Process a retry response, reassigning and caching the assessment or triggering another retry.
+   * @param {string} uid - UID for routing the assessment.
+   * @param {Object} request - Original HTTP request data.
+   * @param {Assignment} assignment - Assignment instance for error handling.
+   * @param {HTTPResponse} response - HTTP response that triggered the retry.
+   */
   _processRetryResponse(uid, request, assignment, response) {
     try {
       const assessmentData = this._extractAssessmentData(response);
@@ -251,7 +257,7 @@ class LLMRequestManager extends BaseRequestManager {
         return;
       }
 
-      this._assignAndCacheAssessment(uid, assessmentData, assignment);
+      this._assignAndCacheAssessment(uid, assessmentData);
       this.retryAttempts[uid] = 0;
     } catch (e) {
       this.progressTracker.logError(
@@ -338,7 +344,7 @@ class LLMRequestManager extends BaseRequestManager {
       try {
         const assessmentData = this._extractAssessmentData(response);
         if (this.validateAssessmentData(assessmentData)) {
-          this._assignAndCacheAssessment(uid, assessmentData, request, assignment);
+          this._assignAndCacheAssessment(uid, assessmentData);
           this.retryAttempts[uid] = 0;
         } else {
           this.handleValidationFailure(uid, request, assignment);
@@ -369,14 +375,9 @@ class LLMRequestManager extends BaseRequestManager {
    * Assigns assessments to StudentTask and caches the result.
    * @param {string} uid
    * @param {Object} assessmentData
-   * @param {Assignment} assignment
    */
-  _assignAndCacheAssessment(uid, assessmentData, assignment) {
-    this.assignAssessmentToStudentTask(
-      uid,
-      this.createAssessmentFromData(assessmentData),
-      assignment
-    );
+  _assignAndCacheAssessment(uid, assessmentData) {
+    this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData));
     if (this.uidIndex?.[uid]) {
       const { item, taskDef } = this.uidIndex[uid];
       const ref = taskDef.getPrimaryReference();

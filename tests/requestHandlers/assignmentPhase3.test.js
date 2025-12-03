@@ -159,4 +159,61 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
       expect(a.spag.score).toBeTypeOf('number');
     });
   });
+
+  it('processStudentResponses caches successful assessments', () => {
+    // Ensure no cache present initially
+    const sub = assignment.submissions[0];
+    const itemEntries = Object.values(sub.items).filter((i) => i.getType() !== 'SPREADSHEET');
+    expect(itemEntries.length).toBeGreaterThan(0);
+
+    // Generate requests and process responses
+    const reqs = manager.generateRequestObjects(assignment);
+    manager.processStudentResponses(reqs, assignment);
+
+    // After processing, each non-spreadsheet item should have a cached entry
+    itemEntries.forEach((item) => {
+      const td = assignment.tasks[item.taskId];
+      const refHash = td.getPrimaryReference().contentHash;
+      const respHash = item.artifact.contentHash;
+      const cached = manager.cacheManager.getCachedAssessment(refHash, respHash);
+      expect(cached).not.toBeNull();
+      ['completeness', 'accuracy', 'spag'].forEach((criterion) => {
+        expect(cached).toHaveProperty(criterion);
+        const payload = cached[criterion];
+        expect(typeof payload.score).toBe('number');
+        expect(typeof payload.reasoning).toBe('string');
+      });
+    });
+  });
+
+  it('caches assessments after retry succeeds', () => {
+    const reqs = manager.generateRequestObjects(assignment);
+    expect(reqs.length).toBeGreaterThan(0);
+
+    const retryRequest = reqs[0];
+    const retryResponse = {
+      getResponseCode: () => 200,
+      getContentText: () =>
+        JSON.stringify({
+          completeness: { score: 10, reasoning: 'retry' },
+          accuracy: { score: 9, reasoning: 'retry' },
+          spag: { score: 8, reasoning: 'retry' },
+        }),
+    };
+    manager.sendRequestWithRetries = () => retryResponse;
+
+    manager.handleValidationFailure(retryRequest.uid, retryRequest, assignment);
+
+    const { item, taskDef } = manager.uidIndex[retryRequest.uid];
+    const refHash = taskDef.getPrimaryReference().contentHash;
+    const respHash = item.artifact.contentHash;
+    const cached = manager.cacheManager.getCachedAssessment(refHash, respHash);
+    expect(cached).not.toBeNull();
+    ['completeness', 'accuracy', 'spag'].forEach((criterion) => {
+      expect(cached[criterion]).toMatchObject({
+        score: expect.any(Number),
+        reasoning: expect.any(String),
+      });
+    });
+  });
 });
