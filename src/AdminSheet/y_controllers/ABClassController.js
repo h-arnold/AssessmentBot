@@ -189,16 +189,14 @@ class ABClassController {
       });
 
       // Use replaceOne to ensure single document per assignment
-      const existing = fullCollection.findOne({
+      const filter = {
         courseId: assignment.courseId,
         assignmentId: assignment.assignmentId,
-      });
+      };
+      const existing = fullCollection.findOne(filter);
 
       if (existing) {
-        fullCollection.replaceOne(
-          { courseId: assignment.courseId, assignmentId: assignment.assignmentId },
-          fullPayload
-        );
+        fullCollection.replaceOne(filter, fullPayload);
       } else {
         fullCollection.insertOne(fullPayload);
       }
@@ -304,11 +302,10 @@ class ABClassController {
           index: idx,
         });
       } else {
-        // If not found in assignments array, add it
-        abClass.assignments.push(hydratedAssignment);
-        logger.info('rehydrateAssignment: added rehydrated assignment to ABClass', {
-          assignmentId,
-        });
+        // Assignment ID must exist in the provided ABClass instance — throw a clear error.
+        throw new Error(
+          `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${courseId}'.`
+        );
       }
 
       return hydratedAssignment;
@@ -448,11 +445,11 @@ class ABClassController {
         collection.insertOne(abClass);
       }
     } catch (err) {
-      // Provide a clearer error path while keeping previous behavior
-      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-      if (logger && typeof logger.warn === 'function') {
-        logger.warn('saveClass: collection operation failed', err?.message ?? err);
-      }
+      // Use the project's logging contract directly and fail fast.
+      ABLogger.getInstance().warn('saveClass: collection operation failed', {
+        classId: abClass.classId,
+        err,
+      });
       throw err;
     }
 
