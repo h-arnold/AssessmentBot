@@ -47,6 +47,11 @@ try {
 
 **Important**: Always use the returned `fullAssignment` instance or re-access it from `abClass.assignments` after the call. Old references to the partial assignment object will remain partial.
 
+`AssignmentController.processSelectedAssignment()` automatically calls
+`rehydrateAssignment` for the assignment it is about to process **if and only
+if** that assignment already exists in the class record. First-time runs skip
+the rehydration call, avoiding unnecessary database reads.
+
 ## 3. When to Rehydrate?
 
 | Scenario                   | Rehydrate? | Why?                                                                 |
@@ -69,3 +74,11 @@ If you have existing data created before the `documentType` field was introduced
 
 - **Collection Missing**: If `rehydrateAssignment` throws "Collection not found", it usually means the assignment was never successfully persisted. **Action**: Treat as a fresh run.
 - **Corrupt Data**: If it throws "Corrupt data", the JSON might be truncated. **Action**: Log error and potentially archive the bad document, then treat as fresh run.
+
+## 6. Hydration Markers
+
+Assignments use an internal `_hydrationLevel` property (`'partial'` or `'full'`)
+to indicate how much data they currently hold. Controllers set this flag when
+they persist (partial) or rehydrate (full) instances. The flag is **never
+persisted** to JsonDbApp; it only exists in memory to help the runtime decide
+whether another rehydration call is necessary.

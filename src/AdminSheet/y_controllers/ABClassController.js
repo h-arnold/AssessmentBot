@@ -187,6 +187,7 @@ class ABClassController {
         assignment.assignmentId
       );
       const fullCollection = this.dbManager.getCollection(collectionName);
+      assignment._hydrationLevel = 'full';
       const fullPayload = assignment.toJSON();
 
       logger.info('persistAssignmentRun: writing full assignment', {
@@ -212,6 +213,7 @@ class ABClassController {
       // 2. Generate partial summary and reconstruct as typed instance
       const partialJson = assignment.toPartialJSON();
       const partialInstance = Assignment.fromJSON(partialJson);
+      partialInstance._hydrationLevel = 'partial';
 
       // 3. Find and replace assignment in abClass.assignments
       const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);

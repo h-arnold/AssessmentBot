@@ -265,6 +265,11 @@ class AssignmentController {
       const abClassController = new ABClassController();
       const abClass = abClassController.loadClass(courseId);
 
+      const assignmentIndex = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+      if (assignmentIndex >= 0) {
+        abClassController.rehydrateAssignment(abClass, assignmentId);
+      }
+
       // Process the assignment based on its type.
       let assignment;
       const students = abClass.students;

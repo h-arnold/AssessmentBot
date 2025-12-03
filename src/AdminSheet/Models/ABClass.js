@@ -261,6 +261,7 @@ class ABClass {
       json.assignments.forEach((assignmentData) => {
         try {
           const assignmentInstance = Assignment.fromJSON(assignmentData);
+          assignmentInstance._hydrationLevel = 'partial';
           inst.assignments.push(assignmentInstance);
         } catch (e) {
           // Log reconstruction error and fall back to plain object

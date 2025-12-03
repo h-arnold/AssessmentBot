@@ -33,6 +33,7 @@ class Assignment {
     // Controllers may temporarily attach `assignment.students` while an assessment run is active
     // to keep the hydrated roster handy. That property is transient and must never be persisted
     // (see docs/developer/DATA_SHAPES.md and rehydration.md).
+    this._hydrationLevel = 'full';
   }
 
   /**
@@ -91,50 +92,34 @@ class Assignment {
    * @return {object}
    */
   toPartialJSON() {
-    const fullJson = this.toJSON();
+    const json = this.toJSON();
 
-    const redactArtifact = (artifact) => ({
-      ...artifact,
-      content: null,
-      contentHash: null,
+    const partialTasks = Object.entries(this.tasks || {}).reduce((acc, [taskId, task]) => {
+      if (task && typeof task.toPartialJSON === 'function') {
+        acc[taskId] = task.toPartialJSON();
+      } else {
+        const source =
+          task && typeof task.toJSON === 'function' ? task.toJSON() : json.tasks?.[taskId];
+        acc[taskId] = Assignment._redactTask(source);
+      }
+      return acc;
+    }, {});
+
+    const partialSubmissions = (this.submissions || []).map((submission, index) => {
+      if (submission && typeof submission.toPartialJSON === 'function') {
+        return submission.toPartialJSON();
+      }
+      const source =
+        submission && typeof submission.toJSON === 'function'
+          ? submission.toJSON()
+          : json.submissions?.[index];
+      return Assignment._redactSubmission(source);
     });
 
-    const redactTask = (task) => {
-      const artifacts = task.artifacts || {};
-      return {
-        ...task,
-        artifacts: {
-          reference: (artifacts.reference || []).map(redactArtifact),
-          template: (artifacts.template || []).map(redactArtifact),
-        },
-      };
-    };
+    json.tasks = partialTasks;
+    json.submissions = partialSubmissions;
 
-    const redactItem = (item) => ({
-      ...item,
-      artifact: redactArtifact(item.artifact),
-    });
-
-    const partialTasks = Object.fromEntries(
-      Object.entries(fullJson.tasks || {}).map(([taskId, task]) => [taskId, redactTask(task)])
-    );
-
-    const partialSubmissions = (fullJson.submissions || []).map((submission) => {
-      if (!submission || typeof submission !== 'object') return submission;
-      const items = Object.fromEntries(
-        Object.entries(submission.items || {}).map(([taskId, item]) => [taskId, redactItem(item)])
-      );
-      return {
-        ...submission,
-        items,
-      };
-    });
-
-    return {
-      ...fullJson,
-      tasks: partialTasks,
-      submissions: partialSubmissions,
-    };
+    return json;
   }
 
   /**
@@ -196,6 +181,7 @@ class Assignment {
     }
     inst.tasks = {};
     inst.submissions = [];
+    inst._hydrationLevel = null;
     // restore tasks
     if (data.tasks && typeof data.tasks === 'object') {
       Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
@@ -295,6 +281,58 @@ class Assignment {
     // and treated as ephemeral to avoid duplicate persistence.
 
     return inst;
+  }
+
+  static _redactArtifact(artifact) {
+    if (!artifact || typeof artifact !== 'object') return artifact;
+    return {
+      ...artifact,
+      content: null,
+      contentHash: null,
+    };
+  }
+
+  static _redactTask(task) {
+    if (!task || typeof task !== 'object') {
+      return {
+        artifacts: {
+          reference: [],
+          template: [],
+          submission: [],
+        },
+      };
+    }
+    const artifacts = task.artifacts || {};
+    return {
+      ...task,
+      artifacts: {
+        reference: (artifacts.reference || []).map(Assignment._redactArtifact),
+        template: (artifacts.template || []).map(Assignment._redactArtifact),
+        submission: (artifacts.submission || []).map(Assignment._redactArtifact),
+      },
+    };
+  }
+
+  static _redactSubmission(submission) {
+    if (!submission || typeof submission !== 'object') return submission;
+    const items = submission.items || {};
+    return {
+      ...submission,
+      items: Object.fromEntries(
+        Object.entries(items).map(([taskId, item]) => [
+          taskId,
+          Assignment._redactSubmissionItem(item),
+        ])
+      ),
+    };
+  }
+
+  static _redactSubmissionItem(item) {
+    if (!item || typeof item !== 'object') return item;
+    return {
+      ...item,
+      artifact: Assignment._redactArtifact(item.artifact),
+    };
   }
 
   /**

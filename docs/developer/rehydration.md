@@ -22,10 +22,11 @@ instance that was loaded from JsonDbApp.
 
 ## Responsibilities
 
-| Component           | Responsibility                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `ABClassController` | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method. |
-| Assignment Model    | Pure data + business logic. It does **not** know how to talk to storage.                     |
+| Component              | Responsibility                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `ABClassController`    | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method.                 |
+| Assignment Model       | Pure data + business logic. It does **not** know how to talk to storage.                                     |
+| `AssignmentController` | Rehydrates only the assignment currently being processed so the rest of the class payload stays lightweight. |
 
 ### Transient runtime fields
 
@@ -34,6 +35,11 @@ controllers can reuse the hydrated class roster without re-fetching it. Treat
 this property as ephemeral: it exists only during processing and **must not be
 persisted** back into JsonDbApp. Persisting it would append duplicate roster
 entries every time an assignment is rehydrated.
+
+Similarly, `_hydrationLevel` is a transient marker (`'partial'` or `'full'`) that
+controllers use to understand whether an assignment instance represents a full
+payload. It is never persisted; callers set it when they rehydrate or when they
+store partial summaries.
 
 ## Collection Naming Convention
 
@@ -138,3 +144,12 @@ rehydrateAssignment(abClass, assignmentId) {
 - Background prefetch queue (hydrate last opened N assignments)
 - Staleness comparison using `lastUpdated` revision suffix
 - Metrics: count hydration events / average ms
+
+## Controller Integration Notes
+
+- `AssignmentController.processSelectedAssignment()` now rehydrates the target
+  assignment **only if** that assignment already exists inside the loaded
+  `ABClass`. This ensures we skip the full read on first run (no full record yet)
+  while guaranteeing that reruns work with hydrated data.
+- Other assignments remain partially hydrated inside `abClass.assignments`, so
+  list and cohort views stay light even while one assignment is being processed.

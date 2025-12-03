@@ -52,6 +52,9 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
     {
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
+      "documentType": "SLIDES",
+      "referenceDocumentId": "DriveRef123",
+      "templateDocumentId": "DriveTemplate123",
       "lastUpdated": "2025-09-10T12:34:56Z",
       "tasks": {
         "t_ab12": {
@@ -101,6 +104,11 @@ Key notes:
   JsonDbApp or other serialized stores; doing so will duplicate roster entries
   each time an assessment is rehydrated.
 
+Hydration markers (`_hydrationLevel`) are runtime-only flags set to `'full'` or
+`'partial'` so controllers know whether an `Assignment` holds the entire payload
+or a lightweight summary. They are never serialized in either the ABClass record
+or the dedicated `assign_full_*` collections.
+
 The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
 
 ## Partial Hydration (summary-level)
@@ -112,6 +120,9 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
   "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,
@@ -184,6 +195,9 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
   "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,
