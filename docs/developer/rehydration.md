@@ -51,87 +51,65 @@ Rationale:
 
 (If your environment already enforces namespacing, adapt the prefix accordingly.)
 
-## Hydration Triggers
+## Factory Pattern & Polymorphism
 
-Hydration is **explicit**. Callers invoke rehydration before operations that require full payloads, for example:
+We use a **Factory Pattern** to handle polymorphic assignment types (`SlidesAssignment`, `SheetsAssignment`) during creation and rehydration.
 
-- Running or re-running an automated assessment
-- Generating a detailed export/report
-- Deep analysis / NLP passes over artifact contents
+### Creation
 
-All other UI / list / overview paths should rely on the partial object.
+Use `Assignment.create()` instead of `new Assignment()`:
 
-## Detecting Hydration State
-
-Instead of scanning artifacts each time, we set an internal transient flag after hydration:
-
-```js
-assignment._hydrationLevel = 'full'; // or 'partial'
+```javascript
+const assignment = Assignment.create(
+  'SLIDES', // documentType
+  courseId,
+  assignmentId,
+  refDocId,
+  templateDocId
+);
 ```
 
-Provide a helper (optional):
+### Rehydration / Deserialization
 
-```js
-function isHydrated(assignment) {
-  return assignment?._hydrationLevel === 'full';
-}
+Use `Assignment.fromJSON()` which routes to the correct subclass based on the `documentType` field:
+
+```javascript
+const assignment = Assignment.fromJSON(jsonPayload);
+// Returns instance of SlidesAssignment or SheetsAssignment
 ```
 
-This flag is _not_ persisted—its absence implies partial unless contents say otherwise.
+**Note**: The factory pattern centralizes type discrimination but does not eliminate all conditionals. Controllers may still need to branch logic based on type (e.g., different processing pipelines for Slides vs Sheets), but the _instantiation_ and _deserialization_ logic is encapsulated.
 
-## Full Replace vs In-Place Mutation
+## Persistence Workflow
 
-Two common patterns for updating the assignment in memory:
+We use a **Split Persistence Model**:
 
-### Option A: Immutable Replace (Recommended for Simplicity)
+1.  **Full Persistence**: The complete assignment object (with all artifacts and content) is serialized via `toJSON()` and written to the dedicated `assign_full_...` collection.
+2.  **Partial Summary**: A lightweight summary is generated via `toPartialJSON()` and stored in the `ABClass.assignments` array.
 
-1. Fetch full document from its collection.
-2. Construct (or deserialize) a new assignment object.
-3. Replace the element in `abClass.assignments` **by index**.
-4. Return the new instance.
-
-Pros:
-
-- Straightforward; no deep merge logic
-- Guarantees internal consistency (full object was serialized coherently)
-
-Cons:
-
-- Any external references to the old partial object will remain stale unless callers adopt the returned reference
-
-Mitigation: Document that callers **must** use the returned hydrated instance.
+This ensures `ABClass` remains small and fast to load, while the full data is preserved safely in a separate document.
 
 ## Rehydration Algorithm (Immutable Replace)
 
-Pseudocode:
+We use an **Immutable Replace** pattern to rehydrate assignments. This avoids deep mutation and ensures consistency.
 
-```js
+```javascript
 rehydrateAssignment(abClass, assignmentId) {
-  const idx = abClass.assignments.findIndex(a => a.assignmentId === assignmentId);
-  if (idx === -1) throw new Error(`Assignment ${assignmentId} not found in class ${abClass.classId}`);
+  // 1. Read full document
+  const fullDoc = fetchFullAssignment(abClass.classId, assignmentId);
 
-  const full = fetchFullAssignment(abClass.classId, assignmentId); // throws on missing/corrupt
-  full._hydrationLevel = 'full';
+  // 2. Reconstruct typed instance
+  const fullInstance = Assignment.fromJSON(fullDoc);
+  fullInstance._hydrationLevel = 'full';
 
-  // Replace in array
-  abClass.assignments[idx] = full;
-  return full;
-}
-```
+  // 3. Find index in ABClass
+  const idx = abClass.findAssignmentIndex(a => a.assignmentId === assignmentId);
+  if (idx === -1) throw new Error(...);
 
-`fetchFullAssignment()`:
+  // 4. Replace in array
+  abClass.assignments[idx] = fullInstance;
 
-```js
-function fetchFullAssignment(classId, assignmentId) {
-  const colName = `assign_full_${classId}_${assignmentId}`;
-  const col = dbManager.getCollection(colName);
-  const docs = col.readAll ? col.readAll() : col.find ? col.find({}) : [];
-  if (!docs || !docs.length) throw new Error(`Full assignment collection missing: ${colName}`);
-  const doc = docs[0];
-  if (!doc || doc.assignmentId !== assignmentId) {
-    throw new Error(`Corrupt full assignment document in ${colName}`);
-  }
-  return doc; // Or transform via Assignment.fromJSON if available
+  return fullInstance;
 }
 ```
 
@@ -143,8 +121,6 @@ function fetchFullAssignment(classId, assignmentId) {
 | Empty collection                                | Throw (treated same as missing)                  |
 | Corrupt doc (missing `assignmentId` / mismatch) | Throw                                            |
 | Assignment absent in `ABClass.assignments`      | Throw before attempting hydration                |
-
-Future enhancement: catch these errors and trigger a reconstruction or assessment cycle.
 
 ## Testing Guidelines (Vitest)
 
@@ -162,11 +138,3 @@ Future enhancement: catch these errors and trigger a reconstruction or assessmen
 - Background prefetch queue (hydrate last opened N assignments)
 - Staleness comparison using `lastUpdated` revision suffix
 - Metrics: count hydration events / average ms
-
-## Summary
-
-Hydration is an explicit, authoritative full replace using a dedicated per-assignment collection. We keep the model layer storage-agnostic by centralizing logic in `ABClassController`. The immutable replace pattern minimizes subtle JS reference bugs, at the cost of requiring callers to adopt the returned instance.
-
----
-
-_Document version: initial draft_

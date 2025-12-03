@@ -1,164 +1,71 @@
-# Assignment Rehydration Strategy
+# How-To: Assignment Persistence & Rehydration
 
-This document describes how _full_ assignment hydration works when starting from the
-lightweight (partially hydrated) assignment objects embedded inside an `ABClass`
-instance that was loaded from JsonDbApp.
+This guide explains how to use the `ABClassController` to persist and rehydrate assignments using the split persistence model.
 
-## Goals
+## 1. Persisting an Assignment Run
 
-- Keep `ABClassController.loadClass()` fast (only summary / partial assignments)
-- Hydrate **only when explicitly requested** (e.g. re‑running an assessment, export, audit)
-- Avoid subtle stale-reference bugs in JavaScript
-- Maintain a single, stable schema (partial vs full differ only in payload weight)
-- Fail loudly (throw) if the authoritative full assignment collection is missing or corrupt
+When an assessment run completes, you must persist the results. Use `persistAssignmentRun` to save both the full detailed record and the lightweight summary.
 
-## Terminology
+```javascript
+const abClassController = new ABClassController();
 
-| Term               | Meaning                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| Partial Assignment | Assignment object inside `ABClass.assignments[]` with heavy fields elided (e.g. `artifact.content === null`).               |
-| Full Assignment    | Same shape, but every field populated (artifacts contain `content`, metadata complete, feedback/assessments fully present). |
-| Hydration          | Replacing a partial assignment with its authoritative full version.                                                         |
+// ... processing logic ...
+assignment.touchUpdated(); // Update timestamp
 
-## Responsibilities
-
-| Component        | Responsibility                                                                               |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| `ABClassController` | Owns persistence access (JsonDbApp collections) and provides a `rehydrateAssignment` method. |
-| Assignment Model | Pure data + business logic. It does **not** know how to talk to storage.                     |
-
-## Collection Naming Convention
-
-Full (authoritative) assignment documents are stored in a per-assignment collection distinct from the class collection. Recommended pattern:
-
-```
-assign_full_<courseId>_<assignmentId>
+// Persist:
+// 1. Writes full JSON to 'assign_full_<courseId>_<assignmentId>'
+// 2. Updates 'ABClass' with partial summary
+abClassController.persistAssignmentRun(abClass, assignment);
 ```
 
-Rationale:
+**Why?**
 
-- Clear prefix (`assign_full_`) avoids collisions
-- Easy to grep/debug
-- Stable and deterministic
+- Ensures `ABClass` stays small (<1MB) for fast loading.
+- Preserves full fidelity data (artifacts, content) in a separate collection (<20MB).
 
-(If your environment already enforces namespacing, adapt the prefix accordingly.)
+## 2. Rehydrating an Assignment
 
-## Hydration Triggers
+When you need to access the full details of an assignment (e.g., for re-running an assessment or generating a deep report), use `rehydrateAssignment`.
 
-Hydration is **explicit**. Callers invoke rehydration before operations that require full payloads, for example:
+```javascript
+const abClassController = new ABClassController();
+const abClass = abClassController.loadClass(courseId);
 
-- Running or re-running an automated assessment
-- Generating a detailed export/report
-- Deep analysis / NLP passes over artifact contents
+// At this point, abClass.assignments contains only partial summaries (content is null)
 
-All other UI / list / overview paths should rely on the partial object.
+try {
+  // Fetch full data and replace the partial instance in memory
+  const fullAssignment = abClassController.rehydrateAssignment(abClass, assignmentId);
 
-## Detecting Hydration State
-
-Instead of scanning artifacts each time, we set an internal transient flag after hydration:
-
-```js
-assignment._hydrationLevel = 'full'; // or 'partial'
-```
-
-Provide a helper (optional):
-
-```js
-function isHydrated(assignment) {
-  return assignment?._hydrationLevel === 'full';
+  // Now you can access heavy fields
+  console.log(fullAssignment.submissions[0].items['task1'].artifact.content);
+} catch (err) {
+  console.error('Failed to rehydrate assignment:', err);
+  // Handle missing data (e.g., maybe the assignment was never fully persisted?)
 }
 ```
 
-This flag is _not_ persisted—its absence implies partial unless contents say otherwise.
+**Important**: Always use the returned `fullAssignment` instance or re-access it from `abClass.assignments` after the call. Old references to the partial assignment object will remain partial.
 
-## Full Replace vs In-Place Mutation
+## 3. When to Rehydrate?
 
-Two common patterns for updating the assignment in memory:
+| Scenario                   | Rehydrate? | Why?                                                                 |
+| :------------------------- | :--------- | :------------------------------------------------------------------- |
+| **Listing Assignments**    | ❌ No      | Partial summary has name, ID, dates, and scores.                     |
+| **Cohort Analysis**        | ❌ No      | Scores and feedback summaries are present in partial.                |
+| **Re-running Assessment**  | ✅ Yes     | Need previous `contentHash` and `updatedAt` to skip unchanged files. |
+| **Exporting Student Work** | ✅ Yes     | Need actual artifact content (text/images).                          |
+| **Auditing / Debugging**   | ✅ Yes     | Need full trace of what was assessed.                                |
 
-### Option A: Immutable Replace (Recommended for Simplicity)
+## 4. Migration & Legacy Data
 
-1. Fetch full document from its collection.
-2. Construct (or deserialize) a new assignment object.
-3. Replace the element in `abClass.assignments` **by index**.
-4. Return the new instance.
+If you have existing data created before the `documentType` field was introduced:
 
-Pros:
+1.  **Reading**: `Assignment.fromJSON()` will fallback to creating a base `Assignment` instance if `documentType` is missing.
+2.  **Writing**: When you next save/persist this assignment, ensure you are using the factory `Assignment.create(...)` or explicitly setting the type if you are manually migrating.
+3.  **Recovery**: If `rehydrateAssignment` fails due to missing `documentType`, you may need to manually patch the database document or re-run the assessment to generate a fresh, valid record.
 
-- Straightforward; no deep merge logic
-- Guarantees internal consistency (full object was serialized coherently)
+## 5. Error Handling Strategies
 
-Cons:
-
-- Any external references to the old partial object will remain stale unless callers adopt the returned reference
-
-Mitigation: Document that callers **must** use the returned hydrated instance.
-
-## Rehydration Algorithm (Immutable Replace)
-
-Pseudocode:
-
-```js
-rehydrateAssignment(abClass, assignmentId) {
-  const idx = abClass.assignments.findIndex(a => a.assignmentId === assignmentId);
-  if (idx === -1) throw new Error(`Assignment ${assignmentId} not found in class ${abClass.classId}`);
-
-  const full = fetchFullAssignment(abClass.classId, assignmentId); // throws on missing/corrupt
-  full._hydrationLevel = 'full';
-
-  // Replace in array
-  abClass.assignments[idx] = full;
-  return full;
-}
-```
-
-`fetchFullAssignment()`:
-
-```js
-function fetchFullAssignment(classId, assignmentId) {
-  const colName = `assign_full_${classId}_${assignmentId}`;
-  const col = dbManager.getCollection(colName);
-  const docs = col.readAll ? col.readAll() : col.find ? col.find({}) : [];
-  if (!docs || !docs.length) throw new Error(`Full assignment collection missing: ${colName}`);
-  const doc = docs[0];
-  if (!doc || doc.assignmentId !== assignmentId) {
-    throw new Error(`Corrupt full assignment document in ${colName}`);
-  }
-  return doc; // Or transform via Assignment.fromJSON if available
-}
-```
-
-## Error Handling
-
-| Situation                                       | Action                                           |
-| ----------------------------------------------- | ------------------------------------------------ |
-| Full collection missing                         | Throw `Error` (message includes collection name) |
-| Empty collection                                | Throw (treated same as missing)                  |
-| Corrupt doc (missing `assignmentId` / mismatch) | Throw                                            |
-| Assignment absent in `ABClass.assignments`      | Throw before attempting hydration                |
-
-Future enhancement: catch these errors and trigger a reconstruction or assessment cycle.
-
-## Testing Guidelines (Vitest)
-
-| Test                                  | Purpose                                            |
-| ------------------------------------- | -------------------------------------------------- |
-| Hydrates successfully                 | Replaces partial with full; sets `_hydrationLevel` |
-| Throws on missing full collection     | Ensures error path                                 |
-| Throws when assignment not in ABClass | Guard condition                                    |
-| Replacement returns new instance      | Ensures immutability contract                      |
-| Old reference remains partial         | Validates caller must adopt new reference          |
-
-## Future Extensions (Deferred)
-
-- Artifact-level selective hydration (per `artifact.uid`)
-- Background prefetch queue (hydrate last opened N assignments)
-- Staleness comparison using `lastUpdated` revision suffix
-- Metrics: count hydration events / average ms
-
-## Summary
-
-Hydration is an explicit, authoritative full replace using a dedicated per-assignment collection. We keep the model layer storage-agnostic by centralizing logic in `ABClassController`. The immutable replace pattern minimizes subtle JS reference bugs, at the cost of requiring callers to adopt the returned instance.
-
----
-
-_Document version: initial draft_
+- **Collection Missing**: If `rehydrateAssignment` throws "Collection not found", it usually means the assignment was never successfully persisted. **Action**: Treat as a fresh run.
+- **Corrupt Data**: If it throws "Corrupt data", the JSON might be truncated. **Action**: Log error and potentially archive the bad document, then treat as fresh run.
