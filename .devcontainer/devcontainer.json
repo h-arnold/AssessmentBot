@@ -1,16 +1,20 @@
 {
   "name": "AssessmentBot Development",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:latest",
-
   "features": {
     "ghcr.io/devcontainers/features/git:1": {
       "version": "latest"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {
       "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "latest",
+      "jdkDistro": "ms",
+      "installGradle": false,
+      "installMaven": false
     }
   },
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -20,7 +24,8 @@
         "github.copilot",
         "github.copilot-chat",
         "yzhang.markdown-all-in-one",
-        "ms-vscode.js-debug"
+        "ms-vscode.js-debug",
+        "vscjava.vscode-java-pack"
       ],
       "settings": {
         "editor.wordWrap": "on",
@@ -39,15 +44,14 @@
         "github.copilot.chat.generateTests.codeLens": true,
         "github.copilot.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
         "github.copilot.chat.commitMessageGeneration.instructionsPath": "./.github/.copilot-commit-message-instructions.md",
-        "github.copilot.chat.edits.temporalContext.enabled": true
+        "github.copilot.chat.edits.temporalContext.enabled": true,
+        "java.import.gradle.java.home": "/usr/local/sdkman/candidates/java/current",
+        "java.jdt.ls.java.home": "/usr/local/sdkman/candidates/java/current"
       }
     }
   },
-
   "postCreateCommand": "npm install && gh --version || true",
-
   "remoteUser": "node",
-
   "mounts": [
     "source=${localWorkspaceFolder}/.git,target=/workspaces/${localWorkspaceFolderBasename}/.git,type=bind,consistency=cached"
   ]
