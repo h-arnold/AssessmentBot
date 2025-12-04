@@ -67,11 +67,6 @@ function getConfiguration() {
       'jsonDbMasterIndexKey',
       ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY
     ),
-    jsonDbAutoCreateCollections: safeGet(
-      () => cfg.getJsonDbAutoCreateCollections(),
-      'jsonDbAutoCreateCollections',
-      ConfigurationManager.DEFAULTS.JSON_DB_AUTO_CREATE_COLLECTIONS
-    ),
     jsonDbLockTimeoutMs: safeGet(
       () => cfg.getJsonDbLockTimeoutMs(),
       'jsonDbLockTimeoutMs',
@@ -196,16 +191,6 @@ function saveConfiguration(config) {
     safeSet(
       () => ConfigurationManager.getInstance().setJsonDbMasterIndexKey(config.jsonDbMasterIndexKey),
       'jsonDbMasterIndexKey'
-    );
-  }
-
-  if (config.jsonDbAutoCreateCollections !== undefined) {
-    safeSet(
-      () =>
-        ConfigurationManager.getInstance().setJsonDbAutoCreateCollections(
-          config.jsonDbAutoCreateCollections
-        ),
-      'jsonDbAutoCreateCollections'
     );
   }
 

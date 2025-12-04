@@ -8,6 +8,23 @@ This document captures the serialized structures produced by the models shared i
 - `StudentSubmissionItem`
 - `BaseTaskArtifact`
 
+## Persistence Strategy & Rationale
+
+To balance performance with data fidelity in the Google Apps Script environment, we use a **Split Persistence Model**:
+
+1.  **Lightweight Class Record (`ABClass`)**:
+    - **Purpose**: Fast loading for cohort analysis, averages, and list views.
+    - **Storage**: The main `ABClass` document.
+    - **Content**: Contains `assignments` as **Partial Summaries**. Heavy fields (artifacts, content) are stripped.
+    - **Size Target**: < 1MB.
+
+2.  **Full Assignment Record (`assign_full_<courseId>_<assignmentId>`)**:
+    - **Purpose**: Deep processing, re-running assessments, and lazy-loading.
+    - **Storage**: A dedicated collection per assignment.
+    - **Content**: **Full Fidelity**. Includes all artifacts, cached content, and hashes.
+    - **Size Target**: < 20MB (GAS execution limit safe).
+    - **Lazy Loading**: This record acts as a cache. During a run, we compare its `updatedAt` against Drive file modification times to skip fetching unchanged student work.
+
 ## ABClass (root) and JsonDbApp partial hydration
 
 `ABClass` is the root object for serialized classroom data. When stored in or
@@ -35,6 +52,9 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
     {
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
+      "documentType": "SLIDES",
+      "referenceDocumentId": "DriveRef123",
+      "templateDocumentId": "DriveTemplate123",
       "lastUpdated": "2025-09-10T12:34:56Z",
       "tasks": {
         "t_ab12": {
@@ -84,6 +104,11 @@ Key notes:
   JsonDbApp or other serialized stores; doing so will duplicate roster entries
   each time an assessment is rehydrated.
 
+Hydration markers (`_hydrationLevel`) are runtime-only flags set to `'full'` or
+`'partial'` so controllers know whether an `Assignment` holds the entire payload
+or a lightweight summary. They are never serialized in either the ABClass record
+or the dedicated `assign_full_*` collections.
+
 The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
 
 ## Partial Hydration (summary-level)
@@ -95,6 +120,9 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
   "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,
@@ -167,6 +195,9 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
   "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,

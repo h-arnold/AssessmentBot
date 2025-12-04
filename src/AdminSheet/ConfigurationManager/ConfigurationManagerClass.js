@@ -77,9 +77,9 @@ class ConfigurationManager extends BaseSingleton {
     if (globalThis.FREEZE_SINGLETONS) {
       try {
         Object.freeze(this);
-      } catch (freezeErr) {
+      } catch (error_) {
         if (globalThis.__TRACE_SINGLETON__) {
-          console.debug('Freeze failed ConfigurationManager:', freezeErr?.message || freezeErr);
+          console.debug('Freeze failed ConfigurationManager:', error_?.message || error_);
         }
       }
     }
@@ -223,21 +223,26 @@ class ConfigurationManager extends BaseSingleton {
       const folderResult = DriveManager.createFolder(parentFolderId, folderName);
       const folderId = folderResult?.newFolderId;
 
-      if (folderId && persistConfigKey) {
-        try {
-          this.setProperty(persistConfigKey, folderId);
-        } catch (persistError) {
-          // Log persistence error
-          ABLogger.getInstance().error(
-            `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-            { key: persistConfigKey, cause: persistError }
-          );
+      // If we successfully resolved/created a folder, always log that fact.
+      // Persist the id only when a persistence key is provided. The previous
+      // inner `if (folderId)` was redundant because we're already inside a
+      // branch where folderId is truthy.
+      if (folderId) {
+        if (persistConfigKey) {
+          try {
+            this.setProperty(persistConfigKey, folderId);
+          } catch (persistError) {
+            // Log persistence error
+            ABLogger.getInstance().error(
+              `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
+              { key: persistConfigKey, cause: persistError }
+            );
+          }
         }
-        if (folderId) {
-          logger.info(
-            `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
-          );
-        }
+
+        logger.info(
+          `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
+        );
       }
 
       return folderId || null;
@@ -347,16 +352,6 @@ class ConfigurationManager extends BaseSingleton {
   getJsonDbMasterIndexKey() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY);
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
-  }
-
-  getJsonDbAutoCreateCollections() {
-    const value = this.getProperty(
-      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS
-    );
-    if (value == null || value === '') {
-      return ConfigurationManager.DEFAULTS.JSON_DB_AUTO_CREATE_COLLECTIONS;
-    }
-    return ConfigurationManager.toBoolean(value);
   }
 
   getJsonDbLockTimeoutMs() {
@@ -507,13 +502,6 @@ class ConfigurationManager extends BaseSingleton {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY, masterIndexKey);
   }
 
-  setJsonDbAutoCreateCollections(flag) {
-    this.setProperty(
-      ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-      ConfigurationManager.toBoolean(flag)
-    );
-  }
-
   setJsonDbLockTimeoutMs(timeoutMs) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, timeoutMs);
   }
@@ -568,7 +556,7 @@ class ConfigurationManager extends BaseSingleton {
     { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}
   ) {
     const raw = this.getProperty(key);
-    const parsed = parseInt(raw, 10);
+    const parsed = Number.parseInt(raw, 10);
     if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
     return fallback;
   }

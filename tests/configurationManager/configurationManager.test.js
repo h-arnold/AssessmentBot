@@ -455,29 +455,6 @@ describe('ConfigurationManager setProperty', () => {
       }).toThrow('JSON DB Master Index Key must be a non-empty string.');
     });
 
-    it('should accept boolean input for auto create collections', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-          true
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-        'true'
-      );
-    });
-
-    it('should reject invalid value for auto create collections', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS,
-          'maybe'
-        );
-      }).toThrow('JSON DB Auto Create Collections must be a boolean (true/false).');
-    });
-
     it('should accept valid lock timeout within range', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 2000);
@@ -576,6 +553,54 @@ describe('ConfigurationManager setProperty', () => {
       }).toThrow('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
 
       driveSpy.mockRestore();
+    });
+
+    it('should persist and log when folder created and persistConfigKey provided', () => {
+      // Provide a logger
+      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+      const ABLoggerClass = function () {};
+      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
+      global.ABLogger = ABLoggerClass;
+
+      // Ensure drive manager returns a parent and creates a folder
+      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
+      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-123' });
+
+      const spy = vi.spyOn(configManager, 'setProperty');
+
+      const result = configManager._ensureAdminSheetFolder('Test Folder', 'MY_KEY');
+
+      expect(result).toBe('folder-123');
+      expect(spy).toHaveBeenCalledWith('MY_KEY', 'folder-123');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'ConfigurationManager: Ensured folder "Test Folder" (folder-123) exists for Admin sheet.'
+      );
+
+      spy.mockRestore();
+      delete global.ABLogger;
+    });
+
+    it('should log when folder created without persistConfigKey (no persistence)', () => {
+      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+      const ABLoggerClass = function () {};
+      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
+      global.ABLogger = ABLoggerClass;
+
+      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
+      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-456' });
+
+      const spy = vi.spyOn(configManager, 'setProperty');
+
+      const result = configManager._ensureAdminSheetFolder('Test Folder 2', null);
+
+      expect(result).toBe('folder-456');
+      expect(spy).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'ConfigurationManager: Ensured folder "Test Folder 2" (folder-456) exists for Admin sheet.'
+      );
+
+      spy.mockRestore();
+      delete global.ABLogger;
     });
   });
 

@@ -10,7 +10,6 @@ const DEFAULTS = Object.freeze({
     'https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/AdminSheet/UpdateAndInitManager/assessmentBotVersions.json',
   UPDATE_STAGE: 0,
   JSON_DB_MASTER_INDEX_KEY: 'ASSESSMENT_BOT_DB_MASTER_INDEX',
-  JSON_DB_AUTO_CREATE_COLLECTIONS: true,
   JSON_DB_LOCK_TIMEOUT_MS: 10000,
   JSON_DB_LOG_LEVEL: 'INFO',
   JSON_DB_BACKUP_ON_INITIALISE: false,

@@ -213,17 +213,6 @@
             <div class="switch">
               <label>
                 Off
-                <input id="jsonDbAutoCreateCollections" name="jsonDbAutoCreateCollections" type="checkbox">
-                <span class="lever"></span>
-                On
-              </label>
-            </div>
-            <span class="helper-text">Automatically create missing collections when accessed.</span>
-          </div>
-          <div class="col s12 m6">
-            <div class="switch">
-              <label>
-                Off
                 <input id="jsonDbBackupOnInitialise" name="jsonDbBackupOnInitialise" type="checkbox">
                 <span class="lever"></span>
                 On
@@ -336,7 +325,6 @@
         logLevelSelect.value = data.jsonDbLogLevel || '';
         M.FormSelect.init(logLevelSelect);
       }
-      document.getElementById('jsonDbAutoCreateCollections').checked = !!data.jsonDbAutoCreateCollections;
       document.getElementById('jsonDbBackupOnInitialise').checked = !!data.jsonDbBackupOnInitialise;
       M.updateTextFields();
     }
@@ -367,7 +355,7 @@
     // Shared helper to validate integer ranges; returns parsed value or null (and focuses tab + shows toast on failure)
     function validateIntRange(id, min, max, label, focusTabFn) {
       const el = document.getElementById(id);
-      const val = parseInt(el.value, 10);
+      const val = Number.parseInt(el.value, 10);
       if (isNaN(val) || val < min || val > max) {
         if (typeof focusTabFn === 'function') focusTabFn();
         M.toast({ html: `${label} must be an integer between ${min} and ${max}.`, classes: 'orange' });
@@ -512,7 +500,6 @@
         slidesFetchBatchSize: slidesVal,
         daysUntilAuthRevoke: daysUntilAuthRevokeVal,
         jsonDbMasterIndexKey: masterIndexKey,
-        jsonDbAutoCreateCollections: document.getElementById('jsonDbAutoCreateCollections').checked,
         jsonDbLockTimeoutMs: lockTimeoutVal,
         jsonDbLogLevel: logLevelValue,
         jsonDbBackupOnInitialise: document.getElementById('jsonDbBackupOnInitialise').checked,

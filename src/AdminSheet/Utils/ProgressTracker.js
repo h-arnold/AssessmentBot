@@ -293,7 +293,7 @@ class ProgressTracker extends BaseSingleton {
   getStepAsNumber() {
     // First check if we have it locally
     if (this.step !== undefined) {
-      return typeof this.step === 'number' ? this.step : parseInt(this.step.toString(), 10);
+      return typeof this.step === 'number' ? this.step : Number.parseInt(this.step.toString(), 10);
     }
 
     // Fall back to getting it from stored progress
@@ -305,7 +305,7 @@ class ProgressTracker extends BaseSingleton {
 
     const step = progress.step;
     const numberMatch = step.toString().match(/\d+/); // Extract the first number in the string
-    return numberMatch ? parseInt(numberMatch[0], 10) : null;
+    return numberMatch ? Number.parseInt(numberMatch[0], 10) : null;
   }
 
   /**

@@ -29,6 +29,7 @@ class ABClassController {
 
   // Helper: fetch and apply teacher list
   _applyTeachers(abClass, courseId) {
+    const logger = ABLogger.getInstance();
     // Call the ClassroomApiClient static method directly and allow errors to surface
     const teachers = ClassroomApiClient.fetchTeachers(courseId);
 
@@ -38,13 +39,17 @@ class ABClassController {
       // check in ABClass doesn't throw. Support both Teacher instances and
       // plain objects returned by legacy API mocks.
       let teacherInstance = teacherObj;
-      try {
-        if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+      if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+        try {
           teacherInstance = Teacher.fromJSON(teacherObj) || teacherObj;
+        } catch (err) {
+          logger.error('_applyTeachers: failed to deserialize teacher payload', {
+            courseId,
+            teacherId: teacherObj?.userId,
+            err,
+          });
+          throw err;
         }
-      } catch (e) {
-        // If coercion fails, fall back to raw object - let downstream code decide
-        teacherInstance = teacherObj;
       }
 
       // If this teacher matches the course owner, set as owner (using a
@@ -86,8 +91,10 @@ class ABClassController {
     };
   }
 
+  // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
+  // keep the helper for future use once the issue is resolved.
   _shouldRefreshRoster(metadata, classId) {
-    if (metadata?.lastUpdated) return false;
+    if (!metadata?.lastUpdated) return false;
 
     const lastUpdated =
       metadata.lastUpdated instanceof Date ? metadata.lastUpdated : new Date(metadata.lastUpdated);
@@ -139,6 +146,182 @@ class ABClassController {
     } catch (err) {
       logger.error('Failed to persist refreshed roster', {
         classId: abClass.classId,
+        err,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Generate consistent collection name for full assignment persistence.
+   * @param {string} courseId - The course ID
+   * @param {string} assignmentId - The assignment ID
+   * @return {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>
+   */
+  _getFullAssignmentCollectionName(courseId, assignmentId) {
+    return `assign_full_${courseId}_${assignmentId}`;
+  }
+
+  /**
+   * Persist an assignment run by writing full payload to dedicated collection
+   * and updating the ABClass with a partial summary.
+   * @param {ABClass} abClass - The ABClass instance containing the assignment
+   * @param {Assignment} assignment - The assignment to persist
+   * @return {void}
+   */
+  persistAssignmentRun(abClass, assignment) {
+    const logger = ABLogger.getInstance();
+
+    if (!abClass || !assignment) {
+      throw new TypeError('persistAssignmentRun requires abClass and assignment');
+    }
+
+    if (!assignment.courseId || !assignment.assignmentId) {
+      throw new TypeError('Assignment must have courseId and assignmentId');
+    }
+
+    try {
+      // 1. Serialize full assignment and write to dedicated collection
+      const collectionName = this._getFullAssignmentCollectionName(
+        assignment.courseId,
+        assignment.assignmentId
+      );
+      const fullCollection = this.dbManager.getCollection(collectionName);
+      assignment._hydrationLevel = 'full';
+      const fullPayload = assignment.toJSON();
+
+      logger.info('persistAssignmentRun: writing full assignment', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+        collectionName,
+      });
+
+      // Use replaceOne to ensure single document per assignment
+      const filter = {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+      };
+      const existing = fullCollection.findOne(filter);
+
+      if (existing) {
+        fullCollection.replaceOne(filter, fullPayload);
+      } else {
+        fullCollection.insertOne(fullPayload);
+      }
+      fullCollection.save();
+
+      // 2. Generate partial summary and reconstruct as typed instance
+      const partialJson = assignment.toPartialJSON();
+      const partialInstance = Assignment.fromJSON(partialJson);
+      partialInstance._hydrationLevel = 'partial';
+
+      // 3. Find and replace assignment in abClass.assignments
+      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
+
+      if (idx >= 0) {
+        abClass.assignments[idx] = partialInstance;
+        logger.info('persistAssignmentRun: replaced existing assignment in ABClass', {
+          assignmentId: assignment.assignmentId,
+          index: idx,
+        });
+      } else {
+        abClass.assignments.push(partialInstance);
+        logger.info('persistAssignmentRun: added new assignment to ABClass', {
+          assignmentId: assignment.assignmentId,
+        });
+      }
+
+      // 4. Save updated ABClass with partial assignment
+      this.saveClass(abClass);
+
+      logger.info('persistAssignmentRun: completed successfully', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+      });
+    } catch (err) {
+      logger.error('persistAssignmentRun failed', {
+        courseId: assignment.courseId,
+        assignmentId: assignment.assignmentId,
+        err,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Rehydrate an assignment by loading the full version from its dedicated collection.
+   * @param {ABClass} abClass - The ABClass instance
+   * @param {string} assignmentId - The assignment ID to rehydrate
+   * @return {Assignment} The fully hydrated assignment instance
+   */
+  rehydrateAssignment(abClass, assignmentId) {
+    const logger = ABLogger.getInstance();
+
+    if (!abClass || !assignmentId) {
+      throw new TypeError('rehydrateAssignment requires abClass and assignmentId');
+    }
+
+    const courseId = abClass.classId;
+
+    try {
+      // 1. Read full assignment document from dedicated collection
+      const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
+      const fullCollection = this.dbManager.getCollection(collectionName);
+
+      const doc = fullCollection.findOne({ courseId, assignmentId });
+
+      if (!doc) {
+        throw new Error(
+          `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
+        );
+      }
+
+      logger.info('rehydrateAssignment: loading full assignment', {
+        courseId,
+        assignmentId,
+        collectionName,
+      });
+
+      // 2. Validate document has required fields before attempting reconstruction
+      if (!doc.courseId || !doc.assignmentId) {
+        throw new Error(
+          `Corrupt or invalid assignment data in ${collectionName}: missing required fields courseId or assignmentId`
+        );
+      }
+
+      if (!doc.documentType) {
+        throw new Error(
+          `Corrupt or invalid assignment data in ${collectionName}: missing required field documentType`
+        );
+      }
+
+      // 3. Reconstruct assignment via factory pattern
+      const hydratedAssignment = Assignment.fromJSON(doc);
+
+      // 4. Set hydration level marker (transient, not persisted)
+      hydratedAssignment._hydrationLevel = 'full';
+
+      // 5. Replace assignment in abClass.assignments by index
+      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+
+      if (idx >= 0) {
+        abClass.assignments[idx] = hydratedAssignment;
+        logger.info('rehydrateAssignment: replaced assignment in ABClass', {
+          assignmentId,
+          index: idx,
+        });
+      } else {
+        // Assignment ID must exist in the provided ABClass instance — throw a clear error.
+        throw new Error(
+          `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${courseId}'.`
+        );
+      }
+
+      return hydratedAssignment;
+    } catch (err) {
+      logger.error('rehydrateAssignment failed', {
+        courseId,
+        assignmentId,
         err,
       });
       throw err;
@@ -224,7 +407,9 @@ class ABClassController {
       return newClass;
     }
 
-    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); (this was the old logic, but it doesn't work so I'm leaving this here as reference for now until I figure out a better way of handling this. See Issue #88)
+    // Metadata-driven refresh remains disabled per Issue #88, so we force a full refresh until the
+    // underlying behaviour can be revisited and the helper re-enabled.
+    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); retained for future work.
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
     if (needsRefresh) {
@@ -271,11 +456,11 @@ class ABClassController {
         collection.insertOne(abClass);
       }
     } catch (err) {
-      // Provide a clearer error path while keeping previous behavior
-      const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-      if (logger && typeof logger.warn === 'function') {
-        logger.warn('saveClass: collection operation failed', err?.message ?? err);
-      }
+      // Use the project's logging contract directly and fail fast.
+      ABLogger.getInstance().warn('saveClass: collection operation failed', {
+        classId: abClass.classId,
+        err,
+      });
       throw err;
     }
 

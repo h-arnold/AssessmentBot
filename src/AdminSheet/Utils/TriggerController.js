@@ -1,4 +1,11 @@
 class TriggerController {
+  constructor() {
+    /**
+     * Constructor intentionally empty — use TriggerController.REQUIRED_SCOPES (static)
+     * instead of creating an instance property so the scopes array is not recreated per instance.
+     */
+  }
+
   /**
    * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
    *

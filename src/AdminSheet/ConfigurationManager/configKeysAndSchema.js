@@ -23,7 +23,6 @@ const CONFIG_KEYS = Object.freeze({
   REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
   DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
   JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
-  JSON_DB_AUTO_CREATE_COLLECTIONS: 'jsonDbAutoCreateCollections',
   JSON_DB_LOCK_TIMEOUT_MS: 'jsonDbLockTimeoutMs',
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
@@ -70,7 +69,7 @@ const CONFIG_SCHEMA = Object.freeze({
     validate: (v) => {
       if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
       if (typeof v !== 'string') {
-        throw new Error('Assessment Record Course ID must be a string.');
+        throw new TypeError('Assessment Record Course ID must be a string.');
       }
       return v;
     },
@@ -90,7 +89,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.UPDATE_STAGE]: {
     storage: 'script',
     validate: (v) => {
-      const stage = parseInt(v, 10);
+      const stage = Number.parseInt(v, 10);
       if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
         throw new Error('Update Stage must be 0, 1, or 2');
       }
@@ -110,11 +109,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
     storage: 'script',
     validate: (v) => validateNonEmptyString('JSON DB Master Index Key', v),
-  },
-  [CONFIG_KEYS.JSON_DB_AUTO_CREATE_COLLECTIONS]: {
-    storage: 'script',
-    validate: (v) => validateBoolean('JSON DB Auto Create Collections', v),
-    normalize: toBooleanString,
   },
   [CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
     storage: 'script',

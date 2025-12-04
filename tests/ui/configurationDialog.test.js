@@ -161,7 +161,6 @@ describe('ConfigurationDialog.html', () => {
       jsonDbRootFolderId: 'root-folder-id',
       jsonDbLockTimeoutMs: 20000,
       jsonDbLogLevel: 'WARN',
-      jsonDbAutoCreateCollections: true,
       jsonDbBackupOnInitialise: false,
     };
 
@@ -198,9 +197,6 @@ describe('ConfigurationDialog.html', () => {
         mockConfig.jsonDbLockTimeoutMs.toString()
       );
       expect(document.getElementById('jsonDbLogLevel').value).toBe(mockConfig.jsonDbLogLevel);
-      expect(document.getElementById('jsonDbAutoCreateCollections').checked).toBe(
-        mockConfig.jsonDbAutoCreateCollections
-      );
       expect(document.getElementById('jsonDbBackupOnInitialise').checked).toBe(
         mockConfig.jsonDbBackupOnInitialise
       );
@@ -384,7 +380,6 @@ describe('ConfigurationDialog.html', () => {
     it('should submit correct data on successful validation', () => {
       getConfiguration.successHandler({ hasApiKey: false });
       fillFormWithValidData();
-      document.getElementById('jsonDbAutoCreateCollections').checked = true;
       getClassrooms.successHandler([{ id: 'c1', name: 'Test Class 1' }]);
       const classroomSelect = document.getElementById('classrooms');
       classroomSelect.value = 'c1';
@@ -400,7 +395,6 @@ describe('ConfigurationDialog.html', () => {
       expect(submittedData.apiKey).toBe('new-api-key');
       expect(submittedData.backendUrl).toBe('https://valid.url/api');
       expect(submittedData.jsonDbMasterIndexKey).toBe('valid-master-key');
-      expect(submittedData.jsonDbAutoCreateCollections).toBe(true);
       expect(submittedData.jsonDbLockTimeoutMs).toBe(5000);
       expect(submittedData.slidesFetchBatchSize).toBe(10);
       expect(submittedData.classroom).toEqual({ courseId: 'c1', courseName: 'Test Class 1' });

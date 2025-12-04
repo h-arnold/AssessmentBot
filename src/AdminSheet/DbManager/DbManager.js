@@ -37,7 +37,8 @@ class DbManager extends BaseSingleton {
 
     return {
       masterIndexKey: configManager.getJsonDbMasterIndexKey(),
-      autoCreateCollections: configManager.getJsonDbAutoCreateCollections(),
+      // Always allow JsonDbApp to auto-create collections so per-assignment persistence never fails
+      autoCreateCollections: true,
       lockTimeout: configManager.getJsonDbLockTimeoutMs(),
       logLevel: configManager.getJsonDbLogLevel(),
       backupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
@@ -130,7 +131,7 @@ class DbManager extends BaseSingleton {
   }
 
   /**
-   * Fetch a collection by name. Will auto-create if enabled in config (default).
+   * Fetch a collection by name. Auto-creation is always enabled to support per-assignment storage.
    */
   getCollection(name) {
     if (!name || typeof name !== 'string') {

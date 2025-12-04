@@ -11,16 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  createSlidesAssignment,
-  createSheetsAssignment,
-  createTextTask,
-  createStudentSubmission,
-} from '../helpers/modelFactories.js';
-import {
-  setupControllerTestMocks,
-  cleanupControllerTestMocks,
-} from '../helpers/mockFactories.js';
+import { setupControllerTestMocks, cleanupControllerTestMocks } from '../helpers/mockFactories.js';
 import {
   createTestFixture,
   assertMethodExists,
@@ -262,6 +253,20 @@ describe('ABClassController Persist Assignment', () => {
       expect(assignment.tasks[taskDef.getId()].artifacts.reference[0].content).toBe(
         'Reference content'
       );
+    });
+
+    it('sets hydration markers on full and partial instances', () => {
+      const controller = new ABClassController();
+      const { abClass, assignment } = createTestFixture({
+        ABClass,
+        courseId: 'course-hydration-flags',
+        assignmentId: 'assign-hydration-flags',
+      });
+
+      controller.persistAssignmentRun(abClass, assignment);
+
+      expect(assignment._hydrationLevel).toBe('full');
+      expect(abClass.assignments[0]._hydrationLevel).toBe('partial');
     });
 
     it('handles database write errors gracefully', () => {
