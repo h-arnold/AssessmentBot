@@ -407,9 +407,10 @@ class ABClassController {
       return newClass;
     }
 
-    // Metadata-driven refresh remains disabled per Issue #88, so we force a full refresh until the
-    // underlying behaviour can be revisited and the helper re-enabled.
-    const needsRefresh = true; //this._shouldRefreshRoster(metadata, classId); retained for future work.
+    // Metadata-driven refresh is currently disabled while Issue #88 is being
+    // investigated; keep the helper for future use but force a refresh here so
+    // persisted ABClass objects are kept up-to-date with live Classroom data.
+    const needsRefresh = true; // retained helper: this._shouldRefreshRoster(metadata, classId);
     // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(doc);
     if (needsRefresh) {

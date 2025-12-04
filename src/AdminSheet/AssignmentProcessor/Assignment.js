@@ -181,7 +181,8 @@ class Assignment {
     }
     inst.tasks = {};
     inst.submissions = [];
-    inst._hydrationLevel = null;
+    // Do not set transient hydration marker here — remain absent/undefined so
+    // that deserialized objects don't claim a persisted hydration level.
     // restore tasks
     if (data.tasks && typeof data.tasks === 'object') {
       Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
