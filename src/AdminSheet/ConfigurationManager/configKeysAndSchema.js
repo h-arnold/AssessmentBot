@@ -89,7 +89,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.UPDATE_STAGE]: {
     storage: 'script',
     validate: (v) => {
-      const stage = Number.parseInt(v, 10);
+      const stage = Number.Number.parseInt(v, 10);
       if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
         throw new Error('Update Stage must be 0, 1, or 2');
       }

@@ -556,7 +556,7 @@ class ConfigurationManager extends BaseSingleton {
     { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}
   ) {
     const raw = this.getProperty(key);
-    const parsed = parseInt(raw, 10);
+    const parsed = Number.parseInt(raw, 10);
     if (Number.isInteger(parsed) && parsed >= min && parsed <= max) return parsed;
     return fallback;
   }

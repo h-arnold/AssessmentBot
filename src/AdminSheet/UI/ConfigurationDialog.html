@@ -355,7 +355,7 @@
     // Shared helper to validate integer ranges; returns parsed value or null (and focuses tab + shows toast on failure)
     function validateIntRange(id, min, max, label, focusTabFn) {
       const el = document.getElementById(id);
-      const val = parseInt(el.value, 10);
+      const val = Number.parseInt(el.value, 10);
       if (isNaN(val) || val < min || val > max) {
         if (typeof focusTabFn === 'function') focusTabFn();
         M.toast({ html: `${label} must be an integer between ${min} and ${max}.`, classes: 'orange' });

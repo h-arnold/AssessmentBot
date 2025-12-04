@@ -100,7 +100,7 @@ class ABClass {
   static _parseNullableInt(value, defaultValue) {
     if (value === null || value === undefined) return defaultValue;
     if (Number.isInteger(value)) return value;
-    const parsed = parseInt(value, 10);
+    const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed)) return defaultValue;
     return parsed;
   }
@@ -121,7 +121,7 @@ class ABClass {
   // Cohort helpers
   getCohortStartYear() {
     if (!this.cohort) return null;
-    const num = parseInt(this.cohort, 10);
+    const num = Number.parseInt(this.cohort, 10);
     return Number.isNaN(num) ? null : num;
   }
 
