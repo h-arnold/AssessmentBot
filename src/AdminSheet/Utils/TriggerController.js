@@ -1,9 +1,6 @@
 class TriggerController {
   constructor() {
-    /**
-     * Constructor intentionally empty — use TriggerController.REQUIRED_SCOPES (static)
-     * instead of creating an instance property so the scopes array is not recreated per instance.
-     */
+    // Initialization logic can be added here if needed
   }
 
   /**

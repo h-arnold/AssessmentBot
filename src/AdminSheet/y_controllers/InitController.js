@@ -180,8 +180,7 @@ class InitController extends BaseSingleton {
   }
 
   /**
-   * This method does the first run init procedure of creating an installable onOpen trigger.
-   * Note: Authorization is now handled automatically by TriggerController.createOnOpenTrigger() via ScriptApp.requireScopes().
+   * This method does the first run init procedure of triggering the auth process, creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
    */
   doFirstRunInit() {
     const triggerController = new TriggerController();

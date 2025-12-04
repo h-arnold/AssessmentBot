@@ -17,9 +17,8 @@ describe('ABClassController.loadClass', () => {
     global.Teacher = Teacher;
 
     const loggerInstance = {
-      debugUi: vi.fn(),
-      info: vi.fn(),
-      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
     };
     global.ABLogger = { getInstance: () => loggerInstance };
 
@@ -63,4 +62,113 @@ describe('ABClassController.loadClass', () => {
       require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
     ];
   });
+
+  it('refreshes roster when course update time is newer than collection metadata', () => {
+    const storedDoc = {
+      _id: 'doc-1',
+      classId: 'course-123',
+      className: 'Original Name',
+      teachers: [{ email: 'old-teacher@example.com', userId: 'old-t1' }],
+      students: [{ name: 'Old Student', email: 'old@student.example.com', id: 'old-s1' }],
+      assignments: [],
+    };
+
+    collectionMock.findOne.mockReturnValue(storedDoc);
+    collectionMock.getMetadata.mockReturnValue({
+      created: new Date('2023-01-01T00:00:00Z'),
+      lastUpdated: new Date('2023-01-10T00:00:00Z'),
+      documentCount: 1,
+    });
+
+    const refreshedTeacher = new Teacher(
+      'updated-teacher@example.com',
+      'teacher-123',
+      'Teacher Updated'
+    );
+    const refreshedStudent = new Student('New Student', 'new@student.example.com', 'student-1');
+
+    ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-02-01T00:00:00Z'));
+    ClassroomApiClient.fetchCourse.mockReturnValue({
+      id: 'course-123',
+      name: 'Updated Name',
+      ownerId: 'owner-999',
+    });
+    ClassroomApiClient.fetchTeachers.mockReturnValue([refreshedTeacher]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([refreshedStudent]);
+
+    const abClass = controller.loadClass('course-123');
+
+    expect(ClassroomApiClient.fetchCourseUpdateTime).toHaveBeenCalledWith('course-123');
+    expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-123');
+    expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-123');
+    expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-123');
+
+    expect(abClass.teachers).toHaveLength(1);
+    expect(abClass.teachers[0].email).toBe('updated-teacher@example.com');
+    expect(abClass.students).toHaveLength(1);
+    expect(abClass.students[0].email).toBe('new@student.example.com');
+    expect(abClass.classOwner).toBeTruthy();
+    expect(abClass.classOwner.userId || abClass.classOwner.getUserId()).toBe('owner-999');
+    expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
+    expect(collectionMock.save).toHaveBeenCalledTimes(1);
+
+    const [filterArg, updateArg] = collectionMock.updateOne.mock.calls[0];
+    expect(filterArg).toEqual({ _id: 'doc-1' });
+
+    expect(updateArg).toHaveProperty('$set');
+    const { $set } = updateArg;
+    expect($set.className).toBe('Updated Name');
+    expect($set).not.toHaveProperty('cohort');
+    expect($set).not.toHaveProperty('courseLength');
+    expect($set).not.toHaveProperty('yearGroup');
+
+    expect($set.classOwner).toBeInstanceOf(Teacher);
+    expect($set.classOwner.userId).toBe('owner-999');
+
+    expect(Array.isArray($set.teachers)).toBe(true);
+    expect($set.teachers).toHaveLength(1);
+    expect($set.teachers[0].email).toBe('updated-teacher@example.com');
+
+    expect(Array.isArray($set.students)).toBe(true);
+    expect($set.students).toHaveLength(1);
+    expect($set.students[0].email).toBe('new@student.example.com');
+  });
+
+  it('returns stored class when metadata is up to date', () => {
+    const storedDoc = {
+      classId: 'course-456',
+      className: 'Stable Name',
+      teachers: [{ email: 'existing@example.com', userId: 't-existing' }],
+      students: [
+        { name: 'Existing Student', email: 'existing@student.example.com', id: 's-existing' },
+      ],
+      assignments: [],
+    };
+
+    collectionMock.findOne.mockReturnValue(storedDoc);
+    collectionMock.getMetadata.mockReturnValue({
+      created: new Date('2023-03-01T00:00:00Z'),
+      lastUpdated: new Date('2023-03-15T00:00:00Z'),
+      documentCount: 1,
+    });
+
+    ClassroomApiClient.fetchCourseUpdateTime.mockReturnValue(new Date('2023-03-10T00:00:00Z'));
+    ClassroomApiClient.fetchCourse.mockReturnValue({});
+    ClassroomApiClient.fetchTeachers.mockReturnValue([]);
+    ClassroomApiClient.fetchAllStudents.mockReturnValue([]);
+
+    const abClass = controller.loadClass('course-456');
+
+    expect(ClassroomApiClient.fetchCourse).not.toHaveBeenCalled();
+    expect(ClassroomApiClient.fetchTeachers).not.toHaveBeenCalled();
+    expect(ClassroomApiClient.fetchAllStudents).not.toHaveBeenCalled();
+    expect(collectionMock.updateOne).not.toHaveBeenCalled();
+
+    expect(abClass.teachers).toHaveLength(1);
+    expect(abClass.teachers[0].email).toBe('existing@example.com');
+    expect(abClass.students).toHaveLength(1);
+    expect(abClass.students[0].email).toBe('existing@student.example.com');
+  });
+
+  // No fallback path: schema must support updateOne.
 });
