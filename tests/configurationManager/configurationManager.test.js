@@ -554,6 +554,54 @@ describe('ConfigurationManager setProperty', () => {
 
       driveSpy.mockRestore();
     });
+
+    it('should persist and log when folder created and persistConfigKey provided', () => {
+      // Provide a logger
+      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+      const ABLoggerClass = function () {};
+      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
+      global.ABLogger = ABLoggerClass;
+
+      // Ensure drive manager returns a parent and creates a folder
+      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
+      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-123' });
+
+      const spy = vi.spyOn(configManager, 'setProperty');
+
+      const result = configManager._ensureAdminSheetFolder('Test Folder', 'MY_KEY');
+
+      expect(result).toBe('folder-123');
+      expect(spy).toHaveBeenCalledWith('MY_KEY', 'folder-123');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'ConfigurationManager: Ensured folder "Test Folder" (folder-123) exists for Admin sheet.'
+      );
+
+      spy.mockRestore();
+      delete global.ABLogger;
+    });
+
+    it('should log when folder created without persistConfigKey (no persistence)', () => {
+      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
+      const ABLoggerClass = function () {};
+      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
+      global.ABLogger = ABLoggerClass;
+
+      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
+      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-456' });
+
+      const spy = vi.spyOn(configManager, 'setProperty');
+
+      const result = configManager._ensureAdminSheetFolder('Test Folder 2', null);
+
+      expect(result).toBe('folder-456');
+      expect(spy).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'ConfigurationManager: Ensured folder "Test Folder 2" (folder-456) exists for Admin sheet.'
+      );
+
+      spy.mockRestore();
+      delete global.ABLogger;
+    });
   });
 
   describe('Default case (unknown properties)', () => {

@@ -223,21 +223,26 @@ class ConfigurationManager extends BaseSingleton {
       const folderResult = DriveManager.createFolder(parentFolderId, folderName);
       const folderId = folderResult?.newFolderId;
 
-      if (folderId && persistConfigKey) {
-        try {
-          this.setProperty(persistConfigKey, folderId);
-        } catch (persistError) {
-          // Log persistence error
-          ABLogger.getInstance().error(
-            `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-            { key: persistConfigKey, cause: persistError }
-          );
+      // If we successfully resolved/created a folder, always log that fact.
+      // Persist the id only when a persistence key is provided. The previous
+      // inner `if (folderId)` was redundant because we're already inside a
+      // branch where folderId is truthy.
+      if (folderId) {
+        if (persistConfigKey) {
+          try {
+            this.setProperty(persistConfigKey, folderId);
+          } catch (persistError) {
+            // Log persistence error
+            ABLogger.getInstance().error(
+              `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
+              { key: persistConfigKey, cause: persistError }
+            );
+          }
         }
-        if (folderId) {
-          logger.info(
-            `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
-          );
-        }
+
+        logger.info(
+          `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
+        );
       }
 
       return folderId || null;
