@@ -1,4 +1,51 @@
 const fs = require('fs');
+/**
+ * @file sync-appsscript.js
+ * @summary Husky pre-commit helper that ensures OAuth scopes remain in sync across the repository.
+ *
+ * @description
+ * This script is intended to run as a Husky pre-commit hook. Its purpose is to detect and reconcile
+ * differences between OAuth scopes declared in Google Apps Script manifests (appsscript.json) and the
+ * scopes expected/declared by the TriggerController (a centralized place in this repository that lists
+ * required scopes for triggered / runtime behavior).
+ *
+ * Why this exists
+ * - Apps Script projects require explicit OAuth scopes in their appsscript.json manifest files.
+ * - When code introduces new runtime behaviors (especially triggers or APIs accessed in TriggerController),
+ *   corresponding OAuth scopes must be present in each affected appsscript.json. Missing or mismatched
+ *   scopes can cause runtime failures or insufficient permission issues after deployment.
+ *
+ * What this script does (high level)
+ * - Locate relevant appsscript.json manifests in the repository.
+ * - Parse and collect scope declarations.
+ * - Read the authoritative scope list from the TriggerController (or a central source maintained here).
+ * - Compare manifests and the TriggerController list; update manifests or the central list as needed to
+ *   keep everything consistent, or fail the commit if automatic resolution would be unsafe.
+ * - Exit with a non-zero status if synchronization fails or requires manual intervention; otherwise allow commit.
+ *
+ * Behavioral guarantees & recommendations
+ * - The script should be idempotent: running it multiple times without code changes should not create
+ *   successive diffs.
+ * - Changes made by the script should be small and reviewable. Prefer failing the commit and asking the
+ *   developer to review scope changes over making risky automatic edits.
+ * - When this script mutates files, Husky will prevent the commit until the developer re-stages updated files.
+ * - Developers should always review scope additions carefully. OAuth scopes are security-sensitive — a new
+ *   scope often grants broader access and requires deliberate justification.
+ *
+ * Usage notes
+ * - This script is normally invoked automatically by Husky on pre-commit.
+ * - To run manually (for testing or CI), invoke the script from the repo root so it can locate manifests and
+ *   the TriggerController file(s).
+ *
+ * Limitations
+ * - The script is intended to reconcile manifests and a single TriggerController-style authoritative source
+ *   used in this repository. It does not probe deployed Apps Script projects nor external environments.
+ * - It assumes a consistent manifest schema and repository layout; if files are moved or renamed, the script
+ *   may need updating.
+ *
+ * @author Repository maintainers
+ * @see package.json (husky configuration) -- ensures this script runs during the pre-commit hook.
+ */
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
