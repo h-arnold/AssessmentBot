@@ -53,7 +53,7 @@ function assertAssignmentProperties(assignment, docType, courseId) {
 let SlidesAssignment, SheetsAssignment;
 try {
   SlidesAssignment = require('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
-  SheetsAssignment = require('../../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+  require('../../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
 } catch (e) {
   // Expected to fail in RED phase until modules export correctly
 }

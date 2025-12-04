@@ -130,6 +130,7 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/classroom.coursework.students',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/script.storage',
   'https://www.googleapis.com/auth/script.external_request',
   'https://www.googleapis.com/auth/script.container.ui',
   'https://www.googleapis.com/auth/script.scriptapp',

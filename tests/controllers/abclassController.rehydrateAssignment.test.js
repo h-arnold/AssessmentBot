@@ -12,16 +12,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  createSlidesAssignment,
-  createSheetsAssignment,
-  createTextTask,
-  createStudentSubmission,
-} from '../helpers/modelFactories.js';
-import {
-  setupControllerTestMocks,
-  cleanupControllerTestMocks,
-} from '../helpers/mockFactories.js';
+
+import { setupControllerTestMocks, cleanupControllerTestMocks } from '../helpers/mockFactories.js';
 import {
   createTestFixture,
   setupRehydrationScenario,
