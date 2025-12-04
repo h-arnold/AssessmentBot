@@ -59,7 +59,7 @@ function handleScriptInit() {
   try {
     // Call the library to handle the authorisation process
     // This will create triggers and set up the auth revoke timer
-    AssessmentBot.handleAssessmentRecordAuth();
+    AssessmentBot.handleScriptInit();
 
     // Mark the user as authorised after successful initialisation
     markUserAsAuthorised();
