@@ -5,6 +5,9 @@
   "features": {
     "ghcr.io/devcontainers/features/git:1": {
       "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
     }
   },
 
@@ -41,7 +44,7 @@
     }
   },
 
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "npm install && gh --version || true",
 
   "remoteUser": "node",
 
