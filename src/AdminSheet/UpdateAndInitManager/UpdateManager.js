@@ -152,56 +152,37 @@ class UpdateManager extends BaseUpdateAndInit {
    * Ensures the propertiesStore sheet from the old admin sheet is transferred to the new one.
    * Checks if the new admin sheet has an existing propertiesStore sheet (from template),
    * and if so, overwrites its contents with the data from the old admin sheet.
-        // Only write if oldData is non-empty and has at least one column
-        if (oldData.length > 0 && oldData[0]) {
-          newPropertiesStore.getRange(1, 1, oldData.length, oldData[0].length).setValues(oldData);
+   * @param {string} oldAdminSheetId - The ID of the old admin sheet.
+   * @param {string} newAdminSheetId - The ID of the new admin sheet.
+   */
+  ensurePropertiesStoreTransferred(oldAdminSheetId, newAdminSheetId) {
+    const oldSpreadsheet = SpreadsheetApp.openById(oldAdminSheetId);
+    const newSpreadsheet = SpreadsheetApp.openById(newAdminSheetId);
 
-          // Preserve hidden state if the old sheet was hidden
-          if (oldPropertiesStore.isSheetHidden()) {
-            newPropertiesStore.hideSheet();
-          }
+    const oldPropertiesStore = oldSpreadsheet.getSheetByName('propertiesStore');
+    const newPropertiesStore = newSpreadsheet.getSheetByName('propertiesStore');
 
-          ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
-        } else {
-          ABLogger.getInstance().info(
-            'Old propertiesStore sheet data is malformed or empty, skipping transfer'
-          );
-        }
-          ABLogger.getInstance().info('Successfully transferred propertiesStore sheet data');
-        } else {
-          ABLogger.getInstance().info(
-            'Old propertiesStore sheet exists but contains no data, skipping transfer'
-          );
-        }
-
-    // If the old admin sheet doesn't have a propertiesStore, nothing to transfer
     if (!oldPropertiesStore) {
       ABLogger.getInstance().info('No propertiesStore sheet found in old admin sheet');
       return;
     }
 
-    // If the new admin sheet has a propertiesStore (from template), we need to overwrite it
     if (newPropertiesStore) {
       ABLogger.getInstance().info(
         'Found existing propertiesStore in new admin sheet, overwriting with old data'
       );
 
-      // Clear the existing propertiesStore content
       newPropertiesStore.clear();
       newPropertiesStore.clearFormats();
 
-      // Check if old propertiesStore has actual data
       const lastRow = oldPropertiesStore.getLastRow();
       const lastColumn = oldPropertiesStore.getLastColumn();
 
       if (lastRow > 0 && lastColumn > 0) {
-        // Get all data from old propertiesStore
         const oldData = oldPropertiesStore.getRange(1, 1, lastRow, lastColumn).getValues();
 
-        // Write to new propertiesStore
         newPropertiesStore.getRange(1, 1, oldData.length, oldData[0].length).setValues(oldData);
 
-        // Preserve hidden state if the old sheet was hidden
         if (oldPropertiesStore.isSheetHidden()) {
           newPropertiesStore.hideSheet();
         }
