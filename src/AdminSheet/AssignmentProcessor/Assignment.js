@@ -374,46 +374,6 @@ class Assignment {
       { documentType: docType, data }
     );
   }
-
-  /**
-   * Polymorphic deserialization routing based on documentType field.
-   * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
-   * @param {object} data - JSON data object
-   * @return {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment)
-   */
-  static fromJSON(data) {
-    if (!data || typeof data !== 'object')
-      throw new Error('Invalid data supplied to Assignment.fromJSON');
-
-    if (!data.courseId || !data.assignmentId) {
-      throw new Error('courseId and assignmentId are required fields in Assignment data');
-    }
-
-    const docType = data.documentType;
-
-    if (!docType || typeof docType !== 'string') {
-      ProgressTracker.getInstance().logAndThrowError(
-        `Assignment data missing documentType for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
-        { data }
-      );
-    }
-
-    const type = docType.toUpperCase();
-
-    if (type === 'SLIDES') {
-      return SlidesAssignment.fromJSON(data);
-    }
-
-    if (type === 'SHEETS') {
-      return SheetsAssignment.fromJSON(data);
-    }
-
-    ProgressTracker.getInstance().logAndThrowError(
-      `Unknown assignment documentType '${docType}' for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
-      { documentType: docType, data }
-    );
-  }
-
   /**
    * Fetches the assignment name from Google Classroom.
    * @param {string} courseId - The ID of the course.
@@ -611,9 +571,7 @@ class Assignment {
    * @return {Object[]} - An array of request objects.
    */
   generateLLMRequests() {
-    // Delegate to LLMRequestManager (new model aware)
-    const manager = new LLMRequestManager();
-    return manager.generateRequestObjects(this);
+    return this._getLLMManager().generateRequestObjects(this);
   }
 
   /**
@@ -621,13 +579,32 @@ class Assignment {
    */
   assessResponses() {
     // Base Assignment only handles non-spreadsheet (text/table/image) via LLM
-    const manager = new LLMRequestManager();
+    const manager = this._getLLMManager();
     const requests = manager.generateRequestObjects(this);
     if (!requests || requests.length === 0) {
       Utils.toastMessage('No LLM requests to send.', 'Info', 3);
       return;
     }
     manager.processStudentResponses(requests, this);
+  }
+
+  /**
+   * Small helper to centralise creation of the LLMRequestManager instance.
+   * This keeps construction in a single place and reduces copy/paste.
+   * @return {LLMRequestManager}
+   */
+  _getLLMManager() {
+    return new LLMRequestManager();
+  }
+
+  /**
+   * Small helper used by base-class methods that must be implemented by subclasses.
+   * Centralising the throw here reduces the duplicated error message logic across
+   * multiple tiny abstract-style methods.
+   * @param {string} methodName - Name of the method that should be implemented
+   */
+  _requireImplementation(methodName) {
+    throw new Error(`${methodName} must be implemented by subclasses`);
   }
 }
 

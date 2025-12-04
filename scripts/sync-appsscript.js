@@ -50,7 +50,7 @@ function syncAppsscript(opts = {}) {
   const cfg = JSON.parse(raw);
 
   if (!Array.isArray(cfg.oauthScopes)) {
-    throw new Error('AdminSheet appsscript.json must define an oauthScopes array.');
+    throw new TypeError('AdminSheet appsscript.json must define an oauthScopes array.');
   }
 
   writeJson(templatePath, cfg);
