@@ -16,6 +16,35 @@ class SlidesAssignment extends Assignment {
     super(courseId, assignmentId);
     this.referenceDocumentId = referenceDocumentId;
     this.templateDocumentId = templateDocumentId;
+    this.documentType = 'SLIDES';
+  }
+
+  /**
+   * Serialize SlidesAssignment to JSON, including subclass-specific fields.
+   * @return {object} JSON representation including documentType, referenceDocumentId, templateDocumentId
+   */
+  toJSON() {
+    const base = super.toJSON();
+    return {
+      ...base,
+      documentType: this.documentType,
+      referenceDocumentId: this.referenceDocumentId,
+      templateDocumentId: this.templateDocumentId,
+    };
+  }
+
+  /**
+   * Deserialize SlidesAssignment from JSON data.
+   * @param {object} data - JSON data object
+   * @return {SlidesAssignment} Reconstructed SlidesAssignment instance
+   */
+  static fromJSON(data) {
+    const inst = Assignment._baseFromJSON(data);
+    Object.setPrototypeOf(inst, SlidesAssignment.prototype);
+    inst.referenceDocumentId = data.referenceDocumentId ?? null;
+    inst.templateDocumentId = data.templateDocumentId ?? null;
+    inst.documentType = 'SLIDES';
+    return inst;
   }
 
   /**
@@ -100,15 +129,14 @@ class SlidesAssignment extends Assignment {
   processAllSubmissions() {
     const parser = new SlidesParser();
     const taskDefs = Object.values(this.tasks);
-    this.submissions.forEach((sub) => {
+    const total = this.submissions.length;
+    this.submissions.forEach((sub, i) => {
       if (!sub.documentId) {
-        console.warn(`No document ID for studentId: ${sub.studentId}. Skipping.`);
+        console.warn(`No document ID for student: ${sub.studentName}. Skipping.`);
         return;
       }
-      this.progressTracker.updateProgress(
-        `Extracting responses from student ${sub.studentId}...`,
-        false
-      );
+      // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
+      this.progressTracker.updateProgress(`Extracting response ${i + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
         const taskDef = this.tasks[a.taskId];
@@ -124,4 +152,9 @@ class SlidesAssignment extends Assignment {
       });
     });
   }
+}
+
+// Export for Node/Vitest environment (ignored in GAS runtime)
+if (typeof module !== 'undefined') {
+  module.exports = SlidesAssignment;
 }

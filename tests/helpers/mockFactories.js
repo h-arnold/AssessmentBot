@@ -176,6 +176,52 @@ function createMockClassroomApiClient() {
 }
 
 /**
+ * Create a mock ABLogger for testing
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @returns {Object} Mock ABLogger instance with spies for all methods
+ */
+function createMockABLogger(vi) {
+  return {
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debugUi: vi.fn(),
+    debug: vi.fn(),
+  };
+}
+
+/**
+ * Create a mock DbManager for controller tests
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @param {Object} mockCollection - Mock collection to return
+ * @returns {Object} Mock DbManager instance
+ */
+function createMockDbManager(vi, mockCollection) {
+  return {
+    getInstance: vi.fn().mockReturnThis(),
+    getCollection: vi.fn().mockReturnValue(mockCollection),
+  };
+}
+
+/**
+ * Create a mock collection for database operations
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @returns {Object} Mock collection with common database methods
+ */
+function createMockCollection(vi) {
+  return {
+    findOne: vi.fn(),
+    find: vi.fn().mockReturnValue([]),
+    insertOne: vi.fn(),
+    replaceOne: vi.fn(),
+    updateOne: vi.fn(),
+    deleteOne: vi.fn(),
+    save: vi.fn(),
+    getMetadata: vi.fn().mockReturnValue({}),
+  };
+}
+
+/**
  * Setup all common GAS mocks on the global object
  * @param {Object} vi - Vitest vi object for creating mocks
  * @param {Object} options - Configuration options
@@ -208,6 +254,67 @@ function setupGlobalGASMocks(vi, options = {}) {
   return mocks;
 }
 
+/**
+ * Setup mocks for controller tests (ABClassController, AssignmentController, etc.)
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @returns {Object} { mockDbManager, mockCollection, mockABLogger }
+ */
+function setupControllerTestMocks(vi) {
+  const mockCollection = createMockCollection(vi);
+  const mockDbManager = createMockDbManager(vi, mockCollection);
+  const mockABLogger = createMockABLogger(vi);
+
+  // Mock DbManager singleton
+  const DbManagerClass = function () {};
+  DbManagerClass.getInstance = vi.fn().mockReturnValue(mockDbManager);
+  global.DbManager = DbManagerClass;
+
+  // Mock ABLogger singleton
+  const ABLoggerClass = function () {};
+  ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockABLogger);
+  global.ABLogger = ABLoggerClass;
+
+  // Mock ProgressTracker for Assignment base class
+  const mockProgressTracker = {
+    getInstance: vi.fn().mockReturnThis(),
+    updateProgress: vi.fn(),
+    logError: vi.fn(),
+    logAndThrowError: vi.fn((msg, context) => {
+      throw new Error(msg);
+    }),
+  };
+  const ProgressTrackerClass = function () {};
+  ProgressTrackerClass.getInstance = vi.fn().mockReturnValue(mockProgressTracker);
+  global.ProgressTracker = ProgressTrackerClass;
+
+  // Mock ConfigurationManager for ABClass constructor
+  const mockConfigManager = {
+    getInstance: vi.fn().mockReturnThis(),
+    getAssessmentRecordCourseId: vi.fn().mockReturnValue('test-course-123'),
+  };
+  const ConfigManagerClass = function () {};
+  ConfigManagerClass.getInstance = vi.fn().mockReturnValue(mockConfigManager);
+  global.ConfigurationManager = ConfigManagerClass;
+
+  return {
+    mockDbManager,
+    mockCollection,
+    mockABLogger,
+    mockProgressTracker,
+    mockConfigManager,
+  };
+}
+
+/**
+ * Cleanup controller test mocks from global scope
+ */
+function cleanupControllerTestMocks() {
+  delete global.DbManager;
+  delete global.ABLogger;
+  delete global.ProgressTracker;
+  delete global.ConfigurationManager;
+}
+
 module.exports = {
   createMockPropertiesService,
   createMockUtils,
@@ -217,5 +324,10 @@ module.exports = {
   createMockDriveManager,
   createMockPropertiesCloner,
   createMockClassroomApiClient,
+  createMockABLogger,
+  createMockDbManager,
+  createMockCollection,
   setupGlobalGASMocks,
+  setupControllerTestMocks,
+  cleanupControllerTestMocks,
 };

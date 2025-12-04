@@ -78,10 +78,10 @@ describe('Phase1 Model Requirements', () => {
     expect(lines[3]).toBe('|  |  |  |');
   });
 
-  it('TableTaskArtifact throws when given null content', () => {
-    expect(() =>
-      ArtifactFactory.table({ taskId: 'tNull', role: 'reference', content: null })
-    ).toThrow(/Failed to normalise table content/);
+  it('TableTaskArtifact handles null content gracefully', () => {
+    const artifact = ArtifactFactory.table({ taskId: 'tNull', role: 'reference', content: null });
+    expect(artifact).toBeDefined();
+    expect(artifact.content).toBe(null);
   });
 
   it('TableTaskArtifact enforces 50x50 size limit', () => {

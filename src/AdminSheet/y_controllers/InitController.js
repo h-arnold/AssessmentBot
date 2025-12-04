@@ -180,32 +180,7 @@ class InitController extends BaseSingleton {
   }
 
   /**
-   * Handles the authorisation process for Assessment Record templates.
-   * This method is called from the assessment record template's menus.js file.
-   * It sets up triggers and the auth revoke timer, but does NOT create menus
-   * (those are created in the template context after this completes).
-   */
-  handleAssessmentRecordAuth() {
-    const sa = new ScriptAppManager();
-    const scriptAuthorised = sa.isAuthorised();
-    ABLogger.getInstance().info(
-      `InitController.handleAssessmentRecordAuth() - User authorized: ${scriptAuthorised}`
-    );
-
-    // If script isn't authorised, run the first run initialisation
-    if (!scriptAuthorised) {
-      this.doFirstRunInit();
-    }
-
-    // Set up the authorisation revocation timer
-    this.setupAuthRevokeTimer();
-
-    ABLogger.getInstance().info('Assessment record authorisation complete.');
-  }
-
-  /**
-   * This method does the first run init procedure of creating an installable onOpen trigger.
-   * Note: Authorization is now handled automatically by TriggerController.createOnOpenTrigger() via ScriptApp.requireScopes().
+   * This method does the first run init procedure of triggering the auth process, creating an installable onOpen trigger and updating the scriptAuthorised flag in the config parameters.
    */
   doFirstRunInit() {
     const triggerController = new TriggerController();

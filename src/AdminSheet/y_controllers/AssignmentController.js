@@ -131,7 +131,7 @@ class AssignmentController {
     }
 
     const assignment = this.createAssignmentInstance(
-      SheetsAssignment,
+      'SHEETS',
       courseId,
       assignmentId,
       referenceDocumentId,
@@ -168,7 +168,7 @@ class AssignmentController {
     }
 
     const assignment = this.createAssignmentInstance(
-      SlidesAssignment,
+      'SLIDES',
       courseId,
       assignmentId,
       referenceDocumentId,
@@ -265,6 +265,11 @@ class AssignmentController {
       const abClassController = new ABClassController();
       const abClass = abClassController.loadClass(courseId);
 
+      const assignmentIndex = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+      if (assignmentIndex >= 0) {
+        abClassController.rehydrateAssignment(abClass, assignmentId);
+      }
+
       // Process the assignment based on its type.
       let assignment;
       const students = abClass.students;
@@ -292,13 +297,13 @@ class AssignmentController {
         this.progressTracker.logAndThrowError(errorMsg);
       }
 
-      // Update lastUpdated value - when JsonDbApp is integrated, this will also be the point where the assignment data is written to the DB
+      // Update lastUpdated value and persist assignment data
 
       assignment.touchUpdated();
 
-      // Save assignment data to class
-
-      abClass.addAssignment(assignment);
+      // Persist assignment using controller pattern - writes full assignment to dedicated
+      // collection and stores partial summary in ABClass
+      abClassController.persistAssignmentRun(abClass, assignment);
 
       // Analyse assignment data
       this.analyseAssignmentData(assignment);
@@ -334,8 +339,8 @@ class AssignmentController {
   }
 
   /**
-   * Creates an assignment instance with progress tracking.
-   * @param {Function} AssignmentClass - Constructor for the assignment type.
+   * Creates an assignment instance using the factory pattern with progress tracking.
+   * @param {string} documentType - Type of the document ('SLIDES' or 'SHEETS').
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
    * @param {string} referenceDocumentId - The reference document ID.
@@ -343,7 +348,7 @@ class AssignmentController {
    * @return {SlidesAssignment|SheetsAssignment} The instantiated assignment.
    */
   createAssignmentInstance(
-    AssignmentClass,
+    documentType,
     courseId,
     assignmentId,
     referenceDocumentId,
@@ -351,7 +356,14 @@ class AssignmentController {
   ) {
     return this.runStage(
       'Creating Assignment instance.',
-      () => new AssignmentClass(courseId, assignmentId, referenceDocumentId, templateDocumentId),
+      () =>
+        Assignment.create(
+          documentType,
+          courseId,
+          assignmentId,
+          referenceDocumentId,
+          templateDocumentId
+        ),
       'Assignment instance created.'
     );
   }

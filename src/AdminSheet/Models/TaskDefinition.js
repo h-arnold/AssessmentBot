@@ -54,14 +54,15 @@ class TaskDefinition {
     if (role !== 'reference' && role !== 'template')
       throw new Error('Invalid artifact role for TaskDefinition: ' + role);
     const artifactIndex = this.artifacts[role].length;
-    const factoryParams = Object.assign({}, params, {
+    const factoryParams = {
+      ...params,
       role,
       taskId: this.id,
-      pageId: params.pageId != null ? params.pageId : this.pageId,
-      metadata: params.metadata || {},
+      pageId: params.pageId ?? this.pageId,
+      metadata: params.metadata ?? {},
       taskIndex: this.index,
       artifactIndex,
-    });
+    };
     const artifact = ArtifactFactory.create(factoryParams);
     this.artifacts[role].push(artifact);
     return artifact;
@@ -104,6 +105,20 @@ class TaskDefinition {
     };
   }
 
+  /**
+   * Produce a partial JSON payload with artifact content redacted.
+   * @return {Object}
+   */
+  toPartialJSON() {
+    return {
+      ...this.toJSON(),
+      artifacts: {
+        reference: this.artifacts.reference.map((a) => a.toPartialJSON()),
+        template: this.artifacts.template.map((a) => a.toPartialJSON()),
+      },
+    };
+  }
+
   static fromJSON(json) {
     const td = new TaskDefinition({
       taskTitle: json.taskTitle,
@@ -117,16 +132,16 @@ class TaskDefinition {
     if (json.taskWeighting != null) td.taskWeighting = json.taskWeighting;
     if (json.artifacts) {
       if (json.artifacts.reference) {
-        json.artifacts.reference.forEach((refJson) => {
+        for (const refJson of json.artifacts.reference) {
           const art = ArtifactFactory.fromJSON(refJson);
           td.artifacts.reference.push(art);
-        });
+        }
       }
       if (json.artifacts.template) {
-        json.artifacts.template.forEach((tJson) => {
+        for (const tJson of json.artifacts.template) {
           const art = ArtifactFactory.fromJSON(tJson);
           td.artifacts.template.push(art);
-        });
+        }
       }
     }
     return td;

@@ -1,4 +1,8 @@
 class TriggerController {
+  constructor() {
+    // Initialization logic can be added here if needed
+  }
+
   /**
    * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
    *

@@ -23,26 +23,22 @@ class StudentSubmissionItem {
 
   _deriveId() {
     // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
-    let uid = null;
-    try {
-      if (this.artifact && typeof this.artifact.getUid === 'function') uid = this.artifact.getUid();
-    } catch (e) {
-      uid = null;
-    }
-    if (!uid) uid = this.artifact && this.artifact.contentHash ? this.artifact.contentHash : '';
-    const base = `${this.taskId}::${uid}`;
+    const primaryUid = this.artifact.getUid();
+    const hasPrimaryUid = typeof primaryUid === 'string' && primaryUid.length > 0;
+    const resolvedUid = hasPrimaryUid ? primaryUid : (this.artifact.contentHash ?? '');
+    const base = `${this.taskId}::${resolvedUid}`;
     return 'ssi_' + Utils.generateHash(base).substring(0, 16);
   }
 
   addAssessment(criterion, assessment) {
-    if (!criterion) return;
-    if (assessment) {
-      // Guard against missing Assessment class in pure test environment
-      if (typeof Assessment !== 'undefined' && assessment instanceof Assessment) {
-        this.assessments[criterion] = assessment.toJSON();
-      } else if (typeof assessment === 'object') {
-        this.assessments[criterion] = assessment; // assume already JSON shape
-      }
+    if (!criterion)
+      throw new Error('addAssessment requires criterion when recording assessment data');
+    if (!assessment) return;
+    // Guard against missing Assessment class in pure test environment
+    if (typeof Assessment !== 'undefined' && assessment instanceof Assessment) {
+      this.assessments[criterion] = assessment.toJSON();
+    } else if (typeof assessment === 'object') {
+      this.assessments[criterion] = assessment; // assume already JSON shape
     }
   }
 
@@ -52,13 +48,12 @@ class StudentSubmissionItem {
   }
 
   addFeedback(type, feedbackObj) {
-    if (!type) return;
-    if (feedbackObj) {
-      if (feedbackObj.toJSON) {
-        this.feedback[type] = feedbackObj.toJSON();
-      } else {
-        this.feedback[type] = feedbackObj;
-      }
+    if (!type) throw new Error('addFeedback requires a feedback type identifier');
+    if (!feedbackObj) return;
+    if (feedbackObj.toJSON) {
+      this.feedback[type] = feedbackObj.toJSON();
+    } else {
+      this.feedback[type] = feedbackObj;
     }
   }
 
@@ -82,6 +77,16 @@ class StudentSubmissionItem {
       feedback: this.feedback,
       // lastAssessedHash intentionally removed; submission.updatedAt is authoritative
     };
+  }
+
+  /**
+   * Return a partial JSON payload with heavy artifact fields redacted.
+   * @return {Object}
+   */
+  toPartialJSON() {
+    const json = this.toJSON();
+    json.artifact = this.artifact.toPartialJSON();
+    return json;
   }
 
   static fromJSON(json) {
@@ -136,41 +141,51 @@ class StudentSubmission {
    * @param {TaskDefinition} taskDef
    * @param {Object} extraction - { pageId?, content?, metadata? }
    */
-  upsertItemFromExtraction(taskDef, { pageId = null, content = null, metadata = {} } = {}) {
+  upsertItemFromExtraction(taskDef, extraction = {}) {
     if (!taskDef) throw new Error('upsertItemFromExtraction requires taskDef');
     const taskId = taskDef.getId();
     let item = this.items[taskId];
     let mutated = false;
 
-    if (!item) {
-      // Construct a submission-specific UID including the studentId to avoid collisions
-      const uid = `${taskId}-${this.studentId}-${
-        pageId != null ? pageId : taskDef.pageId || 'na'
-      }-0`;
-      const artifact = ArtifactFactory.create({
-        type: this._inferTypeFromTask(taskDef),
-        taskId,
-        role: 'submission',
-        pageId: pageId != null ? pageId : taskDef.pageId,
-        content,
-        metadata,
-        uid,
-      });
-      item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
-      this.items[taskId] = item;
-      mutated = true;
-    } else {
-      // Update existing artifact content if changed
+    const { pageId = null, content = null } = extraction;
+    const hasMetadata = Object.hasOwn(extraction, 'metadata');
+    const metadataPayload = hasMetadata ? extraction.metadata : undefined;
+
+    if (item) {
       if (content !== undefined) {
         item.artifact.content = item.artifact.normalizeContent(content);
         item.artifact.ensureHash();
         mutated = true;
       }
-      if (metadata) {
-        item.artifact.metadata = Object.assign({}, item.artifact.metadata, metadata);
+      if (hasMetadata) {
+        const metadataUpdates = metadataPayload ?? {};
+        item.artifact.metadata = {
+          ...item.artifact.metadata,
+          ...metadataUpdates,
+        };
         mutated = true;
       }
-      // pageId is stored on the artifact; do not duplicate on the item
+    } else {
+      const resolvedPageId = pageId ?? taskDef.pageId;
+      const metadataForArtifact = metadataPayload ?? {};
+      const uid = `${taskId}-${this.studentId}-${resolvedPageId ?? 'na'}-0`;
+      const artifact = ArtifactFactory.create({
+        type: this._inferTypeFromTask(taskDef),
+        taskId,
+        role: 'submission',
+        pageId: resolvedPageId,
+        content,
+        metadata: metadataForArtifact,
+        uid,
+      });
+      if (artifact.content == null && artifact.getType() !== 'IMAGE') {
+        ABLogger.getInstance().warn(
+          `No content found for ${this.studentName} for task '${taskDef.taskTitle}'.`
+        );
+      }
+      item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
+      this.items[taskId] = item;
+      mutated = true;
     }
     if (mutated) this.touchUpdated();
     return item;
@@ -181,7 +196,7 @@ class StudentSubmission {
     const ref = taskDef.getPrimaryReference();
     if (ref) return ref.getType();
     // fallback: check metadata hints
-    if (taskDef.taskMetadata && taskDef.taskMetadata.taskType) return taskDef.taskMetadata.taskType;
+    if (taskDef.taskMetadata?.taskType) return taskDef.taskMetadata.taskType;
     return 'TEXT';
   }
 
@@ -195,6 +210,18 @@ class StudentSubmission {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
+  }
+
+  /**
+   * Return a partial JSON payload with artifacts redacted for lightweight persistence.
+   * @return {Object}
+   */
+  toPartialJSON() {
+    const json = this.toJSON();
+    json.items = Object.fromEntries(
+      Object.entries(this.items).map(([k, v]) => [k, v.toPartialJSON()])
+    );
+    return json;
   }
 
   static fromJSON(json) {

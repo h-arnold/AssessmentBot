@@ -8,7 +8,7 @@ const DRIVE_ID_PATTERN = /^[A-Za-z0-9-_]{10,}$/;
 const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
 
 function validateIntegerInRange(label, value, min, max) {
-  const parsed = parseInt(value, 10);
+  const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
     throw new Error(`${label} must be an integer between ${min} and ${max}.`);
   }

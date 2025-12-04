@@ -4,11 +4,16 @@
 // (prevents singleton fallbacks in individual files from being used).
 require('../src/AdminSheet/00_BaseSingleton.js');
 
+// Load Assignment classes so they're available globally for polymorphic factory pattern
+global.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
+global.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
+global.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+
 global.Utils = {
   generateHash(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
-      h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+      h = (Math.imul(31, h) + str.codePointAt(i)) | 0;
     }
     return Math.abs(h).toString(16);
   },

@@ -71,16 +71,26 @@ class ABClass {
   setClassOwner(owner) {
     const logger = ABLogger.getInstance();
 
+    // Accept both Teacher instances and plain objects returned by legacy API
+    // calls. Coerce plain objects via Teacher.fromJSON when available to
+    // preserve fields like email and teacherName.
+    let ownerInstance = owner;
     if (!(owner instanceof Teacher)) {
+      if (owner && typeof owner === 'object' && typeof Teacher.fromJSON === 'function') {
+        // Prefer fail-fast: allow Teacher.fromJSON to throw if coercion fails
+        ownerInstance = Teacher.fromJSON(owner) || owner;
+      }
+    }
+
+    if (!(ownerInstance instanceof Teacher)) {
       const msg = 'setClassOwner requires a Teacher instance';
       if (logger && typeof logger.error === 'function') logger.error(msg);
       throw new TypeError(msg);
     }
 
-    this.classOwner = owner;
+    this.classOwner = ownerInstance;
     return this.classOwner;
   }
-
 
   /*
    * @param {*} value
@@ -90,7 +100,7 @@ class ABClass {
   static _parseNullableInt(value, defaultValue) {
     if (value === null || value === undefined) return defaultValue;
     if (Number.isInteger(value)) return value;
-    const parsed = parseInt(value, 10);
+    const parsed = Number.parseInt(value, 10);
     if (Number.isNaN(parsed)) return defaultValue;
     return parsed;
   }
@@ -111,7 +121,7 @@ class ABClass {
   // Cohort helpers
   getCohortStartYear() {
     if (!this.cohort) return null;
-    const num = parseInt(this.cohort, 10);
+    const num = Number.parseInt(this.cohort, 10);
     return Number.isNaN(num) ? null : num;
   }
 
@@ -183,6 +193,16 @@ class ABClass {
     return this.assignments.find(predicate) || null;
   }
 
+  /**
+   * Find the array index of an assignment matching the predicate.
+   * Supports immutable replace pattern during rehydration.
+   * @param {Function} predicate - Function that returns true for the target assignment
+   * @return {number} Index of the matching assignment, or -1 if not found
+   */
+  findAssignmentIndex(predicate) {
+    return this.assignments.findIndex(predicate);
+  }
+
   // toJSON serializes contained objects by calling toJSON if available.
   toJSON() {
     const serializeArray = (arr) =>
@@ -234,7 +254,27 @@ class ABClass {
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
     inst.teachers = Array.isArray(json.teachers) ? json.teachers.slice() : [];
     inst.students = Array.isArray(json.students) ? json.students.slice() : [];
-    inst.assignments = Array.isArray(json.assignments) ? json.assignments.slice() : [];
+
+    // Reconstruct assignments as typed instances via Assignment.fromJSON
+    inst.assignments = [];
+    if (Array.isArray(json.assignments)) {
+      json.assignments.forEach((assignmentData) => {
+        try {
+          const assignmentInstance = Assignment.fromJSON(assignmentData);
+          assignmentInstance._hydrationLevel = 'partial';
+          inst.assignments.push(assignmentInstance);
+        } catch (e) {
+          // Log reconstruction error and fall back to plain object
+          ABLogger.getInstance().warn(
+            `Assignment reconstruction failed for assignmentId=${
+              assignmentData?.assignmentId || 'unknown'
+            }:`,
+            e
+          );
+          inst.assignments.push(assignmentData);
+        }
+      });
+    }
 
     return inst;
   }
