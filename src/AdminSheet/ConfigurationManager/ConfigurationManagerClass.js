@@ -77,9 +77,9 @@ class ConfigurationManager extends BaseSingleton {
     if (globalThis.FREEZE_SINGLETONS) {
       try {
         Object.freeze(this);
-      } catch (freezeErr) {
+      } catch (error_) {
         if (globalThis.__TRACE_SINGLETON__) {
-          console.debug('Freeze failed ConfigurationManager:', freezeErr?.message || freezeErr);
+          console.debug('Freeze failed ConfigurationManager:', error_?.message || error_);
         }
       }
     }

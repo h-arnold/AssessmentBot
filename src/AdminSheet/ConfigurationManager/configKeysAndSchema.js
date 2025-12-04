@@ -69,7 +69,7 @@ const CONFIG_SCHEMA = Object.freeze({
     validate: (v) => {
       if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
       if (typeof v !== 'string') {
-        throw new Error('Assessment Record Course ID must be a string.');
+        throw new TypeError('Assessment Record Course ID must be a string.');
       }
       return v;
     },
@@ -89,7 +89,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.UPDATE_STAGE]: {
     storage: 'script',
     validate: (v) => {
-      const stage = parseInt(v, 10);
+      const stage = Number.parseInt(v, 10);
       if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
         throw new Error('Update Stage must be 0, 1, or 2');
       }
