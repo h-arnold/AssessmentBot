@@ -382,7 +382,7 @@ class SlidesParser extends DocumentParser {
       return '';
     }
     const text = cell.getText().asString();
-    return text?.trim() || '';
+    return text.trim() || '';
   }
 
   /**
