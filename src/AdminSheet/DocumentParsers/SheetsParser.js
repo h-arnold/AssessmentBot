@@ -144,17 +144,14 @@ class SheetsParser extends DocumentParser {
     if (!formula) return formula;
 
     // Remove surrounding quotes if they exist (as returned by getFormulas in GAS)
-    if (
-      formula.length >= 2 &&
-      formula.charAt(0) === '"' &&
-      formula.charAt(formula.length - 1) === '"'
-    ) {
+    if (formula.length >= 2 && formula.startsWith('"') && formula.endsWith('"')) {
       // Extract the content between quotes, handling escape sequences
       try {
         // Use a safe way to remove the surrounding quotes
         formula = formula.substring(1, formula.length - 1);
-        // Un-escape any doubled quotes within the formula
-        formula = formula.replace(/""/g, '"');
+        // Un-escape any doubled quotes within the formula (literal replace of all occurrences)
+        // Use replaceAll for clarity and to avoid regex pitfalls — safe because we're replacing a literal string.
+        formula = formula.replaceAll('""', '"');
       } catch (error) {
         this.progressTracker.captureError(error, 'Error preprocessing formula');
       }
@@ -384,8 +381,6 @@ class SheetsParser extends DocumentParser {
       const grid = ref.content ? ref.content.map((row) => row.map(() => null)) : [];
       for (let r = 0; r < bbox.numRows; r++) {
         for (let c = 0; c < bbox.numColumns; c++) {
-          const absR = bbox.startRow - 1 + r;
-          const absC = bbox.startColumn - 1 + c;
           const formula = rangeFormulas[r] && rangeFormulas[r][c] ? rangeFormulas[r][c] : '';
           if (formula) {
             grid[r][c] = formula; // SpreadsheetTaskArtifact will canonicalise
