@@ -337,6 +337,7 @@ class SheetsParser extends DocumentParser {
         content: grid,
         metadata: { sheetName, bbox },
         taskIndex: def.index,
+        documentId: referenceDocumentId,
       });
       // Template artifact: for not-attempted detection we mirror shape (all null / empty) – may extend later.
       const tplGrid = grid.map((row) => row.map(() => null));
@@ -346,6 +347,7 @@ class SheetsParser extends DocumentParser {
         content: tplGrid,
         metadata: { sheetName, bbox, template: true },
         taskIndex: def.index,
+        documentId: templateDocumentId,
       });
       defs.push(def);
     }
@@ -393,10 +395,15 @@ class SheetsParser extends DocumentParser {
       artifacts.push({
         taskId: def.getId(),
         pageId: def.pageId,
+        documentId: studentDocumentId,
         content: grid,
         metadata: { sheetName: def.taskTitle },
       });
     });
     return artifacts;
   }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SheetsParser };
 }
