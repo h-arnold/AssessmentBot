@@ -3,7 +3,7 @@
  */
 
 const DEFAULTS = Object.freeze({
-  BACKEND_ASSESSOR_BATCH_SIZE: 120, //I've set it at 60 because it's reasonably quick, but doesn't give me bandwidth exceeded errors when sending a large batch to a Google Cloud run instance.
+  BACKEND_ASSESSOR_BATCH_SIZE: 120, //I've set it at 120 because it's reasonably quick, but doesn't give me bandwidth exceeded errors when sending a large batch to a Google Cloud run instance.
   SLIDES_FETCH_BATCH_SIZE: 30,
   DAYS_UNTIL_AUTH_REVOKE: 60,
   UPDATE_DETAILS_URL:
