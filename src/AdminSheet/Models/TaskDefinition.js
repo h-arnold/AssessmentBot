@@ -47,7 +47,9 @@ class TaskDefinition {
   }
 
   /**
-   * Internal helper to add artifact by role using ArtifactFactory.
+   * Internal helper that always creates a new reference/template artifact for this task.
+   * Used only during parsing/definition-building; it never mutates an existing artifact and
+   * always delegates construction to `ArtifactFactory.create` with the correct role/taskId/pageId.
    * params may include: type, content, metadata, pageId, documentId, uid
    */
   createArtifact(role, params = {}) {
@@ -68,9 +70,17 @@ class TaskDefinition {
     return artifact;
   }
 
+  /**
+   * Create and append a reference artifact for this task definition.
+   * Thin wrapper over createArtifact that fixes the role to 'reference'.
+   */
   addReferenceArtifact(params) {
     return this.createArtifact('reference', params);
   }
+  /**
+   * Create and append a template artifact for this task definition.
+   * Thin wrapper over createArtifact that fixes the role to 'template'.
+   */
   addTemplateArtifact(params) {
     return this.createArtifact('template', params);
   }

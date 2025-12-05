@@ -108,6 +108,7 @@ class SlidesParser extends DocumentParser {
       pageId,
       content: elementContent,
       taskIndex: definition.index,
+      documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
     this.addArtifactToDefinition(definition, role, params);
@@ -150,6 +151,7 @@ class SlidesParser extends DocumentParser {
       metadata: { sourceUrl: url },
       content: null,
       taskIndex: definition.index,
+      documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
     this.addArtifactToDefinition(definition, role, params);
@@ -237,15 +239,22 @@ class SlidesParser extends DocumentParser {
             taskId: def.getId(),
             pageId,
             content: null,
+            documentId,
             metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) },
           };
           artifacts.push(extracted);
           return;
         }
-        extracted = this.collectSubmissionArtifact(def, pageElements, typeNeeded, pageId);
+        extracted = this.collectSubmissionArtifact(
+          def,
+          pageElements,
+          typeNeeded,
+          pageId,
+          documentId
+        );
         if (extracted) artifacts.push(extracted);
         else {
-          artifacts.push({ taskId: def.getId(), pageId, content: null });
+          artifacts.push({ taskId: def.getId(), pageId, content: null, documentId });
           ABLogger.getInstance().error(
             `Failed to extract artifact for task "${def.taskTitle}" on page ${pageId}.`
           );
@@ -275,9 +284,10 @@ class SlidesParser extends DocumentParser {
    * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
    * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE).
    * @param {string} pageId - Slide page ID.
-   * @return {{taskId: string, pageId: string, content: *, metadata?: Object}|null} - Artifact payload or null.
+   * @param {string} documentId - Student document ID for submission artifact.
+   * @return {{taskId: string, pageId: string, content: *, metadata?: Object, documentId: string}|null} - Artifact payload or null.
    */
-  collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId) {
+  collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId, documentId) {
     for (const pageElement of pageElements) {
       const desc = pageElement.getDescription();
       if (!desc) continue;
@@ -290,6 +300,7 @@ class SlidesParser extends DocumentParser {
       return {
         taskId: definition.getId(),
         pageId,
+        documentId,
         content: contentDetails.elementContent,
       };
     }

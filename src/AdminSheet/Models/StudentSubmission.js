@@ -137,9 +137,13 @@ class StudentSubmission {
   }
 
   /**
-   * Upsert item from primitive extraction results
-   * @param {TaskDefinition} taskDef
-   * @param {Object} extraction - { pageId?, content?, metadata? }
+   * Upsert submission artifacts from primitive extraction results (student side only).
+   * Creates the submission artifact via ArtifactFactory when none exists, or merges content/metadata
+   * into the existing submission artifact for the same taskId. This is distinct from
+   * TaskDefinition.addReferenceArtifact/addTemplateArtifact, which always create new reference/template
+   * artifacts during parsing and never mutate. Expects primitive extraction payload from parsers/assignments.
+   * @param {TaskDefinition} taskDef - Task definition providing ids/type hints.
+   * @param {Object} extraction - { pageId?, content?, metadata?, documentId? }
    */
   upsertItemFromExtraction(taskDef, extraction = {}) {
     if (!taskDef) throw new Error('upsertItemFromExtraction requires taskDef');
@@ -147,7 +151,7 @@ class StudentSubmission {
     let item = this.items[taskId];
     let mutated = false;
 
-    const { pageId = null, content = null } = extraction;
+    const { pageId = null, content = null, documentId: extractionDocumentId = null } = extraction;
     const hasMetadata = Object.hasOwn(extraction, 'metadata');
     const metadataPayload = hasMetadata ? extraction.metadata : undefined;
 
@@ -168,12 +172,16 @@ class StudentSubmission {
     } else {
       const resolvedPageId = pageId ?? taskDef.pageId;
       const metadataForArtifact = metadataPayload ?? {};
+      // Prefer documentId provided by the extraction (parser-level) otherwise use
+      // the parent submission's documentId so artifacts carry canonical source.
+      const documentIdForArtifact = extractionDocumentId ?? this.documentId ?? null;
       const uid = `${taskId}-${this.studentId}-${resolvedPageId ?? 'na'}-0`;
       const artifact = ArtifactFactory.create({
         type: this._inferTypeFromTask(taskDef),
         taskId,
         role: 'submission',
         pageId: resolvedPageId,
+        documentId: documentIdForArtifact,
         content,
         metadata: metadataForArtifact,
         uid,
