@@ -313,7 +313,7 @@ class SlidesParser extends DocumentParser {
    */
   extractTextFromShape(shape) {
     if (!shape?.getText) {
-      console.log('The provided element is not a shape or does not contain text.');
+      ABLogger.getInstance().warn('The provided element is not a shape or does not contain text.');
       return '';
     }
 
@@ -352,16 +352,37 @@ class SlidesParser extends DocumentParser {
         const row = [];
         for (let c = 0; c < numCols; c++) {
           const cell = table.getCell(r, c);
-          const text = cell?.getText ? cell.getText().asString().trim() : '';
+          const text = this.extractCellText(cell);
           row.push(text);
         }
         rows.push(row);
       }
       return rows;
     } catch (e) {
-      console.error('extractTableCells failed', e);
+      ABLogger.getInstance().error('extractTableCells failed', e);
       return [];
     }
+  }
+
+  /**
+   * Extract text from a table cell, handling merged cells correctly.
+   * @param {GoogleAppsScript.Slides.TableCell} cell - The cell to extract text from.
+   * @return {string} - Trimmed text content, or empty string for merged non-head cells.
+   */
+  extractCellText(cell) {
+    if (!cell) {
+      return '';
+    }
+    const mergeState = cell.getMergeState();
+    if (mergeState === SlidesApp.CellMergeState.MERGED) {
+      ABLogger.getInstance().debug('Merged cell skipped', {
+        message: 'Non-head merged cell returned as empty string',
+        mergeState: 'MERGED',
+      });
+      return '';
+    }
+    const text = cell.getText().asString();
+    return text.trim() || '';
   }
 
   /**
@@ -379,7 +400,7 @@ class SlidesParser extends DocumentParser {
     } else if (type === SlidesApp.PageElementType.IMAGE) {
       return this.extractImageDescription(pageElement.asImage());
     } else {
-      console.log(`Unsupported PageElementType for notes: ${type}`);
+      ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
       return '';
     }
   }
@@ -395,4 +416,8 @@ class SlidesParser extends DocumentParser {
     const description = image.getDescription();
     return description ? description.trim() : '';
   }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SlidesParser };
 }
