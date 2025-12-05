@@ -77,7 +77,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
         getMergeState: vi.fn().mockReturnValue(mergeState),
       };
 
-      if (typeof rawText === 'undefined') {
+      if (rawText === undefined) {
         // if no text provided, create a spy that should not be called for MERGED cells
         cell.getText = vi.fn();
       } else {
