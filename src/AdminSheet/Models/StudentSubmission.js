@@ -147,7 +147,7 @@ class StudentSubmission {
     let item = this.items[taskId];
     let mutated = false;
 
-    const { pageId = null, content = null } = extraction;
+    const { pageId = null, content = null, documentId: extractionDocumentId = null } = extraction;
     const hasMetadata = Object.hasOwn(extraction, 'metadata');
     const metadataPayload = hasMetadata ? extraction.metadata : undefined;
 
@@ -168,12 +168,16 @@ class StudentSubmission {
     } else {
       const resolvedPageId = pageId ?? taskDef.pageId;
       const metadataForArtifact = metadataPayload ?? {};
+      // Prefer documentId provided by the extraction (parser-level) otherwise use
+      // the parent submission's documentId so artifacts carry canonical source.
+      const documentIdForArtifact = extractionDocumentId ?? this.documentId ?? null;
       const uid = `${taskId}-${this.studentId}-${resolvedPageId ?? 'na'}-0`;
       const artifact = ArtifactFactory.create({
         type: this._inferTypeFromTask(taskDef),
         taskId,
         role: 'submission',
         pageId: resolvedPageId,
+        documentId: documentIdForArtifact,
         content,
         metadata: metadataForArtifact,
         uid,

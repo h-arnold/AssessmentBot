@@ -58,4 +58,24 @@ describe('StudentSubmission', () => {
       expect.stringContaining('No content found for Student Three')
     );
   });
+
+  it('propagates documentId to created artifacts (fallback to parent submission)', () => {
+    const td = new TaskDefinition({ taskTitle: 'Short Answer', pageId: 'p2', index: 1 });
+    td.addReferenceArtifact({ type: 'TEXT', content: 'Reference' });
+    const sub = new StudentSubmission('stu1', 'assign1', 'doc-parent', 'Student One');
+    // Call upsert without documentId in extraction; artifact should pick parent's documentId
+    sub.upsertItemFromExtraction(td, { content: 'Student answer' });
+    const item = sub.getItem(td.getId());
+    expect(item.artifact.documentId).toBe('doc-parent');
+  });
+
+  it('uses extraction.documentId if provided when creating artifact', () => {
+    const td = new TaskDefinition({ taskTitle: 'Short Answer', pageId: 'p2', index: 1 });
+    td.addReferenceArtifact({ type: 'TEXT', content: 'Reference' });
+    const sub = new StudentSubmission('stu2', 'assign2', 'doc-parent', 'Student Two');
+    // extraction provides an explicit documentId (e.g., parser discovered doc id)
+    sub.upsertItemFromExtraction(td, { content: 'Student answer', documentId: 'doc-extraction' });
+    const item = sub.getItem(td.getId());
+    expect(item.artifact.documentId).toBe('doc-extraction');
+  });
 });

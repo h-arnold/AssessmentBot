@@ -91,6 +91,7 @@ class SheetsAssignment extends Assignment {
           pageId: a.pageId,
           content: a.content,
           metadata: a.metadata,
+          documentId: a.documentId,
         });
       });
     });
