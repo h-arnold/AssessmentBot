@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
 import {
   ArtifactFactory,
@@ -55,6 +55,19 @@ describe('Phase1 Model Requirements', () => {
     expect(empty.content).toBe('');
   });
 
+  it('hashes string content directly without JSON quoting', () => {
+    const spy = vi.spyOn(Utils, 'generateHash');
+    try {
+      const art = ArtifactFactory.text({ taskId: 'tHash', role: 'reference', content: 'alpha' });
+      expect(art.content).toBe('alpha');
+      const [firstCall] = spy.mock.calls;
+      expect(firstCall?.[0]).toBe('alpha');
+      expect(art.contentHash).toBe(Utils.generateHash('alpha'));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('TableTaskArtifact preserves empty structure and renders markdown consistently', () => {
     const table = ArtifactFactory.table({
       taskId: 'tTable',
@@ -94,6 +107,27 @@ describe('Phase1 Model Requirements', () => {
     expect(() =>
       ArtifactFactory.table({ taskId: 'tCols', role: 'reference', content: tooManyCols })
     ).toThrow(/Failed to normalise table content/);
+  });
+
+  it('TableTaskArtifact hashes markdown output, not JSON-quoted content', () => {
+    const spy = vi.spyOn(Utils, 'generateHash');
+    try {
+      const art = ArtifactFactory.table({
+        taskId: 'tTableHash',
+        role: 'reference',
+        content: [
+          ['H1', 'H2'],
+          ['v1', 'v2'],
+        ],
+      });
+      const lastCall = spy.mock.calls.at(-1);
+      const callArg = lastCall ? lastCall[0] : undefined;
+      expect(callArg).toBe(art.content);
+      expect(callArg.startsWith('"')).toBe(false);
+      expect(art.contentHash).toBe(Utils.generateHash(art.content));
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {

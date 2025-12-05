@@ -92,11 +92,14 @@ class BaseTaskArtifact {
 
   /**
    * Ensure the artifact has a contentHash; generates one from stable JSON.
+   * @remarks Strings/primitives are hashed directly (no JSON quoting) to avoid double serialization, while objects/null are stable-stringified for deterministic hashing. Callers relying on ensureHash still receive a hash for any non-null content, preserving cache key and equality behaviour.
    * @returns {string|null} The generated content hash.
    */
   ensureHash() {
-    const str = this._stableStringify(this.content);
-    this.contentHash = Utils.generateHash(str);
+    const value = this.content;
+    const serialised =
+      value === null || typeof value === 'object' ? this._stableStringify(value) : String(value);
+    this.contentHash = Utils.generateHash(serialised);
     return this.contentHash;
   }
 
