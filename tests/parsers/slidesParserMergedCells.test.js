@@ -61,7 +61,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
       getInstance: vi.fn().mockReturnValue(mockLogger),
     };
 
-    // Setup mock SlidesApp with CellMergeState enum
+    // Setup SlidesApp helper enum once for tests
     global.SlidesApp = {
       CellMergeState: {
         NORMAL: 'NORMAL',
@@ -69,11 +69,34 @@ describe('SlidesParser - Merged Cell Handling', () => {
         MERGED: 'MERGED',
       },
     };
+
+    // Helper factories used by many tests in this file
+    // Creates a mock cell with the requested merge state and text value
+    function makeCell(mergeState, rawText) {
+      const cell = {
+        getMergeState: vi.fn().mockReturnValue(mergeState),
+      };
+
+      if (typeof rawText === 'undefined') {
+        // if no text provided, create a spy that should not be called for MERGED cells
+        cell.getText = vi.fn();
+      } else {
+        cell.getText = vi.fn().mockReturnValue({
+          asString: vi.fn().mockReturnValue(rawText),
+        });
+      }
+
+      return cell;
+    }
+
+    // Attach helpers to parser-level scope so tests can reuse them
+    global.__makeCell = makeCell;
   });
 
   afterEach(() => {
     delete global.ABLogger;
     delete global.SlidesApp;
+    delete global.__makeCell;
   });
 
   describe('extractCellText', () => {
@@ -84,12 +107,10 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should extract text from NORMAL cell', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue('  Normal Cell Content  '),
-        }),
-      };
+      const mockCell = global.__makeCell(
+        global.SlidesApp.CellMergeState.NORMAL,
+        '  Normal Cell Content  '
+      );
 
       const result = parser.extractCellText(mockCell);
 
@@ -100,12 +121,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should extract text from HEAD cell', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue('Head Cell Content'),
-        }),
-      };
+      const mockCell = global.__makeCell(global.SlidesApp.CellMergeState.HEAD, 'Head Cell Content');
 
       const result = parser.extractCellText(mockCell);
 
@@ -116,12 +132,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should return empty string for MERGED cell without calling getText', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.MERGED),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue('This should not be called'),
-        }),
-      };
+      const mockCell = global.__makeCell(global.SlidesApp.CellMergeState.MERGED);
 
       const result = parser.extractCellText(mockCell);
 
@@ -135,12 +146,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should handle empty cell content from NORMAL cell', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue(''),
-        }),
-      };
+      const mockCell = global.__makeCell(global.SlidesApp.CellMergeState.NORMAL, '');
 
       const result = parser.extractCellText(mockCell);
 
@@ -149,12 +155,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should handle whitespace-only content from HEAD cell', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue('   \n\t  '),
-        }),
-      };
+      const mockCell = global.__makeCell(global.SlidesApp.CellMergeState.HEAD, '   \n\t  ');
 
       const result = parser.extractCellText(mockCell);
 
@@ -162,12 +163,10 @@ describe('SlidesParser - Merged Cell Handling', () => {
     });
 
     it('should trim whitespace from cell content', () => {
-      const mockCell = {
-        getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-        getText: vi.fn().mockReturnValue({
-          asString: vi.fn().mockReturnValue('\n  Content with spaces  \t'),
-        }),
-      };
+      const mockCell = global.__makeCell(
+        global.SlidesApp.CellMergeState.NORMAL,
+        '\n  Content with spaces  \t'
+      );
 
       const result = parser.extractCellText(mockCell);
 
@@ -186,12 +185,9 @@ describe('SlidesParser - Merged Cell Handling', () => {
       const mockTable = {
         getNumRows: vi.fn().mockReturnValue(2),
         getNumColumns: vi.fn().mockReturnValue(2),
-        getCell: vi.fn((r, c) => ({
-          getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-          getText: vi.fn().mockReturnValue({
-            asString: vi.fn().mockReturnValue(`Cell ${r},${c}`),
-          }),
-        })),
+        getCell: vi.fn((r, c) =>
+          global.__makeCell(global.SlidesApp.CellMergeState.NORMAL, `Cell ${r},${c}`)
+        ),
       };
 
       const result = parser.extractTableCells(mockTable);
@@ -210,27 +206,12 @@ describe('SlidesParser - Merged Cell Handling', () => {
         getCell: vi.fn((r, c) => {
           // Simulate a 2x2 merge at position (0,0)
           if (r === 0 && c === 0) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-              getText: vi.fn().mockReturnValue({
-                asString: vi.fn().mockReturnValue('Merged Header'),
-              }),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.HEAD, 'Merged Header');
           }
           if ((r === 0 && c === 1) || (r === 1 && c === 0) || (r === 1 && c === 1)) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.MERGED),
-              getText: vi.fn().mockReturnValue({
-                asString: vi.fn().mockReturnValue('Should not be called'),
-              }),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.MERGED);
           }
-          return {
-            getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-            getText: vi.fn().mockReturnValue({
-              asString: vi.fn().mockReturnValue(`Cell ${r},${c}`),
-            }),
-          };
+          return global.__makeCell(global.SlidesApp.CellMergeState.NORMAL, `Cell ${r},${c}`);
         }),
       };
 
@@ -251,40 +232,19 @@ describe('SlidesParser - Merged Cell Handling', () => {
         getCell: vi.fn((r, c) => {
           // First merge: (0,0) to (0,1)
           if (r === 0 && c === 0) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-              getText: vi.fn().mockReturnValue({
-                asString: vi.fn().mockReturnValue('Merge 1'),
-              }),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.HEAD, 'Merge 1');
           }
           if (r === 0 && c === 1) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.MERGED),
-              getText: vi.fn(),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.MERGED);
           }
           // Second merge: (1,2) to (1,3)
           if (r === 1 && c === 2) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-              getText: vi.fn().mockReturnValue({
-                asString: vi.fn().mockReturnValue('Merge 2'),
-              }),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.HEAD, 'Merge 2');
           }
           if (r === 1 && c === 3) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.MERGED),
-              getText: vi.fn(),
-            };
+            return global.__makeCell(global.SlidesApp.CellMergeState.MERGED);
           }
-          return {
-            getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-            getText: vi.fn().mockReturnValue({
-              asString: vi.fn().mockReturnValue(`Cell ${r},${c}`),
-            }),
-          };
+          return global.__makeCell(global.SlidesApp.CellMergeState.NORMAL, `Cell ${r},${c}`);
         }),
       };
 
@@ -353,26 +313,10 @@ describe('SlidesParser - Merged Cell Handling', () => {
         getNumRows: vi.fn().mockReturnValue(2),
         getNumColumns: vi.fn().mockReturnValue(2),
         getCell: vi.fn((r, c) => {
-          if (r === 0 && c === 0) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.HEAD),
-              getText: vi.fn().mockReturnValue({
-                asString: vi.fn().mockReturnValue('  Trimmed Header  '),
-              }),
-            };
-          }
-          if (r === 0 && c === 1) {
-            return {
-              getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.MERGED),
-              getText: vi.fn(),
-            };
-          }
-          return {
-            getMergeState: vi.fn().mockReturnValue(global.SlidesApp.CellMergeState.NORMAL),
-            getText: vi.fn().mockReturnValue({
-              asString: vi.fn().mockReturnValue(`  Content ${r},${c}  `),
-            }),
-          };
+          if (r === 0 && c === 0)
+            return global.__makeCell(global.SlidesApp.CellMergeState.HEAD, '  Trimmed Header  ');
+          if (r === 0 && c === 1) return global.__makeCell(global.SlidesApp.CellMergeState.MERGED);
+          return global.__makeCell(global.SlidesApp.CellMergeState.NORMAL, `  Content ${r},${c}  `);
         }),
       };
 
