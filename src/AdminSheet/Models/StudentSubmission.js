@@ -137,9 +137,13 @@ class StudentSubmission {
   }
 
   /**
-   * Upsert item from primitive extraction results
-   * @param {TaskDefinition} taskDef
-   * @param {Object} extraction - { pageId?, content?, metadata? }
+   * Upsert submission artifacts from primitive extraction results (student side only).
+   * Creates the submission artifact via ArtifactFactory when none exists, or merges content/metadata
+   * into the existing submission artifact for the same taskId. This is distinct from
+   * TaskDefinition.addReferenceArtifact/addTemplateArtifact, which always create new reference/template
+   * artifacts during parsing and never mutate. Expects primitive extraction payload from parsers/assignments.
+   * @param {TaskDefinition} taskDef - Task definition providing ids/type hints.
+   * @param {Object} extraction - { pageId?, content?, metadata?, documentId? }
    */
   upsertItemFromExtraction(taskDef, extraction = {}) {
     if (!taskDef) throw new Error('upsertItemFromExtraction requires taskDef');
