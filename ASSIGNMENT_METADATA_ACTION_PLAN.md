@@ -3,61 +3,57 @@
 ## Sequenced Tasks
 
 1. **Model Definition**: Create `AssignmentDefinition` class.
-   - Fields: `primaryTitle`, `primaryTopic`, `yearGroup`, `alternateTitles`, `alternateTopics`, doc IDs, timestamps, weighting, `tasks`.
-   - Methods: `toJSON`, `fromJSON`, `toPartialJSON` (redacts artifact `content` field).
-   - Validation: Ensure title, topic, yearGroup, docIDs, and documentType are present.
-   - Location: `src/AdminSheet/Models/AssignmentDefinition.js`
+
+- Fields: `primaryTitle`, `primaryTopic`, `yearGroup` (nullable), `alternateTitles`, `alternateTopics`, document type, doc IDs, Drive timestamp snapshots, weighting, `tasks`, and created/updated timestamps.
+- Methods: `toJSON`, `fromJSON`, `toPartialJSON` (redacts artifact `content` field), plus helpers for composite-key generation and timestamp updates.
+- Validation: Ensure title, topic, documentType, and doc IDs are present. Validate `yearGroup` only when provided (null is acceptable for fresh definitions).
+- Location: `src/AdminSheet/Models/AssignmentDefinition.js`
 
 2. **Controller**: Create `AssignmentDefinitionController`.
-   - **Responsibility:** CRUD for `AssignmentDefinition` and migration orchestration.
-   - **Dependencies:** `DbManager` (for `assignment_definitions` collection), Classroom API (for topic enrichment).
-   - **Methods:**
-     - `saveDefinition(def)`
-     - `getDefinition(title, topic, yearGroup)`
-     - `ensureDefinition(title, topic, yearGroup, legacyProps?)`: Core logic for lazy migration and enrichment.
-   - **Key Generation:** `${primaryTitle}_${primaryTopic}_${yearGroup}`
-   - Location: `src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
 
-3. **Assignment Refactor**: Update `Assignment` class and subclasses.
-   - Add `assignmentDefinition` property (embedded copy).
-   - **Remove** `tasks` property entirely—all code must access via `assignmentDefinition.tasks`.
-   - Remove `assignmentWeighting` property—access via `assignmentDefinition.assignmentWeighting`.
-   - Remove `documentType` property—access via `assignmentDefinition.documentType`.
-   - Update `toJSON`/`fromJSON` to handle embedded definition.
-   - Update `_baseFromJSON()` to reconstruct `assignmentDefinition` field.
+- **Responsibility:** CRUD for `AssignmentDefinition`, topic-name enrichment, and Drive timestamp reconciliation (no legacy migration path).
+- **Dependencies:** `DbManager` (for `assignment_definitions` collection), Classroom API (`ClassroomApiClient`) for topic enrichment, `DriveManager` for timestamp helpers.
+- **Methods:**
+  - `saveDefinition(def)`
+  - `getDefinition(title, topic, yearGroup)`
+  - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId })`: Core logic for fetching or constructing definitions.
+  - `upsertDefinition(definition)`
+- **Key Generation:** `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (use the class yearGroup whenever available; only fall back to literal `null` when no yearGroup data exists)
+- Location: `src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
+
+3. **Assignment Refactor**: Update `Assignment` class, subclasses, and every consumer.
+   - Add `assignmentDefinition` property (embedded copy) and treat it as the single source of truth for tasks, doc IDs, weighting, and document type.
+   - Remove `assignment.tasks`, `assignment.assignmentWeighting`, and `assignment.documentType`; reroute all internal helpers to reference `assignment.assignmentDefinition`.
+   - Update `toJSON`/`toPartialJSON`/`fromJSON`/`_baseFromJSON()` to serialise and hydrate the embedded definition, ensuring backwards compatibility is not required (hard cut-over).
    - **Subclass Updates:**
-     - Remove `referenceDocumentId`, `templateDocumentId`, `documentType` from `SlidesAssignment` and `SheetsAssignment`.
-     - Access these via `assignmentDefinition.referenceDocumentId`, etc.
-     - Update subclass `toJSON()`/`fromJSON()` methods accordingly.
+     - Remove `referenceDocumentId`, `templateDocumentId`, and `documentType` storage from `SlidesAssignment`/`SheetsAssignment`; delegate to the definition.
+     - Update subclass `populateTasks`, `fetchSubmittedDocuments`, `processAllSubmissions`, and serialisation helpers to expect the definition fields.
+   - **Consumer Updates (non-exhaustive but mandatory):**
+     - `AnalysisSheetManager`, `LLMRequestManager`, `ImageManager`, `SheetsFeedback`, `AssignmentController`, `ABClassController` (serialization flows), and any other module/tests referencing `assignment.tasks`, doc IDs, or document type must be updated to dereference `assignment.assignmentDefinition`.
 
-4. **Legacy Migration & Enrichment Logic**:
-   - Implement the logic within `AssignmentDefinitionController.ensureDefinition()`.
+4. **Definition Lifecycle & Topic Enrichment**:
+   - Implement definition orchestration inside `AssignmentDefinitionController.ensureDefinition()`.
    - Logic:
-     - Try fetch Definition from DB using composite key `${title}_${topic}_${yearGroup}`.
-     - If missing, check `ScriptProperties` for legacy `assignment_{Title}` key.
-     - If Legacy exists:
-       - Create new `AssignmentDefinition`.
-       - Populate doc IDs from legacy property.
-       - Enrich `primaryTopic` by fetching topic name from Classroom API using assignment's `topicId`.
-       - Set `yearGroup` to `null` (requires manual enrichment via future UI).
-       - Save to `JsonDbApp`.
-       - **Do not delete** legacy ScriptProperties key (data loss prevention).
-     - If neither exists: Create fresh Definition by parsing reference/template documents.
+     - Generate the composite key using the canonical title/topic/yearGroup triple, defaulting to the `ABClass.yearGroup` when present (topic name fetched via Classroom API when only `topicId` is available). Only use `null` for yearGroup when the class metadata is absent.
+     - Attempt to read from the `assignment_definitions` collection; if found, verify Drive timestamps before returning.
+     - If missing or stale, parse the reference/template documents, update `tasks`, `referenceLastModified`, `templateLastModified`, and immediately persist the shared definition (mutating the canonical stored record).
+     - No ScriptProperties or legacy fallbacks are required; this is a greenfield definition store.
 
-5. **Controller & Manager Updates**:
+5. **Controller, Manager & API Updates**:
+   - **ClassroomApiClient**:
+     - Add helpers to fetch topic metadata (`fetchTopicName` or similar) via `Classroom.Courses.Topics.list/get`.
+     - Ensure required scopes/config are documented and that failures surface meaningful errors (no silent fallbacks to IDs).
    - **DriveManager**: Add `getFileModifiedTime(fileId)` static method:
      - Returns ISO 8601 string of file's last modified timestamp.
      - Use retry logic (3 attempts, exponential backoff) matching `getParentFolderId()` pattern.
      - Try `DriveApp.getFileById(fileId).getLastUpdated()` first.
      - Fallback to Advanced Drive API (`Drive.Files.get(fileId, {supportsAllDrives: true, fields: 'modifiedTime'})`).
-   - **AssignmentController.saveStartAndShowProgress()**:
-     - Replace `AssignmentPropertiesManager.saveDocumentIdsForAssignment()` with `AssignmentDefinitionController.ensureDefinition()`.
-     - Store definition key (`${title}_${topic}_${yearGroup}`) in `DocumentProperties` instead of individual doc IDs.
+   - **AssignmentController.saveStartAndShowProgress()** (and the GAS globals / Assessment Record menu shims):
+     - Accept only the assignment identifiers and doc IDs from the UI, then internally resolve course/topic/year group context before invoking `AssignmentDefinitionController.ensureDefinition()`.
+     - Persist only the definition key (plus assignment/course identifiers) in `DocumentProperties`; drop individual doc-ID storage entirely.
    - **AssignmentController.createAssignmentInstance()**:
-     - Before creating `Assignment`, fetch/create definition via `AssignmentDefinitionController.ensureDefinition()`.
-     - Retrieve `yearGroup` from `ABClass.yearGroup`.
-     - Fetch topic name from Classroom API.
-     - Pass or attach definition to `Assignment` instance.
+     - Resolve `ABClass` context (for `yearGroup`), fetch the Classroom topic name, guarantee document type, and call `AssignmentDefinitionController.ensureDefinition()` before instantiating the assignment.
+     - Pass the hydrated `assignmentDefinition` into the constructor/factory.
    - **AssignmentController.runAssignmentPipeline()**:
      - Before calling `assignment.populateTasks()`, implement lazy-load check:
        1. Get definition from `assignment.assignmentDefinition`.
@@ -65,32 +61,34 @@
        3. Compare against `definition.referenceLastModified` and `definition.templateLastModified`.
        4. If stale, call `populateTasks()` to re-parse and update definition.
        5. If fresh, skip parsing (use cached tasks from definition).
-   - **AssignmentController.processSelectedAssignment()**:
-     - Retrieve definition key from `DocumentProperties`.
-     - Fetch definition from DB and attach to assignment during construction.
-   - **UIManager.saveDocumentIdsForAssignment()**:
-     - Replace direct `AssignmentPropertiesManager` call with `AssignmentDefinitionController.ensureDefinition()`.
+
+- **AssignmentController.processSelectedAssignment()**:
+  - Retrieve the stored definition key, fetch the definition via the controller, attach it to the assignment, and re-save updates after any re-parse.
+- **UIManager.saveDocumentIdsForAssignment()**:
+- Call into the controller (or a lightweight GAS server function) that performs the same resolution used by `AssignmentController`; Script Properties are no longer touched.
+- **AssignmentProcessor globals & AssessmentRecordTemplate menus**:
+  - Update `saveStartAndShowProgress`/`startProcessing` wrappers and associated tests to reflect the new parameter contract (definition key only stored, no legacy IDs).
 
 6. **Properties Manager Retirement**:
-   - Deprecate/Remove `AssignmentPropertiesManager` writes.
-   - Keep reads only for the migration fallback logic.
+
+- Remove `AssignmentPropertiesManager` entirely (no writes or reads). Any legacy helpers referencing it should be deleted or replaced with definition-aware logic.
 
 7. **Tests**:
    - **Model Tests**:
-     - `AssignmentDefinition` serialisation, validation, `toPartialJSON()`.
-     - Composite key generation with yearGroup.
-   - **Integration Tests**:
-     - `Assignment` accessing `assignmentDefinition.tasks` (verify `assignment.tasks` removed).
-     - `SlidesAssignment`/`SheetsAssignment` serialization without duplicate properties.
-     - `Assignment.fromJSON()` correctly reconstructs embedded definition.
+     - `AssignmentDefinition` serialisation, validation (with nullable yearGroup), `toPartialJSON()`, composite key generation helper.
+   - **Assignment & Consumer Tests**:
+     - `Assignment` serialisation/deserialisation with embedded definitions and without legacy properties.
+     - `SlidesAssignment`/`SheetsAssignment` pipelines proving they consume `assignmentDefinition` for doc IDs/tasks.
+     - `Assignment.fromJSON()` reconstructing embedded definitions for persisted runs.
+     - `AnalysisSheetManager`, `LLMRequestManager`, and `ImageManager` unit tests updated to read through the embedded definition.
    - **Controller Tests**:
-     - `AssignmentDefinitionController.ensureDefinition()` lazy migration flow.
-     - YearGroup defaults to `null` during legacy migration.
+     - `AssignmentDefinitionController.ensureDefinition()` covering: existing definition retrieval, Drive timestamp-triggered re-parse/upsert, topic-name enrichment via the new Classroom API helper, and mutation of shared definitions.
+     - `AssignmentController` happy-path orchestration using definition keys in DocProperties.
    - **DriveManager Tests**:
      - `getFileModifiedTime()` with mocked `DriveApp` and Advanced Drive API.
      - Retry logic and Shared Drive fallback scenarios.
    - **Persistence Tests**:
-     - Composite key storage and retrieval with yearGroup.
+     - Composite key storage/retrieval (including `null` year groups) and definition upserts after re-parse.
 
 8. **Docs**:
    - Update `DATA_SHAPES.md`.
@@ -118,11 +116,13 @@
   - `src/AdminSheet/y_controllers/AssignmentController.js` (orchestration updates)
   - `src/AdminSheet/GoogleDriveManager/DriveManager.js` (add `getFileModifiedTime()`)
   - `src/AdminSheet/UI/UIManager.js` (replace `AssignmentPropertiesManager` usage)
-  - All code referencing `assignment.tasks` must change to `assignment.assignmentDefinition.tasks`
-  - All code referencing `assignment.documentType` must change to `assignment.assignmentDefinition.documentType`
+  - `src/AdminSheet/RequestHandlers/LLMRequestManager.js`, `src/AdminSheet/RequestHandlers/ImageManager.js`, `src/AdminSheet/Sheets/AnalysisSheetManager.js`, `src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`, and any other consumer referencing `assignment.tasks`/doc IDs/document type.
+  - `src/AdminSheet/GoogleClassroom/ClassroomApiClient.js` (topic helpers)
+  - `src/AdminSheet/AssignmentProcessor/globals.js` & `src/AssessmentRecordTemplate/menus/assignment.js` (new flow contract)
+  - `tests/**` suites listed above.
 
-- **Deprecated (Read-Only)**:
-  - `src/AdminSheet/Utils/AssignmentPropertiesManager.js` (keep for legacy migration reads only)
+- **Removed**:
+  - `src/AdminSheet/Utils/AssignmentPropertiesManager.js`
 
 ### Global Code Search Required
 
@@ -133,15 +133,18 @@ Before implementation, search codebase for:
 - `assignment.assignmentWeighting` → update to `assignment.assignmentDefinition.assignmentWeighting`
 - `.referenceDocumentId` on `SlidesAssignment`/`SheetsAssignment` → update to `assignment.assignmentDefinition.referenceDocumentId`
 - `.templateDocumentId` on `SlidesAssignment`/`SheetsAssignment` → update to `assignment.assignmentDefinition.templateDocumentId`
+- `AssignmentPropertiesManager` references → remove entirely
+- DocProperties read/write helpers expecting `referenceDocumentId`/`templateDocumentId`
+- UI tests/assertions marshalling old parameter lists
 
 ## Risks & Mitigations
 
 - **Topic/Title Changes**: If a teacher renames a Topic or Assignment in Classroom, the composite key will not match existing definitions.
   - _Mitigation:_ Use `alternateTitles`/`alternateTopics` for manual linking (future UI). Creating a new definition is acceptable—history separation may be desired.
-- **YearGroup Null for Migrated Data**: Legacy assignments will have `yearGroup: null` until manually enriched.
-  - _Mitigation:_ Document this in release notes. Provide future UI for enrichment.
 - **Widespread Code Changes**: Removing `assignment.tasks` requires updating many call sites.
   - _Mitigation:_ Comprehensive grep search before implementation. Thorough testing.
+- **Topic API availability**: Classroom Topics API failures will block enrichment.
+  - _Mitigation_: Fail fast with clear logging; surface fallback messaging in UI and add retries where sensible.
 
 ## Future Enhancements
 

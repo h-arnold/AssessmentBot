@@ -1,4 +1,4 @@
-# Assignment Definition Spec (JsonDbApp Hard Migration)
+# Assignment Definition Spec (JsonDbApp Definition Store)
 
 ## Goals
 
@@ -6,18 +6,18 @@
 - Introduce `AssignmentDefinition` to store reusable metadata (doc IDs, task definitions, weighting, titles, topics, yearGroup).
   - **Relationship:** One `AssignmentDefinition` (Lesson) : Many `Assignment` instances (Classroom coursework).
   - **Embedded Pattern:** `Assignment` embeds a copy of `AssignmentDefinition` at creation time. Updates to a definition do not automatically propagate to existing assignments (see Future Enhancements).
-- Store definitions in `JsonDbApp` instead of Script Properties.
+- Store definitions in `JsonDbApp` instead of Script Properties (hard cut-over).
 - Enable lazy reload of reference/template artefacts by comparing Drive file modified timestamps against stored definitions.
-- Migrate legacy `ScriptProperties` data lazily upon first access (Enrichment), rather than a one-off script.
 
 ## Scope
 
 - New `AssignmentDefinition` model (class) encapsulating reusable lesson properties.
 - Update `Assignment` to embed `AssignmentDefinition` and remove the `tasks` property entirely. All code must access tasks via `assignment.assignmentDefinition.tasks`.
-- `JsonDbApp` collection for definitions keyed by composite `${primaryTitle}_${primaryTopic}_${yearGroup}`.
-- Update controllers/parsers to consume definitions via `JsonDbApp`.
-- Lazy migration logic: Convert legacy `ScriptProperties` to `AssignmentDefinition` on demand.
+- `JsonDbApp` collection for definitions keyed by composite `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (populate `yearGroup` from the owning `ABClass` whenever available; only fall back to literal `null` when class metadata is missing).
+- Update controllers/parsers to consume definitions via `JsonDbApp` and mutate the shared definition when Drive content changes.
+- No Script Properties or migration logic is required (greenfield rollout).
 - Add `DriveManager.getFileModifiedTime()` to support lazy reloading of reference/template documents.
+- Extend `ClassroomApiClient` to expose topic-name lookups for enrichment.
 
 ## Data Model: AssignmentDefinition
 
@@ -25,7 +25,7 @@
 - **Fields:**
   - `primaryTitle` (string, required) – Canonical title.
   - `primaryTopic` (string, required) – Canonical topic.
-  - `yearGroup` (number, required) – Year group for which this definition is intended.
+  - `yearGroup` (number|null) – Intended year group. Null is acceptable until enriched.
   - `alternateTitles` (string[], optional) – Known variations of the title.
   - `alternateTopics` (string[], optional) – Known variations of the topic.
   - `documentType` ("SLIDES" | "SHEETS", required)
@@ -39,22 +39,24 @@
 - **Behaviour:**
   - `toJSON()` / `fromJSON()`: Standard serialisation.
   - `toPartialJSON()`: Redacts artifact `content` field while preserving structure and identifiers.
-  - Validation: Throws on missing required fields (title, topic, yearGroup, docIDs, documentType).
+  - Validation: Throws on missing required fields (title, topic, docIDs, documentType). Validate yearGroup only when non-null.
+  - Provide helper(s) to generate the composite key (injecting `ABClass.yearGroup` when present, literal `null` only when absent) and to update modified timestamps.
 
 ## Persistence (JsonDbApp)
 
 - **Collection:** `assignment_definitions`.
-- **Key Strategy:** Composite key `${primaryTitle}_${primaryTopic}_${yearGroup}`.
+- **Key Strategy:** Composite key `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
   - _Constraint:_ Titles must be unique within a Topic and YearGroup combination.
   - _Rationale:_ Topics may be reused across year groups; yearGroup distinguishes them.
 - **Controller (`AssignmentDefinitionController`):**
   - Manages persistence and retrieval of `AssignmentDefinition` entities.
-  - Uses `DbManager` to access the `assignment_definitions` collection.
-  - **Methods:**
+  - Uses `DbManager` to access the `assignment_definitions` collection and mutates shared definitions when Drive content changes.
+  - **Methods (initial scope):**
+    - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId }): AssignmentDefinition`
+    - `getDefinitionByKey(definitionKey): AssignmentDefinition|null`
     - `saveDefinition(def: AssignmentDefinition): AssignmentDefinition`
-    - `getDefinition(title, topic, yearGroup): AssignmentDefinition|null`
-    - `findDefinitionByFuzzyMatch(title, topic, yearGroup): AssignmentDefinition|null` (Future).
-    - `ensureDefinition(title, topic, yearGroup, legacyProps?): AssignmentDefinition` (Handles migration/enrichment).
+    - (Future) `findDefinitionByFuzzyMatch`
+  - `ensureDefinition` is responsible for topic-name enrichment via `ClassroomApiClient`, Drive timestamp comparisons, and re-parsing reference/template documents when stale.
 
 ## Assignment Integration
 
@@ -77,26 +79,16 @@
 ### Lazy Loading (Parsing)
 
 - Store `referenceLastModified` / `templateLastModified` in `AssignmentDefinition`.
-- When loading an assignment:
-  1. Fetch `AssignmentDefinition` from DB.
+- When loading or preparing an assignment run:
+  1. Fetch `AssignmentDefinition` from DB via controller.
   2. Use `DriveManager.getFileModifiedTime(fileId)` to check Drive file `modifiedTime` for both reference and template documents.
-  3. If either file's `modifiedTime` > stored `lastModified`, re-parse docs and update `AssignmentDefinition`.
+  3. If either file's `modifiedTime` > stored `lastModified`, re-parse docs, mutate the shared definition (including `tasks`), and persist immediately.
   4. If unchanged, use stored `tasks`.
 
-### Lazy Migration (Legacy Data)
+### Topic Enrichment
 
-- **Trigger:** When `Assignment` is initialized/loaded and no `AssignmentDefinition` exists in `JsonDbApp`.
-- **Action:**
-  1. Check `ScriptProperties` for legacy `assignment_{Title}` key.
-  2. If found:
-     - Create new `AssignmentDefinition`.
-     - Populate doc IDs from legacy property.
-     - Populate `primaryTitle` from legacy key.
-     - Populate `primaryTopic` by fetching topic name from Classroom API using assignment's `topicId` (Enrichment).
-     - Set `yearGroup` to `null` (requires manual enrichment via future UI).
-     - Save to `JsonDbApp`.
-     - **Note:** Legacy keys are not deleted to avoid data loss in case of migration failures. Worst-case scenario: teachers must re-input reference/template document IDs.
-  3. If not found: Proceed as new assignment (parse fresh).
+- Use `ClassroomApiClient` helpers to resolve topic names for a course/assignment when only `topicId` is provided.
+- Topic lookup failures must surface via `ProgressTracker.logError` so teachers can intervene.
 
 ### DriveManager Extension
 
@@ -110,28 +102,24 @@
 ## Testing
 
 - **Model Tests:**
-  - `AssignmentDefinition` serialisation, validation, partial JSON.
-  - Composite key generation with yearGroup.
-- **Integration Tests:**
-  - `Assignment` accessing `assignmentDefinition.tasks` (not `assignment.tasks`).
-  - Subclass serialisation/deserialization without duplicate doc ID properties.
-- **Migration Tests:**
-  - Mock `ScriptProperties` and verify migration to `AssignmentDefinition`.
-  - Verify yearGroup defaults to `null` during migration.
+  - `AssignmentDefinition` serialisation, validation (nullable yearGroup), partial JSON, and composite key helper.
+- **Assignment/Subclass Tests:**
+  - `Assignment` serialisation/deserialisation using embedded definitions only.
+  - `SlidesAssignment`/`SheetsAssignment` pipelines referencing `assignmentDefinition` for doc IDs/tasks.
+- **Controller Tests:**
+  - `AssignmentDefinitionController.ensureDefinition()` covering: hits vs misses, Drive timestamp refreshes, topic-name enrichment, and shared-definition mutation.
+  - `AssignmentController` orchestration from DocProperties definition key through to persistence.
 - **Persistence Tests:**
-  - Verify composite key generation and retrieval with yearGroup.
-  - Test `ensureDefinition()` lazy migration flow.
+  - Composite key storage/retrieval with `null` year groups and post-refresh writes.
 - **DriveManager Tests:**
-  - Mock `DriveApp` and Advanced Drive API for `getFileModifiedTime()`.
-  - Verify retry logic and Shared Drive fallback.
+  - Mock `DriveApp` and Advanced Drive API for `getFileModifiedTime()`, including retry/backoff behaviour.
 
 ## Controller Orchestration
 
 ### AssignmentController Updates
 
 - **`saveStartAndShowProgress()`**:
-  - Replace `AssignmentPropertiesManager.saveDocumentIdsForAssignment()` with `AssignmentDefinitionController` logic.
-  - Store definition key in `DocumentProperties` instead of individual doc IDs.
+  - Replace `AssignmentPropertiesManager.saveDocumentIdsForAssignment()` with controller-backed logic that resolves topic name/year group and writes only the definition key (plus assignment/course identifiers) to `DocumentProperties`.
 
 - **`createAssignmentInstance()`**:
   - Before creating `Assignment`, fetch/create `AssignmentDefinition` via `AssignmentDefinitionController.ensureDefinition()`.
@@ -147,12 +135,11 @@
     4. If fresh, skip parsing.
 
 - **`processSelectedAssignment()`**:
-  - Update to retrieve definition key from `DocumentProperties` (format: `${title}_${topic}_${yearGroup}`).
-  - Fetch definition from DB and attach to assignment during instantiation.
+  - Update to retrieve definition key from `DocumentProperties`, fetch the definition from DB, attach it to the assignment during instantiation, and persist any re-parse back to JsonDb.
 
 ### UIManager Updates
 
-- **`saveDocumentIdsForAssignment()`**: Replace direct call to `AssignmentPropertiesManager` with `AssignmentDefinitionController.ensureDefinition()`.
+- **`saveDocumentIdsForAssignment()`**: Replace Script Properties writes entirely; this becomes a thin wrapper over the controller logic so all definition creation happens through a single pathway.
 
 ## Documentation
 
@@ -169,5 +156,5 @@
 - **UI for Definition Management**: Teacher-facing interface to:
   - Link assignments to existing definitions.
   - Create new definitions.
-  - Enrich migrated definitions (set missing yearGroup).
+  - Enrich definitions (set missing yearGroup, add alternates).
   - Update `alternateTitles` and `alternateTopics`.
