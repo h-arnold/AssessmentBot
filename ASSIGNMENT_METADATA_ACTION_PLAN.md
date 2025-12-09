@@ -14,10 +14,9 @@
 - **Responsibility:** CRUD for `AssignmentDefinition`, topic-name enrichment, and Drive timestamp reconciliation (no legacy migration path).
 - **Dependencies:** `DbManager` (for `assignment_definitions` collection), Classroom API (`ClassroomApiClient`) for topic enrichment, `DriveManager` for timestamp helpers.
 - **Methods:**
+  - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId })`: Sole entry point for fetching or constructing definitions; generates the composite key internally so callers never duplicate key logic.
+  - `getDefinitionByKey(definitionKey)`
   - `saveDefinition(def)`
-  - `getDefinition(title, topic, yearGroup)`
-  - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId })`: Core logic for fetching or constructing definitions.
-  - `upsertDefinition(definition)`
 - **Key Generation:** `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (use the class yearGroup whenever available; only fall back to literal `null` when no yearGroup data exists)
 - Location: `src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
 
@@ -37,17 +36,19 @@
      - Generate the composite key using the canonical title/topic/yearGroup triple, defaulting to the `ABClass.yearGroup` when present (topic name fetched via Classroom API when only `topicId` is available). Only use `null` for yearGroup when the class metadata is absent.
      - Attempt to read from the `assignment_definitions` collection; if found, verify Drive timestamps before returning.
      - If missing or stale, parse the reference/template documents, update `tasks`, `referenceLastModified`, `templateLastModified`, and immediately persist the shared definition (mutating the canonical stored record).
+     - Every mutation triggered by parsing must call `saveDefinition` straight away so all subsequent assignments read the refreshed data.
      - No ScriptProperties or legacy fallbacks are required; this is a greenfield definition store.
 
 5. **Controller, Manager & API Updates**:
    - **ClassroomApiClient**:
      - Add helpers to fetch topic metadata (`fetchTopicName` or similar) via `Classroom.Courses.Topics.list/get`.
-     - Ensure required scopes/config are documented and that failures surface meaningful errors (no silent fallbacks to IDs).
+     - Ensure required scopes/config are documented and that failures surface meaningful errors via `ProgressTracker.logError` (no silent fallbacks to IDs or optional chaining guards around singletons).
    - **DriveManager**: Add `getFileModifiedTime(fileId)` static method:
      - Returns ISO 8601 string of file's last modified timestamp.
      - Use retry logic (3 attempts, exponential backoff) matching `getParentFolderId()` pattern.
      - Try `DriveApp.getFileById(fileId).getLastUpdated()` first.
      - Fallback to Advanced Drive API (`Drive.Files.get(fileId, {supportsAllDrives: true, fields: 'modifiedTime'})`).
+     - On repeated failures, surface errors through `ProgressTracker.logError` before throwing so users see actionable context.
    - **AssignmentController.saveStartAndShowProgress()** (and the GAS globals / Assessment Record menu shims):
      - Accept only the assignment identifiers and doc IDs from the UI, then internally resolve course/topic/year group context before invoking `AssignmentDefinitionController.ensureDefinition()`.
      - Persist only the definition key (plus assignment/course identifiers) in `DocumentProperties`; drop individual doc-ID storage entirely.
@@ -91,7 +92,10 @@
      - Composite key storage/retrieval (including `null` year groups) and definition upserts after re-parse.
 
 8. **Docs**:
-   - Update `DATA_SHAPES.md`.
+
+- Update `docs/developer/DATA_SHAPES.md` for the new structures and embedding rules.
+- Refresh `setup/settingUpAssessmentRecords.md`, `setup/settingUpOverviewSheet.md`, and any UI how-tos so they describe supplying doc IDs once and persisting only the definition key.
+- Amend UI/menu documentation (e.g. `docs/howTos/` and Assessment Record template README) to explain the new save flow and removal of Script Properties.
 
 ## Dependencies
 

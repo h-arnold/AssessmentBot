@@ -52,7 +52,7 @@
   - Manages persistence and retrieval of `AssignmentDefinition` entities.
   - Uses `DbManager` to access the `assignment_definitions` collection and mutates shared definitions when Drive content changes.
   - **Methods (initial scope):**
-    - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId }): AssignmentDefinition`
+    - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId }): AssignmentDefinition` (generates and manages the composite key internally; external callers never construct keys themselves)
     - `getDefinitionByKey(definitionKey): AssignmentDefinition|null`
     - `saveDefinition(def: AssignmentDefinition): AssignmentDefinition`
     - (Future) `findDefinitionByFuzzyMatch`
@@ -97,7 +97,7 @@
   - Uses retry logic (3 attempts with exponential backoff) like `getParentFolderId()`.
   - Attempts `DriveApp.getFileById(fileId).getLastUpdated()` first.
   - Falls back to Advanced Drive API (`Drive.Files.get(fileId, {supportsAllDrives: true, fields: 'modifiedTime'})`) for Shared Drives.
-  - Throws error if all attempts fail.
+  - Throws error if all attempts fail, after logging via `ProgressTracker.logError` with Drive/file context so teachers know why parsing stopped.
 
 ## Testing
 
@@ -148,6 +148,8 @@
   - Removal of `assignment.tasks` property.
   - Copy-on-Construct embedding pattern (not Flyweight).
   - 1:N relationship (one definition, many assignment instances).
+- Update `setup/settingUpAssessmentRecords.md`, `setup/settingUpOverviewSheet.md`, and any UI/setup guides so they describe capturing doc IDs once, persisting only the definition key, and the new UI flow that no longer uses Script Properties.
+- Refresh Assessment Record template docs / menus README to explain the adjusted `saveStartAndShowProgress` parameters and controller-backed save behaviour.
 
 ## Future Enhancements
 
