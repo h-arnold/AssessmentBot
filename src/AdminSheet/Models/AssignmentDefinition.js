@@ -65,24 +65,50 @@ class AssignmentDefinition {
     }
   }
 
+  /**
+   * Validate required fields and types.
+   * Logs a user-facing error and throws via ProgressTracker for consistency with error handling contract.
+   */
   _validate() {
+    const tracker = ProgressTracker.getInstance();
+
     if (!this.primaryTitle) {
-      throw new Error('AssignmentDefinition requires primaryTitle');
+      tracker.logAndThrowError('Missing required assignment property: primaryTitle', {
+        devContext: { property: 'primaryTitle', value: this.primaryTitle },
+      });
     }
+
     if (!this.primaryTopic) {
-      throw new Error('AssignmentDefinition requires primaryTopic');
+      tracker.logAndThrowError('Missing required assignment property: primaryTopic', {
+        devContext: { property: 'primaryTopic', value: this.primaryTopic },
+      });
     }
+
     if (!this.documentType) {
-      throw new Error('AssignmentDefinition requires documentType');
+      tracker.logAndThrowError('Missing required assignment property: documentType', {
+        devContext: { property: 'documentType', value: this.documentType },
+      });
     }
+
     if (!this.referenceDocumentId) {
-      throw new Error('AssignmentDefinition requires referenceDocumentId');
+      tracker.logAndThrowError('Missing required assignment property: referenceDocumentId', {
+        devContext: { property: 'referenceDocumentId', value: this.referenceDocumentId },
+      });
     }
+
     if (!this.templateDocumentId) {
-      throw new Error('AssignmentDefinition requires templateDocumentId');
+      tracker.logAndThrowError('Missing required assignment property: templateDocumentId', {
+        devContext: { property: 'templateDocumentId', value: this.templateDocumentId },
+      });
     }
+
     if (this.yearGroup !== null && !Number.isInteger(this.yearGroup)) {
-      throw new TypeError('yearGroup must be an integer or null');
+      tracker.logAndThrowError(
+        'Invalid assignment property: yearGroup must be an integer or null',
+        {
+          devContext: { property: 'yearGroup', value: this.yearGroup },
+        }
+      );
     }
   }
 
