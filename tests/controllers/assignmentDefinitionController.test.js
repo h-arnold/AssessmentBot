@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AssignmentDefinitionController from '../../src/AdminSheet/y_controllers/AssignmentDefinitionController.js';
 import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
-import ProgressTracker from '../../src/AdminSheet/00_BaseSingleton.js'; // Mocked usually
 import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
+import SlidesParser from '../../src/AdminSheet/DocumentParsers/SlidesParser.js';
 
 // Mocks
 vi.mock('../../src/AdminSheet/DbManager/DbManager.js');
@@ -45,6 +45,13 @@ describe('AssignmentDefinitionController', () => {
       getCollection: vi.fn().mockReturnValue(mockCollection),
     };
     DbManager.getInstance.mockReturnValue(mockDbManager);
+
+    // Expose mocks to globals to match production usage
+    global.DbManager = DbManager;
+    global.DriveManager = DriveManager;
+    global.ClassroomApiClient = ClassroomApiClient;
+    global.SlidesParser = SlidesParser;
+    global.AssignmentDefinition = AssignmentDefinition;
 
     // Setup DriveManager mock
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');

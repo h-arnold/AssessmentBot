@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 
 describe('AssignmentDefinition', () => {
@@ -94,13 +94,12 @@ describe('AssignmentDefinition', () => {
     expect(partial.tasks.t1.artifacts.reference[0].id).toBe('a1');
   });
 
-  it('should update modified timestamps', () => {
+  it('should update modified timestamps', async () => {
     const def = new AssignmentDefinition(validParams);
     const originalUpdate = def.updatedAt;
 
     // Sleep briefly to ensure timestamp change
-    const start = Date.now();
-    while (Date.now() - start < 2) {}
+    await new Promise((resolve) => setTimeout(resolve, 5));
 
     def.updateModifiedTimestamps({
       referenceLastModified: '2025-01-01T10:00:00Z',

@@ -1,11 +1,7 @@
 // UIManager.gs
 // Ensure ABLogger is available in Node test environment
-try {
-  if (typeof ABLogger === 'undefined') {
-    globalThis.ABLogger = require('../Utils/ABLogger.js');
-  }
-} catch (e) {
-  // Swallow if not in Node / path not resolvable; GAS runtime will have global
+if (typeof ABLogger === 'undefined' && typeof require === 'function') {
+  globalThis.ABLogger = require('../Utils/ABLogger.js');
 }
 /**
  * @class UIManager
@@ -51,7 +47,9 @@ class UIManager extends BaseSingleton {
       ui.createMenu('Test');
       return true;
     } catch (error) {
-      console.log('UI operations are not available in this context:', error?.message ?? error);
+      ABLogger.getInstance().warn('UI operations are not available in this context', {
+        err: error,
+      });
       return false;
     }
   }
@@ -64,7 +62,7 @@ class UIManager extends BaseSingleton {
      */
     // Singleton guard: constructor should only run once via getInstance()
     if (!isSingletonCreator && UIManager._instance) {
-      return UIManager._instance; // Return existing instance
+      throw new Error('Use UIManager.getInstance() to access the UIManager singleton.');
     }
 
     // Defer UI availability probe until first safe UI op (lazy probing)
@@ -108,6 +106,7 @@ class UIManager extends BaseSingleton {
     try {
       available = UIManager.isUiAvailable();
     } catch (e) {
+      ABLogger.getInstance().warn('UI availability probe failed', { err: e });
       available = false;
     }
     this.uiAvailable = available;
@@ -116,9 +115,10 @@ class UIManager extends BaseSingleton {
         this.ui = SpreadsheetApp.getUi();
         ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
       } catch (err) {
-        console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
+        ABLogger.getInstance().error('Failed to acquire Spreadsheet UI', { err });
         this.uiAvailable = false;
         this.ui = null;
+        throw err;
       }
     } else {
       ABLogger.getInstance().debugUi('UI probe completed: UI not available.');

@@ -45,7 +45,7 @@ class SheetsAssignment extends Assignment {
    */
   fetchSubmittedDocuments() {
     // Google Sheets MIME type
-    const SHEETS_MIME_TYPE = MimeType.GOOGLE_SHEETS;
+    const SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
     this.fetchSubmittedDocumentsByMimeType(SHEETS_MIME_TYPE);
   }
 

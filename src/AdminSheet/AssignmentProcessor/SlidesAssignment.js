@@ -103,7 +103,7 @@ class SlidesAssignment extends Assignment {
    */
   fetchSubmittedDocuments() {
     // Google Slides MIME type
-    const SLIDES_MIME_TYPE = MimeType.GOOGLE_SLIDES;
+    const SLIDES_MIME_TYPE = 'application/vnd.google-apps.presentation';
     this.fetchSubmittedDocumentsByMimeType(SLIDES_MIME_TYPE);
   }
 

@@ -64,15 +64,11 @@ class AnalysisSheetManager extends BaseSheetManager {
     // Ensure sheet has enough columns
     this.ensureSheetHasEnoughColumns(this.headers.topHeaders.length);
 
-    // Create header value requests
-
-    this.requests.push(this.createHeaderValuesRequest(sheetId, this.headers.topHeaders, 0));
-
-    this.requests.push(this.createHeaderValuesRequest(sheetId, this.headers.subHeaders, 1));
-
-    // Add header formatting requests
-    // Top row of headers listing the assignment names
-    this.requests.push(
+    // Create header value and formatting requests in a single batch
+    const headerRequests = [
+      this.createHeaderValuesRequest(sheetId, this.headers.topHeaders, 0),
+      this.createHeaderValuesRequest(sheetId, this.headers.subHeaders, 1),
+      // Top row of headers listing the assignment names
       this.createHeaderFormattingRequest(
         sheetId,
         0,
@@ -83,12 +79,8 @@ class AnalysisSheetManager extends BaseSheetManager {
         },
         0,
         this.headers.topHeaders.length
-      )
-    );
-
-    // Second row of headers focussing on just the 'Name' column, formatted in bold, left aligned and auto resized.
-
-    this.requests.push(
+      ),
+      // Second row of headers focussing on just the 'Name' column, formatted in bold, left aligned and auto resized.
       this.createHeaderFormattingRequest(
         sheetId,
         1,
@@ -100,11 +92,8 @@ class AnalysisSheetManager extends BaseSheetManager {
         },
         0,
         1
-      )
-    );
-
-    // Second row of headers containing 'Completeness', 'Accuracy' and 'SPaG' headers, rotated 45 degrees
-    this.requests.push(
+      ),
+      // Second row of headers containing 'Completeness', 'Accuracy' and 'SPaG' headers, rotated 45 degrees
       this.createHeaderFormattingRequest(
         sheetId,
         1,
@@ -116,11 +105,11 @@ class AnalysisSheetManager extends BaseSheetManager {
         },
         1,
         this.headers.subHeaders.length
-      )
-    );
+      ),
+      ...this.createMergeRequests(sheetId, this.headers.topHeaders),
+    ];
 
-    // Add merge requests for task headers
-    this.requests.push(...this.createMergeRequests(sheetId, this.headers.topHeaders));
+    this.requests.push(...headerRequests);
   }
 
   /**
@@ -189,13 +178,15 @@ class AnalysisSheetManager extends BaseSheetManager {
         return a.id.localeCompare(b.id);
       });
       taskDefs.forEach((td) => {
-        const item = submission.getItem
-          ? submission.getItem(td.id)
-          : submission.items
-            ? submission.items[td.id]
-            : null;
-        const assessments = item && item.assessments ? item.assessments : {};
-        const studentDisplay = this._artifactDisplayString(item && item.artifact);
+        let item = null;
+        if (submission.getItem) {
+          item = submission.getItem(td.id);
+        } else if (submission.items) {
+          item = submission.items[td.id];
+        }
+
+        const assessments = item?.assessments || {};
+        const studentDisplay = this._artifactDisplayString(item?.artifact);
         // completeness
         const completeness = assessments['completeness']?.score;
         if (typeof completeness === 'number' && completeness > 0) {
@@ -254,9 +245,11 @@ class AnalysisSheetManager extends BaseSheetManager {
       const completenessFormula = `=IFERROR(ROUND(AVERAGEA(${completenessCells.join(',')}),2),"E")`;
       const accuracyFormula = `=IFERROR(ROUND(AVERAGE(${accuracyCells.join(',')}),2),"N")`;
       const spagFormula = `=IFERROR(ROUND(AVERAGE(${spagCells.join(',')}),2),"N")`;
-      rowData.push({ userEnteredValue: { formulaValue: completenessFormula } });
-      rowData.push({ userEnteredValue: { formulaValue: accuracyFormula } });
-      rowData.push({ userEnteredValue: { formulaValue: spagFormula } });
+      rowData.push(
+        { userEnteredValue: { formulaValue: completenessFormula } },
+        { userEnteredValue: { formulaValue: accuracyFormula } },
+        { userEnteredValue: { formulaValue: spagFormula } }
+      );
       this.requests.push({
         updateCells: {
           rows: [{ values: rowData }],
@@ -305,8 +298,8 @@ class AnalysisSheetManager extends BaseSheetManager {
    *                   or '' when artifact/type/content is missing or unsupported.
    */
   _artifactDisplayString(artifact) {
-    if (!artifact || artifact.content == null || artifact.content === '') return '';
-    const type = artifact.getType ? artifact.getType() : null;
+    if (artifact?.content == null || artifact.content === '') return '';
+    const type = artifact?.getType ? artifact.getType() : null;
     const t = type; // expected uppercase
 
     if (t === 'TEXT') return artifact.content;
@@ -327,35 +320,31 @@ class AnalysisSheetManager extends BaseSheetManager {
     const numRows = submissions.length + 2; // header rows
     const numColumns = this.headers.subHeaders.length;
 
-    // Apply cell formatting
-    this.requests.push({
-      repeatCell: {
-        range: {
-          sheetId: sheetId,
-          startRowIndex: 2, // After headers
-          endRowIndex: numRows,
-          startColumnIndex: 1,
-          endColumnIndex: numColumns,
-        },
-        cell: {
-          userEnteredFormat: {
-            horizontalAlignment: 'CENTER',
-            verticalAlignment: 'MIDDLE',
+    const formattingRequests = [
+      {
+        repeatCell: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 2, // After headers
+            endRowIndex: numRows,
+            startColumnIndex: 1,
+            endColumnIndex: numColumns,
           },
+          cell: {
+            userEnteredFormat: {
+              horizontalAlignment: 'CENTER',
+              verticalAlignment: 'MIDDLE',
+            },
+          },
+          fields: 'userEnteredFormat(horizontalAlignment, verticalAlignment)',
         },
-        fields: 'userEnteredFormat(horizontalAlignment, verticalAlignment)',
       },
-    });
+      ...this.createConditionalFormattingRequests(sheetId, numRows, numColumns),
+      ...this.createColumnWidthRequests(sheetId, this.calculateColumnWidths()),
+      this.createFreezeRequest(sheetId),
+    ];
 
-    // Create conditional formatting requests
-    this.requests.push(...this.createConditionalFormattingRequests(sheetId, numRows, numColumns));
-
-    // Set column widths
-    const columnWidths = this.calculateColumnWidths();
-    this.requests.push(...this.createColumnWidthRequests(sheetId, columnWidths));
-
-    // Freeze headers and name column
-    this.requests.push(this.createFreezeRequest(sheetId));
+    this.requests.push(...formattingRequests);
   }
 
   /**
@@ -383,8 +372,7 @@ class AnalysisSheetManager extends BaseSheetManager {
       endColumnIndex: endColumnIndex,
     };
 
-    // Gradient formatting based on score
-    requests.push({
+    const gradientRule = {
       addConditionalFormatRule: {
         rule: {
           ranges: [range],
@@ -408,10 +396,9 @@ class AnalysisSheetManager extends BaseSheetManager {
         },
         index: 0,
       },
-    });
+    };
 
-    // Formatting for 'N' values
-    requests.push({
+    const nullScoreRule = {
       addConditionalFormatRule: {
         rule: {
           ranges: [range],
@@ -427,8 +414,9 @@ class AnalysisSheetManager extends BaseSheetManager {
         },
         index: 0,
       },
-    });
+    };
 
+    requests.push(gradientRule, nullScoreRule);
     return requests;
   }
 

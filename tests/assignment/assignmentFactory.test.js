@@ -58,15 +58,8 @@ function assertAssignmentProperties(assignment, docType, courseId) {
   expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
 }
 
-// Note: These imports will need to exist for tests to pass
-// They are expected to fail in RED phase
-let SlidesAssignment, SheetsAssignment;
-try {
-  SlidesAssignment = require('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
-  require('../../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
-} catch (e) {
-  // Expected to fail in RED phase until modules export correctly
-}
+const SlidesAssignment = require('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
+require('../../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
 
 let originalLoggerGetInstance;
 
@@ -159,7 +152,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
   it('should throw a user-facing error via ProgressTracker for invalid documentType values', () => {
     const tracker = globalThis.ProgressTracker.getInstance();
     const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
-      throw new Error(`ProgressTracker: ${msg}`);
+      const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
+      throw new Error(`ProgressTracker: ${message}`);
     });
 
     const invalidDefinition = new AssignmentDefinition({
@@ -192,7 +186,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
   it('should throw a user-facing error via ProgressTracker when documentType is missing', () => {
     const tracker = globalThis.ProgressTracker.getInstance();
     const logAndThrowSpy = vi.spyOn(tracker, 'logAndThrowError').mockImplementation((msg) => {
-      throw new Error(`ProgressTracker: ${msg}`);
+      const message = typeof msg === 'string' ? msg : JSON.stringify(msg);
+      throw new Error(`ProgressTracker: ${message}`);
     });
 
     expect(() =>

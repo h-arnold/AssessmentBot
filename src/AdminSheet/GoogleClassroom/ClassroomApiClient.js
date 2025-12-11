@@ -53,9 +53,11 @@ class ClassroomApiClient {
     try {
       // Check if the teacher is already part of the course
       const existingTeachers = Classroom.Courses.Teachers.list(courseId).teachers || [];
-      const existingTeacherEmails = existingTeachers.map((teacher) => teacher.profile.emailAddress);
+      const existingTeacherEmails = new Set(
+        existingTeachers.map((teacher) => teacher.profile.emailAddress)
+      );
 
-      if (existingTeacherEmails.includes(teacherEmail)) {
+      if (existingTeacherEmails.has(teacherEmail)) {
         console.log(
           `Teacher ${teacherEmail} is already part of course ${courseId}. Skipping invitation.`
         );
@@ -105,11 +107,13 @@ class ClassroomApiClient {
 
       // Get existing teachers
       const existingTeachers = Classroom.Courses.Teachers.list(courseId).teachers || [];
-      const existingTeacherEmails = existingTeachers.map((teacher) => teacher.profile.emailAddress);
+      const existingTeacherEmails = new Set(
+        existingTeachers.map((teacher) => teacher.profile.emailAddress)
+      );
 
       // Invite new teachers who are not already teachers
       newTeacherEmails.forEach((email) => {
-        if (email !== newOwnerId && !existingTeacherEmails.includes(email)) {
+        if (email !== newOwnerId && !existingTeacherEmails.has(email)) {
           this.inviteTeacher(courseId, email);
         }
       });
@@ -203,7 +207,7 @@ class ClassroomApiClient {
 
     try {
       const topic = Classroom.Courses.Topics.get(courseId, topicId);
-      const name = topic && topic.name;
+      const name = topic?.name;
       if (!name) {
         progressTracker.logError('Topic name not found for provided course/topic.', {
           courseId,

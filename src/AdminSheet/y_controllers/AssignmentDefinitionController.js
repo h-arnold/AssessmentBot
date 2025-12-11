@@ -85,6 +85,10 @@ class AssignmentDefinitionController {
     if (needsRefresh) {
       const tasks = this._parseTasks({ documentType, referenceDocumentId, templateDocumentId });
       definition.tasks = tasks;
+      definition.updateModifiedTimestamps({
+        referenceLastModified,
+        templateLastModified,
+      });
 
       this.saveDefinition(definition);
       return definition;

@@ -370,7 +370,7 @@ class AssignmentController {
   }
 
   _definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition || !definition.tasks || Object.keys(definition.tasks).length === 0) {
+    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
       return true;
     }
     if (!definition.referenceLastModified || !definition.templateLastModified) {
@@ -394,11 +394,13 @@ class AssignmentController {
     if (!referenceDocumentId || !templateDocumentId) {
       progressTracker.logAndThrowError('referenceDocumentId and templateDocumentId are required.');
     }
+    const SLIDES_MIME = 'application/vnd.google-apps.presentation';
+    const SHEETS_MIME = 'application/vnd.google-apps.spreadsheet';
     const resolveType = (docId) => {
       const file = DriveApp.getFileById(docId);
       const mimeType = file.getMimeType();
-      if (mimeType === MimeType.GOOGLE_SLIDES) return 'SLIDES';
-      if (mimeType === MimeType.GOOGLE_SHEETS) return 'SHEETS';
+      if (mimeType === SLIDES_MIME) return 'SLIDES';
+      if (mimeType === SHEETS_MIME) return 'SHEETS';
       progressTracker.logAndThrowError(
         `Unsupported document type: ${mimeType} for document ID ${docId}. Only Google Slides and Sheets are supported.`
       );

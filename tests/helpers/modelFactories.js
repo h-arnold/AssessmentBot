@@ -273,14 +273,14 @@ function createDummyBaseRequestManager(options = {}) {
  * Useful for tests that need basic implementations without full mocks
  */
 function setupGlobalDummyClasses() {
-  if (!global.ProgressTracker) {
-    global.ProgressTracker = {
+  if (!globalThis.ProgressTracker) {
+    globalThis.ProgressTracker = {
       getInstance: () => createDummyProgressTracker(),
     };
   }
 
-  if (!global.Assessment) {
-    global.Assessment = class {
+  if (!globalThis.Assessment) {
+    globalThis.Assessment = class {
       constructor(score, reasoning) {
         this.score = score;
         this.reasoning = reasoning;
@@ -291,12 +291,12 @@ function setupGlobalDummyClasses() {
     };
   }
 
-  if (!global.BaseRequestManager) {
-    global.BaseRequestManager = DummyBaseRequestManager;
+  if (!globalThis.BaseRequestManager) {
+    globalThis.BaseRequestManager = DummyBaseRequestManager;
   }
 
-  if (!global.CacheManager) {
-    global.CacheManager = DummyCacheManager;
+  if (!globalThis.CacheManager) {
+    globalThis.CacheManager = DummyCacheManager;
   }
 }
 
