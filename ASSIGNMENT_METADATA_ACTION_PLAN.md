@@ -20,15 +20,17 @@
 - **Key Generation:** `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (use the class yearGroup whenever available; only fall back to literal `null` when no yearGroup data exists)
 - Location: `src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
 
-3. **Assignment Refactor**: Update `Assignment` class, subclasses, and every consumer.
+3. **Assignment Refactor**: Update `Assignment` class, subclasses, persistence, and every consumer.
    - Add `assignmentDefinition` property (embedded copy) and treat it as the single source of truth for tasks, doc IDs, weighting, and document type.
-   - Remove `assignment.tasks`, `assignment.assignmentWeighting`, and `assignment.documentType`; reroute all internal helpers to reference `assignment.assignmentDefinition`.
-   - Update `toJSON`/`toPartialJSON`/`fromJSON`/`_baseFromJSON()` to serialise and hydrate the embedded definition, ensuring backwards compatibility is not required (hard cut-over).
+   - Remove `assignment.tasks`, `assignment.assignmentWeighting`, and `assignment.documentType`; reroute all internal helpers to reference `assignment.assignmentDefinition`. Provide a thin `getTasks()` helper (or equivalent) to minimise churn if helpful.
+   - Update `toJSON`/`toPartialJSON`/`fromJSON`/`_baseFromJSON()` to serialise and hydrate the embedded definition, ensuring backwards compatibility is not required (hard cut-over). When `documentType` moves into the definition, introduce a deterministic discriminator for `Assignment.fromJSON` (e.g. read from embedded `assignmentDefinition.documentType`) so factory routing still works.
    - **Subclass Updates:**
      - Remove `referenceDocumentId`, `templateDocumentId`, and `documentType` storage from `SlidesAssignment`/`SheetsAssignment`; delegate to the definition.
      - Update subclass `populateTasks`, `fetchSubmittedDocuments`, `processAllSubmissions`, and serialisation helpers to expect the definition fields.
+   - **Persistence Updates:**
+     - `ABClassController.persistAssignmentRun`/`rehydrateAssignment` and `Assignment.fromJSON` must embed/reconstruct definitions and drop legacy task/doc-type fields; ensure partial assignments in `ABClass.assignments` carry the embedded definition.
    - **Consumer Updates (non-exhaustive but mandatory):**
-     - `AnalysisSheetManager`, `LLMRequestManager`, `ImageManager`, `SheetsFeedback`, `AssignmentController`, `ABClassController` (serialization flows), and any other module/tests referencing `assignment.tasks`, doc IDs, or document type must be updated to dereference `assignment.assignmentDefinition`.
+     - `AnalysisSheetManager`, `LLMRequestManager`, `ImageManager` (tasks + doc IDs), `SheetsFeedback` (confirm no doc/task coupling), `AssignmentController`, `ABClassController` (serialization flows), and any other module/tests referencing `assignment.tasks`, doc IDs, or document type must be updated to dereference `assignment.assignmentDefinition`.
 
 4. **Definition Lifecycle & Topic Enrichment**:
    - Implement definition orchestration inside `AssignmentDefinitionController.ensureDefinition()`.
@@ -49,30 +51,36 @@
      - Try `DriveApp.getFileById(fileId).getLastUpdated()` first.
      - Fallback to Advanced Drive API (`Drive.Files.get(fileId, {supportsAllDrives: true, fields: 'modifiedTime'})`).
      - On repeated failures, surface errors through `ProgressTracker.logError` before throwing so users see actionable context.
-   - **AssignmentController.saveStartAndShowProgress()** (and the GAS globals / Assessment Record menu shims):
-     - Accept only the assignment identifiers and doc IDs from the UI, then internally resolve course/topic/year group context before invoking `AssignmentDefinitionController.ensureDefinition()`.
-     - Persist only the definition key (plus assignment/course identifiers) in `DocumentProperties`; drop individual doc-ID storage entirely.
-   - **AssignmentController.createAssignmentInstance()**:
-     - Resolve `ABClass` context (for `yearGroup`), fetch the Classroom topic name, guarantee document type, and call `AssignmentDefinitionController.ensureDefinition()` before instantiating the assignment.
-     - Pass the hydrated `assignmentDefinition` into the constructor/factory.
-   - **AssignmentController.runAssignmentPipeline()**:
-     - Before calling `assignment.populateTasks()`, implement lazy-load check:
-       1. Get definition from `assignment.assignmentDefinition`.
-       2. Use `DriveManager.getFileModifiedTime()` to check reference and template doc timestamps.
-       3. Compare against `definition.referenceLastModified` and `definition.templateLastModified`.
-       4. If stale, call `populateTasks()` to re-parse and update definition.
-       5. If fresh, skip parsing (use cached tasks from definition).
+
+- **AssignmentController.saveStartAndShowProgress()** (and the GAS globals / Assessment Record menu shims):
+  - Accept only the assignment identifiers and doc IDs from the UI, then internally resolve course/topic/year group context before invoking `AssignmentDefinitionController.ensureDefinition()`.
+  - Persist only the definition key (plus assignment/course identifiers) in `DocumentProperties`; drop individual doc-ID storage entirely.
+  - Update `AssignmentProcessor/globals.js` and Assessment Record template menus to match the new contract (no Script Properties fallback).
+- **AssignmentController.createAssignmentInstance()**:
+  - Resolve `ABClass` context (for `yearGroup`), fetch the Classroom topic name, guarantee document type, and call `AssignmentDefinitionController.ensureDefinition()` before instantiating the assignment.
+  - Pass the hydrated `assignmentDefinition` into the constructor/factory. Ensure the factory can route based on `assignmentDefinition.documentType`.
+- **AssignmentController.runAssignmentPipeline()**:
+  - Before calling `assignment.populateTasks()`, implement lazy-load check:
+    1. Get definition from `assignment.assignmentDefinition`.
+    2. Use `DriveManager.getFileModifiedTime()` to check reference and template doc timestamps.
+    3. Compare against `definition.referenceLastModified` and `definition.templateLastModified`.
+    4. If stale, call `populateTasks()` to re-parse and update definition (and persist via controller immediately).
+    5. If fresh, skip parsing (use cached tasks from definition).
 
 - **AssignmentController.processSelectedAssignment()**:
   - Retrieve the stored definition key, fetch the definition via the controller, attach it to the assignment, and re-save updates after any re-parse.
 - **UIManager.saveDocumentIdsForAssignment()**:
 - Call into the controller (or a lightweight GAS server function) that performs the same resolution used by `AssignmentController`; Script Properties are no longer touched.
 - **AssignmentProcessor globals & AssessmentRecordTemplate menus**:
-  - Update `saveStartAndShowProgress`/`startProcessing` wrappers and associated tests to reflect the new parameter contract (definition key only stored, no legacy IDs).
+  - Update `saveStartAndShowProgress`/`startProcessing` wrappers and associated tests to reflect the new parameter contract (definition key only stored, no legacy IDs or document type in props).
+  - Remove reliance on `AssignmentPropertiesManager`; route through `AssignmentDefinitionController.ensureDefinition()` instead.
+
+- **UIManager**:
+  - Replace `saveDocumentIdsForAssignment` and `openReferenceSlideModal` to use the definition-backed flow (no Script Properties). Ensure UI modals surface the definition key or resolved documentType if needed.
 
 6. **Properties Manager Retirement**:
 
-- Remove `AssignmentPropertiesManager` entirely (no writes or reads). Any legacy helpers referencing it should be deleted or replaced with definition-aware logic.
+- Remove `AssignmentPropertiesManager` entirely (no writes or reads). Any legacy helpers referencing it (UIManager, AssignmentController, globals, Assessment Record menus) should be deleted or replaced with definition-aware logic.
 
 7. **Tests**:
    - **Model Tests**:
@@ -85,6 +93,7 @@
    - **Controller Tests**:
      - `AssignmentDefinitionController.ensureDefinition()` covering: existing definition retrieval, Drive timestamp-triggered re-parse/upsert, topic-name enrichment via the new Classroom API helper, and mutation of shared definitions.
      - `AssignmentController` happy-path orchestration using definition keys in DocProperties.
+   - ABClass persistence: `persistAssignmentRun`/`rehydrateAssignment` storing/recovering embedded definitions and maintaining partial vs full hydration markers.
    - **DriveManager Tests**:
      - `getFileModifiedTime()` with mocked `DriveApp` and Advanced Drive API.
      - Retry logic and Shared Drive fallback scenarios.
@@ -155,3 +164,14 @@ Before implementation, search codebase for:
 - **Definition Update Propagation**: Mechanism to update existing assignments when their definition changes.
 - **Fuzzy Matching**: Automatic matching of slight title/topic variations.
 - **UI for Definition Management**: Teacher interface for linking, creating, and enriching definitions.
+
+## Implementation Checkpoints
+
+- [ ] Create `AssignmentDefinition` model with serialisation, validation, partial redaction, and composite-key helper.
+- [ ] Implement `AssignmentDefinitionController.ensureDefinition` with topic enrichment and Drive timestamp reconciliation.
+- [ ] Add `DriveManager.getFileModifiedTime()` with retries and wire into pipeline staleness checks.
+- [ ] Refactor `Assignment`/subclasses to embed `assignmentDefinition` and remove legacy task/doc-type fields.
+- [ ] Update consumers (`AssignmentController`, `AnalysisSheetManager`, `LLMRequestManager`, `ImageManager`, etc.) to read from the embedded definition.
+- [ ] Remove `AssignmentPropertiesManager`; update UIManager, globals, and Assessment Record menus to persist only the definition key.
+- [ ] Update ABClass persistence (`persistAssignmentRun`/`rehydrateAssignment`) to store/hydrate embedded definitions.
+- [ ] Expand tests: model, controller, consumers, DriveManager, persistence, and updated UI/globals contracts.

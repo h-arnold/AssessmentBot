@@ -18,6 +18,7 @@
 - No Script Properties or migration logic is required (greenfield rollout).
 - Add `DriveManager.getFileModifiedTime()` to support lazy reloading of reference/template documents.
 - Extend `ClassroomApiClient` to expose topic-name lookups for enrichment.
+- Retire `AssignmentPropertiesManager` and any Script Properties usage for doc IDs; persist only the definition key via controllers/globals/UI.
 
 ## Data Model: AssignmentDefinition
 
@@ -62,17 +63,22 @@
 
 - `Assignment` (the instance) embeds an `assignmentDefinition` property (copy, not reference).
 - **Property Removal:**
-  - Remove `assignment.tasks` property entirely.
+  - Remove `assignment.tasks` property entirely (consumers read via `assignment.assignmentDefinition.tasks`; a helper may proxy if needed).
   - Remove `assignment.assignmentWeighting` property (access via definition).
   - Remove `assignment.documentType` property (access via definition).
   - All code must access these via `assignment.assignmentDefinition.tasks`, `assignment.assignmentDefinition.assignmentWeighting`, etc.
 - **Subclass Property Removal:**
   - Remove `referenceDocumentId`, `templateDocumentId`, `documentType` from `SlidesAssignment` and `SheetsAssignment`.
   - Access these via `assignment.assignmentDefinition.referenceDocumentId`, etc.
-- **Serialisation:**
+- **Serialisation & Discrimination:**
   - `Assignment.toJSON()` includes the full embedded `assignmentDefinition`.
   - `Assignment.toPartialJSON()` uses `assignmentDefinition.toPartialJSON()`.
+  - `Assignment.fromJSON` must route by `assignmentDefinition.documentType` (or equivalent) since assignment-level `documentType` is removed.
   - **Note:** This creates duplication (tasks stored in both definition and dedicated assignment collections), but optimises for read performance by avoiding separate Drive API calls.
+
+- **Persistence:**
+  - `ABClassController.persistAssignmentRun`/`rehydrateAssignment` store and reconstruct embedded definitions; partial ABClass assignments must also include the definition and correct hydration marker.
+  - Assignment factory deserialisation must not depend on legacy task/doc fields.
 
 ## Lazy Loading & Migration Strategy
 
@@ -84,11 +90,13 @@
   2. Use `DriveManager.getFileModifiedTime(fileId)` to check Drive file `modifiedTime` for both reference and template documents.
   3. If either file's `modifiedTime` > stored `lastModified`, re-parse docs, mutate the shared definition (including `tasks`), and persist immediately.
   4. If unchanged, use stored `tasks`.
+  5. `AssignmentController.runAssignmentPipeline` performs this staleness check before `populateTasks()` and persists refreshed definitions immediately.
 
 ### Topic Enrichment
 
 - Use `ClassroomApiClient` helpers to resolve topic names for a course/assignment when only `topicId` is provided.
 - Topic lookup failures must surface via `ProgressTracker.logError` so teachers can intervene.
+- Add `fetchTopicName` (or equivalent) and document required scopes in Classroom API config.
 
 ### DriveManager Extension
 
@@ -106,11 +114,14 @@
 - **Assignment/Subclass Tests:**
   - `Assignment` serialisation/deserialisation using embedded definitions only.
   - `SlidesAssignment`/`SheetsAssignment` pipelines referencing `assignmentDefinition` for doc IDs/tasks.
+- **Consumer Tests:**
+  - `AnalysisSheetManager`, `LLMRequestManager`, `ImageManager` (tasks/doc IDs via definition) and any other consumer previously reading `assignment.tasks` or doc IDs directly.
 - **Controller Tests:**
   - `AssignmentDefinitionController.ensureDefinition()` covering: hits vs misses, Drive timestamp refreshes, topic-name enrichment, and shared-definition mutation.
   - `AssignmentController` orchestration from DocProperties definition key through to persistence.
 - **Persistence Tests:**
   - Composite key storage/retrieval with `null` year groups and post-refresh writes.
+  - ABClass persistence and hydration (`persistAssignmentRun`/`rehydrateAssignment`) with embedded definitions and correct hydration markers.
 - **DriveManager Tests:**
   - Mock `DriveApp` and Advanced Drive API for `getFileModifiedTime()`, including retry/backoff behaviour.
 
@@ -119,7 +130,7 @@
 ### AssignmentController Updates
 
 - **`saveStartAndShowProgress()`**:
-  - Replace `AssignmentPropertiesManager.saveDocumentIdsForAssignment()` with controller-backed logic that resolves topic name/year group and writes only the definition key (plus assignment/course identifiers) to `DocumentProperties`.
+  - Replace `AssignmentPropertiesManager.saveDocumentIdsForAssignment()` with controller-backed logic that resolves topic name/year group and writes only the definition key (plus assignment/course identifiers) to `DocumentProperties` (no doc IDs or documentType persisted).
 
 - **`createAssignmentInstance()`**:
   - Before creating `Assignment`, fetch/create `AssignmentDefinition` via `AssignmentDefinitionController.ensureDefinition()`.
@@ -131,7 +142,7 @@
   - Orchestrate lazy-load check before `populateTasks()`:
     1. Get definition from assignment.
     2. Use `DriveManager.getFileModifiedTime()` to check if reference/template docs changed.
-    3. If stale, call `populateTasks()` to re-parse and update definition.
+    3. If stale, call `populateTasks()` to re-parse and update definition, then persist updated definition immediately.
     4. If fresh, skip parsing.
 
 - **`processSelectedAssignment()`**:
@@ -139,15 +150,21 @@
 
 ### UIManager Updates
 
-- **`saveDocumentIdsForAssignment()`**: Replace Script Properties writes entirely; this becomes a thin wrapper over the controller logic so all definition creation happens through a single pathway.
+- **`saveDocumentIdsForAssignment()`**: Replace Script Properties writes entirely; this becomes a thin wrapper over the controller logic so all definition creation happens through a single pathway. Update Assessment Record template menus/globals to call the same path.
+
+### Globals / Menus / UI
+
+- Assessment Record template menus and `AssignmentProcessor/globals.js` must call the definition-backed controller flow, storing only the definition key (no Script Properties, no doc IDs/documentType in DocumentProperties).
+- UIManager should surface/save doc IDs through the controller-backed flow and, if needed, expose the resulting definition key.
 
 ## Documentation
 
 - Update `docs/developer/DATA_SHAPES.md` to reflect:
   - `AssignmentDefinition` structure with yearGroup.
-  - Removal of `assignment.tasks` property.
+  - Removal of `assignment.tasks` property and use of `assignment.assignmentDefinition.tasks`.
   - Copy-on-Construct embedding pattern (not Flyweight).
   - 1:N relationship (one definition, many assignment instances).
+  - ABClass persistence now storing embedded definitions in partial/full assignment payloads.
 - Update `setup/settingUpAssessmentRecords.md`, `setup/settingUpOverviewSheet.md`, and any UI/setup guides so they describe capturing doc IDs once, persisting only the definition key, and the new UI flow that no longer uses Script Properties.
 - Refresh Assessment Record template docs / menus README to explain the adjusted `saveStartAndShowProgress` parameters and controller-backed save behaviour.
 
@@ -160,3 +177,14 @@
   - Create new definitions.
   - Enrich definitions (set missing yearGroup, add alternates).
   - Update `alternateTitles` and `alternateTopics`.
+
+## Implementation Checkpoints
+
+- [ ] Define `AssignmentDefinition` fields, validation, serialisation, partial redaction, and composite key helper.
+- [ ] Build `AssignmentDefinitionController` (ensure/get/save) with topic enrichment and Drive timestamp refresh behaviour.
+- [ ] Extend `DriveManager` with `getFileModifiedTime()` retries and plug into lazy reload flow.
+- [ ] Refactor `Assignment`/subclasses to embed `assignmentDefinition` and use it for tasks/doc IDs/document type.
+- [ ] Update consumers (LLM/Image/Analysis managers, controllers) to read through the embedded definition.
+- [ ] Remove Script Properties/`AssignmentPropertiesManager`; ensure UI/globals/menus persist only definition keys.
+- [ ] Ensure ABClass persistence and hydration include embedded definitions with correct hydration markers.
+- [ ] Add/refresh tests across models, controllers, consumers, DriveManager, persistence, and UI/globals contracts.
