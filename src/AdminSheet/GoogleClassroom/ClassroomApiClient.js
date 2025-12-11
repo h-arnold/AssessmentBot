@@ -349,7 +349,6 @@ class ClassroomApiClient {
 }
 
 // Export for Node tests / CommonJS environment
-// Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined') {
   module.exports = ClassroomApiClient;
 }
