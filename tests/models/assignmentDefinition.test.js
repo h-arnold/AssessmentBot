@@ -24,13 +24,13 @@ describe('AssignmentDefinition', () => {
 
   it('should throw error if required fields are missing', () => {
     expect(() => new AssignmentDefinition({ ...validParams, primaryTitle: null })).toThrow(
-      'AssignmentDefinition requires primaryTitle'
+      'Missing required assignment property: primaryTitle'
     );
     expect(() => new AssignmentDefinition({ ...validParams, primaryTopic: null })).toThrow(
-      'AssignmentDefinition requires primaryTopic'
+      'Missing required assignment property: primaryTopic'
     );
     expect(() => new AssignmentDefinition({ ...validParams, documentType: null })).toThrow(
-      'AssignmentDefinition requires documentType'
+      'Missing required assignment property: documentType'
     );
   });
 
