@@ -115,7 +115,7 @@ class Assignment {
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
         Object.keys(sub).forEach((k) => {
-          if (!out.hasOwnProperty(k)) out[k] = sub[k];
+          if (!Object.prototype.hasOwnProperty.call(out, k)) out[k] = sub[k];
         });
       }
       return out;
@@ -128,12 +128,25 @@ class Assignment {
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      ...this._extractDefinitionFields(definitionJson),
+      submissions,
+      assignmentDefinition: definitionJson || this.assignmentDefinition,
+    };
+  }
+
+  /**
+   * Helper to extract common fields from assignmentDefinition.
+   * Reduces duplication between toJSON and toPartialJSON.
+   * @param {object} definitionJson - The serialized definition object
+   * @return {object} Common fields from the definition
+   * @private
+   */
+  _extractDefinitionFields(definitionJson) {
+    return {
       documentType: definitionJson?.documentType || null,
       referenceDocumentId: definitionJson?.referenceDocumentId || null,
       templateDocumentId: definitionJson?.templateDocumentId || null,
       tasks: definitionJson?.tasks || {},
-      submissions,
-      assignmentDefinition: definitionJson || this.assignmentDefinition,
     };
   }
 
@@ -160,10 +173,7 @@ class Assignment {
       ? this.assignmentDefinition.toPartialJSON()
       : this.assignmentDefinition;
 
-    json.documentType = json.assignmentDefinition?.documentType || null;
-    json.referenceDocumentId = json.assignmentDefinition?.referenceDocumentId || null;
-    json.templateDocumentId = json.assignmentDefinition?.templateDocumentId || null;
-    json.tasks = json.assignmentDefinition?.tasks || {};
+    Object.assign(json, this._extractDefinitionFields(json.assignmentDefinition));
 
     return json;
   }
@@ -604,7 +614,7 @@ class Assignment {
    * This is a base method that should be implemented by subclasses.
    */
   fetchSubmittedDocuments() {
-    throw new Error('fetchSubmittedDocuments must be implemented by subclasses');
+    this._requireImplementation('fetchSubmittedDocuments');
   }
 
   /**
@@ -612,7 +622,7 @@ class Assignment {
    * This is a base method that should be implemented by subclasses.
    */
   populateTasks() {
-    throw new Error('populateTasks must be implemented by subclasses');
+    this._requireImplementation('populateTasks');
   }
 
   /**
@@ -620,7 +630,7 @@ class Assignment {
    * This is a base method that should be implemented by subclasses.
    */
   processAllSubmissions() {
-    throw new Error('processAllSubmissions must be implemented by subclasses');
+    this._requireImplementation('processAllSubmissions');
   }
 
   /**
