@@ -35,12 +35,14 @@ class AssignmentController {
     templateDocumentId
   ) {
     try {
-      const { definition } = this._ensureDefinitionFromInputs({
+      const { definition } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
-        documentIds,
-        referenceDocumentId,
-        templateDocumentId,
+        documentIds: {
+          referenceDocumentId,
+          templateDocumentId,
+          ...documentIds,
+        },
       });
 
       this.startProcessing(assignmentId, definition.definitionKey);
@@ -260,8 +262,8 @@ class AssignmentController {
    * @param {AssignmentDefinitionController} [options.definitionController] - Controller to persist refreshed definitions.
    */
   runAssignmentPipeline(assignment, students, options = {}) {
-    const { includeImages = false, definitionController = new AssignmentDefinitionController() } =
-      options;
+    const { includeImages = false, definitionController } = options;
+    const controller = definitionController || new AssignmentDefinitionController();
 
     this.runStage(
       'Adding students from class record.',
@@ -275,7 +277,7 @@ class AssignmentController {
     const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
     const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
 
-    const needsRefresh = this._definitionNeedsRefresh(
+    const needsRefresh = Utils.definitionNeedsRefresh(
       definition,
       referenceModified,
       templateModified
@@ -290,7 +292,7 @@ class AssignmentController {
             referenceLastModified: referenceModified,
             templateLastModified: templateModified,
           });
-          definitionController.saveDefinition(definition);
+          controller.saveDefinition(definition);
         },
         'Tasks populated from reference document.'
       );
@@ -369,26 +371,6 @@ class AssignmentController {
     keys.forEach((key) => properties.deleteProperty(key));
   }
 
-  _definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
-      return true;
-    }
-    if (!definition.referenceLastModified || !definition.templateLastModified) {
-      return true;
-    }
-    const refFresh = this._isNewer(referenceModified, definition.referenceLastModified);
-    const tplFresh = this._isNewer(templateModified, definition.templateLastModified);
-    return refFresh || tplFresh;
-  }
-
-  _isNewer(candidate, baseline) {
-    if (!candidate || !baseline) return false;
-    const c = new Date(candidate);
-    const b = new Date(baseline);
-    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
-    return c.getTime() > b.getTime();
-  }
-
   _detectDocumentType(referenceDocumentId, templateDocumentId) {
     const progressTracker = this.progressTracker;
     if (!referenceDocumentId || !templateDocumentId) {
@@ -415,17 +397,19 @@ class AssignmentController {
     return referenceType;
   }
 
-  _ensureDefinitionFromInputs({
-    assignmentTitle,
-    assignmentId,
-    documentIds,
-    referenceDocumentId,
-    templateDocumentId,
-  }) {
-    const referenceId =
-      referenceDocumentId || documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
-    const templateId =
-      templateDocumentId || documentIds?.templateDocumentId || documentIds?.templateSlideId;
+  /**
+   * Ensures assignment definition from provided inputs.
+   * @param {Object} params - Parameters object.
+   * @param {string|null} params.assignmentTitle - The assignment title (optional if fetched from Classroom).
+   * @param {string} params.assignmentId - The assignment ID.
+   * @param {Object} params.documentIds - Object containing document IDs with properties:
+   *   - referenceDocumentId or referenceSlideId
+   *   - templateDocumentId or templateSlideId
+   * @return {Object} { definition, courseId, abClass }
+   */
+  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds }) {
+    const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
+    const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
 
     const documentType = this._detectDocumentType(referenceId, templateId);
 

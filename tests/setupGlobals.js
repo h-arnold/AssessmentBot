@@ -18,6 +18,24 @@ g.Utils = {
     }
     return Math.abs(h).toString(16);
   },
+  definitionNeedsRefresh(definition, referenceModified, templateModified) {
+    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
+      return true;
+    }
+    if (!definition.referenceLastModified || !definition.templateLastModified) {
+      return true;
+    }
+    const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
+    const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
+    return refFresh || tplFresh;
+  },
+  isNewer(candidate, baseline) {
+    if (!candidate || !baseline) return false;
+    const c = new Date(candidate);
+    const b = new Date(baseline);
+    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
+    return c.getTime() > b.getTime();
+  },
 };
 
 g.Utilities = {

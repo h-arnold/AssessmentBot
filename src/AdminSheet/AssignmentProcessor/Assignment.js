@@ -233,13 +233,11 @@ class Assignment {
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
     Assignment._applyLegacyAliases(inst);
-    // Legacy aliases for backward compatibility
-    inst.documentType = inst.assignmentDefinition?.documentType || data.documentType || null;
-    inst.referenceDocumentId =
-      inst.assignmentDefinition?.referenceDocumentId || data.referenceDocumentId || null;
-    inst.templateDocumentId =
-      inst.assignmentDefinition?.templateDocumentId || data.templateDocumentId || null;
-    inst.tasks = inst.assignmentDefinition?.tasks || data.tasks || {};
+    // Set legacy alias fields for backward compatibility with old serialized data
+    if (data.documentType) inst.documentType = data.documentType;
+    if (data.referenceDocumentId) inst.referenceDocumentId = data.referenceDocumentId;
+    if (data.templateDocumentId) inst.templateDocumentId = data.templateDocumentId;
+    if (data.tasks) inst.tasks = data.tasks;
     inst.submissions = [];
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
@@ -679,10 +677,6 @@ class Assignment {
   }
 
   setTasks(tasks) {
-    this.assignmentDefinition = this.assignmentDefinition || null;
-    if (this.assignmentDefinition) {
-      this.assignmentDefinition.tasks = tasks;
-    }
     this.tasks = tasks;
     return tasks;
   }

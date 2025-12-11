@@ -199,15 +199,15 @@ class DriveManager {
       const rootId = DriveApp.getRootFolder().getId();
       console.log(`Falling back to My Drive root as parent for ${fileId}: ${rootId}`);
       return rootId;
-    } catch (error_) {
-      console.error(`Advanced Drive API fallback failed for ${fileId}: ${error_.message}`);
+    } catch (apiError) {
+      console.error(`Advanced Drive API fallback failed for ${fileId}: ${apiError.message}`);
       try {
         const rootId = DriveApp.getRootFolder().getId();
         console.log(`Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`);
         return rootId;
-      } catch (error__) {
-        console.error(`Failed to obtain My Drive root folder ID: ${error__.message}`);
-        throw error_;
+      } catch (rootError) {
+        console.error(`Failed to obtain My Drive root folder ID: ${rootError.message}`);
+        throw apiError;
       }
     }
   }

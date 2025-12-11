@@ -61,7 +61,7 @@ class AssignmentDefinitionController {
 
     let definition = this.getDefinitionByKey(definitionKey);
 
-    const needsRefresh = this._needsRefresh(
+    const needsRefresh = Utils.definitionNeedsRefresh(
       definition,
       referenceLastModified,
       templateLastModified
@@ -146,25 +146,6 @@ class AssignmentDefinitionController {
 
   _getCollection() {
     return this.dbManager.getCollection(this.collectionName);
-  }
-
-  _needsRefresh(definition, referenceLastModified, templateLastModified) {
-    if (!definition) return true;
-    const tasksMissing = !definition.tasks || Object.keys(definition.tasks).length === 0;
-    const missingTimestamps = !definition.referenceLastModified || !definition.templateLastModified;
-    if (tasksMissing || missingTimestamps) return true;
-
-    const referenceIsNewer = this._isNewer(referenceLastModified, definition.referenceLastModified);
-    const templateIsNewer = this._isNewer(templateLastModified, definition.templateLastModified);
-    return referenceIsNewer || templateIsNewer;
-  }
-
-  _isNewer(fresh, stored) {
-    if (!fresh || !stored) return false;
-    const freshDate = new Date(fresh);
-    const storedDate = new Date(stored);
-    if (Number.isNaN(freshDate.getTime()) || Number.isNaN(storedDate.getTime())) return false;
-    return freshDate.getTime() > storedDate.getTime();
   }
 
   _resolveTopicName({ primaryTopic, topicId, courseId }) {

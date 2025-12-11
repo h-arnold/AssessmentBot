@@ -205,4 +205,42 @@ class Utils {
     futureDate.setDate(futureDate.getDate() + days);
     return futureDate;
   }
+
+  /**
+   * Determines if an assignment definition needs to be refreshed based on tasks and modification timestamps.
+   * @param {Object} definition - The assignment definition to check.
+   * @param {string|Date} referenceModified - Last modified timestamp of reference document.
+   * @param {string|Date} templateModified - Last modified timestamp of template document.
+   * @return {boolean} True if refresh is needed.
+   */
+  static definitionNeedsRefresh(definition, referenceModified, templateModified) {
+    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
+      return true;
+    }
+    if (!definition.referenceLastModified || !definition.templateLastModified) {
+      return true;
+    }
+    const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
+    const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
+    return refFresh || tplFresh;
+  }
+
+  /**
+   * Checks if a candidate timestamp is newer than a baseline timestamp.
+   * @param {string|Date} candidate - The candidate timestamp.
+   * @param {string|Date} baseline - The baseline timestamp.
+   * @return {boolean} True if candidate is newer than baseline.
+   */
+  static isNewer(candidate, baseline) {
+    if (!candidate || !baseline) return false;
+    const c = new Date(candidate);
+    const b = new Date(baseline);
+    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
+    return c.getTime() > b.getTime();
+  }
+}
+
+// Export for Node tests / CommonJS environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Utils;
 }

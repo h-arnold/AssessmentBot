@@ -118,7 +118,6 @@ class UIManager extends BaseSingleton {
         ABLogger.getInstance().error('Failed to acquire Spreadsheet UI', { err });
         this.uiAvailable = false;
         this.ui = null;
-        throw err;
       }
     } else {
       ABLogger.getInstance().debugUi('UI probe completed: UI not available.');
@@ -355,12 +354,10 @@ class UIManager extends BaseSingleton {
   saveDocumentIdsForAssignment(assignmentId, documentIds) {
     try {
       const assignmentController = new AssignmentController();
-      const { definition } = assignmentController._ensureDefinitionFromInputs({
+      const { definition } = assignmentController.ensureDefinitionFromInputs({
         assignmentTitle: null,
         assignmentId,
         documentIds,
-        referenceDocumentId: documentIds?.referenceDocumentId,
-        templateDocumentId: documentIds?.templateDocumentId,
       });
 
       this.utils.toastMessage('Document IDs saved successfully.', 'Success', 3);
