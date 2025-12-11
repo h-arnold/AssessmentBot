@@ -165,9 +165,8 @@ class AssignmentDefinitionController {
 
   _resolveTopicName({ primaryTopic, topicId, courseId }) {
     if (primaryTopic) return primaryTopic;
-    // An assignment may not have a topic; return null rather than throwing.
     if (!topicId) {
-      return null;
+      return null; // An assignment may not have a topic.
     }
     if (!courseId) {
       this.progressTracker.logAndThrowError(
@@ -175,9 +174,8 @@ class AssignmentDefinitionController {
       );
     }
 
-    // Classroom API may return null if the topic does not exist (deleted); allow null to propagate.
-    const topicName = ClassroomApiClient.fetchTopicName(courseId, topicId);
-    return topicName || null;
+    // fetchTopicName can return null if the topic is not found, which is a valid state.
+    return ClassroomApiClient.fetchTopicName(courseId, topicId);
   }
 
   _parseTasks({ documentType, referenceDocumentId, templateDocumentId }) {
