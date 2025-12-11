@@ -47,11 +47,11 @@ describe('AssignmentDefinitionController', () => {
     DbManager.getInstance.mockReturnValue(mockDbManager);
 
     // Expose mocks to globals to match production usage
-    global.DbManager = DbManager;
-    global.DriveManager = DriveManager;
-    global.ClassroomApiClient = ClassroomApiClient;
-    global.SlidesParser = SlidesParser;
-    global.AssignmentDefinition = AssignmentDefinition;
+    globalThis.DbManager = DbManager;
+    globalThis.DriveManager = DriveManager;
+    globalThis.ClassroomApiClient = ClassroomApiClient;
+    globalThis.SlidesParser = SlidesParser;
+    globalThis.AssignmentDefinition = AssignmentDefinition;
 
     // Setup DriveManager mock
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');

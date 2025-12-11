@@ -5,7 +5,7 @@
 require('../src/AdminSheet/00_BaseSingleton.js');
 
 // Load Assignment classes so they're available globally for polymorphic factory pattern
-const g = typeof globalThis !== 'undefined' ? globalThis : global;
+const g = globalThis;
 g.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
 g.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
@@ -48,10 +48,10 @@ g.ABLogger = {
 
 // Mock ScriptAppManager for tests
 g.ScriptAppManager = class ScriptAppManager {
-  constructor() {
-    this.authInfo = null;
-    this.scriptId = 'test-script-id';
-  }
+  authInfo = null;
+  scriptId = 'test-script-id';
+
+  constructor() {}
   getScriptId() {
     return this.scriptId;
   }
