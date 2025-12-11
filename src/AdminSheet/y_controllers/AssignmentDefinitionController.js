@@ -45,7 +45,11 @@ class AssignmentDefinitionController {
       );
     }
 
-    const canonicalTopic = this._resolveTopicName({ primaryTopic, topicId, courseId });
+    let canonicalTopic = this._resolveTopicName({ primaryTopic, topicId, courseId });
+    if (!canonicalTopic) {
+      // Fall back to primaryTitle where no topic is present; AssignmentDefinition requires a non-null topic.
+      canonicalTopic = primaryTitle;
+    }
     const definitionKey = AssignmentDefinition.buildDefinitionKey({
       primaryTitle,
       primaryTopic: canonicalTopic,
@@ -85,9 +89,7 @@ class AssignmentDefinitionController {
         referenceLastModified,
         templateLastModified,
       });
-      if (!definition.definitionKey) {
-        definition.definitionKey = definitionKey;
-      }
+
       this.saveDefinition(definition);
       return definition;
     }
@@ -167,10 +169,9 @@ class AssignmentDefinitionController {
 
   _resolveTopicName({ primaryTopic, topicId, courseId }) {
     if (primaryTopic) return primaryTopic;
+    // An assignment may not have a topic; return null rather than throwing.
     if (!topicId) {
-      this.progressTracker.logAndThrowError(
-        'primaryTopic or topicId must be provided to resolve topic.'
-      );
+      return null;
     }
     if (!courseId) {
       this.progressTracker.logAndThrowError(
@@ -178,13 +179,9 @@ class AssignmentDefinitionController {
       );
     }
 
+    // Classroom API may return null if the topic does not exist (deleted); allow null to propagate.
     const topicName = ClassroomApiClient.fetchTopicName(courseId, topicId);
-    if (!topicName) {
-      this.progressTracker.logAndThrowError(
-        'Failed to resolve topic name from Classroom Topics API.'
-      );
-    }
-    return topicName;
+    return topicName || null;
   }
 
   _parseTasks({ documentType, referenceDocumentId, templateDocumentId }) {
