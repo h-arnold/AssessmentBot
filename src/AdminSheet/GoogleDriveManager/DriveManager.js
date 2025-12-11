@@ -429,3 +429,8 @@ class DriveManager {
     throw lastError || new Error('Unable to fetch modified time');
   }
 }
+
+// Export for Node tests / CommonJS environments
+if (typeof module !== 'undefined') {
+  module.exports = DriveManager;
+}
