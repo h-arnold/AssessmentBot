@@ -77,6 +77,12 @@ global.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
 const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 global.ArtifactFactory = ArtifactFactory;
 
+// Expose model classes expected as globals in production runtime
+const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
+global.TaskDefinition = TaskDefinition;
+const { AssignmentDefinition } = require('../src/AdminSheet/Models/AssignmentDefinition.js');
+global.AssignmentDefinition = AssignmentDefinition;
+
 // Load and expose ConfigurationManager validators as globals so modules that
 // expect Apps Script-style globals won't redeclare them during runtime. This
 // avoids duplicate declaration errors when the same functions are present in

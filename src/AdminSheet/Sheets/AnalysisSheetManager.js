@@ -41,7 +41,7 @@ class AnalysisSheetManager extends BaseSheetManager {
     this.headers.topHeaders = [''];
     this.headers.subHeaders = ['Name'];
     // Deterministic order by TaskDefinition.index then id fallback
-    const taskDefs = Object.values(this.assignment.tasks || {}).sort((a, b) => {
+    const taskDefs = Object.values(this.assignment.getTasks()).sort((a, b) => {
       if (a.index != null && b.index != null && a.index !== b.index) return a.index - b.index;
       if (a.index != null) return -1;
       if (b.index != null) return 1;
@@ -182,7 +182,7 @@ class AnalysisSheetManager extends BaseSheetManager {
         submission.student?.name || submission.studentName || submission.studentId || 'Unknown';
       rowData.push({ userEnteredValue: { stringValue: studentName } });
       let currentColumnIndex = 1;
-      const taskDefs = Object.values(this.assignment.tasks || {}).sort((a, b) => {
+      const taskDefs = Object.values(this.assignment.getTasks()).sort((a, b) => {
         if (a.index != null && b.index != null && a.index !== b.index) return a.index - b.index;
         if (a.index != null) return -1;
         if (b.index != null) return 1;

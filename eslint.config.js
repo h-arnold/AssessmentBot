@@ -39,7 +39,6 @@ module.exports = [
         MultiSheetExtractor: 'readonly',
         OverviewSheetManager: 'readonly',
         SummarySheetManager: 'readonly',
-        AssignmentPropertiesManager: 'readonly',
       },
     },
     plugins: { googleappsscript },

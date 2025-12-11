@@ -368,4 +368,64 @@ class DriveManager {
     // Test if the passed string matches the regex and return the result.
     return fileIdRegex.test(fileId);
   }
+
+  /**
+   * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
+   * @param {string} fileId - Drive file id.
+   * @return {string} ISO 8601 timestamp of the file's last modified time.
+   */
+  static getFileModifiedTime(fileId) {
+    const progressTracker = ProgressTracker.getInstance();
+
+    if (!fileId) {
+      progressTracker.logAndThrowError('fileId is required for getFileModifiedTime');
+    }
+
+    const baseWaitMs = 500;
+    const retries = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const file = DriveApp.getFileById(fileId);
+        const date = file.getLastUpdated();
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+          throw new Error('DriveApp.getLastUpdated returned an invalid Date');
+        }
+        return date.toISOString();
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries - 1) {
+          const wait = baseWaitMs * Math.pow(2, attempt);
+          Utilities.sleep(wait);
+        }
+      }
+    }
+
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields: 'modifiedTime' });
+        if (!res || !res.modifiedTime) {
+          throw new Error('Advanced Drive API did not return modifiedTime');
+        }
+        const parsed = new Date(res.modifiedTime);
+        if (Number.isNaN(parsed.getTime())) {
+          throw new Error(`Invalid modifiedTime format for file ${fileId}`);
+        }
+        return parsed.toISOString();
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries - 1) {
+          const wait = baseWaitMs * Math.pow(2, attempt);
+          Utilities.sleep(wait);
+        }
+      }
+    }
+
+    progressTracker.logError('Failed to fetch file modified time', {
+      fileId,
+      err: lastError,
+    });
+    throw lastError || new Error('Unable to fetch modified time');
+  }
 }

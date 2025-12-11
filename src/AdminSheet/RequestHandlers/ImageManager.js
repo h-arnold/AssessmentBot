@@ -30,26 +30,27 @@ class ImageManager extends BaseRequestManager {
    */
   collectAllImageArtifacts(assignment) {
     const results = [];
-    const taskDefs = assignment.tasks || {};
+    const taskDefs = assignment.assignmentDefinition?.tasks || assignment.tasks || {};
     // TaskDefinition artifacts (reference/template)
     Object.values(taskDefs).forEach((taskDefinition) => {
       ['reference', 'template'].forEach((role) => {
         taskDefinition.artifacts[role].forEach((artifact) => {
-          if (this.isImageArtifact(artifact)) {
-            const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
-            if (Utils.isValidUrl(sourceUrl)) {
-              results.push({
-                uid: artifact.getUid(),
-                url: sourceUrl,
-                documentId:
-                  role === 'reference'
-                    ? assignment.referenceDocumentId
-                    : assignment.templateDocumentId,
-                scope: role,
-                taskId: taskDefinition.id,
-              });
-            }
-          }
+          if (!this.isImageArtifact(artifact)) return;
+          const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
+          const documentId =
+            role === 'reference'
+              ? assignment.assignmentDefinition?.referenceDocumentId ||
+                assignment.referenceDocumentId
+              : assignment.assignmentDefinition?.templateDocumentId ||
+                assignment.templateDocumentId;
+          if (!Utils.isValidUrl(sourceUrl) || !documentId) return;
+          results.push({
+            uid: artifact.getUid(),
+            url: sourceUrl,
+            documentId,
+            scope: role,
+            taskId: taskDefinition.id,
+          });
         });
       });
     });
@@ -164,16 +165,18 @@ class ImageManager extends BaseRequestManager {
 
     const artifactMap = {};
 
-    Object.values(assignment.tasks).forEach((taskDefinition) => {
-      ['reference', 'template'].forEach((role) => {
-        taskDefinition.artifacts[role].forEach((artifact) => {
-          if (this.isImageArtifact(artifact)) {
-            const uid = artifact.getUid();
-            artifactMap[uid] = artifact;
-          }
+    Object.values(assignment.assignmentDefinition?.tasks || assignment.tasks || {}).forEach(
+      (taskDefinition) => {
+        ['reference', 'template'].forEach((role) => {
+          taskDefinition.artifacts[role].forEach((artifact) => {
+            if (this.isImageArtifact(artifact)) {
+              const uid = artifact.getUid();
+              artifactMap[uid] = artifact;
+            }
+          });
         });
-      });
-    });
+      }
+    );
 
     assignment.submissions.forEach((submission) => {
       Object.values(submission.items).forEach((item) => {

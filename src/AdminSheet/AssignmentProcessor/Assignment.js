@@ -13,19 +13,22 @@ class Assignment {
    * @param {object} assignmentMetadata - to be implemented later
    * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
    */
-  constructor(courseId, assignmentId) {
+  constructor(courseId, assignmentId, assignmentDefinition) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.assignmentWeighting = null; //will be implemented later.
     this.assignmentMetadata = null; //will be implemented later.
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.lastUpdated = null;
-    // Document type identifier set by subclasses (e.g., 'SLIDES', 'SHEETS')
-    this.documentType = null;
-    // New model: tasks keyed by stable taskId -> TaskDefinition
-    this.tasks = {}; // { [taskId: string]: TaskDefinition }
+    // Embedded definition copy (source of truth for tasks, doc IDs, weighting, documentType)
+    this.assignmentDefinition = assignmentDefinition;
+    Assignment._applyLegacyAliases(this);
+    // Legacy alias fields kept for compatibility with existing code and tests
+    this.documentType = this.assignmentDefinition?.documentType || null;
+    this.referenceDocumentId = this.assignmentDefinition?.referenceDocumentId || null;
+    this.templateDocumentId = this.assignmentDefinition?.templateDocumentId || null;
+    this.tasks = this.assignmentDefinition?.tasks || {};
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
@@ -36,6 +39,59 @@ class Assignment {
     this._hydrationLevel = 'full';
   }
 
+  static _applyLegacyAliases(target) {
+    Object.defineProperties(target, {
+      documentType: {
+        get() {
+          return target.assignmentDefinition?.documentType ?? target._documentTypeAlias ?? null;
+        },
+        set(value) {
+          if (target.assignmentDefinition) target.assignmentDefinition.documentType = value;
+          target._documentTypeAlias = value;
+        },
+        configurable: true,
+      },
+      referenceDocumentId: {
+        get() {
+          return (
+            target.assignmentDefinition?.referenceDocumentId ??
+            target._referenceDocumentIdAlias ??
+            null
+          );
+        },
+        set(value) {
+          if (target.assignmentDefinition) target.assignmentDefinition.referenceDocumentId = value;
+          target._referenceDocumentIdAlias = value;
+        },
+        configurable: true,
+      },
+      templateDocumentId: {
+        get() {
+          return (
+            target.assignmentDefinition?.templateDocumentId ??
+            target._templateDocumentIdAlias ??
+            null
+          );
+        },
+        set(value) {
+          if (target.assignmentDefinition) target.assignmentDefinition.templateDocumentId = value;
+          target._templateDocumentIdAlias = value;
+        },
+        configurable: true,
+      },
+      tasks: {
+        get() {
+          return target.assignmentDefinition?.tasks ?? target._tasksAlias ?? {};
+        },
+        set(value) {
+          if (target.assignmentDefinition) target.assignmentDefinition.tasks = value;
+          target._tasksAlias = value;
+        },
+        configurable: true,
+      },
+    });
+  }
+
   /**
    * Serialize this Assignment to a plain JSON-friendly object.
    * - Dates are converted to ISO strings.
@@ -44,13 +100,9 @@ class Assignment {
    * @return {object}
    */
   toJSON() {
-    const tasks = Object.fromEntries(
-      Object.entries(this.tasks || {}).map(([taskId, task]) => {
-        if (task && typeof task.toJSON === 'function') return [taskId, task.toJSON()];
-        if (task && typeof task === 'object') return [taskId, { ...task }];
-        return [taskId, task];
-      })
-    );
+    const definitionJson = this.assignmentDefinition?.toJSON
+      ? this.assignmentDefinition.toJSON()
+      : this.assignmentDefinition;
 
     const submissions = (this.submissions || []).map((sub) => {
       if (sub && typeof sub.toJSON === 'function') return sub.toJSON();
@@ -76,12 +128,14 @@ class Assignment {
       courseId: this.courseId,
       assignmentId: this.assignmentId,
       assignmentName: this.assignmentName,
-      assignmentWeighting: this.assignmentWeighting,
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
-      documentType: this.documentType,
-      tasks,
+      documentType: definitionJson?.documentType || null,
+      referenceDocumentId: definitionJson?.referenceDocumentId || null,
+      templateDocumentId: definitionJson?.templateDocumentId || null,
+      tasks: definitionJson?.tasks || this.tasks || {},
+      assignmentDefinition: definitionJson,
       submissions,
       // Intentionally exclude any transient `students` roster attached at runtime.
     };
@@ -94,17 +148,6 @@ class Assignment {
   toPartialJSON() {
     const json = this.toJSON();
 
-    const partialTasks = Object.entries(this.tasks || {}).reduce((acc, [taskId, task]) => {
-      if (task && typeof task.toPartialJSON === 'function') {
-        acc[taskId] = task.toPartialJSON();
-      } else {
-        const source =
-          task && typeof task.toJSON === 'function' ? task.toJSON() : json.tasks?.[taskId];
-        acc[taskId] = Assignment._redactTask(source);
-      }
-      return acc;
-    }, {});
-
     const partialSubmissions = (this.submissions || []).map((submission, index) => {
       if (submission && typeof submission.toPartialJSON === 'function') {
         return submission.toPartialJSON();
@@ -116,41 +159,46 @@ class Assignment {
       return Assignment._redactSubmission(source);
     });
 
-    json.tasks = partialTasks;
     json.submissions = partialSubmissions;
+    json.assignmentDefinition = this.assignmentDefinition?.toPartialJSON
+      ? this.assignmentDefinition.toPartialJSON()
+      : this.assignmentDefinition;
+
+    json.documentType = json.assignmentDefinition?.documentType || null;
+    json.referenceDocumentId = json.assignmentDefinition?.referenceDocumentId || null;
+    json.templateDocumentId = json.assignmentDefinition?.templateDocumentId || null;
+    json.tasks = json.assignmentDefinition?.tasks || {};
 
     return json;
   }
 
   /**
    * Factory method to create the correct Assignment subclass based on documentType.
-   * @param {string} documentType - Document type ('SLIDES' or 'SHEETS')
+   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing docType and task metadata
    * @param {string} courseId - The ID of the course
    * @param {string} assignmentId - The ID of the assignment
-   * @param {string} referenceDocumentId - The ID of the reference document
-   * @param {string} templateDocumentId - The ID of the template document
    * @return {Assignment} Instance of appropriate subclass
    * @throws {Error} If documentType is invalid or unknown
    */
-  static create(documentType, courseId, assignmentId, referenceDocumentId, templateDocumentId) {
-    if (!documentType || typeof documentType !== 'string') {
+  static create(assignmentDefinition, courseId, assignmentId) {
+    if (!assignmentDefinition || !assignmentDefinition.documentType) {
       throw new TypeError(
-        'documentType is required and must be a string: accepted values are "SLIDES" or "SHEETS". See docs/developer/DATA_SHAPES.md for accepted values.'
+        'assignmentDefinition with documentType is required to create Assignment.'
       );
     }
 
-    const type = documentType.toUpperCase();
+    const type = assignmentDefinition.documentType.toUpperCase();
 
     if (type === 'SLIDES') {
-      return new SlidesAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+      return new SlidesAssignment(courseId, assignmentId, assignmentDefinition);
     }
 
     if (type === 'SHEETS') {
-      return new SheetsAssignment(courseId, assignmentId, referenceDocumentId, templateDocumentId);
+      return new SheetsAssignment(courseId, assignmentId, assignmentDefinition);
     }
 
     throw new Error(
-      `Unknown documentType: ${documentType}. Valid types are 'SLIDES' or 'SHEETS'. See docs/developer/DATA_SHAPES.md for details.`
+      `Unknown documentType: ${assignmentDefinition.documentType}. Valid types are 'SLIDES' or 'SHEETS'. See docs/developer/DATA_SHAPES.md for details.`
     );
   }
 
@@ -172,40 +220,24 @@ class Assignment {
     inst.courseId = data.courseId;
     inst.assignmentId = data.assignmentId;
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
-    inst.assignmentWeighting = data.assignmentWeighting ?? null;
     inst.assignmentMetadata = data.assignmentMetadata ?? null;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
-    if ('documentType' in data) {
-      inst.documentType = data.documentType;
-    }
-    inst.tasks = {};
+    inst.assignmentDefinition = data.assignmentDefinition
+      ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
+      : null;
+    Assignment._applyLegacyAliases(inst);
+    // Legacy aliases for backward compatibility
+    inst.documentType = inst.assignmentDefinition?.documentType || data.documentType || null;
+    inst.referenceDocumentId =
+      inst.assignmentDefinition?.referenceDocumentId || data.referenceDocumentId || null;
+    inst.templateDocumentId =
+      inst.assignmentDefinition?.templateDocumentId || data.templateDocumentId || null;
+    inst.tasks = inst.assignmentDefinition?.tasks || data.tasks || {};
     inst.submissions = [];
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
     // restore tasks
-    if (data.tasks && typeof data.tasks === 'object') {
-      Object.entries(data.tasks).forEach(([taskId, taskObj]) => {
-        try {
-          inst.tasks[taskId] = TaskDefinition.fromJSON(taskObj);
-          return;
-        } catch (e) {
-          // Log the primary reconstruction error so it isn't an unhandled/ignored exception
-          ABLogger.getInstance().warn(`TaskDefinition.fromJSON threw for taskId=${taskId}:`, e);
-          try {
-            inst.tasks[taskId] = new TaskDefinition(taskObj);
-            return;
-          } catch (error_) {
-            ABLogger.getInstance().warn(
-              `TaskDefinition reconstruction failed for taskId=${taskId}:`,
-              error_
-            );
-          }
-        }
-        inst.tasks[taskId] = taskObj;
-      });
-    }
-
     // restore submissions
     if (Array.isArray(data.submissions)) {
       data.submissions.forEach((subObj) => {
@@ -261,12 +293,10 @@ class Assignment {
       'courseId',
       'assignmentId',
       'assignmentName',
-      'assignmentWeighting',
       'assignmentMetadata',
       'dueDate',
       'lastUpdated',
-      'documentType',
-      'tasks',
+      'assignmentDefinition',
       'submissions',
       'students', // Transient, don't restore
       'progressTracker', // Transient, don't restore
@@ -350,7 +380,27 @@ class Assignment {
       throw new Error('courseId and assignmentId are required fields in Assignment data');
     }
 
-    const docType = data.documentType;
+    if (!data.assignmentDefinition) {
+      if (!data.documentType) {
+        ProgressTracker.getInstance().logAndThrowError(
+          `Assignment data missing documentType for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
+          { data }
+        );
+      }
+
+      data.assignmentDefinition = new AssignmentDefinition({
+        primaryTitle: data.assignmentName || `Assignment ${data.assignmentId}`,
+        primaryTopic: data.assignmentName || 'Assignment',
+        documentType: data.documentType,
+        referenceDocumentId: data.referenceDocumentId,
+        templateDocumentId: data.templateDocumentId,
+        tasks: data.tasks || {},
+        referenceLastModified: data.referenceLastModified || null,
+        templateLastModified: data.templateLastModified || null,
+      }).toJSON();
+    }
+
+    const docType = data.assignmentDefinition.documentType;
 
     if (!docType || typeof docType !== 'string') {
       ProgressTracker.getInstance().logAndThrowError(
@@ -605,6 +655,31 @@ class Assignment {
    */
   _requireImplementation(methodName) {
     throw new Error(`${methodName} must be implemented by subclasses`);
+  }
+
+  getTasks() {
+    return this.assignmentDefinition?.tasks || {};
+  }
+
+  setTasks(tasks) {
+    this.assignmentDefinition = this.assignmentDefinition || null;
+    if (this.assignmentDefinition) {
+      this.assignmentDefinition.tasks = tasks;
+    }
+    this.tasks = tasks;
+    return tasks;
+  }
+
+  getDocumentType() {
+    return this.assignmentDefinition?.documentType || null;
+  }
+
+  getReferenceDocumentId() {
+    return this.assignmentDefinition?.referenceDocumentId || null;
+  }
+
+  getTemplateDocumentId() {
+    return this.assignmentDefinition?.templateDocumentId || null;
   }
 }
 

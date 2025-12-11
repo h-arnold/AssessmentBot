@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 import {
   createSlidesAssignment,
   createSheetsAssignment,
@@ -21,14 +22,22 @@ import {
  * @return {object} Standard test data
  */
 function createTestData(docType, courseId) {
-  return {
-    courseId,
-    assignmentId: courseId.replace('c', 'a'),
-    assignmentName: 'Test Assignment',
+  const definition = new AssignmentDefinition({
+    primaryTitle: 'Test Assignment',
+    primaryTopic: 'Topic',
     documentType: docType,
     referenceDocumentId: courseId.replace('c', 'ref'),
     templateDocumentId: courseId.replace('c', 'tpl'),
     tasks: {},
+    referenceLastModified: '2024-01-01T00:00:00.000Z',
+    templateLastModified: '2024-01-01T00:00:00.000Z',
+  });
+
+  return {
+    courseId,
+    assignmentId: courseId.replace('c', 'a'),
+    assignmentName: 'Test Assignment',
+    assignmentDefinition: definition.toJSON(),
     submissions: [],
   };
 }
@@ -41,11 +50,12 @@ function createTestData(docType, courseId) {
  */
 function assertAssignmentProperties(assignment, docType, courseId) {
   expect(assignment).toBeDefined();
-  expect(assignment.documentType).toBe(docType);
+  expect(assignment.assignmentDefinition).toBeDefined();
+  expect(assignment.assignmentDefinition.documentType).toBe(docType);
   expect(assignment.courseId).toBe(courseId);
   expect(assignment.assignmentId).toBe(courseId.replace('c', 'a'));
-  expect(assignment.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
-  expect(assignment.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
+  expect(assignment.assignmentDefinition.referenceDocumentId).toBe(courseId.replace('c', 'ref'));
+  expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
 }
 
 // Note: These imports will need to exist for tests to pass
@@ -85,24 +95,41 @@ describe('Assignment.create() Factory Method', () => {
 
   testCases.forEach(({ docType, courseId, assignmentId, refId, tplId }) => {
     it(`should create a ${docType}Assignment for documentType ${docType}`, () => {
-      const assignment = Assignment.create(docType, courseId, assignmentId, refId, tplId);
+      const definition = new AssignmentDefinition({
+        primaryTitle: 'Test Assignment',
+        primaryTopic: 'Topic',
+        documentType: docType,
+        referenceDocumentId: refId,
+        templateDocumentId: tplId,
+        tasks: {},
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+      const assignment = Assignment.create(definition, courseId, assignmentId);
       assertAssignmentProperties(assignment, docType, courseId);
     });
   });
 
   it('should throw an error for an unknown documentType', () => {
     expect(() => {
-      Assignment.create('INVALID', 'c1', 'a1', 'ref1', 'tpl1');
-    }).toThrow(/unknown.*documentType/i);
+      const definition = new AssignmentDefinition({
+        primaryTitle: 'Test Assignment',
+        primaryTopic: 'Topic',
+        documentType: 'INVALID',
+        referenceDocumentId: 'ref1',
+        templateDocumentId: 'tpl1',
+      });
+      Assignment.create(definition, 'c1', 'a1');
+    }).toThrow(/Unknown documentType/i);
   });
 
   it('should throw for null/undefined documentType', () => {
     expect(() => {
-      Assignment.create(null, 'c1', 'a1', 'ref1', 'tpl1');
+      Assignment.create(null, 'c1', 'a1');
     }).toThrow();
 
     expect(() => {
-      Assignment.create(undefined, 'c1', 'a1', 'ref1', 'tpl1');
+      Assignment.create({ documentType: undefined }, 'c1', 'a1');
     }).toThrow();
   });
 });
@@ -125,8 +152,8 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
     const data = createTestData('SLIDES', 'c5');
     const assignment = Assignment.fromJSON(data);
 
-    expect(assignment.referenceDocumentId).toBe('ref5');
-    expect(assignment.templateDocumentId).toBe('tpl5');
+    expect(assignment.assignmentDefinition.referenceDocumentId).toBe('ref5');
+    expect(assignment.assignmentDefinition.templateDocumentId).toBe('tpl5');
   });
 
   it('should throw a user-facing error via ProgressTracker for invalid documentType values', () => {
@@ -135,15 +162,21 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
       throw new Error(`ProgressTracker: ${msg}`);
     });
 
+    const invalidDefinition = new AssignmentDefinition({
+      primaryTitle: 'Invalid Assignment',
+      primaryTopic: 'Topic',
+      documentType: 'INVALID',
+      referenceDocumentId: 'ref-invalid',
+      templateDocumentId: 'tpl-invalid',
+      tasks: {},
+    });
+
     expect(() =>
       Assignment.fromJSON({
         courseId: 'c-invalid',
         assignmentId: 'a-invalid',
         assignmentName: 'Invalid Assignment',
-        documentType: 'INVALID',
-        referenceDocumentId: 'ref-invalid',
-        templateDocumentId: 'tpl-invalid',
-        tasks: {},
+        assignmentDefinition: invalidDefinition.toJSON(),
         submissions: [],
       })
     ).toThrow(
@@ -167,9 +200,11 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
         courseId: 'c-missing',
         assignmentId: 'a-missing',
         assignmentName: 'Missing DocType Assignment',
-        referenceDocumentId: 'ref-missing',
-        templateDocumentId: 'tpl-missing',
-        tasks: {},
+        assignmentDefinition: {
+          referenceDocumentId: 'ref-missing',
+          templateDocumentId: 'tpl-missing',
+          tasks: {},
+        },
         submissions: [],
       })
     ).toThrow(
@@ -192,35 +227,46 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
 
   it('should exclude transient fields (students, progressTracker, _hydrationLevel) from deserialization', () => {
     const sentinelTracker = { sentinel: true };
-    const assignment = Assignment.fromJSON({
-      courseId: 'c7',
-      assignmentId: 'a7',
-      assignmentName: 'Transient Fields Assignment',
+    const definition = new AssignmentDefinition({
+      primaryTitle: 'Transient Fields Assignment',
+      primaryTopic: 'Topic',
       documentType: 'SLIDES',
       referenceDocumentId: 'ref7',
       templateDocumentId: 'tpl7',
       tasks: {},
+    });
+    const assignment = Assignment.fromJSON({
+      courseId: 'c7',
+      assignmentId: 'a7',
+      assignmentName: 'Transient Fields Assignment',
+      assignmentDefinition: definition.toJSON(),
       submissions: [],
       students: [{ id: 'student-1' }],
       progressTracker: sentinelTracker,
       _hydrationLevel: 'full',
     });
 
-    expect(assignment.documentType).toBe('SLIDES');
+    expect(assignment.assignmentDefinition.documentType).toBe('SLIDES');
     expect(assignment.students).toBeUndefined();
     expect(assignment.progressTracker).not.toBe(sentinelTracker);
     expect(assignment._hydrationLevel).toBeUndefined();
   });
 
   it('should ensure transient fields are absent from subsequent toJSON payloads', () => {
-    const assignment = Assignment.fromJSON({
-      courseId: 'c8',
-      assignmentId: 'a8',
-      assignmentName: 'Transient JSON Assignment',
+    const definition = new AssignmentDefinition({
+      primaryTitle: 'Transient JSON Assignment',
+      primaryTopic: 'Topic',
       documentType: 'SHEETS',
       referenceDocumentId: 'ref8',
       templateDocumentId: 'tpl8',
       tasks: {},
+    });
+
+    const assignment = Assignment.fromJSON({
+      courseId: 'c8',
+      assignmentId: 'a8',
+      assignmentName: 'Transient JSON Assignment',
+      assignmentDefinition: definition.toJSON(),
       submissions: [],
       students: [{ id: 'student-1' }],
       progressTracker: { sentinel: true },
@@ -229,7 +275,7 @@ describe('Assignment.fromJSON() Polymorphic Deserialization', () => {
 
     const json = assignment.toJSON();
 
-    expect(json.documentType).toBe('SHEETS');
+    expect(json.assignmentDefinition.documentType).toBe('SHEETS');
     expect(json.students).toBeUndefined();
     expect(json.progressTracker).toBeUndefined();
     expect(json._hydrationLevel).toBeUndefined();
@@ -249,11 +295,11 @@ describe('Polymorphic Round-Trip', () => {
     const json = original.toJSON();
     const restored = Assignment.fromJSON(json);
 
-    expect(restored.documentType).toBe('SLIDES');
+    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
     expect(restored.courseId).toBe('c1');
     expect(restored.assignmentId).toBe('a1');
-    expect(restored.referenceDocumentId).toBe('ref1');
-    expect(restored.templateDocumentId).toBe('tpl1');
+    expect(restored.assignmentDefinition.referenceDocumentId).toBe('ref1');
+    expect(restored.assignmentDefinition.templateDocumentId).toBe('tpl1');
 
     if (SlidesAssignment) {
       expect(restored instanceof SlidesAssignment).toBe(true);
@@ -266,21 +312,25 @@ describe('Polymorphic Round-Trip', () => {
       courseId: 'c_doctype',
       assignmentId: 'a_doctype',
       assignmentName: 'DocType Assignment',
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref_doctype',
-      templateDocumentId: 'tpl_doctype',
-      tasks: {},
+      assignmentDefinition: new AssignmentDefinition({
+        primaryTitle: 'DocType Assignment',
+        primaryTopic: 'Topic',
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref_doctype',
+        templateDocumentId: 'tpl_doctype',
+        tasks: {},
+      }).toJSON(),
       submissions: [],
     };
 
     const original = Assignment.fromJSON(data);
-    expect(original.documentType).toBe('SLIDES');
+    expect(original.assignmentDefinition.documentType).toBe('SLIDES');
 
     const json = original.toJSON();
-    expect(json.documentType).toBe('SLIDES');
+    expect(json.assignmentDefinition.documentType).toBe('SLIDES');
 
     const restored = Assignment.fromJSON(json);
-    expect(restored.documentType).toBe('SLIDES');
+    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
   });
 
   it('should preserve complex nested data (tasks and submissions) through round-trip', () => {
@@ -312,13 +362,13 @@ describe('Polymorphic Round-Trip', () => {
     const json = original.toJSON();
     const restored = Assignment.fromJSON(json);
 
-    expect(restored.documentType).toBe('SLIDES');
-    expect(restored.tasks).toHaveProperty(taskId);
+    expect(restored.assignmentDefinition.documentType).toBe('SLIDES');
+    expect(restored.assignmentDefinition.tasks).toHaveProperty(taskId);
     // Note: This test verifies the Assignment factory pattern preserves data structure.
     // TaskDefinition.fromJSON may fail if required fields are missing or invalid,
     // causing fallback to plain objects with all properties preserved but no methods.
     // This is acceptable as it maintains data integrity while gracefully degrading functionality.
-    const restoredTask = restored.tasks[taskId];
+    const restoredTask = restored.assignmentDefinition.tasks[taskId];
     expect(restoredTask).toBeDefined();
     expect(restoredTask).toHaveProperty('id', taskId);
 
@@ -360,9 +410,9 @@ describe('Subclass-Specific Serialization', () => {
 
       const json = assignment.toJSON();
 
-      expect(json.documentType).toBe(docType);
-      expect(json.referenceDocumentId).toBe(refId);
-      expect(json.templateDocumentId).toBe(tplId);
+      expect(json.assignmentDefinition.documentType).toBe(docType);
+      expect(json.assignmentDefinition.referenceDocumentId).toBe(refId);
+      expect(json.assignmentDefinition.templateDocumentId).toBe(tplId);
     });
   });
 
@@ -383,12 +433,12 @@ describe('Subclass-Specific Serialization', () => {
     // Verify base fields are present (proving super.toJSON() was called)
     expect(json.courseId).toBe('c-super');
     expect(json.assignmentId).toBe('a-super');
-    expect(json.tasks).toBeDefined();
+    expect(json.assignmentDefinition.tasks).toBeDefined();
     expect(json.submissions).toBeDefined();
     // Verify subclass fields are present
-    expect(json.documentType).toBe('SLIDES');
-    expect(json.referenceDocumentId).toBe('ref-super');
-    expect(json.templateDocumentId).toBe('tpl-super');
+    expect(json.assignmentDefinition.documentType).toBe('SLIDES');
+    expect(json.assignmentDefinition.referenceDocumentId).toBe('ref-super');
+    expect(json.assignmentDefinition.templateDocumentId).toBe('tpl-super');
   });
 });
 
@@ -418,7 +468,7 @@ describe('Transient Field Exclusion', () => {
 
     const json = assignment.toJSON();
 
-    expect(json.documentType).toBe('SHEETS');
+    expect(json.assignmentDefinition.documentType).toBe('SHEETS');
     expect(json.students).toBeUndefined();
   });
 
@@ -432,7 +482,7 @@ describe('Transient Field Exclusion', () => {
 
     const json = assignment.toJSON();
 
-    expect(json.documentType).toBe('SLIDES');
+    expect(json.assignmentDefinition.documentType).toBe('SLIDES');
     expect(json.progressTracker).toBeUndefined();
   });
 });

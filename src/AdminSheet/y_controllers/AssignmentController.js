@@ -35,27 +35,25 @@ class AssignmentController {
     templateDocumentId
   ) {
     try {
-      // Save and immediately get the stored assignment properties (including documentType)
-      const assignmentProps = AssignmentPropertiesManager.saveDocumentIdsForAssignment(
+      const { definition } = this._ensureDefinitionFromInputs({
         assignmentTitle,
-        documentIds
-      );
-      const documentType = assignmentProps.documentType;
-      this.startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType);
+        assignmentId,
+        documentIds,
+        referenceDocumentId,
+        templateDocumentId,
+      });
+
+      this.startProcessing(assignmentId, definition.definitionKey);
       this.progressTracker.startTracking();
 
       // UIManager may not be available in non-UI contexts (e.g., time-based triggers)
       try {
-        const uiManager = UIManager.getInstance();
-        if (uiManager && typeof uiManager.showProgressModal === 'function') {
-          uiManager.showProgressModal();
-        }
+        UIManager.getInstance().showProgressModal();
       } catch (uiError) {
-        // Silently ignore UI errors in non-UI contexts
-        const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-        if (logger && typeof logger.warn === 'function') {
-          logger.warn('UIManager not available or failed to show progress modal:', uiError);
-        }
+        ABLogger.getInstance().warn(
+          'UIManager not available or failed to show progress modal.',
+          uiError
+        );
       }
 
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
@@ -74,12 +72,10 @@ class AssignmentController {
    * in document properties for access when the trigger executes.
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
-   * @param {string} referenceDocumentId - The ID of the reference/solution document
-   * @param {string} templateDocumentId - The ID of the template document
-   * @param {string} documentType - The type of the document (e.g., "SLIDES" or "SHEETS")
+   * @param {string} definitionKey - The key of the assignment definition to use
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
-  startProcessing(assignmentId, referenceDocumentId, templateDocumentId, documentType) {
+  startProcessing(assignmentId, definitionKey) {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
     const properties = PropertiesService.getDocumentProperties();
@@ -87,7 +83,7 @@ class AssignmentController {
 
     try {
       triggerId = triggerController.createTimeBasedTrigger('triggerProcessSelectedAssignment');
-      console.log(
+      ABLogger.getInstance().info(
         `Trigger created for triggerProcessSelectedAssignment with triggerId: ${triggerId}`
       );
     } catch (error) {
@@ -98,12 +94,10 @@ class AssignmentController {
     try {
       this.applyDocumentProperties(properties, {
         assignmentId,
-        referenceDocumentId,
-        templateDocumentId,
+        definitionKey,
         triggerId,
-        documentType,
       });
-      console.log('Properties set for processing.');
+      ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
       this.utils.toastMessage('Failed to set processing properties: ' + error.message, 'Error', 5);
@@ -111,75 +105,6 @@ class AssignmentController {
   }
 
   /**
-   * Processes a Google Sheets assignment: adds the preloaded class roster, populates tasks, fetches and processes submissions, and assesses responses.
-   * @param {string} courseId - The Classroom course ID
-   * @param {string} assignmentId - The assignment ID
-   * @param {string} referenceDocumentId - The reference Sheets document ID
-   * @return {SheetsAssignment} The populated SheetsAssignment instance
-   * @param {Object[]} students - The class roster sourced from the ABClass record
-   * @return {SheetsAssignment} The populated SlidesAssignment instance
-   */
-  processSheetsAssignment(
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    students
-  ) {
-    if (!Array.isArray(students)) {
-      throw new TypeError('students must be provided as an array');
-    }
-
-    const assignment = this.createAssignmentInstance(
-      'SHEETS',
-      courseId,
-      assignmentId,
-      referenceDocumentId,
-      templateDocumentId
-    );
-
-    this.runAssignmentPipeline(assignment, students);
-
-    // Use new StudentSubmission model (assignment.submissions). Legacy studentTasks removed.
-    const feedback = new SheetsFeedback(assignment.submissions);
-    feedback.applyFeedback();
-
-    return assignment;
-  }
-
-  /**
-   * Processes a Google Slides assignment: adds the preloaded class roster, populates tasks, fetches and processes submissions, images, and assesses responses.
-   * @param {string} courseId - The Classroom course ID
-   * @param {string} assignmentId - The assignment ID
-   * @param {string} referenceDocumentId - The reference Slides document ID
-   * @param {string} templateDocumentId - The template Slides document ID
-   * @param {Object[]} students - The class roster sourced from the ABClass record
-   * @return {SlidesAssignment} The populated SlidesAssignment instance
-   */
-  processSlidesAssignment(
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    students
-  ) {
-    if (!Array.isArray(students)) {
-      throw new TypeError('students must be provided as an array');
-    }
-
-    const assignment = this.createAssignmentInstance(
-      'SLIDES',
-      courseId,
-      assignmentId,
-      referenceDocumentId,
-      templateDocumentId
-    );
-
-    this.runAssignmentPipeline(assignment, students, { includeImages: true });
-
-    return assignment;
-  }
-
   /**
    * Analyses the assignment data and generates analysis and overview sheets.
    * @param {SlidesAssignment} assignment - The processed SlidesAssignment instance
@@ -214,7 +139,7 @@ class AssignmentController {
    * @returns {void}
    *
    * Dependencies:
-   * - Requires document properties: assignmentId, referenceDocumentId, templateDocumentId, triggerId
+   * - Requires document properties: assignmentId, definitionKey, triggerId
    * - Uses services: LockService, PropertiesService
    * - Relies on controllers: triggerController, progressTracker, classroomManager
    * - Integrates with: Assignment, Student, AnalysisSheetManager, OverviewSheetManager
@@ -231,18 +156,10 @@ class AssignmentController {
     try {
       const properties = PropertiesService.getDocumentProperties();
       const assignmentId = properties.getProperty('assignmentId');
-      const referenceDocumentId = properties.getProperty('referenceDocumentId');
-      const templateDocumentId = properties.getProperty('templateDocumentId');
+      const definitionKey = properties.getProperty('definitionKey');
       const triggerId = properties.getProperty('triggerId');
-      const documentType = properties.getProperty('documentType');
 
-      if (
-        !assignmentId ||
-        !referenceDocumentId ||
-        !templateDocumentId ||
-        !triggerId ||
-        !documentType
-      ) {
+      if (!assignmentId || !definitionKey || !triggerId) {
         // Lazily instantiate TriggerController to clean up pending triggers
         const triggerController = new TriggerController();
         triggerController.removeTriggers('triggerProcessSelectedAssignment');
@@ -252,14 +169,14 @@ class AssignmentController {
       // Lazily instantiate TriggerController for trigger deletion
       const triggerController = new TriggerController();
       triggerController.deleteTriggerById(triggerId);
-      console.log('Trigger deleted after processing.');
+      ABLogger.getInstance().info('Trigger deleted after processing.');
       this.progressTracker.startTracking();
       this.progressTracker.updateProgress('Assessment run starting.');
 
       // Lazily instantiate ClassroomManager
       const classroomManager = new GoogleClassroomManager();
       const courseId = classroomManager.getCourseId();
-      console.log('Course ID retrieved: ' + courseId);
+      ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
       const abClassController = new ABClassController();
@@ -270,32 +187,19 @@ class AssignmentController {
         abClassController.rehydrateAssignment(abClass, assignmentId);
       }
 
-      // Process the assignment based on its type.
-      let assignment;
-      const students = abClass.students;
-      // Use the hydrated roster directly; when attached to an Assignment instance it remains transient
-      // and must not be persisted back to storage.
-
-      if (documentType === 'SLIDES') {
-        assignment = this.processSlidesAssignment(
-          courseId,
-          assignmentId,
-          referenceDocumentId,
-          templateDocumentId,
-          students
+      const definitionController = new AssignmentDefinitionController();
+      const definition = definitionController.getDefinitionByKey(definitionKey);
+      if (!definition) {
+        this.progressTracker.logAndThrowError(
+          `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
         );
-      } else if (documentType === 'SHEETS') {
-        assignment = this.processSheetsAssignment(
-          courseId,
-          assignmentId,
-          referenceDocumentId,
-          templateDocumentId,
-          students
-        );
-      } else {
-        const errorMsg = `Document type '${documentType}' is not supported.`;
-        this.progressTracker.logAndThrowError(errorMsg);
       }
+
+      const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
+
+      const students = abClass.students;
+      const includeImages = definition.documentType === 'SLIDES';
+      this.runAssignmentPipeline(assignment, students, { includeImages, definitionController });
 
       // Update lastUpdated value and persist assignment data
 
@@ -312,24 +216,18 @@ class AssignmentController {
       this.progressTracker.complete();
 
       this.utils.toastMessage('Assessment run completed successfully.', 'Success', 5);
-      console.log('Assessment run completed successfully.');
+      ABLogger.getInstance().info('Assessment run completed successfully.');
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);
     } finally {
       lock.releaseLock();
-      console.log('Lock released.');
+      ABLogger.getInstance().info('Lock released.');
       try {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
         const properties = PropertiesService.getDocumentProperties();
-        this.clearDocumentProperties(properties, [
-          'assignmentId',
-          'referenceDocumentId',
-          'templateDocumentId',
-          'triggerId',
-          'documentType',
-        ]);
-        console.log('Document properties cleaned up.');
+        this.clearDocumentProperties(properties, ['assignmentId', 'definitionKey', 'triggerId']);
+        ABLogger.getInstance().info('Document properties cleaned up.');
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
           err: cleanupError,
@@ -340,30 +238,15 @@ class AssignmentController {
 
   /**
    * Creates an assignment instance using the factory pattern with progress tracking.
-   * @param {string} documentType - Type of the document ('SLIDES' or 'SHEETS').
+   * @param {AssignmentDefinition} assignmentDefinition - Embedded definition for the assignment.
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
-   * @param {string} referenceDocumentId - The reference document ID.
-   * @param {string} templateDocumentId - The template document ID.
    * @return {SlidesAssignment|SheetsAssignment} The instantiated assignment.
    */
-  createAssignmentInstance(
-    documentType,
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId
-  ) {
+  createAssignmentInstance(assignmentDefinition, courseId, assignmentId) {
     return this.runStage(
       'Creating Assignment instance.',
-      () =>
-        Assignment.create(
-          documentType,
-          courseId,
-          assignmentId,
-          referenceDocumentId,
-          templateDocumentId
-        ),
+      () => Assignment.create(assignmentDefinition, courseId, assignmentId),
       'Assignment instance created.'
     );
   }
@@ -374,9 +257,11 @@ class AssignmentController {
    * @param {Object[]} students - Students sourced from the class record.
    * @param {Object} [options] - Additional pipeline configuration.
    * @param {boolean} [options.includeImages=false] - Whether to process images.
+   * @param {AssignmentDefinitionController} [options.definitionController] - Controller to persist refreshed definitions.
    */
   runAssignmentPipeline(assignment, students, options = {}) {
-    const { includeImages = false } = options;
+    const { includeImages = false, definitionController = new AssignmentDefinitionController() } =
+      options;
 
     this.runStage(
       'Adding students from class record.',
@@ -386,13 +271,32 @@ class AssignmentController {
       `${students.length} students added to the assignment from class record.`
     );
 
-    this.runStage(
-      'Getting the tasks from the reference document.',
-      () => {
-        assignment.populateTasks();
-      },
-      'Tasks populated from reference document.'
+    const definition = assignment.assignmentDefinition;
+    const referenceModified = DriveManager.getFileModifiedTime(definition.referenceDocumentId);
+    const templateModified = DriveManager.getFileModifiedTime(definition.templateDocumentId);
+
+    const needsRefresh = this._definitionNeedsRefresh(
+      definition,
+      referenceModified,
+      templateModified
     );
+
+    if (needsRefresh) {
+      this.runStage(
+        'Getting the tasks from the reference document.',
+        () => {
+          assignment.populateTasks();
+          definition.updateModifiedTimestamps({
+            referenceLastModified: referenceModified,
+            templateLastModified: templateModified,
+          });
+          definitionController.saveDefinition(definition);
+        },
+        'Tasks populated from reference document.'
+      );
+    } else {
+      this.progressTracker.updateProgress('Tasks are up to date; skipping parse.', false);
+    }
 
     this.runStage(
       'Fetching submitted documents from students.',
@@ -465,11 +369,94 @@ class AssignmentController {
     keys.forEach((key) => properties.deleteProperty(key));
   }
 
+  _definitionNeedsRefresh(definition, referenceModified, templateModified) {
+    if (!definition || !definition.tasks || Object.keys(definition.tasks).length === 0) {
+      return true;
+    }
+    if (!definition.referenceLastModified || !definition.templateLastModified) {
+      return true;
+    }
+    const refFresh = this._isNewer(referenceModified, definition.referenceLastModified);
+    const tplFresh = this._isNewer(templateModified, definition.templateLastModified);
+    return refFresh || tplFresh;
+  }
+
+  _isNewer(candidate, baseline) {
+    if (!candidate || !baseline) return false;
+    const c = new Date(candidate);
+    const b = new Date(baseline);
+    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
+    return c.getTime() > b.getTime();
+  }
+
+  _detectDocumentType(referenceDocumentId, templateDocumentId) {
+    const progressTracker = this.progressTracker;
+    if (!referenceDocumentId || !templateDocumentId) {
+      progressTracker.logAndThrowError('referenceDocumentId and templateDocumentId are required.');
+    }
+    const resolveType = (docId) => {
+      const file = DriveApp.getFileById(docId);
+      const mimeType = file.getMimeType();
+      if (mimeType === MimeType.GOOGLE_SLIDES) return 'SLIDES';
+      if (mimeType === MimeType.GOOGLE_SHEETS) return 'SHEETS';
+      progressTracker.logAndThrowError(
+        `Unsupported document type: ${mimeType} for document ID ${docId}. Only Google Slides and Sheets are supported.`
+      );
+    };
+    const referenceType = resolveType(referenceDocumentId);
+    const templateType = resolveType(templateDocumentId);
+    if (referenceType !== templateType) {
+      progressTracker.logAndThrowError(
+        `Reference document type (${referenceType}) and template document type (${templateType}) must match.`
+      );
+    }
+    return referenceType;
+  }
+
+  _ensureDefinitionFromInputs({
+    assignmentTitle,
+    assignmentId,
+    documentIds,
+    referenceDocumentId,
+    templateDocumentId,
+  }) {
+    const referenceId =
+      referenceDocumentId || documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
+    const templateId =
+      templateDocumentId || documentIds?.templateDocumentId || documentIds?.templateSlideId;
+
+    const documentType = this._detectDocumentType(referenceId, templateId);
+
+    const classroomManager = new GoogleClassroomManager();
+    const courseId = classroomManager.getCourseId();
+    const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
+    const topicId = courseWork?.topicId || null;
+    const primaryTitle = courseWork?.title || assignmentTitle;
+
+    const abClassController = new ABClassController();
+    const abClass = abClassController.loadClass(courseId);
+    const yearGroup = abClass?.yearGroup ?? null;
+
+    const definitionController = new AssignmentDefinitionController();
+    const definition = definitionController.ensureDefinition({
+      primaryTitle,
+      primaryTopic: null,
+      topicId,
+      courseId,
+      yearGroup,
+      documentType,
+      referenceDocumentId: referenceId,
+      templateDocumentId: templateId,
+    });
+
+    return { definition, courseId, abClass };
+  }
+
   /**
    * Test workflow function for debugging purposes.
    */
   testWorkflow() {
-    console.log('Test workflow initiated');
+    ABLogger.getInstance().debugUi('Test workflow initiated');
     // Implementation details would go here
   }
 }

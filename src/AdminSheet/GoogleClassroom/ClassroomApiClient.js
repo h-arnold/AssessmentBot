@@ -190,6 +190,39 @@ class ClassroomApiClient {
   }
 
   /**
+   * Fetch a topic's name for a given course/topic id pair.
+   * @param {string} courseId
+   * @param {string} topicId
+   * @return {string|null} Topic name or null when missing.
+   */
+  static fetchTopicName(courseId, topicId) {
+    const progressTracker = ProgressTracker.getInstance();
+    if (!courseId || !topicId) {
+      progressTracker.logAndThrowError('courseId and topicId are required to fetch topic name.');
+    }
+
+    try {
+      const topic = Classroom.Courses.Topics.get(courseId, topicId);
+      const name = topic && topic.name;
+      if (!name) {
+        progressTracker.logError('Topic name not found for provided course/topic.', {
+          courseId,
+          topicId,
+        });
+        return null;
+      }
+      return name;
+    } catch (error) {
+      progressTracker.logError('Failed to fetch topic name from Classroom.', {
+        courseId,
+        topicId,
+        err: error,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Fetches the updateTime property for a course and returns it as a JS Date.
    * @param {string} courseId
    * @returns {Date|null} JavaScript Date instance representing the course's updateTime, or null if not available.

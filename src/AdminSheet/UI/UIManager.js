@@ -291,9 +291,25 @@ class UIManager extends BaseSingleton {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(
-          assignmentDataObj.name
-        );
+        const courseId = this.ensureClassroomManager().getCourseId();
+        const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentDataObj.id);
+        const topicId = courseWork?.topicId || null;
+        const abClassController = new ABClassController();
+        const abClass = abClassController.loadClass(courseId);
+        const yearGroup = abClass?.yearGroup ?? null;
+        const primaryTopic = topicId ? ClassroomApiClient.fetchTopicName(courseId, topicId) : null;
+        const definitionKey = AssignmentDefinition.buildDefinitionKey({
+          primaryTitle: assignmentDataObj.name,
+          primaryTopic,
+          yearGroup,
+        });
+        const definition = new AssignmentDefinitionController().getDefinitionByKey(definitionKey);
+        const savedDocumentIds = definition
+          ? {
+              referenceDocumentId: definition.referenceDocumentId,
+              templateDocumentId: definition.templateDocumentId,
+            }
+          : {};
         this._showTemplateDialog(
           'UI/SlideIdsModal',
           { assignmentDataObj, savedDocumentIds },
@@ -302,7 +318,7 @@ class UIManager extends BaseSingleton {
         );
         ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
       } catch (error) {
-        console.error('Error opening reference slide modal:', error);
+        ProgressTracker.getInstance().logError('Failed to open slide IDs modal.', { err: error });
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
       }
     }, 'openReferenceSlideModal');
@@ -331,19 +347,30 @@ class UIManager extends BaseSingleton {
 
   /**
    * Saves the reference and template slide/document IDs for a given assignment title.
-   * This method now calls the updated static method in AssignmentPropertiesManager.
+   * Persists document IDs into the assignment definition so the pipeline can access them.
    *
-   * @param {string} assignmentTitle The title of the assignment.
+   * @param {string} assignmentId The Google Classroom assignment ID.
    * @param {Object} documentIds An object containing referenceDocumentId and templateDocumentId.
    */
-  saveDocumentIdsForAssignment(assignmentTitle, documentIds) {
+  saveDocumentIdsForAssignment(assignmentId, documentIds) {
     try {
-      // Directly call the static method from AssignmentPropertiesManager
-      AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
+      const assignmentController = new AssignmentController();
+      const { definition } = assignmentController._ensureDefinitionFromInputs({
+        assignmentTitle: null,
+        assignmentId,
+        documentIds,
+        referenceDocumentId: documentIds?.referenceDocumentId,
+        templateDocumentId: documentIds?.templateDocumentId,
+      });
+
       this.utils.toastMessage('Document IDs saved successfully.', 'Success', 3);
+      return definition.definitionKey;
     } catch (error) {
-      console.error(`Error in saveDocumentIdsForAssignment: ${error}`);
+      ProgressTracker.getInstance().logError('Error in saveDocumentIdsForAssignment.', {
+        err: error,
+      });
       this.utils.toastMessage(`Failed to save document IDs: ${error.message}`, 'Error', 5);
+      throw error;
     }
   }
 

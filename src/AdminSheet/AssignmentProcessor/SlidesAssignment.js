@@ -12,25 +12,12 @@ class SlidesAssignment extends Assignment {
    * @param {string} referenceDocumentId - The ID of the reference slides document.
    * @param {string} templateDocumentId - The ID of the template slides document.
    */
-  constructor(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
-    super(courseId, assignmentId);
-    this.referenceDocumentId = referenceDocumentId;
-    this.templateDocumentId = templateDocumentId;
-    this.documentType = 'SLIDES';
-  }
-
-  /**
-   * Serialize SlidesAssignment to JSON, including subclass-specific fields.
-   * @return {object} JSON representation including documentType, referenceDocumentId, templateDocumentId
-   */
-  toJSON() {
-    const base = super.toJSON();
-    return {
-      ...base,
-      documentType: this.documentType,
-      referenceDocumentId: this.referenceDocumentId,
-      templateDocumentId: this.templateDocumentId,
-    };
+  constructor(courseId, assignmentId, assignmentDefinition) {
+    const defInstance =
+      assignmentDefinition instanceof AssignmentDefinition
+        ? assignmentDefinition
+        : AssignmentDefinition.fromJSON(assignmentDefinition);
+    super(courseId, assignmentId, defInstance);
   }
 
   /**
@@ -41,9 +28,6 @@ class SlidesAssignment extends Assignment {
   static fromJSON(data) {
     const inst = Assignment._baseFromJSON(data);
     Object.setPrototypeOf(inst, SlidesAssignment.prototype);
-    inst.referenceDocumentId = data.referenceDocumentId ?? null;
-    inst.templateDocumentId = data.templateDocumentId ?? null;
-    inst.documentType = 'SLIDES';
     return inst;
   }
 
@@ -88,8 +72,9 @@ class SlidesAssignment extends Assignment {
    * Implements the abstract populateTasks method from the base class.
    */
   populateTasks() {
+    const { referenceDocumentId, templateDocumentId } = this.assignmentDefinition;
     const parser = new SlidesParser();
-    const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
+    const defs = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);
     const validDefs = [];
 
     defs.forEach((definition) => {
@@ -106,7 +91,7 @@ class SlidesAssignment extends Assignment {
       validDefs.push(definition);
     });
 
-    this.tasks = Object.fromEntries(validDefs.map((td) => [td.getId(), td]));
+    this.assignmentDefinition.tasks = Object.fromEntries(validDefs.map((td) => [td.getId(), td]));
     ABLogger.getInstance().info(
       `Populated ${validDefs.length} TaskDefinitions from slides (input: ${defs.length}).`
     );
@@ -128,7 +113,7 @@ class SlidesAssignment extends Assignment {
    */
   processAllSubmissions() {
     const parser = new SlidesParser();
-    const taskDefs = Object.values(this.tasks);
+    const taskDefs = Object.values(this.assignmentDefinition.tasks || {});
     const total = this.submissions.length;
     this.submissions.forEach((sub, i) => {
       if (!sub.documentId) {
@@ -139,7 +124,7 @@ class SlidesAssignment extends Assignment {
       this.progressTracker.updateProgress(`Extracting response ${i + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
-        const taskDef = this.tasks[a.taskId];
+        const taskDef = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDef) {
           console.warn('Submission artifact references unknown taskId ' + a.taskId);
           return;
