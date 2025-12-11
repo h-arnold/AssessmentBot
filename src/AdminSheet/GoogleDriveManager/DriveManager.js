@@ -375,6 +375,7 @@ class DriveManager {
     try {
       return DriveManager._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
     } catch (appError) {
+      ABLogger.getInstance().debug('DriveApp failed, trying Drive API', appError);
       try {
         return DriveManager._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
       } catch (apiError) {

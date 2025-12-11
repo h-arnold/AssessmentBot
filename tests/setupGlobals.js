@@ -51,7 +51,6 @@ g.ScriptAppManager = class ScriptAppManager {
   authInfo = null;
   scriptId = 'test-script-id';
 
-  constructor() {}
   getScriptId() {
     return this.scriptId;
   }

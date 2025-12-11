@@ -145,31 +145,31 @@ function createMockPropertiesCloner(vi) {
 function createMockClassroomApiClient() {
   return class MockClassroomApiClient {
     static fetchCourse(courseId) {
-      if (!global.Classroom) return null;
-      return global.Classroom.Courses.get(courseId);
+      if (!globalThis.Classroom) return null;
+      return globalThis.Classroom.Courses.get(courseId);
     }
 
     static fetchTeachers(courseId) {
-      if (!global.Classroom?.Courses?.Teachers) return [];
-      const resp = global.Classroom.Courses.Teachers.list(courseId) || {};
+      if (!globalThis.Classroom?.Courses?.Teachers) return [];
+      const resp = globalThis.Classroom.Courses.Teachers.list(courseId) || {};
       const raw = resp.teachers || [];
       return raw.map((t) => {
         const name = t?.profile?.name?.fullName || null;
         const email = t?.profile?.emailAddress || null;
         const userId = t?.profile?.id || null;
-        return new global.Teacher(email, userId, name);
+        return new globalThis.Teacher(email, userId, name);
       });
     }
 
     static fetchAllStudents(courseId) {
-      if (!global.Classroom?.Courses?.Students) return [];
-      const resp = global.Classroom.Courses.Students.list(courseId) || {};
+      if (!globalThis.Classroom?.Courses?.Students) return [];
+      const resp = globalThis.Classroom.Courses.Students.list(courseId) || {};
       const raw = resp.students || [];
       return raw.map((s) => {
         const name = s?.profile?.name?.fullName || null;
         const email = s?.profile?.emailAddress || null;
         const id = s?.profile?.id || null;
-        return new global.Student(name, email, id);
+        return new globalThis.Student(name, email, id);
       });
     }
   };
@@ -233,22 +233,20 @@ function setupGlobalGASMocks(vi, options = {}) {
     Utils: createMockUtils(vi),
     DriveApp: createMockDriveApp(vi),
     SpreadsheetApp: createMockSpreadsheetApp(vi, options),
-    MimeType: createMockMimeType(),
     DriveManager: createMockDriveManager(vi),
     PropertiesCloner: createMockPropertiesCloner(vi),
     console: { log: vi.fn(), error: vi.fn(), warn: vi.fn() },
   };
 
   // Set on global
-  global.PropertiesService = mocks.PropertiesService;
-  global.Utils = mocks.Utils;
-  global.DriveApp = mocks.DriveApp;
-  global.SpreadsheetApp = mocks.SpreadsheetApp;
-  global.MimeType = mocks.MimeType;
-  global.DriveManager = mocks.DriveManager;
-  global.PropertiesCloner = mocks.PropertiesCloner;
+  globalThis.PropertiesService = mocks.PropertiesService;
+  globalThis.Utils = mocks.Utils;
+  globalThis.DriveApp = mocks.DriveApp;
+  globalThis.SpreadsheetApp = mocks.SpreadsheetApp;
+  globalThis.DriveManager = mocks.DriveManager;
+  globalThis.PropertiesCloner = mocks.PropertiesCloner;
   if (options.mockConsole) {
-    global.console = mocks.console;
+    globalThis.console = mocks.console;
   }
 
   return mocks;
@@ -265,14 +263,20 @@ function setupControllerTestMocks(vi) {
   const mockABLogger = createMockABLogger(vi);
 
   // Mock DbManager singleton
-  const DbManagerClass = function () {};
-  DbManagerClass.getInstance = vi.fn().mockReturnValue(mockDbManager);
-  global.DbManager = DbManagerClass;
+  const DbManagerClass = class DbManagerClass {
+    static getInstance() {
+      return mockDbManager;
+    }
+  };
+  globalThis.DbManager = DbManagerClass;
 
   // Mock ABLogger singleton
-  const ABLoggerClass = function () {};
-  ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockABLogger);
-  global.ABLogger = ABLoggerClass;
+  const ABLoggerClass = class ABLoggerClass {
+    static getInstance() {
+      return mockABLogger;
+    }
+  };
+  globalThis.ABLogger = ABLoggerClass;
 
   // Mock ProgressTracker for Assignment base class
   const mockProgressTracker = {
@@ -283,18 +287,24 @@ function setupControllerTestMocks(vi) {
       throw new Error(msg);
     }),
   };
-  const ProgressTrackerClass = function () {};
-  ProgressTrackerClass.getInstance = vi.fn().mockReturnValue(mockProgressTracker);
-  global.ProgressTracker = ProgressTrackerClass;
+  const ProgressTrackerClass = class ProgressTrackerClass {
+    static getInstance() {
+      return mockProgressTracker;
+    }
+  };
+  globalThis.ProgressTracker = ProgressTrackerClass;
 
   // Mock ConfigurationManager for ABClass constructor
   const mockConfigManager = {
     getInstance: vi.fn().mockReturnThis(),
     getAssessmentRecordCourseId: vi.fn().mockReturnValue('test-course-123'),
   };
-  const ConfigManagerClass = function () {};
-  ConfigManagerClass.getInstance = vi.fn().mockReturnValue(mockConfigManager);
-  global.ConfigurationManager = ConfigManagerClass;
+  const ConfigManagerClass = class ConfigManagerClass {
+    static getInstance() {
+      return mockConfigManager;
+    }
+  };
+  globalThis.ConfigurationManager = ConfigManagerClass;
 
   return {
     mockDbManager,
@@ -309,10 +319,10 @@ function setupControllerTestMocks(vi) {
  * Cleanup controller test mocks from global scope
  */
 function cleanupControllerTestMocks() {
-  delete global.DbManager;
-  delete global.ABLogger;
-  delete global.ProgressTracker;
-  delete global.ConfigurationManager;
+  delete globalThis.DbManager;
+  delete globalThis.ABLogger;
+  delete globalThis.ProgressTracker;
+  delete globalThis.ConfigurationManager;
 }
 
 module.exports = {
