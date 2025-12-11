@@ -39,7 +39,7 @@ class AssignmentDefinition {
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
-    this.yearGroup = yearGroup === undefined ? null : yearGroup;
+    this.yearGroup = yearGroup ?? null;
     this.alternateTitles = alternateTitles || [];
     this.alternateTopics = alternateTopics || [];
     this.documentType = documentType;

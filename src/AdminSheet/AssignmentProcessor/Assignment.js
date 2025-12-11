@@ -25,10 +25,7 @@ class Assignment {
     this.assignmentDefinition = assignmentDefinition;
     Assignment._applyLegacyAliases(this);
     // Legacy alias fields kept for compatibility with existing code and tests
-    this.documentType = this.assignmentDefinition?.documentType || null;
-    this.referenceDocumentId = this.assignmentDefinition?.referenceDocumentId || null;
-    this.templateDocumentId = this.assignmentDefinition?.templateDocumentId || null;
-    this.tasks = this.assignmentDefinition?.tasks || {};
+
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
     // Legacy studentTasks alias removed – callers must use this.submissions.
@@ -134,10 +131,9 @@ class Assignment {
       documentType: definitionJson?.documentType || null,
       referenceDocumentId: definitionJson?.referenceDocumentId || null,
       templateDocumentId: definitionJson?.templateDocumentId || null,
-      tasks: definitionJson?.tasks || this.tasks || {},
-      assignmentDefinition: definitionJson,
+      tasks: definitionJson?.tasks || {},
       submissions,
-      // Intentionally exclude any transient `students` roster attached at runtime.
+      assignmentDefinition: definitionJson || this.assignmentDefinition,
     };
   }
 
@@ -237,51 +233,60 @@ class Assignment {
     inst.submissions = [];
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
-    // restore tasks
-    // restore submissions
+
     if (Array.isArray(data.submissions)) {
       data.submissions.forEach((subObj) => {
         try {
-          inst.submissions.push(StudentSubmission.fromJSON(subObj));
-          return;
+          if (
+            typeof StudentSubmission !== 'undefined' &&
+            typeof StudentSubmission.fromJSON === 'function'
+          ) {
+            const sub = StudentSubmission.fromJSON(subObj);
+            inst.submissions.push(sub);
+            return;
+          }
         } catch (e) {
-          // Log the primary reconstruction error so it isn't an unhandled/ignored exception
           ABLogger.getInstance().warn(
             `StudentSubmission.fromJSON threw for studentId=${
               subObj && (subObj.studentId || subObj.userId)
             }:`,
             e
           );
-          try {
-            const sub = new StudentSubmission(
-              subObj.studentId || subObj.userId || null,
-              inst.assignmentId,
-              subObj.documentId || null,
-              subObj.studentName || subObj.name || null
-            );
-            // copy fields
-            Object.keys(subObj || {}).forEach((k) => {
-              if (k === 'updatedAt' && subObj.updatedAt)
-                sub.updatedAt =
-                  subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
-              else if (k in sub) sub[k] = subObj[k];
-              else sub[k] = subObj[k];
-            });
-            inst.submissions.push(sub);
-            return;
-          } catch (error_) {
-            ABLogger.getInstance().warn(
-              `StudentSubmission reconstruction failed for studentId=${
-                subObj && (subObj.studentId || subObj.userId)
-              }:`,
-              error_
-            );
-          }
         }
-        // raw fallback
-        const raw = { ...subObj };
-        if (raw.updatedAt) raw.updatedAt = new Date(raw.updatedAt);
-        inst.submissions.push(raw);
+        try {
+          const sub = new StudentSubmission(
+            subObj.studentId || subObj.userId || null,
+            inst.assignmentId,
+            subObj.documentId || null,
+            subObj.studentName || subObj.name || null
+          );
+          Object.keys(subObj || {}).forEach((k) => {
+            if (k === 'updatedAt' && subObj.updatedAt)
+              sub.updatedAt =
+                subObj.updatedAt instanceof Date
+                  ? subObj.updatedAt
+                  : new Date(subObj.updatedAt).toISOString();
+            else if (k in sub) sub[k] = subObj[k];
+            else sub[k] = subObj[k];
+          });
+          inst.submissions.push(sub);
+        } catch (error_) {
+          ABLogger.getInstance().warn(
+            `StudentSubmission reconstruction failed for studentId=${
+              subObj && (subObj.studentId || subObj.userId)
+            }:`,
+            error_
+          );
+          const raw = { ...subObj };
+          if (raw.updatedAt) {
+            if (raw.updatedAt instanceof Date) raw.updatedAt = raw.updatedAt.toISOString();
+            else if (typeof raw.updatedAt === 'string') {
+              const parsed = new Date(raw.updatedAt);
+              if (!Number.isNaN(parsed.getTime())) raw.updatedAt = parsed.toISOString();
+            }
+          }
+          inst.submissions.push(raw);
+        }
       });
     }
 
