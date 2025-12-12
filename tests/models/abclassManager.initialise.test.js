@@ -11,12 +11,12 @@ describe('ABClassController.initialise', () => {
 
   beforeEach(() => {
     // Ensure domain constructors are available globally (some helpers expect globals)
-    global.Student = Student;
-    global.Teacher = Teacher;
-    global.ABClass = ABClass;
+    globalThis.Student = Student;
+    globalThis.Teacher = Teacher;
+    globalThis.ABClass = ABClass;
 
     // Mock DbManager singleton with getInstance returning a mock implementation
-    global.DbManager = class MockDbManager {
+    globalThis.DbManager = class MockDbManager {
       static getInstance() {
         return {
           getCollection: () => ({
@@ -33,12 +33,12 @@ describe('ABClassController.initialise', () => {
     };
 
     // Minimal ABLogger mock expected by ABClass.setClassOwner
-    global.ABLogger = {
+    globalThis.ABLogger = {
       getInstance: () => ({ error: () => {}, warn: () => {}, info: () => {}, debug: () => {} }),
     };
 
     // Mock ClassroomApiClient used by ABClassController._applyCourseMetadata
-    global.ClassroomApiClient = createMockClassroomApiClient();
+    globalThis.ClassroomApiClient = createMockClassroomApiClient();
 
     // Require ABClassController after supplying global DbManager mock so module init uses mock
     delete require.cache[
@@ -49,24 +49,22 @@ describe('ABClassController.initialise', () => {
 
   afterEach(() => {
     // Clean up globals to avoid cross-test pollution
-    delete global.Classroom;
-    delete global.ClassroomApiClient;
-    delete global.Student;
-    delete global.Teacher;
-    delete global.ABClass;
-    delete global.DbManager;
-    delete global.ABLogger;
+    delete globalThis.Classroom;
+    delete globalThis.ClassroomApiClient;
+    delete globalThis.Student;
+    delete globalThis.Teacher;
+    delete globalThis.ABClass;
+    delete globalThis.DbManager;
+    delete globalThis.ABLogger;
     // Clear ABClassController module to avoid stale singleton state between tests
-    try {
-      delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassController.js')];
-    } catch (e) {
-      // ignore
-    }
+    delete require.cache[
+      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
+    ];
   });
 
   it('populates className, classOwner, teachers and students from Classroom API', () => {
     // Arrange: mock Classroom API
-    global.Classroom = {
+    globalThis.Classroom = {
       Courses: {
         get: (courseId) => ({ id: courseId, name: 'Biology 101', ownerId: 'owner-1' }),
         Teachers: {
@@ -131,7 +129,7 @@ describe('ABClassController.initialise', () => {
   });
 
   it('applies assignments and persists when options.persist is true', () => {
-    global.Classroom = {
+    globalThis.Classroom = {
       Courses: {
         get: (courseId) => ({ id: courseId, name: 'Chemistry' }),
         Teachers: { list: () => ({ teachers: [] }) },

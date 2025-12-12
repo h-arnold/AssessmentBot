@@ -18,7 +18,7 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
       });
       ConfigurationManager = singletons.ConfigurationManager;
       UIManager = singletons.UIManager;
-      global.configurationManager = ConfigurationManager.getInstance();
+      globalThis.configurationManager = ConfigurationManager.getInstance();
     });
   });
 
@@ -36,11 +36,11 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
       // First setter call should cause initialization
       cfg.setBackendUrl('https://example.com');
       expect(harness.wasPropertiesServiceAccessed()).toBe(true);
-      const callsAfterFirst = global.PropertiesService._calls.length;
+      const callsAfterFirst = globalThis.PropertiesService._calls.length;
 
       // Second unrelated setter should NOT cause a second heavy init beyond normal property set
       cfg.setApiKey('abc-123');
-      const callsAfterSecond = global.PropertiesService._calls.length;
+      const callsAfterSecond = globalThis.PropertiesService._calls.length;
       expect(callsAfterSecond).toBeGreaterThanOrEqual(callsAfterFirst); // sets will add minimal calls
       // but should not explode (heuristic: fewer than +5 calls)
       expect(callsAfterSecond - callsAfterFirst).toBeLessThan(5);

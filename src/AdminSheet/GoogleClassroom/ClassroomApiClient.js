@@ -53,9 +53,11 @@ class ClassroomApiClient {
     try {
       // Check if the teacher is already part of the course
       const existingTeachers = Classroom.Courses.Teachers.list(courseId).teachers || [];
-      const existingTeacherEmails = existingTeachers.map((teacher) => teacher.profile.emailAddress);
+      const existingTeacherEmails = new Set(
+        existingTeachers.map((teacher) => teacher.profile.emailAddress)
+      );
 
-      if (existingTeacherEmails.includes(teacherEmail)) {
+      if (existingTeacherEmails.has(teacherEmail)) {
         console.log(
           `Teacher ${teacherEmail} is already part of course ${courseId}. Skipping invitation.`
         );
@@ -105,11 +107,13 @@ class ClassroomApiClient {
 
       // Get existing teachers
       const existingTeachers = Classroom.Courses.Teachers.list(courseId).teachers || [];
-      const existingTeacherEmails = existingTeachers.map((teacher) => teacher.profile.emailAddress);
+      const existingTeacherEmails = new Set(
+        existingTeachers.map((teacher) => teacher.profile.emailAddress)
+      );
 
       // Invite new teachers who are not already teachers
       newTeacherEmails.forEach((email) => {
-        if (email !== newOwnerId && !existingTeacherEmails.includes(email)) {
+        if (email !== newOwnerId && !existingTeacherEmails.has(email)) {
           this.inviteTeacher(courseId, email);
         }
       });
@@ -186,6 +190,39 @@ class ClassroomApiClient {
     } catch (error) {
       progressTracker.logError(`Failed to fetch course (${courseId}): ${error.message}`, error);
       return null;
+    }
+  }
+
+  /**
+   * Fetch a topic's name for a given course/topic id pair.
+   * @param {string} courseId
+   * @param {string} topicId
+   * @return {string|null} Topic name or null when missing.
+   */
+  static fetchTopicName(courseId, topicId) {
+    const progressTracker = ProgressTracker.getInstance();
+    if (!courseId || !topicId) {
+      progressTracker.logAndThrowError('courseId and topicId are required to fetch topic name.');
+    }
+
+    try {
+      const topic = Classroom.Courses.Topics.get(courseId, topicId);
+      const name = topic?.name;
+      if (!name) {
+        progressTracker.logError('Topic name not found for provided course/topic.', {
+          courseId,
+          topicId,
+        });
+        return null;
+      }
+      return name;
+    } catch (error) {
+      progressTracker.logError('Failed to fetch topic name from Classroom.', {
+        courseId,
+        topicId,
+        err: error,
+      });
+      throw error;
     }
   }
 
@@ -313,5 +350,5 @@ class ClassroomApiClient {
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined') {
-  module.exports = { ClassroomApiClient };
+  module.exports = ClassroomApiClient;
 }

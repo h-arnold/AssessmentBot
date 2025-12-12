@@ -1,6 +1,6 @@
 /* Basic smoke tests for model layer */
 // Provide minimal shims for GAS globals used in model code
-global.Utils = {
+globalThis.Utils = {
   generateHash(str) {
     // simple non-crypto hash for test determinism
     let h = 0,
@@ -8,14 +8,14 @@ global.Utils = {
       chr;
     if (str.length === 0) return '0';
     for (i = 0; i < str.length; i++) {
-      chr = str.charCodeAt(i);
+      chr = str.codePointAt(i);
       h = (h << 5) - h + chr;
-      h |= 0; // Convert to 32bit int
+      h = Math.trunc(h); // Convert to 32bit-ish int
     }
     return Math.abs(h).toString(16);
   },
 };
-global.Utilities = {
+globalThis.Utilities = {
   base64Encode(bytes) {
     if (Array.isArray(bytes)) {
       return Buffer.from(Uint8Array.from(bytes)).toString('base64');
@@ -31,7 +31,7 @@ const {
   SpreadsheetTaskArtifact,
   ImageTaskArtifact,
 } = require('../src/AdminSheet/Models/Artifacts/index.js');
-global.ArtifactFactory = ArtifactFactory; // so TaskDefinition can reference it when loaded
+globalThis.ArtifactFactory = ArtifactFactory; // so TaskDefinition can reference it when loaded
 const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
 const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
 

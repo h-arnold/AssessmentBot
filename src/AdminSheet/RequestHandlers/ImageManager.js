@@ -30,26 +30,29 @@ class ImageManager extends BaseRequestManager {
    */
   collectAllImageArtifacts(assignment) {
     const results = [];
-    const taskDefs = assignment.tasks || {};
+    const taskDefs = assignment.assignmentDefinition?.tasks || assignment.tasks || {};
     // TaskDefinition artifacts (reference/template)
     Object.values(taskDefs).forEach((taskDefinition) => {
       ['reference', 'template'].forEach((role) => {
         taskDefinition.artifacts[role].forEach((artifact) => {
-          if (this.isImageArtifact(artifact)) {
-            const sourceUrl = artifact.metadata && artifact.metadata.sourceUrl;
-            if (Utils.isValidUrl(sourceUrl)) {
-              results.push({
-                uid: artifact.getUid(),
-                url: sourceUrl,
-                documentId:
-                  role === 'reference'
-                    ? assignment.referenceDocumentId
-                    : assignment.templateDocumentId,
-                scope: role,
-                taskId: taskDefinition.id,
-              });
-            }
+          if (!this.isImageArtifact(artifact)) {
+            return;
           }
+          const sourceUrl = artifact.metadata?.sourceUrl;
+          const documentId =
+            role === 'reference'
+              ? assignment.assignmentDefinition?.referenceDocumentId ||
+                assignment.referenceDocumentId
+              : assignment.assignmentDefinition?.templateDocumentId ||
+                assignment.templateDocumentId;
+          if (!Utils.isValidUrl(sourceUrl) || !documentId) return;
+          results.push({
+            uid: artifact.getUid(),
+            url: sourceUrl,
+            documentId,
+            scope: role,
+            taskId: taskDefinition.id,
+          });
         });
       });
     });
@@ -57,13 +60,13 @@ class ImageManager extends BaseRequestManager {
     // Submission items (current structure uses `assignment.submissions` only)
     const submissions = assignment.submissions || [];
     submissions.forEach((sub) => {
-      if (!sub || !sub.documentId) return;
+      if (!sub?.documentId) return;
       const items = sub.items || {};
       Object.values(items).forEach((item) => {
-        if (!item || !item.artifact) return;
+        if (!item?.artifact) return;
         const art = item.artifact;
         if (this.isImageArtifact(art)) {
-          const sourceUrl = art.metadata && art.metadata.sourceUrl;
+          const sourceUrl = art.metadata?.sourceUrl;
           if (Utils.isValidUrl(sourceUrl)) {
             results.push({
               uid: art.getUid(),
@@ -88,7 +91,7 @@ class ImageManager extends BaseRequestManager {
   fetchImagesAsBlobs(entries) {
     const maxBatchSize = ConfigurationManager.getInstance().getSlidesFetchBatchSize();
 
-    if (!entries || !entries.length) return [];
+    if (!entries?.length) return [];
     // Group by documentId
     const byDoc = entries.reduce((acc, e) => {
       acc[e.documentId] = acc[e.documentId] || [];
@@ -126,7 +129,7 @@ class ImageManager extends BaseRequestManager {
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
       responses.forEach((resp, idx) => {
         const entry = batch[idx];
-        if (resp && resp.getResponseCode && resp.getResponseCode() === 200) {
+        if (resp?.getResponseCode?.() === 200) {
           try {
             const blob = resp.getBlob();
             results.push({ uid: entry.uid, blob });
@@ -160,20 +163,22 @@ class ImageManager extends BaseRequestManager {
    * @param {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} blobs - blobs to apply
    */
   writeBackBlobs(assignment, blobs) {
-    if (!blobs || !blobs.length) return;
+    if (!blobs?.length) return;
 
     const artifactMap = {};
 
-    Object.values(assignment.tasks).forEach((taskDefinition) => {
-      ['reference', 'template'].forEach((role) => {
-        taskDefinition.artifacts[role].forEach((artifact) => {
-          if (this.isImageArtifact(artifact)) {
-            const uid = artifact.getUid();
-            artifactMap[uid] = artifact;
-          }
+    Object.values(assignment.assignmentDefinition?.tasks || assignment.tasks || {}).forEach(
+      (taskDefinition) => {
+        ['reference', 'template'].forEach((role) => {
+          taskDefinition.artifacts[role].forEach((artifact) => {
+            if (this.isImageArtifact(artifact)) {
+              const uid = artifact.getUid();
+              artifactMap[uid] = artifact;
+            }
+          });
         });
-      });
-    });
+      }
+    );
 
     assignment.submissions.forEach((submission) => {
       Object.values(submission.items).forEach((item) => {
@@ -185,23 +190,18 @@ class ImageManager extends BaseRequestManager {
       });
     });
 
-    const unmatched = [];
-
     blobs.forEach(({ uid, blob }) => {
       const artifact = artifactMap[uid];
-      if (artifact && artifact.setContentFromBlob) {
-        const beforeLen = artifact.content && artifact.content.length;
+      if (artifact?.setContentFromBlob) {
         try {
           artifact.setContentFromBlob(blob);
-          const afterLen = artifact.content && artifact.content.length; // retained variable for potential future logic
         } catch (e) {
-          // silent
+          ABLogger.getInstance().warn('Failed to write blob to artifact', { uid, err: e });
         }
       } else {
-        unmatched.push(uid);
+        ABLogger.getInstance().warn('Blob uid did not match any artifact', { uid });
       }
     });
-    // intentionally no logging in production path
   }
 }
 

@@ -6,6 +6,7 @@
 const { TaskDefinition } = require('../../src/AdminSheet/Models/TaskDefinition.js');
 const { StudentSubmission } = require('../../src/AdminSheet/Models/StudentSubmission.js');
 const { ArtifactFactory } = require('../../src/AdminSheet/Models/Artifacts/index.js');
+const { AssignmentDefinition } = require('../../src/AdminSheet/Models/AssignmentDefinition.js');
 const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
 
 /**
@@ -84,6 +85,54 @@ function createStudentSubmission(options = {}) {
 }
 
 /**
+ * Create an Assignment for testing using fromJSON to avoid GAS service calls.
+ * Internal factory for common assignment creation logic.
+ * @param {string} documentType - Type of document ('SLIDES' or 'SHEETS')
+ * @param {Object} props - Configuration properties
+ * @param {string} props.courseId - Course ID (default: 'c1')
+ * @param {string} props.assignmentId - Assignment ID (default: 'a1')
+ * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
+ * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
+ * @param {string} props.assignmentName - Assignment name
+ * @param {Object} props.tasks - Tasks object (default: {})
+ * @param {Array} props.submissions - Submissions array (default: [])
+ * @returns {Assignment} Created Assignment instance
+ */
+function createAssignmentWithType(documentType, props = {}) {
+  const {
+    courseId = 'c1',
+    assignmentId = 'a1',
+    referenceDocumentId = 'ref1',
+    templateDocumentId = 'tpl1',
+    assignmentName = 'Test Assignment',
+    tasks = {},
+    submissions = [],
+    ...rest
+  } = props;
+
+  const definition = new AssignmentDefinition({
+    primaryTitle: assignmentName,
+    primaryTopic: 'Topic',
+    yearGroup: null,
+    documentType,
+    referenceDocumentId,
+    templateDocumentId,
+    tasks,
+    referenceLastModified: '2024-01-01T00:00:00.000Z',
+    templateLastModified: '2024-01-01T00:00:00.000Z',
+  });
+
+  return Assignment.fromJSON({
+    courseId,
+    assignmentId,
+    assignmentName,
+    assignmentDefinition: definition.toJSON(),
+    submissions,
+    ...rest,
+  });
+}
+
+/**
  * Create a SlidesAssignment for testing using fromJSON to avoid GAS service calls.
  * @param {Object} props - Configuration properties
  * @param {string} props.courseId - Course ID (default: 'c1')
@@ -96,28 +145,8 @@ function createStudentSubmission(options = {}) {
  * @returns {SlidesAssignment} Created SlidesAssignment instance
  */
 function createSlidesAssignment(props = {}) {
-  const {
-    courseId = 'c1',
-    assignmentId = 'a1',
-    referenceDocumentId = 'ref1',
-    templateDocumentId = 'tpl1',
-    assignmentName = 'Test Slides Assignment',
-    tasks = {},
-    submissions = [],
-    ...rest
-  } = props;
-
-  return Assignment.fromJSON({
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    assignmentName,
-    documentType: 'SLIDES',
-    tasks,
-    submissions,
-    ...rest,
-  });
+  const { assignmentName = 'Test Slides Assignment', ...rest } = props;
+  return createAssignmentWithType('SLIDES', { assignmentName, ...rest });
 }
 
 /**
@@ -133,28 +162,8 @@ function createSlidesAssignment(props = {}) {
  * @returns {Assignment} Created SheetsAssignment instance
  */
 function createSheetsAssignment(props = {}) {
-  const {
-    courseId = 'c1',
-    assignmentId = 'a1',
-    referenceDocumentId = 'ref1',
-    templateDocumentId = 'tpl1',
-    assignmentName = 'Test Sheets Assignment',
-    tasks = {},
-    submissions = [],
-    ...rest
-  } = props;
-
-  return Assignment.fromJSON({
-    courseId,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
-    assignmentName,
-    documentType: 'SHEETS',
-    tasks,
-    submissions,
-    ...rest,
-  });
+  const { assignmentName = 'Test Sheets Assignment', ...rest } = props;
+  return createAssignmentWithType('SHEETS', { assignmentName, ...rest });
 }
 
 /**
@@ -254,14 +263,14 @@ function createDummyBaseRequestManager(options = {}) {
  * Useful for tests that need basic implementations without full mocks
  */
 function setupGlobalDummyClasses() {
-  if (!global.ProgressTracker) {
-    global.ProgressTracker = {
+  if (!globalThis.ProgressTracker) {
+    globalThis.ProgressTracker = {
       getInstance: () => createDummyProgressTracker(),
     };
   }
 
-  if (!global.Assessment) {
-    global.Assessment = class {
+  if (!globalThis.Assessment) {
+    globalThis.Assessment = class {
       constructor(score, reasoning) {
         this.score = score;
         this.reasoning = reasoning;
@@ -272,12 +281,12 @@ function setupGlobalDummyClasses() {
     };
   }
 
-  if (!global.BaseRequestManager) {
-    global.BaseRequestManager = DummyBaseRequestManager;
+  if (!globalThis.BaseRequestManager) {
+    globalThis.BaseRequestManager = DummyBaseRequestManager;
   }
 
-  if (!global.CacheManager) {
-    global.CacheManager = DummyCacheManager;
+  if (!globalThis.CacheManager) {
+    globalThis.CacheManager = DummyCacheManager;
   }
 }
 

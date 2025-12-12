@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,13 +16,13 @@ const realisticTemplateId = '1ZaQxSwcDevFrBgTnhYmJuKiLoPpQzRsTuvWxYzAbCdEfGhI';
 
 function renderTemplate(template, { assignmentDataObj, savedDocumentIds }) {
   return template
-    .replace(/<\?= assignmentDataObj.name \?>/g, assignmentDataObj.name)
-    .replace(/<\?= assignmentDataObj.id \?>/g, assignmentDataObj.id)
-    .replace(
+    .replaceAll(/<\?= assignmentDataObj.name \?>/g, assignmentDataObj.name)
+    .replaceAll(/<\?= assignmentDataObj.id \?>/g, assignmentDataObj.id)
+    .replaceAll(
       /<\?= savedDocumentIds.referenceDocumentId \|\| '' \?>/g,
       savedDocumentIds.referenceDocumentId || ''
     )
-    .replace(
+    .replaceAll(
       /<\?= savedDocumentIds.templateDocumentId \|\| '' \?>/g,
       savedDocumentIds.templateDocumentId || ''
     );
@@ -264,8 +264,6 @@ describe('SlideIdsModal UI flow', () => {
           templateDocumentId,
         },
         assignmentDataObj.id,
-        referenceDocumentId,
-        templateDocumentId,
       ]);
       expect(materializeMock.toast).not.toHaveBeenCalled();
       expect(googleHost.close).not.toHaveBeenCalled();

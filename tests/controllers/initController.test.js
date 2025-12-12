@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Setup global mocks before imports
-global.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
-global.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
+globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock ScriptAppManager
 const mockScriptAppManager = {
@@ -10,7 +9,7 @@ const mockScriptAppManager = {
   checkAuthMode: vi.fn(),
 };
 
-global.ScriptAppManager = vi.fn(() => mockScriptAppManager);
+globalThis.ScriptAppManager = vi.fn(() => mockScriptAppManager);
 
 // Mock ConfigurationManager
 const mockConfigManager = {
@@ -21,7 +20,7 @@ const mockConfigManager = {
   setRevokeAuthTriggerSet: vi.fn(),
 };
 
-global.ConfigurationManager = {
+globalThis.ConfigurationManager = {
   getInstance: vi.fn(() => mockConfigManager),
 };
 
@@ -32,22 +31,22 @@ const mockUiManager = {
   createAssessmentRecordMenu: vi.fn(),
 };
 
-global.UIManager = {
+globalThis.UIManager = {
   getInstance: vi.fn(() => mockUiManager),
 };
 
 // Mock TriggerController
-global.TriggerController = vi.fn(() => ({
+globalThis.TriggerController = vi.fn(() => ({
   createTimeBasedTrigger: vi.fn(),
 }));
 
 // Mock UpdateManager
-global.UpdateManager = vi.fn(() => ({
+globalThis.UpdateManager = vi.fn(() => ({
   runAssessmentRecordUpdateWizard: vi.fn(),
 }));
 
 // Mock BaseUpdateAndInit
-global.BaseUpdateAndInit = vi.fn(() => ({
+globalThis.BaseUpdateAndInit = vi.fn(() => ({
   getLatestAssessmentRecordTemplateId: vi.fn().mockReturnValue('template-id-123'),
 }));
 
@@ -92,7 +91,7 @@ describe('InitController - Authorization Flow', () => {
     it('should check authorization using ScriptAppManager', () => {
       initController.onOpen();
 
-      expect(global.ScriptAppManager).toHaveBeenCalled();
+      expect(globalThis.ScriptAppManager).toHaveBeenCalled();
       expect(mockScriptAppManager.isAuthorised).toHaveBeenCalled();
     });
 
@@ -147,7 +146,7 @@ describe('InitController - Authorization Flow', () => {
 
       initController.handleScriptInit();
 
-      expect(global.ScriptAppManager).toHaveBeenCalled();
+      expect(globalThis.ScriptAppManager).toHaveBeenCalled();
       expect(mockScriptAppManager.isAuthorised).toHaveBeenCalled();
     });
 
@@ -198,12 +197,12 @@ describe('InitController - Authorization Flow', () => {
       mockConfigManager.getUpdateStage.mockReturnValue(2);
 
       // Clear previous ScriptAppManager calls
-      global.ScriptAppManager.mockClear();
+      globalThis.ScriptAppManager.mockClear();
 
       initController.adminScriptInit(true);
 
       // Should not create a new ScriptAppManager when auth status is provided
-      expect(global.ScriptAppManager).not.toHaveBeenCalled();
+      expect(globalThis.ScriptAppManager).not.toHaveBeenCalled();
       expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('Using provided authorization status: true')
       );
@@ -214,12 +213,12 @@ describe('InitController - Authorization Flow', () => {
       mockScriptAppManager.isAuthorised.mockReturnValue(true);
 
       // Clear previous calls
-      global.ScriptAppManager.mockClear();
+      globalThis.ScriptAppManager.mockClear();
 
       initController.adminScriptInit(undefined);
 
       // Should create a new ScriptAppManager when auth status not provided
-      expect(global.ScriptAppManager).toHaveBeenCalled();
+      expect(globalThis.ScriptAppManager).toHaveBeenCalled();
       expect(mockScriptAppManager.isAuthorised).toHaveBeenCalled();
       expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
         expect.stringContaining('Authorization not provided, checking now')
@@ -255,13 +254,13 @@ describe('InitController - Authorization Flow', () => {
       vi.spyOn(initController, 'setupAuthRevokeTimer').mockImplementation(() => {});
 
       // Clear any previous calls
-      global.ScriptAppManager.mockClear();
+      globalThis.ScriptAppManager.mockClear();
 
       initController.handleScriptInit();
 
       // Should only create ScriptAppManager once in handleScriptInit
       // adminScriptInit should reuse the passed authorization status
-      expect(global.ScriptAppManager).toHaveBeenCalledTimes(1);
+      expect(globalThis.ScriptAppManager).toHaveBeenCalledTimes(1);
     });
   });
 });

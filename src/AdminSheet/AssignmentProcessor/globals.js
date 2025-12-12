@@ -8,44 +8,21 @@
  * and opens the progress modal.
  *
  * @param {string} assignmentTitle - The title of the assignment.
- * @param {Object} slideIds - An object containing referenceSlideId and emptySlideId.
+ * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} emptySlideId - The ID of the empty slide.
  */
-function saveStartAndShowProgress(
-  assignmentTitle,
-  slideIds,
-  assignmentId,
-  referenceSlideId,
-  emptySlideId
-) {
-  // Diagnostic log added to help detect UI->server invocation regressions.
-  const logger = ABLogger?.getInstance ? ABLogger.getInstance() : null;
-  if (logger && typeof logger.info === 'function') {
-    logger.info('saveStartAndShowProgress invoked (globals):', {
-      assignmentTitle,
-      slideIds,
-      assignmentId,
-      referenceSlideId,
-      emptySlideId,
-    });
-  }
+function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
+  ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
+    assignmentTitle,
+    documentIds,
+    assignmentId,
+  });
 
   const controller = new AssignmentController();
   try {
-    return controller.saveStartAndShowProgress(
-      assignmentTitle,
-      slideIds,
-      assignmentId,
-      referenceSlideId,
-      emptySlideId
-    );
+    return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
   } catch (err) {
-    // Surface the error to server logs for easier debugging in deployed environments
-    if (logger && typeof logger.error === 'function') {
-      logger.error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
-    }
+    ABLogger.getInstance().error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
     throw err;
   }
 }
@@ -54,13 +31,12 @@ function saveStartAndShowProgress(
  * Initiates the processing of an assignment asynchronously by setting up a trigger.
  *
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} emptySlideId - The ID of the empty slide.
+ * @param {string} definitionKey - The key of the assignment definition.
  * @returns {string} The unique process ID.
  */
-function startProcessing(assignmentId, referenceSlideId, emptySlideId) {
+function startProcessing(assignmentId, definitionKey) {
   const controller = new AssignmentController();
-  return controller.startProcessing(assignmentId, referenceSlideId, emptySlideId);
+  return controller.startProcessing(assignmentId, definitionKey);
 }
 
 /**

@@ -31,13 +31,13 @@ describe('BaseRequestManager Error Handling', () => {
       fetch: vi.fn(),
       fetchAll: vi.fn(),
     };
-    global.UrlFetchApp = mockUrlFetchApp;
+    globalThis.UrlFetchApp = mockUrlFetchApp;
 
     // Setup mock Utilities
     mockUtilities = {
       sleep: vi.fn(),
     };
-    global.Utilities = mockUtilities;
+    globalThis.Utilities = mockUtilities;
 
     // Setup mock CacheService
     mockCacheService = {
@@ -46,7 +46,7 @@ describe('BaseRequestManager Error Handling', () => {
         put: vi.fn(),
       }),
     };
-    global.CacheService = mockCacheService;
+    globalThis.CacheService = mockCacheService;
 
     // Setup mock ConfigurationManager
     mockConfigManager = {
@@ -54,7 +54,7 @@ describe('BaseRequestManager Error Handling', () => {
         getBackendAssessorBatchSize: vi.fn().mockReturnValue(10),
       }),
     };
-    global.ConfigurationManager = mockConfigManager;
+    globalThis.ConfigurationManager = mockConfigManager;
 
     // Setup mock ProgressTracker
     mockProgressTracker = {
@@ -65,7 +65,7 @@ describe('BaseRequestManager Error Handling', () => {
         getCurrentProgress: vi.fn().mockReturnValue({ message: 'Processing' }),
       }),
     };
-    global.ProgressTracker = mockProgressTracker;
+    globalThis.ProgressTracker = mockProgressTracker;
 
     // Setup mock ABLogger
     const mockABLogger = {
@@ -78,14 +78,14 @@ describe('BaseRequestManager Error Handling', () => {
         debugUi: vi.fn(),
       }),
     };
-    global.ABLogger = mockABLogger;
+    globalThis.ABLogger = mockABLogger;
 
     // Load AbortRequestError
     const AbortRequestError = require('../../src/AdminSheet/Utils/ErrorTypes/AbortRequestError.js');
-    global.AbortRequestError = AbortRequestError;
+    globalThis.AbortRequestError = AbortRequestError;
 
     // Mock console methods to avoid noise in test output
-    global.console = {
+    globalThis.console = {
       log: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
@@ -100,13 +100,13 @@ describe('BaseRequestManager Error Handling', () => {
   });
 
   afterEach(() => {
-    delete global.UrlFetchApp;
-    delete global.Utilities;
-    delete global.CacheService;
-    delete global.ConfigurationManager;
-    delete global.ProgressTracker;
-    delete global.ABLogger;
-    delete global.AbortRequestError;
+    delete globalThis.UrlFetchApp;
+    delete globalThis.Utilities;
+    delete globalThis.CacheService;
+    delete globalThis.ConfigurationManager;
+    delete globalThis.ProgressTracker;
+    delete globalThis.ABLogger;
+    delete globalThis.AbortRequestError;
     vi.clearAllMocks();
   });
 

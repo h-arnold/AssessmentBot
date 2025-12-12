@@ -227,6 +227,7 @@ Test configuration management:
 - Default value handling
 
 ### 8. Utility Tests (`tests/utils/`)
+
 Test utility functions:
 
 - **ABLogger**: Logging functionality
@@ -281,7 +282,46 @@ const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 - `createMockSpreadsheetApp(vi, options)` - SpreadsheetApp with sheets
 - `createMockClassroomApiClient()` - ClassroomApiClient wrapping Classroom API
 - `createMockMimeType()` - Google MIME type constants
-- `setupGlobalGASMocks(vi, options)` - Setup all common mocks
+- `createMockCollection(vi, options)` - Mock database collection with optional overrides
+- `createMockSlidesParser(options)` - Mock SlidesParser class for testing document parsing
+- `setupDualCollectionGetFunction(vi)` - Helper for creating dual-collection database patterns (registry + full storage)
+- `setupGlobalGASMocks(vi, options)` - Setup all common GAS mocks
+- `setupControllerTestMocks(vi)` - Setup controller-specific mocks (DbManager, ABLogger, etc.)
+
+**New AssignmentDefinitionController-specific helpers**:
+
+The `setupDualCollectionGetFunction` helper reduces duplication when testing controllers that use dual-store patterns (registry + full storage collections):
+
+```javascript
+import { setupDualCollectionGetFunction } from '../helpers/mockFactories.js';
+
+beforeEach(() => {
+  // Creates getCollectionFn that handles both 'assignment_definitions' and 'assdef_full_*' collections
+  const { getCollectionFn, registryCollection, fullCollection } =
+    setupDualCollectionGetFunction(vi);
+
+  const mockDbManager = {
+    getCollection: getCollectionFn,
+  };
+  DbManager.getInstance.mockReturnValue(mockDbManager);
+});
+```
+
+The `createMockCollection` helper with options allows customisation:
+
+```javascript
+import { createMockCollection } from '../helpers/mockFactories.js';
+
+// Create a basic mock collection
+const mockCollection = createMockCollection(vi);
+
+// Create with method overrides
+const customCollection = createMockCollection(vi, {
+  overrides: {
+    findOne: vi.fn().mockReturnValue({ id: 'test' }),
+  },
+});
+```
 
 ### Model Factories (`tests/helpers/modelFactories.js`)
 
@@ -292,6 +332,8 @@ const {
   createTaskDefinition,
   createTextTask,
   createStudentSubmission,
+  createSlidesAssignment,
+  createSheetsAssignment,
   createDummyProgressTracker,
 } = require('../helpers/modelFactories.js');
 
@@ -312,7 +354,24 @@ const submission = createStudentSubmission({
   assignmentId: 'assignment1',
   documentId: 'doc1',
 });
+
+// Create assignments (both use fromJSON internally to avoid GAS service calls)
+const slidesAssignment = createSlidesAssignment({
+  courseId: 'course1',
+  assignmentId: 'a1',
+  assignmentName: 'Slides Task',
+});
+
+const sheetsAssignment = createSheetsAssignment({
+  courseId: 'course1',
+  assignmentId: 'a2',
+  assignmentName: 'Sheets Task',
+});
 ```
+
+**Assignment creation consolidation**:
+
+To eliminate code duplication, `createSlidesAssignment` and `createSheetsAssignment` both call a common internal factory `createAssignmentWithType(documentType, props)`. This ensures consistent defaults and prevents maintenance issues when assignment creation logic changes.
 
 ### Test Utils (`tests/helpers/testUtils.js`)
 

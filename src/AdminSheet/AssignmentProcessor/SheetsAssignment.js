@@ -12,25 +12,12 @@ class SheetsAssignment extends Assignment {
    * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
    * @param {string} templateDocumentId - The ID of the template spreadsheet document.
    */
-  constructor(courseId, assignmentId, referenceDocumentId, templateDocumentId) {
-    super(courseId, assignmentId);
-    this.referenceDocumentId = referenceDocumentId;
-    this.templateDocumentId = templateDocumentId;
-    this.documentType = 'SHEETS';
-  }
-
-  /**
-   * Serialize SheetsAssignment to JSON, including subclass-specific fields.
-   * @return {object} JSON representation including documentType, referenceDocumentId, templateDocumentId
-   */
-  toJSON() {
-    const base = super.toJSON();
-    return {
-      ...base,
-      documentType: this.documentType,
-      referenceDocumentId: this.referenceDocumentId,
-      templateDocumentId: this.templateDocumentId,
-    };
+  constructor(courseId, assignmentId, assignmentDefinition) {
+    const defInstance =
+      assignmentDefinition instanceof AssignmentDefinition
+        ? assignmentDefinition
+        : AssignmentDefinition.fromJSON(assignmentDefinition);
+    super(courseId, assignmentId, defInstance);
   }
 
   /**
@@ -41,16 +28,14 @@ class SheetsAssignment extends Assignment {
   static fromJSON(data) {
     const inst = Assignment._baseFromJSON(data);
     Object.setPrototypeOf(inst, SheetsAssignment.prototype);
-    inst.referenceDocumentId = data.referenceDocumentId ?? null;
-    inst.templateDocumentId = data.templateDocumentId ?? null;
-    inst.documentType = 'SHEETS';
     return inst;
   }
 
   populateTasks() {
+    const { referenceDocumentId, templateDocumentId } = this.assignmentDefinition;
     const parser = new SheetsParser();
-    const defs = parser.extractTaskDefinitions(this.referenceDocumentId, this.templateDocumentId);
-    this.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
+    const defs = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);
+    this.assignmentDefinition.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
     console.log(`Populated ${defs.length} spreadsheet TaskDefinitions.`);
   }
 
@@ -60,7 +45,7 @@ class SheetsAssignment extends Assignment {
    */
   fetchSubmittedDocuments() {
     // Google Sheets MIME type
-    const SHEETS_MIME_TYPE = MimeType.GOOGLE_SHEETS;
+    const SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
     this.fetchSubmittedDocumentsByMimeType(SHEETS_MIME_TYPE);
   }
 
@@ -70,7 +55,7 @@ class SheetsAssignment extends Assignment {
    */
   processAllSubmissions() {
     const parser = new SheetsParser();
-    const taskDefs = Object.values(this.tasks);
+    const taskDefs = Object.values(this.assignmentDefinition.tasks || {});
     this.submissions.forEach((sub) => {
       this.progressTracker.updateProgress(
         `Extracting work from spreadsheet for student ${sub.studentId}.`,
@@ -82,7 +67,7 @@ class SheetsAssignment extends Assignment {
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
-        const taskDef = this.tasks[a.taskId];
+        const taskDef = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDef) {
           console.warn('Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction');
           return;

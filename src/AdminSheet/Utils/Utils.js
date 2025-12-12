@@ -44,7 +44,7 @@ class Utils {
     let letter = '';
     while (columnIndex >= 0) {
       temp = columnIndex % 26;
-      letter = String.fromCharCode(temp + 65) + letter;
+      letter = String.fromCodePoint(temp + 65) + letter;
       columnIndex = Math.floor((columnIndex - temp) / 26) - 1;
     }
     return letter;
@@ -117,45 +117,33 @@ class Utils {
     if (typeof url !== 'string') {
       return false;
     }
-    const urlPattern = new RegExp(
-      '^' +
-        // Protocol identifier (required)
-        '(?:(?:https?|ftp)://)' +
-        // User:Pass authentication (optional)
-        '(?:\\S+(?::\\S*)?@)?' +
-        '(?:' +
-        // IP address exclusion (private & local networks)
-        '(?!(?:10|127)(?:\\.\\d{1,3}){3})' +
-        '(?!(?:169\\.254|192\\.168)(?:\\.\\d{1,3}){2})' +
-        '(?!172\\.(?:1[6-9]|2\\d|3[0-1])(?:\\.\\d{1,3}){2})' +
-        // IP address dotted notation octets
-        '(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])' +
-        '(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}' +
-        '(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-5]))' +
-        '|' +
-        // Hostname
-        '(?:(?:[a-zA-Z\\d]-*)*[a-zA-Z\\d]+)' +
-        // Domain name
-        '(?:\\.[a-zA-Z\\d]+(?:-[a-zA-Z\\d]+)*)*' +
-        // TLD identifier
-        '(?:\\.(?:[a-zA-Z]{2,}))' +
-        ')' +
-        // Port number (optional)
-        '(?::\\d{2,5})?' +
-        // Resource path (optional)
-        '(?:/\\S*)?' +
-        '$',
-      'i'
-    );
+    try {
+      const parsed = new URL(url);
+      const protocol = parsed.protocol.toLowerCase();
+      if (!['http:', 'https:', 'ftp:'].includes(protocol)) return false;
 
-    const result = urlPattern.test(url);
-
-    if (!result) {
+      const hostname = parsed.hostname;
+      // Reject private IPv4 addresses
+      if (this._isPrivateIPv4(hostname)) return false;
+      return true;
+    } catch (err) {
       const progressTracker = ProgressTracker.getInstance();
       progressTracker.logError(`Invalid slide URL found: ${url}`);
+      return false;
     }
+  }
 
-    return result; //True or False
+  static _isPrivateIPv4(hostname) {
+    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+    if (!ipv4Exec) return false;
+    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
+    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
+    if (octets[0] === 10) return true;
+    if (octets[0] === 127) return true;
+    if (octets[0] === 169 && octets[1] === 254) return true;
+    if (octets[0] === 192 && octets[1] === 168) return true;
+    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
+    return false;
   }
 
   /**
@@ -205,4 +193,42 @@ class Utils {
     futureDate.setDate(futureDate.getDate() + days);
     return futureDate;
   }
+
+  /**
+   * Determines if an assignment definition needs to be refreshed based on tasks and modification timestamps.
+   * @param {Object} definition - The assignment definition to check.
+   * @param {string|Date} referenceModified - Last modified timestamp of reference document.
+   * @param {string|Date} templateModified - Last modified timestamp of template document.
+   * @return {boolean} True if refresh is needed.
+   */
+  static definitionNeedsRefresh(definition, referenceModified, templateModified) {
+    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
+      return true;
+    }
+    if (!definition.referenceLastModified || !definition.templateLastModified) {
+      return true;
+    }
+    const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
+    const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
+    return refFresh || tplFresh;
+  }
+
+  /**
+   * Checks if a candidate timestamp is newer than a baseline timestamp.
+   * @param {string|Date} candidate - The candidate timestamp.
+   * @param {string|Date} baseline - The baseline timestamp.
+   * @return {boolean} True if candidate is newer than baseline.
+   */
+  static isNewer(candidate, baseline) {
+    if (!candidate || !baseline) return false;
+    const c = new Date(candidate);
+    const b = new Date(baseline);
+    if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
+    return c.getTime() > b.getTime();
+  }
+}
+
+// Export for Node tests / CommonJS environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = Utils;
 }
