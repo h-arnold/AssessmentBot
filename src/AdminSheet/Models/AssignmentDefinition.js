@@ -36,6 +36,7 @@ class AssignmentDefinition {
     createdAt = null,
     updatedAt = null,
     definitionKey = null,
+    hydrationLevel = 'full',
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
@@ -53,6 +54,7 @@ class AssignmentDefinition {
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
 
+    this._setHydrationLevel(hydrationLevel);
     this._validate();
     this._hydrateTasks(tasks);
 
@@ -63,6 +65,16 @@ class AssignmentDefinition {
         yearGroup: this.yearGroup,
       });
     }
+  }
+
+  _setHydrationLevel(level) {
+    const normalised = level || 'full';
+    if (normalised !== 'full' && normalised !== 'partial') {
+      ProgressTracker.getInstance().logAndThrowError('Invalid hydration level for definition', {
+        hydrationLevel: normalised,
+      });
+    }
+    this._hydrationLevel = normalised;
   }
 
   /**
@@ -131,6 +143,22 @@ class AssignmentDefinition {
         }
       })
     );
+  }
+
+  getHydrationLevel() {
+    return this._hydrationLevel || 'full';
+  }
+
+  isPartialHydration() {
+    return this.getHydrationLevel() === 'partial';
+  }
+
+  isFullHydration() {
+    return this.getHydrationLevel() === 'full';
+  }
+
+  markAsFullHydration() {
+    this._hydrationLevel = 'full';
   }
 
   /**
