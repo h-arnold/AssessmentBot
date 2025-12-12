@@ -30,6 +30,24 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 - **Managers**: `GoogleClassroomManager`, `ImageManager`, `AnalysisSheetManager`, `OverviewSheetManager`
 - **Utilities**: `ProgressTracker`, `TriggerController`, `DriveManager`, `Utils`
 
+### Notes on Data Flow
+
+1. **Progressive Hydration**: Data starts lightweight (just IDs and metadata) and progressively adds content as needed
+2. **Two-Tier Persistence**: Full data in dedicated collections, partial summaries in ABClass for performance
+   - Full assignment: `assign_full_{courseId}_{assignmentId}` collection
+   - Full definition: `assdef_full_{definitionKey}` collection
+   - Partial summaries: Stored in `class_{courseId}` and `assignment_definitions` collections
+3. **Cache-First Assessment**: Always check cache before calling LLM to save API calls and time
+4. **Fail-Fast Error Handling**: Errors propagate up immediately, logged at each level
+5. **Singleton Pattern**: UIManager, ProgressTracker, ABLogger, ConfigurationManager, DbManager are all singletons
+6. **Factory Pattern**: Assignment.create() returns appropriate subclass based on documentType
+7. **Progress Tracking**: ProgressTracker updates visible to user throughout flow via Progress sheet
+8. **Lock Management**: Document lock prevents concurrent assessment runs using LockService
+9. **Trigger Pattern**: Time-based trigger decouples user action from heavy processing (5-second delay)
+10. **Document Properties**: Used for cross-execution parameter passing between trigger setup and execution
+11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
+12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
+
 ---
 
 ## Detailed Flow Documentation
@@ -38,7 +56,9 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 #### Step 1.1: Show Assignment Dropdown
 
-**Entry Point**: User clicks "Debug" > "Assess Student Work" menu item
+**Entry Points**: 
+- Admin Sheet: User clicks "Debug" > "Assess Student Work" menu item
+- Assessment Record: User clicks "Assessment Bot" > "Assess Assignment" menu item
 
 **Global Function**: `showAssignmentDropdown()` (in `UI/globals.js`)
 
@@ -780,6 +800,10 @@ assignment.submissions = [
   - `completeness`: How complete is the work
   - `accuracy`: How accurate is the work
   - `spag`: Spelling, Punctuation, and Grammar
+- **Assessment Model**:
+  - Each assessment is an instance of the `Assessment` class
+  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text)
+  - Stored as JSON in StudentSubmissionItem.assessments
 
 **Class**: `Assessment`
 
@@ -1001,12 +1025,14 @@ submission.items["task_001"] = {
 **Analysis Sheet Structure**:
 
 ```
-| Student Name | Task 1 - Completeness | Task 1 - Accuracy | Task 1 - SPaG | Task 1 - Feedback | ... |
-|--------------|----------------------|-------------------|---------------|-------------------|-----|
-| Jane Doe     | 85                   | 90                | 95            | Great work!       | ... |
-| John Smith   | 75                   | 80                | 85            | Good effort       | ... |
-| Average      | 80                   | 85                | 90            | -                 | ... |
+| Student Name | Task 1 - Completeness | Task 1 - Accuracy | Task 1 - SPaG | ... | Averages - Completeness | Averages - Accuracy | Averages - SPaG |
+|--------------|----------------------|-------------------|---------------|-----|------------------------|---------------------|-----------------|
+| Jane Doe     | 4                    | 5                 | 4             | ... | 4.2                    | 4.5                 | 4.3             |
+| John Smith   | 3                    | 4                 | 3             | ... | 3.5                    | 3.8                 | 3.6             |
+| Average      | 3.5                  | 4.5               | 3.5           | ... | 3.85                   | 4.15                | 3.95            |
 ```
+
+Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data model but not displayed in analysis sheets.
 
 **Overview Sheet Structure**:
 
@@ -1117,14 +1143,17 @@ submission.items["task_001"] = {
   artifact: BaseTaskArtifact,
   assessments: {           // JSON representations of Assessment objects
     completeness: {
-      category: "completeness",
-      score: number,
-      justification: string,
-      uid: string,
-      createdAt: ISO date string
+      score: number | string,  // 0-5 or 'N'
+      reasoning: string
     },
-    accuracy: { ... },
-    spag: { ... }
+    accuracy: {
+      score: number | string,  // 0-5 or 'N'
+      reasoning: string
+    },
+    spag: {
+      score: number | string,  // 0-5 or 'N'
+      reasoning: string
+    }
   },
   feedback: {              // JSON representations keyed by type
     general: {
@@ -1139,11 +1168,8 @@ submission.items["task_001"] = {
 
 ```javascript
 {
-  category: "completeness" | "accuracy" | "spag",
-  score: number,           // 0-100
-  justification: string,
-  uid: string,
-  createdAt: ISO date string
+  score: number | string,  // 0-5 or 'N' (for not attempted)
+  reasoning: string        // Explanation text from LLM
 }
 ```
 
@@ -1370,26 +1396,6 @@ AssignmentController.processSelectedAssignment()
 
 ---
 
-## Notes on Data Flow
-
-1. **Progressive Hydration**: Data starts lightweight (just IDs and metadata) and progressively adds content as needed
-2. **Two-Tier Persistence**: Full data in dedicated collections, partial summaries in ABClass for performance
-   - Full assignment: `assign_full_{courseId}_{assignmentId}` collection
-   - Full definition: `assdef_full_{definitionKey}` collection
-   - Partial summaries: Stored in `class_{courseId}` and `assignment_definitions` collections
-3. **Cache-First Assessment**: Always check cache before calling LLM to save API calls and time
-4. **Fail-Fast Error Handling**: Errors propagate up immediately, logged at each level
-5. **Singleton Pattern**: UIManager, ProgressTracker, ABLogger, ConfigurationManager, DbManager are all singletons
-6. **Factory Pattern**: Assignment.create() returns appropriate subclass based on documentType
-7. **Progress Tracking**: ProgressTracker updates visible to user throughout flow via Progress sheet
-8. **Lock Management**: Document lock prevents concurrent assessment runs using LockService
-9. **Trigger Pattern**: Time-based trigger decouples user action from heavy processing (5-second delay)
-10. **Document Properties**: Used for cross-execution parameter passing between trigger setup and execution
-11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
-12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
-
----
-
 ## Extension Points and Considerations
 
 ### Adding New Document Types
@@ -1478,10 +1484,3 @@ To add new processing stages:
 - Check for uncaught exceptions in pipeline
 - Verify ProgressTracker.complete() is called
 - Check lock timeout (5 seconds default)
-
----
-
-## Document Revision History
-
-- **Version 1.0** (2025-12-12): Initial comprehensive documentation of assessment flow
-- **Version 1.1** (2025-12-12): Fixed data structure documentation for StudentSubmission models
