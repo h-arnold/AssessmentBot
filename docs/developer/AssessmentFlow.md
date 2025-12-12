@@ -671,7 +671,7 @@ assignment.submissions = [
           metadata: {},
         },
         assessments: {},
-        feedback: [],
+        feedback: {},
       },
       // ... more items
     },
