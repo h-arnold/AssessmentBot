@@ -25,11 +25,7 @@ describe('ABClassController.saveClass', () => {
 
   afterEach(() => {
     // Clean up global to avoid cross-test pollution
-    try {
-      delete globalThis.DbManager;
-    } catch (e) {
-      globalThis.DbManager = undefined;
-    }
+    delete globalThis.DbManager;
   });
 
   test('calls replaceOne when a document exists', () => {

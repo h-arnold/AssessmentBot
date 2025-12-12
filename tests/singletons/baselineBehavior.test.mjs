@@ -278,11 +278,12 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     // Make some calls
     globalThis.PropertiesService.getScriptProperties();
     globalThis.SpreadsheetApp.getUi();
-    new globalThis.GoogleClassroomManager();
+    const _classroomManager = new globalThis.GoogleClassroomManager();
 
     // Verify tracking
     expect(harness.wasPropertiesServiceAccessed()).toBe(true);
     expect(harness.wasUIAccessed()).toBe(true);
     expect(harness.wasClassroomManagerInstantiated()).toBe(true);
+    expect(_classroomManager).toBeDefined();
   });
 });

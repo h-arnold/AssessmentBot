@@ -16,11 +16,9 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
 
   test('Abstract enforcement: instantiating base or calling abstract methods throws', () => {
     expect(() => new ParserClass()).toThrow();
-    try {
-      const maybe = Object.create(ParserClass.prototype);
-      expect(() => maybe.extractTaskDefinitions('ref', 'tpl')).toThrow();
-      expect(() => maybe.extractSubmissionArtifacts('doc', [])).toThrow();
-    } catch (e) {}
+    const maybe = Object.create(ParserClass.prototype);
+    expect(() => maybe.extractTaskDefinitions('ref', 'tpl')).toThrow();
+    expect(() => maybe.extractSubmissionArtifacts('doc', [])).toThrow();
   });
 
   let TestDocumentParser;
@@ -32,8 +30,7 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
       }
       extractTaskDefinitions(referenceId, templateId) {
         const defs = [];
-        for (let i = 0; i < this.sequence.length; i++) {
-          const t = this.sequence[i];
+        for (const t of this.sequence) {
           const td = new TaskDefinition({
             taskTitle: t.title,
             pageId: t.pageId,
@@ -49,10 +46,9 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
         return taskDefs.map((td) => ({
           taskId: td.id,
           pageId: td.pageId || null,
-          content:
-            td.getPrimaryTemplate() && td.getPrimaryTemplate().content
-              ? 'student ' + td.getPrimaryTemplate().content
-              : null,
+          content: td.getPrimaryTemplate()?.content
+            ? 'student ' + td.getPrimaryTemplate().content
+            : null,
           metadata: { simulated: true },
         }));
       }
@@ -84,7 +80,7 @@ describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () =>
     const subs = parser.extractSubmissionArtifacts('studentDoc', defs);
     subs.forEach((o) => {
       expect(o).not.toHaveProperty('contentHash');
-      expect(Object.keys(o).sort()).toEqual(
+      expect(Object.keys(o).sort((a, b) => a.localeCompare(b))).toEqual(
         expect.arrayContaining(['taskId', 'content', 'pageId', 'metadata'])
       );
       expect(typeof o.taskId).toBe('string');

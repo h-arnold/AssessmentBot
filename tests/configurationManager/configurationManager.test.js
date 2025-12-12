@@ -558,7 +558,7 @@ describe('ConfigurationManager setProperty', () => {
     it('should persist and log when folder created and persistConfigKey provided', () => {
       // Provide a logger
       const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = function () {};
+      const ABLoggerClass = {};
       ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
       globalThis.ABLogger = ABLoggerClass;
 
@@ -582,7 +582,7 @@ describe('ConfigurationManager setProperty', () => {
 
     it('should log when folder created without persistConfigKey (no persistence)', () => {
       const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = function () {};
+      const ABLoggerClass = {};
       ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
       globalThis.ABLogger = ABLoggerClass;
 

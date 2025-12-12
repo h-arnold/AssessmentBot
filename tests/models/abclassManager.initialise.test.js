@@ -57,11 +57,9 @@ describe('ABClassController.initialise', () => {
     delete globalThis.DbManager;
     delete globalThis.ABLogger;
     // Clear ABClassController module to avoid stale singleton state between tests
-    try {
-      delete require.cache[require.resolve('../../src/AdminSheet/Models/ABClassController.js')];
-    } catch (e) {
-      // ignore
-    }
+    delete require.cache[
+      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
+    ];
   });
 
   it('populates className, classOwner, teachers and students from Classroom API', () => {

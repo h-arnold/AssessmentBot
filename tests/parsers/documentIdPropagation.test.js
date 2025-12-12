@@ -143,7 +143,9 @@ describe('Document ID propagation across parsers', () => {
         constructor() {
           this.formulaArray = [['=REF']];
         }
-        getAllFormulae() {}
+        getAllFormulae() {
+          return this.formulaArray;
+        }
         getRange() {
           return [['=STUDENT']];
         }

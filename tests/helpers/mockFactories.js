@@ -307,13 +307,11 @@ function setupControllerTestMocks(vi) {
   globalThis.ConfigurationManager = ConfigManagerClass;
 
   // Mock AssignmentDefinitionController
-  const AssignmentDefinitionControllerClass = class AssignmentDefinitionControllerClass {
-    constructor() {
-      this.ensureDefinition = vi.fn();
-      this.getDefinitionByKey = vi.fn();
-      this.saveDefinition = vi.fn();
-    }
-  };
+  class AssignmentDefinitionControllerClass {
+    ensureDefinition = vi.fn();
+    getDefinitionByKey = vi.fn();
+    saveDefinition = vi.fn();
+  }
   globalThis.AssignmentDefinitionController = AssignmentDefinitionControllerClass;
 
   return {

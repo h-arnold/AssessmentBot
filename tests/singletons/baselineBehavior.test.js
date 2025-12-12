@@ -77,7 +77,6 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
         if (config) {
           // Call multiple getters
           config.getApiKey(); // first access triggers initialization
-          const callsAfterFirst = globalThis.PropertiesService._calls.length;
           config.getBackendUrl();
           config.getSlidesFetchBatchSize();
 

@@ -3,16 +3,16 @@ const ProgressTracker = require('../../src/AdminSheet/Utils/ProgressTracker.js')
 // Mock PropertiesService
 // Use global vi (Vitest) if available; otherwise create simple stub factory for Node fallback.
 const _vi =
-  typeof vi !== 'undefined'
-    ? vi
-    : {
+  typeof vi === 'undefined'
+    ? {
         fn: (impl = () => {}) => {
           const f = (...args) => impl(...args);
           f.mock = { calls: [] };
           const original = f;
           return original;
         },
-      };
+      }
+    : vi;
 const mockSetProperty = _vi.fn();
 const mockGetProperty = _vi.fn();
 const mockDeleteProperty = _vi.fn();
