@@ -620,16 +620,15 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 **Class**: `StudentSubmissionItem`
 
-- **Location**: `/src/AdminSheet/Models/StudentSubmissionItem.js`
+- **Location**: `/src/AdminSheet/Models/StudentSubmission.js` (both classes in same file)
 - **Properties**:
   ```javascript
   {
+    id: string,              // Derived ID (ssi_{hash})
     taskId: string,
     artifact: BaseTaskArtifact,  // Student's work
-    assessments: {},             // Populated later
-    feedback: [],                // Populated later
-    createdAt: Date,
-    updatedAt: Date
+    assessments: {},             // Populated later (stored as JSON)
+    feedback: {},                // Populated later (stored as JSON, keyed by type)
   }
   ```
 
@@ -1098,14 +1097,14 @@ submission.items["task_001"] = {
 ```javascript
 {
   studentId: string,
-  studentName: string,
+  studentName: string,     // Temporary for v0.7.2, will be removed
   assignmentId: string,
   documentId: string,
   items: {
-    [taskId]: StudentSubmissionItem
+    [taskId]: StudentSubmissionItem  // keyed by taskId
   },
   createdAt: ISO date string,
-  updatedAt: ISO date string
+  updatedAt: ISO date string  // with counter suffix (e.g., "...Z#1")
 }
 ```
 
@@ -1113,16 +1112,26 @@ submission.items["task_001"] = {
 
 ```javascript
 {
+  id: string,              // Derived ID (ssi_{hash})
   taskId: string,
   artifact: BaseTaskArtifact,
-  assessments: {
-    completeness: Assessment,
-    accuracy: Assessment,
-    spag: Assessment
+  assessments: {           // JSON representations of Assessment objects
+    completeness: {
+      category: "completeness",
+      score: number,
+      justification: string,
+      uid: string,
+      createdAt: ISO date string
+    },
+    accuracy: { ... },
+    spag: { ... }
   },
-  feedback: Feedback[],
-  createdAt: ISO date string,
-  updatedAt: ISO date string
+  feedback: {              // JSON representations keyed by type
+    general: {
+      text: string,
+      category: string
+    }
+  }
 }
 ```
 
