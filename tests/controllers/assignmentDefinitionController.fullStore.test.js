@@ -82,17 +82,121 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
   });
 
   describe('saveDefinition - dual-store writes', () => {
-    it.skip('should write full definition to dedicated collection and partial to registry', () => {
-      // This test requires deep integration with the actual controller implementation
-      // Skipping for now as the pattern is validated in the existing controller tests
+    it('should write full definition to dedicated collection and partial to registry', () => {
+      const definition = new AssignmentDefinition({
+        primaryTitle: 'Test',
+        primaryTopic: 'Topic',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref',
+        templateDocumentId: 'tpl',
+        tasks: {
+          t1: {
+            id: 't1',
+            taskTitle: 'Task 1',
+            artifacts: {
+              reference: [
+                {
+                  taskId: 't1',
+                  role: 'reference',
+                  content: 'full-content',
+                  contentHash: 'hash123',
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      mockFullCollection.findOne.mockReturnValue(null);
+      mockRegistryCollection.findOne.mockReturnValue(null);
+
+      controller.saveDefinition(definition);
+
+      // Verify full collection received full payload
+      expect(mockFullCollection.insertOne).toHaveBeenCalled();
+      expect(mockFullCollection.save).toHaveBeenCalled();
+
+      // Verify registry received partial payload
+      expect(mockRegistryCollection.insertOne).toHaveBeenCalled();
+      expect(mockRegistryCollection.save).toHaveBeenCalled();
     });
 
-    it.skip('should preserve full artifact content in full collection', () => {
-      // Skipped - validated via existing integration tests
+    it('should preserve full artifact content in full collection', () => {
+      const definition = new AssignmentDefinition({
+        primaryTitle: 'Test',
+        primaryTopic: 'Topic',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref',
+        templateDocumentId: 'tpl',
+        tasks: {
+          t1: {
+            id: 't1',
+            taskTitle: 'Task 1',
+            artifacts: {
+              reference: [
+                {
+                  taskId: 't1',
+                  role: 'reference',
+                  content: 'full-content',
+                  contentHash: 'hash123',
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      mockFullCollection.findOne.mockReturnValue(null);
+      mockRegistryCollection.findOne.mockReturnValue(null);
+
+      controller.saveDefinition(definition);
+
+      const fullStoreCall = mockFullCollection.insertOne.mock.calls[0];
+      const savedFullDef = fullStoreCall[0];
+
+      expect(savedFullDef.tasks.t1.artifacts.reference[0].content).toBe('full-content');
+      expect(savedFullDef.tasks.t1.artifacts.reference[0].contentHash).toBe('hash123');
     });
 
-    it.skip('should redact artifact content in registry partial', () => {
-      // Skipped - validated via existing integration tests
+    it('should redact artifact content in registry partial', () => {
+      const definition = new AssignmentDefinition({
+        primaryTitle: 'Test',
+        primaryTopic: 'Topic',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref',
+        templateDocumentId: 'tpl',
+        tasks: {
+          t1: {
+            id: 't1',
+            taskTitle: 'Task 1',
+            artifacts: {
+              reference: [
+                {
+                  taskId: 't1',
+                  role: 'reference',
+                  content: 'full-content',
+                  contentHash: 'hash123',
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      mockFullCollection.findOne.mockReturnValue(null);
+      mockRegistryCollection.findOne.mockReturnValue(null);
+
+      controller.saveDefinition(definition);
+
+      const registryCall = mockRegistryCollection.insertOne.mock.calls[0];
+      const savedPartialDef = registryCall[0];
+
+      expect(savedPartialDef.tasks.t1).toBeDefined();
+      expect(savedPartialDef.tasks.t1.artifacts.reference[0].content).toBeNull();
+      expect(savedPartialDef.tasks.t1.artifacts.reference[0].contentHash).toBeNull();
     });
   });
 
