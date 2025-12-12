@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Setup global mocks
-global.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
-global.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
+globalThisThis.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
+globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock PropertiesService
 global.PropertiesService = {

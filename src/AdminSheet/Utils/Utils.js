@@ -44,7 +44,7 @@ class Utils {
     let letter = '';
     while (columnIndex >= 0) {
       temp = columnIndex % 26;
-      letter = String.fromCharCode(temp + 65) + letter;
+      letter = String.fromCodePoint(temp + 65) + letter;
       columnIndex = Math.floor((columnIndex - temp) / 26) - 1;
     }
     return letter;
