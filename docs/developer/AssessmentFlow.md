@@ -310,7 +310,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 **Global Function**: `triggerProcessSelectedAssignment()`
 
 - **Location**: `/src/AdminSheet/AssignmentProcessor/globals.js:45-48`
-- **Trigger**: Automatically called by time-based trigger (1 second after setup)
+- **Trigger**: Automatically called by time-based trigger (5 seconds after setup)
 - **Calls**: `AssignmentController.processSelectedAssignment()`
 
 #### Step 3.2: Process Selected Assignment (Orchestrator)
