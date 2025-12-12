@@ -85,14 +85,43 @@
 6. **UI path relies on definition keys**
    - Update SlideIdsModal and AssignmentDropdown flows to stop passing/storing raw document IDs; route through controller endpoints that return the definitionKey, and persist only that key in properties.
    - Files: src/AdminSheet/UI/SlideIdsModal.html, src/AdminSheet/UI/AssignmentDropdown.html, any UIManager plumbing that bridges to saveStartAndShowProgress/openReferenceSlideModal, tests/ui/\*.test.js (if present).
+   - **Status:** Not started - UI components need updating to use definition keys
 
 7. **Drive timestamp + parsing flow**
-   - Ensure DriveManager.getFileModifiedTime continues to feed staleness checks; add tests around definition refresh using the split stores to prove the full definition is persisted when parsed.
-   - Files: src/AdminSheet/GoogleDriveManager/DriveManager.js, tests/googleDriveManager/driveManager\*.test.js.
+   - ✅ Test coverage added for `DriveManager.getFileModifiedTime` integration with definition refresh logic
+   - ⏳ Implementation validation needed - ensure DriveManager.getFileModifiedTime continues to feed staleness checks in production code
+   - Files: src/AdminSheet/GoogleDriveManager/DriveManager.js, tests/googleDriveManager/driveManager.definitionRefresh.test.js (✅ complete)
 
 8. **Docs and testing coverage**
-   - Keep DATA_SHAPES and ASSIGNMENT_METADATA_SPEC aligned with the new dual-store pattern; add regression tests to confirm full definitions are written/read and partial embeddings stay redacted.
-   - Files: docs/developer/DATA_SHAPES.md, ASSIGNMENT_METADATA_SPEC.md, relevant Vitest suites under tests/.
+   - ✅ DATA_SHAPES.md and ASSIGNMENT_METADATA_SPEC.md already aligned with dual-store pattern
+   - ✅ Test suites added for full store semantics and hydration patterns
+   - ⏳ Regression test validation needed - run all tests to confirm no breaks
+   - Files: docs/developer/DATA_SHAPES.md (✅ aligned), ASSIGNMENT_METADATA_SPEC.md (✅ aligned), tests/ (✅ tests added)
+
+### 📝 Summary Status
+
+**Completed (Stages 1-5):**
+
+- ✅ Model dual-hydration support
+- ✅ Definition persistence split (registry + full store)
+- ✅ Assignment load/save alignment
+- ✅ Run orchestration uses full definitions
+- ✅ ABClass persistence hooks
+- ✅ Test coverage for core functionality
+
+**Pending (Stages 6-8):**
+
+- ⏳ UI updates to use definition keys (Stage 6)
+- ⏳ DriveManager implementation validation (Stage 7 - tests ready)
+- ⏳ Full regression test run (Stage 8 - tests ready)
+
+**Next Steps for Future Session:**
+
+1. Run all tests to validate current implementation
+2. Address any test failures
+3. Implement UI changes for definition key persistence (Stage 6)
+4. Validate DriveManager staleness detection in production code (Stage 7)
+5. Conduct final code review for adherence to coding standards
 
 ## Test Coverage Requirements
 
@@ -111,9 +140,9 @@
 
 ### Tests to Add
 
-- ⏳ `tests/controllers/assignmentDefinitionController.fullStore.test.js` — Assure named full-definition collection write/read semantics and that parsing persists full payload.
-- ⏳ `tests/controllers/assignmentController.hydration.test.js` — Confirm `processSelectedAssignment` fetches full definition synchronously and uses it for parsing/processing.
-- ⏳ `tests/googleDriveManager/driveManager.definitionRefresh.test.js` — Integration between `DriveManager.getFileModifiedTime` and definition refresh logic.
+- ✅ `tests/controllers/assignmentDefinitionController.fullStore.test.js` — Assure named full-definition collection write/read semantics and that parsing persists full payload.
+- ✅ `tests/controllers/assignmentController.hydration.test.js` — Confirm `processSelectedAssignment` fetches full definition synchronously and uses it for parsing/processing.
+- ✅ `tests/googleDriveManager/driveManager.definitionRefresh.test.js` — Integration between `DriveManager.getFileModifiedTime` and definition refresh logic.
 
 ### Tests Removed
 

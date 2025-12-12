@@ -449,3 +449,7 @@ class AssignmentController {
     // Implementation details would go here
   }
 }
+
+if (typeof module !== 'undefined') {
+  module.exports = AssignmentController;
+}
