@@ -85,24 +85,26 @@ function createStudentSubmission(options = {}) {
 }
 
 /**
- * Create a SlidesAssignment for testing using fromJSON to avoid GAS service calls.
+ * Create an Assignment for testing using fromJSON to avoid GAS service calls.
+ * Internal factory for common assignment creation logic.
+ * @param {string} documentType - Type of document ('SLIDES' or 'SHEETS')
  * @param {Object} props - Configuration properties
  * @param {string} props.courseId - Course ID (default: 'c1')
  * @param {string} props.assignmentId - Assignment ID (default: 'a1')
  * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
  * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
- * @param {string} props.assignmentName - Assignment name (default: 'Test Slides Assignment')
+ * @param {string} props.assignmentName - Assignment name
  * @param {Object} props.tasks - Tasks object (default: {})
  * @param {Array} props.submissions - Submissions array (default: [])
- * @returns {SlidesAssignment} Created SlidesAssignment instance
+ * @returns {Assignment} Created Assignment instance
  */
-function createSlidesAssignment(props = {}) {
+function createAssignmentWithType(documentType, props = {}) {
   const {
     courseId = 'c1',
     assignmentId = 'a1',
     referenceDocumentId = 'ref1',
     templateDocumentId = 'tpl1',
-    assignmentName = 'Test Slides Assignment',
+    assignmentName = 'Test Assignment',
     tasks = {},
     submissions = [],
     ...rest
@@ -112,7 +114,7 @@ function createSlidesAssignment(props = {}) {
     primaryTitle: assignmentName,
     primaryTopic: 'Topic',
     yearGroup: null,
-    documentType: 'SLIDES',
+    documentType,
     referenceDocumentId,
     templateDocumentId,
     tasks,
@@ -131,6 +133,23 @@ function createSlidesAssignment(props = {}) {
 }
 
 /**
+ * Create a SlidesAssignment for testing using fromJSON to avoid GAS service calls.
+ * @param {Object} props - Configuration properties
+ * @param {string} props.courseId - Course ID (default: 'c1')
+ * @param {string} props.assignmentId - Assignment ID (default: 'a1')
+ * @param {string} props.referenceDocumentId - Reference document ID (default: 'ref1')
+ * @param {string} props.templateDocumentId - Template document ID (default: 'tpl1')
+ * @param {string} props.assignmentName - Assignment name (default: 'Test Slides Assignment')
+ * @param {Object} props.tasks - Tasks object (default: {})
+ * @param {Array} props.submissions - Submissions array (default: [])
+ * @returns {SlidesAssignment} Created SlidesAssignment instance
+ */
+function createSlidesAssignment(props = {}) {
+  const { assignmentName = 'Test Slides Assignment', ...rest } = props;
+  return createAssignmentWithType('SLIDES', { assignmentName, ...rest });
+}
+
+/**
  * Create a SheetsAssignment for testing using fromJSON to avoid GAS service calls.
  * @param {Object} props - Configuration properties
  * @param {string} props.courseId - Course ID (default: 'c1')
@@ -143,37 +162,8 @@ function createSlidesAssignment(props = {}) {
  * @returns {Assignment} Created SheetsAssignment instance
  */
 function createSheetsAssignment(props = {}) {
-  const {
-    courseId = 'c1',
-    assignmentId = 'a1',
-    referenceDocumentId = 'ref1',
-    templateDocumentId = 'tpl1',
-    assignmentName = 'Test Sheets Assignment',
-    tasks = {},
-    submissions = [],
-    ...rest
-  } = props;
-
-  const definition = new AssignmentDefinition({
-    primaryTitle: assignmentName,
-    primaryTopic: 'Topic',
-    yearGroup: null,
-    documentType: 'SHEETS',
-    referenceDocumentId,
-    templateDocumentId,
-    tasks,
-    referenceLastModified: '2024-01-01T00:00:00.000Z',
-    templateLastModified: '2024-01-01T00:00:00.000Z',
-  });
-
-  return Assignment.fromJSON({
-    courseId,
-    assignmentId,
-    assignmentName,
-    assignmentDefinition: definition.toJSON(),
-    submissions,
-    ...rest,
-  });
+  const { assignmentName = 'Test Sheets Assignment', ...rest } = props;
+  return createAssignmentWithType('SHEETS', { assignmentName, ...rest });
 }
 
 /**

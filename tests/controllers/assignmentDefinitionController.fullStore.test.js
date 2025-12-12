@@ -5,7 +5,7 @@ import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
 import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
 import SlidesParser from '../../src/AdminSheet/DocumentParsers/SlidesParser.js';
-import { createMockCollection } from '../helpers/mockFactories.js';
+import { setupDualCollectionGetFunction } from '../helpers/mockFactories.js';
 
 vi.mock('../../src/AdminSheet/DbManager/DbManager.js');
 vi.mock('../../src/AdminSheet/GoogleDriveManager/DriveManager.js');
@@ -47,16 +47,16 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockRegistryCollection = createMockCollection(vi);
-    mockFullCollection = createMockCollection(vi);
+    // Use the new helper for dual-collection setup
+    const { getCollectionFn, registryCollection, fullCollection } =
+      setupDualCollectionGetFunction(vi);
+    mockRegistryCollection = registryCollection;
+    mockFullCollection = fullCollection;
 
     mockDbManager = {
-      getCollection: vi.fn((name) => {
-        if (name === 'assignment_definitions') return mockRegistryCollection;
-        if (name.startsWith('assdef_full_')) return mockFullCollection;
-        throw new Error(`Unexpected collection: ${name}`);
-      }),
+      getCollection: getCollectionFn,
     };
+
     DbManager.getInstance.mockReturnValue(mockDbManager);
 
     globalThis.DbManager = DbManager;

@@ -5,6 +5,7 @@ import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
 import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
 import SlidesParser from '../../src/AdminSheet/DocumentParsers/SlidesParser.js';
+import { createMockCollection } from '../helpers/mockFactories.js';
 
 // Mocks
 vi.mock('../../src/AdminSheet/DbManager/DbManager.js');
@@ -29,22 +30,15 @@ vi.mock('../../src/AdminSheet/DocumentParsers/SlidesParser.js', () => {
 describe('AssignmentDefinitionController', () => {
   let controller;
   let mockCollection;
-  let mockDbManager;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup DbManager mock
-    mockCollection = {
-      findOne: vi.fn(),
-      insertOne: vi.fn(),
-      replaceOne: vi.fn(),
-      save: vi.fn(),
-    };
-    mockDbManager = {
+    // Setup DbManager mock using helper
+    mockCollection = createMockCollection(vi);
+    DbManager.getInstance.mockReturnValue({
       getCollection: vi.fn().mockReturnValue(mockCollection),
-    };
-    DbManager.getInstance.mockReturnValue(mockDbManager);
+    });
 
     // Expose mocks to globals to match production usage
     globalThis.DbManager = DbManager;

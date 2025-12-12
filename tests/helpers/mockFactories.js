@@ -204,11 +204,14 @@ function createMockDbManager(vi, mockCollection) {
 }
 
 /**
- * Create a mock collection for database operations
+ * Create a mock collection with configurable behavior for dual-collection patterns
  * @param {Object} vi - Vitest vi object for creating mocks
+ * @param {Object} options - Configuration options
+ * @param {Object} options.overrides - Methods to override on the collection
  * @returns {Object} Mock collection with common database methods
  */
-function createMockCollection(vi) {
+function createMockCollection(vi, options = {}) {
+  const { overrides = {} } = options;
   return {
     findOne: vi.fn(),
     find: vi.fn().mockReturnValue([]),
@@ -218,6 +221,60 @@ function createMockCollection(vi) {
     deleteOne: vi.fn(),
     save: vi.fn(),
     getMetadata: vi.fn().mockReturnValue({}),
+    ...overrides,
+  };
+}
+
+/**
+ * Setup dual-collection getCollection function for AssignmentDefinitionController tests
+ * Returns registry and full storage collections based on collection name
+ * @param {Object} vi - Vitest vi object for creating mocks
+ * @returns {Object} { getCollectionFn, registryCollection, fullCollection }
+ */
+function setupDualCollectionGetFunction(vi) {
+  const registryCollection = createMockCollection(vi);
+  const fullCollection = createMockCollection(vi);
+
+  const getCollectionFn = vi.fn((name) => {
+    if (name === 'assignment_definitions') return registryCollection;
+    if (name.startsWith('assdef_full_')) return fullCollection;
+    throw new Error(`Unexpected collection: ${name}`);
+  });
+
+  return { getCollectionFn, registryCollection, fullCollection };
+}
+
+/**
+ * Create a mock SlidesParser for testing
+ * @param {Object} options - Configuration options
+ * @param {Array} options.taskDefinitions - Array of mock task definitions to return (default: basic mock)
+ * @returns {Object} Mock SlidesParser class
+ */
+function createMockSlidesParser(options = {}) {
+  const defaultTaskDef = {
+    getId: () => 't1',
+    taskTitle: 'Task 1',
+    validate: () => ({ ok: true }),
+    toJSON: () => ({
+      id: 't1',
+      taskTitle: 'Task 1',
+      artifacts: {
+        reference: [
+          { taskId: 't1', role: 'reference', content: 'ref-content', contentHash: 'hash1' },
+        ],
+        template: [
+          { taskId: 't1', role: 'template', content: 'tpl-content', contentHash: 'hash2' },
+        ],
+      },
+    }),
+  };
+
+  const { taskDefinitions = [defaultTaskDef] } = options;
+
+  return class MockSlidesParser {
+    extractTaskDefinitions() {
+      return taskDefinitions;
+    }
   };
 }
 
@@ -346,6 +403,8 @@ module.exports = {
   createMockABLogger,
   createMockDbManager,
   createMockCollection,
+  createMockSlidesParser,
+  setupDualCollectionGetFunction,
   setupGlobalGASMocks,
   setupControllerTestMocks,
   cleanupControllerTestMocks,

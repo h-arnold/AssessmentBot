@@ -304,9 +304,7 @@ class Assignment {
       Object.keys(subObj || {}).forEach((key) => {
         if (key === 'updatedAt' && subObj.updatedAt) {
           submission.updatedAt =
-            subObj.updatedAt instanceof Date
-              ? subObj.updatedAt
-              : new Date(subObj.updatedAt).toISOString();
+            subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
           return;
         }
         submission[key] = subObj[key];
