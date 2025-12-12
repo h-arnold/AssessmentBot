@@ -558,9 +558,9 @@ describe('ConfigurationManager setProperty', () => {
     it('should persist and log when folder created and persistConfigKey provided', () => {
       // Provide a logger
       const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = function () {};
+      const ABLoggerClass = {};
       ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
-      global.ABLogger = ABLoggerClass;
+      globalThis.ABLogger = ABLoggerClass;
 
       // Ensure drive manager returns a parent and creates a folder
       mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
@@ -577,14 +577,14 @@ describe('ConfigurationManager setProperty', () => {
       );
 
       spy.mockRestore();
-      delete global.ABLogger;
+      delete globalThis.ABLogger;
     });
 
     it('should log when folder created without persistConfigKey (no persistence)', () => {
       const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = function () {};
+      const ABLoggerClass = {};
       ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
-      global.ABLogger = ABLoggerClass;
+      globalThis.ABLogger = ABLoggerClass;
 
       mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
       mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-456' });
@@ -600,7 +600,7 @@ describe('ConfigurationManager setProperty', () => {
       );
 
       spy.mockRestore();
-      delete global.ABLogger;
+      delete globalThis.ABLogger;
     });
   });
 

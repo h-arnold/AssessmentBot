@@ -18,7 +18,7 @@ describe('ScriptAppManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.ScriptApp = {
+    globalThis.ScriptApp = {
       getAuthorizationInfo: mockGetAuthorizationInfo,
       getScriptId: mockGetScriptId,
       invalidateAuth: mockInvalidateAuth,
@@ -51,7 +51,7 @@ describe('ScriptAppManager', () => {
 
   afterEach(() => {
     loggerSpy.mockRestore();
-    delete global.ScriptApp;
+    delete globalThis.ScriptApp;
   });
 
   describe('constructor', () => {

@@ -181,6 +181,9 @@ class ABClassController {
     }
 
     try {
+      if (assignment.assignmentDefinition?._hydrationLevel === 'partial') {
+        throw new Error('Cannot persist full assignment with partial assignmentDefinition');
+      }
       // 1. Serialize full assignment and write to dedicated collection
       const collectionName = this._getFullAssignmentCollectionName(
         assignment.courseId,
@@ -264,58 +267,14 @@ class ABClassController {
     const courseId = abClass.classId;
 
     try {
-      // 1. Read full assignment document from dedicated collection
-      const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
-      const fullCollection = this.dbManager.getCollection(collectionName);
+      const doc = this._loadFullAssignmentDocument(courseId, assignmentId);
+      this._validateAssignmentDocument(doc);
 
-      const doc = fullCollection.findOne({ courseId, assignmentId });
-
-      if (!doc) {
-        throw new Error(
-          `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
-        );
-      }
-
-      logger.info('rehydrateAssignment: loading full assignment', {
-        courseId,
-        assignmentId,
-        collectionName,
-      });
-
-      // 2. Validate document has required fields before attempting reconstruction
-      if (!doc.courseId || !doc.assignmentId) {
-        throw new Error(
-          `Corrupt or invalid assignment data in ${collectionName}: missing required fields courseId or assignmentId`
-        );
-      }
-
-      if (!doc.assignmentDefinition) {
-        throw new Error(
-          `Corrupt or invalid assignment data in ${collectionName}: missing required field assignmentDefinition`
-        );
-      }
-
-      // 3. Reconstruct assignment via factory pattern
       const hydratedAssignment = Assignment.fromJSON(doc);
-
-      // 4. Set hydration level marker (transient, not persisted)
+      this._ensureFullDefinition(hydratedAssignment);
       hydratedAssignment._hydrationLevel = 'full';
 
-      // 5. Replace assignment in abClass.assignments by index
-      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
-
-      if (idx >= 0) {
-        abClass.assignments[idx] = hydratedAssignment;
-        logger.info('rehydrateAssignment: replaced assignment in ABClass', {
-          assignmentId,
-          index: idx,
-        });
-      } else {
-        // Assignment ID must exist in the provided ABClass instance — throw a clear error.
-        throw new Error(
-          `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${courseId}'.`
-        );
-      }
+      this._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
 
       return hydratedAssignment;
     } catch (err) {
@@ -325,6 +284,107 @@ class ABClassController {
         err,
       });
       throw err;
+    }
+  }
+
+  /**
+   * Load full assignment document from its dedicated collection.
+   * @param {string} courseId
+   * @param {string} assignmentId
+   * @return {object} Assignment document
+   * @private
+   */
+  _loadFullAssignmentDocument(courseId, assignmentId) {
+    const logger = ABLogger.getInstance();
+    const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
+    const fullCollection = this.dbManager.getCollection(collectionName);
+    const doc = fullCollection.findOne({ courseId, assignmentId });
+
+    if (!doc) {
+      throw new Error(
+        `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
+      );
+    }
+
+    logger.info('rehydrateAssignment: loading full assignment', {
+      courseId,
+      assignmentId,
+      collectionName,
+    });
+
+    return doc;
+  }
+
+  /**
+   * Validate that assignment document has all required fields.
+   * @param {object} doc - Assignment document
+   * @private
+   */
+  _validateAssignmentDocument(doc) {
+    if (!doc.courseId || !doc.assignmentId) {
+      throw new Error(
+        'Corrupt or invalid assignment data: missing required fields courseId or assignmentId'
+      );
+    }
+
+    if (!doc.assignmentDefinition) {
+      throw new Error(
+        'Corrupt or invalid assignment data: missing required field assignmentDefinition'
+      );
+    }
+  }
+
+  /**
+   * Ensure assignment has a full definition, fetching or persisting if needed.
+   * @param {Assignment} assignment
+   * @private
+   */
+  _ensureFullDefinition(assignment) {
+    const definitionKey = assignment.assignmentDefinition?.definitionKey;
+    if (!definitionKey) return;
+
+    const definitionController = new AssignmentDefinitionController();
+    const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
+      form: 'full',
+    });
+
+    if (!storedDefinition || storedDefinition._hydrationLevel === 'partial') {
+      const sourceDefinition = assignment.assignmentDefinition;
+      const definitionInstance =
+        sourceDefinition instanceof AssignmentDefinition
+          ? sourceDefinition
+          : AssignmentDefinition.fromJSON(sourceDefinition);
+
+      // Mark as full hydration using the _hydrationLevel property
+      definitionInstance._hydrationLevel = 'full';
+
+      assignment.assignmentDefinition = definitionController.saveDefinition(definitionInstance);
+    } else {
+      assignment.assignmentDefinition = storedDefinition;
+    }
+  }
+
+  /**
+   * Replace assignment in ABClass assignments array.
+   * @param {ABClass} abClass
+   * @param {string} assignmentId
+   * @param {Assignment} hydratedAssignment
+   * @private
+   */
+  _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
+    const logger = ABLogger.getInstance();
+    const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+
+    if (idx >= 0) {
+      abClass.assignments[idx] = hydratedAssignment;
+      logger.info('rehydrateAssignment: replaced assignment in ABClass', {
+        assignmentId,
+        index: idx,
+      });
+    } else {
+      throw new Error(
+        `Assignment with ID '${assignmentId}' not found in the provided ABClass instance for course '${abClass.classId}'.`
+      );
     }
   }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
 // Import the setupGlobals to ensure global mocks are available
-if (!global.Utils || !global.Utilities) {
+if (!globalThis.Utils || !globalThis.Utilities) {
   throw new Error('Global Utils/Utilities expected from setupGlobals.js');
 }
 
@@ -11,7 +11,7 @@ describe('ClassroomManager', () => {
 
   beforeAll(() => {
     // Mock the global Classroom API for testing
-    global.Classroom = {
+    globalThis.Classroom = {
       Courses: {
         Students: {
           list: (courseId, params) => {
@@ -45,7 +45,7 @@ describe('ClassroomManager', () => {
     // Load the Student class first
     const StudentExport = require('../../src/AdminSheet/Models/Student.js');
     Student = StudentExport.Student || StudentExport;
-    global.Student = Student;
+    globalThis.Student = Student;
 
     // Load the ClassroomApiClient class (merged implementation)
     const ClassroomApiClientExport = require('../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js');
@@ -74,7 +74,7 @@ describe('ClassroomManager', () => {
 
   it('fetchAllStudents should handle empty course gracefully', () => {
     // Mock empty response
-    global.Classroom.Courses.Students.list = () => ({
+    globalThis.Classroom.Courses.Students.list = () => ({
       students: [],
       nextPageToken: null,
     });

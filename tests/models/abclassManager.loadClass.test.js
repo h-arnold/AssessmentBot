@@ -12,16 +12,16 @@ describe('ABClassController.loadClass', () => {
   let dbManagerMock;
 
   beforeEach(() => {
-    global.ABClass = ABClass;
-    global.Student = Student;
-    global.Teacher = Teacher;
+    globalThis.ABClass = ABClass;
+    globalThis.Student = Student;
+    globalThis.Teacher = Teacher;
 
     const loggerInstance = {
       warn: vi.fn(),
       error: vi.fn(),
       info: vi.fn(),
     };
-    global.ABLogger = { getInstance: () => loggerInstance };
+    globalThis.ABLogger = { getInstance: () => loggerInstance };
 
     collectionMock = {
       findOne: vi.fn(),
@@ -36,9 +36,9 @@ describe('ABClassController.loadClass', () => {
       getCollection: vi.fn().mockReturnValue(collectionMock),
     };
 
-    global.DbManager = { getInstance: () => dbManagerMock };
+    globalThis.DbManager = { getInstance: () => dbManagerMock };
 
-    global.ClassroomApiClient = {
+    globalThis.ClassroomApiClient = {
       fetchCourseUpdateTime: vi.fn(),
       fetchCourse: vi.fn(),
       fetchTeachers: vi.fn(),
@@ -53,12 +53,12 @@ describe('ABClassController.loadClass', () => {
   });
 
   afterEach(() => {
-    delete global.ABClass;
-    delete global.Student;
-    delete global.Teacher;
-    delete global.ABLogger;
-    delete global.DbManager;
-    delete global.ClassroomApiClient;
+    delete globalThis.ABClass;
+    delete globalThis.Student;
+    delete globalThis.Teacher;
+    delete globalThis.ABLogger;
+    delete globalThis.DbManager;
+    delete globalThis.ClassroomApiClient;
     delete require.cache[
       require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
     ];

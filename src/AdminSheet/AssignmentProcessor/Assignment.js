@@ -115,7 +115,7 @@ class Assignment {
         else if (sub.updatedAt) out.updatedAt = sub.updatedAt;
         // copy any other enumerable properties (non-enumerable like methods are ignored)
         Object.keys(sub).forEach((k) => {
-          if (!Object.prototype.hasOwnProperty.call(out, k)) out[k] = sub[k];
+          if (!Object.hasOwn(out, k)) out[k] = sub[k];
         });
       }
       return out;

@@ -138,7 +138,7 @@ function createMockPropertiesCloner(vi) {
 
 /**
  * Create a mock ClassroomApiClient for testing
- * This mock wraps the global.Classroom API and converts responses to model instances.
+ * This mock wraps the globalThis.Classroom API and converts responses to model instances.
  * Requires Teacher and Student constructors to be available globally.
  * @returns {Object} Mock ClassroomApiClient class with static methods
  */
@@ -306,6 +306,14 @@ function setupControllerTestMocks(vi) {
   };
   globalThis.ConfigurationManager = ConfigManagerClass;
 
+  // Mock AssignmentDefinitionController
+  class AssignmentDefinitionControllerClass {
+    ensureDefinition = vi.fn();
+    getDefinitionByKey = vi.fn();
+    saveDefinition = vi.fn();
+  }
+  globalThis.AssignmentDefinitionController = AssignmentDefinitionControllerClass;
+
   return {
     mockDbManager,
     mockCollection,
@@ -323,6 +331,7 @@ function cleanupControllerTestMocks() {
   delete globalThis.ABLogger;
   delete globalThis.ProgressTracker;
   delete globalThis.ConfigurationManager;
+  delete globalThis.AssignmentDefinitionController;
 }
 
 module.exports = {

@@ -2,7 +2,8 @@ class AssignmentDefinitionController {
   constructor() {
     this.dbManager = DbManager.getInstance();
     this.progressTracker = ProgressTracker.getInstance();
-    this.collectionName = 'assignment_definitions';
+    this.registryCollectionName = 'assignment_definitions';
+    this.fullCollectionPrefix = 'assdef_full_';
   }
 
   /**
@@ -47,8 +48,10 @@ class AssignmentDefinitionController {
 
     let canonicalTopic = this._resolveTopicName({ primaryTopic, topicId, courseId });
     if (!canonicalTopic) {
-      // Fall back to primaryTitle where no topic is present; AssignmentDefinition requires a non-null topic.
-      canonicalTopic = primaryTitle;
+      this.progressTracker.logAndThrowError(
+        'Cannot create assignment definition: topic name is required but could not be resolved.',
+        { primaryTitle, primaryTopic, topicId, courseId }
+      );
     }
     const definitionKey = AssignmentDefinition.buildDefinitionKey({
       primaryTitle,
@@ -59,7 +62,7 @@ class AssignmentDefinitionController {
     const referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
     const templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
 
-    let definition = this.getDefinitionByKey(definitionKey);
+    let definition = this.getDefinitionByKey(definitionKey, { form: 'full' });
 
     const needsRefresh = Utils.definitionNeedsRefresh(
       definition,
@@ -89,17 +92,6 @@ class AssignmentDefinitionController {
         referenceLastModified,
         templateLastModified,
       });
-
-      this.saveDefinition(definition);
-      return definition;
-    }
-
-    // Ensure persisted metadata stays aligned when timestamps were absent but no refresh required
-    if (!definition.referenceLastModified || !definition.templateLastModified) {
-      definition.updateModifiedTimestamps({
-        referenceLastModified,
-        templateLastModified,
-      });
       this.saveDefinition(definition);
     }
 
@@ -109,13 +101,25 @@ class AssignmentDefinitionController {
   /**
    * Retrieve a definition by its composite key.
    * @param {string} definitionKey
+   * @param {Object} [options]
+   * @param {'full'|'partial'} [options.form='full'] - Which store to query.
    * @return {AssignmentDefinition|null}
    */
-  getDefinitionByKey(definitionKey) {
-    const collection = this._getCollection();
-    const doc = collection.findOne({ definitionKey }) || null;
-    if (!doc) return null;
-    return AssignmentDefinition.fromJSON(doc);
+  getDefinitionByKey(definitionKey, options = {}) {
+    const { form = 'full' } = options;
+    if (!definitionKey) return null;
+
+    if (form === 'partial') {
+      const registry = this._getRegistryCollection();
+      const doc = registry.findOne({ definitionKey }) || null;
+      if (!doc) return null;
+      return AssignmentDefinition.fromJSON(doc);
+    }
+
+    const fullCollection = this._getFullCollection(definitionKey);
+    const fullDoc = fullCollection.findOne({ definitionKey }) || null;
+    if (!fullDoc) return null;
+    return AssignmentDefinition.fromJSON(fullDoc);
   }
 
   /**
@@ -129,8 +133,31 @@ class AssignmentDefinitionController {
         ? definition
         : new AssignmentDefinition(definition);
     defInstance.touchUpdated();
-    const payload = defInstance.toJSON();
-    const collection = this._getCollection();
+    const fullPayload = defInstance.toJSON();
+    const fullCollection = this._getFullCollection(defInstance.definitionKey);
+    const filter = { definitionKey: defInstance.definitionKey };
+    const existingFull = fullCollection.findOne(filter);
+
+    if (existingFull) {
+      fullCollection.replaceOne(filter, fullPayload);
+    } else {
+      fullCollection.insertOne(fullPayload);
+    }
+
+    fullCollection.save();
+
+    this.savePartialDefinition(defInstance);
+
+    return AssignmentDefinition.fromJSON(fullPayload);
+  }
+
+  savePartialDefinition(definition) {
+    const defInstance =
+      definition instanceof AssignmentDefinition
+        ? definition
+        : new AssignmentDefinition(definition);
+    const payload = defInstance.toPartialJSON();
+    const collection = this._getRegistryCollection();
     const filter = { definitionKey: defInstance.definitionKey };
     const existing = collection.findOne(filter);
 
@@ -144,8 +171,17 @@ class AssignmentDefinitionController {
     return AssignmentDefinition.fromJSON(payload);
   }
 
-  _getCollection() {
-    return this.dbManager.getCollection(this.collectionName);
+  _getRegistryCollection() {
+    return this.dbManager.getCollection(this.registryCollectionName);
+  }
+
+  _getFullCollectionName(definitionKey) {
+    return `${this.fullCollectionPrefix}${definitionKey}`;
+  }
+
+  _getFullCollection(definitionKey) {
+    const name = this._getFullCollectionName(definitionKey);
+    return this.dbManager.getCollection(name);
   }
 
   _resolveTopicName({ primaryTopic, topicId, courseId }) {

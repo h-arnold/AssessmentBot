@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-if (!global.ProgressTracker) {
+if (!globalThis.ProgressTracker) {
   throw new Error('ProgressTracker mock expected from setupGlobals.js');
 }
 
@@ -15,10 +15,10 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
       error: vi.fn(),
     };
     const getInstanceSpy = vi.fn(() => abLoggerInstance);
-    global.ABLogger = { getInstance: getInstanceSpy };
+    globalThis.ABLogger = { getInstance: getInstanceSpy };
     abLoggerErrorSpy = abLoggerInstance.error;
 
-    global.Classroom = {
+    globalThis.Classroom = {
       Courses: {
         get: vi.fn(),
       },
@@ -30,14 +30,14 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   });
 
   afterEach(() => {
-    delete global.Classroom;
-    delete global.ABLogger;
+    delete globalThis.Classroom;
+    delete globalThis.ABLogger;
     vi.restoreAllMocks();
   });
 
   it('returns a Date when updateTime is present and valid', () => {
     const updateTime = '2023-10-01T12:30:45.123Z';
-    global.Classroom.Courses.get.mockReturnValue({ updateTime });
+    globalThis.Classroom.Courses.get.mockReturnValue({ updateTime });
 
     const result = ClassroomApiClient.fetchCourseUpdateTime('course-123');
 
@@ -47,7 +47,7 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   });
 
   it('returns null and logs error when updateTime is missing', () => {
-    global.Classroom.Courses.get.mockReturnValue({});
+    globalThis.Classroom.Courses.get.mockReturnValue({});
 
     const result = ClassroomApiClient.fetchCourseUpdateTime('course-456');
 
@@ -60,7 +60,7 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
 
   it('returns null and logs error when updateTime is invalid', () => {
     const invalidTimestamp = 'not-a-valid-timestamp';
-    global.Classroom.Courses.get.mockReturnValue({ updateTime: invalidTimestamp });
+    globalThis.Classroom.Courses.get.mockReturnValue({ updateTime: invalidTimestamp });
 
     const result = ClassroomApiClient.fetchCourseUpdateTime('course-789');
 
@@ -74,7 +74,7 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
 
   it('returns null and logs error when Classroom API throws', () => {
     const apiError = new Error('API failure');
-    global.Classroom.Courses.get.mockImplementation(() => {
+    globalThis.Classroom.Courses.get.mockImplementation(() => {
       throw apiError;
     });
 

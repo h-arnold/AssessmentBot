@@ -46,7 +46,7 @@
         const select = document.getElementById('assignments');
         const assignmentId = select.value;
         const selectedOption = select.options[select.selectedIndex];
-        const assignmentName = selectedOption.getAttribute('data-name');
+        const assignmentName = selectedOption.dataset.name;
 
         const assignmentData = JSON.stringify({
           id: assignmentId,

@@ -154,13 +154,7 @@
             // Close modal now that the server acknowledged the request.
             google.script.host.close();
           })
-          .saveStartAndShowProgress(
-            assignmentTitle,
-            documentIds,
-            assignmentId,
-            referenceDocumentId,
-            templateDocumentId
-          );
+          .saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
       }
 
       document.addEventListener('DOMContentLoaded', function() {

@@ -18,18 +18,14 @@ describe('ABClassController.saveClass', () => {
     };
 
     // Inject mock DbManager instance
-    global.DbManager = { getInstance: () => dbManagerMock };
+    globalThis.DbManager = { getInstance: () => dbManagerMock };
     // Now construct manager which will call DbManager.getInstance()
     manager = new ABClassController();
   });
 
   afterEach(() => {
     // Clean up global to avoid cross-test pollution
-    try {
-      delete global.DbManager;
-    } catch (e) {
-      global.DbManager = undefined;
-    }
+    delete globalThis.DbManager;
   });
 
   test('calls replaceOne when a document exists', () => {

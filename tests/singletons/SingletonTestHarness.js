@@ -72,14 +72,14 @@ class SingletonTestHarness {
    * Setup GAS globals with mocks for testing
    */
   setupGASMocks() {
-    global.PropertiesService = gasMocks.PropertiesService;
-    global.SpreadsheetApp = gasMocks.SpreadsheetApp;
-    global.HtmlService = gasMocks.HtmlService;
-    global.DriveApp = gasMocks.DriveApp;
-    global.GoogleClassroomManager = gasMocks.GoogleClassroomManager;
-    global.PropertiesCloner = gasMocks.PropertiesCloner;
-    if (!global.Utils && gasMocks.Utils) {
-      global.Utils = gasMocks.Utils;
+    globalThis.PropertiesService = gasMocks.PropertiesService;
+    globalThis.SpreadsheetApp = gasMocks.SpreadsheetApp;
+    globalThis.HtmlService = gasMocks.HtmlService;
+    globalThis.DriveApp = gasMocks.DriveApp;
+    globalThis.GoogleClassroomManager = gasMocks.GoogleClassroomManager;
+    globalThis.PropertiesCloner = gasMocks.PropertiesCloner;
+    if (!globalThis.Utils && gasMocks.Utils) {
+      globalThis.Utils = gasMocks.Utils;
     }
   }
 
