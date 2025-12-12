@@ -1,8 +1,4 @@
 // UIManager.gs
-// Ensure ABLogger is available in Node test environment
-if (typeof ABLogger === 'undefined' && typeof require === 'function') {
-  globalThis.ABLogger = require('../Utils/ABLogger.js');
-}
 /**
  * @class UIManager
  * @description Manages the user interface operations in Google Apps Script environment with robust error handling and context-aware UI operations.
