@@ -1271,7 +1271,7 @@ AssignmentController.startProcessing()
 ProgressTracker.startTracking()
 UIManager.showProgressModal()
   ↓
-[1 second delay - trigger fires]
+[5 second delay - trigger fires]
   ↓
 triggerProcessSelectedAssignment() [trigger → globals]
   ↓
