@@ -48,7 +48,7 @@
 
 4. **Run orchestration uses full definitions**
    - In AssignmentController.processSelectedAssignment/runAssignmentPipeline, fetch the full definition from assdef*full*<definitionKey> before staleness checks, then refresh/parse as needed and persist both stores. Ensure startProcessing/saveStartAndShowProgress only store the definitionKey (no doc IDs).
-   - Files: src/AdminSheet/y_controllers/AssignmentController.js, related globals/menus wrappers in src/AdminSheet/AssignmentProcessor/globals.js and src/AssessmentRecordTemplate/menus/_.js, tests/controllers/assignmentController_.test.js.
+   - Files: src/AdminSheet/y*controllers/AssignmentController.js, related globals/menus wrappers in src/AdminSheet/AssignmentProcessor/globals.js and src/AssessmentRecordTemplate/menus/*.js, tests/controllers/assignmentController\_.test.js.
 
 5. **ABClass persistence hooks**
    - Keep ABClass partial assignments embedding partial definitions; when rehydrating, pull the full definition from its dedicated collection so downstream runs always have content.
@@ -66,14 +66,51 @@
    - Keep DATA_SHAPES and ASSIGNMENT_METADATA_SPEC aligned with the new dual-store pattern; add regression tests to confirm full definitions are written/read and partial embeddings stay redacted.
    - Files: docs/developer/DATA_SHAPES.md, ASSIGNMENT_METADATA_SPEC.md, relevant Vitest suites under tests/.
 
-9. **Tests to Add / Update / Remove**
-   - Update: `tests/controllers/assignmentDefinitionController.test.js` — Adjust for dual-store writes (partial registry + `assdef_full_<definitionKey>`), ensure `ensureDefinition` reads full store for runs and writes both stores on refresh.
-   - Update: `tests/models/assignmentDefinition.test.js` — Add assertions for `toJSON` vs `toPartialJSON` (full contains artifacts, partial redacts); add helper to assert full vs partial hydration behaviours.
-   - Update: `tests/assignment/assignmentFactory.test.js` — Ensure factory/fromJSON uses embedded partial definitions for ABClass, and assignment runs fetch full definition from `assdef_full_*` when present.
-   - Update: `tests/controllers/abclassController.persistAssignment.test.js` — Verify ABClass persists partial definitions while full definitions remain in dedicated full-definition collections; check rehydrate uses full store.
-   - Update: `tests/controllers/abclassController.rehydrateAssignment.test.js` — Confirm rehydrate pulls full definition from `assdef_full_<definitionKey>`.
-   - Update: `tests/ui/slideIdsModal.test.js` and any UI tests — Expect saveStartAndShowProgress call to use returned `definitionKey`, not raw document ids; update mocks accordingly.
-   - Add: `tests/controllers/assignmentDefinitionController.fullStore.test.js` — Assure named full-definition collection write/read semantics and that parsing persists full payload.
-   - Add: `tests/controllers/assignmentController.hydration.test.js` — Confirm `processSelectedAssignment` fetches full definition synchronously and uses it for parsing/processing.
-   - Add: `tests/googleDriveManager/driveManager.definitionRefresh.test.js` — Integration between `DriveManager.getFileModifiedTime` and definition refresh logic.
-   - No tests currently require removal: existing suites should be updated to reflect the new dual-store behaviour rather than deleted.
+## Test Coverage Requirements
+
+### Tests Updated
+
+- ✅ `tests/controllers/assignmentDefinitionController.test.js` — Validates dual-store writes, ensureDefinition refresh logic, topic resolution
+- ✅ `tests/models/assignmentDefinition.test.js` — Validates toJSON vs toPartialJSON redaction, serialization/deserialization
+
+### Tests to Update
+
+- ⏳ `tests/assignment/assignmentFactory.test.js` — Ensure factory/fromJSON uses embedded partial definitions for ABClass, and assignment runs fetch full definition from `assdef_full_*` when present.
+- ⏳ `tests/controllers/abclassController.persistAssignment.test.js` — Verify ABClass persists partial definitions while full definitions remain in dedicated full-definition collections; check rehydrate uses full store.
+- ⏳ `tests/controllers/abclassController.rehydrateAssignment.test.js` — Confirm rehydrate pulls full definition from `assdef_full_<definitionKey>`.
+- ⏳ `tests/ui/slideIdsModal.test.js` — Expect saveStartAndShowProgress call to use returned `definitionKey`, not raw document ids; update mocks accordingly.
+
+### Tests to Add
+
+- ⏳ `tests/controllers/assignmentDefinitionController.fullStore.test.js` — Assure named full-definition collection write/read semantics and that parsing persists full payload.
+- ⏳ `tests/controllers/assignmentController.hydration.test.js` — Confirm `processSelectedAssignment` fetches full definition synchronously and uses it for parsing/processing.
+- ⏳ `tests/googleDriveManager/driveManager.definitionRefresh.test.js` — Integration between `DriveManager.getFileModifiedTime` and definition refresh logic.
+
+### Tests Removed
+
+- None: existing suites updated to reflect new dual-store behaviour.
+
+## Technical Notes
+
+### Key Implementation Decisions
+
+1. **No runtime hydration tracking:** Removed complex three-state hydration machinery in favor of structural serialization (toJSON vs toPartialJSON)
+2. **Single DB query in ensureDefinition:** Fetches only full definition; partial registry updated via saveDefinition
+3. **Fail-fast on missing topics:** No silent fallbacks; surface errors via ProgressTracker for teacher intervention
+4. **Utils.definitionNeedsRefresh:** Checks for empty tasks, missing timestamps, or newer Drive file modifications
+
+### Integration Points
+
+- `DriveManager.getFileModifiedTime()` provides timestamps for staleness detection
+- `ClassroomApiClient.fetchTopicName()` enriches topic metadata when only topicId available
+- `SlidesParser`/`SheetsParser` extract TaskDefinitions during refresh
+- `Utils.definitionNeedsRefresh()` centralizes staleness logic
+
+### Data Flow
+
+1. Controller calls `ensureDefinition()` with doc IDs and metadata
+2. Controller generates definitionKey via `AssignmentDefinition.buildDefinitionKey()`
+3. Fetch full definition from `assdef_full_<definitionKey>`
+4. Compare Drive timestamps; re-parse if stale
+5. Save to both full collection and partial registry
+6. Return full AssignmentDefinition instance to caller
