@@ -334,7 +334,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
    - Deletes the trigger that launched this execution
    - Uses `TriggerController.deleteTriggerById(triggerId)`
 
-3. **Progress Initialization** (lines 163-164)
+3. **Progress Initialisation** (lines 163-164)
    - Starts progress tracking
    - Updates progress: "Assessment run starting."
 
