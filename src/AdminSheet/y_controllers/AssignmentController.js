@@ -190,7 +190,7 @@ class AssignmentController {
       }
 
       const definitionController = new AssignmentDefinitionController();
-      const definition = definitionController.getDefinitionByKey(definitionKey);
+      const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
       if (!definition) {
         this.progressTracker.logAndThrowError(
           `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
@@ -288,6 +288,9 @@ class AssignmentController {
         'Getting the tasks from the reference document.',
         () => {
           assignment.populateTasks();
+          if (typeof definition.markAsFullHydration === 'function') {
+            definition.markAsFullHydration();
+          }
           definition.updateModifiedTimestamps({
             referenceLastModified: referenceModified,
             templateLastModified: templateModified,

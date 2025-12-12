@@ -306,6 +306,16 @@ function setupControllerTestMocks(vi) {
   };
   globalThis.ConfigurationManager = ConfigManagerClass;
 
+  // Mock AssignmentDefinitionController
+  const AssignmentDefinitionControllerClass = class AssignmentDefinitionControllerClass {
+    constructor() {
+      this.ensureDefinition = vi.fn();
+      this.getDefinitionByKey = vi.fn();
+      this.saveDefinition = vi.fn();
+    }
+  };
+  globalThis.AssignmentDefinitionController = AssignmentDefinitionControllerClass;
+
   return {
     mockDbManager,
     mockCollection,
@@ -323,6 +333,7 @@ function cleanupControllerTestMocks() {
   delete globalThis.ABLogger;
   delete globalThis.ProgressTracker;
   delete globalThis.ConfigurationManager;
+  delete globalThis.AssignmentDefinitionController;
 }
 
 module.exports = {

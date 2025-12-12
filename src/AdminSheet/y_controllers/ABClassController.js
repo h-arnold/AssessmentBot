@@ -181,6 +181,9 @@ class ABClassController {
     }
 
     try {
+      if (assignment.assignmentDefinition?.isPartialHydration?.()) {
+        throw new Error('Cannot persist full assignment with partial assignmentDefinition');
+      }
       // 1. Serialize full assignment and write to dedicated collection
       const collectionName = this._getFullAssignmentCollectionName(
         assignment.courseId,
@@ -297,6 +300,31 @@ class ABClassController {
 
       // 3. Reconstruct assignment via factory pattern
       const hydratedAssignment = Assignment.fromJSON(doc);
+
+      const definitionKey = hydratedAssignment.assignmentDefinition?.definitionKey;
+      if (definitionKey) {
+        const definitionController = new AssignmentDefinitionController();
+        const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
+          form: 'full',
+        });
+
+        if (!storedDefinition || storedDefinition.isPartialHydration?.()) {
+          const sourceDefinition = hydratedAssignment.assignmentDefinition;
+          const definitionInstance =
+            sourceDefinition instanceof AssignmentDefinition
+              ? sourceDefinition
+              : AssignmentDefinition.fromJSON(sourceDefinition);
+
+          if (definitionInstance.markAsFullHydration) {
+            definitionInstance.markAsFullHydration();
+          }
+
+          const persistedDefinition = definitionController.saveDefinition(definitionInstance);
+          hydratedAssignment.assignmentDefinition = persistedDefinition;
+        } else {
+          hydratedAssignment.assignmentDefinition = storedDefinition;
+        }
+      }
 
       // 4. Set hydration level marker (transient, not persisted)
       hydratedAssignment._hydrationLevel = 'full';

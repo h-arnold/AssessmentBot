@@ -36,7 +36,6 @@ class AssignmentDefinition {
     createdAt = null,
     updatedAt = null,
     definitionKey = null,
-    hydrationLevel = 'full',
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
@@ -49,12 +48,10 @@ class AssignmentDefinition {
     this.referenceLastModified = referenceLastModified;
     this.templateLastModified = templateLastModified;
     this.assignmentWeighting = assignmentWeighting ?? null;
-    this.tasks = {};
     this.definitionKey = definitionKey;
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
 
-    this._setHydrationLevel(hydrationLevel);
     this._validate();
     this._hydrateTasks(tasks);
 
@@ -65,16 +62,6 @@ class AssignmentDefinition {
         yearGroup: this.yearGroup,
       });
     }
-  }
-
-  _setHydrationLevel(level) {
-    const normalised = level || 'full';
-    if (normalised !== 'full' && normalised !== 'partial') {
-      ProgressTracker.getInstance().logAndThrowError('Invalid hydration level for definition', {
-        hydrationLevel: normalised,
-      });
-    }
-    this._hydrationLevel = normalised;
   }
 
   /**
@@ -125,40 +112,17 @@ class AssignmentDefinition {
   }
 
   _hydrateTasks(tasks) {
-    if (!tasks || typeof tasks !== 'object') {
-      this.tasks = {};
-      return;
-    }
     this.tasks = Object.fromEntries(
       Object.entries(tasks).map(([taskId, task]) => {
-        if (task instanceof TaskDefinition) return [taskId, task];
-        try {
-          return [taskId, TaskDefinition.fromJSON(task)];
-        } catch (error) {
-          ABLogger.getInstance().warn('Failed to hydrate TaskDefinition from JSON', {
-            taskId,
-            err: error,
-          });
+        if (task instanceof TaskDefinition) {
           return [taskId, task];
         }
+        if (task.taskTitle) {
+          return [taskId, TaskDefinition.fromJSON(task)];
+        }
+        return [taskId, task];
       })
     );
-  }
-
-  getHydrationLevel() {
-    return this._hydrationLevel || 'full';
-  }
-
-  isPartialHydration() {
-    return this.getHydrationLevel() === 'partial';
-  }
-
-  isFullHydration() {
-    return this.getHydrationLevel() === 'full';
-  }
-
-  markAsFullHydration() {
-    this._hydrationLevel = 'full';
   }
 
   /**
@@ -219,9 +183,12 @@ class AssignmentDefinition {
   toPartialJSON() {
     const partialTasks = Object.fromEntries(
       Object.entries(this.tasks).map(([taskId, task]) => {
-        if (task && typeof task.toPartialJSON === 'function') return [taskId, task.toPartialJSON()];
-        if (task && typeof task.toJSON === 'function')
+        if (task.toPartialJSON) {
+          return [taskId, task.toPartialJSON()];
+        }
+        if (task.toJSON) {
           return [taskId, AssignmentDefinition._redactTask(task.toJSON())];
+        }
         return [taskId, AssignmentDefinition._redactTask(task)];
       })
     );
@@ -246,12 +213,10 @@ class AssignmentDefinition {
   }
 
   static _redactArtifact(artifact) {
-    if (!artifact || typeof artifact !== 'object') return artifact;
     return { ...artifact, content: null, contentHash: null };
   }
 
   static _redactTask(task) {
-    if (!task || typeof task !== 'object') return {};
     const artifacts = task.artifacts || {};
     return {
       ...task,
@@ -264,10 +229,10 @@ class AssignmentDefinition {
   }
 
   static fromJSON(json) {
-    if (!json || typeof json !== 'object') {
+    if (!json) {
       throw new Error('Invalid data for AssignmentDefinition.fromJSON');
     }
-    const inst = new AssignmentDefinition({
+    return new AssignmentDefinition({
       primaryTitle: json.primaryTitle,
       primaryTopic: json.primaryTopic,
       yearGroup: json.yearGroup ?? null,
@@ -284,7 +249,6 @@ class AssignmentDefinition {
       updatedAt: json.updatedAt || null,
       definitionKey: json.definitionKey || null,
     });
-    return inst;
   }
 }
 

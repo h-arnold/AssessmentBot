@@ -214,7 +214,7 @@ class Utils {
    * @return {boolean} True if refresh is needed.
    */
   static definitionNeedsRefresh(definition, referenceModified, templateModified) {
-    if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
+    if (!definition || !definition.tasks || Object.keys(definition.tasks).length === 0) {
       return true;
     }
     if (!definition.referenceLastModified || !definition.templateLastModified) {

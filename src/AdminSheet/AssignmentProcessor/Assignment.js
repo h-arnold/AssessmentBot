@@ -98,7 +98,7 @@ class Assignment {
    */
   toJSON() {
     const definitionJson = this.assignmentDefinition?.toJSON
-      ? this.assignmentDefinition.toJSON()
+      ? this.assignmentDefinition.toJSON({ requireFull: this._hydrationLevel === 'full' })
       : this.assignmentDefinition;
 
     const submissions = (this.submissions || []).map((sub) => {
