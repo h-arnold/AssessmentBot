@@ -36,7 +36,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
         ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
         if (ConfigurationManager.default) ConfigurationManager = ConfigurationManager.default;
         // Expose class globally to mimic Apps Script runtime
-        global.ConfigurationManager = ConfigurationManager;
+        globalThis.ConfigurationManager = ConfigurationManager;
       } catch (e) {
         console.warn('Could not load ConfigurationManager:', e.message);
       }
@@ -77,7 +77,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
         if (config) {
           // Call multiple getters
           config.getApiKey(); // first access triggers initialization
-          const callsAfterFirst = global.PropertiesService._calls.length;
+          const callsAfterFirst = globalThis.PropertiesService._calls.length;
           config.getBackendUrl();
           config.getSlidesFetchBatchSize();
 
@@ -89,9 +89,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           expect(typeof accessed).toBe('boolean');
 
           // Should not re-initialize on subsequent calls
-          const callsBeforeRepeat = global.PropertiesService._calls.length;
+          const callsBeforeRepeat = globalThis.PropertiesService._calls.length;
           config.getApiKey(); // repeat
-          const callsAfterRepeat = global.PropertiesService._calls.length;
+          const callsAfterRepeat = globalThis.PropertiesService._calls.length;
           expect(callsAfterRepeat).toBeLessThanOrEqual(callsBeforeRepeat + 1);
         }
       });
@@ -102,7 +102,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
     test('should not instantiate UIManager until UI method invoked (lazy)', async () => {
       await harness.withFreshSingletons(() => {
         // Mock UIManager for this test
-        global.UIManager = {
+        globalThis.UIManager = {
           getInstance: () => ({
             createAuthorisedMenu: () => harness.trackConstructorCall('UIManagerMenuCreate'),
             createAssessmentRecordMenu: () => harness.trackConstructorCall('UIManagerMenuCreate'),
@@ -112,8 +112,8 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
         };
 
         // Provide configurationManager global via new pattern
-        // No longer needed: global.configurationManager. Ensure class exists globally instead.
-        global.ConfigurationManager = ConfigurationManager;
+        // No longer needed: globalThis.configurationManager. Ensure class exists globally instead.
+        globalThis.ConfigurationManager = ConfigurationManager;
         // Import InitController after setting up UIManager mock
         let InitController;
         try {
@@ -202,9 +202,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           return;
         }
         ProgressTracker.getInstance();
-        const callsAfterFirst = global.PropertiesService._calls.length;
+        const callsAfterFirst = globalThis.PropertiesService._calls.length;
         ProgressTracker.getInstance();
-        const callsAfterSecond = global.PropertiesService._calls.length;
+        const callsAfterSecond = globalThis.PropertiesService._calls.length;
         expect(callsAfterSecond).toBe(callsAfterFirst); // no extra doc properties fetch expected
       });
     });
@@ -276,21 +276,21 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     harness.setupGASMocks();
 
     // Test PropertiesService mock
-    expect(global.PropertiesService).toBeDefined();
-    const scriptProps = global.PropertiesService.getScriptProperties();
+    expect(globalThis.PropertiesService).toBeDefined();
+    const scriptProps = globalThis.PropertiesService.getScriptProperties();
     expect(scriptProps).toBeDefined();
     expect(typeof scriptProps.getProperty).toBe('function');
 
     // Test SpreadsheetApp mock
-    expect(global.SpreadsheetApp).toBeDefined();
-    const ui = global.SpreadsheetApp.getUi();
+    expect(globalThis.SpreadsheetApp).toBeDefined();
+    const ui = globalThis.SpreadsheetApp.getUi();
     expect(ui).toBeDefined();
     expect(typeof ui.createMenu).toBe('function');
 
     // Test GoogleClassroomManager mock
-    expect(global.GoogleClassroomManager).toBeDefined();
+    expect(globalThis.GoogleClassroomManager).toBeDefined();
     // Use the created instance to avoid linter warning about unused instantiation
-    const classroomManager = new global.GoogleClassroomManager();
+    const classroomManager = new globalThis.GoogleClassroomManager();
     expect(classroomManager._instanceId).toBeDefined();
     expect(harness.getClassroomManagerInstanceCount()).toBe(1);
   });
@@ -300,9 +300,9 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     harness.resetMockCalls();
 
     // Make some calls
-    global.PropertiesService.getScriptProperties();
-    global.SpreadsheetApp.getUi();
-    const classroomManager2 = new global.GoogleClassroomManager();
+    globalThis.PropertiesService.getScriptProperties();
+    globalThis.SpreadsheetApp.getUi();
+    const classroomManager2 = new globalThis.GoogleClassroomManager();
     expect(classroomManager2._instanceId).toBeDefined();
 
     // Verify tracking

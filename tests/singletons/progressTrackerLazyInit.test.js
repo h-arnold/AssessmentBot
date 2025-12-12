@@ -19,7 +19,7 @@ const mockDeleteProperty = _vi.fn();
 
 beforeEach(() => {
   ProgressTracker.resetForTests();
-  global.PropertiesService = {
+  globalThis.PropertiesService = {
     getDocumentProperties: _vi.fn(() => ({
       setProperty: mockSetProperty,
       getProperty: mockGetProperty,
@@ -27,10 +27,10 @@ beforeEach(() => {
     })),
   };
   // Minimal ConfigurationManager mock used by ProgressTracker.complete()
-  global.ConfigurationManager = {
+  globalThis.ConfigurationManager = {
     getInstance: () => ({ getIsAdminSheet: () => false }),
   };
-  global.PropertiesCloner = function () {
+  globalThis.PropertiesCloner = function () {
     return { serialiseProperties: () => {} };
   };
   mockSetProperty.mockReset();
@@ -40,13 +40,13 @@ beforeEach(() => {
 
 describe('ProgressTracker lazy initialization', () => {
   test('does not touch PropertiesService until first method requiring it', () => {
-    expect(global.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
+    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
     const pt = ProgressTracker.getInstance();
     // Still should not have initialised
-    expect(global.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
+    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(0);
     // Trigger init
     pt.startTracking();
-    expect(global.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
   });
 
   test('ensureInitialized called only once across multiple operations', () => {
@@ -55,6 +55,6 @@ describe('ProgressTracker lazy initialization', () => {
     pt.updateProgress('Step 1');
     pt.updateProgress('Step 2');
     pt.complete();
-    expect(global.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+    expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
   });
 });

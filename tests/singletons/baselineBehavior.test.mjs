@@ -73,9 +73,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           expect(propertiesCalls).toBe(true);
 
           // Should not re-initialize on subsequent calls
-          const callsBefore = global.PropertiesService._calls.length;
+          const callsBefore = globalThis.PropertiesService._calls.length;
           config.getApiKey(); // Call again
-          const callsAfter = global.PropertiesService._calls.length;
+          const callsAfter = globalThis.PropertiesService._calls.length;
 
           // Should not have made additional heavy calls
           expect(callsAfter).toBeLessThanOrEqual(callsBefore + 1); // Allow some caching calls
@@ -88,7 +88,7 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
     test.skip('should not instantiate UIManager until UI method invoked', async () => {
       await harness.withFreshSingletons(() => {
         // Mock UIManager for this test
-        global.UIManager = {
+        globalThis.UIManager = {
           getInstance: () => {
             harness.trackConstructorCall('UIManager');
             return { mockUIManager: true };
@@ -183,9 +183,9 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           return;
         }
         ProgressTracker.getInstance();
-        const callsAfterFirst = global.PropertiesService._calls.length;
+        const callsAfterFirst = globalThis.PropertiesService._calls.length;
         ProgressTracker.getInstance();
-        const callsAfterSecond = global.PropertiesService._calls.length;
+        const callsAfterSecond = globalThis.PropertiesService._calls.length;
         expect(callsAfterSecond).toBe(callsAfterFirst); // no extra doc properties fetch expected
       });
     });
@@ -253,20 +253,20 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     harness.setupGASMocks();
 
     // Test PropertiesService mock
-    expect(global.PropertiesService).toBeDefined();
-    const scriptProps = global.PropertiesService.getScriptProperties();
+    expect(globalThis.PropertiesService).toBeDefined();
+    const scriptProps = globalThis.PropertiesService.getScriptProperties();
     expect(scriptProps).toBeDefined();
     expect(typeof scriptProps.getProperty).toBe('function');
 
     // Test SpreadsheetApp mock
-    expect(global.SpreadsheetApp).toBeDefined();
-    const ui = global.SpreadsheetApp.getUi();
+    expect(globalThis.SpreadsheetApp).toBeDefined();
+    const ui = globalThis.SpreadsheetApp.getUi();
     expect(ui).toBeDefined();
     expect(typeof ui.createMenu).toBe('function');
 
     // Test GoogleClassroomManager mock
-    expect(global.GoogleClassroomManager).toBeDefined();
-    const classroomManager = new global.GoogleClassroomManager();
+    expect(globalThis.GoogleClassroomManager).toBeDefined();
+    const classroomManager = new globalThis.GoogleClassroomManager();
     expect(classroomManager).toBeDefined();
     expect(harness.getClassroomManagerInstanceCount()).toBe(1);
   });
@@ -276,9 +276,9 @@ describe('Phase 0: Instrumentation and Mock Verification', () => {
     harness.resetMockCalls();
 
     // Make some calls
-    global.PropertiesService.getScriptProperties();
-    global.SpreadsheetApp.getUi();
-    new global.GoogleClassroomManager();
+    globalThis.PropertiesService.getScriptProperties();
+    globalThis.SpreadsheetApp.getUi();
+    new globalThis.GoogleClassroomManager();
 
     // Verify tracking
     expect(harness.wasPropertiesServiceAccessed()).toBe(true);

@@ -18,7 +18,7 @@ describe('ScriptAppManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    global.ScriptApp = {
+    globalThis.ScriptApp = {
       getAuthorizationInfo: mockGetAuthorizationInfo,
       getScriptId: mockGetScriptId,
       invalidateAuth: mockInvalidateAuth,
@@ -51,12 +51,12 @@ describe('ScriptAppManager', () => {
 
   afterEach(() => {
     loggerSpy.mockRestore();
-    delete global.ScriptApp;
+    delete globalThis.ScriptApp;
   });
 
   describe('constructor', () => {
     it('should initialize and log authorization status', () => {
-      new ScriptAppManager();
+      const _manager = new ScriptAppManager();
 
       expect(mockGetAuthorizationInfo).toHaveBeenCalledWith('FULL');
       expect(authInfoMock.getAuthorizationStatus).toHaveBeenCalled();

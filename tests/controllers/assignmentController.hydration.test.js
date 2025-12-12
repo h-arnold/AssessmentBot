@@ -4,17 +4,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock PropertiesService
-global.PropertiesService = {
+globalThis.PropertiesService = {
   getDocumentProperties: vi.fn(),
 };
 
 // Mock LockService
-global.LockService = {
+globalThis.LockService = {
   getDocumentLock: vi.fn(),
 };
 
 // Mock Classroom service
-global.Classroom = {
+globalThis.Classroom = {
   Courses: {
     CourseWork: {
       get: vi.fn(),
@@ -48,7 +48,7 @@ describe('AssignmentController - Definition Hydration', () => {
       debug: vi.fn(),
       debugUi: vi.fn(),
     };
-    vi.spyOn(global.ABLogger, 'getInstance').mockReturnValue(loggerInstance);
+    vi.spyOn(globalThis.ABLogger, 'getInstance').mockReturnValue(loggerInstance);
 
     // Mock PropertiesService
     mockProperties = {
@@ -56,14 +56,14 @@ describe('AssignmentController - Definition Hydration', () => {
       setProperty: vi.fn(),
       deleteProperty: vi.fn(),
     };
-    global.PropertiesService.getDocumentProperties.mockReturnValue(mockProperties);
+    globalThis.PropertiesService.getDocumentProperties.mockReturnValue(mockProperties);
 
     // Mock LockService
     mockLock = {
       tryLock: vi.fn(() => true),
       releaseLock: vi.fn(),
     };
-    global.LockService.getDocumentLock.mockReturnValue(mockLock);
+    globalThis.LockService.getDocumentLock.mockReturnValue(mockLock);
 
     // Mock ProgressTracker
     mockProgressTracker = {
@@ -75,7 +75,7 @@ describe('AssignmentController - Definition Hydration', () => {
         throw new Error(msg);
       }),
     };
-    global.ProgressTracker = {
+    globalThis.ProgressTracker = {
       getInstance: vi.fn().mockReturnValue(mockProgressTracker),
     };
 
@@ -84,13 +84,13 @@ describe('AssignmentController - Definition Hydration', () => {
       deleteTriggerById: vi.fn(),
       removeTriggers: vi.fn(),
     };
-    global.TriggerController = vi.fn().mockReturnValue(mockTriggerController);
+    globalThis.TriggerController = vi.fn().mockReturnValue(mockTriggerController);
 
     // Mock GoogleClassroomManager
     mockGoogleClassroomManager = {
       getCourseId: vi.fn().mockReturnValue('course-123'),
     };
-    global.GoogleClassroomManager = vi.fn().mockReturnValue(mockGoogleClassroomManager);
+    globalThis.GoogleClassroomManager = vi.fn().mockReturnValue(mockGoogleClassroomManager);
 
     // Mock ABClassController
     const mockABClass = {
@@ -104,7 +104,7 @@ describe('AssignmentController - Definition Hydration', () => {
       rehydrateAssignment: vi.fn(),
       persistAssignmentRun: vi.fn(),
     };
-    global.ABClassController = vi.fn().mockReturnValue(mockABClassController);
+    globalThis.ABClassController = vi.fn().mockReturnValue(mockABClassController);
 
     // Mock AssignmentDefinitionController
     mockDefinitionController = {
@@ -112,24 +112,21 @@ describe('AssignmentController - Definition Hydration', () => {
       ensureDefinition: vi.fn(),
       saveDefinition: vi.fn(),
     };
-    global.AssignmentDefinitionController = vi.fn().mockReturnValue(mockDefinitionController);
+    globalThis.AssignmentDefinitionController = vi.fn().mockReturnValue(mockDefinitionController);
 
     // Mock Assignment factory and subclasses
-    global.Assignment = {
+    globalThis.Assignment = {
       fromJSON: vi.fn(),
       createInstance: vi.fn(),
       create: vi.fn((definition) => {
         // Return appropriate mock based on documentType
-        const instance =
-          definition?.documentType === 'SLIDES'
-            ? new global.SlidesAssignment()
-            : new global.SlidesAssignment(); // Default
+        const instance = new globalThis.SlidesAssignment();
         instance.assignmentDefinition = definition;
         return instance;
       }),
     };
 
-    global.SlidesAssignment = vi.fn().mockImplementation(function () {
+    globalThis.SlidesAssignment = vi.fn().mockImplementation(function () {
       this.assignmentDefinition = null;
       this.populateTasks = vi.fn();
       this.fetchSubmittedDocuments = vi.fn();
@@ -143,21 +140,21 @@ describe('AssignmentController - Definition Hydration', () => {
     });
 
     // Mock Utils
-    global.Utils = {
+    globalThis.Utils = {
       toastMessage: vi.fn(),
       definitionNeedsRefresh: vi.fn().mockReturnValue(false),
     };
 
     // Mock DriveManager
-    global.DriveManager = {
+    globalThis.DriveManager = {
       getFileModifiedTime: vi.fn().mockReturnValue('2025-01-01T00:00:00Z'),
     };
 
     // Mock other dependencies
-    global.AnalysisSheetManager = vi.fn().mockImplementation(() => ({
+    globalThis.AnalysisSheetManager = vi.fn().mockImplementation(() => ({
       createAnalysisSheet: vi.fn(),
     }));
-    global.OverviewSheetManager = vi.fn().mockImplementation(() => ({
+    globalThis.OverviewSheetManager = vi.fn().mockImplementation(() => ({
       createOverviewSheet: vi.fn(),
     }));
   });
@@ -267,7 +264,7 @@ describe('AssignmentController - Definition Hydration', () => {
       controller.processSelectedAssignment();
 
       // Verify SlidesAssignment was created (based on documentType)
-      expect(global.SlidesAssignment).toHaveBeenCalled();
+      expect(globalThis.SlidesAssignment).toHaveBeenCalled();
     });
   });
 
@@ -285,10 +282,10 @@ describe('AssignmentController - Definition Hydration', () => {
         tasks: {},
       });
 
-      const mockAssignment = new global.SlidesAssignment();
+      const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      global.Utils.definitionNeedsRefresh.mockReturnValue(true);
+      globalThis.Utils.definitionNeedsRefresh.mockReturnValue(true);
 
       const controller = new AssignmentController();
       controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
@@ -316,10 +313,10 @@ describe('AssignmentController - Definition Hydration', () => {
         tasks: { t1: {} },
       });
 
-      const mockAssignment = new global.SlidesAssignment();
+      const mockAssignment = new globalThis.SlidesAssignment();
       mockAssignment.assignmentDefinition = definition;
 
-      global.Utils.definitionNeedsRefresh.mockReturnValue(false);
+      globalThis.Utils.definitionNeedsRefresh.mockReturnValue(false);
 
       const controller = new AssignmentController();
       controller.runAssignmentPipeline(mockAssignment, [{ id: 's1', name: 'Student 1' }], {
@@ -337,7 +334,7 @@ describe('AssignmentController - Definition Hydration', () => {
 
   describe('ensureDefinitionFromInputs', () => {
     beforeEach(() => {
-      global.Classroom.Courses.CourseWork.get.mockReturnValue({
+      globalThis.Classroom.Courses.CourseWork.get.mockReturnValue({
         title: 'Assignment Title',
         topicId: 'topic-123',
       });
@@ -355,7 +352,7 @@ describe('AssignmentController - Definition Hydration', () => {
       mockDefinitionController.ensureDefinition.mockReturnValue(mockDefinition);
 
       // Mock DriveApp for document type detection
-      global.DriveApp = {
+      globalThis.DriveApp = {
         getFileById: vi.fn().mockReturnValue({
           getMimeType: vi.fn().mockReturnValue('application/vnd.google-apps.presentation'),
         }),
@@ -392,8 +389,8 @@ describe('AssignmentController - Definition Hydration', () => {
         },
       });
 
-      expect(global.DriveApp.getFileById).toHaveBeenCalledWith('ref');
-      expect(global.DriveApp.getFileById).toHaveBeenCalledWith('tpl');
+      expect(globalThis.DriveApp.getFileById).toHaveBeenCalledWith('ref');
+      expect(globalThis.DriveApp.getFileById).toHaveBeenCalledWith('tpl');
     });
 
     it('should fetch year group from ABClass', () => {
@@ -424,7 +421,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockTrigger = {
         createTimeBasedTrigger: vi.fn().mockReturnValue('trigger-123'),
       };
-      global.TriggerController.mockReturnValue(mockTrigger);
+      globalThis.TriggerController.mockReturnValue(mockTrigger);
 
       const controller = new AssignmentController();
       controller.startProcessing('assignment-456', 'Essay 1_English_10');

@@ -17,12 +17,12 @@ const realisticTemplateId = '1ZaQxSwcDevFrBgTnhYmJuKiLoPpQzRsTuvWxYzAbCdEfGhI';
 function renderTemplate(template, { assignmentDataObj, savedDocumentIds }) {
   return template
     .replaceAll(/<\?= assignmentDataObj.name \?>/g, assignmentDataObj.name)
-    .replaceAll(/<\?= assignmentDataObj.id \?>/, assignmentDataObj.id)
-    .replace(
+    .replaceAll(/<\?= assignmentDataObj.id \?>/g, assignmentDataObj.id)
+    .replaceAll(
       /<\?= savedDocumentIds.referenceDocumentId \|\| '' \?>/g,
       savedDocumentIds.referenceDocumentId || ''
     )
-    .replace(
+    .replaceAll(
       /<\?= savedDocumentIds.templateDocumentId \|\| '' \?>/g,
       savedDocumentIds.templateDocumentId || ''
     );

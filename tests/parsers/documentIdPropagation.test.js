@@ -11,7 +11,7 @@ describe('Document ID propagation across parsers', () => {
 
     const createShapeElement = (description, text) => ({
       getDescription: vi.fn(() => description),
-      getPageElementType: vi.fn(() => global.SlidesApp.PageElementType.SHAPE),
+      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.SHAPE),
       asShape: vi.fn(() => ({
         getText: vi.fn(() => ({
           asString: vi.fn(() => text),
@@ -30,8 +30,8 @@ describe('Document ID propagation across parsers', () => {
       );
       const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
 
-      global.DocumentParser = documentParserModule.DocumentParser;
-      global.TaskDefinition = taskDefinitionModule.TaskDefinition;
+      globalThis.DocumentParser = documentParserModule.DocumentParser;
+      globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
       const slidesParserModule = await import(
         '../../src/AdminSheet/DocumentParsers/SlidesParser.js'
@@ -40,14 +40,14 @@ describe('Document ID propagation across parsers', () => {
     });
 
     beforeEach(() => {
-      originalIsValidUrl = global.Utils.isValidUrl;
-      global.Utils.isValidUrl = vi.fn(() => true);
+      originalIsValidUrl = globalThis.Utils.isValidUrl;
+      globalThis.Utils.isValidUrl = vi.fn(() => true);
 
-      global.ABLogger = {
+      globalThis.ABLogger = {
         getInstance: vi.fn().mockReturnValue({ warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
       };
 
-      global.SlidesApp = {
+      globalThis.SlidesApp = {
         PageElementType: {
           SHAPE: 'SHAPE',
           TABLE: 'TABLE',
@@ -57,16 +57,16 @@ describe('Document ID propagation across parsers', () => {
     });
 
     afterEach(() => {
-      global.Utils.isValidUrl = originalIsValidUrl;
-      delete global.SlidesApp;
-      delete global.ABLogger;
+      globalThis.Utils.isValidUrl = originalIsValidUrl;
+      delete globalThis.SlidesApp;
+      delete globalThis.ABLogger;
     });
 
     it('sets documentId for reference and template artifacts', () => {
       const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
 
-      global.SlidesApp.openById = vi.fn((id) => {
+      globalThis.SlidesApp.openById = vi.fn((id) => {
         if (id === refDocId) return { getSlides: () => [refSlide] };
         if (id === tplDocId) return { getSlides: () => [tplSlide] };
         return { getSlides: () => [] };
@@ -87,7 +87,7 @@ describe('Document ID propagation across parsers', () => {
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
       const studentSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Student text')]);
 
-      global.SlidesApp.openById = vi.fn((id) => {
+      globalThis.SlidesApp.openById = vi.fn((id) => {
         if (id === refDocId) return { getSlides: () => [refSlide] };
         if (id === tplDocId) return { getSlides: () => [tplSlide] };
         if (id === studentDocId) return { getSlides: () => [studentSlide] };
@@ -115,8 +115,8 @@ describe('Document ID propagation across parsers', () => {
       );
       const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
 
-      global.DocumentParser = documentParserModule.DocumentParser;
-      global.TaskDefinition = taskDefinitionModule.TaskDefinition;
+      globalThis.DocumentParser = documentParserModule.DocumentParser;
+      globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
       const sheetsParserModule = await import(
         '../../src/AdminSheet/DocumentParsers/SheetsParser.js'
@@ -125,9 +125,11 @@ describe('Document ID propagation across parsers', () => {
     });
 
     beforeEach(() => {
-      global.ABLogger = { getInstance: vi.fn().mockReturnValue({ warn: vi.fn(), error: vi.fn() }) };
+      globalThis.ABLogger = {
+        getInstance: vi.fn().mockReturnValue({ warn: vi.fn(), error: vi.fn() }),
+      };
 
-      global.SpreadsheetApp = {
+      globalThis.SpreadsheetApp = {
         openById: vi.fn(() => ({
           getSheets: () => [
             {
@@ -137,7 +139,7 @@ describe('Document ID propagation across parsers', () => {
         })),
       };
 
-      global.TaskSheet = class TaskSheet {
+      globalThis.TaskSheet = class TaskSheet {
         constructor() {
           this.formulaArray = [['=REF']];
         }
@@ -149,9 +151,9 @@ describe('Document ID propagation across parsers', () => {
     });
 
     afterEach(() => {
-      delete global.SpreadsheetApp;
-      delete global.TaskSheet;
-      delete global.ABLogger;
+      delete globalThis.SpreadsheetApp;
+      delete globalThis.TaskSheet;
+      delete globalThis.ABLogger;
     });
 
     const boundingBox = {

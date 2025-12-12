@@ -9,13 +9,13 @@ describe('StudentSubmission', () => {
   beforeEach(() => {
     // Mock ABLogger to capture warning calls
     mockABLogger = createMockABLogger(vi);
-    global.ABLogger = {
+    globalThis.ABLogger = {
       getInstance: () => mockABLogger,
     };
   });
 
   afterEach(() => {
-    delete global.ABLogger;
+    delete globalThis.ABLogger;
   });
 
   it('upserts items and round-trips JSON', () => {

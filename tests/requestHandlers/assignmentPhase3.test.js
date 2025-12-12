@@ -16,7 +16,7 @@ const {
 } = require('../helpers/modelFactories.js');
 
 // Minimal global Utils & dependencies stubs required by artifacts & manager (non-GAS)
-global.Utils = {
+globalThis.Utils = {
   generateHash: simpleHash,
   normaliseKeysToLowerCase: (obj) => {
     if (!obj || typeof obj !== 'object') return obj;
@@ -33,11 +33,11 @@ global.Utils = {
 setupGlobalDummyClasses();
 
 // Override specific globals for this test (use the classes directly)
-global.BaseRequestManager = DummyBaseRequestManager;
-global.CacheManager = DummyCacheManager;
+globalThis.BaseRequestManager = DummyBaseRequestManager;
+globalThis.CacheManager = DummyCacheManager;
 
 // Provide globals expected by Assignment constructor
-global.Classroom = {
+globalThis.Classroom = {
   Courses: {
     CourseWork: {
       get: () => ({ title: 'Stubbed Assignment' }),
@@ -45,14 +45,14 @@ global.Classroom = {
     },
   },
 };
-global.DriveApp = {
+globalThis.DriveApp = {
   getFileById: () => ({ getMimeType: () => 'application/vnd.google-apps.slides' }),
 };
-global.MimeType = {
+globalThis.MimeType = {
   GOOGLE_SLIDES: 'application/vnd.google-apps.slides',
   GOOGLE_SHEETS: 'application/vnd.google-apps.spreadsheet',
 };
-global.StudentSubmission = StudentSubmission;
+globalThis.StudentSubmission = StudentSubmission;
 
 // Now that globals exist, require runtime-dependent classes
 const LLMRequestManagerFresh = require('../../src/AdminSheet/RequestHandlers/LLMRequestManager.js');

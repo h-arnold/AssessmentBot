@@ -167,7 +167,7 @@ describe('DriveManager - Definition Refresh Integration', () => {
 
       expect(newerTimestamp > olderTimestamp).toBe(true);
       expect(olderTimestamp > newerTimestamp).toBe(false);
-      expect(olderTimestamp === olderTimestamp).toBe(true);
+      expect(olderTimestamp).toBe(olderTimestamp);
     });
 
     it('should handle millisecond precision in comparisons', () => {
