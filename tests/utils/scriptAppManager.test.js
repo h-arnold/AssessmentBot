@@ -56,8 +56,6 @@ describe('ScriptAppManager', () => {
 
   describe('constructor', () => {
     it('should initialize and log authorization status', () => {
-      const _manager = new ScriptAppManager();
-
       expect(mockGetAuthorizationInfo).toHaveBeenCalledWith('FULL');
       expect(authInfoMock.getAuthorizationStatus).toHaveBeenCalled();
       expect(ABLogger.getInstance().info).toHaveBeenCalledWith(
