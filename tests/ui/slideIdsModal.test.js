@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
-import fs from 'node:node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,7 +17,7 @@ const realisticTemplateId = '1ZaQxSwcDevFrBgTnhYmJuKiLoPpQzRsTuvWxYzAbCdEfGhI';
 function renderTemplate(template, { assignmentDataObj, savedDocumentIds }) {
   return template
     .replaceAll(/<\?= assignmentDataObj.name \?>/g, assignmentDataObj.name)
-    .replaceAll(/<\?= assignmentDataObj.id \?>/g, assignmentDataObj.id)
+    .replaceAll(/<\?= assignmentDataObj.id \?>/, assignmentDataObj.id)
     .replace(
       /<\?= savedDocumentIds.referenceDocumentId \|\| '' \?>/g,
       savedDocumentIds.referenceDocumentId || ''

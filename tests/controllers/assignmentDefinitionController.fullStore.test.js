@@ -300,7 +300,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
     it('should persist parsed tasks to full store when creating new definition', () => {
       mockFullCollection.findOne.mockReturnValue(null);
 
-      const definition = controller.ensureDefinition({
+      controller.ensureDefinition({
         primaryTitle: 'New',
         topicId: 'topic-1',
         courseId: 'course-1',

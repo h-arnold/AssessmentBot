@@ -276,9 +276,6 @@ class AssignmentController {
         'Getting the tasks from the reference document.',
         () => {
           assignment.populateTasks();
-          if (typeof definition.markAsFullHydration === 'function') {
-            definition.markAsFullHydration();
-          }
           definition.updateModifiedTimestamps({
             referenceLastModified: referenceModified,
             templateLastModified: templateModified,

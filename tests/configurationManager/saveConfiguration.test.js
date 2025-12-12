@@ -34,10 +34,8 @@ global.console = { log: vi.fn(), error: vi.fn() };
 // Import the globals module under test (exports exist only in Node test env)
 import { saveConfiguration } from '../../src/AdminSheet/ConfigurationManager/globals.js';
 // Ensure ConfigurationManager class is loaded and exposed globally (Apps Script style)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ConfigurationManagerClass = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
 // Some bundlers put class on default
-// eslint-disable-next-line no-undef
 global.ConfigurationManager = ConfigurationManagerClass.default || ConfigurationManagerClass;
 
 describe('saveConfiguration global behaviour', () => {
@@ -48,7 +46,6 @@ describe('saveConfiguration global behaviour', () => {
 
     // Obtain real singleton and spy on its prototype methods (lightweight; constructor has no heavy work)
     // Access via global class (Apps Script style)
-    // eslint-disable-next-line no-undef
     cfg = ConfigurationManager.getInstance();
     vi.spyOn(cfg, 'setApiKey').mockImplementation(() => {});
     vi.spyOn(cfg, 'setBackendAssessorBatchSize').mockImplementation(() => {});

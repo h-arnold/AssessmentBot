@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Setup global mocks before imports
-global.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
 global.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock ScriptAppManager

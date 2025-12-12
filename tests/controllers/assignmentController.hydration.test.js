@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Setup global mocks
-globalThisThis.BaseSingleton = require('../../src/AdminSheet/00_BaseSingleton.js');
 globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock PropertiesService
@@ -25,8 +24,7 @@ global.Classroom = {
 
 // Import classes after mocks
 const AssignmentController = require('../../src/AdminSheet/y_controllers/AssignmentController.js');
-const AssignmentDefinitionController = require('../../src/AdminSheet/y_controllers/AssignmentDefinitionController.js');
-const ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
+
 const { AssignmentDefinition } = require('../../src/AdminSheet/Models/AssignmentDefinition.js');
 
 describe('AssignmentController - Definition Hydration', () => {

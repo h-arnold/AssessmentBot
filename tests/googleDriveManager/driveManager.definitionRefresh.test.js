@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
 import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
-import AssignmentDefinitionController from '../../src/AdminSheet/y_controllers/AssignmentDefinitionController.js';
+
 import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
 
 // Mock dependencies
