@@ -423,7 +423,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 - **Constructor**:
   - Converts assignmentDefinition to instance if needed
   - Calls parent constructor with courseId, assignmentId, and definition
-- **Properties Initialized**:
+- **Properties Initialised**:
   - `courseId`, `assignmentId`, `assignmentName`
   - `assignmentDefinition` (embedded copy)
   - `submissions` (empty array)
