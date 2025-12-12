@@ -738,7 +738,7 @@ assignment.submissions = [
 - **Location**: Lines 24-105
 - **Purpose**: Creates HTTP request objects for LLM API calls
 - **Process**:
-  1. Initializes counters and UID index
+  1. Initialises counters and UID index
   2. Gets backend URL and API key from configuration
   3. For each submission's items:
      - Gets task definition and artifact type
