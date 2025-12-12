@@ -39,20 +39,48 @@
 
 **Files:** src/AdminSheet/y_controllers/AssignmentDefinitionController.js, tests/controllers/assignmentDefinitionController.test.js
 
+#### 3. **Assignment load/save alignment** — COMPLETE
+
+**Current State:**
+
+- `Assignment.toJSON()` correctly calls `assignmentDefinition.toJSON()` for full serialisation (no invalid parameters)
+- `Assignment.toPartialJSON()` correctly calls `assignmentDefinition.toPartialJSON()` for redacted serialisation
+- Assignments never downgrade hydrated definitions to redacted when persisting full assignments
+- `Assignment.fromJSON()` reconstructs with embedded definitions (partial or full based on source)
+- Legacy alias properties (`documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`) maintained for backward compatibility
+- Code quality improvements: replaced `Object.prototype.hasOwnProperty.call()` with `Object.hasOwn()`
+- All existing tests passing in `tests/assignment/*.test.js`
+
+**Files:** src/AdminSheet/AssignmentProcessor/Assignment.js, tests/assignment/assignmentSerialisation.test.js, tests/assignment/assignmentFactory.test.js
+
+#### 4. **Run orchestration uses full definitions** — COMPLETE
+
+**Current State:**
+
+- `AssignmentController.processSelectedAssignment()` fetches full definition from `assdef_full_<definitionKey>` via `getDefinitionByKey(definitionKey, { form: 'full' })`
+- `runAssignmentPipeline()` performs staleness checks comparing Drive timestamps against stored definition timestamps
+- When stale, re-parses tasks and immediately persists updated definition to both full store and partial registry via `saveDefinition()`
+- `startProcessing()` stores only `definitionKey` in DocumentProperties (no doc IDs or documentType)
+- `ensureDefinitionFromInputs()` orchestrates definition creation/retrieval and returns definition key for persistence
+- All existing tests passing
+
+**Files:** src/AdminSheet/y_controllers/AssignmentController.js, tests/controllers/initController.test.js
+
+#### 5. **ABClass persistence hooks** — COMPLETE
+
+**Current State:**
+
+- `persistAssignmentRun()` implements dual-store pattern correctly:
+  - Full assignment with full definition → dedicated `assign_full_<courseId>_<assignmentId>` collection
+  - Partial assignment with partial definition → ABClass.assignments array
+- `rehydrateAssignment()` loads full assignment from dedicated collection and ensures full definition from `assdef_full_<definitionKey>`
+- Refactored `rehydrateAssignment()` to reduce cognitive complexity (extracted helper methods: `_loadFullAssignmentDocument()`, `_validateAssignmentDocument()`, `_ensureFullDefinition()`, `_replaceAssignmentInClass()`)
+- Hydration level markers (`_hydrationLevel`) correctly set to 'full' or 'partial' (transient, never persisted)
+- All tests passing in `tests/controllers/abclassController.persistAssignment.test.js` and `tests/controllers/abclassController.rehydrateAssignment.test.js`
+
+**Files:** src/AdminSheet/y_controllers/ABClassController.js, tests/controllers/abclassController.persistAssignment.test.js, tests/controllers/abclassController.rehydrateAssignment.test.js
+
 ### 🔲 Pending Stages
-
-3. **Assignment load/save alignment**
-   - Ensure Assignment.toJSON/toPartialJSON use the appropriate definition form (full when present in-memory, partial for summaries) and never downgrade a hydrated definition to redacted when persisting the full assignment.
-   - Confirm Assignment.fromJSON reconstructs with a full definition when available and flags hydration level correctly.
-   - Files: src/AdminSheet/AssignmentProcessor/Assignment.js, subclass files (SlidesAssignment.js, SheetsAssignment.js), tests/assignment/\*.test.js.
-
-4. **Run orchestration uses full definitions**
-   - In AssignmentController.processSelectedAssignment/runAssignmentPipeline, fetch the full definition from assdef*full*<definitionKey> before staleness checks, then refresh/parse as needed and persist both stores. Ensure startProcessing/saveStartAndShowProgress only store the definitionKey (no doc IDs).
-   - Files: src/AdminSheet/y*controllers/AssignmentController.js, related globals/menus wrappers in src/AdminSheet/AssignmentProcessor/globals.js and src/AssessmentRecordTemplate/menus/*.js, tests/controllers/assignmentController\_.test.js.
-
-5. **ABClass persistence hooks**
-   - Keep ABClass partial assignments embedding partial definitions; when rehydrating, pull the full definition from its dedicated collection so downstream runs always have content.
-   - Files: src/AdminSheet/y_controllers/ABClassController.js, tests/controllers/abclassController\*.test.js.
 
 6. **UI path relies on definition keys**
    - Update SlideIdsModal and AssignmentDropdown flows to stop passing/storing raw document IDs; route through controller endpoints that return the definitionKey, and persist only that key in properties.
@@ -72,13 +100,14 @@
 
 - ✅ `tests/controllers/assignmentDefinitionController.test.js` — Validates dual-store writes, ensureDefinition refresh logic, topic resolution
 - ✅ `tests/models/assignmentDefinition.test.js` — Validates toJSON vs toPartialJSON redaction, serialization/deserialization
+- ✅ `tests/assignment/assignmentFactory.test.js` — Verified factory/fromJSON uses embedded definitions correctly
+- ✅ `tests/assignment/assignmentSerialisation.test.js` — Verified toJSON/toPartialJSON serialisation forms
+- ✅ `tests/controllers/abclassController.persistAssignment.test.js` — Verified dual-store persistence pattern
+- ✅ `tests/controllers/abclassController.rehydrateAssignment.test.js` — Verified full definition fetching during rehydration
 
 ### Tests to Update
 
-- ⏳ `tests/assignment/assignmentFactory.test.js` — Ensure factory/fromJSON uses embedded partial definitions for ABClass, and assignment runs fetch full definition from `assdef_full_*` when present.
-- ⏳ `tests/controllers/abclassController.persistAssignment.test.js` — Verify ABClass persists partial definitions while full definitions remain in dedicated full-definition collections; check rehydrate uses full store.
-- ⏳ `tests/controllers/abclassController.rehydrateAssignment.test.js` — Confirm rehydrate pulls full definition from `assdef_full_<definitionKey>`.
-- ⏳ `tests/ui/slideIdsModal.test.js` — Expect saveStartAndShowProgress call to use returned `definitionKey`, not raw document ids; update mocks accordingly.
+- ⏳ `tests/ui/slideIdsModal.test.js` — Expect saveStartAndShowProgress call to use returned `definitionKey`, not raw document ids; update mocks accordingly (pending Stage 6 UI updates).
 
 ### Tests to Add
 
