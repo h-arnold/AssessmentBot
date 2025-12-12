@@ -55,7 +55,7 @@ function showClassroomDropdown() {
  * Saves document IDs for a specific assignment by calling the UIManager's method.
  * @param {string} assignmentId The ID of the assignment.
  * @param {Object} documentIds An object containing reference and template document IDs.
- * @return {void}
+ * @return {string} definitionKey persisted for this assignment.
  */
 function saveDocumentIdsForAssignment(assignmentId, documentIds) {
   const uiManager = getUIManager();

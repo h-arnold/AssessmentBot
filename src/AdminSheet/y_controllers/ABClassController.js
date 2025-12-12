@@ -289,9 +289,9 @@ class ABClassController {
         );
       }
 
-      if (!doc.documentType) {
+      if (!doc.assignmentDefinition) {
         throw new Error(
-          `Corrupt or invalid assignment data in ${collectionName}: missing required field documentType`
+          `Corrupt or invalid assignment data in ${collectionName}: missing required field assignmentDefinition`
         );
       }
 

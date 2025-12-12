@@ -52,7 +52,6 @@ class DriveManager {
     } catch (error) {
       console.error(`Failed to copy template sheet: ${error.message}`);
       throw error;
-      // or return { status: 'error', file: null, fileId: null, message: error.message };
     }
   }
 
@@ -76,7 +75,6 @@ class DriveManager {
    *   - 'none': No emails were processed (e.g., if the set is empty).
    */
   static shareFolder(destinationFolderId, emails) {
-    // Prepare a results array to store each email's outcome
     const details = [];
     let successCount = 0;
     let failCount = 0;
@@ -122,21 +120,12 @@ class DriveManager {
       throw error;
     }
 
-    // Determine final overall status
-    let overallStatus = 'complete';
-    if (successCount === 0 && failCount > 0) {
-      // Everything failed
-      overallStatus = 'partial';
-    } else if (successCount > 0 && failCount > 0) {
-      // Some succeeded, some failed
-      overallStatus = 'partial';
-    }
-
+    const overallStatus = failCount === 0 ? 'complete' : 'partial';
     const overallMsg = `Shared folder with ${successCount} email(s) successfully, ${failCount} failed.`;
     console.log(overallMsg);
 
     return {
-      status: overallStatus, // 'complete', 'partial', or 'none'
+      status: overallStatus,
       message: overallMsg,
       details,
     };
@@ -148,7 +137,15 @@ class DriveManager {
    * @returns {string | null} The parent folder ID, or null if none is found.
    */
   static getParentFolderId(fileId) {
-    // Try DriveApp first; if it fails (e.g., Shared Drives quirk) fall back to Advanced Drive API
+    const driveAppParent = DriveManager._getParentViaDriveApp(fileId);
+    if (driveAppParent) {
+      return driveAppParent;
+    }
+
+    return DriveManager._getParentViaDriveApi(fileId);
+  }
+
+  static _getParentViaDriveApp(fileId) {
     const retries = 3;
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
@@ -161,11 +158,10 @@ class DriveManager {
           console.log(`Parent folder ID for file ${fileId}: ${parentId}`);
           return parentId;
         }
-        // No parents via DriveApp (can happen for orphaned files or Shared Drive root)
         console.log(
           `No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`
         );
-        break; // proceed to fallback
+        return null;
       } catch (error) {
         const waitMs = 500 * Math.pow(2, attempt);
         console.warn(
@@ -175,44 +171,43 @@ class DriveManager {
         );
         if (attempt < retries - 1) {
           Utilities.sleep(waitMs);
-          continue;
         }
       }
     }
 
-    // Fallback: Advanced Drive API (supportsAllDrives) to handle Shared Drives
+    return null;
+  }
+
+  static _getParentViaDriveApi(fileId) {
+    const fields = 'parents,driveId';
     try {
-      const fields = 'parents,driveId';
       const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
 
-      if (res && res.parents && res.parents.length > 0) {
+      if (res?.parents?.length > 0) {
         const parentId = res.parents[0];
         console.log(`Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`);
         return parentId;
       }
 
-      // If on a Shared Drive root, use the driveId as the parent folder id
-      if (res && res.driveId) {
+      if (res?.driveId) {
         console.log(
           `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`
         );
         return res.driveId;
       }
 
-      // Last resort: use user's My Drive root
       const rootId = DriveApp.getRootFolder().getId();
       console.log(`Falling back to My Drive root as parent for ${fileId}: ${rootId}`);
       return rootId;
-    } catch (fallbackError) {
-      console.error(`Advanced Drive API fallback failed for ${fileId}: ${fallbackError.message}`);
-      // As a final fallback, try My Drive root to avoid hard failure
+    } catch (apiError) {
+      console.error(`Advanced Drive API fallback failed for ${fileId}: ${apiError.message}`);
       try {
         const rootId = DriveApp.getRootFolder().getId();
         console.log(`Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`);
         return rootId;
-      } catch (rootErr) {
-        console.error(`Failed to obtain My Drive root folder ID: ${rootErr.message}`);
-        throw fallbackError; // bubble original meaningful error
+      } catch (rootError) {
+        console.error(`Failed to obtain My Drive root folder ID: ${rootError.message}`);
+        throw apiError;
       }
     }
   }
@@ -338,14 +333,7 @@ class DriveManager {
     });
 
     // Determine final overall status
-    let overallStatus = 'complete';
-    if (successCount === 0 && failCount > 0) {
-      // Everything failed
-      overallStatus = 'partial';
-    } else if (successCount > 0 && failCount > 0) {
-      // Some succeeded, some failed
-      overallStatus = 'partial';
-    }
+    const overallStatus = failCount === 0 ? 'complete' : 'partial';
 
     const overallMsg = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
     console.log(overallMsg);
@@ -368,4 +356,85 @@ class DriveManager {
     // Test if the passed string matches the regex and return the result.
     return fileIdRegex.test(fileId);
   }
+
+  /**
+   * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
+   * @param {string} fileId - Drive file id.
+   * @return {string} ISO 8601 timestamp of the file's last modified time.
+   */
+  static getFileModifiedTime(fileId) {
+    const progressTracker = ProgressTracker.getInstance();
+
+    if (!fileId) {
+      progressTracker.logAndThrowError('fileId is required for getFileModifiedTime');
+    }
+
+    const baseWaitMs = 500;
+    const retries = 3;
+
+    try {
+      return DriveManager._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
+    } catch (appError) {
+      ABLogger.getInstance().debug('DriveApp failed, trying Drive API', appError);
+      try {
+        return DriveManager._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
+      } catch (apiError) {
+        progressTracker.logError('Failed to fetch file modified time', {
+          fileId,
+          err: apiError,
+        });
+        throw apiError;
+      }
+    }
+  }
+
+  static _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const file = DriveApp.getFileById(fileId);
+        const date = file.getLastUpdated();
+        if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+          throw new TypeError('DriveApp.getLastUpdated returned an invalid Date');
+        }
+        return date.toISOString();
+      } catch (error) {
+        if (attempt < retries - 1) {
+          const wait = baseWaitMs * Math.pow(2, attempt);
+          Utilities.sleep(wait);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Unable to fetch modified time via DriveApp');
+  }
+
+  static _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields: 'modifiedTime' });
+        if (!res?.modifiedTime) {
+          throw new TypeError('Advanced Drive API did not return modifiedTime');
+        }
+        const parsed = new Date(res.modifiedTime);
+        if (Number.isNaN(parsed.getTime())) {
+          throw new TypeError(`Invalid modifiedTime format for file ${fileId}`);
+        }
+        return parsed.toISOString();
+      } catch (error) {
+        if (attempt < retries - 1) {
+          const wait = baseWaitMs * Math.pow(2, attempt);
+          Utilities.sleep(wait);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Unable to fetch modified time via Drive API');
+  }
+}
+
+// Export for Node tests / CommonJS environments
+if (typeof module !== 'undefined') {
+  module.exports = DriveManager;
 }

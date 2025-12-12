@@ -36,7 +36,8 @@
     "https://www.googleapis.com/auth/script.storage",
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/script.container.ui",
-    "https://www.googleapis.com/auth/script.scriptapp"
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/classroom.topics.readonly"
   ],
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8"

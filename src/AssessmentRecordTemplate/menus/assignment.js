@@ -19,13 +19,13 @@ function createAssignmentDropdownHtml(assignments) {
 }
 
 // Opens the reference slide modal which comes after the assignment selection
-function openReferenceSlideModal(assignmentId) {
-  return AssessmentBot.openReferenceSlideModal(assignmentId);
+function openReferenceSlideModal(assignmentDataJson) {
+  return AssessmentBot.openReferenceSlideModal(assignmentDataJson);
 }
 
 // Helper function to generate and display html for the reference slide modal
-function createReferenceSlideModalHtml(assignmentId, referenceSlideId) {
-  return AssessmentBot.createReferenceSlideModalHtml(assignmentId, referenceSlideId);
+function createReferenceSlideModalHtml(assignmentDataJson) {
+  return AssessmentBot.createReferenceSlideModalHtml(assignmentDataJson);
 }
 
 /**
@@ -41,24 +41,24 @@ function saveSlideIdsForAssignment(assignmentId, documentIds) {
 /**
  * Sets the trigger and stores the relevant parameters to process the selected assignment.
  * @param {string} assignmentTitle - The title of the assignment.
- * @param {Object} slideIds - An object containing referenceSlideId and templateSlideId.
+ * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} templateSlideId - The ID of the template slide.
+ * @param {string} referenceDocumentId - The ID of the reference document.
+ * @param {string} templateDocumentId - The ID of the template document.
  */
 function saveStartAndShowProgress(
   assignmentTitle,
-  slideIds,
+  documentIds,
   assignmentId,
-  referenceSlideId,
-  templateSlideId
+  referenceDocumentId,
+  templateDocumentId
 ) {
   AssessmentBot.saveStartAndShowProgress(
     assignmentTitle,
-    slideIds,
+    documentIds,
     assignmentId,
-    referenceSlideId,
-    templateSlideId
+    referenceDocumentId,
+    templateDocumentId
   );
 }
 
@@ -66,12 +66,11 @@ function saveStartAndShowProgress(
  * Initiates the processing of an assignment asynchronously by setting up a trigger. (Called by saveStartAndShowProgress)
  *
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceSlideId - The ID of the reference slide.
- * @param {string} templateSlideId - The ID of the template slide.
+ * @param {string} definitionKey - The definition key persisted in Document Properties.
  * @returns {string} The unique process ID.
  */
-function startProcessing(assignmentId, referenceSlideId, templateSlideId) {
-  return AssessmentBot.startProcessing(assignmentId, referenceSlideId, templateSlideId);
+function startProcessing(assignmentId, definitionKey) {
+  return AssessmentBot.startProcessing(assignmentId, definitionKey);
 }
 
 /**
@@ -96,6 +95,6 @@ function triggerProcessSelectedAssignment() {
 }
 
 // Called by the above with the retrieved parameters.
-function processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId) {
-  return AssessmentBot.processSelectedAssignment(assignmentId, referenceSlideId, templateSlideId);
+function processSelectedAssignment() {
+  return AssessmentBot.processSelectedAssignment();
 }

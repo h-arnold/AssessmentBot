@@ -1,11 +1,7 @@
 // UIManager.gs
 // Ensure ABLogger is available in Node test environment
-try {
-  if (typeof ABLogger === 'undefined') {
-    globalThis.ABLogger = require('../Utils/ABLogger.js');
-  }
-} catch (e) {
-  // Swallow if not in Node / path not resolvable; GAS runtime will have global
+if (typeof ABLogger === 'undefined' && typeof require === 'function') {
+  globalThis.ABLogger = require('../Utils/ABLogger.js');
 }
 /**
  * @class UIManager
@@ -51,7 +47,9 @@ class UIManager extends BaseSingleton {
       ui.createMenu('Test');
       return true;
     } catch (error) {
-      console.log('UI operations are not available in this context:', error?.message ?? error);
+      ABLogger.getInstance().warn('UI operations are not available in this context', {
+        err: error,
+      });
       return false;
     }
   }
@@ -64,7 +62,7 @@ class UIManager extends BaseSingleton {
      */
     // Singleton guard: constructor should only run once via getInstance()
     if (!isSingletonCreator && UIManager._instance) {
-      return UIManager._instance; // Return existing instance
+      throw new Error('Use UIManager.getInstance() to access the UIManager singleton.');
     }
 
     // Defer UI availability probe until first safe UI op (lazy probing)
@@ -108,6 +106,7 @@ class UIManager extends BaseSingleton {
     try {
       available = UIManager.isUiAvailable();
     } catch (e) {
+      ABLogger.getInstance().warn('UI availability probe failed', { err: e });
       available = false;
     }
     this.uiAvailable = available;
@@ -116,7 +115,7 @@ class UIManager extends BaseSingleton {
         this.ui = SpreadsheetApp.getUi();
         ABLogger.getInstance().debugUi('UI probe successful; UI acquired.');
       } catch (err) {
-        console.error('Failed to acquire Spreadsheet UI:', err?.message ?? err);
+        ABLogger.getInstance().error('Failed to acquire Spreadsheet UI', { err });
         this.uiAvailable = false;
         this.ui = null;
       }
@@ -291,9 +290,25 @@ class UIManager extends BaseSingleton {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const savedDocumentIds = AssignmentPropertiesManager.getDocumentIdsForAssignment(
-          assignmentDataObj.name
-        );
+        const courseId = this.ensureClassroomManager().getCourseId();
+        const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentDataObj.id);
+        const topicId = courseWork?.topicId || null;
+        const abClassController = new ABClassController();
+        const abClass = abClassController.loadClass(courseId);
+        const yearGroup = abClass?.yearGroup ?? null;
+        const primaryTopic = topicId ? ClassroomApiClient.fetchTopicName(courseId, topicId) : null;
+        const definitionKey = AssignmentDefinition.buildDefinitionKey({
+          primaryTitle: assignmentDataObj.name,
+          primaryTopic,
+          yearGroup,
+        });
+        const definition = new AssignmentDefinitionController().getDefinitionByKey(definitionKey);
+        const savedDocumentIds = definition
+          ? {
+              referenceDocumentId: definition.referenceDocumentId,
+              templateDocumentId: definition.templateDocumentId,
+            }
+          : {};
         this._showTemplateDialog(
           'UI/SlideIdsModal',
           { assignmentDataObj, savedDocumentIds },
@@ -302,7 +317,7 @@ class UIManager extends BaseSingleton {
         );
         ABLogger.getInstance().debugUi('Reference slide IDs modal displayed.');
       } catch (error) {
-        console.error('Error opening reference slide modal:', error);
+        ProgressTracker.getInstance().logError('Failed to open slide IDs modal.', { err: error });
         Utils.toastMessage('Failed to open slide IDs modal: ' + error.message, 'Error', 5);
       }
     }, 'openReferenceSlideModal');
@@ -331,19 +346,28 @@ class UIManager extends BaseSingleton {
 
   /**
    * Saves the reference and template slide/document IDs for a given assignment title.
-   * This method now calls the updated static method in AssignmentPropertiesManager.
+   * Persists document IDs into the assignment definition so the pipeline can access them.
    *
-   * @param {string} assignmentTitle The title of the assignment.
+   * @param {string} assignmentId The Google Classroom assignment ID.
    * @param {Object} documentIds An object containing referenceDocumentId and templateDocumentId.
    */
-  saveDocumentIdsForAssignment(assignmentTitle, documentIds) {
+  saveDocumentIdsForAssignment(assignmentId, documentIds) {
     try {
-      // Directly call the static method from AssignmentPropertiesManager
-      AssignmentPropertiesManager.saveDocumentIdsForAssignment(assignmentTitle, documentIds);
+      const assignmentController = new AssignmentController();
+      const { definition } = assignmentController.ensureDefinitionFromInputs({
+        assignmentTitle: null,
+        assignmentId,
+        documentIds,
+      });
+
       this.utils.toastMessage('Document IDs saved successfully.', 'Success', 3);
+      return definition.definitionKey;
     } catch (error) {
-      console.error(`Error in saveDocumentIdsForAssignment: ${error}`);
+      ProgressTracker.getInstance().logError('Error in saveDocumentIdsForAssignment.', {
+        err: error,
+      });
       this.utils.toastMessage(`Failed to save document IDs: ${error.message}`, 'Error', 5);
+      throw error;
     }
   }
 

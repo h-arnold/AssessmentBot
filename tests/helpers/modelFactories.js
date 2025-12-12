@@ -6,6 +6,7 @@
 const { TaskDefinition } = require('../../src/AdminSheet/Models/TaskDefinition.js');
 const { StudentSubmission } = require('../../src/AdminSheet/Models/StudentSubmission.js');
 const { ArtifactFactory } = require('../../src/AdminSheet/Models/Artifacts/index.js');
+const { AssignmentDefinition } = require('../../src/AdminSheet/Models/AssignmentDefinition.js');
 const Assignment = require('../../src/AdminSheet/AssignmentProcessor/Assignment.js');
 
 /**
@@ -107,14 +108,23 @@ function createSlidesAssignment(props = {}) {
     ...rest
   } = props;
 
+  const definition = new AssignmentDefinition({
+    primaryTitle: assignmentName,
+    primaryTopic: 'Topic',
+    yearGroup: null,
+    documentType: 'SLIDES',
+    referenceDocumentId,
+    templateDocumentId,
+    tasks,
+    referenceLastModified: '2024-01-01T00:00:00.000Z',
+    templateLastModified: '2024-01-01T00:00:00.000Z',
+  });
+
   return Assignment.fromJSON({
     courseId,
     assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
     assignmentName,
-    documentType: 'SLIDES',
-    tasks,
+    assignmentDefinition: definition.toJSON(),
     submissions,
     ...rest,
   });
@@ -144,14 +154,23 @@ function createSheetsAssignment(props = {}) {
     ...rest
   } = props;
 
+  const definition = new AssignmentDefinition({
+    primaryTitle: assignmentName,
+    primaryTopic: 'Topic',
+    yearGroup: null,
+    documentType: 'SHEETS',
+    referenceDocumentId,
+    templateDocumentId,
+    tasks,
+    referenceLastModified: '2024-01-01T00:00:00.000Z',
+    templateLastModified: '2024-01-01T00:00:00.000Z',
+  });
+
   return Assignment.fromJSON({
     courseId,
     assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
     assignmentName,
-    documentType: 'SHEETS',
-    tasks,
+    assignmentDefinition: definition.toJSON(),
     submissions,
     ...rest,
   });
@@ -254,14 +273,14 @@ function createDummyBaseRequestManager(options = {}) {
  * Useful for tests that need basic implementations without full mocks
  */
 function setupGlobalDummyClasses() {
-  if (!global.ProgressTracker) {
-    global.ProgressTracker = {
+  if (!globalThis.ProgressTracker) {
+    globalThis.ProgressTracker = {
       getInstance: () => createDummyProgressTracker(),
     };
   }
 
-  if (!global.Assessment) {
-    global.Assessment = class {
+  if (!globalThis.Assessment) {
+    globalThis.Assessment = class {
       constructor(score, reasoning) {
         this.score = score;
         this.reasoning = reasoning;
@@ -272,12 +291,12 @@ function setupGlobalDummyClasses() {
     };
   }
 
-  if (!global.BaseRequestManager) {
-    global.BaseRequestManager = DummyBaseRequestManager;
+  if (!globalThis.BaseRequestManager) {
+    globalThis.BaseRequestManager = DummyBaseRequestManager;
   }
 
-  if (!global.CacheManager) {
-    global.CacheManager = DummyCacheManager;
+  if (!globalThis.CacheManager) {
+    globalThis.CacheManager = DummyCacheManager;
   }
 }
 

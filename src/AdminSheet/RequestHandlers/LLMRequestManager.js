@@ -32,8 +32,9 @@ class LLMRequestManager extends BaseRequestManager {
     const apiKey = this.configManager.getApiKey();
 
     assignment.submissions.forEach((submission) => {
+      const tasks = assignment.assignmentDefinition?.tasks || {};
       Object.values(submission.items).forEach((item) => {
-        const taskDef = assignment.tasks[item.taskId];
+        const taskDef = tasks[item.taskId];
         if (!taskDef) {
           this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
           return;

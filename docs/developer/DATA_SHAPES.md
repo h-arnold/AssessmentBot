@@ -3,6 +3,7 @@
 This document captures the serialized structures produced by the models shared in this repository. Every field shown is emitted today by the existing `toJSON()` implementations in:
 
 - `Assignment`
+- `AssignmentDefinition`
 - `TaskDefinition`
 - `StudentSubmission`
 - `StudentSubmissionItem`
@@ -24,6 +25,12 @@ To balance performance with data fidelity in the Google Apps Script environment,
     - **Content**: **Full Fidelity**. Includes all artifacts, cached content, and hashes.
     - **Size Target**: < 20MB (GAS execution limit safe).
     - **Lazy Loading**: This record acts as a cache. During a run, we compare its `updatedAt` against Drive file modification times to skip fetching unchanged student work.
+
+3.  **Assignment Definition Record (`assignment_definitions`)**:
+    - **Purpose**: Reusable lesson metadata (tasks, doc IDs, weighting) shared across years/classes.
+    - **Storage**: A dedicated collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
+    - **Content**: Canonical source of truth for tasks and document references.
+    - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct).
 
 ## ABClass (root) and JsonDbApp partial hydration
 
@@ -52,34 +59,26 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
     {
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
-      "documentType": "SLIDES",
-      "referenceDocumentId": "DriveRef123",
-      "templateDocumentId": "DriveTemplate123",
       "lastUpdated": "2025-09-10T12:34:56Z",
-      "tasks": {
-        "t_ab12": {
-          "id": "t_ab12",
-          "taskTitle": "Introduction",
-          "pageId": "p-1",
-          "taskNotes": "Focus on thesis clarity",
-          "taskMetadata": {},
-          "taskWeighting": 1,
-          "index": 0,
-          "artifacts": {
-            "reference": [
-              {
-                "taskId": "t_ab12",
-                "role": "reference",
-                "pageId": "p-1",
-                "documentId": "DriveRef123",
-                "content": null,
-                "contentHash": null,
-                "metadata": {},
-                "uid": "t_ab12-0-reference-p-1-0",
-                "type": "TEXT"
-              }
-            ],
-            "template": []
+      "assignmentDefinition": {
+        "primaryTitle": "Essay 1",
+        "primaryTopic": "English",
+        "yearGroup": 10,
+        "documentType": "SLIDES",
+        "referenceDocumentId": "DriveRef123",
+        "templateDocumentId": "DriveTemplate123",
+        "tasks": {
+          "t_ab12": {
+            "id": "t_ab12",
+            "taskTitle": "Introduction",
+            "artifacts": {
+              "reference": [
+                {
+                  "content": null,
+                  "contentHash": null
+                }
+              ]
+            }
           }
         }
       },
@@ -96,6 +95,7 @@ Key notes:
   documents but elide heavy fields (for example: `artifact.content` is
   `null`). Downstream code can detect these stubs and rehydrate on demand
   using the `uid`/`taskId` identifiers.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. Legacy fields like `tasks`, `documentType`, and doc IDs are removed from the root assignment object and accessed via the definition.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -111,6 +111,39 @@ or the dedicated `assign_full_*` collections.
 
 The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
 
+## Assignment Definition
+
+The `AssignmentDefinition` model encapsulates reusable lesson properties. It is persisted in the `assignment_definitions` collection and embedded into `Assignment` instances.
+
+```json
+{
+  "primaryTitle": "Essay 1",
+  "primaryTopic": "English",
+  "yearGroup": 10,
+  "alternateTitles": [],
+  "alternateTopics": [],
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "referenceLastModified": "2025-09-01T10:00:00Z",
+  "templateLastModified": "2025-09-01T10:00:00Z",
+  "assignmentWeighting": null,
+  "definitionKey": "Essay 1_English_10",
+  "tasks": {
+    "t_ab12": {
+      "id": "t_ab12",
+      "taskTitle": "Introduction",
+      "artifacts": {
+        "reference": [],
+        "template": []
+      }
+    }
+  },
+  "createdAt": "2025-09-01T10:00:00Z",
+  "updatedAt": "2025-09-01T10:00:00Z"
+}
+```
+
 ## Partial Hydration (summary-level)
 
 Used when we want a lightweight snapshot for list views or quick comparisons. Artifacts are kept as stubs (no `content` payload) and submission details retain only inexpensive maps.
@@ -120,37 +153,28 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "documentType": "SLIDES",
-  "referenceDocumentId": "DriveRef123",
-  "templateDocumentId": "DriveTemplate123",
-  "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
-  "tasks": {
-    "t_ab12": {
-      "id": "t_ab12",
-      "taskTitle": "Introduction",
-      "pageId": "p-1",
-      "taskNotes": "Focus on thesis clarity",
-      "taskMetadata": {},
-      "taskWeighting": 1,
-      "index": 0,
-      "artifacts": {
-        "reference": [
-          {
-            "taskId": "t_ab12",
-            "role": "reference",
-            "pageId": "p-1",
-            "documentId": "DriveRef123",
-            "content": null,
-            "contentHash": null,
-            "metadata": {},
-            "uid": "t_ab12-0-reference-p-1-0",
-            "type": "TEXT"
-          }
-        ],
-        "template": []
+  "assignmentDefinition": {
+    "primaryTitle": "Essay 1",
+    "primaryTopic": "English",
+    "yearGroup": 10,
+    "documentType": "SLIDES",
+    "referenceDocumentId": "DriveRef123",
+    "templateDocumentId": "DriveTemplate123",
+    "tasks": {
+      "t_ab12": {
+        "id": "t_ab12",
+        "taskTitle": "Introduction",
+        "artifacts": {
+          "reference": [
+            {
+              "content": null,
+              "contentHash": null
+            }
+          ]
+        }
       }
     }
   },
@@ -195,39 +219,28 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "documentType": "SLIDES",
-  "referenceDocumentId": "DriveRef123",
-  "templateDocumentId": "DriveTemplate123",
-  "assignmentWeighting": null,
   "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
-  "tasks": {
-    "t_ab12": {
-      "id": "t_ab12",
-      "taskTitle": "Introduction",
-      "pageId": "p-1",
-      "taskNotes": "Focus on thesis clarity",
-      "taskMetadata": {},
-      "taskWeighting": 1,
-      "index": 0,
-      "artifacts": {
-        "reference": [
-          {
-            "taskId": "t_ab12",
-            "role": "reference",
-            "pageId": "p-1",
-            "documentId": "DriveRef123",
-            "content": "<base64 encoded slides>",
-            "contentHash": "9f6a...",
-            "metadata": {
-              "pageCount": 5
-            },
-            "uid": "t_ab12-0-reference-p-1-0",
-            "type": "TEXT"
-          }
-        ],
-        "template": []
+  "assignmentDefinition": {
+    "primaryTitle": "Essay 1",
+    "primaryTopic": "English",
+    "yearGroup": 10,
+    "documentType": "SLIDES",
+    "referenceDocumentId": "DriveRef123",
+    "templateDocumentId": "DriveTemplate123",
+    "tasks": {
+      "t_ab12": {
+        "id": "t_ab12",
+        "taskTitle": "Introduction",
+        "artifacts": {
+          "reference": [
+            {
+              "content": "<base64 encoded slides>",
+              "contentHash": "9f6a..."
+            }
+          ]
+        }
       }
     }
   },
