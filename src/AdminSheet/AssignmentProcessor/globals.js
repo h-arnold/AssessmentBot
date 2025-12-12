@@ -10,33 +10,17 @@
  * @param {string} assignmentTitle - The title of the assignment.
  * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceDocumentId - The ID of the reference document.
- * @param {string} templateDocumentId - The ID of the template document.
  */
-function saveStartAndShowProgress(
-  assignmentTitle,
-  documentIds,
-  assignmentId,
-  referenceDocumentId,
-  templateDocumentId
-) {
+function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
   ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
     assignmentTitle,
     documentIds,
     assignmentId,
-    referenceDocumentId,
-    templateDocumentId,
   });
 
   const controller = new AssignmentController();
   try {
-    return controller.saveStartAndShowProgress(
-      assignmentTitle,
-      documentIds,
-      assignmentId,
-      referenceDocumentId,
-      templateDocumentId
-    );
+    return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
   } catch (err) {
     ABLogger.getInstance().error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
     throw err;

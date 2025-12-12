@@ -43,23 +43,9 @@ function saveSlideIdsForAssignment(assignmentId, documentIds) {
  * @param {string} assignmentTitle - The title of the assignment.
  * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
- * @param {string} referenceDocumentId - The ID of the reference document.
- * @param {string} templateDocumentId - The ID of the template document.
  */
-function saveStartAndShowProgress(
-  assignmentTitle,
-  documentIds,
-  assignmentId,
-  referenceDocumentId,
-  templateDocumentId
-) {
-  AssessmentBot.saveStartAndShowProgress(
-    assignmentTitle,
-    documentIds,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId
-  );
+function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
+  AssessmentBot.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
 }
 
 /**

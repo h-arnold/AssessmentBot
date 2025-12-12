@@ -17,32 +17,20 @@ class AssignmentController {
   }
 
   /**
-   * Initializes the assessment process by saving document IDs and starting progress tracking.
+   * Initialises the assessment process by saving document IDs and starting progress tracking.
    * Also attempts to warm up the LLM backend asynchronously.
    *
    * @param {string} assignmentTitle - The title of the assignment
    * @param {Object} documentIds - Object containing Google document IDs to be processed (referenceDocumentId, templateDocumentId)
    * @param {string} assignmentId - Unique identifier for the assignment
-   * @param {string} referenceDocumentId - ID of the reference/master document
-   * @param {string} templateDocumentId - ID of the template document
-   * @throws {Error} If saving or initialization process fails
+   * @throws {Error} If saving or initialisation process fails
    */
-  saveStartAndShowProgress(
-    assignmentTitle,
-    documentIds,
-    assignmentId,
-    referenceDocumentId,
-    templateDocumentId
-  ) {
+  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
     try {
       const { definition } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
-        documentIds: {
-          referenceDocumentId,
-          templateDocumentId,
-          ...documentIds,
-        },
+        documentIds,
       });
 
       this.startProcessing(assignmentId, definition.definitionKey);

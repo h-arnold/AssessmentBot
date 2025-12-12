@@ -264,8 +264,6 @@ describe('SlideIdsModal UI flow', () => {
           templateDocumentId,
         },
         assignmentDataObj.id,
-        referenceDocumentId,
-        templateDocumentId,
       ]);
       expect(materializeMock.toast).not.toHaveBeenCalled();
       expect(googleHost.close).not.toHaveBeenCalled();
