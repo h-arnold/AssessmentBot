@@ -1390,6 +1390,98 @@ AssignmentController.processSelectedAssignment()
 
 ---
 
+## Extension Points and Considerations
+
+### Adding New Document Types
+
+To add a new document type (e.g., Google Docs):
+
+1. Create new subclass in `AssignmentProcessor/` (e.g., `DocsAssignment.js`)
+2. Extend `Assignment` base class
+3. Implement required methods:
+   - `populateTasks()`: Parse reference/template documents
+   - `fetchSubmittedDocuments()`: Get student submissions
+   - `processAllSubmissions()`: Extract student responses
+   - `assessResponses()`: Route to appropriate assessor (optional override)
+4. Add MIME type constant for the new document type
+5. Update `Assignment.create()` factory method to handle new type
+6. Create corresponding parser in `DocumentParsers/` if needed
+
+### Adding New Assessment Types
+
+To add a new assessment category (beyond completeness, accuracy, spag):
+
+1. Update LLM backend API to return new category
+2. Modify `LLMRequestManager._assignAssessmentArtifacts()` to handle new category
+3. Update `AnalysisSheetManager` to display new category in sheets
+4. No changes needed to data models (assessments stored as flexible objects)
+
+### Extending the Pipeline
+
+To add new processing stages:
+
+1. Add stage in `AssignmentController.runAssignmentPipeline()`
+2. Use `runStage()` helper for consistent progress tracking
+3. Follow existing patterns for error handling
+4. Consider impact on caching (may need cache invalidation)
+
+### Performance Considerations
+
+1. **Batch Operations**: Always use `UrlFetchApp.fetchAll()` for multiple HTTP requests
+2. **Caching**: Check cache before expensive operations (LLM calls, Drive file fetches)
+3. **Progressive Loading**: Use partial hydration for list views, full hydration only when needed
+4. **Lock Management**: Always use document lock for long-running operations
+5. **Trigger Pattern**: Keep user-facing operations fast by delegating heavy work to triggers
+
+### Testing Considerations
+
+1. **No GAS Services in Tests**: Tests use Vitest and cannot call Apps Script services
+2. **Test Serialization**: All models must implement `toJSON()` and `fromJSON()`
+3. **Mock External APIs**: Google Classroom, Drive, Slides, Sheets APIs must be mocked
+4. **See**: `/docs/developer/testing.md` for complete testing guidelines
+
+### Common Troubleshooting Scenarios
+
+**Assessment doesn't start:**
+
+- Check Progress sheet for errors
+- Verify trigger was created (check document properties)
+- Check ProgressTracker logs for error messages
+- Verify user has necessary permissions
+
+**Cache not working:**
+
+- Check content hashes are being generated correctly
+- Verify CacheManager is storing/retrieving properly
+- Content changes should generate new hashes automatically
+
+**Students missing from results:**
+
+- Check if students have submitted work in Google Classroom
+- Verify MIME type matches (Slides vs Sheets)
+- Check DriveApp permissions for accessing student files
+
+**Tasks not appearing:**
+
+- Verify task titles in slide notes or sheet headers
+- Check TaskDefinition validation (must have reference and template artifacts)
+- Review task parsing logs in ABLogger output
+
+**Trigger fails to execute:**
+
+- Check for document lock conflicts
+- Verify document properties contain required parameters
+- Check for "too many triggers" error (TriggerController handles cleanup)
+
+**Progress tracking stops:**
+
+- Check for uncaught exceptions in pipeline
+- Verify ProgressTracker.complete() is called
+- Check lock timeout (5 seconds default)
+
+---
+
 ## Document Revision History
 
 - **Version 1.0** (2025-12-12): Initial comprehensive documentation of assessment flow
+- **Version 1.1** (2025-12-12): Fixed data structure documentation for StudentSubmission models
