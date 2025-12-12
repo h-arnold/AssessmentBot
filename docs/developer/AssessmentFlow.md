@@ -830,9 +830,9 @@ submission.items["task_001"] = {
     accuracy: Assessment { score: 90, justification: "..." },
     spag: Assessment { score: 95, justification: "..." }
   },
-  feedback: [
-    Feedback { text: "Great work!", category: "general" }
-  ]
+  feedback: {
+    general: { text: "Great work!", category: "general" }
+  }
 }
 ```
 
