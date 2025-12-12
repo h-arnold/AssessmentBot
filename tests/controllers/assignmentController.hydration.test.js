@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createMockABLogger, createMockPropertiesService } from '../helpers/mockFactories.js';
 
 // Setup global mocks
 globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock PropertiesService
-globalThis.PropertiesService = {
-  getDocumentProperties: vi.fn(),
-};
+const mockPropertiesService = createMockPropertiesService(vi);
+globalThis.PropertiesService = mockPropertiesService;
 
 // Mock LockService
 globalThis.LockService = {
@@ -41,13 +41,7 @@ describe('AssignmentController - Definition Hydration', () => {
     vi.clearAllMocks();
 
     // Mock logger
-    loggerInstance = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-      debugUi: vi.fn(),
-    };
+    loggerInstance = createMockABLogger(vi);
     vi.spyOn(globalThis.ABLogger, 'getInstance').mockReturnValue(loggerInstance);
 
     // Mock PropertiesService

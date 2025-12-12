@@ -18,24 +18,13 @@ let ConfigurationManager, InitController, UIManager, ProgressTracker;
 describe('Phase 0: Baseline Singleton Behavior Tests', () => {
   beforeEach(async () => {
     await harness.withFreshSingletons(() => {
-      // Setup the globals that the singletons expect
-      harness.setupGASMocks();
-
-      // Import the classes after mocks are setup
-      try {
-        ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
-        if (ConfigurationManager.default) ConfigurationManager = ConfigurationManager.default;
-      } catch (e) {
-        console.warn('Could not load ConfigurationManager:', e.message);
-      }
-
-      try {
-        ProgressTracker = require('../../src/AdminSheet/Utils/ProgressTracker.js');
-        if (ProgressTracker.default) ProgressTracker = ProgressTracker.default;
-      } catch (e) {
-        console.warn('Could not load ProgressTracker:', e.message);
-        ProgressTracker = null;
-      }
+      const { loadSingletonsWithMocks } = require('../helpers/singletonTestSetup.js');
+      const singletons = loadSingletonsWithMocks(harness, {
+        loadConfigurationManager: true,
+        loadProgressTracker: true,
+      });
+      ConfigurationManager = singletons.ConfigurationManager;
+      ProgressTracker = singletons.ProgressTracker;
     });
   });
 
@@ -95,15 +84,12 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           },
         };
 
-        // Import InitController after setting up UIManager mock
-        let InitController;
-        try {
-          InitController = require('../../src/AdminSheet/y_controllers/InitController.js');
-          if (InitController.default) InitController = InitController.default;
-        } catch (e) {
-          console.warn('Could not load InitController:', e.message);
-          return;
-        }
+        const { loadSingletonsWithMocks } = require('../helpers/singletonTestSetup.js');
+        const singletons = loadSingletonsWithMocks(harness, {
+          loadInitController: true,
+        });
+        const InitController = singletons.InitController;
+        if (!InitController) return;
 
         // Create InitController instance
         const initController = new InitController();
@@ -125,15 +111,12 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
   describe('UIManager Lazy Initialization', () => {
     test.skip('should not create GoogleClassroomManager until classroom method called', async () => {
       await harness.withFreshSingletons(() => {
-        // Import UIManager
-        let UIManager;
-        try {
-          UIManager = require('../../src/AdminSheet/UI/UIManager.js');
-          if (UIManager.default) UIManager = UIManager.default;
-        } catch (e) {
-          console.warn('Could not load UIManager:', e.message);
-          return;
-        }
+        const { loadSingletonsWithMocks } = require('../helpers/singletonTestSetup.js');
+        const singletons = loadSingletonsWithMocks(harness, {
+          loadUIManager: true,
+        });
+        const UIManager = singletons.UIManager;
+        if (!UIManager) return;
 
         // Create UIManager instance
         const uiManager = UIManager ? UIManager.getInstance() : null;
