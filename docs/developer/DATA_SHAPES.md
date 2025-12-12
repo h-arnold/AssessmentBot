@@ -26,11 +26,19 @@ To balance performance with data fidelity in the Google Apps Script environment,
     - **Size Target**: < 20MB (GAS execution limit safe).
     - **Lazy Loading**: This record acts as a cache. During a run, we compare its `updatedAt` against Drive file modification times to skip fetching unchanged student work.
 
-3.  **Assignment Definition Record (`assignment_definitions`)**:
-    - **Purpose**: Reusable lesson metadata (tasks, doc IDs, weighting) shared across years/classes.
-    - **Storage**: A dedicated collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
-    - **Content**: Canonical source of truth for tasks and document references.
-    - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct).
+3.  **Assignment Definition Registry (`assignment_definitions`)**:
+
+- **Purpose**: Lightweight index of definitions shared across classes/years.
+- **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
+- **Content**: **Partial** definition (artifacts redacted) plus timestamps; small enough for fast lookups and embedding into assignments/ABClass summaries.
+- **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
+
+4.  **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
+
+- **Purpose**: Full-fidelity definition cache (all artifacts and hashes) for parsing and reuse without re-reading Drive when unchanged.
+- **Storage**: Dedicated collection per definition key (mirrors the `assign_full_*` pattern for assignments).
+- **Content**: Full artifacts, cached content, hashes, and timestamps.
+- **Lazy Loading**: On run start, the controller fetches the full record synchronously and re-parses only when Drive timestamps are newer.
 
 ## ABClass (root) and JsonDbApp partial hydration
 
@@ -113,7 +121,7 @@ The same schema is used for every hydration level. Lower hydration simply elides
 
 ## Assignment Definition
 
-The `AssignmentDefinition` model encapsulates reusable lesson properties. It is persisted in the `assignment_definitions` collection and embedded into `Assignment` instances.
+The `AssignmentDefinition` model encapsulates reusable lesson properties. It is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy.
 
 ```json
 {
@@ -135,6 +143,42 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. It is 
       "taskTitle": "Introduction",
       "artifacts": {
         "reference": [],
+        "template": []
+      }
+    }
+  },
+  "createdAt": "2025-09-01T10:00:00Z",
+  "updatedAt": "2025-09-01T10:00:00Z"
+}
+```
+
+### Full Assignment Definition Record (dedicated collection)
+
+Stored under `assdef_full_<definitionKey>`, containing full artifact content/hashes for reuse.
+
+```json
+{
+  "primaryTitle": "Essay 1",
+  "primaryTopic": "English",
+  "yearGroup": 10,
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "referenceLastModified": "2025-09-01T10:00:00Z",
+  "templateLastModified": "2025-09-01T10:00:00Z",
+  "assignmentWeighting": null,
+  "definitionKey": "Essay 1_English_10",
+  "tasks": {
+    "t_ab12": {
+      "id": "t_ab12",
+      "taskTitle": "Introduction",
+      "artifacts": {
+        "reference": [
+          {
+            "content": "<base64 encoded reference slide>",
+            "contentHash": "9f6a..."
+          }
+        ],
         "template": []
       }
     }

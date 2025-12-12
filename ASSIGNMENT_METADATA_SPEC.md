@@ -6,14 +6,16 @@
 - Introduce `AssignmentDefinition` to store reusable metadata (doc IDs, task definitions, weighting, titles, topics, yearGroup).
   - **Relationship:** One `AssignmentDefinition` (Lesson) : Many `Assignment` instances (Classroom coursework).
   - **Embedded Pattern:** `Assignment` embeds a copy of `AssignmentDefinition` at creation time. Updates to a definition do not automatically propagate to existing assignments (see Future Enhancements).
-- Store definitions in `JsonDbApp` instead of Script Properties (hard cut-over).
+- Store definitions in `JsonDbApp` instead of Script Properties (hard cut-over), with **full definitions in dedicated per-definition collections** and partial definitions in a lightweight registry.
 - Enable lazy reload of reference/template artefacts by comparing Drive file modified timestamps against stored definitions.
 
 ## Scope
 
 - New `AssignmentDefinition` model (class) encapsulating reusable lesson properties.
 - Update `Assignment` to embed `AssignmentDefinition` and remove the `tasks` property entirely. All code must access tasks via `assignment.assignmentDefinition.tasks`.
-- `JsonDbApp` collection for definitions keyed by composite `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (populate `yearGroup` from the owning `ABClass` whenever available; only fall back to literal `null` when class metadata is missing).
+- `JsonDbApp` collections split into:
+  - **Partial registry** `assignment_definitions` keyed by `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (populate `yearGroup` from the owning `ABClass` whenever available; only fall back to literal `null` when class metadata is missing).
+  - **Full store** `assdef_full_<definitionKey>` mirroring the `assign_full_*` pattern to hold complete artifacts and hashes per definition.
 - Update controllers/parsers to consume definitions via `JsonDbApp` and mutate the shared definition when Drive content changes.
 - No Script Properties or migration logic is required (greenfield rollout).
 - Add `DriveManager.getFileModifiedTime()` to support lazy reloading of reference/template documents.
@@ -45,23 +47,26 @@
 
 ## Persistence (JsonDbApp)
 
-- **Collection:** `assignment_definitions`.
-- **Key Strategy:** Composite key `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
-  - _Constraint:_ Titles must be unique within a Topic and YearGroup combination.
-  - _Rationale:_ Topics may be reused across year groups; yearGroup distinguishes them.
+- **Partial registry (`assignment_definitions`):**
+  - Composite key `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`; unique per topic/year group.
+  - Stores **partial** definitions (artifact content redacted) for embedding into assignments and fast lookup.
+
+- **Full store (`assdef_full_<definitionKey>`):**
+  - Dedicated collection per definition key (mirrors `assign_full_*`).
+  - Stores **full** definitions (all artifacts, content, hashes) for reuse without re-parsing.
+
 - **Controller (`AssignmentDefinitionController`):**
-  - Manages persistence and retrieval of `AssignmentDefinition` entities.
-  - Uses `DbManager` to access the `assignment_definitions` collection and mutates shared definitions when Drive content changes.
+  - Manages both collections: writes full payload to `assdef_full_*`, writes partial to `assignment_definitions`.
   - **Methods (initial scope):**
     - `ensureDefinition({ primaryTitle, primaryTopic, topicId, yearGroup, documentType, referenceDocumentId, templateDocumentId }): AssignmentDefinition` (generates and manages the composite key internally; external callers never construct keys themselves)
-    - `getDefinitionByKey(definitionKey): AssignmentDefinition|null`
-    - `saveDefinition(def: AssignmentDefinition): AssignmentDefinition`
+    - `getDefinitionByKey(definitionKey): AssignmentDefinition|null` (reads from full store for runtime use; reads registry for embeddings as needed)
+    - `saveDefinition(def: AssignmentDefinition): AssignmentDefinition` (upserts both full and partial forms)
     - (Future) `findDefinitionByFuzzyMatch`
-  - `ensureDefinition` is responsible for topic-name enrichment via `ClassroomApiClient`, Drive timestamp comparisons, and re-parsing reference/template documents when stale.
+  - `ensureDefinition` is responsible for topic-name enrichment via `ClassroomApiClient`, Drive timestamp comparisons, and re-parsing reference/template documents when stale. All updates persist synchronously to the full store and refresh the registry entry.
 
 ## Assignment Integration
 
-- `Assignment` (the instance) embeds an `assignmentDefinition` property (copy, not reference).
+- `Assignment` (the instance) embeds an `assignmentDefinition` property (copy, not reference) **using the partial form**; the full definition is fetched synchronously from its dedicated collection when needed.
 - **Property Removal:**
   - Remove `assignment.tasks` property entirely (consumers read via `assignment.assignmentDefinition.tasks`; a helper may proxy if needed).
   - Remove `assignment.assignmentWeighting` property (access via definition).
@@ -71,8 +76,8 @@
   - Remove `referenceDocumentId`, `templateDocumentId`, `documentType` from `SlidesAssignment` and `SheetsAssignment`.
   - Access these via `assignment.assignmentDefinition.referenceDocumentId`, etc.
 - **Serialisation & Discrimination:**
-  - `Assignment.toJSON()` includes the full embedded `assignmentDefinition`.
-  - `Assignment.toPartialJSON()` uses `assignmentDefinition.toPartialJSON()`.
+  - `Assignment.toJSON()` includes the full embedded `assignmentDefinition` (using the full form when present in-memory).
+  - `Assignment.toPartialJSON()` uses `assignmentDefinition.toPartialJSON()` (redacted) to keep ABClass lightweight.
   - `Assignment.fromJSON` must route by `assignmentDefinition.documentType` (or equivalent) since assignment-level `documentType` is removed.
   - **Note:** This creates duplication (tasks stored in both definition and dedicated assignment collections), but optimises for read performance by avoiding separate Drive API calls.
 
@@ -86,11 +91,11 @@
 
 - Store `referenceLastModified` / `templateLastModified` in `AssignmentDefinition`.
 - When loading or preparing an assignment run:
-  1. Fetch `AssignmentDefinition` from DB via controller.
+  1. Fetch the **full** `AssignmentDefinition` from the dedicated `assdef_full_<definitionKey>` collection via the controller.
   2. Use `DriveManager.getFileModifiedTime(fileId)` to check Drive file `modifiedTime` for both reference and template documents.
   3. If either file's `modifiedTime` > stored `lastModified`, re-parse docs, mutate the shared definition (including `tasks`), and persist immediately.
   4. If unchanged, use stored `tasks`.
-  5. `AssignmentController.runAssignmentPipeline` performs this staleness check before `populateTasks()` and persists refreshed definitions immediately.
+  5. `AssignmentController.runAssignmentPipeline` performs this staleness check before `populateTasks()` and persists refreshed definitions immediately to both stores.
 
 ### Topic Enrichment
 
@@ -150,7 +155,7 @@
 
 ### UIManager Updates
 
-- **`saveDocumentIdsForAssignment()`**: Replace Script Properties writes entirely; this becomes a thin wrapper over the controller logic so all definition creation happens through a single pathway. Update Assessment Record template menus/globals to call the same path.
+- **`saveDocumentIdsForAssignment()`**: Replace Script Properties writes entirely; this becomes a thin wrapper over the controller logic so all definition creation happens through a single pathway. Update Assessment Record template menus/globals to call the same path **and rely solely on definition keys (no doc ID persistence in properties/menus).**
 
 ### Globals / Menus / UI
 
