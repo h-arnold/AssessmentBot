@@ -83,8 +83,10 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
       "courseId": "C123",
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
-      "documentType": "SLIDES",
+      "assignmentMetadata": null,
+      "dueDate": null,
       "lastUpdated": "2025-09-10T12:34:56Z",
+      "documentType": "SLIDES",
       "assignmentDefinition": {
         "primaryTitle": "Essay 1",
         "primaryTopic": "English",
@@ -235,10 +237,10 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "documentType": "SLIDES",
   "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
+  "documentType": "SLIDES",
   "assignmentDefinition": {
     "primaryTitle": "Essay 1",
     "primaryTopic": "English",
@@ -251,7 +253,6 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "tasks": null,
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
-  },
   },
   "submissions": [
     {
@@ -448,6 +449,8 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
           },
           "feedback": {
             "general": {
+              "type": "general",
+              "createdAt": "2025-09-10T12:00:00Z",
               "text": "Strong thesis and supporting detail."
             }
           }
@@ -502,10 +505,8 @@ Feedback is stored as a map keyed by feedback type. Different feedback types tra
 For text-based or general comments:
 
 ```json
-
-```
-
-```
+{
+  "general": {
     "type": "general",
     "createdAt": "2025-09-10T12:00:00Z",
     "text": "Great effort on the introduction. Consider expanding the evidence section in the next draft."
@@ -561,6 +562,10 @@ When assessments and feedback data exists, both partial and full hydration inclu
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "assignmentMetadata": null,
+  "dueDate": null,
+  "lastUpdated": "2025-09-10T12:34:56Z",
+  "documentType": "SLIDES",
   "submissions": [
     {
       "studentId": "S001",
@@ -618,6 +623,7 @@ When assessments and feedback data exists, both partial and full hydration inclu
 - **Artifacts drive rehydration**: `BaseTaskArtifact.uid` plus `taskId` uniquely identifies any heavy resource to fetch later.
 - **Artifact type vs external Drive type**: The `type` field on artifacts refers to the artifact class/type produced by the system (for example: `"TEXT"`, `"TABLE"`, `"SPREADSHEET"`, `"IMAGE"`, or the generic `"base"`). It is not a Google Drive MIME type. If a Drive MIME/type is required, include it in `metadata` or `documentId`.
 - **Timestamps in feedback**: `Feedback.toJSON()` now emits `createdAt` as an ISO string (e.g. `"2025-09-10T12:00:00Z"`) to match other timestamps in this document.
+- **StudentSubmission updatedAt format**: The `updatedAt` field uses a monotonic counter suffix (e.g., `"2025-09-10T12:30:00Z#2"`) to ensure strictly increasing timestamps even when multiple updates occur within the same millisecond. The counter is incremented by `touchUpdated()` on each modification.
 - **Assessments and feedback**: The `assessments` map keeps the same keys in both partial and full hydration so scores remain available, but partial documents omit each `reasoning` property to keep the summary lightweight. Feedback objects continue to be fully preserved in both payloads.
 
 By constraining the document to the fields emitted today, we minimize Drive calls without introducing new schema variants or migration overhead.
