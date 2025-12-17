@@ -23,6 +23,17 @@ abClassController.persistAssignmentRun(abClass, assignment);
 - Ensures `ABClass` stays small (<1MB) for fast loading.
 - Preserves full fidelity data (artifacts, content) in a separate collection (<20MB).
 
+### Full hydration chain for assessment objects (on persist)
+
+1. `Assignment.toJSON()` emits the **full** payload, including assessment reasoning text and full artifacts. This is written to `assign_full_<courseId>_<assignmentId>`.
+2. `Assignment.toPartialJSON()` regenerates a **redacted** copy for `ABClass.assignments`:
+
+- Artifacts: `content`/`contentHash` set to `null` via `toPartialJSON()` on artifacts and task definitions.
+- Assessments: `StudentSubmissionItem.toPartialJSON()` removes the `reasoning` field but keeps `score` so list views stay lightweight.
+- Feedback and identifiers remain intact.
+
+3. `persistAssignmentRun` replaces/creates the partial assignment inside the ABClass record and saves the full payload separately.
+
 ## 2. Rehydrating an Assignment
 
 When you need to access the full details of an assignment (e.g., for re-running an assessment or generating a deep report), use `rehydrateAssignment`.
@@ -46,6 +57,13 @@ try {
 ```
 
 **Important**: Always use the returned `fullAssignment` instance or re-access it from `abClass.assignments` after the call. Old references to the partial assignment object will remain partial.
+
+### Full hydration chain for assessment objects (on rehydrate)
+
+1. `rehydrateAssignment` reads the full document from `assign_full_<courseId>_<assignmentId>`.
+2. `Assignment.fromJSON` rebuilds the object graph; `StudentSubmission.fromJSON` and `StudentSubmissionItem.fromJSON` restore assessments **with** reasoning and artifacts **with** content.
+3. `_ensureFullDefinition` swaps in a full `AssignmentDefinition` (from `AssignmentDefinitionController`) if the embedded copy was only partial.
+4. The hydrated assignment replaces the partial one inside `abClass.assignments`, so subsequent pipeline steps see the complete data (scores, reasoning, artifacts).
 
 `AssignmentController.processSelectedAssignment()` automatically calls
 `rehydrateAssignment` for the assignment it is about to process **if and only
