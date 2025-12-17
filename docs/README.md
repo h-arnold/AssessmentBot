@@ -30,5 +30,6 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 - [**Singleton Pattern**](./developer/singletons.md) – How to work with singletons in the codebase
 - [**Data Shapes**](./developer/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
 - [**Rehydration**](./developer/rehydration.md) – Guide to deserialising and reconstructing objects
+- [**BeerCSS (vendored UI)**](./developer/beer-css.md) – How BeerCSS is vendored and used for new HtmlService dialogs
 
 ---

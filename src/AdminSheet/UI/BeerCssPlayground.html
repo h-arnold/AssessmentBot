@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <?!= include('UI/partials/Head') ?>
+    <?!= include('UI/vendor/beercss/BeerCssScoped') ?>
+    <title>BeerCSS Playground</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      .beer {
+        max-width: 960px;
+        margin: 0 auto;
+        font-size: 0.875rem;
+      }
+
+      .content {
+        padding: 1rem;
+        gap: 1rem;
+        display: grid;
+        max-width: 960px;
+      }
+
+      .surface-card {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        box-shadow: var(--elevate1);
+        background-color: var(--surface-container-lowest);
+      }
+
+      .grid-two {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .mt-3 {
+        margin-top: 0.75rem;
+      }
+
+      footer.actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 0 1rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="beer">
+      <main class="content">
+        <header class="surface-card">
+          <h4 class="primary-text">BeerCSS Playground</h4>
+          <p class="medium-text">
+            Quick preview of common BeerCSS components you can use in new dialogs.
+          </p>
+          <nav class="toolbar small">
+            <a class="active">Toolbar</a>
+            <a>Actions</a>
+            <a>More</a>
+          </nav>
+        </header>
+
+        <section class="grid-two">
+          <article class="surface-card">
+            <h6>Buttons</h6>
+            <div class="row wrap tiny-space">
+              <button class="button">Default</button>
+              <button class="button primary">Primary</button>
+              <button class="button border">Ghost</button>
+              <button class="button secondary">Secondary</button>
+              <button class="button tertiary">Tertiary</button>
+            </div>
+          </article>
+
+          <article class="surface-card">
+            <h6>Inputs</h6>
+            <div class="vertical small-space">
+              <div class="field label fill">
+                <input id="textInput" type="text" />
+                <label for="textInput">Text input</label>
+              </div>
+              <div class="field label fill">
+                <textarea id="notesInput" rows="2"></textarea>
+                <label for="notesInput">Multiline notes</label>
+              </div>
+              <div class="row tiny-space">
+                <label class="checkbox">
+                  <input type="checkbox" />
+                  <span>Checkbox</span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="demo" />
+                  <span>Radio</span>
+                </label>
+                <label class="switch" for="toggleSwitch">
+                  <input id="toggleSwitch" type="checkbox" />
+                  <span aria-hidden="true"></span>
+                  <span class="sr-only">Demo switch</span>
+                </label>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <article class="surface-card">
+          <h6>Chips and Badges</h6>
+          <div class="row wrap tiny-space">
+            <span class="chip">Neutral</span>
+            <span class="chip primary">Primary</span>
+            <span class="chip border">Outline</span>
+            <span class="chip secondary">Secondary</span>
+            <span class="chip tertiary">Tertiary</span>
+          </div>
+          <div class="row tiny-space mt-3">
+            <button class="button small">
+              Inbox
+              <span class="badge">3</span>
+            </button>
+            <button class="button border small">
+              Alerts
+              <span class="badge error">!</span>
+            </button>
+          </div>
+        </article>
+      </main>
+
+      <footer class="actions">
+        <button class="button border" type="button" onclick="google.script.host.close()">
+          Close
+        </button>
+      </footer>
+    </div>
+  </body>
+</html>

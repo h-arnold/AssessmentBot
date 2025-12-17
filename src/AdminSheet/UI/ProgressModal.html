@@ -1,108 +1,108 @@
 <!-- ProgressModal.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <base target="_top">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <head>
+    <base target="_top" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+    />
     <title>Progress</title>
     <style>
-        body {
-            padding: 20px;
-        }
+      body {
+        padding: 20px;
+      }
 
-        #progress-bar {
-            margin-top: 20px;
-        }
+      #progress-bar {
+        margin-top: 20px;
+      }
 
-        #status-message {
-            margin-top: 10px;
-            font-size: 16px;
-        }
+      #status-message {
+        margin-top: 10px;
+        font-size: 16px;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-    
+  <body>
     <div class="progress" id="progress-bar">
-        <div class="indeterminate"></div>
+      <div class="indeterminate"></div>
     </div>
     <div id="status-message">Initialising...</div>
 
     <script>
-        /**
-         * Polls the server for progress updates every 2 seconds.
-         */
-        function startPolling() {
-            // Initial fetch
-            fetchStatus();
-            // Set interval to fetch status every 2 seconds
-            window.pollingInterval = setInterval(fetchStatus, 2000);
+      /**
+       * Polls the server for progress updates every 2 seconds.
+       */
+      function startPolling() {
+        // Initial fetch
+        fetchStatus();
+        // Set interval to fetch status every 2 seconds
+        globalThis.pollingInterval = setInterval(fetchStatus, 2000);
+      }
+
+      /**
+       * Fetches the current status from the server.
+       */
+      function fetchStatus() {
+        google.script.run
+          .withSuccessHandler(updateProgress)
+          .withFailureHandler(handleError)
+          .requestStatus();
+      }
+
+      /**
+       * Updates the progress bar and status message based on the server response.
+       *
+       * @param {Object} progress - The progress data from the server.
+       */
+      function updateProgress(progress) {
+        const statusMessage = document.getElementById('status-message');
+        const progressBar = document.getElementById('progress-bar');
+
+        if (progress.error) {
+          clearInterval(globalThis.pollingInterval);
+          statusMessage.textContent = `Error: ${progress.error}`;
+          progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
+          progressBar.classList.remove('indeterminate');
+          progressBar.classList.add('red');
+          return;
         }
 
-        /**
-         * Fetches the current status from the server.
-         */
-        function fetchStatus() {
-            google.script.run
-                .withSuccessHandler(updateProgress)
-                .withFailureHandler(handleError)
-                .requestStatus();
+        statusMessage.textContent = `Step ${progress.step}: ${progress.message}`;
+
+        if (progress.completed) {
+          clearInterval(globalThis.pollingInterval);
+          statusMessage.textContent += ' (Completed)';
+          progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
+          progressBar.classList.remove('indeterminate');
+          progressBar.classList.add('green');
+
+          // Optionally, close the modal after a short delay
+          setTimeout(() => {
+            google.script.host.close();
+          }, 2000);
         }
+      }
 
-        /**
-         * Updates the progress bar and status message based on the server response.
-         *
-         * @param {Object} progress - The progress data from the server.
-         */
-        function updateProgress(progress) {
-            const statusMessage = document.getElementById('status-message');
-            const progressBar = document.getElementById('progress-bar');
+      /**
+       * Handles errors during the progress fetch.
+       *
+       * @param {Object} error - The error object.
+       */
+      function handleError(error) {
+        clearInterval(globalThis.pollingInterval);
+        const statusMessage = document.getElementById('status-message');
+        statusMessage.textContent = `Error fetching progress: ${error.message}`;
+        const progressBar = document.getElementById('progress-bar');
+        progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
+        progressBar.classList.remove('indeterminate');
+        progressBar.classList.add('red');
+      }
 
-            if (progress.error) {
-                clearInterval(window.pollingInterval);
-                statusMessage.textContent = `Error: ${progress.error}`;
-                progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-                progressBar.classList.remove('indeterminate');
-                progressBar.classList.add('red');
-                return;
-            }
-
-            statusMessage.textContent = `Step ${progress.step}: ${progress.message}`;
-
-            if (progress.completed) {
-                clearInterval(window.pollingInterval);
-                statusMessage.textContent += ' (Completed)';
-                progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-                progressBar.classList.remove('indeterminate');
-                progressBar.classList.add('green');
-
-                // Optionally, close the modal after a short delay
-                setTimeout(() => {
-                    google.script.host.close();
-                }, 2000);
-            }
-        }
-
-        /**
-         * Handles errors during the progress fetch.
-         *
-         * @param {Object} error - The error object.
-         */
-        function handleError(error) {
-            clearInterval(window.pollingInterval);
-            const statusMessage = document.getElementById('status-message');
-            statusMessage.textContent = `Error fetching progress: ${error.message}`;
-            const progressBar = document.getElementById('progress-bar');
-            progressBar.innerHTML = '<div class="determinate" style="width: 100%"></div>';
-            progressBar.classList.remove('indeterminate');
-            progressBar.classList.add('red');
-        }
-
-        // Start polling when the modal loads
-        document.addEventListener('DOMContentLoaded', startPolling);
+      // Start polling when the modal loads
+      document.addEventListener('DOMContentLoaded', startPolling);
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-</body>
-
+  </body>
 </html>

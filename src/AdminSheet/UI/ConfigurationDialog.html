@@ -297,7 +297,7 @@
       // a new key. If they explicitly clear the field (and the original had no key) it will
       // attempt to save an empty string (explicit clear).
       const apiKeyEl = document.getElementById('apiKey');
-      window._apiKeyWasRedacted = !!data.hasApiKey;
+      globalThis._apiKeyWasRedacted = !!data.hasApiKey;
       if (data.hasApiKey) {
         // Show masked representation as placeholder; do not set value.
         apiKeyEl.value = '';
@@ -356,7 +356,7 @@
     function validateIntRange(id, min, max, label, focusTabFn) {
       const el = document.getElementById(id);
       const val = Number.parseInt(el.value, 10);
-      if (isNaN(val) || val < min || val > max) {
+      if (Number.isNaN(val) || val < min || val > max) {
         if (typeof focusTabFn === 'function') focusTabFn();
         M.toast({ html: `${label} must be an integer between ${min} and ${max}.`, classes: 'orange' });
         el.focus();
@@ -420,7 +420,7 @@
       // Require an API key only if none is present on the server and the user hasn't provided one.
       // If the server already has a key (data.hasApiKey true), leaving the field empty means
       // "keep existing key" and should be allowed.
-      if (!window._apiKeyWasRedacted && !apiKeyEl.value.trim()) {
+      if (!globalThis._apiKeyWasRedacted && !apiKeyEl.value.trim()) {
         focusBackendTab();
         M.toast({ html: 'API Key is required.', classes: 'orange' });
         apiKeyEl.focus();
@@ -488,7 +488,7 @@
           const v = document.getElementById('apiKey').value.trim();
           if (v) return v; // user provided a new key
           // no value entered — if the original was redacted, omit apiKey from payload
-          if (window._apiKeyWasRedacted) return undefined;
+          if (globalThis._apiKeyWasRedacted) return undefined;
           // original wasn't redacted and user cleared the field -> send empty string (explicit clear)
           return '';
         })(),
