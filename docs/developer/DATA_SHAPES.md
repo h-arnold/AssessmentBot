@@ -177,6 +177,8 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
   "primaryTitle": "Essay 1",
   "primaryTopic": "English",
   "yearGroup": 10,
+  "alternateTitles": [],
+  "alternateTopics": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
@@ -463,8 +465,6 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
 }
 ```
 
-````
-
 Assessments are stored as a map keyed by assessment criterion (e.g., `'completeness'`, `'accuracy'`, `'spag'`). Each assessment contains a score and reasoning provided by the LLM.
 
 ```json
@@ -482,7 +482,7 @@ Assessments are stored as a map keyed by assessment criterion (e.g., `'completen
     "reasoning": "Excellent spelling, punctuation, and grammar throughout. No errors detected."
   }
 }
-````
+```
 
 Partial hydration uses the same assessment map but drops every `reasoning` field so list views still have the numeric scores without the verbose explanations.
 
