@@ -48,7 +48,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
 - **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
-- **Content**: **Partial** definition (artifacts redacted) plus timestamps; small enough for fast lookups and embedding into assignments/ABClass summaries.
+- **Content**: **Ultra-minimal Partial** definition with `tasks: null` (no artifacts, no doc IDs); includes only metadata (titles, topics, yearGroup, weighting) plus `documentType` for routing.
 - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
 
 4.  **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
@@ -70,7 +70,7 @@ frequently stored with a "partial" (summary-level) representation so that
 list and overview flows avoid rehydrating heavy artifacts until required.
 
 Example: `ABClass` rehydrated from JsonDbApp where contained `assignments`
-are partially hydrated (note `tasks` contain artifacts with `content: null`):
+are partially hydrated (note the embedded `assignmentDefinition` has `tasks: null` and omits doc IDs):
 
 ```json
 {
@@ -83,8 +83,10 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
   "students": [{ "name": "Ada Lovelace", "email": "ada@school.com", "id": "S001" }],
   "assignments": [
     {
+      "courseId": "C123",
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
+      "documentType": "SLIDES",
       "lastUpdated": "2025-09-10T12:34:56Z",
       "assignmentDefinition": {
         "primaryTitle": "Essay 1",
@@ -93,51 +95,9 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
         "alternateTitles": [],
         "alternateTopics": [],
         "documentType": "SLIDES",
-        "referenceDocumentId": "DriveRef123",
-        "templateDocumentId": "DriveTemplate123",
-        "referenceLastModified": "2025-09-01T10:00:00Z",
-        "templateLastModified": "2025-09-01T10:00:00Z",
         "assignmentWeighting": null,
         "definitionKey": "Essay 1_English_10",
-        "tasks": {
-          "t_ab12": {
-            "id": "t_ab12",
-            "taskTitle": "Introduction",
-            "pageId": "p-1",
-            "taskNotes": null,
-            "taskMetadata": {},
-            "taskWeighting": null,
-            "index": 0,
-            "artifacts": {
-              "reference": [
-                {
-                  "taskId": "t_ab12",
-                  "role": "reference",
-                  "pageId": "p-1",
-                  "documentId": "DriveRef123",
-                  "content": null,
-                  "contentHash": null,
-                  "metadata": {},
-                  "uid": "t_ab12-0-reference-p-1-0",
-                  "type": "TEXT"
-                }
-              ],
-              "template": [
-                {
-                  "taskId": "t_ab12",
-                  "role": "template",
-                  "pageId": "p-1",
-                  "documentId": "DriveTemplate123",
-                  "content": null,
-                  "contentHash": null,
-                  "metadata": {},
-                  "uid": "t_ab12-0-template-p-1-0",
-                  "type": "TEXT"
-                }
-              ]
-            }
-          }
-        },
+        "tasks": null,
         "createdAt": "2025-09-01T10:00:00Z",
         "updatedAt": "2025-09-01T10:00:00Z"
       },
@@ -150,11 +110,10 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
 Key notes:
 
 - The `ABClass` top-level fields are present and usable immediately.
-- Assignment-level payloads keep the same key structure as fully-hydrated
-  documents but elide heavy fields (for example: `artifact.content` is
-  `null`). Downstream code can detect these stubs and rehydrate on demand
-  using the `uid`/`taskId` identifiers.
-- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For compatibility, `Assignment.toJSON()` still emits `documentType`, `referenceDocumentId`, `templateDocumentId`, and `tasks` at the assignment root; the canonical source of these fields remains the embedded `assignmentDefinition`.
+- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker), omits `referenceDocumentId` and `templateDocumentId` to minimize payload size.
+- **Root `documentType`**: Preserved at assignment root for polymorphic routing (allows `Assignment.fromJSON` to instantiate correct subclass).
+- **Fail-Fast Design**: Code expecting tasks will throw immediately on `null` rather than silently operating on empty objects.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` and omits doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -163,12 +122,14 @@ Key notes:
   JsonDbApp or other serialized stores; doing so will duplicate roster entries
   each time an assessment is rehydrated.
 
+**Partial Definition Detection**: Code detects partial definitions via `assignmentDefinition.tasks === null` (not `undefined` or `{}`). This explicit marker enables fail-fast behavior when tasks are accessed without proper rehydration.
+
 Hydration markers (`_hydrationLevel`) are runtime-only flags set to `'full'` or
 `'partial'` so controllers know whether an `Assignment` holds the entire payload
 or a lightweight summary. They are never serialized in either the ABClass record
 or the dedicated `assign_full_*` collections.
 
-The same schema is used for every hydration level. Lower hydration simply elides heavy payloads while keeping enough identifiers to rehydrate on demand.
+The same schema is used for every hydration level. Partial definitions use `tasks: null` as an explicit marker rather than redacted artifacts with null content.
 
 ## Assignment Definition
 
@@ -270,13 +231,33 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
 
 ## Partial Hydration (summary-level)
 
-Used when we want a lightweight snapshot for list views or quick comparisons. Artifacts are kept as stubs (no `content` payload) and submission details retain only inexpensive maps.
+Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` and omits document IDs. Submission artifacts are redacted (no `content` payload).
+
+**Before (old partial format - artifacts with null content):**
+
+```json
+{
+  "assignmentDefinition": {
+    "tasks": {
+      "t_ab12": {
+        "artifacts": {
+          "reference": [{ "content": null, "contentHash": null }],
+          "template": [{ "content": null, "contentHash": null }]
+        }
+      }
+    }
+  }
+}
+```
+
+**After (new partial format - tasks: null):**
 
 ```json
 {
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
+  "documentType": "SLIDES",
   "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
@@ -287,53 +268,12 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
     "alternateTitles": [],
     "alternateTopics": [],
     "documentType": "SLIDES",
-    "referenceDocumentId": "DriveRef123",
-    "templateDocumentId": "DriveTemplate123",
-    "referenceLastModified": "2025-09-01T10:00:00Z",
-    "templateLastModified": "2025-09-01T10:00:00Z",
     "assignmentWeighting": null,
     "definitionKey": "Essay 1_English_10",
-    "tasks": {
-      "t_ab12": {
-        "id": "t_ab12",
-        "taskTitle": "Introduction",
-        "pageId": "p-1",
-        "taskNotes": null,
-        "taskMetadata": {},
-        "taskWeighting": null,
-        "index": 0,
-        "artifacts": {
-          "reference": [
-            {
-              "taskId": "t_ab12",
-              "role": "reference",
-              "pageId": "p-1",
-              "documentId": "DriveRef123",
-              "content": null,
-              "contentHash": null,
-              "metadata": {},
-              "uid": "t_ab12-0-reference-p-1-0",
-              "type": "TEXT"
-            }
-          ],
-          "template": [
-            {
-              "taskId": "t_ab12",
-              "role": "template",
-              "pageId": "p-1",
-              "documentId": "DriveTemplate123",
-              "content": null,
-              "contentHash": null,
-              "metadata": {},
-              "uid": "t_ab12-0-template-p-1-0",
-              "type": "TEXT"
-            }
-          ]
-        }
-      }
-    },
+    "tasks": null,
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
+  },
   },
   "submissions": [
     {
@@ -377,15 +317,71 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
         }
       },
       "createdAt": "2025-09-10T10:00:00Z",
-      "updatedAt": "2025-09-10T12:30:00Z#2"
+      "updatedAt": "2025-09-10T12:30:00Z"
     }
   ]
 }
 ```
 
+**Key Differences:**
+
+- Assignment definition has `tasks: null` (not an object with redacted artifacts)
+- Doc IDs (`referenceDocumentId`, `templateDocumentId`) omitted from partial definition
+- Root `documentType` preserved for routing
+- Submission artifacts still have `content: null` (unchanged from previous partial format)
+  "items": {
+  "t_ab12": {
+  "id": "ssi_abc123",
+  "taskId": "t_ab12",
+  "artifact": {
+  "taskId": "t_ab12",
+  "role": "submission",
+  "pageId": "p-1",
+  "documentId": "DriveFile123",
+  "content": null,
+  "contentHash": null,
+  "metadata": {},
+  "uid": "t_ab12-S001-p-1-0",
+  "type": "TEXT"
+  },
+  "assessments": {
+  "completeness": {
+  "score": 4
+  },
+  "accuracy": {
+  "score": 3
+  },
+  "spag": {
+  "score": 5
+  }
+  },
+  "feedback": {
+  "general": {
+  "type": "general",
+  "createdAt": "2025-09-10T12:00:00Z",
+  "text": "Good work overall. Consider revising the conclusion."
+  }
+  }
+  }
+  },
+  "createdAt": "2025-09-10T10:00:00Z",
+  "updatedAt": "2025-09-10T12:30:00Z#2"
+  }
+  ]
+  }
+
+````
+
 ## Full Hydration (complete payload)
 
-For grading, auditing, or export flows we rehydrate every artifact exactly as stored. The schema stays identical; heavier fields are simply populated. Partial JSONs redact artifact `content`/`contentHash` and drop the `reasoning` entries from assessments so scores remain accessible while the payload stays lightweight; feedback objects remain intact in both partial and full forms.
+For grading, auditing, or export flows we rehydrate every artifact exactly as stored.
+
+The **high-level shape stays consistent** (assignment identity + embedded `assignmentDefinition` + `submissions`), but **partial and full payloads are not field-identical**:
+
+- Partial payloads omit root-level `tasks`/doc IDs and use `assignmentDefinition.tasks: null` as an explicit marker.
+- Full payloads include the complete `tasks` map and document IDs.
+
+Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoning` entries from assessments so scores remain accessible while the payload stays lightweight; feedback objects remain intact in both partial and full forms.
 
 ```json
 {
@@ -533,7 +529,7 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
     }
   ]
 }
-```
+````
 
 ## Assessment Structure
 

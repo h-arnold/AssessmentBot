@@ -81,7 +81,7 @@ describe('AssignmentDefinition', () => {
     expect(def.tasks.t1).toBeDefined();
   });
 
-  it('should redact artifacts in toPartialJSON', () => {
+  it('should set tasks to null in toPartialJSON', () => {
     const tasks = {
       t1: {
         id: 't1',
@@ -105,9 +105,9 @@ describe('AssignmentDefinition', () => {
     const def = new AssignmentDefinition({ ...validParams, tasks });
     const partial = def.toPartialJSON();
 
-    expect(partial.tasks.t1.artifacts.reference[0].content).toBeNull();
-    expect(partial.tasks.t1.artifacts.reference[0].contentHash).toBeNull();
-    expect(partial.tasks.t1.artifacts.reference[0].uid).toBe('a1');
+    expect(partial.tasks).toBe(null);
+    expect(partial).not.toHaveProperty('referenceDocumentId');
+    expect(partial).not.toHaveProperty('templateDocumentId');
   });
 
   it('should update modified timestamps', async () => {

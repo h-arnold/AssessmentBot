@@ -184,9 +184,9 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const registryCall = mockRegistryCollection.insertOne.mock.calls[0];
       const savedPartialDef = registryCall[0];
 
-      expect(savedPartialDef.tasks.t1).toBeDefined();
-      expect(savedPartialDef.tasks.t1.artifacts.reference[0].content).toBeNull();
-      expect(savedPartialDef.tasks.t1.artifacts.reference[0].contentHash).toBeNull();
+      expect(savedPartialDef.tasks).toBe(null);
+      expect(savedPartialDef).not.toHaveProperty('referenceDocumentId');
+      expect(savedPartialDef).not.toHaveProperty('templateDocumentId');
     });
   });
 
@@ -375,16 +375,16 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         templateDocumentId: 'tpl',
       });
 
-      // Registry should also be updated with redacted content
+      // Registry should also be updated with partial (tasks: null)
       expect(mockRegistryCollection.save).toHaveBeenCalled();
       // Registry was updated via replaceOne or insertOne - check the appropriate method
       const registryReplaceCall = mockRegistryCollection.replaceOne.mock.calls[0];
       const registryInsertCall = mockRegistryCollection.insertOne.mock.calls[0];
       const partialDef = registryReplaceCall ? registryReplaceCall[1] : registryInsertCall[0];
 
-      expect(partialDef.tasks.t1).toBeDefined();
-      expect(partialDef.tasks.t1.artifacts.reference[0].content).toBeNull();
-      expect(partialDef.tasks.t1.artifacts.reference[0].contentHash).toBeNull();
+      expect(partialDef.tasks).toBe(null);
+      expect(partialDef).not.toHaveProperty('referenceDocumentId');
+      expect(partialDef).not.toHaveProperty('templateDocumentId');
     });
   });
 
@@ -419,7 +419,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const registryReplaceCall = mockRegistryCollection.replaceOne.mock.calls[0];
       const registryInsertCall = mockRegistryCollection.insertOne.mock.calls[0];
       const savedPartial = registryReplaceCall ? registryReplaceCall[1] : registryInsertCall[0];
-      expect(savedPartial.tasks.t1.artifacts.reference[0].content).toBeNull();
+      expect(savedPartial.tasks).toBe(null);
     });
   });
 });

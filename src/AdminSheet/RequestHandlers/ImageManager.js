@@ -30,7 +30,7 @@ class ImageManager extends BaseRequestManager {
    */
   collectAllImageArtifacts(assignment) {
     const results = [];
-    const taskDefs = assignment.assignmentDefinition?.tasks || assignment.tasks || {};
+    const taskDefs = assignment.assignmentDefinition.tasks;
     // TaskDefinition artifacts (reference/template)
     Object.values(taskDefs).forEach((taskDefinition) => {
       ['reference', 'template'].forEach((role) => {
@@ -167,18 +167,16 @@ class ImageManager extends BaseRequestManager {
 
     const artifactMap = {};
 
-    Object.values(assignment.assignmentDefinition?.tasks || assignment.tasks || {}).forEach(
-      (taskDefinition) => {
-        ['reference', 'template'].forEach((role) => {
-          taskDefinition.artifacts[role].forEach((artifact) => {
-            if (this.isImageArtifact(artifact)) {
-              const uid = artifact.getUid();
-              artifactMap[uid] = artifact;
-            }
-          });
+    Object.values(assignment.assignmentDefinition.tasks).forEach((taskDefinition) => {
+      ['reference', 'template'].forEach((role) => {
+        taskDefinition.artifacts[role].forEach((artifact) => {
+          if (this.isImageArtifact(artifact)) {
+            const uid = artifact.getUid();
+            artifactMap[uid] = artifact;
+          }
         });
-      }
-    );
+      });
+    });
 
     assignment.submissions.forEach((submission) => {
       Object.values(submission.items).forEach((item) => {

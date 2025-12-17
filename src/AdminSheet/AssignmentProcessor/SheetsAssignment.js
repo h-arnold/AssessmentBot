@@ -55,7 +55,7 @@ class SheetsAssignment extends Assignment {
    */
   processAllSubmissions() {
     const parser = new SheetsParser();
-    const taskDefs = Object.values(this.assignmentDefinition.tasks || {});
+    const taskDefs = Object.values(this.assignmentDefinition.tasks);
     this.submissions.forEach((sub) => {
       this.progressTracker.updateProgress(
         `Extracting work from spreadsheet for student ${sub.studentId}.`,

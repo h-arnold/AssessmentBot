@@ -1,29 +1,17 @@
 /**
- * Assignment Serialisation Tests (RED Phase)
+ * Assignment Serialisation Tests
  *
- * These tests capture the desired behaviour for the Assignment serialization
- * enhancements. They are expected to fail until `Assignment.toPartialJSON()`
- * and supporting helpers are implemented.
+ * Tests for Assignment serialization including partial definitions with tasks: null.
  */
 
 import { describe, it, expect } from 'vitest';
 import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 import {
   createSlidesAssignment,
   createTextTask,
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
-
-function sanitizeAssessmentsForPartial(fullAssessments) {
-  if (!fullAssessments || typeof fullAssessments !== 'object') return fullAssessments;
-  return Object.fromEntries(
-    Object.entries(fullAssessments).map(([criterion, assessment]) => {
-      if (!assessment || typeof assessment !== 'object') return [criterion, assessment];
-      const { reasoning, ...rest } = assessment;
-      return [criterion, rest];
-    })
-  );
-}
 
 /**
  * Build a fully-hydrated slides assignment with rich task/submission data.
@@ -70,56 +58,33 @@ function buildAssignmentFixture() {
   };
 }
 
-/**
- * Assert that a partial artifact keeps identifiers/metadata while nulling heavy fields.
- * @param {object} partialArtifact - Artifact from toPartialJSON payload.
- * @param {object} fullArtifact - Artifact from toJSON payload.
- */
-function expectPartialArtifact(partialArtifact, fullArtifact) {
-  expect(partialArtifact).toBeDefined();
-  expect(partialArtifact.taskId).toBe(fullArtifact.taskId);
-  expect(partialArtifact.role).toBe(fullArtifact.role);
-  expect(partialArtifact.uid).toBe(fullArtifact.uid);
-  expect(partialArtifact.type).toBe(fullArtifact.type);
-  expect(partialArtifact.pageId).toBe(fullArtifact.pageId);
-  expect(partialArtifact.documentId).toBe(fullArtifact.documentId);
-  expect(partialArtifact.metadata).toEqual(fullArtifact.metadata);
-  expect(partialArtifact.content).toBeNull();
-  expect(partialArtifact.contentHash).toBeNull();
-}
-
 describe('Assignment Serialisation', () => {
   describe('toPartialJSON()', () => {
-    it('exposes toPartialJSON and redacts heavy artifact fields while preserving identifiers', () => {
-      const { assignment, taskId } = buildAssignmentFixture();
+    it('omits tasks, referenceDocumentId, and templateDocumentId from root for partial', () => {
+      const { assignment } = buildAssignmentFixture();
 
       expect(typeof assignment.toPartialJSON).toBe('function');
 
-      const fullJson = assignment.toJSON();
       const partialJson = assignment.toPartialJSON();
 
-      expect(partialJson.documentType).toBe(fullJson.documentType);
-      expect(partialJson.courseId).toBe(fullJson.courseId);
-      expect(partialJson.assignmentId).toBe(fullJson.assignmentId);
+      // Root level should NOT have these fields for partial
+      expect(partialJson).not.toHaveProperty('tasks');
+      expect(partialJson).not.toHaveProperty('referenceDocumentId');
+      expect(partialJson).not.toHaveProperty('templateDocumentId');
 
-      const fullTask = fullJson.tasks[taskId];
-      const partialTask = partialJson.tasks[taskId];
-      expect(partialTask).toBeDefined();
+      // assignmentDefinition should have tasks: null
+      expect(partialJson.assignmentDefinition.tasks).toBe(null);
+      expect(partialJson.assignmentDefinition).not.toHaveProperty('referenceDocumentId');
+      expect(partialJson.assignmentDefinition).not.toHaveProperty('templateDocumentId');
 
-      expectPartialArtifact(partialTask.artifacts.reference[0], fullTask.artifacts.reference[0]);
-      expectPartialArtifact(partialTask.artifacts.template[0], fullTask.artifacts.template[0]);
+      // documentType should be present in both root and definition
+      expect(partialJson.documentType).toBe('SLIDES');
+      expect(partialJson.assignmentDefinition.documentType).toBe('SLIDES');
 
-      const fullSubmission = fullJson.submissions[0];
-      const partialSubmission = partialJson.submissions[0];
-      expect(partialSubmission.studentId).toBe(fullSubmission.studentId);
-      expect(partialSubmission.documentId).toBe(fullSubmission.documentId);
-      expect(partialSubmission.assignmentId).toBe(fullSubmission.assignmentId);
-
-      const fullItem = fullSubmission.items[taskId];
-      const partialItem = partialSubmission.items[taskId];
-      expect(partialItem.assessments).toEqual(sanitizeAssessmentsForPartial(fullItem.assessments));
-      expect(partialItem.feedback).toEqual(fullItem.feedback);
-      expectPartialArtifact(partialItem.artifact, fullItem.artifact);
+      // Core identifiers should be preserved
+      expect(partialJson.courseId).toBeDefined();
+      expect(partialJson.assignmentId).toBeDefined();
+      expect(partialJson.assignmentName).toBeDefined();
     });
 
     it('omits transient fields such as students, progressTracker, and _hydrationLevel', () => {
@@ -138,53 +103,86 @@ describe('Assignment Serialisation', () => {
       expect(partialJson._hydrationLevel).toBeUndefined();
     });
 
-    it('does not mutate the live assignment instance when producing partial payloads', () => {
-      const { assignment, taskId } = buildAssignmentFixture();
+    it('preserves submissions in partial JSON', () => {
+      const { assignment } = buildAssignmentFixture();
 
-      const originalReferenceContent = assignment.tasks[taskId].artifacts.reference[0].content;
-      const originalReferenceHash = assignment.tasks[taskId].artifacts.reference[0].contentHash;
-      const originalSubmissionContent = assignment.submissions[0].items[taskId].artifact.content;
-      const originalSubmissionHash = assignment.submissions[0].items[taskId].artifact.contentHash;
+      const partialJson = assignment.toPartialJSON();
 
-      expect(typeof assignment.toPartialJSON).toBe('function');
+      expect(partialJson.submissions).toBeDefined();
+      expect(partialJson.submissions.length).toBeGreaterThan(0);
+      expect(partialJson.submissions[0].studentId).toBe('student-123');
+    });
+  });
 
-      assignment.toPartialJSON();
+  describe('Round-trip partial serialization', () => {
+    it('maintains tasks: null through round-trip', () => {
+      const partialDef = new AssignmentDefinition({
+        primaryTitle: 'Essay 1',
+        primaryTopic: 'English',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        tasks: null,
+      });
 
-      expect(assignment.tasks[taskId].artifacts.reference[0].content).toBe(
-        originalReferenceContent
-      );
-      expect(assignment.tasks[taskId].artifacts.reference[0].contentHash).toBe(
-        originalReferenceHash
-      );
-      expect(assignment.submissions[0].items[taskId].artifact.content).toBe(
-        originalSubmissionContent
-      );
-      expect(assignment.submissions[0].items[taskId].artifact.contentHash).toBe(
-        originalSubmissionHash
-      );
+      const assignment = Assignment.create(partialDef, 'C123', 'A1');
+      assignment.assignmentName = 'Test Assignment';
+
+      const partialJson = assignment.toPartialJSON();
+      const restored = Assignment.fromJSON(partialJson);
+
+      expect(restored.assignmentDefinition.tasks).toBe(null);
+      expect(restored.assignmentDefinition.referenceDocumentId).toBe(null);
+      expect(restored.assignmentDefinition.templateDocumentId).toBe(null);
+      expect(restored.documentType).toBe('SLIDES');
+    });
+  });
+
+  describe('SlidesAssignment.toPartialJSON()', () => {
+    it('produces correct partial shape with documentType', () => {
+      const fullDef = new AssignmentDefinition({
+        primaryTitle: 'Slides Essay',
+        primaryTopic: 'English',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref-slides',
+        templateDocumentId: 'tmpl-slides',
+        tasks: {},
+      });
+
+      const assignment = Assignment.create(fullDef, 'C123', 'A1');
+      const partialJson = assignment.toPartialJSON();
+
+      expect(partialJson.documentType).toBe('SLIDES');
+      expect(partialJson.assignmentDefinition.documentType).toBe('SLIDES');
+      expect(partialJson.assignmentDefinition.tasks).toBe(null);
+      expect(partialJson).not.toHaveProperty('referenceDocumentId');
+      expect(partialJson).not.toHaveProperty('templateDocumentId');
+      expect(partialJson).not.toHaveProperty('tasks');
     });
   });
 
   describe('SlidesAssignment.toJSON()', () => {
     it('includes subclass-specific identifiers while delegating to the base payload', () => {
-      const assignment = Assignment.fromJSON({
-        courseId: 'course-tojson',
-        assignmentId: 'assign-tojson',
-        assignmentName: 'Slides assignment serialisation',
+      const fullDef = new AssignmentDefinition({
+        primaryTitle: 'Slides assignment serialisation',
+        primaryTopic: 'English',
+        yearGroup: 10,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-tojson',
         templateDocumentId: 'tpl-tojson',
         tasks: {},
-        submissions: [],
       });
+
+      const assignment = Assignment.create(fullDef, 'course-tojson', 'assign-tojson');
+      assignment.assignmentName = 'Slides assignment serialisation';
 
       const json = assignment.toJSON();
 
       expect(json.courseId).toBe('course-tojson');
       expect(json.assignmentId).toBe('assign-tojson');
       expect(json.documentType).toBe('SLIDES');
-      expect(json.referenceDocumentId).toBe('ref-tojson');
-      expect(json.templateDocumentId).toBe('tpl-tojson');
+      expect(json.assignmentDefinition.referenceDocumentId).toBe('ref-tojson');
+      expect(json.assignmentDefinition.templateDocumentId).toBe('tpl-tojson');
       expect(json.students).toBeUndefined();
       expect(json.progressTracker).toBeUndefined();
     });

@@ -109,10 +109,12 @@ describe('Phase 5 ImageManager', () => {
     };
 
     assignment = {
-      tasks: { t1: tdLike },
+      assignmentDefinition: {
+        tasks: { t1: tdLike },
+        referenceDocumentId: 'refDoc',
+        templateDocumentId: 'tplDoc',
+      },
       submissions: [submission],
-      referenceDocumentId: 'refDoc',
-      templateDocumentId: 'tplDoc',
     };
   });
 
@@ -142,7 +144,7 @@ describe('Phase 5 ImageManager', () => {
     }));
     mgr.writeBackBlobs(assignment, blobs);
     // Validate artifacts updated
-    const td = assignment.tasks.t1;
+    const td = assignment.assignmentDefinition.tasks.t1;
     const allArts = [
       ...td.artifacts.reference,
       ...td.artifacts.template,

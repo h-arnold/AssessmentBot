@@ -78,7 +78,7 @@ class Assignment {
       },
       tasks: {
         get() {
-          return target.assignmentDefinition?.tasks ?? target._tasksAlias ?? {};
+          return target.assignmentDefinition?.tasks ?? target._tasksAlias ?? null;
         },
         set(value) {
           if (target.assignmentDefinition) target.assignmentDefinition.tasks = value;
@@ -128,25 +128,38 @@ class Assignment {
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
-      ...this._extractDefinitionFields(definitionJson),
+      ...this._extractFullDefinitionFields(definitionJson),
       submissions,
       assignmentDefinition: definitionJson || this.assignmentDefinition,
     };
   }
 
   /**
-   * Helper to extract common fields from assignmentDefinition.
-   * Reduces duplication between toJSON and toPartialJSON.
+   * Helper to extract full definition fields from assignmentDefinition.
+   * Used by toJSON to include complete definition data.
    * @param {object} definitionJson - The serialized definition object
-   * @return {object} Common fields from the definition
+   * @return {object} Full definition fields
    * @private
    */
-  _extractDefinitionFields(definitionJson) {
+  _extractFullDefinitionFields(definitionJson) {
     return {
-      documentType: definitionJson?.documentType || null,
-      referenceDocumentId: definitionJson?.referenceDocumentId || null,
-      templateDocumentId: definitionJson?.templateDocumentId || null,
-      tasks: definitionJson?.tasks || {},
+      documentType: definitionJson?.documentType ?? null,
+      referenceDocumentId: definitionJson?.referenceDocumentId ?? null,
+      templateDocumentId: definitionJson?.templateDocumentId ?? null,
+      tasks: definitionJson?.tasks ?? null,
+    };
+  }
+
+  /**
+   * Helper to extract minimal fields for partial definitions.
+   * Only includes documentType (for routing); omits doc IDs and tasks.
+   * @param {object} definitionJson - The serialized definition object
+   * @return {object} Minimal root fields
+   * @private
+   */
+  _extractPartialRootFields(definitionJson) {
+    return {
+      documentType: definitionJson?.documentType ?? null,
     };
   }
 
@@ -155,20 +168,25 @@ class Assignment {
    * @return {object}
    */
   toPartialJSON() {
-    const json = this.toJSON();
+    const definitionJson = this.assignmentDefinition?.toPartialJSON
+      ? this.assignmentDefinition.toPartialJSON()
+      : this.assignmentDefinition;
 
     const partialSubmissions = (this.submissions || []).map((submission) =>
       submission.toPartialJSON()
     );
 
-    json.submissions = partialSubmissions;
-    json.assignmentDefinition = this.assignmentDefinition?.toPartialJSON
-      ? this.assignmentDefinition.toPartialJSON()
-      : this.assignmentDefinition;
-
-    Object.assign(json, this._extractDefinitionFields(json.assignmentDefinition));
-
-    return json;
+    return {
+      courseId: this.courseId,
+      assignmentId: this.assignmentId,
+      assignmentName: this.assignmentName,
+      assignmentMetadata: this.assignmentMetadata,
+      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      ...this._extractPartialRootFields(definitionJson),
+      submissions: partialSubmissions,
+      assignmentDefinition: definitionJson,
+    };
   }
 
   /**
@@ -348,9 +366,9 @@ class Assignment {
         documentType: data.documentType,
         referenceDocumentId: data.referenceDocumentId,
         templateDocumentId: data.templateDocumentId,
-        tasks: data.tasks || {},
-        referenceLastModified: data.referenceLastModified || null,
-        templateLastModified: data.templateLastModified || null,
+        tasks: data.tasks ?? {},
+        referenceLastModified: data.referenceLastModified ?? null,
+        templateLastModified: data.templateLastModified ?? null,
       }).toJSON();
     }
 
@@ -612,7 +630,7 @@ class Assignment {
   }
 
   getTasks() {
-    return this.assignmentDefinition?.tasks || {};
+    return this.assignmentDefinition?.tasks ?? null;
   }
 
   setTasks(tasks) {
