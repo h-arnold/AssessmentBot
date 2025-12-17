@@ -100,6 +100,9 @@ const mockHtmlService = {
   createHtmlOutputFromFile(filename) {
     this._calls.push(`createHtmlOutputFromFile:${filename}`);
     return {
+      getContent: function () {
+        return '';
+      },
       setWidth: function () {
         return this;
       },

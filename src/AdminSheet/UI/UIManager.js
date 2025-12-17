@@ -246,6 +246,17 @@ class UIManager extends BaseSingleton {
   }
 
   /**
+   * Shows a minimal BeerCSS-backed dialog.
+   * This is intended as a scaffold for new dialogs while retaining legacy Materialize UI.
+   */
+  showBeerCssDemoDialog() {
+    this._showTemplateDialog('UI/BeerCssDemoDialog', {}, 'BeerCSS Demo', {
+      width: 420,
+      height: 220,
+    });
+  }
+
+  /**
    * Shows a modal dialog with a dropdown of assignments to choose from.
    */
   showAssignmentDropdown() {
@@ -378,124 +389,6 @@ class UIManager extends BaseSingleton {
       this.ui.showModalDialog(html, 'Progress');
       ABLogger.getInstance().debugUi('Progress modal displayed.');
     }, 'showProgressModal');
-  }
-
-  /**
-   * Retrieves the classroom data from the 'Classroom' sheet.
-   * Returns an array of objects representing rows.
-   */
-  getClassroomData() {
-    const sheet = this.ensureClassroomManager().sheet;
-    const data = sheet.getDataRange().getValues();
-
-    if (data.length < 2) {
-      return []; // No data rows
-    }
-
-    // Expected headers: Classroom ID, Name, Teacher 1, Teacher 2, Teacher 3, Teacher 4, Enrollment Code, createAssessmentRecord, Template File Id
-    const result = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-
-      // Safely read columns by index
-      const classroomID = row[0];
-      const name = row[1];
-      const teacher1 = row[2];
-      const teacher2 = row[3];
-      const teacher3 = row[4];
-      const teacher4 = row[5];
-      const enrollmentCode = row[6];
-      const createAssessmentRecord = row[7];
-      const templateFileId = row[8];
-
-      result.push({
-        ClassroomID: classroomID,
-        Name: name,
-        Teacher1: teacher1,
-        Teacher2: teacher2,
-        Teacher3: teacher3,
-        Teacher4: teacher4,
-        EnrollmentCode: enrollmentCode,
-        createAssessmentRecord:
-          createAssessmentRecord === true || createAssessmentRecord === 'true',
-        TemplateFileId: templateFileId,
-      });
-    }
-
-    return result;
-  }
-
-  /**
-   * Saves the updated classroom data back to the 'Classroom' sheet.
-   * @param {Object[]} rows - The updated rows of data.
-   */
-  saveClassroomData(rows) {
-    const sheet = this.ensureClassroomManager().sheet;
-    const data = sheet.getDataRange().getValues();
-
-    if (data.length < 2) {
-      throw new Error('No data to save to. The sheet is empty.');
-    }
-
-    // We assume the header row is fixed in the format:
-    // Classroom ID | Name | Teacher 1 | Teacher 2 | Teacher 3 | Teacher 4 | Enrollment Code | createAssessmentRecord | Template File Id
-    const headerMap = {
-      ClassroomID: 0,
-      Name: 1,
-      Teacher1: 2,
-      Teacher2: 3,
-      Teacher3: 4,
-      Teacher4: 5,
-      EnrollmentCode: 6,
-      createAssessmentRecord: 7,
-      TemplateFileId: 8,
-    };
-
-    // Build a lookup map from ClassroomID to row index
-    const idToRow = {};
-    for (let i = 1; i < data.length; i++) {
-      const classroomID = data[i][0];
-      if (classroomID) {
-        idToRow[classroomID.toString()] = i; // Store the row index in the data array
-      }
-    }
-
-    // Update data array with new values
-    rows.forEach((rowObj) => {
-      const rowIndex = idToRow[rowObj.ClassroomID];
-      if (rowIndex === undefined) {
-        // If ClassroomID not found, we skip or could throw an error
-        console.warn(`ClassroomID ${rowObj.ClassroomID} not found in the sheet. Skipping update.`);
-        return;
-      }
-
-      // Update only editable fields
-      data[rowIndex][headerMap['Name']] = rowObj.Name;
-      data[rowIndex][headerMap['Teacher1']] = rowObj.Teacher1;
-      data[rowIndex][headerMap['Teacher2']] = rowObj.Teacher2;
-      data[rowIndex][headerMap['Teacher3']] = rowObj.Teacher3;
-      data[rowIndex][headerMap['Teacher4']] = rowObj.Teacher4;
-      data[rowIndex][headerMap['EnrollmentCode']] = rowObj.EnrollmentCode;
-      data[rowIndex][headerMap['createAssessmentRecord']] = rowObj.createAssessmentRecord === true;
-      // TemplateFileId and ClassroomID remain unchanged
-    });
-
-    // Write updated data back to the sheet
-    sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
-  }
-
-  /**
-   * Shows a modal dialog for editing classroom data.
-   */
-  showClassroomEditorModal() {
-    this.safeUiOperation(() => {
-      const html = HtmlService.createHtmlOutputFromFile('UI/ClassroomEditorModal')
-        .setWidth(900)
-        .setHeight(600); // Adjust width and height as needed
-
-      this.ui.showModalDialog(html, 'Edit Classrooms');
-      ABLogger.getInstance().debugUi('Classroom editor modal displayed.');
-    }, 'showClassroomEditorModal');
   }
 
   /**

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <?!= include('UI/partials/Head') ?> <?!= include('UI/vendor/beercss/BeerCssScoped') ?>
+    <title>BeerCSS Demo</title>
+    <style>
+      .content {
+        padding: 1rem;
+      }
+
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 0 1rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="beer">
+      <main class="content">
+        <h5>BeerCSS is active</h5>
+        <p>This is a minimal scaffolded dialog using the vendored scoped BeerCSS stylesheet.</p>
+      </main>
+
+      <footer class="actions">
+        <button class="border" type="button" onclick="google.script.host.close()">Close</button>
+      </footer>
+    </div>
+  </body>
+</html>

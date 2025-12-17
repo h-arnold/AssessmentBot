@@ -2,6 +2,7 @@
 module.exports = {
   test: {
     environment: 'node',
+    environmentMatchGlobs: [['tests/ui/**', 'jsdom']],
     setupFiles: ['tests/setupGlobals.js'],
     globals: true,
     include: [
