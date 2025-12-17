@@ -56,7 +56,8 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 #### Step 1.1: Show Assignment Dropdown
 
-**Entry Points**: 
+**Entry Points**:
+
 - Admin Sheet: User clicks "Debug" > "Assess Student Work" menu item
 - Assessment Record: User clicks "Assessment Bot" > "Assess Assignment" menu item
 
@@ -802,7 +803,7 @@ assignment.submissions = [
   - `spag`: Spelling, Punctuation, and Grammar
 - **Assessment Model**:
   - Each assessment is an instance of the `Assessment` class
-  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text)
+  - Contains `score` (0-5 or 'N' for not attempted) and `reasoning` (explanation text); partial hydration summaries remove `reasoning` to keep the payload lightweight
   - Stored as JSON in StudentSubmissionItem.assessments
 
 **Class**: `Assessment`
@@ -1163,6 +1164,8 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
   }
 }
 ```
+
+> **Note:** Partial summaries (such as the ABClass/JsonDbApp payloads) keep the assessment map but remove each `reasoning` field so only the `score` (and any non-reasoning metadata) remains until a full hydration rehydrates the explanations.
 
 ### Assessment
 

@@ -1,6 +1,10 @@
 # Assignment Data Shapes
 
 - [Assignment Data Shapes](#assignment-data-shapes)
+
+> **Note:** Partial hydration outputs retain the `assessments` map but only carries the non-`reasoning` fields (typically just `score`), keeping the payload aligned with list-view needs. Full hydration records continue to store the full `reasoning` text.
+
+- [Assignment Data Shapes](#assignment-data-shapes)
   - [Persistence Strategy \& Rationale](#persistence-strategy--rationale)
   - [ABClass (root) and JsonDbApp partial hydration](#abclass-root-and-jsondbapp-partial-hydration)
   - [Assignment Definition](#assignment-definition)
@@ -354,16 +358,13 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
           },
           "assessments": {
             "completeness": {
-              "score": 4,
-              "reasoning": "Student addressed 8 of 10 key points."
+              "score": 4
             },
             "accuracy": {
-              "score": 3,
-              "reasoning": "Main ideas correct but one factual error in section 2."
+              "score": 3
             },
             "spag": {
-              "score": 5,
-              "reasoning": "No errors detected."
+              "score": 5
             }
           },
           "feedback": {
@@ -384,7 +385,7 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
 
 ## Full Hydration (complete payload)
 
-For grading, auditing, or export flows we rehydrate every artifact exactly as stored. The schema stays identical; heavier fields are simply populated. Partial JSONs redact only artifact `content`/`contentHash`; assessments and feedback stay intact in both partial and full forms.
+For grading, auditing, or export flows we rehydrate every artifact exactly as stored. The schema stays identical; heavier fields are simply populated. Partial JSONs redact artifact `content`/`contentHash` and drop the `reasoning` entries from assessments so scores remain accessible while the payload stays lightweight; feedback objects remain intact in both partial and full forms.
 
 ```json
 {
@@ -555,6 +556,8 @@ Assessments are stored as a map keyed by assessment criterion (e.g., `'completen
 }
 ```
 
+Partial hydration uses the same assessment map but drops every `reasoning` field so list views still have the numeric scores without the verbose explanations.
+
 **Score values**:
 
 - `0–5`: Numeric score (0 = fail, 5 = excellent)
@@ -688,6 +691,6 @@ When assessments and feedback data exists, both partial and full hydration inclu
 - **Artifacts drive rehydration**: `BaseTaskArtifact.uid` plus `taskId` uniquely identifies any heavy resource to fetch later.
 - **Artifact type vs external Drive type**: The `type` field on artifacts refers to the artifact class/type produced by the system (for example: `"TEXT"`, `"TABLE"`, `"SPREADSHEET"`, `"IMAGE"`, or the generic `"base"`). It is not a Google Drive MIME type. If a Drive MIME/type is required, include it in `metadata` or `documentId`.
 - **Timestamps in feedback**: `Feedback.toJSON()` now emits `createdAt` as an ISO string (e.g. `"2025-09-10T12:00:00Z"`) to match other timestamps in this document.
-- **Assessments and feedback**: These maps are preserved entirely in both partial and full hydration, including all scoring data and feedback content. They are _not_ redacted during partial hydration because scoring summaries need to remain accessible without rehydration. Both partial and full documents contain the complete assessment and feedback records as they exist; the difference is in artifact `content` (redacted in partial) but assessment/feedback data is always complete.
+- **Assessments and feedback**: The `assessments` map keeps the same keys in both partial and full hydration so scores remain available, but partial documents omit each `reasoning` property to keep the summary lightweight. Feedback objects continue to be fully preserved in both payloads.
 
 By constraining the document to the fields emitted today, we minimize Drive calls without introducing new schema variants or migration overhead.

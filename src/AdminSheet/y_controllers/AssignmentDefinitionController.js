@@ -234,14 +234,18 @@ class AssignmentDefinitionController {
       valid: validDefs.length,
     });
 
-    return Object.fromEntries(validDefs.map((td) => [td.getId(), td]));
+    return Object.fromEntries(
+      validDefs.map((td) => [td.getId(), TaskDefinition.fromJSON(td.toJSON())])
+    );
   }
 
   _parseSheetsTasks(referenceDocumentId, templateDocumentId) {
     const parser = new SheetsParser();
     const definitions = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);
     ABLogger.getInstance().info('Parsed sheet task definitions', { parsed: definitions.length });
-    return Object.fromEntries(definitions.map((td) => [td.getId(), td]));
+    return Object.fromEntries(
+      definitions.map((td) => [td.getId(), TaskDefinition.fromJSON(td.toJSON())])
+    );
   }
 }
 

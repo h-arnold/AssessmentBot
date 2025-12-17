@@ -157,16 +157,9 @@ class Assignment {
   toPartialJSON() {
     const json = this.toJSON();
 
-    const partialSubmissions = (this.submissions || []).map((submission, index) => {
-      if (submission && typeof submission.toPartialJSON === 'function') {
-        return submission.toPartialJSON();
-      }
-      const source =
-        submission && typeof submission.toJSON === 'function'
-          ? submission.toJSON()
-          : json.submissions?.[index];
-      return Assignment._redactSubmission(source);
-    });
+    const partialSubmissions = (this.submissions || []).map((submission) =>
+      submission.toPartialJSON()
+    );
 
     json.submissions = partialSubmissions;
     json.assignmentDefinition = this.assignmentDefinition?.toPartialJSON
@@ -325,58 +318,6 @@ class Assignment {
       }
       inst.submissions.push(raw);
     }
-  }
-
-  static _redactArtifact(artifact) {
-    if (!artifact || typeof artifact !== 'object') return artifact;
-    return {
-      ...artifact,
-      content: null,
-      contentHash: null,
-    };
-  }
-
-  static _redactTask(task) {
-    if (!task || typeof task !== 'object') {
-      return {
-        artifacts: {
-          reference: [],
-          template: [],
-          submission: [],
-        },
-      };
-    }
-    const artifacts = task.artifacts || {};
-    return {
-      ...task,
-      artifacts: {
-        reference: (artifacts.reference || []).map(Assignment._redactArtifact),
-        template: (artifacts.template || []).map(Assignment._redactArtifact),
-        submission: (artifacts.submission || []).map(Assignment._redactArtifact),
-      },
-    };
-  }
-
-  static _redactSubmission(submission) {
-    if (!submission || typeof submission !== 'object') return submission;
-    const items = submission.items || {};
-    return {
-      ...submission,
-      items: Object.fromEntries(
-        Object.entries(items).map(([taskId, item]) => [
-          taskId,
-          Assignment._redactSubmissionItem(item),
-        ])
-      ),
-    };
-  }
-
-  static _redactSubmissionItem(item) {
-    if (!item || typeof item !== 'object') return item;
-    return {
-      ...item,
-      artifact: Assignment._redactArtifact(item.artifact),
-    };
   }
 
   /**

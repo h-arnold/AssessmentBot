@@ -117,9 +117,15 @@ class AssignmentDefinition {
         if (task instanceof TaskDefinition) {
           return [taskId, task];
         }
-        if (task.taskTitle) {
+
+        if (task?.taskTitle) {
           return [taskId, TaskDefinition.fromJSON(task)];
         }
+
+        ProgressTracker.getInstance().logAndThrowError(
+          'Invalid task payload: taskTitle is required to hydrate TaskDefinition.',
+          { devContext: { taskId, task } }
+        );
         return [taskId, task];
       })
     );
@@ -182,15 +188,7 @@ class AssignmentDefinition {
 
   toPartialJSON() {
     const partialTasks = Object.fromEntries(
-      Object.entries(this.tasks).map(([taskId, task]) => {
-        if (task.toPartialJSON) {
-          return [taskId, task.toPartialJSON()];
-        }
-        if (task.toJSON) {
-          return [taskId, AssignmentDefinition._redactTask(task.toJSON())];
-        }
-        return [taskId, AssignmentDefinition._redactTask(task)];
-      })
+      Object.entries(this.tasks).map(([taskId, task]) => [taskId, task.toPartialJSON()])
     );
 
     return {
@@ -209,22 +207,6 @@ class AssignmentDefinition {
       tasks: partialTasks,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-    };
-  }
-
-  static _redactArtifact(artifact) {
-    return { ...artifact, content: null, contentHash: null };
-  }
-
-  static _redactTask(task) {
-    const artifacts = task.artifacts || {};
-    return {
-      ...task,
-      artifacts: {
-        reference: (artifacts.reference || []).map(AssignmentDefinition._redactArtifact),
-        template: (artifacts.template || []).map(AssignmentDefinition._redactArtifact),
-        submission: (artifacts.submission || []).map(AssignmentDefinition._redactArtifact),
-      },
     };
   }
 

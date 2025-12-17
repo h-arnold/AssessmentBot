@@ -9,6 +9,8 @@ const g = globalThis;
 g.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
 g.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
+g.StudentSubmission = StudentSubmission;
 
 g.Utils = {
   generateHash(str) {

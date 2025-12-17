@@ -317,7 +317,13 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         templateDocumentId: 'tpl',
         referenceLastModified: '2024-01-01T00:00:00Z',
         templateLastModified: '2024-01-01T00:00:00Z',
-        tasks: { oldTask: {} },
+        tasks: {
+          oldTask: {
+            id: 'oldTask',
+            taskTitle: 'Old Task',
+            artifacts: { reference: [], template: [] },
+          },
+        },
       });
 
       mockFullCollection.findOne.mockReturnValue(staleDef.toJSON());

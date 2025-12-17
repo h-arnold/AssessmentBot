@@ -95,6 +95,45 @@ We use a **Split Persistence Model**:
 
 This ensures `ABClass` remains small and fast to load, while the full data is preserved safely in a separate document.
 
+### End-to-end hydration/dehydration sequence (strict model)
+
+Classes and primary methods (in call order):
+
+1. **AssignmentDefinitionController.ensureDefinition()**
+
+- Validates inputs, resolves topic, and checks staleness.
+- Parses tasks via `_parseSlidesTasks`/`_parseSheetsTasks`, which now always rehydrate into `TaskDefinition` instances (`TaskDefinition.fromJSON(td.toJSON())`).
+- Persists both forms: `saveDefinition` → full collection (`toJSON()`), `savePartialDefinition` → registry (`toPartialJSON()`).
+
+2. **ABClassController.persistAssignmentRun()**
+
+- Persists full assignment to `assign_full_<courseId>_<assignmentId>` using `Assignment.toJSON()` (includes fully hydrated `AssignmentDefinition`, `TaskDefinition`, and `BaseTaskArtifact` subclasses with content).
+- Builds and stores partial summary via `Assignment.toPartialJSON()` (submissions/artifacts redacted) back into the owning `ABClass` document.
+
+3. **ABClassController.loadClass()** (not changed)
+
+- Returns the lightweight `ABClass` with only partial assignments (heavy fields already stripped).
+
+4. **AssignmentController.processSelectedAssignment()**
+
+- For the selected assignment, calls `ABClassController.rehydrateAssignment()` when a full run is needed.
+
+5. **ABClassController.rehydrateAssignment()**
+
+- Reads the full document from `assign_full_...`.
+- Reconstructs the typed instance via `Assignment.fromJSON()`; this cascades into `AssignmentDefinition.fromJSON()`, which in turn strictly hydrates tasks (`_hydrateTasks` requires `taskTitle` and instantiates `TaskDefinition`, whose artifacts are materialised via `ArtifactFactory.fromJSON`).
+- Marks `_hydrationLevel = 'full'` and immutably replaces the partial assignment inside `ABClass.assignments`.
+
+6. **Assignment runtime**
+
+- Processing pipelines operate on the full instance; transient fields (`students`, `_hydrationLevel`) remain runtime-only and must never be persisted.
+
+### Strictness notes
+
+- Task payloads must include `taskTitle`; `_hydrateTasks` now fails fast via `ProgressTracker.logAndThrowError` if a task is missing it.
+- Parser outputs are normalised back into `TaskDefinition` instances before persistence to guarantee `toPartialJSON()` is available and consistent.
+- Artifact redaction now relies on artifact classes’ `toPartialJSON()`; legacy plain-object fallbacks have been removed.
+
 ## Rehydration Algorithm (Immutable Replace)
 
 We use an **Immutable Replace** pattern to rehydrate assignments. This avoids deep mutation and ensures consistency.

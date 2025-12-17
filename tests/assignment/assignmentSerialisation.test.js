@@ -14,6 +14,17 @@ import {
   createStudentSubmission,
 } from '../helpers/modelFactories.js';
 
+function sanitizeAssessmentsForPartial(fullAssessments) {
+  if (!fullAssessments || typeof fullAssessments !== 'object') return fullAssessments;
+  return Object.fromEntries(
+    Object.entries(fullAssessments).map(([criterion, assessment]) => {
+      if (!assessment || typeof assessment !== 'object') return [criterion, assessment];
+      const { reasoning, ...rest } = assessment;
+      return [criterion, rest];
+    })
+  );
+}
+
 /**
  * Build a fully-hydrated slides assignment with rich task/submission data.
  * @return {{ assignment: import('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js'), taskId: string }}
@@ -106,7 +117,7 @@ describe('Assignment Serialisation', () => {
 
       const fullItem = fullSubmission.items[taskId];
       const partialItem = partialSubmission.items[taskId];
-      expect(partialItem.assessments).toEqual(fullItem.assessments);
+      expect(partialItem.assessments).toEqual(sanitizeAssessmentsForPartial(fullItem.assessments));
       expect(partialItem.feedback).toEqual(fullItem.feedback);
       expectPartialArtifact(partialItem.artifact, fullItem.artifact);
     });
