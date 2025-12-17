@@ -241,7 +241,8 @@ describe('ABClassController Persist Assignment', () => {
       });
 
       // Verify assignment starts fully hydrated
-      const originalTaskContent = assignment.tasks[taskDef.getId()].artifacts.reference[0].content;
+      const originalTaskContent =
+        assignment.getTasks()[taskDef.getId()].artifacts.reference[0].content;
       expect(originalTaskContent).toBe('Reference content');
 
       // RED: Method doesn't exist yet
@@ -250,7 +251,7 @@ describe('ABClassController Persist Assignment', () => {
       controller.persistAssignmentRun(abClass, assignment);
 
       // The original assignment instance should remain unchanged
-      expect(assignment.tasks[taskDef.getId()].artifacts.reference[0].content).toBe(
+      expect(assignment.getTasks()[taskDef.getId()].artifacts.reference[0].content).toBe(
         'Reference content'
       );
     });

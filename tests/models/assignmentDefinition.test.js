@@ -68,7 +68,11 @@ describe('AssignmentDefinition', () => {
       templateDocumentId: 'tpl-456',
       definitionKey: 'Restored_Topic_11',
       tasks: {
-        t1: { id: 't1', title: 'Task 1' },
+        t1: {
+          id: 't1',
+          taskTitle: 'Task 1',
+          artifacts: { reference: [], template: [] },
+        },
       },
     };
     const def = AssignmentDefinition.fromJSON(json);
@@ -77,21 +81,33 @@ describe('AssignmentDefinition', () => {
     expect(def.tasks.t1).toBeDefined();
   });
 
-  it('should redact artifacts in toPartialJSON', () => {
+  it('should set tasks to null in toPartialJSON', () => {
     const tasks = {
       t1: {
         id: 't1',
+        taskTitle: 'Task 1',
         artifacts: {
-          reference: [{ id: 'a1', content: 'heavy content', contentHash: 'abc' }],
+          reference: [
+            {
+              id: 'a1',
+              uid: 'a1',
+              taskId: 't1',
+              role: 'reference',
+              type: 'TEXT',
+              content: 'heavy content',
+              contentHash: 'abc',
+            },
+          ],
+          template: [],
         },
       },
     };
     const def = new AssignmentDefinition({ ...validParams, tasks });
     const partial = def.toPartialJSON();
 
-    expect(partial.tasks.t1.artifacts.reference[0].content).toBeNull();
-    expect(partial.tasks.t1.artifacts.reference[0].contentHash).toBeNull();
-    expect(partial.tasks.t1.artifacts.reference[0].id).toBe('a1');
+    expect(partial.tasks).toBe(null);
+    expect(partial).not.toHaveProperty('referenceDocumentId');
+    expect(partial).not.toHaveProperty('templateDocumentId');
   });
 
   it('should update modified timestamps', async () => {

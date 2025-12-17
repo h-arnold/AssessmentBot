@@ -23,8 +23,6 @@ class Assignment {
     this.lastUpdated = null;
     // Embedded definition copy (source of truth for tasks, doc IDs, weighting, documentType)
     this.assignmentDefinition = assignmentDefinition;
-    Assignment._applyLegacyAliases(this);
-    // Legacy alias fields kept for compatibility with existing code and tests
 
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
@@ -34,59 +32,6 @@ class Assignment {
     // to keep the hydrated roster handy. That property is transient and must never be persisted
     // (see docs/developer/DATA_SHAPES.md and rehydration.md).
     this._hydrationLevel = 'full';
-  }
-
-  static _applyLegacyAliases(target) {
-    Object.defineProperties(target, {
-      documentType: {
-        get() {
-          return target.assignmentDefinition?.documentType ?? target._documentTypeAlias ?? null;
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.documentType = value;
-          target._documentTypeAlias = value;
-        },
-        configurable: true,
-      },
-      referenceDocumentId: {
-        get() {
-          return (
-            target.assignmentDefinition?.referenceDocumentId ??
-            target._referenceDocumentIdAlias ??
-            null
-          );
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.referenceDocumentId = value;
-          target._referenceDocumentIdAlias = value;
-        },
-        configurable: true,
-      },
-      templateDocumentId: {
-        get() {
-          return (
-            target.assignmentDefinition?.templateDocumentId ??
-            target._templateDocumentIdAlias ??
-            null
-          );
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.templateDocumentId = value;
-          target._templateDocumentIdAlias = value;
-        },
-        configurable: true,
-      },
-      tasks: {
-        get() {
-          return target.assignmentDefinition?.tasks ?? target._tasksAlias ?? {};
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.tasks = value;
-          target._tasksAlias = value;
-        },
-        configurable: true,
-      },
-    });
   }
 
   /**
@@ -128,25 +73,38 @@ class Assignment {
       assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
-      ...this._extractDefinitionFields(definitionJson),
+      ...this._extractFullDefinitionFields(definitionJson),
       submissions,
       assignmentDefinition: definitionJson || this.assignmentDefinition,
     };
   }
 
   /**
-   * Helper to extract common fields from assignmentDefinition.
-   * Reduces duplication between toJSON and toPartialJSON.
+   * Helper to extract full definition fields from assignmentDefinition.
+   * Used by toJSON to include complete definition data.
    * @param {object} definitionJson - The serialized definition object
-   * @return {object} Common fields from the definition
+   * @return {object} Full definition fields
    * @private
    */
-  _extractDefinitionFields(definitionJson) {
+  _extractFullDefinitionFields(definitionJson) {
     return {
-      documentType: definitionJson?.documentType || null,
-      referenceDocumentId: definitionJson?.referenceDocumentId || null,
-      templateDocumentId: definitionJson?.templateDocumentId || null,
-      tasks: definitionJson?.tasks || {},
+      documentType: definitionJson?.documentType ?? null,
+      referenceDocumentId: definitionJson?.referenceDocumentId ?? null,
+      templateDocumentId: definitionJson?.templateDocumentId ?? null,
+      tasks: definitionJson?.tasks ?? null,
+    };
+  }
+
+  /**
+   * Helper to extract minimal fields for partial definitions.
+   * Only includes documentType (for routing); omits doc IDs and tasks.
+   * @param {object} definitionJson - The serialized definition object
+   * @return {object} Minimal root fields
+   * @private
+   */
+  _extractPartialRootFields(definitionJson) {
+    return {
+      documentType: definitionJson?.documentType ?? null,
     };
   }
 
@@ -155,27 +113,23 @@ class Assignment {
    * @return {object}
    */
   toPartialJSON() {
-    const json = this.toJSON();
+    const definitionJson = this.assignmentDefinition.toPartialJSON();
 
-    const partialSubmissions = (this.submissions || []).map((submission, index) => {
-      if (submission && typeof submission.toPartialJSON === 'function') {
-        return submission.toPartialJSON();
-      }
-      const source =
-        submission && typeof submission.toJSON === 'function'
-          ? submission.toJSON()
-          : json.submissions?.[index];
-      return Assignment._redactSubmission(source);
-    });
+    const partialSubmissions = (this.submissions || []).map((submission) =>
+      submission.toPartialJSON()
+    );
 
-    json.submissions = partialSubmissions;
-    json.assignmentDefinition = this.assignmentDefinition?.toPartialJSON
-      ? this.assignmentDefinition.toPartialJSON()
-      : this.assignmentDefinition;
-
-    Object.assign(json, this._extractDefinitionFields(json.assignmentDefinition));
-
-    return json;
+    return {
+      courseId: this.courseId,
+      assignmentId: this.assignmentId,
+      assignmentName: this.assignmentName,
+      assignmentMetadata: this.assignmentMetadata,
+      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
+      ...this._extractPartialRootFields(definitionJson),
+      submissions: partialSubmissions,
+      assignmentDefinition: definitionJson,
+    };
   }
 
   /**
@@ -232,12 +186,6 @@ class Assignment {
     inst.assignmentDefinition = data.assignmentDefinition
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
-    Assignment._applyLegacyAliases(inst);
-    // Set legacy alias fields for backward compatibility with old serialized data
-    if (data.documentType) inst.documentType = data.documentType;
-    if (data.referenceDocumentId) inst.referenceDocumentId = data.referenceDocumentId;
-    if (data.templateDocumentId) inst.templateDocumentId = data.templateDocumentId;
-    if (data.tasks) inst.tasks = data.tasks;
     inst.submissions = [];
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
@@ -327,58 +275,6 @@ class Assignment {
     }
   }
 
-  static _redactArtifact(artifact) {
-    if (!artifact || typeof artifact !== 'object') return artifact;
-    return {
-      ...artifact,
-      content: null,
-      contentHash: null,
-    };
-  }
-
-  static _redactTask(task) {
-    if (!task || typeof task !== 'object') {
-      return {
-        artifacts: {
-          reference: [],
-          template: [],
-          submission: [],
-        },
-      };
-    }
-    const artifacts = task.artifacts || {};
-    return {
-      ...task,
-      artifacts: {
-        reference: (artifacts.reference || []).map(Assignment._redactArtifact),
-        template: (artifacts.template || []).map(Assignment._redactArtifact),
-        submission: (artifacts.submission || []).map(Assignment._redactArtifact),
-      },
-    };
-  }
-
-  static _redactSubmission(submission) {
-    if (!submission || typeof submission !== 'object') return submission;
-    const items = submission.items || {};
-    return {
-      ...submission,
-      items: Object.fromEntries(
-        Object.entries(items).map(([taskId, item]) => [
-          taskId,
-          Assignment._redactSubmissionItem(item),
-        ])
-      ),
-    };
-  }
-
-  static _redactSubmissionItem(item) {
-    if (!item || typeof item !== 'object') return item;
-    return {
-      ...item,
-      artifact: Assignment._redactArtifact(item.artifact),
-    };
-  }
-
   /**
    * Polymorphic deserialization routing based on documentType field.
    * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
@@ -407,9 +303,9 @@ class Assignment {
         documentType: data.documentType,
         referenceDocumentId: data.referenceDocumentId,
         templateDocumentId: data.templateDocumentId,
-        tasks: data.tasks || {},
-        referenceLastModified: data.referenceLastModified || null,
-        templateLastModified: data.templateLastModified || null,
+        tasks: 'tasks' in data ? data.tasks : {},
+        referenceLastModified: data.referenceLastModified ?? null,
+        templateLastModified: data.templateLastModified ?? null,
       }).toJSON();
     }
 
@@ -671,24 +567,24 @@ class Assignment {
   }
 
   getTasks() {
-    return this.assignmentDefinition?.tasks || {};
+    return this.assignmentDefinition?.tasks ?? null;
   }
 
   setTasks(tasks) {
-    this.tasks = tasks;
+    this.assignmentDefinition.tasks = tasks;
     return tasks;
   }
 
   getDocumentType() {
-    return this.assignmentDefinition?.documentType || null;
+    return this.assignmentDefinition?.documentType ?? null;
   }
 
   getReferenceDocumentId() {
-    return this.assignmentDefinition?.referenceDocumentId || null;
+    return this.assignmentDefinition?.referenceDocumentId ?? null;
   }
 
   getTemplateDocumentId() {
-    return this.assignmentDefinition?.templateDocumentId || null;
+    return this.assignmentDefinition?.templateDocumentId ?? null;
   }
 }
 

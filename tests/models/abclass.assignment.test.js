@@ -356,13 +356,10 @@ describe('ABClass Assignment Serialization', () => {
         },
       ];
 
-      // RED: ABClass.fromJSON should attempt Assignment.fromJSON and handle errors
-      // For now this may throw or leave plain objects
-      const restored = ABClass.fromJSON(json);
-
-      expect(restored.assignments).toBeDefined();
-      // Should either have a plain object fallback or log error appropriately
-      // The exact behavior depends on implementation but should not crash
+      // Fail-fast approach: corrupt assignment data should throw
+      expect(() => {
+        ABClass.fromJSON(json);
+      }).toThrow('courseId and assignmentId are required fields');
     });
 
     it('handles empty assignments array correctly', () => {

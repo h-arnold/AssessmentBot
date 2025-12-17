@@ -75,11 +75,11 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     const tdSpreadsheet = new TaskDefinition({ taskTitle: 'Sheet', pageId: 's1', index: 3 });
     tdSpreadsheet.addReferenceArtifact({ type: 'SPREADSHEET', content: [['=sum(a1:a2)']] });
     tdSpreadsheet.addTemplateArtifact({ type: 'SPREADSHEET', content: [['=sum(a1:a2)']] });
-    assignment.tasks = {
+    assignment.setTasks({
       [td1.getId()]: td1,
       [td2.getId()]: td2,
       [tdSpreadsheet.getId()]: tdSpreadsheet,
-    };
+    });
 
     // Add a student & create submission entries
     const sub = assignment.addStudent({ id: 'stud1', name: 'Student One' });
@@ -107,7 +107,9 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
   it('marks not-attempted when student hash equals template hash', () => {
     // Make a new task where student copies template exactly
     const tdCopy = createTextTask(4, 'Ref X', 'Template Y');
-    assignment.tasks[tdCopy.getId()] = tdCopy;
+    const tasks = assignment.getTasks();
+    tasks[tdCopy.getId()] = tdCopy;
+    assignment.setTasks(tasks);
     const sub = assignment.submissions[0];
     sub.upsertItemFromExtraction(tdCopy, { content: 'Template Y' }); // identical to template
     const manager2 = new LLMRequestManagerFresh();
@@ -128,8 +130,9 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     expect(reqs1.length).toBe(2);
     // Simulate processing and caching result manually
     const sub = assignment.submissions[0];
-    const item1 = sub.getItem(Object.keys(assignment.tasks)[0]);
-    const td1 = assignment.tasks[item1.taskId];
+    const taskKeys = Object.keys(assignment.getTasks());
+    const item1 = sub.getItem(taskKeys[0]);
+    const td1 = assignment.getTasks()[item1.taskId];
     const refHash = td1.getPrimaryReference().contentHash;
     const respHash = item1.artifact.contentHash;
     manager.cacheManager.setCachedAssessment(refHash, respHash, {
@@ -139,7 +142,7 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
     });
     // Re-run request generation; cached task removed -> still 2? we need to modify a second item to test skip.
     // Modify second item content to force new hash so only first task is cached
-    const secondItem = sub.getItem(Object.keys(assignment.tasks)[1]);
+    const secondItem = sub.getItem(taskKeys[1]);
     secondItem.artifact.content = 'Different now';
     secondItem.artifact.ensureHash();
     const reqs2 = manager.generateRequestObjects(assignment);
@@ -172,7 +175,7 @@ describe('Phase 3 LLMRequestManager integration (new model)', () => {
 
     // After processing, each non-spreadsheet item should have a cached entry
     itemEntries.forEach((item) => {
-      const td = assignment.tasks[item.taskId];
+      const td = assignment.getTasks()[item.taskId];
       const refHash = td.getPrimaryReference().contentHash;
       const respHash = item.artifact.contentHash;
       const cached = manager.cacheManager.getCachedAssessment(refHash, respHash);

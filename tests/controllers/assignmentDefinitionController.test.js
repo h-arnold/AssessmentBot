@@ -19,7 +19,11 @@ vi.mock('../../src/AdminSheet/DocumentParsers/SlidesParser.js', () => {
           {
             getId: () => 't1',
             validate: () => ({ ok: true }),
-            toJSON: () => ({ id: 't1' }),
+            toJSON: () => ({
+              id: 't1',
+              taskTitle: 'Parsed Task',
+              artifacts: { reference: [], template: [] },
+            }),
           },
         ];
       }
@@ -86,7 +90,7 @@ describe('AssignmentDefinitionController', () => {
       templateDocumentId: 'tpl-1',
       referenceLastModified: '2025-01-01T12:00:00Z',
       templateLastModified: '2025-01-01T12:00:00Z',
-      tasks: { t1: {} },
+      tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
     });
 
     mockCollection.findOne.mockReturnValue(existingDef.toJSON());
@@ -115,7 +119,7 @@ describe('AssignmentDefinitionController', () => {
       templateDocumentId: 'tpl-1',
       referenceLastModified: '2024-01-01T12:00:00Z', // Old
       templateLastModified: '2024-01-01T12:00:00Z',
-      tasks: { t1: {} },
+      tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
     });
 
     mockCollection.findOne.mockReturnValue(existingDef.toJSON());

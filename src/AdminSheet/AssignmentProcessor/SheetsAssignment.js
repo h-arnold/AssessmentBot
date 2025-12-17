@@ -55,7 +55,7 @@ class SheetsAssignment extends Assignment {
    */
   processAllSubmissions() {
     const parser = new SheetsParser();
-    const taskDefs = Object.values(this.assignmentDefinition.tasks || {});
+    const taskDefs = Object.values(this.assignmentDefinition.tasks);
     this.submissions.forEach((sub) => {
       this.progressTracker.updateProgress(
         `Extracting work from spreadsheet for student ${sub.studentId}.`,
@@ -108,7 +108,7 @@ class SheetsAssignment extends Assignment {
     if (typeof SheetsAssessor === 'undefined') {
       console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
     } else {
-      const assessor = new SheetsAssessor(this.tasks, this.submissions); //
+      const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
       // Use optional chaining to call assessResponses if present
       assessor.assessResponses?.();
     }

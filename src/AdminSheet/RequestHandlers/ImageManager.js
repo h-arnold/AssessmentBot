@@ -30,7 +30,7 @@ class ImageManager extends BaseRequestManager {
    */
   collectAllImageArtifacts(assignment) {
     const results = [];
-    const taskDefs = assignment.assignmentDefinition?.tasks || assignment.tasks || {};
+    const taskDefs = assignment.assignmentDefinition.tasks;
     // TaskDefinition artifacts (reference/template)
     Object.values(taskDefs).forEach((taskDefinition) => {
       ['reference', 'template'].forEach((role) => {
@@ -41,10 +41,8 @@ class ImageManager extends BaseRequestManager {
           const sourceUrl = artifact.metadata?.sourceUrl;
           const documentId =
             role === 'reference'
-              ? assignment.assignmentDefinition?.referenceDocumentId ||
-                assignment.referenceDocumentId
-              : assignment.assignmentDefinition?.templateDocumentId ||
-                assignment.templateDocumentId;
+              ? assignment.assignmentDefinition.referenceDocumentId
+              : assignment.assignmentDefinition.templateDocumentId;
           if (!Utils.isValidUrl(sourceUrl) || !documentId) return;
           results.push({
             uid: artifact.getUid(),
@@ -149,7 +147,7 @@ class ImageManager extends BaseRequestManager {
    *
    * Behaviour and assumptions:
    * - This function is intentionally "fail-fast": it assumes the caller has ensured
-   *   `assignment.tasks`, `assignment.submissions` and nested collections exist. If
+   *   `assignment.assignmentDefinition.tasks`, `assignment.submissions` and nested collections exist. If
    *   any expected property is missing the runtime will throw, making problems visible
    *   earlier rather than silently continuing.
    * - `blobs` is an array of objects with shape { uid, blob } where `uid` matches
@@ -167,18 +165,16 @@ class ImageManager extends BaseRequestManager {
 
     const artifactMap = {};
 
-    Object.values(assignment.assignmentDefinition?.tasks || assignment.tasks || {}).forEach(
-      (taskDefinition) => {
-        ['reference', 'template'].forEach((role) => {
-          taskDefinition.artifacts[role].forEach((artifact) => {
-            if (this.isImageArtifact(artifact)) {
-              const uid = artifact.getUid();
-              artifactMap[uid] = artifact;
-            }
-          });
+    Object.values(assignment.assignmentDefinition.tasks).forEach((taskDefinition) => {
+      ['reference', 'template'].forEach((role) => {
+        taskDefinition.artifacts[role].forEach((artifact) => {
+          if (this.isImageArtifact(artifact)) {
+            const uid = artifact.getUid();
+            artifactMap[uid] = artifact;
+          }
         });
-      }
-    );
+      });
+    });
 
     assignment.submissions.forEach((submission) => {
       Object.values(submission.items).forEach((item) => {

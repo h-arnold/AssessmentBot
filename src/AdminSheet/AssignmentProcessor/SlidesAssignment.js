@@ -113,7 +113,7 @@ class SlidesAssignment extends Assignment {
    */
   processAllSubmissions() {
     const parser = new SlidesParser();
-    const taskDefs = Object.values(this.assignmentDefinition.tasks || {});
+    const taskDefs = Object.values(this.assignmentDefinition.tasks);
     const total = this.submissions.length;
     this.submissions.forEach((sub, i) => {
       if (!sub.documentId) {

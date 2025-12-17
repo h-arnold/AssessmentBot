@@ -86,7 +86,24 @@ class StudentSubmissionItem {
   toPartialJSON() {
     const json = this.toJSON();
     json.artifact = this.artifact.toPartialJSON();
+    json.assessments = StudentSubmissionItem._stripAssessmentReasoning(json.assessments);
     return json;
+  }
+
+  static _stripAssessmentReasoning(assessments) {
+    if (!assessments || typeof assessments !== 'object') return assessments;
+    return Object.fromEntries(
+      Object.entries(assessments).map(([criterion, assessment]) => [
+        criterion,
+        StudentSubmissionItem._removeAssessmentReasoning(assessment),
+      ])
+    );
+  }
+
+  static _removeAssessmentReasoning(assessment) {
+    if (!assessment || typeof assessment !== 'object') return assessment;
+    const { reasoning, ...rest } = assessment;
+    return rest;
   }
 
   static fromJSON(json) {

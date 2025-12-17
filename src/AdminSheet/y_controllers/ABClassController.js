@@ -181,8 +181,10 @@ class ABClassController {
     }
 
     try {
-      if (assignment.assignmentDefinition?._hydrationLevel === 'partial') {
-        throw new Error('Cannot persist full assignment with partial assignmentDefinition');
+      if (assignment.assignmentDefinition?.tasks === null) {
+        throw new Error(
+          'Cannot persist full assignment with partial assignmentDefinition (tasks: null)'
+        );
       }
       // 1. Serialize full assignment and write to dedicated collection
       const collectionName = this._getFullAssignmentCollectionName(
@@ -336,6 +338,7 @@ class ABClassController {
 
   /**
    * Ensure assignment has a full definition, fetching or persisting if needed.
+   * Detects partial definitions via tasks === null.
    * @param {Assignment} assignment
    * @private
    */
@@ -343,24 +346,23 @@ class ABClassController {
     const definitionKey = assignment.assignmentDefinition?.definitionKey;
     if (!definitionKey) return;
 
-    const definitionController = new AssignmentDefinitionController();
-    const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
-      form: 'full',
-    });
+    // Detect partial definition by checking if tasks is null
+    const isPartial = assignment.assignmentDefinition?.tasks === null;
 
-    if (!storedDefinition || storedDefinition._hydrationLevel === 'partial') {
-      const sourceDefinition = assignment.assignmentDefinition;
-      const definitionInstance =
-        sourceDefinition instanceof AssignmentDefinition
-          ? sourceDefinition
-          : AssignmentDefinition.fromJSON(sourceDefinition);
+    if (isPartial) {
+      const definitionController = new AssignmentDefinitionController();
+      const storedDefinition = definitionController.getDefinitionByKey(definitionKey, {
+        form: 'full',
+      });
 
-      // Mark as full hydration using the _hydrationLevel property
-      definitionInstance._hydrationLevel = 'full';
-
-      assignment.assignmentDefinition = definitionController.saveDefinition(definitionInstance);
-    } else {
-      assignment.assignmentDefinition = storedDefinition;
+      if (storedDefinition && storedDefinition.tasks !== null) {
+        // Use the full definition from the registry
+        assignment.assignmentDefinition = storedDefinition;
+      } else {
+        throw new Error(
+          `Failed to rehydrate definition '${definitionKey}': the authoritative record is partial (tasks: null).`
+        );
+      }
     }
   }
 

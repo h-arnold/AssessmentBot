@@ -135,11 +135,8 @@ describe('ABClassController Rehydrate Assignment', () => {
       abClass.addAssignment(partial1);
       abClass.addAssignment(partial2);
 
-      // Verify partial has null content
-      const partialTaskId = Object.keys(partial2.tasks)[0];
-      if (partialTaskId) {
-        expect(partial2.tasks[partialTaskId].artifacts.reference[0].content).toBeNull();
-      }
+      // Verify partial has null tasks
+      expect(partial2.assignmentDefinition.tasks).toBe(null);
 
       // Mock database to return full assignment2
       const fullJson = assignment2.toJSON();
@@ -156,10 +153,8 @@ describe('ABClassController Rehydrate Assignment', () => {
       expect(abClass.assignments[1].assignmentId).toBe('assign-2');
 
       // Should have full content restored (not null)
-      const rehydratedTaskId = Object.keys(rehydrated.tasks)[0];
-      if (rehydratedTaskId) {
-        expect(rehydrated.tasks[rehydratedTaskId].artifacts.reference[0].content).not.toBeNull();
-      }
+      expect(rehydrated.assignmentDefinition.tasks).not.toBe(null);
+      expect(typeof rehydrated.assignmentDefinition.tasks).toBe('object');
     });
 
     it('returns the hydrated assignment instance', () => {
@@ -218,9 +213,8 @@ describe('ABClassController Rehydrate Assignment', () => {
         mockCollection,
       });
 
-      // Verify partial has null content
-      const taskId = taskDef.getId();
-      expect(partialInstance.tasks[taskId].artifacts.reference[0].content).toBeNull();
+      // Verify partial has null tasks
+      expect(partialInstance.assignmentDefinition.tasks).toBe(null);
 
       // RED: Method doesn't exist yet
       assertMethodExists(controller, 'rehydrateAssignment');
@@ -228,7 +222,12 @@ describe('ABClassController Rehydrate Assignment', () => {
       const rehydrated = controller.rehydrateAssignment(abClass, 'assign-nested-rehydrate');
 
       // Full content should be restored
-      expect(rehydrated.tasks[taskId].artifacts.reference[0].content).toBe('Reference content');
+      const taskId = taskDef.getId();
+      expect(rehydrated.assignmentDefinition.tasks).not.toBe(null);
+      expect(rehydrated.assignmentDefinition.tasks[taskId]).toBeDefined();
+      expect(rehydrated.assignmentDefinition.tasks[taskId].artifacts.reference[0].content).toBe(
+        'Reference content'
+      );
       expect(rehydrated.submissions[0].items[taskId].artifact.content).not.toBeNull();
     });
   });

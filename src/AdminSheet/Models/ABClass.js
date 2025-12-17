@@ -248,7 +248,7 @@ class ABClass {
     } catch (e) {
       inst.classOwner = json.classOwner || null;
       if (globalThis.__TRACE_SINGLETON__)
-        console.debug('ABClass.fromJSON classOwner coercion failed:', e);
+        ABLogger.getInstance().debug('ABClass.fromJSON classOwner coercion failed:', e);
     }
 
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
@@ -259,20 +259,9 @@ class ABClass {
     inst.assignments = [];
     if (Array.isArray(json.assignments)) {
       json.assignments.forEach((assignmentData) => {
-        try {
-          const assignmentInstance = Assignment.fromJSON(assignmentData);
-          assignmentInstance._hydrationLevel = 'partial';
-          inst.assignments.push(assignmentInstance);
-        } catch (e) {
-          // Log reconstruction error and fall back to plain object
-          ABLogger.getInstance().warn(
-            `Assignment reconstruction failed for assignmentId=${
-              assignmentData?.assignmentId || 'unknown'
-            }:`,
-            e
-          );
-          inst.assignments.push(assignmentData);
-        }
+        const assignmentInstance = Assignment.fromJSON(assignmentData);
+        assignmentInstance._hydrationLevel = 'partial';
+        inst.assignments.push(assignmentInstance);
       });
     }
 

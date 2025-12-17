@@ -52,8 +52,15 @@ class AssignmentDefinition {
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
 
-    this._validate();
-    this._hydrateTasks(tasks);
+    // Validate based on whether tasks is null (partial) or not (full)
+    this._validate(tasks);
+
+    // Only hydrate tasks if not null (partial definitions have tasks: null)
+    if (tasks !== null) {
+      this._hydrateTasks(tasks);
+    } else {
+      this.tasks = null;
+    }
 
     if (!this.definitionKey) {
       this.definitionKey = AssignmentDefinition.buildDefinitionKey({
@@ -65,10 +72,24 @@ class AssignmentDefinition {
   }
 
   /**
-   * Validate required fields and types.
-   * Logs a user-facing error and throws via ProgressTracker for consistency with error handling contract.
+   * Validate required fields and types based on whether this is a partial or full definition.
+   * Routes to appropriate validation method based on tasks parameter.
+   * @param {Object|null} tasks - The tasks parameter passed to constructor
+   * @private
    */
-  _validate() {
+  _validate(tasks) {
+    if (tasks === null) {
+      this._validatePartial();
+    } else {
+      this._validateFull();
+    }
+  }
+
+  /**
+   * Validate common fields required for both partial and full definitions.
+   * @private
+   */
+  _validateCommon() {
     const tracker = ProgressTracker.getInstance();
 
     if (!this.primaryTitle) {
@@ -82,6 +103,43 @@ class AssignmentDefinition {
         devContext: { property: 'primaryTopic', value: this.primaryTopic },
       });
     }
+
+    if (this.yearGroup !== null && !Number.isInteger(this.yearGroup)) {
+      tracker.logAndThrowError(
+        'Invalid assignment property: yearGroup must be an integer or null',
+        {
+          devContext: { property: 'yearGroup', value: this.yearGroup },
+        }
+      );
+    }
+  }
+
+  /**
+   * Validate partial definition (tasks must be null).
+   * Partial definitions require metadata + documentType but NOT doc IDs.
+   * @private
+   */
+  _validatePartial() {
+    this._validateCommon();
+
+    const tracker = ProgressTracker.getInstance();
+
+    // Partial definitions still need documentType for routing
+    if (!this.documentType) {
+      tracker.logAndThrowError('Missing required assignment property: documentType', {
+        devContext: { property: 'documentType', value: this.documentType },
+      });
+    }
+  }
+
+  /**
+   * Validate full definition (requires documentType, doc IDs, and non-null tasks).
+   * @private
+   */
+  _validateFull() {
+    this._validateCommon();
+
+    const tracker = ProgressTracker.getInstance();
 
     if (!this.documentType) {
       tracker.logAndThrowError('Missing required assignment property: documentType', {
@@ -109,18 +167,36 @@ class AssignmentDefinition {
         }
       );
     }
+
+    // Full definition cannot have null tasks
+    if (this.tasks === null) {
+      tracker.logAndThrowError('Full definition cannot have tasks: null', {
+        devContext: { tasks: this.tasks },
+      });
+    }
   }
 
   _hydrateTasks(tasks) {
+    // Skip hydration if tasks is null (partial definition)
+    if (tasks === null) {
+      this.tasks = null;
+      return;
+    }
+
     this.tasks = Object.fromEntries(
       Object.entries(tasks).map(([taskId, task]) => {
         if (task instanceof TaskDefinition) {
           return [taskId, task];
         }
-        if (task.taskTitle) {
+
+        if (task?.taskTitle) {
           return [taskId, TaskDefinition.fromJSON(task)];
         }
-        return [taskId, task];
+
+        ProgressTracker.getInstance().logAndThrowError(
+          'Invalid task payload: taskTitle is required to hydrate TaskDefinition.',
+          { devContext: { taskId, task } }
+        );
       })
     );
   }
@@ -181,18 +257,6 @@ class AssignmentDefinition {
   }
 
   toPartialJSON() {
-    const partialTasks = Object.fromEntries(
-      Object.entries(this.tasks).map(([taskId, task]) => {
-        if (task.toPartialJSON) {
-          return [taskId, task.toPartialJSON()];
-        }
-        if (task.toJSON) {
-          return [taskId, AssignmentDefinition._redactTask(task.toJSON())];
-        }
-        return [taskId, AssignmentDefinition._redactTask(task)];
-      })
-    );
-
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
@@ -200,31 +264,11 @@ class AssignmentDefinition {
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
       documentType: this.documentType,
-      referenceDocumentId: this.referenceDocumentId,
-      templateDocumentId: this.templateDocumentId,
-      referenceLastModified: this.referenceLastModified,
-      templateLastModified: this.templateLastModified,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
-      tasks: partialTasks,
+      tasks: null,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-    };
-  }
-
-  static _redactArtifact(artifact) {
-    return { ...artifact, content: null, contentHash: null };
-  }
-
-  static _redactTask(task) {
-    const artifacts = task.artifacts || {};
-    return {
-      ...task,
-      artifacts: {
-        reference: (artifacts.reference || []).map(AssignmentDefinition._redactArtifact),
-        template: (artifacts.template || []).map(AssignmentDefinition._redactArtifact),
-        submission: (artifacts.submission || []).map(AssignmentDefinition._redactArtifact),
-      },
     };
   }
 
@@ -236,18 +280,18 @@ class AssignmentDefinition {
       primaryTitle: json.primaryTitle,
       primaryTopic: json.primaryTopic,
       yearGroup: json.yearGroup ?? null,
-      alternateTitles: json.alternateTitles || [],
-      alternateTopics: json.alternateTopics || [],
-      documentType: json.documentType,
-      referenceDocumentId: json.referenceDocumentId,
-      templateDocumentId: json.templateDocumentId,
+      alternateTitles: json.alternateTitles ?? [],
+      alternateTopics: json.alternateTopics ?? [],
+      documentType: json.documentType ?? null,
+      referenceDocumentId: json.referenceDocumentId ?? null,
+      templateDocumentId: json.templateDocumentId ?? null,
       referenceLastModified: json.referenceLastModified ?? null,
       templateLastModified: json.templateLastModified ?? null,
       assignmentWeighting: json.assignmentWeighting ?? null,
-      tasks: json.tasks || {},
-      createdAt: json.createdAt || null,
-      updatedAt: json.updatedAt || null,
-      definitionKey: json.definitionKey || null,
+      tasks: 'tasks' in json ? json.tasks : {},
+      createdAt: json.createdAt ?? null,
+      updatedAt: json.updatedAt ?? null,
+      definitionKey: json.definitionKey ?? null,
     });
   }
 }

@@ -137,6 +137,7 @@ describe('AssignmentController - Definition Hydration', () => {
     globalThis.Utils = {
       toastMessage: vi.fn(),
       definitionNeedsRefresh: vi.fn().mockReturnValue(false),
+      generateHash: (str) => `hash_${(str || '').length}`,
     };
 
     // Mock DriveManager
@@ -304,7 +305,7 @@ describe('AssignmentController - Definition Hydration', () => {
         templateDocumentId: 'tpl',
         referenceLastModified: '2025-01-01T00:00:00Z',
         templateLastModified: '2025-01-01T00:00:00Z',
-        tasks: { t1: {} },
+        tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
       });
 
       const mockAssignment = new globalThis.SlidesAssignment();
