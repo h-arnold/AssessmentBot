@@ -29,6 +29,8 @@ npm run format    # Format code with Prettier
 - `./docs/developer/testing.md` - Testing patterns and best practices
 - `./docs/developer/singletons.md` - Singleton pattern implementation guide
 - `./docs/developer/DATA_SHAPES.md` - Data structure specifications
+- `./docs/developer/AssessmentFlow.md` - An overview of the assessment flow.
+- `./docs/developer/rehydration.md` - Detailed information on how data is peristed to disk.
 
 ### 0. Prime Directives (Highest Priority – never violate)
 1. KISS: simplest working solution. No speculative abstraction.

@@ -75,6 +75,13 @@ function showBeerCssDemoDialog() {
 }
 
 /**
+ * Opens the BeerCSS playground dialog for quick UI previews.
+ */
+function showBeerCssPlaygroundDialog() {
+  UIManager.getInstance().showBeerCssPlaygroundDialog();
+}
+
+/**
  * Includes an HTML file in an HtmlService template.
  *
  * @param {string} filename - File path relative to script root (e.g. 'UI/partials/Head').

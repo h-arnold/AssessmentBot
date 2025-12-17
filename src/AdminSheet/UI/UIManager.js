@@ -205,7 +205,8 @@ class UIManager extends BaseSingleton {
       const debugSubMenu = ui
         .createMenu('Debug')
         .addItem('Assess Student Work', 'showAssignmentDropdown')
-        .addItem('Check Progress', 'showProgressModal');
+        .addItem('Check Progress', 'showProgressModal')
+        .addItem('BeerCSS Playground', 'showBeerCssPlaygroundDialog');
       menu.addSubMenu(debugSubMenu);
 
       // Add the menu to the UI
@@ -253,6 +254,16 @@ class UIManager extends BaseSingleton {
     this._showTemplateDialog('UI/BeerCssDemoDialog', {}, 'BeerCSS Demo', {
       width: 420,
       height: 220,
+    });
+  }
+
+  /**
+   * Shows a BeerCSS playground dialog to preview common components.
+   */
+  showBeerCssPlaygroundDialog() {
+    this._showTemplateDialog('UI/BeerCssPlayground', {}, 'BeerCSS Playground', {
+      width: 800,
+      height: 680,
     });
   }
 
