@@ -108,7 +108,7 @@ class SheetsAssignment extends Assignment {
     if (typeof SheetsAssessor === 'undefined') {
       console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
     } else {
-      const assessor = new SheetsAssessor(this.tasks, this.submissions); //
+      const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
       // Use optional chaining to call assessResponses if present
       assessor.assessResponses?.();
     }

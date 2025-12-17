@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
 import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 
-describe('Assignment Legacy Aliases with Null Values', () => {
+describe('Assignment (legacy alias removal)', () => {
   describe('tasks getter', () => {
     it('should return null for partial definition', () => {
       const partialDef = new AssignmentDefinition({
@@ -15,7 +15,7 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.tasks).toBe(null);
+      expect(assignment.tasks).toBeUndefined();
     });
 
     it('should return tasks object for full definition', () => {
@@ -31,8 +31,9 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');
 
-      expect(assignment.tasks).toBeTruthy();
-      expect(assignment.tasks.t1).toBeDefined();
+      expect(assignment.tasks).toBeUndefined();
+      expect(assignment.getTasks()).toBeTruthy();
+      expect(assignment.getTasks().t1).toBeDefined();
     });
 
     it('should fail fast when accessing Object.keys(assignment.tasks) on partial', () => {
@@ -80,7 +81,7 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.referenceDocumentId).toBe(null);
+      expect(assignment.referenceDocumentId).toBeUndefined();
     });
 
     it('should return documentId for full definition', () => {
@@ -96,7 +97,8 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');
 
-      expect(assignment.referenceDocumentId).toBe('ref123');
+      expect(assignment.referenceDocumentId).toBeUndefined();
+      expect(assignment.getReferenceDocumentId()).toBe('ref123');
     });
   });
 
@@ -112,7 +114,7 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.templateDocumentId).toBe(null);
+      expect(assignment.templateDocumentId).toBeUndefined();
     });
 
     it('should return documentId for full definition', () => {
@@ -128,7 +130,8 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');
 
-      expect(assignment.templateDocumentId).toBe('tmpl123');
+      expect(assignment.templateDocumentId).toBeUndefined();
+      expect(assignment.getTemplateDocumentId()).toBe('tmpl123');
     });
   });
 
@@ -144,7 +147,8 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.documentType).toBe('SLIDES');
+      expect(assignment.documentType).toBeUndefined();
+      expect(assignment.getDocumentType()).toBe('SLIDES');
     });
 
     it('should return documentType for full definition', () => {
@@ -160,7 +164,8 @@ describe('Assignment Legacy Aliases with Null Values', () => {
 
       const assignment = Assignment.create(fullDef, 'C123', 'A1');
 
-      expect(assignment.documentType).toBe('SHEETS');
+      expect(assignment.documentType).toBeUndefined();
+      expect(assignment.getDocumentType()).toBe('SHEETS');
     });
   });
 

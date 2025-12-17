@@ -11,7 +11,7 @@ describe('Assignment lastUpdated behavior', () => {
       templateDocumentId: 'tpl1',
       assignmentName: 'Slides Assignment',
     });
-    expect(a.documentType).toBe('SLIDES');
+    expect(a.getDocumentType()).toBe('SLIDES');
     expect(a.getLastUpdated()).toBeNull();
     const before = Date.now();
     const d = a.touchUpdated();
@@ -61,12 +61,12 @@ describe('Assignment lastUpdated behavior', () => {
       templateDocumentId: 'tpl4',
       assignmentName: 'Sheets Assignment',
     });
-    expect(a.documentType).toBe('SHEETS');
+    expect(a.getDocumentType()).toBe('SHEETS');
     a.setLastUpdated(new Date(2021, 5, 6, 7, 8, 9));
     const json = a.toJSON();
     expect(json.lastUpdated).toBeTruthy();
     const restored = Assignment.fromJSON(json);
-    expect(restored.documentType).toBe('SHEETS');
+    expect(restored.getDocumentType()).toBe('SHEETS');
     expect(restored.getLastUpdated()).toBeInstanceOf(Date);
     expect(restored.getLastUpdated().getTime()).toBe(a.getLastUpdated().getTime());
   });

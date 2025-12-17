@@ -23,8 +23,6 @@ class Assignment {
     this.lastUpdated = null;
     // Embedded definition copy (source of truth for tasks, doc IDs, weighting, documentType)
     this.assignmentDefinition = assignmentDefinition;
-    Assignment._applyLegacyAliases(this);
-    // Legacy alias fields kept for compatibility with existing code and tests
 
     // New model: submissions array of StudentSubmission
     this.submissions = []; // Array<StudentSubmission>
@@ -34,59 +32,6 @@ class Assignment {
     // to keep the hydrated roster handy. That property is transient and must never be persisted
     // (see docs/developer/DATA_SHAPES.md and rehydration.md).
     this._hydrationLevel = 'full';
-  }
-
-  static _applyLegacyAliases(target) {
-    Object.defineProperties(target, {
-      documentType: {
-        get() {
-          return target.assignmentDefinition?.documentType ?? target._documentTypeAlias ?? null;
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.documentType = value;
-          target._documentTypeAlias = value;
-        },
-        configurable: true,
-      },
-      referenceDocumentId: {
-        get() {
-          return (
-            target.assignmentDefinition?.referenceDocumentId ??
-            target._referenceDocumentIdAlias ??
-            null
-          );
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.referenceDocumentId = value;
-          target._referenceDocumentIdAlias = value;
-        },
-        configurable: true,
-      },
-      templateDocumentId: {
-        get() {
-          return (
-            target.assignmentDefinition?.templateDocumentId ??
-            target._templateDocumentIdAlias ??
-            null
-          );
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.templateDocumentId = value;
-          target._templateDocumentIdAlias = value;
-        },
-        configurable: true,
-      },
-      tasks: {
-        get() {
-          return target.assignmentDefinition?.tasks ?? target._tasksAlias ?? null;
-        },
-        set(value) {
-          if (target.assignmentDefinition) target.assignmentDefinition.tasks = value;
-          target._tasksAlias = value;
-        },
-        configurable: true,
-      },
-    });
   }
 
   /**
@@ -243,12 +188,6 @@ class Assignment {
     inst.assignmentDefinition = data.assignmentDefinition
       ? AssignmentDefinition.fromJSON(data.assignmentDefinition)
       : null;
-    Assignment._applyLegacyAliases(inst);
-    // Set legacy alias fields for backward compatibility with old serialized data
-    if (data.documentType) inst.documentType = data.documentType;
-    if (data.referenceDocumentId) inst.referenceDocumentId = data.referenceDocumentId;
-    if (data.templateDocumentId) inst.templateDocumentId = data.templateDocumentId;
-    if (data.tasks) inst.tasks = data.tasks;
     inst.submissions = [];
     // Do not set transient hydration marker here — remain absent/undefined so
     // that deserialized objects don't claim a persisted hydration level.
@@ -366,7 +305,7 @@ class Assignment {
         documentType: data.documentType,
         referenceDocumentId: data.referenceDocumentId,
         templateDocumentId: data.templateDocumentId,
-        tasks: data.tasks ?? {},
+        tasks: 'tasks' in data ? data.tasks : {},
         referenceLastModified: data.referenceLastModified ?? null,
         templateLastModified: data.templateLastModified ?? null,
       }).toJSON();
@@ -634,20 +573,20 @@ class Assignment {
   }
 
   setTasks(tasks) {
-    this.tasks = tasks;
+    this.assignmentDefinition.tasks = tasks;
     return tasks;
   }
 
   getDocumentType() {
-    return this.assignmentDefinition?.documentType || null;
+    return this.assignmentDefinition?.documentType ?? null;
   }
 
   getReferenceDocumentId() {
-    return this.assignmentDefinition?.referenceDocumentId || null;
+    return this.assignmentDefinition?.referenceDocumentId ?? null;
   }
 
   getTemplateDocumentId() {
-    return this.assignmentDefinition?.templateDocumentId || null;
+    return this.assignmentDefinition?.templateDocumentId ?? null;
   }
 }
 
