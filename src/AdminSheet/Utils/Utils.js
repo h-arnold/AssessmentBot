@@ -128,7 +128,7 @@ class Utils {
       return true;
     } catch (err) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError(`Invalid slide URL found: ${url}`);
+      progressTracker.logError(`Invalid slide URL found: ${url}`, { err });
       return false;
     }
   }
