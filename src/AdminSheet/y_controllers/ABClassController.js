@@ -362,6 +362,7 @@ class ABClassController {
         throw new Error(
           `Failed to rehydrate definition '${definitionKey}': the authoritative record is partial (tasks: null).`
         );
+      }
     }
   }
 
