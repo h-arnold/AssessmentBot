@@ -192,14 +192,16 @@ describe('AssignmentDefinition Validation', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
       const json = partialDef.toPartialJSON();
 
       expect(json.tasks).toBe(null);
-      expect(json).not.toHaveProperty('referenceDocumentId');
-      expect(json).not.toHaveProperty('templateDocumentId');
+      expect(json.referenceDocumentId).toBe('ref123');
+      expect(json.templateDocumentId).toBe('tmpl123');
       expect(json.documentType).toBe('SLIDES');
     });
 
@@ -217,8 +219,8 @@ describe('AssignmentDefinition Validation', () => {
       const json = fullDef.toPartialJSON();
 
       expect(json.tasks).toBe(null);
-      expect(json).not.toHaveProperty('referenceDocumentId');
-      expect(json).not.toHaveProperty('templateDocumentId');
+      expect(json.referenceDocumentId).toBe('ref123');
+      expect(json.templateDocumentId).toBe('tmpl123');
     });
   });
 
