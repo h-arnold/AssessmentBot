@@ -197,7 +197,6 @@ class AssignmentDefinition {
           'Invalid task payload: taskTitle is required to hydrate TaskDefinition.',
           { devContext: { taskId, task } }
         );
-        return [taskId, task];
       })
     );
   }

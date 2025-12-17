@@ -113,9 +113,7 @@ class Assignment {
    * @return {object}
    */
   toPartialJSON() {
-    const definitionJson = this.assignmentDefinition?.toPartialJSON
-      ? this.assignmentDefinition.toPartialJSON()
-      : this.assignmentDefinition;
+    const definitionJson = this.assignmentDefinition.toPartialJSON();
 
     const partialSubmissions = (this.submissions || []).map((submission) =>
       submission.toPartialJSON()

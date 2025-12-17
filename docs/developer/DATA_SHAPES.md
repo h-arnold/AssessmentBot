@@ -1,7 +1,5 @@
 # Assignment Data Shapes
 
-- [Assignment Data Shapes](#assignment-data-shapes)
-
 > **Note:** Partial hydration outputs retain the `assessments` map but only carries the non-`reasoning` fields (typically just `score`), keeping the payload aligned with list-view needs. Full hydration records continue to store the full `reasoning` text.
 
 - [Assignment Data Shapes](#assignment-data-shapes)
@@ -10,8 +8,6 @@
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
-  - [Full Hydration (complete payload)](#full-hydration-complete-payload)
-  - [Assessment Structure](#assessment-structure)
   - [Feedback Structure](#feedback-structure)
     - [Generic Feedback](#generic-feedback)
     - [Cell Reference Feedback (Sheets)](#cell-reference-feedback-sheets)
@@ -329,46 +325,6 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
 - Doc IDs (`referenceDocumentId`, `templateDocumentId`) omitted from partial definition
 - Root `documentType` preserved for routing
 - Submission artifacts still have `content: null` (unchanged from previous partial format)
-  "items": {
-  "t_ab12": {
-  "id": "ssi_abc123",
-  "taskId": "t_ab12",
-  "artifact": {
-  "taskId": "t_ab12",
-  "role": "submission",
-  "pageId": "p-1",
-  "documentId": "DriveFile123",
-  "content": null,
-  "contentHash": null,
-  "metadata": {},
-  "uid": "t_ab12-S001-p-1-0",
-  "type": "TEXT"
-  },
-  "assessments": {
-  "completeness": {
-  "score": 4
-  },
-  "accuracy": {
-  "score": 3
-  },
-  "spag": {
-  "score": 5
-  }
-  },
-  "feedback": {
-  "general": {
-  "type": "general",
-  "createdAt": "2025-09-10T12:00:00Z",
-  "text": "Good work overall. Consider revising the conclusion."
-  }
-  }
-  }
-  },
-  "createdAt": "2025-09-10T10:00:00Z",
-  "updatedAt": "2025-09-10T12:30:00Z#2"
-  }
-  ]
-  }
 
 ````
 
@@ -529,9 +485,9 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
     }
   ]
 }
-````
+```
 
-## Assessment Structure
+```
 
 Assessments are stored as a map keyed by assessment criterion (e.g., `'completeness'`, `'accuracy'`, `'spag'`). Each assessment contains a score and reasoning provided by the LLM.
 
@@ -550,7 +506,7 @@ Assessments are stored as a map keyed by assessment criterion (e.g., `'completen
     "reasoning": "Excellent spelling, punctuation, and grammar throughout. No errors detected."
   }
 }
-```
+````
 
 Partial hydration uses the same assessment map but drops every `reasoning` field so list views still have the numeric scores without the verbose explanations.
 
@@ -573,8 +529,10 @@ Feedback is stored as a map keyed by feedback type. Different feedback types tra
 For text-based or general comments:
 
 ```json
-{
-  "general": {
+
+```
+
+```
     "type": "general",
     "createdAt": "2025-09-10T12:00:00Z",
     "text": "Great effort on the introduction. Consider expanding the evidence section in the next draft."
