@@ -8,6 +8,7 @@
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
+  - [Full Hydration (complete payload)](#full-hydration-complete-payload)
   - [Feedback Structure](#feedback-structure)
     - [Generic Feedback](#generic-feedback)
     - [Cell Reference Feedback (Sheets)](#cell-reference-feedback-sheets)
@@ -229,25 +230,6 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
 
 Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` and omits document IDs. Submission artifacts are redacted (no `content` payload).
 
-**Before (old partial format - artifacts with null content):**
-
-```json
-{
-  "assignmentDefinition": {
-    "tasks": {
-      "t_ab12": {
-        "artifacts": {
-          "reference": [{ "content": null, "contentHash": null }],
-          "template": [{ "content": null, "contentHash": null }]
-        }
-      }
-    }
-  }
-}
-```
-
-**After (new partial format - tasks: null):**
-
 ```json
 {
   "courseId": "C123",
@@ -318,15 +300,6 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
   ]
 }
 ```
-
-**Key Differences:**
-
-- Assignment definition has `tasks: null` (not an object with redacted artifacts)
-- Doc IDs (`referenceDocumentId`, `templateDocumentId`) omitted from partial definition
-- Root `documentType` preserved for routing
-- Submission artifacts still have `content: null` (unchanged from previous partial format)
-
-````
 
 ## Full Hydration (complete payload)
 
@@ -487,7 +460,7 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
 }
 ```
 
-```
+````
 
 Assessments are stored as a map keyed by assessment criterion (e.g., `'completeness'`, `'accuracy'`, `'spag'`). Each assessment contains a score and reasoning provided by the LLM.
 
