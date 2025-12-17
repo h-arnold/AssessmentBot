@@ -76,6 +76,18 @@ It is opened by:
 
 This dialog is intentionally basic: it exists to prove the include/vendoring path works end-to-end.
 
+### 5) BeerCSS Playground
+
+An interactive component preview dialog is also available:
+
+- src/AdminSheet/UI/BeerCssPlayground.html
+
+It is opened by:
+
+- `showBeerCssPlaygroundDialog()` global function in src/AdminSheet/zz_main.js
+
+The playground showcases a wider range of BeerCSS components (buttons, inputs, chips, badges, etc.) and serves as a helpful reference for developers building new dialogs.
+
 ## How to build a new BeerCSS-backed dialog
 
 1. Create a new HtmlService template under `src/AdminSheet/UI/`.
