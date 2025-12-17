@@ -338,8 +338,27 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
             "uid": "t_ab12-S001-p-1-0",
             "type": "TEXT"
           },
-          "assessments": {},
-          "feedback": {}
+          "assessments": {
+            "completeness": {
+              "score": 4,
+              "reasoning": "Student addressed 8 of 10 key points."
+            },
+            "accuracy": {
+              "score": 3,
+              "reasoning": "Main ideas correct but one factual error in section 2."
+            },
+            "spag": {
+              "score": 5,
+              "reasoning": "No errors detected."
+            }
+          },
+          "feedback": {
+            "general": {
+              "type": "general",
+              "createdAt": "2025-09-10T12:00:00Z",
+              "text": "Good work overall. Consider revising the conclusion."
+            }
+          }
         }
       },
       "createdAt": "2025-09-10T10:00:00Z",
@@ -397,22 +416,8 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
               "uid": "t_ab12-0-template-p-1-0",
               "type": "TEXT"
             }
-          ": {},
-              "uid": "t_ab12-0-reference-p-1-0",
-              "type": "TEXT
-        "taskWeighting": null,
-        "index": 0,
-        "artifacts": {
-          "reference": [
-            {
-              "content": "<base64 encoded slides>",
-              "contentHash": "9f6a..."
-            }
           ],
-          "template": []
         }
-      }
-    },
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
   },
@@ -459,12 +464,160 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
 }
 ```
 
+## Assessment Structure
+
+Assessments are stored as a map keyed by assessment criterion (e.g., `'completeness'`, `'accuracy'`, `'spag'`). Each assessment contains a score and reasoning provided by the LLM.
+
+```json
+{
+  "completeness": {
+    "score": 4,
+    "reasoning": "The student attempted 8 out of 10 required tasks. Missing responses to questions 3 and 7."
+  },
+  "accuracy": {
+    "score": 3,
+    "reasoning": "Multiple calculation errors identified. Correct method shown but arithmetic mistakes in 3 sections."
+  },
+  "spag": {
+    "score": 5,
+    "reasoning": "Excellent spelling, punctuation, and grammar throughout. No errors detected."
+  }
+}
+```
+
+**Score values**:
+
+- `0–5`: Numeric score (0 = fail, 5 = excellent)
+- `"N"`: Not attempted / not applicable (used for criteria that don't apply to a task type)
+
+**Fields**:
+
+- `score`: Number or string; the assessment grade.
+- `reasoning`: String; the LLM's explanation of why this score was given.
+
+## Feedback Structure
+
+Feedback is stored as a map keyed by feedback type. Different feedback types track different concerns (e.g., cell reference feedback for Sheets tasks).
+
+### Generic Feedback
+
+For text-based or general comments:
+
+```json
+{
+  "general": {
+    "type": "general",
+    "createdAt": "2025-09-10T12:00:00Z",
+    "text": "Great effort on the introduction. Consider expanding the evidence section in the next draft."
+  }
+}
+```
+
+### Cell Reference Feedback (Sheets)
+
+For spreadsheet tasks, tracks cell-level correctness:
+
+```json
+{
+  "cellReference": {
+    "type": "cellReference",
+    "createdAt": "2025-09-10T12:00:00Z",
+    "items": [
+      {
+        "location": "A1",
+        "status": "correct"
+      },
+      {
+        "location": "B3",
+        "status": "incorrect"
+      },
+      {
+        "location": "C5",
+        "status": "notAttempted"
+      }
+    ]
+  }
+}
+```
+
+**Cell status values**:
+
+- `"correct"`: Formula or cell content matches expected value
+- `"incorrect"`: Formula or cell content does not match
+- `"notAttempted"`: Cell was left blank or not provided
+
+**Fields**:
+
+- `type`: String; identifies feedback class (`'general'`, `'cellReference'`, etc.)
+- `createdAt`: ISO string timestamp of when feedback was generated
+- `items` (cellReference only): Array of cell feedback objects, each with `location` and `status`
+
+## Full Hydration Example with Assessments and Feedback
+
+When assessments and feedback data exists, both partial and full hydration include the complete records:
+
+```json
+{
+  "courseId": "C123",
+  "assignmentId": "A1",
+  "assignmentName": "Essay 1",
+  "submissions": [
+    {
+      "studentId": "S001",
+      "studentName": "Ada Lovelace",
+      "assignmentId": "A1",
+      "documentId": "DriveFile123",
+      "items": {
+        "t_ab12": {
+          "id": "ssi_abc123",
+          "taskId": "t_ab12",
+          "artifact": {
+            "taskId": "t_ab12",
+            "role": "submission",
+            "pageId": "p-1",
+            "documentId": "DriveFile123",
+            "content": "<extracted student response>",
+            "contentHash": "ab12...",
+            "metadata": {},
+            "uid": "t_ab12-S001-p-1-0",
+            "type": "TEXT"
+          },
+          "assessments": {
+            "completeness": {
+              "score": 4,
+              "reasoning": "Student addressed 8 of 10 key points. Structure is clear."
+            },
+            "accuracy": {
+              "score": 3,
+              "reasoning": "Main arguments are sound but one factual error noted in paragraph 2."
+            },
+            "spag": {
+              "score": 5,
+              "reasoning": "No spelling, punctuation, or grammar errors identified."
+            }
+          },
+          "feedback": {
+            "general": {
+              "type": "general",
+              "createdAt": "2025-09-10T12:00:00Z",
+              "text": "Excellent introduction. Consider adding a counterargument in your next draft."
+            }
+          }
+        }
+      },
+      "createdAt": "2025-09-10T10:00:00Z",
+      "updatedAt": "2025-09-10T12:30:00Z#2"
+    }
+  ]
+}
+```
+
 ### Hydration Guidelines
 
 - **Same keys, different payload weight**: Partial and full documents are interchangeable because they share the identical key structure. Downstream code can detect missing payloads (for example, `content === null`) to decide when to rehydrate.
 - **Artifacts drive rehydration**: `BaseTaskArtifact.uid` plus `taskId` uniquely identifies any heavy resource to fetch later.
 - **Artifact type vs external Drive type**: The `type` field on artifacts refers to the artifact class/type produced by the system (for example: `"TEXT"`, `"TABLE"`, `"SPREADSHEET"`, `"IMAGE"`, or the generic `"base"`). It is not a Google Drive MIME type. If a Drive MIME/type is required, include it in `metadata` or `documentId`.
 - **Timestamps in feedback**: `Feedback.toJSON()` now emits `createdAt` as an ISO string (e.g. `"2025-09-10T12:00:00Z"`) to match other timestamps in this document.
-- **Assessments and feedback**: These maps stay in place even at lower hydration so scoring summaries do not require rehydration. Populate them only when the data exists.
+- **Assessments and feedback**: These maps are preserved entirely in both partial and full hydration, including all scoring data and feedback content. They are _not_ redacted during partial hydration because scoring summaries need to remain accessible without rehydration. Both partial and full documents contain the complete assessment and feedback records as they exist; the difference is in artifact `content` (redacted in partial) but assessment/feedback data is always complete.
 
 By constraining the document to the fields emitted today, we minimize Drive calls without introducing new schema variants or migration overhead.
