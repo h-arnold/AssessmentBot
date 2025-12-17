@@ -61,8 +61,8 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
   "cohort": "2025",
   "courseLength": 1,
   "yearGroup": 10,
-  "teachers": [{ "id": "T1", "name": "Ms Smith" }],
-  "students": [{ "id": "S001", "name": "Ada Lovelace" }],
+  "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
+  "students": [{ "name": "Ada Lovelace", "email": "ada@school.com", "id": "S001" }],
   "assignments": [
     {
       "assignmentId": "A1",
@@ -72,23 +72,56 @@ are partially hydrated (note `tasks` contain artifacts with `content: null`):
         "primaryTitle": "Essay 1",
         "primaryTopic": "English",
         "yearGroup": 10,
+        "alternateTitles": [],
+        "alternateTopics": [],
         "documentType": "SLIDES",
         "referenceDocumentId": "DriveRef123",
         "templateDocumentId": "DriveTemplate123",
+        "referenceLastModified": "2025-09-01T10:00:00Z",
+        "templateLastModified": "2025-09-01T10:00:00Z",
+        "assignmentWeighting": null,
+        "definitionKey": "Essay 1_English_10",
         "tasks": {
           "t_ab12": {
             "id": "t_ab12",
             "taskTitle": "Introduction",
+            "pageId": "p-1",
+            "taskNotes": null,
+            "taskMetadata": {},
+            "taskWeighting": null,
+            "index": 0,
             "artifacts": {
               "reference": [
                 {
+                  "taskId": "t_ab12",
+                  "role": "reference",
+                  "pageId": "p-1",
+                  "documentId": "DriveRef123",
                   "content": null,
-                  "contentHash": null
+                  "contentHash": null,
+                  "metadata": {},
+                  "uid": "t_ab12-0-reference-p-1-0",
+                  "type": "TEXT"
+                }
+              ],
+              "template": [
+                {
+                  "taskId": "t_ab12",
+                  "role": "template",
+                  "pageId": "p-1",
+                  "documentId": "DriveTemplate123",
+                  "content": null,
+                  "contentHash": null,
+                  "metadata": {},
+                  "uid": "t_ab12-0-template-p-1-0",
+                  "type": "TEXT"
                 }
               ]
             }
           }
-        }
+        },
+        "createdAt": "2025-09-01T10:00:00Z",
+        "updatedAt": "2025-09-01T10:00:00Z"
       },
       "submissions": []
     }
@@ -141,6 +174,11 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. It is 
     "t_ab12": {
       "id": "t_ab12",
       "taskTitle": "Introduction",
+      "pageId": "p-1",
+      "taskNotes": null,
+      "taskMetadata": {},
+      "taskWeighting": null,
+      "index": 0,
       "artifacts": {
         "reference": [],
         "template": []
@@ -172,14 +210,38 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
     "t_ab12": {
       "id": "t_ab12",
       "taskTitle": "Introduction",
+      "pageId": "p-1",
+      "taskNotes": null,
+      "taskMetadata": {},
+      "taskWeighting": null,
+      "index": 0,
       "artifacts": {
         "reference": [
           {
-            "content": "<base64 encoded reference slide>",
-            "contentHash": "9f6a..."
+            "taskId": "t_ab12",
+            "role": "reference",
+            "pageId": "p-1",
+            "documentId": "DriveRef123",
+            "content": "<base64 encoded reference slide>, string or array depending on type",
+            "contentHash": "9f6a...",
+            "metadata": {},
+            "uid": "t_ab12-0-reference-p-1-0",
+            "type": "TEXT"
           }
         ],
-        "template": []
+        "template": [
+          {
+            "taskId": "t_ab12",
+            "role": "template",
+            "pageId": "p-1",
+            "documentId": "DriveTemplate123",
+            "content": "<base64 encoded template slide>, string or array depending on type",
+            "contentHash": "8e5b...",
+            "metadata": {},
+            "uid": "t_ab12-0-template-p-1-0",
+            "type": "TEXT"
+          }
+        ]
       }
     }
   },
@@ -204,23 +266,56 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
     "primaryTitle": "Essay 1",
     "primaryTopic": "English",
     "yearGroup": 10,
+    "alternateTitles": [],
+    "alternateTopics": [],
     "documentType": "SLIDES",
     "referenceDocumentId": "DriveRef123",
     "templateDocumentId": "DriveTemplate123",
+    "referenceLastModified": "2025-09-01T10:00:00Z",
+    "templateLastModified": "2025-09-01T10:00:00Z",
+    "assignmentWeighting": null,
+    "definitionKey": "Essay 1_English_10",
     "tasks": {
       "t_ab12": {
         "id": "t_ab12",
         "taskTitle": "Introduction",
+        "pageId": "p-1",
+        "taskNotes": null,
+        "taskMetadata": {},
+        "taskWeighting": null,
+        "index": 0,
         "artifacts": {
           "reference": [
             {
+              "taskId": "t_ab12",
+              "role": "reference",
+              "pageId": "p-1",
+              "documentId": "DriveRef123",
               "content": null,
-              "contentHash": null
+              "contentHash": null,
+              "metadata": {},
+              "uid": "t_ab12-0-reference-p-1-0",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "t_ab12",
+              "role": "template",
+              "pageId": "p-1",
+              "documentId": "DriveTemplate123",
+              "content": null,
+              "contentHash": null,
+              "metadata": {},
+              "uid": "t_ab12-0-template-p-1-0",
+              "type": "TEXT"
             }
           ]
         }
       }
-    }
+    },
+    "createdAt": "2025-09-01T10:00:00Z",
+    "updatedAt": "2025-09-01T10:00:00Z"
   },
   "submissions": [
     {
@@ -270,23 +365,56 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
     "primaryTitle": "Essay 1",
     "primaryTopic": "English",
     "yearGroup": 10,
-    "documentType": "SLIDES",
-    "referenceDocumentId": "DriveRef123",
-    "templateDocumentId": "DriveTemplate123",
-    "tasks": {
-      "t_ab12": {
-        "id": "t_ab12",
-        "taskTitle": "Introduction",
+    "alternateTitles": [],
+    "alternateTopics": [],
+    "documentTypes": null,
+        "taskMetadata": {},
+        "taskWeighting": null,
+        "index": 0,
+        "artifacts": {
+          "reference": [
+            {
+              "taskId": "t_ab12",
+              "role": "reference",
+              "pageId": "p-1",
+              "documentId": "DriveRef123",
+              "content": "<base64 encoded reference slide>, string or array depending on type",
+              "contentHash": "9f6a...",
+              "metadata": {},
+              "uid": "t_ab12-0-reference-p-1-0",
+              "type": "TEXT"
+            }
+          ],
+          "template": [
+            {
+              "taskId": "t_ab12",
+              "role": "template",
+              "pageId": "p-1",
+              "documentId": "DriveTemplate123",
+              "content": "<base64 encoded template slide>, string or array depending on type",
+              "contentHash": "8e5b...",
+              "metadata": {},
+              "uid": "t_ab12-0-template-p-1-0",
+              "type": "TEXT"
+            }
+          ": {},
+              "uid": "t_ab12-0-reference-p-1-0",
+              "type": "TEXT
+        "taskWeighting": null,
+        "index": 0,
         "artifacts": {
           "reference": [
             {
               "content": "<base64 encoded slides>",
               "contentHash": "9f6a..."
             }
-          ]
+          ],
+          "template": []
         }
       }
-    }
+    },
+    "createdAt": "2025-09-01T10:00:00Z",
+    "updatedAt": "2025-09-01T10:00:00Z"
   },
   "submissions": [
     {
@@ -312,13 +440,13 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
             "type": "TEXT"
           },
           "assessments": {
-            "overall": {
-              "score": 20,
-              "band": "A"
+            "completeness": {
+              "score": 5,
+              "reasoning": "All parts present."
             }
           },
           "feedback": {
-            "summary": {
+            "general": {
               "text": "Strong thesis and supporting detail."
             }
           }
