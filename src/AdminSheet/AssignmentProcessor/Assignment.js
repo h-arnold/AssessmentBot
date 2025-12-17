@@ -10,14 +10,12 @@ class Assignment {
    * @param {string} assignmentId - The ID of the assignment.
    * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
    * @param {Date} dueDate - to be implemented later
-   * @param {object} assignmentMetadata - to be implemented later
    * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     this.courseId = courseId;
     this.assignmentId = assignmentId;
     this.assignmentName = this.fetchAssignmentName(courseId, assignmentId);
-    this.assignmentMetadata = null; //will be implemented later.
     this.dueDate = null; //to be implemented later with the homework tracker.
     // Timestamp for when this assignment was last updated. Use Date or null.
     this.lastUpdated = null;
@@ -70,7 +68,6 @@ class Assignment {
       courseId: this.courseId,
       assignmentId: this.assignmentId,
       assignmentName: this.assignmentName,
-      assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
       ...this._extractFullDefinitionFields(definitionJson),
@@ -123,7 +120,6 @@ class Assignment {
       courseId: this.courseId,
       assignmentId: this.assignmentId,
       assignmentName: this.assignmentName,
-      assignmentMetadata: this.assignmentMetadata,
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
       lastUpdated: this.lastUpdated ? this.lastUpdated.toISOString() : null,
       ...this._extractPartialRootFields(definitionJson),
@@ -180,7 +176,6 @@ class Assignment {
     inst.courseId = data.courseId;
     inst.assignmentId = data.assignmentId;
     inst.assignmentName = data.assignmentName || `Assignment ${data.assignmentId}`;
-    inst.assignmentMetadata = data.assignmentMetadata ?? null;
     inst.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     inst.lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : null;
     inst.assignmentDefinition = data.assignmentDefinition
@@ -202,7 +197,6 @@ class Assignment {
       'courseId',
       'assignmentId',
       'assignmentName',
-      'assignmentMetadata',
       'dueDate',
       'lastUpdated',
       'assignmentDefinition',

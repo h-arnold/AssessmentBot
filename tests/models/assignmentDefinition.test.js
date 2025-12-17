@@ -106,8 +106,8 @@ describe('AssignmentDefinition', () => {
     const partial = def.toPartialJSON();
 
     expect(partial.tasks).toBe(null);
-    expect(partial).not.toHaveProperty('referenceDocumentId');
-    expect(partial).not.toHaveProperty('templateDocumentId');
+    expect(partial.referenceDocumentId).toBe('ref-123');
+    expect(partial.templateDocumentId).toBe('tpl-123');
   });
 
   it('should update modified timestamps', async () => {

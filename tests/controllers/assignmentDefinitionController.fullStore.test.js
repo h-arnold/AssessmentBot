@@ -185,8 +185,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const savedPartialDef = registryCall[0];
 
       expect(savedPartialDef.tasks).toBe(null);
-      expect(savedPartialDef).not.toHaveProperty('referenceDocumentId');
-      expect(savedPartialDef).not.toHaveProperty('templateDocumentId');
+      expect(savedPartialDef.referenceDocumentId).toBe('ref');
+      expect(savedPartialDef.templateDocumentId).toBe('tpl');
     });
   });
 
@@ -383,8 +383,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const partialDef = registryReplaceCall ? registryReplaceCall[1] : registryInsertCall[0];
 
       expect(partialDef.tasks).toBe(null);
-      expect(partialDef).not.toHaveProperty('referenceDocumentId');
-      expect(partialDef).not.toHaveProperty('templateDocumentId');
+      expect(partialDef.referenceDocumentId).toBe('ref');
+      expect(partialDef.templateDocumentId).toBe('tpl');
     });
   });
 

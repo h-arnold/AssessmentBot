@@ -45,7 +45,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
 - **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
-- **Content**: **Ultra-minimal Partial** definition with `tasks: null` (no artifacts, no doc IDs); includes only metadata (titles, topics, yearGroup, weighting) plus `documentType` for routing.
+- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (titles, topics, yearGroup, weighting), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
 - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
 
 4.  **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
@@ -83,7 +83,6 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
       "courseId": "C123",
       "assignmentId": "A1",
       "assignmentName": "Essay 1",
-      "assignmentMetadata": null,
       "dueDate": null,
       "lastUpdated": "2025-09-10T12:34:56Z",
       "documentType": "SLIDES",
@@ -94,6 +93,8 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
         "alternateTitles": [],
         "alternateTopics": [],
         "documentType": "SLIDES",
+        "referenceDocumentId": "DriveRef123",
+        "templateDocumentId": "DriveTemplate123",
         "assignmentWeighting": null,
         "definitionKey": "Essay 1_English_10",
         "tasks": null,
@@ -109,10 +110,10 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
 Key notes:
 
 - The `ABClass` top-level fields are present and usable immediately.
-- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker), omits `referenceDocumentId` and `templateDocumentId` to minimize payload size.
+- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker) to minimize payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
 - **Root `documentType`**: Preserved at assignment root for polymorphic routing (allows `Assignment.fromJSON` to instantiate correct subclass).
 - **Fail-Fast Design**: Code expecting tasks will throw immediately on `null` rather than silently operating on empty objects.
-- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` and omits doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -232,14 +233,13 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
 
 ## Partial Hydration (summary-level)
 
-Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` and omits document IDs. Submission artifacts are redacted (no `content` payload).
+Used when we want a lightweight snapshot for list views or quick comparisons. The embedded `assignmentDefinition` has `tasks: null` to reduce payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference. Submission artifacts are redacted (no `content` payload).
 
 ```json
 {
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
@@ -250,6 +250,8 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "alternateTitles": [],
     "alternateTopics": [],
     "documentType": "SLIDES",
+    "referenceDocumentId": "DriveRef123",
+    "templateDocumentId": "DriveTemplate123",
     "assignmentWeighting": null,
     "definitionKey": "Essay 1_English_10",
     "tasks": null,
@@ -289,10 +291,19 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
             }
           },
           "feedback": {
-            "general": {
-              "type": "general",
+            "cellReference": {
+              "type": "cellReference",
               "createdAt": "2025-09-10T12:00:00Z",
-              "text": "Good work overall. Consider revising the conclusion."
+              "items": [
+                {
+                  "location": "A1",
+                  "status": "correct"
+                },
+                {
+                  "location": "B3",
+                  "status": "incorrect"
+                }
+              ]
             }
           }
         }
@@ -320,7 +331,6 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
@@ -450,10 +460,19 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
             }
           },
           "feedback": {
-            "general": {
-              "type": "general",
+            "cellReference": {
+              "type": "cellReference",
               "createdAt": "2025-09-10T12:00:00Z",
-              "text": "Strong thesis and supporting detail."
+              "items": [
+                {
+                  "location": "A1",
+                  "status": "correct"
+                },
+                {
+                  "location": "B2",
+                  "status": "correct"
+                }
+              ]
             }
           }
         }
@@ -498,21 +517,7 @@ Partial hydration uses the same assessment map but drops every `reasoning` field
 
 ## Feedback Structure
 
-Feedback is stored as a map keyed by feedback type. Different feedback types track different concerns (e.g., cell reference feedback for Sheets tasks).
-
-### Generic Feedback
-
-For text-based or general comments:
-
-```json
-{
-  "general": {
-    "type": "general",
-    "createdAt": "2025-09-10T12:00:00Z",
-    "text": "Great effort on the introduction. Consider expanding the evidence section in the next draft."
-  }
-}
-```
+Feedback is stored as a map keyed by feedback type. Currently, only cell reference feedback is implemented for Sheets tasks.
 
 ### Cell Reference Feedback (Sheets)
 
@@ -549,9 +554,9 @@ For spreadsheet tasks, tracks cell-level correctness:
 
 **Fields**:
 
-- `type`: String; identifies feedback class (`'general'`, `'cellReference'`, etc.)
+- `type`: String; identifies feedback class (`'cellReference'`)
 - `createdAt`: ISO string timestamp of when feedback was generated
-- `items` (cellReference only): Array of cell feedback objects, each with `location` and `status`
+- `items`: Array of cell feedback objects, each with `location` and `status`
 
 ## Full Hydration Example with Assessments and Feedback
 
@@ -562,7 +567,6 @@ When assessments and feedback data exists, both partial and full hydration inclu
   "courseId": "C123",
   "assignmentId": "A1",
   "assignmentName": "Essay 1",
-  "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
   "documentType": "SLIDES",
@@ -602,10 +606,23 @@ When assessments and feedback data exists, both partial and full hydration inclu
             }
           },
           "feedback": {
-            "general": {
-              "type": "general",
+            "cellReference": {
+              "type": "cellReference",
               "createdAt": "2025-09-10T12:00:00Z",
-              "text": "Excellent introduction. Consider adding a counterargument in your next draft."
+              "items": [
+                {
+                  "location": "A1",
+                  "status": "correct"
+                },
+                {
+                  "location": "B2",
+                  "status": "correct"
+                },
+                {
+                  "location": "C3",
+                  "status": "incorrect"
+                }
+              ]
             }
           }
         }

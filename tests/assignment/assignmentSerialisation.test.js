@@ -72,10 +72,10 @@ describe('Assignment Serialisation', () => {
       expect(partialJson).not.toHaveProperty('referenceDocumentId');
       expect(partialJson).not.toHaveProperty('templateDocumentId');
 
-      // assignmentDefinition should have tasks: null
+      // assignmentDefinition should have tasks: null but include doc IDs
       expect(partialJson.assignmentDefinition.tasks).toBe(null);
-      expect(partialJson.assignmentDefinition).not.toHaveProperty('referenceDocumentId');
-      expect(partialJson.assignmentDefinition).not.toHaveProperty('templateDocumentId');
+      expect(partialJson.assignmentDefinition.referenceDocumentId).toBe('ref-serial');
+      expect(partialJson.assignmentDefinition.templateDocumentId).toBe('tpl-serial');
 
       // documentType should be present in both root and definition
       expect(partialJson.documentType).toBe('SLIDES');

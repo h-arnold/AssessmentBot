@@ -264,6 +264,8 @@ class AssignmentDefinition {
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
       documentType: this.documentType,
+      referenceDocumentId: this.referenceDocumentId,
+      templateDocumentId: this.templateDocumentId,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
       tasks: null,
