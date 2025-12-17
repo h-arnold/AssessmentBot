@@ -577,36 +577,6 @@ class UIManager extends BaseSingleton {
   }
 
   /**
-   * Prompts the user when a classroom selection is missing or ClassInfo sheet doesn't exist.
-   * Shows a dialog asking if they want to select a classroom now, and if confirmed,
-   * opens the classroom selector dialog.
-   *
-   * @returns {boolean} True if the user chose to select a classroom, false otherwise
-   */
-  promptMissingClassroomSelection() {
-    return this.safeUiOperation(() => {
-      try {
-        const response = this.ui.alert(
-          'No Classroom Selected',
-          'No classroom has been selected for this assessment record. Would you like to select a classroom now?',
-          this.ui.ButtonSet.YES_NO
-        );
-
-        if (response === this.ui.Button.YES) {
-          // Use the existing classroom dropdown method
-          this.showClassroomDropdown();
-          return true;
-        }
-        return false;
-      } catch (error) {
-        const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logError('Error showing classroom selection prompt:', error);
-        return false;
-      }
-    }, 'promptMissingClassroomSelection');
-  }
-
-  /**
    * Shows the authorization modal with the provided authorisation URL
    * @param {string} authUrl - The authorization URL to display
    */
