@@ -1,5 +1,19 @@
 # Assignment Data Shapes
 
+- [Assignment Data Shapes](#assignment-data-shapes)
+  - [Persistence Strategy \& Rationale](#persistence-strategy--rationale)
+  - [ABClass (root) and JsonDbApp partial hydration](#abclass-root-and-jsondbapp-partial-hydration)
+  - [Assignment Definition](#assignment-definition)
+    - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
+  - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
+  - [Full Hydration (complete payload)](#full-hydration-complete-payload)
+  - [Assessment Structure](#assessment-structure)
+  - [Feedback Structure](#feedback-structure)
+    - [Generic Feedback](#generic-feedback)
+    - [Cell Reference Feedback (Sheets)](#cell-reference-feedback-sheets)
+  - [Full Hydration Example with Assessments and Feedback](#full-hydration-example-with-assessments-and-feedback)
+    - [Hydration Guidelines](#hydration-guidelines)
+
 This document captures the serialized structures produced by the models shared in this repository. Every field shown is emitted today by the existing `toJSON()` implementations in:
 
 - `Assignment`
@@ -136,7 +150,7 @@ Key notes:
   documents but elide heavy fields (for example: `artifact.content` is
   `null`). Downstream code can detect these stubs and rehydrate on demand
   using the `uid`/`taskId` identifiers.
-- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. Legacy fields like `tasks`, `documentType`, and doc IDs are removed from the root assignment object and accessed via the definition.
+- **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For compatibility, `Assignment.toJSON()` still emits `documentType`, `referenceDocumentId`, `templateDocumentId`, and `tasks` at the assignment root; the canonical source of these fields remains the embedded `assignmentDefinition`.
 - This approach keeps server/drive calls minimal while maintaining a stable
   schema across hydration levels.
 - During assessment runs it is acceptable for an `Assignment` instance to carry a
@@ -370,7 +384,7 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Ar
 
 ## Full Hydration (complete payload)
 
-For grading, auditing, or export flows we rehydrate every artifact exactly as stored. The schema stays identical; heavier fields are simply populated.
+For grading, auditing, or export flows we rehydrate every artifact exactly as stored. The schema stays identical; heavier fields are simply populated. Partial JSONs redact only artifact `content`/`contentHash`; assessments and feedback stay intact in both partial and full forms.
 
 ```json
 {
@@ -380,13 +394,67 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
   "assignmentMetadata": null,
   "dueDate": null,
   "lastUpdated": "2025-09-10T12:34:56Z",
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "tasks": {
+    "t_ab12": {
+      "id": "t_ab12",
+      "taskTitle": "Introduction",
+      "pageId": "p-1",
+      "taskNotes": null,
+      "taskMetadata": {},
+      "taskWeighting": null,
+      "index": 0,
+      "artifacts": {
+        "reference": [
+          {
+            "taskId": "t_ab12",
+            "role": "reference",
+            "pageId": "p-1",
+            "documentId": "DriveRef123",
+            "content": "<base64 encoded reference slide>, string or array depending on type",
+            "contentHash": "9f6a...",
+            "metadata": {},
+            "uid": "t_ab12-0-reference-p-1-0",
+            "type": "TEXT"
+          }
+        ],
+        "template": [
+          {
+            "taskId": "t_ab12",
+            "role": "template",
+            "pageId": "p-1",
+            "documentId": "DriveTemplate123",
+            "content": "<base64 encoded template slide>, string or array depending on type",
+            "contentHash": "8e5b...",
+            "metadata": {},
+            "uid": "t_ab12-0-template-p-1-0",
+            "type": "TEXT"
+          }
+        ]
+      }
+    }
+  },
   "assignmentDefinition": {
     "primaryTitle": "Essay 1",
     "primaryTopic": "English",
     "yearGroup": 10,
     "alternateTitles": [],
     "alternateTopics": [],
-    "documentTypes": null,
+    "documentType": "SLIDES",
+    "referenceDocumentId": "DriveRef123",
+    "templateDocumentId": "DriveTemplate123",
+    "referenceLastModified": "2025-09-01T10:00:00Z",
+    "templateLastModified": "2025-09-01T10:00:00Z",
+    "assignmentWeighting": null,
+    "definitionKey": "Essay 1_English_10",
+    "tasks": {
+      "t_ab12": {
+        "id": "t_ab12",
+        "taskTitle": "Introduction",
+        "pageId": "p-1",
+        "taskNotes": null,
         "taskMetadata": {},
         "taskWeighting": null,
         "index": 0,
@@ -416,8 +484,10 @@ For grading, auditing, or export flows we rehydrate every artifact exactly as st
               "uid": "t_ab12-0-template-p-1-0",
               "type": "TEXT"
             }
-          ],
+          ]
         }
+      }
+    },
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
   },
