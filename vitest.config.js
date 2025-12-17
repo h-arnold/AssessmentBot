@@ -4,18 +4,22 @@ module.exports = {
     projects: [
       {
         name: 'node',
-        environment: 'node',
-        setupFiles: ['tests/setupGlobals.js'],
-        globals: true,
-        include: ['tests/**/*.test.js'],
-        exclude: ['tests/ui/**'],
+        test: {
+          environment: 'node',
+          setupFiles: ['tests/setupGlobals.js'],
+          globals: true,
+          include: ['tests/**/*.test.js'],
+          exclude: ['tests/ui/**'],
+        },
       },
       {
         name: 'ui-jsdom',
-        environment: 'jsdom',
-        setupFiles: ['tests/setupGlobals.js'],
-        globals: true,
-        include: ['tests/ui/**/*.test.js'],
+        test: {
+          environment: 'jsdom',
+          setupFiles: ['tests/setupGlobals.js'],
+          globals: true,
+          include: ['tests/ui/**/*.test.js'],
+        },
       },
     ],
   },
