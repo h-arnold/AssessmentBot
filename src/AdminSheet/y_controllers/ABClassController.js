@@ -360,9 +360,8 @@ class ABClassController {
         assignment.assignmentDefinition = storedDefinition;
       } else {
         throw new Error(
-          `Cannot ensure full definition: no full definition found in registry for key '${definitionKey}'`
+          `Failed to rehydrate definition '${definitionKey}': the authoritative record is partial (tasks: null).`
         );
-      }
     }
   }
 
