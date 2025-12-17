@@ -248,7 +248,7 @@ class ABClass {
     } catch (e) {
       inst.classOwner = json.classOwner || null;
       if (globalThis.__TRACE_SINGLETON__)
-        console.debug('ABClass.fromJSON classOwner coercion failed:', e);
+        ABLogger.getInstance().debug('ABClass.fromJSON classOwner coercion failed:', e);
     }
 
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
