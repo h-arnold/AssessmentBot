@@ -20,6 +20,15 @@ function getUIManager() {
 }
 
 /**
+ * Shows the assignment definition management dialog.
+ * @param {Object} [definition] - Optional assignment definition to edit.
+ */
+function showAssignmentDefinitionDialog(definition) {
+  const uiHandler = BeerCSSUIHandler.getInstance();
+  uiHandler.showAssignmentDefinitionDialog(definition);
+}
+
+/**
  * Opens the reference slide modal with assignment data.
  *
  * @param {string} assignmentData - The JSON string containing assignment data.

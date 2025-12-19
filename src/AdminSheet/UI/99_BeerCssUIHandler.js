@@ -71,6 +71,36 @@ class BeerCSSUIHandler extends UIManager {
     });
   }
 
+  /**
+   * Shows the Assignment Definition management dialog.
+   * @param {Object} [definition] - Optional assignment definition to edit.
+   */
+  showAssignmentDefinitionDialog(definition = null) {
+    // Dummy data for prototype if none provided
+    const data = definition || {
+      primaryTitle: 'Sample Assignment',
+      primaryTopic: 'Computing',
+      yearGroup: 7,
+      documentType: 'SLIDES',
+      alternateTitles: ['Intro to Code', 'Lesson 1'],
+      alternateTopics: ['Programming'],
+      tasks: {
+        task_1: { taskTitle: 'Create a Sprite' },
+        task_2: { taskTitle: 'Add Movement' },
+      },
+    };
+
+    this._renderBeerCSSDialog(
+      'UI/AssignmentDefinitionDialog',
+      { definition: data },
+      'Manage Assignment Definition',
+      {
+        width: 800,
+        height: 700,
+      }
+    );
+  }
+
   // TODO: Override parent methods here as you refactor them to BeerCSS
   // Example stub for future migration:
   // showConfigurationDialog() {
