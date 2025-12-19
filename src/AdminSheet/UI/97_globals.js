@@ -13,7 +13,7 @@ function include(filename) {
 
 /**
  * Get or create a singleton instance of UIManager (BeerCSS version)
- * @returns {UIManager} The singleton UIManager instance
+ * @returns {BeerCSSUIHandler} The singleton UIManager instance
  */
 function getUIManager() {
   return BeerCSSUIHandler.getInstance();

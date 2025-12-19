@@ -71,7 +71,7 @@ A minimal dialog exists as a reference implementation:
 
 It is opened by:
 
-- `BeerCSSUIHandler.showBeerCssDemoDialog()` in [src/AdminSheet/UI/handlers/BeerCSSUIHandler.js](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js)
+- `BeerCSSUIHandler.showBeerCssDemoDialog()` in [src/AdminSheet/UI/99_BeerCssUIHandler.js](../../src/AdminSheet/UI/99_BeerCssUIHandler.js)
 - Global function delegation in [src/AdminSheet/UI/globals.js](../../src/AdminSheet/UI/globals.js)
 
 This dialog is intentionally basic: it exists to prove the include/vendoring path works end-to-end.

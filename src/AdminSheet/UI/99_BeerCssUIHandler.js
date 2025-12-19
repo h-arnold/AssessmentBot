@@ -22,10 +22,6 @@ class BeerCSSUIHandler extends UIManager {
    */
   constructor(isSingletonCreator = false) {
     super(isSingletonCreator);
-    /**
-     * JSDoc Singleton Banner
-     * Use BeerCSSUIHandler.getInstance(); do not call constructor directly.
-     */
   }
 
   /**
@@ -48,6 +44,7 @@ class BeerCSSUIHandler extends UIManager {
         });
       }
       const htmlOutput = template.evaluate().setWidth(width).setHeight(height);
+      // Use the probed UI instance rather than accessing SpreadsheetApp directly
       this.ui.showModalDialog(htmlOutput, title);
     }, `_renderBeerCSSDialog:${title}`);
   }

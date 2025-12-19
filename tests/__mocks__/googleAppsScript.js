@@ -79,6 +79,7 @@ const mockSpreadsheetApp = {
       _calls: [],
       createMenu(title) {
         this._calls.push(`createMenu:${title}`);
+        mockSpreadsheetApp._calls.push(`createMenu:${title}`);
         return {
           addItem: () => this,
           addToUi: () => this,
@@ -86,9 +87,11 @@ const mockSpreadsheetApp = {
       },
       alert(message) {
         this._calls.push(`alert:${message}`);
+        mockSpreadsheetApp._calls.push(`alert:${message}`);
       },
       showModalDialog(htmlOutput, title) {
         this._calls.push(`showModalDialog:${title}`);
+        mockSpreadsheetApp._calls.push(`showModalDialog:${title}`);
       },
     };
   },
@@ -103,10 +106,14 @@ const mockHtmlService = {
       getContent: function () {
         return '';
       },
-      setWidth: function () {
+      setWidth: function (w) {
+        mockHtmlService._calls.push(`setWidth:${w}`);
+        this._width = w;
         return this;
       },
-      setHeight: function () {
+      setHeight: function (h) {
+        mockHtmlService._calls.push(`setHeight:${h}`);
+        this._height = h;
         return this;
       },
       evaluate: function () {
@@ -121,10 +128,14 @@ const mockHtmlService = {
       versions: [],
       evaluate: function () {
         return {
-          setWidth: function () {
+          setWidth: function (w) {
+            mockHtmlService._calls.push(`setWidth:${w}`);
+            this._width = w;
             return this;
           },
-          setHeight: function () {
+          setHeight: function (h) {
+            mockHtmlService._calls.push(`setHeight:${h}`);
+            this._height = h;
             return this;
           },
         };
