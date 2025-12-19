@@ -20,7 +20,7 @@ Google Apps Script HtmlService templates can include other files using server-si
 
 A global helper was added:
 
-- `include(filename)` in src/AdminSheet/zz_main.js
+- `include(filename)` in [src/AdminSheet/UI/globals.js](../../src/AdminSheet/UI/globals.js)
 
 This returns the contents of a project HTML file so templates can do:
 
@@ -71,8 +71,8 @@ A minimal dialog exists as a reference implementation:
 
 It is opened by:
 
-- `UIManager.showBeerCssDemoDialog()` in src/AdminSheet/UI/UIManager.js
-- `showBeerCssDemoDialog()` global function in src/AdminSheet/zz_main.js
+- `BeerCSSUIHandler.showBeerCssDemoDialog()` in [src/AdminSheet/UI/handlers/BeerCSSUIHandler.js](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js)
+- Global function delegation in [src/AdminSheet/UI/globals.js](../../src/AdminSheet/UI/globals.js)
 
 This dialog is intentionally basic: it exists to prove the include/vendoring path works end-to-end.
 
@@ -84,9 +84,24 @@ An interactive component preview dialog is also available:
 
 It is opened by:
 
-- `showBeerCssPlaygroundDialog()` global function in src/AdminSheet/zz_main.js
+- `BeerCSSUIHandler.showBeerCssPlaygroundDialog()` in [src/AdminSheet/UI/handlers/BeerCSSUIHandler.js](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js)
+- Global function delegation in [src/AdminSheet/UI/globals.js](../../src/AdminSheet/UI/globals.js)
 
 The playground showcases a wider range of BeerCSS components (buttons, inputs, chips, badges, etc.) and serves as a helpful reference for developers building new dialogs.
+
+### 6) UI Handler Architecture
+
+To support gradual migration from legacy Materialize-based UI to BeerCSS, a handler-based architecture was implemented:
+
+**[BeerCSSUIHandler](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js)** extends `UIManager` and serves as the new UI layer. Key features:
+
+- **Inheritance**: Automatically inherits all UI infrastructure from `UIManager` (`this.ui`, `safeUiOperation()`, etc.)
+- **Gradual migration**: As features are refactored, methods are overridden in `BeerCSSUIHandler` with BeerCSS implementations
+- **Backward compatibility**: Unrefactored features fall back to legacy implementations in the parent `UIManager` class
+- **New helper**: Provides `_renderBeerCSSDialog()` for consistent BeerCSS template rendering
+- **Final simplification**: Once all features are migrated, `BeerCSSUIHandler` will be renamed to `UIManager` and the old class removed
+
+All global UI functions in [globals.js](../../src/AdminSheet/UI/globals.js) route through `BeerCSSUIHandler.getInstance()`, ensuring new code paths are used while legacy implementations remain available.
 
 ## How to build a new BeerCSS-backed dialog
 
@@ -106,9 +121,18 @@ The playground showcases a wider range of BeerCSS components (buttons, inputs, c
 </div>
 ```
 
-4. Open the dialog using `HtmlService.createTemplateFromFile(...)` (not `createHtmlOutputFromFile(...)`), so that `<?!= ... ?>` scriptlets are evaluated.
+4. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js) using the `_renderBeerCSSDialog()` helper:
 
-The existing `UIManager._showTemplateDialog(...)` helper already follows this pattern.
+```javascript
+showMyNewDialog() {
+  this._renderBeerCSSDialog('UI/MyNewDialog', { data: 'values' }, 'Dialog Title', {
+    width: 500,
+    height: 400,
+  });
+}
+```
+
+5. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
 
 ## Updating BeerCSS
 
@@ -118,9 +142,20 @@ When you need to bump BeerCSS:
 2. Replace the contents of `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html` with the updated `beer.scoped.min.css` (still wrapped in `<style>`).
 3. Update the header comment (SHA, URL, date).
 4. Check whether the upstream licence text changed and update `LICENCE_BeerCSS.txt` if required.
-5. Run `npm test`.
+5. Run `npm test` to verify all UI tests still pass.
 
 ## Notes / constraints (Apps Script HtmlService)
 
 - HtmlService dialogs are sandboxed; the simplest and most reliable way to avoid external dependencies is to embed CSS/JS directly into the HTML output.
 - If you add any optional BeerCSS JavaScript in future, vendor it similarly as an HtmlService partial (e.g. a `<script>` block) and include it only where it is needed.
+
+## Refactoring workflow
+
+When migrating an existing UIManager method to BeerCSS:
+
+1. Create or update the template file under `src/AdminSheet/UI/`
+2. Add or override the method in [BeerCSSUIHandler](../../src/AdminSheet/UI/handlers/BeerCSSUIHandler.js)
+3. Use `_renderBeerCSSDialog()` helper to display it
+4. Test the new implementation
+5. Delete the old method from [UIManager.js](../../src/AdminSheet/UI/UIManager.js) once migration is complete
+6. Once all features are migrated, rename `BeerCSSUIHandler` to `UIManager` and remove the old class

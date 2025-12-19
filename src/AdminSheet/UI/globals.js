@@ -2,11 +2,21 @@
 // All functions use lazy instantiation so that we're not loading the UI if it's not needed.
 
 /**
- * Get or create a singleton instance of UIManager
+ * Includes an HTML file in an HtmlService template.
+ *
+ * @param {string} filename - File path relative to script root (e.g. 'UI/partials/Head').
+ * @return {string} The HTML content of the file.
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * Get or create a singleton instance of UIManager (BeerCSS version)
  * @returns {UIManager} The singleton UIManager instance
  */
 function getUIManager() {
-  return UIManager.getInstance();
+  return BeerCSSUIHandler.getInstance();
 }
 
 /**
