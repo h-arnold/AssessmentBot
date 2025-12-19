@@ -65,8 +65,9 @@ function loadSingletonsWithMocks(harness, options = {}) {
 
   if (loadUIManager) {
     try {
-      let UIManager = require('../../src/AdminSheet/UI/UIManager.js');
+      let UIManager = require('../../src/AdminSheet/UI/98_UIManager.js');
       if (UIManager.default) UIManager = UIManager.default;
+      globalThis.UIManager = UIManager;
       singletons.UIManager = UIManager;
     } catch (e) {
       console.warn('Could not load UIManager:', e.message);

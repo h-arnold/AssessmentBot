@@ -81,16 +81,6 @@ function showBeerCssPlaygroundDialog() {
   UIManager.getInstance().showBeerCssPlaygroundDialog();
 }
 
-/**
- * Includes an HTML file in an HtmlService template.
- *
- * @param {string} filename - File path relative to script root (e.g. 'UI/partials/Head').
- * @return {string} The HTML content of the file.
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-
 // Below contains the two global functions that need to run upon opening the spreadsheet.
 // They've been placed here for now because GAS treats all the code in the file as one
 // big file, with the files at the top of the list first and the bottom of the list last.
