@@ -57,4 +57,34 @@ function syncAppsscript(opts = {}) {
   updateTriggerControllerScopes(cfg.oauthScopes, { filePath: triggerPath });
 }
 
+if (require.main === module) {
+  const path = require('node:path');
+  try {
+    const adminPath = path.join(__dirname, '..', 'src', 'AdminSheet', 'appsscript.json');
+    const templatePath = path.join(
+      __dirname,
+      '..',
+      'src',
+      'AssessmentRecordTemplate',
+      'appsscript.json'
+    );
+    const triggerPath = path.join(
+      __dirname,
+      '..',
+      'src',
+      'AdminSheet',
+      'Utils',
+      'TriggerController.js'
+    );
+    syncAppsscript({ adminPath, templatePath, triggerPath });
+    console.log('Apps Script manifests synchronised.');
+  } catch (err) {
+    console.error(
+      'Failed to synchronise Apps Script manifests:',
+      err && err.message ? err.message : err
+    );
+    process.exit(1);
+  }
+}
+
 module.exports = { writeJson, updateTriggerControllerScopes, syncAppsscript };
