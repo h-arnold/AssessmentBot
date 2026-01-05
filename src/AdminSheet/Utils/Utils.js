@@ -117,8 +117,10 @@ class Utils {
     if (typeof url !== 'string') {
       return false;
     }
+    const trimmed = url.trim();
+
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(trimmed);
       const protocol = parsed.protocol.toLowerCase();
       if (!['http:', 'https:', 'ftp:'].includes(protocol)) return false;
 
@@ -127,8 +129,17 @@ class Utils {
       if (this._isPrivateIPv4(hostname)) return false;
       return true;
     } catch (err) {
+      const slidesExportPattern =
+        /^https?:\/\/docs\.google\.com\/presentation\/d\/[^/]+\/export\/png/i;
+      if (slidesExportPattern.test(trimmed)) {
+        ABLogger.getInstance().warn('URL parser rejected slide export URL; using fallback', {
+          url: trimmed,
+          err,
+        });
+        return true;
+      }
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError(`Invalid slide URL found: ${url}`, { err });
+      progressTracker.logError(`Invalid slide URL found: ${trimmed}`, { err });
       return false;
     }
   }

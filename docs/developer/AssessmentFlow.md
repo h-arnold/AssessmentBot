@@ -181,6 +181,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   2. Calls `startProcessing()` with assignmentId and definitionKey
   3. Starts progress tracking via `ProgressTracker.getInstance().startTracking()`
   4. Shows progress modal via `UIManager.getInstance().showProgressModal()`
+  - **Definition lifecycle note**: `ensureDefinitionFromInputs()` immediately delegates to `AssignmentDefinitionController.ensureDefinition()`. If no definition exists (or it is stale based on Drive timestamps) this call will parse the reference/template slides and persist a fresh `AssignmentDefinition` before the trigger is created. If a definition already exists and is up to date, it will be reused without re-parsing at this stage.
 - **Error Handling**:
   - Shows toast message on failure
   - Logs error via `progressTracker.logAndThrowError()`
@@ -510,6 +511,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   4. If refresh not needed:
      - Logs skip message
      - Uses existing tasks from definition
+- **Why re-check here?**: An `AssignmentDefinition` is already created during `saveStartAndShowProgress`. The pipeline re-evaluates freshness at trigger time so any edits to the reference or template slides made after the initial UI call are picked up, while avoiding unnecessary re-parsing when the stored definition is still current.
 
 **Method**: `SlidesAssignment.populateTasks()`
 
