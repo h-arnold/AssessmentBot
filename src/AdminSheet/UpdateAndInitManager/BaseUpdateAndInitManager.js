@@ -152,11 +152,7 @@ class BaseUpdateAndInit {
    * @throws {Error} if the template is not found.
    */
   getLatestAssessmentRecordTemplateId(versionNo = this.versionNo) {
-    if (
-      !this.versionDetails ||
-      !this.versionDetails[versionNo] ||
-      !this.versionDetails[versionNo].assessmentRecordTemplateFileId
-    ) {
+    if (!this.versionDetails?.[versionNo]?.assessmentRecordTemplateFileId) {
       throw new Error(`Assessment Record template for v${versionNo} not found.`);
     }
     return this.versionDetails[versionNo].assessmentRecordTemplateFileId;
@@ -169,11 +165,7 @@ class BaseUpdateAndInit {
    * @throws {Error} if the template is not found.
    */
   getLatestAdminSheetTemplateId(versionNo = this.versionNo) {
-    if (
-      !this.versionDetails ||
-      !this.versionDetails[versionNo] ||
-      !this.versionDetails[versionNo].adminSheetFileId
-    ) {
+    if (!this.versionDetails?.[versionNo]?.adminSheetFileId) {
       throw new Error(`Admin Sheet template for v${versionNo} not found.`);
     }
     return this.versionDetails[versionNo].adminSheetFileId;

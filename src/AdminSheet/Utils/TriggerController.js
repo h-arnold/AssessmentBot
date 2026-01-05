@@ -1,8 +1,4 @@
 class TriggerController {
-  constructor() {
-    // Initialization logic can be added here if needed
-  }
-
   /**
    * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
    *
@@ -118,13 +114,15 @@ class TriggerController {
 
 // Static: required OAuth scopes for trigger installation and execution.
 // Defined as a static property to avoid recreating the array per instance.
+// DO NOT UPDATE THE REQUIRED SCOPES HERE. Update scopes in src/AdminSheet/appscript.json.
+// A husky pre-commit hook will run srcipts/sync-appscript.js to propagate the changes from the Admin Sheet code to here.
 TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/presentations',
-  'https://www.googleapis.com/auth/classroom.courses',
-  'https://www.googleapis.com/auth/classroom.rosters',
+  'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.rosters.readonly',
   'https://www.googleapis.com/auth/classroom.profile.emails',
   'https://www.googleapis.com/auth/classroom.profile.photos',
-  'https://www.googleapis.com/auth/classroom.coursework.students',
+  'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/script.storage',
