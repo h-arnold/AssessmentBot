@@ -118,14 +118,7 @@ class Utils {
       return false;
     }
     const trimmed = url.trim();
-    const hasAllowedScheme = /^(https?|ftp):\/\//i.test(trimmed);
-    if (!hasAllowedScheme) {
-      const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError(`Invalid slide URL found: ${trimmed}`, {
-        err: new Error('Unsupported protocol'),
-      });
-      return false;
-    }
+
     try {
       const parsed = new URL(trimmed);
       const protocol = parsed.protocol.toLowerCase();
