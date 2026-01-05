@@ -1,6 +1,6 @@
 {
   "name": "AssessmentBot",
-  "version": "0.7.5",
+  "version": "0.7.6",
   "description": "**A tool designed by a Digital Technology and Computer Science teacher (and head of department) to simplify tracking and assessing the work of hundreds of students.**",
   "main": "index.js",
   "directories": {
