@@ -53,9 +53,9 @@ describe('Utils.isValidUrl', () => {
   });
 
   afterEach(() => {
-    global.URL = realURL;
-    global.ProgressTracker = originalProgressTracker;
-    global.ABLogger = originalABLogger;
+    globalThis.URL = realURL;
+    globalThis.ProgressTracker = originalProgressTracker;
+    globalThis.ABLogger = originalABLogger;
     vi.restoreAllMocks();
   });
 
