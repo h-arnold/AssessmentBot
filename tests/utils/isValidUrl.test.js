@@ -8,8 +8,8 @@ const SLIDE_EXPORT_URL =
 
 describe('Utils.isValidUrl', () => {
   let realURL;
-  const originalProgressTracker = global.ProgressTracker;
-  const originalABLogger = global.ABLogger;
+  const originalProgressTracker = globalThisThis.ProgressTracker;
+  const originalABLogger = globalThis.ABLogger;
   let Utils;
   let progressTracker;
   let warnSpy;
@@ -28,8 +28,8 @@ describe('Utils.isValidUrl', () => {
     };
     warnSpy = vi.fn();
 
-    global.ProgressTracker = { getInstance: () => progressTracker };
-    global.ABLogger = {
+    globalThis.ProgressTracker = { getInstance: () => progressTracker };
+    globalThis.ABLogger = {
       getInstance: () => ({
         warn: warnSpy,
         debug: vi.fn(),
@@ -41,7 +41,7 @@ describe('Utils.isValidUrl', () => {
     };
 
     // Simulate environments where the URL constructor rejects Slides export URLs
-    global.URL = class FailingURL {
+    globalThis.URL = class FailingURL {
       constructor() {
         throw new TypeError('mock parse failure');
       }

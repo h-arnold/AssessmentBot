@@ -296,7 +296,7 @@ class SlidesParser extends DocumentParser {
       if (tag !== '#' && tag !== '~') continue;
       if (key !== definition.taskTitle) continue;
       const contentDetails = this.extractDefinitionContent(pageElement);
-      if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+      if (contentDetails?.artifactType !== typeNeeded) continue;
       return {
         taskId: definition.getId(),
         pageId,
