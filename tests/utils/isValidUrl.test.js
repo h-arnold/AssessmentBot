@@ -8,7 +8,7 @@ const SLIDE_EXPORT_URL =
 
 describe('Utils.isValidUrl', () => {
   let realURL;
-  const originalProgressTracker = globalThisThis.ProgressTracker;
+  const originalProgressTracker = globalThis.ProgressTracker;
   const originalABLogger = globalThis.ABLogger;
   let Utils;
   let progressTracker;
