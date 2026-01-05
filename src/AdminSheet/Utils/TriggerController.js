@@ -131,4 +131,5 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/script.external_request',
   'https://www.googleapis.com/auth/script.container.ui',
   'https://www.googleapis.com/auth/script.scriptapp',
+  'https://www.googleapis.com/auth/classroom.topics.readonly',
 ];
