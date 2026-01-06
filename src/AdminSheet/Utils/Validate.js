@@ -56,8 +56,8 @@ class Validate {
       try {
         ProgressTracker.getInstance().logError(`Invalid teacher email: ${email}`);
       } catch (e) {
-        // ProgressTracker may not be available in some test environments
-        console.warn(`Invalid teacher email: ${email}`);
+        // ProgressTracker may not be available in some test environments so log a dev warning
+        ABLogger.getInstance().warn('Invalid teacher email', e);
       }
     }
     return result;
@@ -84,10 +84,34 @@ class Validate {
       try {
         ProgressTracker.getInstance().logError(`Invalid Google userId: ${userId}`);
       } catch (e) {
-        console.warn(`Invalid Google userId: ${userId}`);
+        // ProgressTracker may not be available in some test environments so log a dev warning
+        ABLogger.getInstance().warn('Invalid Google userId', e);
       }
     }
     return result;
+  }
+
+  /**
+   * Validates that required parameters are present (truthy).
+   * Throws an error if any parameter is missing.
+   * @param {Object<string, *>} params - Object where keys are parameter names and values are the parameter values.
+   * @param {string} [context] - Optional context (e.g., method name) for the error message.
+   * @throws {Error} If any parameter is falsy.
+   * @example
+   * Validate.requireParams({ destinationFolderId, fileIds }, 'moveFiles');
+   */
+  static requireParams(params, context = '') {
+    if (!params || typeof params !== 'object') {
+      throw new Error('params must be an object');
+    }
+
+    const contextStr = context ? ` for ${context}` : '';
+
+    for (const [paramName, value] of Object.entries(params)) {
+      if (!value) {
+        throw new Error(`${paramName} is required${contextStr}`);
+      }
+    }
   }
 }
 

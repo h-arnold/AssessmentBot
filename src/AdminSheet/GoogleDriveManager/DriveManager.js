@@ -3,9 +3,7 @@
  */
 class DriveManager {
   static moveFiles(destinationFolderId, fileIds, appendString = '') {
-    if (!destinationFolderId) {
-      throw new Error('destinationFolderId is required for moveFiles');
-    }
+    Validate.requireParams({ destinationFolderId }, 'moveFiles');
 
     const details = [];
     let successCount = 0;
@@ -97,12 +95,7 @@ class DriveManager {
     };
   }
   static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
-    if (!templateSheetId) {
-      throw new Error('templateSheetId is required to copy template sheet');
-    }
-    if (!newSheetName) {
-      throw new Error('newSheetName is required to copy template sheet');
-    }
+    Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
 
     try {
       // Use Advanced Drive API for Shared Drive compatibility.
@@ -115,9 +108,7 @@ class DriveManager {
         destinationFolderId = Array.isArray(templateMeta?.parents) ? templateMeta.parents[0] : null;
       }
 
-      if (!destinationFolderId) {
-        throw new Error('destinationFolderId is required to copy template sheet');
-      }
+      Validate.requireParams({ destinationFolderId }, 'copyTemplateSheet');
 
       // Validate the destination folder exists (fail fast).
       DriveManager._validateFolderExists(destinationFolderId);
@@ -214,9 +205,7 @@ class DriveManager {
    *   - 'none': No emails were processed (e.g., if the set is empty).
    */
   static shareFolder(destinationFolderId, emails) {
-    if (!destinationFolderId) {
-      throw new Error('destinationFolderId is required for shareFolder');
-    }
+    Validate.requireParams({ destinationFolderId }, 'shareFolder');
 
     const details = [];
     let successCount = 0;
@@ -284,9 +273,7 @@ class DriveManager {
    * @throws {Error} If fileId is not provided.
    */
   static getParentFolderId(fileId) {
-    if (!fileId) {
-      throw new Error('fileId is required for getParentFolderId');
-    }
+    Validate.requireParams({ fileId }, 'getParentFolderId');
 
     const driveAppParent = DriveManager._getParentViaDriveApp(fileId);
     if (driveAppParent) {
@@ -380,12 +367,7 @@ class DriveManager {
    * @throws {Error} If parentFolderId or folderName is not provided.
    */
   static createFolder(parentFolderId, folderName) {
-    if (!parentFolderId) {
-      throw new Error('parentFolderId is required for createFolder');
-    }
-    if (!folderName) {
-      throw new Error('folderName is required for createFolder');
-    }
+    Validate.requireParams({ parentFolderId, folderName }, 'createFolder');
 
     // Validate the parent folder exists (fail fast).
     DriveManager._validateFolderExists(parentFolderId);
