@@ -42,10 +42,11 @@ npm run format    # Format code with Prettier
 7. Reuse existing classes/utilities before creating new ones.
 8. Do not add production code purely for tests.
 9. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
+10. Use `Validate` class for generic validation. Use `Validate.requireParams()` for parameter existence checks. Only implement class-specific validation within classes.
 
 Important: Defensive guards policy
 - Do not implement defensive programming guards (existence checks, typeof/feature detection, optional chaining as a gate) for known internal calls or GAS services. Prefer uncaught exceptions over masking issues.
-- The only acceptable guards are explicit parameter validation for public methods/functions.
+- The only acceptable guards are explicit parameter validation for public methods/functions using the `Validate` class.
 
 ### 1. Style & Naming
 | Item | Rule |
@@ -78,13 +79,28 @@ Add tests for any new serialisable or stateful logic:
 Prohibited: Apps Script services, network, timers tied to GAS.
 Always consult testing docs at `./docs/developer/testing.md` before writing or debugging tests.
 
-### 5. Singleton Pattern
+### 5. Validation
+Use the `Validate` utility class (`src/AdminSheet/Utils/Validate.js`) for all generic validation:
+
+**Required pattern for parameter existence:**
+```javascript
+Validate.requireParams({ paramName1, paramName2 }, 'methodName');
+```
+
+**Rules:**
+- Check the `Validate` class for existing validators before implementing new validation logic.
+- Add new generic validators to the `Validate` class when needed for reuse across the codebase.
+- Use `Validate` for generic type/format checks and parameter presence validation.
+- Only implement class-specific validation within classes (e.g., domain-specific business logic).
+- Do not duplicate generic validation logic across classes.
+
+### 6. Singleton Pattern
 Always via `Class.getInstance()`. Refer to `./docs/developer/singletons.md` when modifying or creating new Singletons.
 
-### 6. Serialisation
+### 7. Serialisation
 Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).
 
-### 7. Hashing & Equality
+### 8. Hashing & Equality
 Use `Utils.generateHash`. Do not assert literal hash strings. Assert existence, stability, and change upon content mutation.
 
 ### 8. Performance & Quotas
@@ -104,7 +120,8 @@ Inline brief comments for complex branches.
 |-----------|--------|
 | User-visible failure | ProgressTracker.logError(msg, details) |
 | Dev debug info | ABLogger.getInstance().debugUi(label, data) |
-| Missing required param | Validate then throw/log+throw |
+| Missing required param | Validate.requireParams({ param }, 'methodName') |
+| Generic type/format check | Use Validate.isString/isEmail/etc |
 | Unsure placement | Mirror closest existing pattern |
 | New entity type? | Check Models/Artifacts first |
 | Serialisable logic added | Add tests |
@@ -180,8 +197,8 @@ State 1–2 concise assumptions, proceed with simplest compliant implementation.
 
 ### 15. Ultra‑Compact Quick Card
 PRIORITY: KISS > Explicit request > Style > Logging contract > Tests (logic only)
-DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic.
-DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need.
-FALLBACK: If safe+minimal implement; if required value missing validate & throw; if unclear state assumption & proceed.
+DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic, use Validate.requireParams for param checks.
+DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need, duplicate validation logic.
+FALLBACK: Assume fallback is not required unless explicitly stated.
 
-GUARDS: No defensive runtime guards; validate direct parameters only. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
+GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
