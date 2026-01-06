@@ -248,7 +248,9 @@ class BaseUpdateAndInit {
       // Removes state from Script Properties after loading.
       PropertiesService.getScriptProperties().deleteProperty('baseAdminManagerState');
     } else {
-      console.warn('No saved state found for BaseAdminManager.');
+      ProgressTracker.getInstance().logAndThrowError(
+        'No saved state found for BaseAdminManager. Please run the update wizard first.'
+      );
     }
   }
 }

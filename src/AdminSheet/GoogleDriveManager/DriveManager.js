@@ -21,36 +21,69 @@ class DriveManager {
    */
   static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
     try {
-      const templateSheetFile = DriveApp.getFileById(templateSheetId);
-      const destinationFolder = DriveApp.getFolderById(destinationFolderId);
+      // Use Advanced Drive API for Shared Drive compatibility.
+      // DriveApp.getFolderById / folder iterators can fail in Shared Drive contexts.
+      if (!destinationFolderId) {
+        const templateMeta = Drive.Files.get(templateSheetId, {
+          supportsAllDrives: true,
+          fields: 'parents',
+        });
+        destinationFolderId = Array.isArray(templateMeta?.parents) ? templateMeta.parents[0] : null;
+      }
 
-      // Check if a file with the same name exists in the destination folder
-      const filesInFolder = destinationFolder.getFilesByName(newSheetName);
-      if (filesInFolder.hasNext()) {
-        const existingFile = filesInFolder.next();
+      if (!destinationFolderId) {
+        throw new Error('destinationFolderId is required to copy template sheet');
+      }
+
+      const escapedName = String(newSheetName).replace(/'/g, "\\'");
+      const query =
+        `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
+
+      const existing = Drive.Files.list({
+        q: query,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+        fields: 'files(id,name)',
+        pageSize: 1,
+      });
+
+      if (existing?.files?.length > 0) {
+        const existingFileId = existing.files[0].id;
         const message = `File with the name "${newSheetName}" already exists. Skipping copy.`;
-        console.log(message);
+        ABLogger.getInstance().info(message);
         return {
           status: 'skipped',
-          file: existingFile,
-          fileId: existingFile.getId(),
+          file: null,
+          fileId: existingFileId,
           message,
         };
       }
 
-      // Proceed to copy the template sheet
-      const copiedSheetFile = templateSheetFile.makeCopy(newSheetName, destinationFolder);
-      const successMsg = `Template sheet copied successfully. Copied sheet ID: ${copiedSheetFile.getId()}`;
-      console.log(successMsg);
+      const copied = Drive.Files.copy(
+        {
+          name: newSheetName,
+          parents: [destinationFolderId],
+        },
+        templateSheetId,
+        { supportsAllDrives: true }
+      );
+
+      const successMsg = `Template sheet copied successfully. Copied sheet ID: ${copied.id}`;
+      ABLogger.getInstance().info(successMsg);
 
       return {
         status: 'copied',
-        file: copiedSheetFile,
-        fileId: copiedSheetFile.getId(),
+        file: null,
+        fileId: copied.id,
         message: successMsg,
       };
     } catch (error) {
-      console.error(`Failed to copy template sheet: ${error.message}`);
+      ABLogger.getInstance().error('Failed to copy template sheet', {
+        templateSheetId,
+        destinationFolderId,
+        newSheetName,
+        err: error,
+      });
       throw error;
     }
   }
@@ -243,10 +276,58 @@ class DriveManager {
         newFolderId: newFolder.getId(),
       };
     } catch (error) {
-      console.error(
-        `Failed to create folder "${folderName}" under folder ID ${parentFolderId}: ${error.message}`
-      );
-      throw error;
+      // DriveApp folder operations can fail for Shared Drives (notably when parentFolderId is a Shared Drive root).
+      // Fall back to the Advanced Drive API which supports Shared Drives when supportsAllDrives is enabled.
+      ABLogger.getInstance().warn('DriveApp createFolder failed; falling back to Drive API', {
+        parentFolderId,
+        folderName,
+        err: error,
+      });
+
+      const escapedFolderName = String(folderName).replace(/'/g, "\\'");
+      const query =
+        `'${parentFolderId}' in parents and trashed = false ` +
+        `and mimeType = 'application/vnd.google-apps.folder' ` +
+        `and name = '${escapedFolderName}'`;
+
+      try {
+        const existing = Drive.Files.list({
+          q: query,
+          supportsAllDrives: true,
+          includeItemsFromAllDrives: true,
+          fields: 'files(id,name)',
+          pageSize: 1,
+        });
+
+        if (existing?.files?.length > 0) {
+          return {
+            parentFolderId,
+            newFolderId: existing.files[0].id,
+          };
+        }
+
+        const created = Drive.Files.create(
+          {
+            name: folderName,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [parentFolderId],
+          },
+          null,
+          { supportsAllDrives: true }
+        );
+
+        return {
+          parentFolderId,
+          newFolderId: created.id,
+        };
+      } catch (apiError) {
+        ABLogger.getInstance().error('Drive API createFolder fallback failed', {
+          parentFolderId,
+          folderName,
+          err: apiError,
+        });
+        throw apiError;
+      }
     }
   }
 
@@ -281,36 +362,44 @@ class DriveManager {
       };
     }
 
-    let destinationFolder;
-    try {
-      destinationFolder = DriveApp.getFolderById(destinationFolderId);
-    } catch (error) {
-      // If we can't even access the destination folder, bail out
-      const failMsg = `Failed to access destination folder: ${error.message}`;
-      console.error(failMsg);
-      throw error;
-    }
-
+    // Use the Advanced Drive API for moving so this works on Shared Drives as well.
+    // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
     fileIds.forEach((fileId) => {
       try {
-        const file = DriveApp.getFileById(fileId);
+        const file = Drive.Files.get(fileId, {
+          supportsAllDrives: true,
+          fields: 'name,parents',
+        });
 
-        // Optionally append a string to the file name
+        const currentName = file?.name ? file.name : '';
+
+        // Optionally append a string to the file name.
         if (appendString) {
-          const originalName = file.getName();
-          const newName = `${originalName}${appendString}`;
-          file.setName(newName);
+          Drive.Files.update({ name: `${currentName}${appendString}` }, fileId, null, {
+            supportsAllDrives: true,
+          });
         }
 
-        // Remove from all existing parents
-        const parentFolders = file.getParents();
-        while (parentFolders.hasNext()) {
-          const oldParent = parentFolders.next();
-          oldParent.removeFile(file);
-        }
+        const parentIds = Array.isArray(file?.parents) ? file.parents : [];
+        const normalisedParentIds = parentIds.filter((id) => typeof id === 'string' && id);
+        const alreadyInDestination = normalisedParentIds.includes(destinationFolderId);
+        const parentsToRemove = normalisedParentIds.filter((id) => id !== destinationFolderId);
 
-        // Add to the new folder
-        destinationFolder.addFile(file);
+        // Only attempt a parent update if needed.
+        if (!alreadyInDestination || parentsToRemove.length > 0) {
+          const updateArgs = {
+            supportsAllDrives: true,
+          };
+
+          if (!alreadyInDestination) {
+            updateArgs.addParents = destinationFolderId;
+          }
+          if (parentsToRemove.length > 0) {
+            updateArgs.removeParents = parentsToRemove.join(',');
+          }
+
+          Drive.Files.update({}, fileId, null, updateArgs);
+        }
 
         const successMsg = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
         console.log(successMsg);
