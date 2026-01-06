@@ -5,8 +5,21 @@
     include('UI/vendor/beercss/BeerCssJs') ?>
     <title>Assessment wizard</title>
     <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
       .wizard-content {
         padding: 1rem;
+        flex: 1;
       }
 
       .wizard-actions {
@@ -14,6 +27,13 @@
         justify-content: flex-end;
         gap: 0.5rem;
         padding: 0 1rem 1rem;
+      }
+
+      #assignmentLoadingSpinner {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
       }
     </style>
   </head>
@@ -28,11 +48,11 @@
 
       <fieldset class="field-group">
         <legend>Assignment</legend>
-        <div class="field suffix border">
-          <label for="assignmentSelect">Assignment</label>
+        <div class="field label suffix border">
           <select id="assignmentSelect" disabled>
             <option value="">Loading assignments...</option>
           </select>
+          <label for="assignmentSelect">Assignment</label>
           <progress
             id="assignmentLoadingSpinner"
             class="circle indeterminate"

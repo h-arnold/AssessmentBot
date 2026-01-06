@@ -77,7 +77,7 @@ class BeerCSSUIHandler extends UIManager {
   showAssessmentWizard() {
     this._renderBeerCSSDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
       width: 660,
-      height: 520,
+      height: 360,
     });
   }
 
