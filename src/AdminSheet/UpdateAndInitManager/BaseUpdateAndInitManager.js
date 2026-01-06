@@ -182,11 +182,6 @@ class BaseUpdateAndInit {
     const versionNumber = this.versionNo;
     const versionData = this.fetchVersionDetails();
 
-    if (!versionData) {
-      ABLogger.getInstance().error('Failed to retrieve version details.');
-      return;
-    }
-
     // Validate and extract the specific version details
     const versionInfo = versionData[versionNumber];
     if (!versionInfo) {

@@ -2,24 +2,108 @@
  * Handles Drive-related operations.
  */
 class DriveManager {
-  /**
-   * Copies a template sheet to the destination folder with a new name.
-   * If a file with the same name already exists, the method skips copying.
-   * @param {string} templateSheetId - The ID of the template sheet.
-   * @param {string} destinationFolderId - The ID of the destination folder.
-   * @param {string} newSheetName - The new name for the copied sheet.
-   * @returns {{
-   *   status: 'copied' | 'skipped',
-   *   file: GoogleAppsScript.Drive.File | null,
-   *   fileId: string | null,
-   *   message: string
-   * }} An object describing the outcome.
-   * @throws {Error} If templateSheetId, destinationFolderId, or newSheetName is not provided.
-   *
-   * Possible statuses:
-   *   - 'copied': The file was copied successfully.
-   *   - 'skipped': A file with the same name already exists; nothing was copied.
-   */
+  static moveFiles(destinationFolderId, fileIds, appendString = '') {
+    if (!destinationFolderId) {
+      throw new Error('destinationFolderId is required for moveFiles');
+    }
+
+    const details = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    // If no files are provided
+    if (!fileIds || fileIds.length === 0) {
+      const noFilesMsg = 'No file IDs provided; nothing to move.';
+      ABLogger.getInstance().info(noFilesMsg);
+      return {
+        status: 'none',
+        message: noFilesMsg,
+        details,
+      };
+    }
+
+    // Validate the destination folder exists (fail fast) using Advanced Drive API for Shared Drive compatibility.
+    try {
+      Drive.Files.get(destinationFolderId, { supportsAllDrives: true, fields: 'id' });
+    } catch (error) {
+      const failMsg = `Failed to access destination folder with ID "${destinationFolderId}".`;
+      ProgressTracker.getInstance().logError(failMsg, { destinationFolderId, err: error });
+      const err = new Error(failMsg);
+      err.cause = error;
+      throw err;
+    }
+
+    // Use the Advanced Drive API for moving so this works on Shared Drives as well.
+    // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
+    fileIds.forEach((fileId) => {
+      try {
+        const file = Drive.Files.get(fileId, {
+          supportsAllDrives: true,
+          fields: 'name,parents',
+        });
+
+        const currentName = file?.name ? file.name : '';
+
+        // Optionally append a string to the file name.
+        if (appendString) {
+          Drive.Files.update({ name: `${currentName}${appendString}` }, fileId, null, {
+            supportsAllDrives: true,
+          });
+        }
+
+        const parentIds = Array.isArray(file?.parents) ? file.parents : [];
+        const normalisedParentIds = parentIds.filter((id) => typeof id === 'string' && id);
+        const alreadyInDestination = normalisedParentIds.includes(destinationFolderId);
+        const parentsToRemove = normalisedParentIds.filter((id) => id !== destinationFolderId);
+
+        // Only attempt a parent update if needed.
+        if (!alreadyInDestination || parentsToRemove.length > 0) {
+          const updateArgs = {
+            supportsAllDrives: true,
+          };
+
+          if (!alreadyInDestination) {
+            updateArgs.addParents = destinationFolderId;
+          }
+          if (parentsToRemove.length > 0) {
+            updateArgs.removeParents = parentsToRemove.join(',');
+          }
+
+          Drive.Files.update({}, fileId, null, updateArgs);
+        }
+
+        const successMsg = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
+        ABLogger.getInstance().info(successMsg);
+        details.push({
+          fileId,
+          status: 'moved',
+          message: successMsg,
+        });
+        successCount++;
+      } catch (error) {
+        const failMsg = `Failed to move file ${fileId}: ${error.message}`;
+        ABLogger.getInstance().error(failMsg, error);
+        details.push({
+          fileId,
+          status: 'failed',
+          message: failMsg,
+        });
+        failCount++;
+      }
+    });
+
+    // Determine final overall status
+    const overallStatus = failCount === 0 ? 'complete' : 'partial';
+
+    const overallMsg = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
+    ABLogger.getInstance().info(overallMsg);
+
+    return {
+      status: overallStatus, // 'complete', 'partial', or 'none'
+      message: overallMsg,
+      details,
+    };
+  }
   static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
     if (!templateSheetId) {
       throw new Error('templateSheetId is required to copy template sheet');
@@ -364,114 +448,6 @@ class DriveManager {
         throw apiError;
       }
     }
-  }
-
-  /**
-   * Moves one or more files into a specified folder. Optionally appends a string to each file's name.
-   * @param {string} destinationFolderId - The ID of the folder to move the files to.
-   * @param {string[]} fileIds - An array of file IDs to move.
-   * @param {string} [appendString=''] - Optional string to append to the file name.
-   * @returns {{
-   *   status: 'complete' | 'partial' | 'none',
-   *   message: string,
-   *   details: Array<{
-   *     fileId: string,
-   *     status: 'moved' | 'failed',
-   *     message: string
-   *   }>
-   * }} An object describing the overall result of the move operation.
-   * @throws {Error} If destinationFolderId is not provided.
-   */
-  static moveFiles(destinationFolderId, fileIds, appendString = '') {
-    if (!destinationFolderId) {
-      throw new Error('destinationFolderId is required for moveFiles');
-    }
-
-    const details = [];
-    let successCount = 0;
-    let failCount = 0;
-
-    // If no files are provided
-    if (!fileIds || fileIds.length === 0) {
-      const noFilesMsg = 'No file IDs provided; nothing to move.';
-      ABLogger.getInstance().info(noFilesMsg);
-      return {
-        status: 'none',
-        message: noFilesMsg,
-        details,
-      };
-    }
-
-    // Use the Advanced Drive API for moving so this works on Shared Drives as well.
-    // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
-    fileIds.forEach((fileId) => {
-      try {
-        const file = Drive.Files.get(fileId, {
-          supportsAllDrives: true,
-          fields: 'name,parents',
-        });
-
-        const currentName = file?.name ? file.name : '';
-
-        // Optionally append a string to the file name.
-        if (appendString) {
-          Drive.Files.update({ name: `${currentName}${appendString}` }, fileId, null, {
-            supportsAllDrives: true,
-          });
-        }
-
-        const parentIds = Array.isArray(file?.parents) ? file.parents : [];
-        const normalisedParentIds = parentIds.filter((id) => typeof id === 'string' && id);
-        const alreadyInDestination = normalisedParentIds.includes(destinationFolderId);
-        const parentsToRemove = normalisedParentIds.filter((id) => id !== destinationFolderId);
-
-        // Only attempt a parent update if needed.
-        if (!alreadyInDestination || parentsToRemove.length > 0) {
-          const updateArgs = {
-            supportsAllDrives: true,
-          };
-
-          if (!alreadyInDestination) {
-            updateArgs.addParents = destinationFolderId;
-          }
-          if (parentsToRemove.length > 0) {
-            updateArgs.removeParents = parentsToRemove.join(',');
-          }
-
-          Drive.Files.update({}, fileId, null, updateArgs);
-        }
-
-        const successMsg = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
-        ABLogger.getInstance().info(successMsg);
-        details.push({
-          fileId,
-          status: 'moved',
-          message: successMsg,
-        });
-        successCount++;
-      } catch (error) {
-        const failMsg = `Failed to move file ${fileId}: ${error.message}`;
-        ABLogger.getInstance().error(failMsg, error);
-        details.push({
-          fileId,
-          status: 'failed',
-          message: failMsg,
-        });
-        failCount++;
-      }
-    });
-
-    // Determine final overall status
-    const overallStatus = failCount === 0 ? 'complete' : 'partial';
-
-    const overallMsg = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
-    ABLogger.getInstance().info(overallMsg);
-
-    return {
-      status: overallStatus, // 'complete', 'partial', or 'none'
-      message: overallMsg,
-      details,
-    };
   }
 
   /**
