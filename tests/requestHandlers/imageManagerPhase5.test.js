@@ -14,7 +14,7 @@ globalThis.Utils = {
     }
     return Math.abs(h).toString(16);
   },
-  isValidUrl: (u) => typeof u === 'string' && u.startsWith('http'),
+  isValidUrl: (u) => typeof u === 'string' && u.startsWith('https://'),
 };
 class DummyProgressTracker {
   updateProgress() {
@@ -65,7 +65,7 @@ describe('Phase 5 ImageManager', () => {
       type: 'image',
       taskId: 't1',
       role: 'reference',
-      metadata: { sourceUrl: 'http://ref/img1.png' },
+      metadata: { sourceUrl: 'https://ref.example.com/img1.png' },
       taskIndex: 0,
       artifactIndex: 0,
     });
@@ -73,7 +73,7 @@ describe('Phase 5 ImageManager', () => {
       type: 'image',
       taskId: 't1',
       role: 'template',
-      metadata: { sourceUrl: 'http://tpl/img1.png' },
+      metadata: { sourceUrl: 'https://tpl.example.com/img1.png' },
       taskIndex: 0,
       artifactIndex: 0,
     });
@@ -89,7 +89,7 @@ describe('Phase 5 ImageManager', () => {
       type: 'image',
       taskId: 't1',
       role: 'submission',
-      metadata: { sourceUrl: 'http://stud/img1.png' },
+      metadata: { sourceUrl: 'https://stud.example.com/img1.png' },
       taskIndex: 0,
       artifactIndex: 1,
     });

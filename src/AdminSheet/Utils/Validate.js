@@ -92,6 +92,60 @@ class Validate {
   }
 
   /**
+   * Validates an HTTPS URL string.
+   *
+   * Rules:
+   * - Protocol must be https
+   * - Host must be a DNS hostname (not an IP address and not localhost)
+   * - Port numbers are not permitted
+   *
+   * @param {string} url
+   * @return {boolean}
+   */
+  static isValidUrl(url) {
+    if (typeof url !== 'string') return false;
+
+    const trimmed = url.trim();
+    if (trimmed.length === 0) return false;
+    if (/\s/.test(trimmed)) return false;
+
+    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[\/?#]|$)/.exec(trimmed);
+    if (!match) {
+      try {
+        ProgressTracker.getInstance().logError(`Invalid URL found: ${trimmed}`, { url: trimmed });
+      } catch (e) {
+        ABLogger.getInstance().warn('Invalid URL', e);
+      }
+      return false;
+    }
+
+    const hostname = match[1].toLowerCase();
+    if (hostname.length === 0) return false;
+    if (hostname === 'localhost') return false;
+
+    // Reject IP addresses (including public) - we only accept hostnames.
+    if (Validate._isIPv4(hostname)) return false;
+
+    // Minimal DNS hostname validation.
+    if (hostname.length > 253) return false;
+    const labels = hostname.split('.');
+    if (labels.length < 2) return false;
+    if (labels.some((label) => label.length === 0 || label.length > 63)) return false;
+    if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
+    if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
+
+    return true;
+  }
+
+  static _isIPv4(hostname) {
+    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+    if (!ipv4Exec) return false;
+    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
+    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
+    return true;
+  }
+
+  /**
    * Validates that required parameters are present (not null/undefined).
    * Throws an error if any parameter is missing.
    *
