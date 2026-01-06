@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint --config eslint.config.js src/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/**/*.js",
+    "vendor:beercss": "node scripts/vendor-beercss.js",
     "prepare": "husky install",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\""
   },
@@ -27,6 +28,7 @@
   },
   "dependencies": {
     "@google/clasp": "^3.1.3",
-    "@google/gemini-cli": "^0.11.0"
+    "@google/gemini-cli": "^0.11.0",
+    "beercss": "^3.13.1"
   }
 }
