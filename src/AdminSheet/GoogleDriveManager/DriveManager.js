@@ -14,12 +14,20 @@ class DriveManager {
    *   fileId: string | null,
    *   message: string
    * }} An object describing the outcome.
+   * @throws {Error} If templateSheetId, destinationFolderId, or newSheetName is not provided.
    *
    * Possible statuses:
    *   - 'copied': The file was copied successfully.
    *   - 'skipped': A file with the same name already exists; nothing was copied.
    */
   static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
+    if (!templateSheetId) {
+      throw new Error('templateSheetId is required to copy template sheet');
+    }
+    if (!newSheetName) {
+      throw new Error('newSheetName is required to copy template sheet');
+    }
+
     try {
       // Use Advanced Drive API for Shared Drive compatibility.
       // DriveApp.getFolderById / folder iterators can fail in Shared Drive contexts.
@@ -35,7 +43,7 @@ class DriveManager {
         throw new Error('destinationFolderId is required to copy template sheet');
       }
 
-      const escapedName = String(newSheetName).replace(/'/g, "\\'");
+      const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
       const query =
         `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
 
@@ -101,6 +109,7 @@ class DriveManager {
    *     message: string
    *   }>
    * }} An object describing the overall result.
+   * @throws {Error} If destinationFolderId is not provided or folder cannot be accessed.
    *
    * Possible statuses:
    *   - 'complete': All emails were shared successfully.
@@ -108,13 +117,17 @@ class DriveManager {
    *   - 'none': No emails were processed (e.g., if the set is empty).
    */
   static shareFolder(destinationFolderId, emails) {
+    if (!destinationFolderId) {
+      throw new Error('destinationFolderId is required for shareFolder');
+    }
+
     const details = [];
     let successCount = 0;
     let failCount = 0;
 
     if (!emails || emails.size === 0) {
       const noEmailsMsg = 'No emails provided; nothing to share.';
-      console.log(noEmailsMsg);
+      ABLogger.getInstance().info(noEmailsMsg);
       return {
         status: 'none',
         message: noEmailsMsg,
@@ -128,7 +141,7 @@ class DriveManager {
       emails.forEach((email) => {
         try {
           destinationFolder.addEditor(email);
-          console.log(`Shared destination folder with: ${email}`);
+          ABLogger.getInstance().info(`Shared destination folder with: ${email}`);
 
           details.push({
             email,
@@ -138,7 +151,7 @@ class DriveManager {
           successCount++;
         } catch (error) {
           const failMsg = `Failed to share folder with ${email}: ${error.message}`;
-          console.error(failMsg);
+          ABLogger.getInstance().error(failMsg, error);
 
           details.push({
             email,
@@ -149,13 +162,13 @@ class DriveManager {
         }
       });
     } catch (error) {
-      console.error(`Failed to access destination folder: ${error.message}`);
+      ABLogger.getInstance().error('Failed to access destination folder', error);
       throw error;
     }
 
     const overallStatus = failCount === 0 ? 'complete' : 'partial';
     const overallMsg = `Shared folder with ${successCount} email(s) successfully, ${failCount} failed.`;
-    console.log(overallMsg);
+    ABLogger.getInstance().info(overallMsg);
 
     return {
       status: overallStatus,
@@ -168,8 +181,13 @@ class DriveManager {
    * Retrieves the first parent folder ID of a given file.
    * @param {string} fileId - The ID of the file to check.
    * @returns {string | null} The parent folder ID, or null if none is found.
+   * @throws {Error} If fileId is not provided.
    */
   static getParentFolderId(fileId) {
+    if (!fileId) {
+      throw new Error('fileId is required for getParentFolderId');
+    }
+
     const driveAppParent = DriveManager._getParentViaDriveApp(fileId);
     if (driveAppParent) {
       return driveAppParent;
@@ -188,19 +206,20 @@ class DriveManager {
         if (parentIterator.hasNext()) {
           const parentFolder = parentIterator.next();
           const parentId = parentFolder.getId();
-          console.log(`Parent folder ID for file ${fileId}: ${parentId}`);
+          ABLogger.getInstance().info(`Parent folder ID for file ${fileId}: ${parentId}`);
           return parentId;
         }
-        console.log(
+        ABLogger.getInstance().info(
           `No parents found via DriveApp for ${fileId}; attempting Advanced Drive API...`
         );
         return null;
       } catch (error) {
         const waitMs = 500 * Math.pow(2, attempt);
-        console.warn(
+        ABLogger.getInstance().warn(
           `DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${
             attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''
-          }`
+          }`,
+          error
         );
         if (attempt < retries - 1) {
           Utilities.sleep(waitMs);
@@ -218,28 +237,34 @@ class DriveManager {
 
       if (res?.parents?.length > 0) {
         const parentId = res.parents[0];
-        console.log(`Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`);
+        ABLogger.getInstance().info(
+          `Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`
+        );
         return parentId;
       }
 
       if (res?.driveId) {
-        console.log(
+        ABLogger.getInstance().info(
           `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`
         );
         return res.driveId;
       }
 
       const rootId = DriveApp.getRootFolder().getId();
-      console.log(`Falling back to My Drive root as parent for ${fileId}: ${rootId}`);
+      ABLogger.getInstance().info(
+        `Falling back to My Drive root as parent for ${fileId}: ${rootId}`
+      );
       return rootId;
     } catch (apiError) {
-      console.error(`Advanced Drive API fallback failed for ${fileId}: ${apiError.message}`);
+      ABLogger.getInstance().error('Advanced Drive API fallback failed', { fileId, err: apiError });
       try {
         const rootId = DriveApp.getRootFolder().getId();
-        console.log(`Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`);
+        ABLogger.getInstance().info(
+          `Returning My Drive root as last-resort parent for ${fileId}: ${rootId}`
+        );
         return rootId;
       } catch (rootError) {
-        console.error(`Failed to obtain My Drive root folder ID: ${rootError.message}`);
+        ABLogger.getInstance().error('Failed to obtain My Drive root folder ID', rootError);
         throw apiError;
       }
     }
@@ -250,17 +275,25 @@ class DriveManager {
    * If a folder with the same name exists, returns its ID instead.
    * @param {string} parentFolderId - The ID of the parent folder.
    * @param {string} folderName - The name for the new folder.
-   * @returns {{ parentFolderId: string, folderId: string }}
+   * @returns {{ parentFolderId: string, newFolderId: string }}
    *          An object containing the parent folder ID and the folder ID (existing or newly created).
+   * @throws {Error} If parentFolderId or folderName is not provided.
    */
   static createFolder(parentFolderId, folderName) {
+    if (!parentFolderId) {
+      throw new Error('parentFolderId is required for createFolder');
+    }
+    if (!folderName) {
+      throw new Error('folderName is required for createFolder');
+    }
+
     try {
       const parentFolder = DriveApp.getFolderById(parentFolderId);
       const folders = parentFolder.getFoldersByName(folderName);
 
       if (folders.hasNext()) {
         const existingFolder = folders.next();
-        console.log(
+        ABLogger.getInstance().info(
           `Folder "${folderName}" already exists under parent folder ID ${parentFolderId}. Returning existing folder ID.`
         );
         return {
@@ -270,7 +303,9 @@ class DriveManager {
       }
 
       const newFolder = parentFolder.createFolder(folderName);
-      console.log(`Folder "${folderName}" created under parent folder ID ${parentFolderId}.`);
+      ABLogger.getInstance().info(
+        `Folder "${folderName}" created under parent folder ID ${parentFolderId}.`
+      );
       return {
         parentFolderId,
         newFolderId: newFolder.getId(),
@@ -284,7 +319,7 @@ class DriveManager {
         err: error,
       });
 
-      const escapedFolderName = String(folderName).replace(/'/g, "\\'");
+      const escapedFolderName = String(folderName).replaceAll("'", String.raw`\\'`);
       const query =
         `'${parentFolderId}' in parents and trashed = false ` +
         `and mimeType = 'application/vnd.google-apps.folder' ` +
@@ -345,8 +380,13 @@ class DriveManager {
    *     message: string
    *   }>
    * }} An object describing the overall result of the move operation.
+   * @throws {Error} If destinationFolderId is not provided.
    */
   static moveFiles(destinationFolderId, fileIds, appendString = '') {
+    if (!destinationFolderId) {
+      throw new Error('destinationFolderId is required for moveFiles');
+    }
+
     const details = [];
     let successCount = 0;
     let failCount = 0;
@@ -354,7 +394,7 @@ class DriveManager {
     // If no files are provided
     if (!fileIds || fileIds.length === 0) {
       const noFilesMsg = 'No file IDs provided; nothing to move.';
-      console.log(noFilesMsg);
+      ABLogger.getInstance().info(noFilesMsg);
       return {
         status: 'none',
         message: noFilesMsg,
@@ -402,7 +442,7 @@ class DriveManager {
         }
 
         const successMsg = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
-        console.log(successMsg);
+        ABLogger.getInstance().info(successMsg);
         details.push({
           fileId,
           status: 'moved',
@@ -411,7 +451,7 @@ class DriveManager {
         successCount++;
       } catch (error) {
         const failMsg = `Failed to move file ${fileId}: ${error.message}`;
-        console.error(failMsg);
+        ABLogger.getInstance().error(failMsg, error);
         details.push({
           fileId,
           status: 'failed',
@@ -425,7 +465,7 @@ class DriveManager {
     const overallStatus = failCount === 0 ? 'complete' : 'partial';
 
     const overallMsg = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
-    console.log(overallMsg);
+    ABLogger.getInstance().info(overallMsg);
 
     return {
       status: overallStatus, // 'complete', 'partial', or 'none'
@@ -448,8 +488,9 @@ class DriveManager {
 
   /**
    * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
-   * @param {string} fileId - Drive file id.
+   * @param {string} fileId - Drive file ID.
    * @return {string} ISO 8601 timestamp of the file's last modified time.
+   * @throws {Error} If fileId is not provided or file cannot be accessed.
    */
   static getFileModifiedTime(fileId) {
     const progressTracker = ProgressTracker.getInstance();

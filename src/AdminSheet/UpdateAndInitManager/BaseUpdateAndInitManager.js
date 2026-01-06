@@ -31,7 +31,7 @@ class BaseUpdateAndInit {
         this.assessmentRecordTemplateId = this.getLatestAssessmentRecordTemplateId();
         // (Optional future enhancement) Persist this value via ConfigurationManager.getInstance().setAssessmentRecordTemplateId(this.assessmentRecordTemplateId);
       } catch (e) {
-        console.error('Failed to derive latest Assessment Record Template ID:', e);
+        ABLogger.getInstance().error('Failed to derive latest Assessment Record Template ID', e);
         this.assessmentRecordTemplateId = '';
       }
     }
@@ -41,13 +41,14 @@ class BaseUpdateAndInit {
 
   /**
    * Fetches the version details JSON from the URL specified in configuration.
-   * @returns {Object|null} The parsed version details, or null on failure.
+   * @returns {Object} The parsed version details.
+   * @throws {Error} If the URL is not configured, request fails, or JSON parsing fails.
    */
   fetchVersionDetails() {
     const updateDetailsUrl = ConfigurationManager.getInstance().getUpdateDetailsUrl();
     if (!updateDetailsUrl) {
       const msg = 'Update_Details_Url not found in configuration.';
-      console.error(msg);
+      ABLogger.getInstance().error(msg);
       throw new Error(msg);
     }
 
@@ -62,14 +63,14 @@ class BaseUpdateAndInit {
 
     if (!response) {
       const msg = 'Failed to fetch assessmentBotVersions.json after 1 attempt.';
-      console.error(msg);
+      ABLogger.getInstance().error(msg);
       throw new Error(msg);
     }
 
     const status = response.getResponseCode();
     if (status !== 200) {
       const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${status} Returned Message: ${response.getContentText()}.`;
-      console.error(errorMessage);
+      ABLogger.getInstance().error(errorMessage);
       throw new Error(errorMessage);
     }
 
@@ -77,7 +78,7 @@ class BaseUpdateAndInit {
       return JSON.parse(response.getContentText());
     } catch (error) {
       const errorMessage = `Error parsing assessmentBotVersions.json: ${error}`;
-      console.error(errorMessage);
+      ABLogger.getInstance().error(errorMessage, error);
       throw new Error(errorMessage);
     }
   }
@@ -142,7 +143,8 @@ class BaseUpdateAndInit {
       this.destinationFolderId,
       `Assessment Record Template v${this.versionNo}`
     );
-    return (this.assessmentRecordTemplateId = copiedTemplate.fileId);
+    this.assessmentRecordTemplateId = copiedTemplate.fileId;
+    return this.assessmentRecordTemplateId;
   }
 
   /**
@@ -181,14 +183,16 @@ class BaseUpdateAndInit {
     const versionData = this.fetchVersionDetails();
 
     if (!versionData) {
-      console.error('Failed to retrieve version details.');
+      ABLogger.getInstance().error('Failed to retrieve version details.');
       return;
     }
 
     // Validate and extract the specific version details
     const versionInfo = versionData[versionNumber];
     if (!versionInfo) {
-      console.error(`Version ${versionNumber} not found in assessmentBotVersions.json`);
+      ABLogger.getInstance().error(
+        `Version ${versionNumber} not found in assessmentBotVersions.json`
+      );
       return;
     }
 
@@ -198,12 +202,14 @@ class BaseUpdateAndInit {
 
     // Validate file Ids using DriveManager.isValidGoogleDriveFileId()
     if (!DriveManager.isValidGoogleDriveFileId(assessmentRecordTemplateId)) {
-      console.error(`Invalid assessmentRecordTemplate ID: ${assessmentRecordTemplateId}`);
+      ABLogger.getInstance().error(
+        `Invalid assessmentRecordTemplate ID: ${assessmentRecordTemplateId}`
+      );
       return;
     }
 
     if (!DriveManager.isValidGoogleDriveFileId(adminSheetTemplateId)) {
-      console.error(`Invalid adminSheetTemplate ID: ${adminSheetTemplateId}`);
+      ABLogger.getInstance().error(`Invalid adminSheetTemplate ID: ${adminSheetTemplateId}`);
       return;
     }
 
@@ -212,7 +218,7 @@ class BaseUpdateAndInit {
     this.adminSheetTemplateId = adminSheetTemplateId;
     this.versionNo = versionNumber;
 
-    console.log(`Successfully set the file IDs for version ${versionNumber}.`);
+    ABLogger.getInstance().info(`Successfully set the file IDs for version ${versionNumber}.`);
   }
 
   /**
@@ -230,7 +236,7 @@ class BaseUpdateAndInit {
       'baseAdminManagerState',
       JSON.stringify(state)
     );
-    console.log('BaseAdminManager state saved: ' + JSON.stringify(state));
+    ABLogger.getInstance().info('BaseAdminManager state saved: ' + JSON.stringify(state));
   }
 
   /**
@@ -244,7 +250,7 @@ class BaseUpdateAndInit {
       this.destinationFolderId = state.destinationFolderId;
       this.assessmentRecordTemplateId = state.assessmentRecordTemplateId;
       this.adminSheetTemplateId = state.adminSheetTemplateId;
-      console.log('BaseAdminManager state loaded: ' + JSON.stringify(state));
+      ABLogger.getInstance().info('BaseAdminManager state loaded: ' + JSON.stringify(state));
       // Removes state from Script Properties after loading.
       PropertiesService.getScriptProperties().deleteProperty('baseAdminManagerState');
     } else {

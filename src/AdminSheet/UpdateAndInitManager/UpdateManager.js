@@ -100,7 +100,7 @@ class UpdateManager extends BaseUpdateAndInit {
 
   /**
    * Moves the old versions of the Assessment Records and Admin Sheet to an Archive folder.
-   * @param {Array} assessmentRecordFileIds - An array of file IDs to archive.
+   * @param {string[]} [assessmentRecordFileIds] - An optional array of file IDs to archive. If not provided, uses assessmentRecordSheets details.
    */
   archiveOldVersions(assessmentRecordFileIds) {
     const parentFolder = DriveManager.getParentFolderId(this.sheet.getId());
