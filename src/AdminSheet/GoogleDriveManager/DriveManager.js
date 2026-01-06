@@ -22,16 +22,8 @@ class DriveManager {
       };
     }
 
-    // Validate the destination folder exists (fail fast) using Advanced Drive API for Shared Drive compatibility.
-    try {
-      Drive.Files.get(destinationFolderId, { supportsAllDrives: true, fields: 'id' });
-    } catch (error) {
-      const failMsg = `Failed to access destination folder with ID "${destinationFolderId}".`;
-      ProgressTracker.getInstance().logError(failMsg, { destinationFolderId, err: error });
-      const err = new Error(failMsg);
-      err.cause = error;
-      throw err;
-    }
+    // Validate the destination folder exists (fail fast).
+    DriveManager._validateFolderExists(destinationFolderId);
 
     // Use the Advanced Drive API for moving so this works on Shared Drives as well.
     // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
@@ -127,6 +119,9 @@ class DriveManager {
         throw new Error('destinationFolderId is required to copy template sheet');
       }
 
+      // Validate the destination folder exists (fail fast).
+      DriveManager._validateFolderExists(destinationFolderId);
+
       const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
       const query =
         `'${destinationFolderId}' in parents and trashed = false ` + `and name = '${escapedName}'`;
@@ -181,6 +176,24 @@ class DriveManager {
   }
 
   /**
+   * Validates that a folder exists and is accessible.
+   * @param {string} folderId - The folder ID to validate.
+   * @throws {Error} If folder cannot be accessed.
+   * @private
+   */
+  static _validateFolderExists(folderId) {
+    try {
+      Drive.Files.get(folderId, { supportsAllDrives: true, fields: 'id' });
+    } catch (error) {
+      const failMsg = `Failed to access folder with ID "${folderId}".`;
+      ProgressTracker.getInstance().logError(failMsg, { folderId, err: error });
+      const err = new Error(failMsg);
+      err.cause = error;
+      throw err;
+    }
+  }
+
+  /**
    * Shares a folder with a list of email addresses, capturing the result for each email.
    * @param {string} destinationFolderId - The ID of the folder to share.
    * @param {Set<string>} emails - A set of email addresses to share the folder with.
@@ -219,6 +232,9 @@ class DriveManager {
       };
     }
 
+    // Validate the folder exists (fail fast).
+    DriveManager._validateFolderExists(destinationFolderId);
+
     try {
       const destinationFolder = DriveApp.getFolderById(destinationFolderId);
 
@@ -246,7 +262,7 @@ class DriveManager {
         }
       });
     } catch (error) {
-      ABLogger.getInstance().error('Failed to access destination folder', error);
+      ABLogger.getInstance().error('Failed to get folder or share with emails', error);
       throw error;
     }
 
@@ -370,6 +386,9 @@ class DriveManager {
     if (!folderName) {
       throw new Error('folderName is required for createFolder');
     }
+
+    // Validate the parent folder exists (fail fast).
+    DriveManager._validateFolderExists(parentFolderId);
 
     try {
       const parentFolder = DriveApp.getFolderById(parentFolderId);
