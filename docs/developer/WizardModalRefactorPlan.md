@@ -32,6 +32,8 @@ A single BeerCSS-scoped wizard modal:
 - The primary action button stays disabled until an assignment is selected.
 - On selection, the client fetches any assignment-specific data needed for Step 2 (e.g. previously saved reference/template IDs).
 
+**Status:** Implemented (UI + tests). See “Progress update” below.
+
 2. **Step 2: Provide document links / IDs**
 
 - User enters URLs or IDs for required documents (e.g. reference Slides, template Slides).
@@ -200,13 +202,15 @@ Follow existing logging contract:
 
 ### New
 
-- A new wizard HtmlService template, e.g. `src/AdminSheet/UI/AssessWizard.html` (name TBD).
-- A vendored BeerCSS JS partial, e.g. `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html` (name TBD).
+- A new wizard HtmlService template: `src/AdminSheet/UI/AssessmentWizard.html`.
+- Vendored BeerCSS JS partial already exists: `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`.
 
 ### Update
 
-- A UI entry-point function (likely in `src/AdminSheet/UI/97_globals.js`) to open the wizard instead of opening separate modals.
-- Potentially `src/AdminSheet/UI/98_UIManager.js` if it owns modal plumbing for the flow.
+- UI entry-point function added in `src/AdminSheet/UI/97_globals.js`: `showAssessmentWizard()`.
+- Menu entry added in `src/AdminSheet/UI/98_UIManager.js` (Authorised menu → Debug → “Assessment wizard”).
+- `src/AdminSheet/UI/99_BeerCssUIHandler.js` now renders the wizard via `showAssessmentWizard()`.
+- Server helper added in `src/AdminSheet/GoogleClassroom/globals.js`: `fetchAssignmentsForWizard()`.
 
 ### Leave as-is (for now)
 
@@ -234,6 +238,8 @@ Minimum behaviours to test:
 - **Failure path**: error is surfaced (banner/snackbar/toast), spinner hidden/removed, select remains disabled (or a retry affordance is shown if we add one), and primary action stays disabled.
 - **Cancel**: calls `google.script.host.close()`.
 
+**Status:** Implemented in `tests/ui/assignmentWizardStep1.test.js`.
+
 Implementation notes for tests:
 
 - Stub `google.script.run` with a chainable mock supporting `withSuccessHandler` / `withFailureHandler`, mirroring existing UI tests.
@@ -254,3 +260,21 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Do we need to support both URLs and raw IDs in each field?
 - Should we allow Docs/Sheets inputs anywhere in this flow, or strictly Slides?
 - What is the authoritative server function for “fetch saved IDs for assignment” today, and do we need to adjust its response shape for the wizard?
+
+## Progress update
+
+### Completed
+
+- Step 1 wizard UI exists in `src/AdminSheet/UI/AssessmentWizard.html`.
+- The wizard fetches assignments after load using `google.script.run.withSuccessHandler/withFailureHandler`.
+- A dedicated server helper `fetchAssignmentsForWizard()` returns a minimal `{ id, title }` list from the currently selected Classroom.
+- Primary action gating is in place (button disabled until a non-empty assignment is selected).
+- Cancel closes the dialog.
+- Debug menu entry exists for testing.
+- UI tests cover initial render, server call, success path, failure path, selection gating, and cancel.
+
+### Styling findings (to reuse)
+
+- Do not pass an empty string as the Apps Script modal title; the dialog may fail to render in some contexts.
+- Reset `html, body` margins to avoid internal scrollbars.
+- Prefer BeerCSS’s field structure (`div.field.label … select then label`) so suffix elements (e.g. `progress.circle`) align correctly.

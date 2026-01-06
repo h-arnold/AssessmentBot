@@ -175,6 +175,44 @@ This updates:
 - HtmlService dialogs are sandboxed; the simplest and most reliable way to avoid external dependencies is to embed CSS/JS directly into the HTML output.
 - BeerCSS JS is optional per-dialog. Include `UI/vendor/beercss/BeerCssJs` only in dialogs that need the interactive behaviour.
 
+## Styling tips and pitfalls (BeerCSS + HtmlService)
+
+These notes are based on real behaviour observed while building the assessment wizard Step 1.
+
+### Apps Script modal title (dialog chrome)
+
+- Avoid an empty title string in `ui.showModalDialog(html, title)`. In some contexts the dialog may fail to render (the script “runs” but no modal appears).
+- If the dialog already contains a clear heading, you can still use a short title for the chrome (e.g. `Step 1 - Select assignment`) and remove the redundant heading from the HTML.
+
+### Avoid accidental scrollbars
+
+HtmlService pages often pick up default browser margins, which can introduce a vertical scrollbar inside the modal.
+
+- Prefer setting `html, body { margin: 0; padding: 0; }`.
+- When you have a footer, use a simple flex column layout (`body { display: flex; flex-direction: column; }`) so the footer does not create unexpected overflow.
+- Keep the dialog height tight to the actual content; oversized dialogs are more likely to show scrollbars in Google’s iframe wrapper.
+
+### BeerCSS field structure matters (labels, suffix/prefix)
+
+BeerCSS positions suffix/prefix adornments (including `progress.circle`) using CSS that expects a particular DOM structure.
+
+- For a labelled field, use the BeerCSS `label` helper pattern:
+  - `div.field.label ...`
+  - input/select first
+  - label immediately after (`select + label` is used by BeerCSS CSS/JS)
+
+- For suffix spinners/icons, avoid adding bespoke `position: absolute` rules unless you have to. BeerCSS already centres `progress.circle` in a suffix/prefix field.
+
+### Accessibility and lint rules
+
+- For inline status messaging, prefer an `<output>` element rather than `role="status"` on a generic element.
+- Prefer `globalThis` over `window` when exposing values for test hooks.
+
+### Visual consistency (fonts)
+
+- BeerCSS applies its own typography; it will not exactly match Google Sheets’ UI font stack.
+- If matching Sheets becomes a hard requirement, do it explicitly and scoped (within the `.beer` container), otherwise accept the slight difference as the standard for BeerCSS-backed dialogs.
+
 ## Refactoring workflow
 
 When migrating an existing UIManager method to BeerCSS:
