@@ -128,6 +128,7 @@
             this.setSpinnerVisible(false);
 
             if (this.state.assignments.length === 0) {
+              this.setControlsEnabled(false);
               this.renderPlaceholder('No assignments available yet');
               this.showError('No assignments were found for this classroom.');
               return;
