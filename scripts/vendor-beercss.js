@@ -11,7 +11,7 @@ function writeText(filePath, content) {
 }
 
 function stripEsmExports(js) {
-  const hasImport = /(^|\n)\s*import\s/.test(js);
+  const hasImport = /\bimport\b/.test(js);
   if (hasImport) {
     throw new Error('BeerCSS JS appears to contain ESM imports; bundling would be required.');
   }
@@ -115,8 +115,7 @@ if (require.main === module) {
     vendorBeerCss();
     process.stdout.write('BeerCSS assets vendored successfully.\n');
   } catch (err) {
-    const message = err?.message ? err.message : String(err);
-    process.stderr.write(`Failed to vendor BeerCSS assets: ${message}\n`);
+    console.error('Failed to vendor BeerCSS assets:', err);
     process.exit(1);
   }
 }
