@@ -119,29 +119,41 @@ class Utils {
     }
     const trimmed = url.trim();
 
-    try {
-      const parsed = new URL(trimmed);
-      const protocol = parsed.protocol.toLowerCase();
-      if (!['http:', 'https:', 'ftp:'].includes(protocol)) return false;
+    if (trimmed.length === 0) return false;
+    if (/\s/.test(trimmed)) return false;
 
-      const hostname = parsed.hostname;
-      // Reject private IPv4 addresses
-      if (this._isPrivateIPv4(hostname)) return false;
-      return true;
-    } catch (err) {
-      const slidesExportPattern =
-        /^https?:\/\/docs\.google\.com\/presentation\/d\/[^/]+\/export\/png/i;
-      if (slidesExportPattern.test(trimmed)) {
-        ABLogger.getInstance().warn('URL parser rejected slide export URL; using fallback', {
-          url: trimmed,
-          err,
-        });
-        return true;
-      }
+    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[\/?#]|$)/.exec(trimmed);
+    if (!match) {
       const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError(`Invalid slide URL found: ${trimmed}`, { err });
+      progressTracker.logError(`Invalid slide URL found: ${trimmed}`, { url: trimmed });
       return false;
     }
+
+    const hostname = match[1].toLowerCase();
+    if (hostname.length === 0) return false;
+
+    if (hostname === 'localhost') return false;
+
+    // Reject IP addresses (including public) - we only accept hostnames.
+    if (this._isIPv4(hostname)) return false;
+
+    // Minimal DNS hostname validation (labels, dots, hyphens).
+    if (hostname.length > 253) return false;
+    const labels = hostname.split('.');
+    if (labels.length < 2) return false;
+    if (labels.some((label) => label.length === 0 || label.length > 63)) return false;
+    if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
+    if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
+
+    return true;
+  }
+
+  static _isIPv4(hostname) {
+    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+    if (!ipv4Exec) return false;
+    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
+    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
+    return true;
   }
 
   static _isPrivateIPv4(hostname) {
