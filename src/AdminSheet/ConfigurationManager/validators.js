@@ -23,10 +23,7 @@ function validateNonEmptyString(label, value) {
 }
 
 function validateUrl(label, value) {
-  const hasValidator = globalThis.Utils && typeof globalThis.Utils.isValidUrl === 'function';
-  const isValid =
-    typeof value === 'string' &&
-    (hasValidator ? globalThis.Utils.isValidUrl(value) : /^https?:\/\//.test(value));
+  const isValid = typeof value === 'string' && Validate.isValidUrl(value);
   if (!isValid) {
     throw new Error(`${label} must be a valid URL string.`);
   }

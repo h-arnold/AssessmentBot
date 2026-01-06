@@ -43,7 +43,7 @@ class ImageManager extends BaseRequestManager {
             role === 'reference'
               ? assignment.assignmentDefinition.referenceDocumentId
               : assignment.assignmentDefinition.templateDocumentId;
-          if (!Utils.isValidUrl(sourceUrl) || !documentId) return;
+          if (!Validate.isValidUrl(sourceUrl) || !documentId) return;
           results.push({
             uid: artifact.getUid(),
             url: sourceUrl,
@@ -65,7 +65,7 @@ class ImageManager extends BaseRequestManager {
         const art = item.artifact;
         if (this.isImageArtifact(art)) {
           const sourceUrl = art.metadata?.sourceUrl;
-          if (Utils.isValidUrl(sourceUrl)) {
+          if (Validate.isValidUrl(sourceUrl)) {
             results.push({
               uid: art.getUid(),
               url: sourceUrl,

@@ -113,62 +113,6 @@ class Utils {
     docProperties.deleteAllProperties();
   }
 
-  static isValidUrl(url) {
-    if (typeof url !== 'string') {
-      return false;
-    }
-    const trimmed = url.trim();
-
-    if (trimmed.length === 0) return false;
-    if (/\s/.test(trimmed)) return false;
-
-    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[\/?#]|$)/.exec(trimmed);
-    if (!match) {
-      const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logError(`Invalid slide URL found: ${trimmed}`, { url: trimmed });
-      return false;
-    }
-
-    const hostname = match[1].toLowerCase();
-    if (hostname.length === 0) return false;
-
-    if (hostname === 'localhost') return false;
-
-    // Reject IP addresses (including public) - we only accept hostnames.
-    if (this._isIPv4(hostname)) return false;
-
-    // Minimal DNS hostname validation (labels, dots, hyphens).
-    if (hostname.length > 253) return false;
-    const labels = hostname.split('.');
-    if (labels.length < 2) return false;
-    if (labels.some((label) => label.length === 0 || label.length > 63)) return false;
-    if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
-    if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
-
-    return true;
-  }
-
-  static _isIPv4(hostname) {
-    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
-    if (!ipv4Exec) return false;
-    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
-    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
-    return true;
-  }
-
-  static _isPrivateIPv4(hostname) {
-    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
-    if (!ipv4Exec) return false;
-    const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
-    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
-    if (octets[0] === 10) return true;
-    if (octets[0] === 127) return true;
-    if (octets[0] === 169 && octets[1] === 254) return true;
-    if (octets[0] === 192 && octets[1] === 168) return true;
-    if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
-    return false;
-  }
-
   /**
    * Gets the date in DD/MM/YYYY format for appending to various file names
    */

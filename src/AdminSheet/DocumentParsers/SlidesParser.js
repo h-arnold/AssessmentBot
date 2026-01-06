@@ -15,7 +15,7 @@ class SlidesParser extends DocumentParser {
   generateSlideImageUrl(documentId, pageId) {
     const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
 
-    if (Utils.isValidUrl(url)) {
+    if (Validate.isValidUrl(url)) {
       return url;
     } else {
       throw new Error(`Invalid URL produced.`);
