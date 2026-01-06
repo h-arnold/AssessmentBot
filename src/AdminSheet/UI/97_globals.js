@@ -63,6 +63,14 @@ function showAssignmentDropdown() {
 }
 
 /**
+ * Displays the new assessment wizard workflow.
+ */
+function showAssessmentWizard() {
+  const uiHandler = getUIManager();
+  return uiHandler.showAssessmentWizard();
+}
+
+/**
  * Shows the classroom dropdown modal.
  */
 function showClassroomDropdown() {
