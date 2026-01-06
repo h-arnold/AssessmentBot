@@ -92,25 +92,27 @@ class Validate {
   }
 
   /**
-   * Validates that required parameters are present (truthy).
+   * Validates that required parameters are present (not null/undefined).
    * Throws an error if any parameter is missing.
+   *
+   * This method is intentionally limited to presence checks only. It does not
+   * validate content (e.g., non-empty strings) and will not reject falsy-but-valid
+   * values such as 0, false, or ''.
    * @param {Object<string, *>} params - Object where keys are parameter names and values are the parameter values.
    * @param {string} [context] - Optional context (e.g., method name) for the error message.
-   * @throws {Error} If any parameter is falsy.
+   * @throws {Error} If any parameter is null or undefined.
    * @example
-   * Validate.requireParams({ destinationFolderId, fileIds }, 'moveFiles');
+   * Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
    */
   static requireParams(params, context = '') {
-    if (!params || typeof params !== 'object') {
+    if (!params || typeof params !== 'object' || Array.isArray(params))
       throw new Error('params must be an object');
-    }
 
     const contextStr = context ? ` for ${context}` : '';
 
     for (const [paramName, value] of Object.entries(params)) {
-      if (!value) {
+      if (value === null || value === undefined)
         throw new Error(`${paramName} is required${contextStr}`);
-      }
     }
   }
 }

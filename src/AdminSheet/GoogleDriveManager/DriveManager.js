@@ -2,6 +2,18 @@
  * Handles Drive-related operations.
  */
 class DriveManager {
+  /**
+   * Moves one or more files into a destination folder, optionally appending a string
+   * to each file name before the move. Uses the Advanced Drive API so that moves
+   * work reliably on both My Drive and Shared Drives.
+   *
+   * @param {string} destinationFolderId - ID of the folder the files will be moved into.
+   * @param {string[]} fileIds - Array of Drive file IDs to move.
+   * @param {string} [appendString] - Optional string to append to each file name before moving.
+   * @returns {{status: string, message: string, details: Array<{fileId: string, status: string, message: string}>}} -
+   * Overall status for the move operation and per-file result details.
+   * @throws {Error} If `destinationFolderId` is not provided or the destination folder cannot be accessed.
+   */
   static moveFiles(destinationFolderId, fileIds, appendString = '') {
     Validate.requireParams({ destinationFolderId }, 'moveFiles');
 
@@ -472,9 +484,7 @@ class DriveManager {
   static getFileModifiedTime(fileId) {
     const progressTracker = ProgressTracker.getInstance();
 
-    if (!fileId) {
-      progressTracker.logAndThrowError('fileId is required for getFileModifiedTime');
-    }
+    Validate.requireParams({ fileId }, 'getFileModifiedTime');
 
     const baseWaitMs = 500;
     const retries = 3;
