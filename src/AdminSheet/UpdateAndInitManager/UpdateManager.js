@@ -100,7 +100,7 @@ class UpdateManager extends BaseUpdateAndInit {
 
   /**
    * Moves the old versions of the Assessment Records and Admin Sheet to an Archive folder.
-   * @param {Array} assessmentRecordFileIds - An array of file IDs to archive.
+   * @param {string[]} [assessmentRecordFileIds] - An optional array of file IDs to archive. If not provided, uses assessmentRecordSheets details.
    */
   archiveOldVersions(assessmentRecordFileIds) {
     const parentFolder = DriveManager.getParentFolderId(this.sheet.getId());
@@ -122,19 +122,15 @@ class UpdateManager extends BaseUpdateAndInit {
     const filesToMoveOnly = [];
 
     assessmentRecordFileIds.forEach((fileId) => {
-      try {
-        const file = DriveApp.getFileById(fileId);
-        const fileName = file.getName();
+      const file = Drive.Files.get(fileId, { supportsAllDrives: true, fields: 'name' });
+      const fileName = file.name;
 
-        if (fileName.includes('ARCHIVED')) {
-          // If already archived, just move without renaming
-          filesToMoveOnly.push(fileId);
-        } else {
-          // If not archived, move and rename
-          filesToRename.push(fileId);
-        }
-      } catch (error) {
-        console.error(`Error checking file ${fileId}: ${error.message}`);
+      if (fileName.includes('ARCHIVED')) {
+        // If already archived, just move without renaming
+        filesToMoveOnly.push(fileId);
+      } else {
+        // If not archived, move and rename
+        filesToRename.push(fileId);
       }
     });
 
