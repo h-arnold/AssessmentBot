@@ -455,7 +455,7 @@ class ConfigurationManager extends BaseSingleton {
       }
 
       // Fetch additional details
-      let className = 'Unknown Class';
+      let className;
       try {
         const course = ClassroomApiClient.fetchCourse(courseIdString);
         if (course?.name) {
@@ -463,6 +463,13 @@ class ConfigurationManager extends BaseSingleton {
         }
       } catch (e) {
         ABLogger.getInstance().warn('Could not fetch course details during migration', e);
+      }
+
+      if (!className) {
+        const message =
+          'Class name not available. Please set the classroom via the settings panel.';
+        ABLogger.getInstance().error(message);
+        throw new Error(message);
       }
 
       const classInfo = {

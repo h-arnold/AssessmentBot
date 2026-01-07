@@ -102,20 +102,16 @@ describe('ConfigurationManager Class Info Migration', () => {
     expect(mockGoogleClassroomManagerInstance.deleteClassInfoSheet).toHaveBeenCalled();
   });
 
-  it('should migrate with Unknown Class when course lookup fails', () => {
+  it('throws when course lookup fails to provide a class name', () => {
     mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(null);
     mockGoogleClassroomManagerInstance.getCourseId.mockReturnValue('legacy-id');
     mockClassroomApiClient.fetchCourse.mockImplementation(() => {
       throw new Error('API unavailable');
     });
 
-    const result = configManager.getClassInfo();
-
-    expect(result).toEqual({
-      ClassName: 'Unknown Class',
-      CourseId: 'legacy-id',
-      YearGroup: null,
-    });
+    expect(() => configManager.getClassInfo()).toThrow(
+      /Class name not available\. Please set the classroom via the settings panel\./
+    );
   });
 
   it('should return null if property missing and legacy migration fails', () => {
