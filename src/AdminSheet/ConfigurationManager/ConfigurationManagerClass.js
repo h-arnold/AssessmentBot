@@ -400,7 +400,7 @@ class ConfigurationManager extends BaseSingleton {
    * Returns the Class Info object { ClassName, CourseId, YearGroup }.
    * Lazy migration: If not in properties, tries to read from legacy ClassInfo sheet,
    * populates properties, and deletes the sheet.
-   * @returns {Object|null}
+   * @returns {Object|null} Class info object with ClassName, CourseId, and YearGroup properties, or null if unavailable.
    */
   getClassInfo() {
     this.ensureInitialized();
@@ -420,50 +420,46 @@ class ConfigurationManager extends BaseSingleton {
 
     // 2. Migration Logic
     try {
-      if (typeof GoogleClassroomManager === 'function') {
-        const gcm = new GoogleClassroomManager();
-        // Check if we can get course ID from legacy method (which reads sheet)
-        // We use try-catch because getCourseId might throw if sheet is missing/invalid,
-        // in which case we just return null (no migration possible).
-        let courseId;
+      const gcm = new GoogleClassroomManager();
+      // Check if we can get course ID from legacy method (which reads sheet)
+      // We use try-catch because getCourseId might throw if sheet is missing/invalid,
+      // in which case we just return null (no migration possible).
+      let courseId;
+      try {
+        courseId = gcm.getCourseId();
+      } catch (ignore) {
+        // Sheet missing or invalid, cannot migrate.
+        return null;
+      }
+
+      if (courseId) {
+        // Fetch additional details
+        let className = 'Unknown Class';
         try {
-          courseId = gcm.getCourseId();
-        } catch (ignore) {
-          // Sheet missing or invalid, cannot migrate.
-          return null;
+          const course = ClassroomApiClient.fetchCourse(courseId);
+          if (course && course.name) {
+            className = course.name;
+          }
+        } catch (e) {
+          ABLogger.getInstance().warn('Could not fetch course details during migration', e);
         }
 
-        if (courseId) {
-          // Fetch additional details
-          let className = 'Unknown Class';
-          try {
-            const course = ClassroomApiClient.fetchCourse(courseId);
-            if (course && course.name) {
-              className = course.name;
-            }
-          } catch (e) {
-            ABLogger.getInstance().warn('Could not fetch course details during migration', e);
-          }
+        const classInfo = {
+          ClassName: className,
+          CourseId: String(courseId),
+          YearGroup: null, // Default as per requirements
+        };
 
-          const classInfo = {
-            ClassName: className,
-            CourseId: String(courseId),
-            YearGroup: null, // Default as per requirements
-          };
+        this.setClassInfo(classInfo);
 
-          this.setClassInfo(classInfo);
+        // Delete legacy sheet
+        gcm.deleteClassInfoSheet();
 
-          // Delete legacy sheet
-          if (typeof gcm.deleteClassInfoSheet === 'function') {
-            gcm.deleteClassInfoSheet();
-          }
-
-          ABLogger.getInstance().info(
-            'Migrated Class Info from Sheet to DocumentProperties',
-            classInfo
-          );
-          return classInfo;
-        }
+        ABLogger.getInstance().info(
+          'Migrated Class Info from Sheet to DocumentProperties',
+          classInfo
+        );
+        return classInfo;
       }
     } catch (e) {
       ABLogger.getInstance().error('Error during Class Info migration', e);
@@ -474,7 +470,10 @@ class ConfigurationManager extends BaseSingleton {
 
   /**
    * Sets the Class Info object to document properties.
-   * @param {Object} classInfo
+   * @param {Object} classInfo - Class information object.
+   * @param {string} classInfo.ClassName - The name of the class.
+   * @param {string} classInfo.CourseId - The Google Classroom course ID.
+   * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
    */
   setClassInfo(classInfo) {
     const jsonString = JSON.stringify(classInfo);

@@ -78,11 +78,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO]: {
     storage: 'document',
     validate: (v) => {
-      // Expecting a JSON string here as setProperty converts to string if normalized, or handled manually.
-      // But allow object pass-through if the setter handles stringify?
-      // Since specific setter will use JSON.stringify, and validation runs before storage...
-      // but wait, setProperty calls validate.
-      // If I pass JSON string to setProperty, validate receives string.
       if (typeof v === 'string') return v;
       throw new TypeError('Assessment Record Class Info must be a JSON string.');
     },
