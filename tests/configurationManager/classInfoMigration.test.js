@@ -109,7 +109,6 @@ describe('ConfigurationManager Class Info Migration', () => {
     const result = configManager.getClassInfo();
 
     expect(result).toBeNull();
-    // Should NOT assume setProperty was called
     // (mock property service usually has spies, we verify they were NOT called for this key)
     const setPropSpy = mocks.PropertiesService.documentProperties.setProperty;
     if (setPropSpy.mock) {
