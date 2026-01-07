@@ -96,7 +96,7 @@ class GoogleClassroomManager {
         const classroom = new GoogleClassroom({
           name: row[1],
           ownerId: row[2],
-          teachers: row.slice(2, 6).filter((email) => email), // Teacher emails
+          teachers: row.slice(2, 6).filter(Boolean), // Teacher emails
         });
         classroom.create();
         // Use updateProgress to record informational messages without incrementing the step
@@ -413,7 +413,7 @@ class GoogleClassroomManager {
     const sheet = spreadsheet.getSheetByName('ClassInfo');
 
     // If ClassInfo sheet doesn't exist or course ID is missing
-    if (!sheet || !sheet?.getRange('B2')?.getValue()) {
+    if (!sheet?.getRange('B2')?.getValue()) {
       console.error('ClassInfo sheet not found or missing course ID.');
 
       // Create a detailed error message for logging
