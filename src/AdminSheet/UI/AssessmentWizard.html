@@ -143,7 +143,9 @@
               option.textContent = assignment.title || 'Untitled assignment';
               assignmentSelect.appendChild(option);
             });
+            // Enable select for user choice, but keep button disabled until selection is made
             assignmentSelect.disabled = false;
+            startButton.disabled = true;
           },
           handleAssignmentsFailure(error) {
             this.state.assignments = [];
