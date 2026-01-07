@@ -251,12 +251,12 @@ class ConfigurationManager extends BaseSingleton {
 
   isValidApiKey(apiKey) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
-    return typeof apiKey === 'string' && pattern.test(apiKey.trim());
+    return Validate.isString(apiKey) && pattern.test(apiKey.trim());
   }
 
   isValidGoogleSheetId(sheetId) {
     // Guard: Only touch Drive when explicitly validating. Accept cheap format heuristic first.
-    if (!sheetId || typeof sheetId !== 'string') return false;
+    if (!sheetId || !Validate.isString(sheetId)) return false;
     const trimmed = sheetId.trim();
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {
@@ -275,7 +275,7 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   isValidGoogleDriveFolderId(folderId) {
-    if (!folderId || typeof folderId !== 'string') return false;
+    if (!folderId || !Validate.isString(folderId)) return false;
     const trimmed = folderId.trim();
     if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
     try {

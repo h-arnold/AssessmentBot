@@ -102,7 +102,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
       );
       return null;
     }
-    if (typeof content === 'string') {
+    if (Validate.isString(content)) {
       const s = content.trim();
       this._rows = null;
       return s;
@@ -193,7 +193,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
           : this.content;
     let src = candidate;
     if (!src) return '';
-    if (typeof src === 'string') return src.trim();
+    if (Validate.isString(src)) return src.trim();
     if (!Array.isArray(src) || !src.length) return '';
     const header = src[0] || [];
     if (!Array.isArray(header)) return '';

@@ -171,7 +171,7 @@ class DbManager extends BaseSingleton {
       col.save();
       return true;
     } catch (error) {
-      const name = typeof collectionOrName === 'string' ? collectionOrName : '<collection>';
+      const name = Validate.isString(collectionOrName) ? collectionOrName : '<collection>';
       this.progressTracker.logAndThrowError(`Failed to save collection "${name}".`, error);
     }
   }

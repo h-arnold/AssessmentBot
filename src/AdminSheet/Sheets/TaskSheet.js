@@ -122,7 +122,7 @@ class TaskSheet extends BaseSheetManager {
 
       // Determine the range to fetch
       let sheetRange;
-      if (typeof range === 'string') {
+      if (Validate.isString(range)) {
         // A1 notation, e.g., "A1:B5"
         sheetRange = this.sheet.getRange(range);
       } else if (

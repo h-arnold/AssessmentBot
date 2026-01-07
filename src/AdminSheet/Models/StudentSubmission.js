@@ -24,7 +24,7 @@ class StudentSubmissionItem {
   _deriveId() {
     // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
     const primaryUid = this.artifact.getUid();
-    const hasPrimaryUid = typeof primaryUid === 'string' && primaryUid.length > 0;
+    const hasPrimaryUid = Validate.isNonEmptyString(primaryUid);
     const resolvedUid = hasPrimaryUid ? primaryUid : (this.artifact.contentHash ?? '');
     const base = `${this.taskId}::${resolvedUid}`;
     return 'ssi_' + Utils.generateHash(base).substring(0, 16);

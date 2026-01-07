@@ -260,7 +260,7 @@ class Assignment {
       const raw = { ...subObj };
       if (raw.updatedAt) {
         if (raw.updatedAt instanceof Date) raw.updatedAt = raw.updatedAt.toISOString();
-        else if (typeof raw.updatedAt === 'string') {
+        else if (Validate.isString(raw.updatedAt)) {
           const parsed = new Date(raw.updatedAt);
           if (!Number.isNaN(parsed.getTime())) raw.updatedAt = parsed.toISOString();
         }

@@ -142,7 +142,7 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
             return { userEnteredValue: { stringValue: 'N' } };
           }
           // If formula (starts with "="), store as formulaValue
-          if (typeof value === 'string' && value.trim().startsWith('=')) {
+          if (Validate.isString(value) && value.trim().startsWith('=')) {
             return { userEnteredValue: { formulaValue: value.trim() } };
           }
           // Otherwise try to parse as number
@@ -157,7 +157,7 @@ class CohortAnalysisSheetManager extends BaseSheetManager {
           // Non-numeric columns
           // e.g. Student Name, Class Name
           // If it's a formula, handle that
-          if (typeof value === 'string' && value.trim().startsWith('=')) {
+          if (Validate.isString(value) && value.trim().startsWith('=')) {
             return { userEnteredValue: { formulaValue: value.trim() } };
           }
           // Otherwise store as string

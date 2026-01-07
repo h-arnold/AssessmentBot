@@ -10,7 +10,7 @@
 class BaseSheetManager {
   constructor(sheet = null, spreadSheetId = null) {
     // If a string is passed, create or get the sheet name
-    if (typeof sheet === 'string') {
+    if (Validate.isString(sheet)) {
       this.createOrGetSheet(sheet, spreadSheetId);
     } else {
       // If it isn't use the passed sheet object.
@@ -332,7 +332,7 @@ class BaseSheetManager {
     const headers = headerRange.getValues()[0];
     const indices = {};
 
-    if (typeof headerNames === 'string') {
+    if (Validate.isString(headerNames)) {
       headerNames = [headerNames];
     }
 

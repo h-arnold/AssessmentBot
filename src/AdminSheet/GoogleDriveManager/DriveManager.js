@@ -54,7 +54,7 @@ class DriveManager {
         }
 
         const parentIds = Array.isArray(file?.parents) ? file.parents : [];
-        const normalisedParentIds = parentIds.filter((id) => typeof id === 'string' && id);
+        const normalisedParentIds = parentIds.filter((id) => Validate.isString(id) && id);
         const alreadyInDestination = normalisedParentIds.includes(destinationFolderId);
         const parentsToRemove = normalisedParentIds.filter((id) => id !== destinationFolderId);
 
