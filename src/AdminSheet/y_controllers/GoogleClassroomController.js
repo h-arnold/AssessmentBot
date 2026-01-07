@@ -87,24 +87,15 @@ class GoogleClassroomController {
   saveClassroom(courseName, courseId) {
     const progressTracker = ProgressTracker.getInstance();
     try {
-      // Directly update ClassInfo sheet
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      let sheet = spreadsheet.getSheetByName('ClassInfo');
+      // Store class info in Document Properties
+      const classInfo = {
+        ClassName: courseName,
+        CourseId: String(courseId),
+        YearGroup: null,
+      };
+      ConfigurationManager.getInstance().setClassInfo(classInfo);
 
-      // If 'ClassInfo' sheet doesn't exist, create it
-      if (!sheet) {
-        sheet = spreadsheet.insertSheet('ClassInfo');
-      }
-
-      // Set headers in A1 and B1
-      sheet.getRange('A1').setValue('Class Name');
-      sheet.getRange('A2').setValue('Course ID');
-
-      // Write the selected classroom's name and ID to A2 and B2
-      sheet.getRange('B1').setValue(courseName);
-      sheet.getRange('B2').setValue(courseId);
-
-      console.log(`Classroom saved: ${courseName} (${courseId})`);
+      ABLogger.getInstance().info(`Classroom saved: ${courseName} (${courseId})`);
     } catch (error) {
       progressTracker.logAndThrowError('Error saving classroom: ' + error.message, error);
       Utils.toastMessage('Failed to save classroom: ' + error.message, 'Error', 5);

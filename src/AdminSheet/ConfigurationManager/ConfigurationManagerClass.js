@@ -397,51 +397,128 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
-   * Returns the configured Assessment Record course ID.
-   * Priority: Document Properties -> legacy GoogleClassroomManager.getCourseId() -> null
-   * Returns null when no value can be determined (useful for admin sheet behaviour).
-   * @returns {string|null}
+   * Returns the Class Info object { ClassName, CourseId, YearGroup }.
+   * Lazy migration: If not in properties, tries to read from legacy ClassInfo sheet,
+   * populates properties, and deletes the sheet.
+   * @returns {Object|null} Class info object with ClassName, CourseId, and YearGroup properties, or null if unavailable.
    */
-  getAssessmentRecordCourseId() {
+  getClassInfo() {
     this.ensureInitialized();
 
-    // 1) Document property (preferred)
-    try {
-      const docVal = this.documentProperties.getProperty(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID
-      );
-      if (docVal != null && String(docVal).trim() !== '') {
-        return String(docVal);
+    // 1. Check Document Properties
+    const jsonString = this.documentProperties.getProperty(
+      ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO
+    );
+
+    if (jsonString) {
+      try {
+        return JSON.parse(jsonString);
+      } catch (e) {
+        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', e);
+        return null;
       }
-    } catch (e) {
-      // Swallow and fallback to legacy behaviour
-      if (globalThis.__TRACE_SINGLETON__) console.debug('Error reading document property:', e);
     }
 
-    // 2) Legacy: ask GoogleClassroomManager (may throw if sheet is missing) — handle safely
+    // 2. Migration Logic
+    const gcm = new GoogleClassroomManager();
+    // Check if we can get course ID from legacy method (which reads sheet)
+    // We use try-catch because getCourseId might throw if sheet is missing/invalid,
+    // in which case we just return null (no migration possible).
+    let courseId;
     try {
-      if (typeof GoogleClassroomManager === 'function') {
-        const gcm = new GoogleClassroomManager();
-        if (gcm && typeof gcm.getCourseId === 'function') {
-          const legacy = gcm.getCourseId();
-          return legacy ? String(legacy) : null;
+      courseId = gcm.getCourseId();
+    } catch (ignore) {
+      // Sheet missing or invalid, cannot migrate.
+      return null;
+    }
+
+    if (courseId) {
+      // Fetch additional details
+      let className = 'Unknown Class';
+      try {
+        const course = ClassroomApiClient.fetchCourse(courseId);
+        if (course && course.name) {
+          className = course.name;
         }
+      } catch (e) {
+        ABLogger.getInstance().warn('Could not fetch course details during migration', e);
       }
-    } catch (e) {
-      // Legacy lookup failed; return null as expected for admin sheet
-      if (globalThis.__TRACE_SINGLETON__) console.debug('Legacy getCourseId failed:', e);
+
+      const classInfo = {
+        ClassName: className,
+        CourseId: String(courseId),
+        YearGroup: null, // Default as per requirements
+      };
+
+      this.setClassInfo(classInfo);
+
+      // Delete legacy sheet
+      gcm.deleteClassInfoSheet();
+
+      ABLogger.getInstance().info(
+        'Migrated Class Info from Sheet to DocumentProperties',
+        classInfo
+      );
+      return classInfo;
     }
 
     return null;
   }
 
   /**
+   * Sets the Class Info object to document properties.
+   * @param {Object} classInfo - Class information object.
+   * @param {string} classInfo.ClassName - The name of the class.
+   * @param {string} classInfo.CourseId - The Google Classroom course ID.
+   * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
+   */
+  setClassInfo(classInfo) {
+    Validate.requireParams({ classInfo }, 'setClassInfo');
+
+    // Validate structure
+    if (typeof classInfo !== 'object' || classInfo === null || Array.isArray(classInfo)) {
+      throw new TypeError('classInfo must be an object');
+    }
+
+    Validate.requireParams(
+      { ClassName: classInfo.ClassName, CourseId: classInfo.CourseId },
+      'setClassInfo'
+    );
+
+    const jsonString = JSON.stringify(classInfo);
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
+  }
+
+  /**
+   * Returns the configured Assessment Record course ID.
+   * Priority: Document Properties -> legacy GoogleClassroomManager.getCourseId() -> null
+   * Returns null when no value can be determined (useful for admin sheet behaviour).
+   * @returns {string|null}
+   */
+  getAssessmentRecordCourseId() {
+    const info = this.getClassInfo();
+    return info ? info.CourseId : null;
+  }
+
+  /**
    * Stores the Assessment Record course ID as a document property.
+   * @deprecated Use setClassInfo() instead to set the complete class information object.
+   *             This method will be removed in a future version once all callers are migrated.
    * @param {string|null} courseId
    */
   setAssessmentRecordCourseId(courseId) {
-    // Use setProperty which respects CONFIG_SCHEMA (we defined storage=document for this key)
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID, courseId);
+    const currentInfo = this.getClassInfo() || {
+      ClassName: 'Unknown',
+      CourseId: null,
+      YearGroup: null,
+    };
+    // Create a new object to avoid mutating cached data
+    const updatedInfo = {
+      ClassName: currentInfo.ClassName,
+      CourseId: courseId,
+      YearGroup: currentInfo.YearGroup,
+    };
+    this.setClassInfo(updatedInfo);
   }
 
   getAssessmentRecordDestinationFolder() {

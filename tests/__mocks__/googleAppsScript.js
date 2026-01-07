@@ -222,6 +222,21 @@ const mockPropertiesCloner = function () {
 mockPropertiesCloner._constructorCalls = 0;
 mockPropertiesCloner._calls = [];
 
+// Mock ConfigurationManager for UIManager tests
+const mockConfigurationManager = {
+  _instance: null,
+  getInstance() {
+    if (!this._instance) {
+      this._instance = {
+        getAssessmentRecordCourseId: function () {
+          return 'mock-course-id';
+        },
+      };
+    }
+    return this._instance;
+  },
+};
+
 module.exports = {
   PropertiesService: mockPropertiesService,
   SpreadsheetApp: mockSpreadsheetApp,
@@ -229,5 +244,6 @@ module.exports = {
   DriveApp: mockDriveApp,
   GoogleClassroomManager: mockGoogleClassroomManager,
   PropertiesCloner: mockPropertiesCloner,
+  ConfigurationManager: mockConfigurationManager,
   Utils: { isValidUrl: (u) => typeof u === 'string' && /^https?:\/\//.test(u) },
 };

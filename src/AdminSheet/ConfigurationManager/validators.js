@@ -80,6 +80,59 @@ function toReadableKey(key) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 }
 
+/**
+ * Validates and parses a ClassInfo JSON string.
+ * @param {string} value - JSON string to validate
+ * @returns {string} The validated JSON string
+ * @throws {TypeError} If validation fails
+ */
+function validateClassInfo(value) {
+  // Allow null or empty string (no class info set yet)
+  if (value == null || (typeof value === 'string' && value.trim() === '')) {
+    return value;
+  }
+
+  // Must be a string
+  if (typeof value !== 'string') {
+    throw new TypeError('Assessment Record Class Info must be a JSON string.');
+  }
+
+  // Must be valid JSON
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch (err) {
+    throw new TypeError('Assessment Record Class Info must be valid JSON.');
+  }
+
+  // Must be an object (not null, array, or primitive)
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new TypeError('Assessment Record Class Info must be a JSON object.');
+  }
+
+  // Validate required properties
+  if (!Validate.isNonEmptyString(parsed.ClassName)) {
+    throw new TypeError('Assessment Record Class Info must have a ClassName property (non-empty string).');
+  }
+
+  if (!Validate.isNonEmptyString(parsed.CourseId)) {
+    throw new TypeError('Assessment Record Class Info must have a CourseId property (non-empty string).');
+  }
+
+  // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
+  const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+  if (!courseIdPattern.test(parsed.CourseId)) {
+    throw new TypeError('Assessment Record Class Info CourseId must be alphanumeric (with hyphens/underscores).');
+  }
+
+  // YearGroup is optional but if present must be a number or null
+  if (parsed.YearGroup !== null && parsed.YearGroup !== undefined && typeof parsed.YearGroup !== 'number') {
+    throw new TypeError('Assessment Record Class Info YearGroup must be a number or null.');
+  }
+
+  return value;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     API_KEY_PATTERN,
@@ -91,6 +144,7 @@ if (typeof module !== 'undefined' && module.exports) {
     validateBoolean,
     validateLogLevel,
     validateApiKey,
+    validateClassInfo,
     toBoolean,
     toBooleanString,
     toReadableKey,
