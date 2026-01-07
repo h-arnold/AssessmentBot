@@ -449,7 +449,7 @@ class ConfigurationManager extends BaseSingleton {
       let className = 'Unknown Class';
       try {
         const course = ClassroomApiClient.fetchCourse(courseId);
-        if (course && course.name) {
+        if (course?.name) {
           className = course.name;
         }
       } catch (e) {
