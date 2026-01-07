@@ -403,9 +403,9 @@ class GoogleClassroomManager {
   }
 
   /**
-   * Retrieves the course ID from the 'ClassInfo' sheet.
-   * If the sheet doesn't exist or is missing course ID, prompts the user to select a classroom
-   * using the UIManager's methods.
+   * Retrieves the course ID from the legacy 'ClassInfo' sheet.
+   * @deprecated This method is only used for migration purposes by ConfigurationManager.getClassInfo().
+   *             New code should use ConfigurationManager.getInstance().getAssessmentRecordCourseId().
    * @returns {string} The course ID.
    */
   getCourseId() {

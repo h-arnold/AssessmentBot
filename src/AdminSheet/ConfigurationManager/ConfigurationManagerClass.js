@@ -493,13 +493,23 @@ class ConfigurationManager extends BaseSingleton {
 
   /**
    * Stores the Assessment Record course ID as a document property.
-   * @deprecated Use setClassInfo instead where possible.
+   * @deprecated Use setClassInfo() instead to set the complete class information object.
+   *             This method will be removed in a future version once all callers are migrated.
    * @param {string|null} courseId
    */
   setAssessmentRecordCourseId(courseId) {
-    const info = this.getClassInfo() || { ClassName: 'Unknown', CourseId: null, YearGroup: null };
-    info.CourseId = courseId;
-    this.setClassInfo(info);
+    const currentInfo = this.getClassInfo() || {
+      ClassName: 'Unknown',
+      CourseId: null,
+      YearGroup: null,
+    };
+    // Create a new object to avoid mutating cached data
+    const updatedInfo = {
+      ClassName: currentInfo.ClassName,
+      CourseId: courseId,
+      YearGroup: currentInfo.YearGroup,
+    };
+    this.setClassInfo(updatedInfo);
   }
 
   getAssessmentRecordDestinationFolder() {
