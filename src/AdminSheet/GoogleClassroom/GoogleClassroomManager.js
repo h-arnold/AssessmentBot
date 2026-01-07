@@ -96,7 +96,7 @@ class GoogleClassroomManager {
         const classroom = new GoogleClassroom({
           name: row[1],
           ownerId: row[2],
-          teachers: row.slice(2, 6).filter((email) => email), // Teacher emails
+          teachers: row.slice(2, 6).filter(Boolean), // Teacher emails
         });
         classroom.create();
         // Use updateProgress to record informational messages without incrementing the step
@@ -403,9 +403,9 @@ class GoogleClassroomManager {
   }
 
   /**
-   * Retrieves the course ID from the 'ClassInfo' sheet.
-   * If the sheet doesn't exist or is missing course ID, prompts the user to select a classroom
-   * using the UIManager's methods.
+   * Retrieves the course ID from the legacy 'ClassInfo' sheet.
+   * @deprecated This method is only used for migration purposes by ConfigurationManager.getClassInfo().
+   *             New code should use ConfigurationManager.getInstance().getAssessmentRecordCourseId().
    * @returns {string} The course ID.
    */
   getCourseId() {
@@ -413,7 +413,7 @@ class GoogleClassroomManager {
     const sheet = spreadsheet.getSheetByName('ClassInfo');
 
     // If ClassInfo sheet doesn't exist or course ID is missing
-    if (!sheet || !sheet?.getRange('B2')?.getValue()) {
+    if (!sheet?.getRange('B2')?.getValue()) {
       console.error('ClassInfo sheet not found or missing course ID.');
 
       // Create a detailed error message for logging
@@ -445,5 +445,18 @@ class GoogleClassroomManager {
 
     const courseId = sheet.getRange('B2').getValue();
     return courseId.toString();
+  }
+
+  /**
+   * Deletes the ClassInfo sheet if it exists.
+   * Used after migrating Class Info to Document Properties.
+   */
+  deleteClassInfoSheet() {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName('ClassInfo');
+    if (sheet) {
+      spreadsheet.deleteSheet(sheet);
+      ABLogger.getInstance().info('Legacy ClassInfo sheet deleted.');
+    }
   }
 }

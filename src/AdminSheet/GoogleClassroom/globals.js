@@ -20,7 +20,10 @@ function getAssignments(courseId) {
  */
 function fetchAssignmentsForWizard() {
   const googleClassroomManager = new GoogleClassroomManager();
-  const courseId = googleClassroomManager.getCourseId();
+  const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+  if (!courseId) {
+    throw new Error('No classroom selected. Please select a classroom first.');
+  }
   const assignments = googleClassroomManager.getAssignments(courseId);
   return assignments.map((assignment) => ({
     id: assignment.id,

@@ -78,6 +78,7 @@ class SingletonTestHarness {
     globalThis.DriveApp = gasMocks.DriveApp;
     globalThis.GoogleClassroomManager = gasMocks.GoogleClassroomManager;
     globalThis.PropertiesCloner = gasMocks.PropertiesCloner;
+    globalThis.ConfigurationManager = gasMocks.ConfigurationManager;
     if (!globalThis.Utils && gasMocks.Utils) {
       globalThis.Utils = gasMocks.Utils;
     }

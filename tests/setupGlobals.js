@@ -121,6 +121,7 @@ g.validateUrl = validators.validateUrl;
 g.validateBoolean = validators.validateBoolean;
 g.validateLogLevel = validators.validateLogLevel;
 g.validateApiKey = validators.validateApiKey;
+g.validateClassInfo = validators.validateClassInfo;
 g.toBoolean = validators.toBoolean;
 g.toBooleanString = validators.toBooleanString;
 g.toReadableKey = validators.toReadableKey;

@@ -163,9 +163,14 @@ class AssignmentController {
       this.progressTracker.startTracking();
       this.progressTracker.updateProgress('Assessment run starting.');
 
-      // Lazily instantiate ClassroomManager
-      const classroomManager = new GoogleClassroomManager();
-      const courseId = classroomManager.getCourseId();
+      // Get Course ID from Configuration (handles migration if needed)
+      const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+      if (!courseId) {
+        this.progressTracker.logAndThrowError(
+          'Course ID could not be determined. Please ensure class info is set up.'
+        );
+      }
+
       ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
       this.progressTracker.updateProgress(`Course ID retrieved: ${courseId}`, false);
 
@@ -401,8 +406,11 @@ class AssignmentController {
 
     const documentType = this._detectDocumentType(referenceId, templateId);
 
-    const classroomManager = new GoogleClassroomManager();
-    const courseId = classroomManager.getCourseId();
+    const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+    if (!courseId) {
+      ProgressTracker.getInstance().logAndThrowError('Course ID not found in configuration.');
+    }
+
     const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
     const topicId = courseWork?.topicId || null;
     const primaryTitle = courseWork?.title || assignmentTitle;

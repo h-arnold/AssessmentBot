@@ -73,6 +73,14 @@ describe('AssignmentController - Definition Hydration', () => {
       getInstance: vi.fn().mockReturnValue(mockProgressTracker),
     };
 
+    // Mock ConfigurationManager
+    const mockConfigurationManager = {
+      getAssessmentRecordCourseId: vi.fn().mockReturnValue('course-123'),
+    };
+    globalThis.ConfigurationManager = {
+      getInstance: vi.fn().mockReturnValue(mockConfigurationManager),
+    };
+
     // Mock TriggerController
     mockTriggerController = {
       deleteTriggerById: vi.fn(),
