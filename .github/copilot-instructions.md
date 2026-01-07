@@ -25,12 +25,15 @@ npm run format    # Format code with Prettier
 ```
 
 **Key Documentation:**
-- `./CONTRIBUTING.md` - General coding and documentation style guide
-- `./docs/developer/testing.md` - Testing patterns and best practices
-- `./docs/developer/singletons.md` - Singleton pattern implementation guide
-- `./docs/developer/DATA_SHAPES.md` - Data structure specifications
-- `./docs/developer/AssessmentFlow.md` - An overview of the assessment flow.
-- `./docs/developer/rehydration.md` - Detailed information on how data is persisted to disk.
+- `./CONTRIBUTING.md` - General coding and documentation style guide.
+- `./docs/developer/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
+- `./docs/developer/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
+- `./docs/developer/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
+- `./docs/developer/testing.md` - Test patterns and best practices for Vitest unit tests, mocking of Apps Script services, and test organisation.
+- `./docs/developer/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
+- `./docs/developer/oauth-scopes.md` - The OAuth scopes required for Google Apps Script integrations and the rationale for each scope.
+- `./docs/developer/UI.md` - Front-end UI conventions, modal/dialog patterns, accessibility considerations and styling guidance.
+- `./docs/developer/Vendoring.md` - Guidance for vendoring third-party libraries into the Apps Script project and the associated tooling/workflows.
 
 ### 0. Prime Directives (Highest Priority – never violate)
 1. KISS: simplest working solution. No speculative abstraction.

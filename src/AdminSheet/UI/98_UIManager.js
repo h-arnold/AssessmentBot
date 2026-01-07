@@ -205,6 +205,7 @@ class UIManager extends BaseSingleton {
       const debugSubMenu = ui
         .createMenu('Debug')
         .addItem('Assess Student Work', 'showAssignmentDropdown')
+        .addItem('Assessment wizard', 'showAssessmentWizard')
         .addItem('Check Progress', 'showProgressModal')
         .addItem('BeerCSS Playground', 'showBeerCssPlaygroundDialog');
       menu.addSubMenu(debugSubMenu);

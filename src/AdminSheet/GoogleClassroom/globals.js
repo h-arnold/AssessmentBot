@@ -13,6 +13,22 @@ function getAssignments(courseId) {
 }
 
 /**
+ * Retrieves assignments for the currently selected classroom.
+ * Used by the assessment wizard Step 1.
+ *
+ * @returns {Array<{id:string,title:string}>} Assignments with minimal fields.
+ */
+function fetchAssignmentsForWizard() {
+  const googleClassroomManager = new GoogleClassroomManager();
+  const courseId = googleClassroomManager.getCourseId();
+  const assignments = googleClassroomManager.getAssignments(courseId);
+  return assignments.map((assignment) => ({
+    id: assignment.id,
+    title: assignment.title,
+  }));
+}
+
+/**
  * Fetches Google Classrooms and populates them as needed.
  */
 function handleFetchGoogleClassrooms() {

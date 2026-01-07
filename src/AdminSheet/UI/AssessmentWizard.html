@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <?!= include('UI/partials/Head') ?> <?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!=
+    include('UI/vendor/beercss/BeerCssJs') ?>
+    <title>Assessment wizard</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .wizard-content {
+        padding: 1rem;
+        flex: 1;
+      }
+
+      .wizard-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 0 1rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="beer">
+      <main class="wizard-content">
+      <header>
+        <p class="muted">
+          Choose the Classroom assignment you want to assess before moving on to the document
+          inputs.
+        </p>
+      </header>
+
+      <fieldset class="field-group">
+        <legend>Assignment</legend>
+        <div class="field label suffix border">
+          <select id="assignmentSelect" disabled>
+            <option value="">Loading assignments...</option>
+          </select>
+          <label for="assignmentSelect">Assignment</label>
+          <progress
+            id="assignmentLoadingSpinner"
+            class="circle indeterminate"
+            aria-hidden="false"
+          ></progress>
+        </div>
+        <output
+          id="assignmentErrorMessage"
+          class="status danger"
+          aria-live="polite"
+          hidden
+        ></output>
+      </fieldset>
+    </main>
+
+    <footer class="wizard-actions">
+      <nav class="group connected">
+        <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
+        <button
+          class="button border right-round primary"
+          type="button"
+          id="startAssessment"
+          disabled
+        >
+          Start assessment
+        </button>
+      </nav>
+    </footer>
+    </div>
+
+    <script>
+      (() => {
+        const assignmentSelect = document.getElementById('assignmentSelect');
+        const spinner = document.getElementById('assignmentLoadingSpinner');
+        const startButton = document.getElementById('startAssessment');
+        const cancelButton = document.getElementById('cancelWizard');
+        const errorMessage = document.getElementById('assignmentErrorMessage');
+
+        const assignmentWizard = {
+          initialised: false,
+          state: {
+            assignments: [],
+            selectedAssignmentId: '',
+          },
+          init() {
+            if (this.initialised) return;
+            this.initialised = true;
+            this.bindEvents();
+            this.prepareForLoad('Loading assignments...');
+            this.fetchAssignments();
+          },
+          bindEvents() {
+            assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
+            cancelButton.addEventListener('click', () => this.handleCancel());
+          },
+          prepareForLoad(placeholder) {
+            this.setControlsEnabled(false);
+            this.renderPlaceholder(placeholder);
+            this.hideError();
+            this.setSpinnerVisible(true);
+          },
+          fetchAssignments() {
+            google.script.run
+              .withSuccessHandler((payload) => this.handleAssignmentsSuccess(payload))
+              .withFailureHandler((error) => this.handleAssignmentsFailure(error))
+              .fetchAssignmentsForWizard();
+          },
+          renderPlaceholder(text) {
+            assignmentSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = text;
+            placeholderOption.selected = true;
+            placeholderOption.disabled = true;
+            assignmentSelect.appendChild(placeholderOption);
+          },
+          handleAssignmentsSuccess(assignments) {
+            this.state.assignments = Array.isArray(assignments) ? assignments : [];
+            this.setSpinnerVisible(false);
+
+            if (this.state.assignments.length === 0) {
+              this.setControlsEnabled(false);
+              this.renderPlaceholder('No assignments available yet');
+              this.showError('No assignments were found for this classroom.');
+              return;
+            }
+
+            this.hideError();
+            this.renderPlaceholder('Select an assignment...');
+            // Populate dropdown with assignments
+            this.state.assignments.forEach((assignment) => {
+              const option = document.createElement('option');
+              option.value = assignment.id;
+              option.textContent = assignment.title || 'Untitled assignment';
+              assignmentSelect.appendChild(option);
+            });
+            this.setControlsEnabled(true);
+            this.handleSelectionChange();
+          },
+          handleAssignmentsFailure(error) {
+            this.state.assignments = [];
+            this.setSpinnerVisible(false);
+            this.renderPlaceholder('Unable to load assignments');
+            this.setControlsEnabled(false);
+            this.showError(
+              error?.message
+                ? `Failed to load assignments: ${error.message}`
+                : 'Failed to load assignments.'
+            );
+          },
+          handleSelectionChange() {
+            this.state.selectedAssignmentId = assignmentSelect.value;
+            startButton.disabled = !this.state.selectedAssignmentId;
+          },
+          handleCancel() {
+            google.script.host.close();
+          },
+          setSpinnerVisible(visible) {
+            spinner.hidden = !visible;
+            spinner.setAttribute('aria-hidden', visible ? 'false' : 'true');
+          },
+          setControlsEnabled(enabled) {
+            assignmentSelect.disabled = !enabled;
+            startButton.disabled = !enabled;
+          },
+          showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.hidden = false;
+          },
+          hideError() {
+            errorMessage.hidden = true;
+            errorMessage.textContent = '';
+          },
+        };
+
+        globalThis.assignmentWizard = assignmentWizard;
+
+        const kickOff = () => assignmentWizard.init();
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', kickOff);
+        } else {
+          kickOff();
+        }
+      })();
+    </script>
+  </body>
+</html>

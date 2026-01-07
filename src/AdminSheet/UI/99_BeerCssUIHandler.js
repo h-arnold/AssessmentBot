@@ -71,6 +71,16 @@ class BeerCSSUIHandler extends UIManager {
     });
   }
 
+  /**
+   * Shows the assessment wizard modal for Step 1.
+   */
+  showAssessmentWizard() {
+    this._renderBeerCSSDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
+      width: 660,
+      height: 360,
+    });
+  }
+
   // TODO: Override parent methods here as you refactor them to BeerCSS
   // Example stub for future migration:
   // showConfigurationDialog() {

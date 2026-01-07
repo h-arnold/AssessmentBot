@@ -245,6 +245,12 @@ Exercise client-side logic that lives inside Apps Script HTML templates (e.g. mo
   - Dispatch a synthetic `DOMContentLoaded` event after loading scripts to mirror Apps Script behaviour.
   - Keep tests focused on behaviour (DOM state, mock invocations) rather than Materialize internals.
 
+BeerCSS notes:
+
+- `tests/ui/beercssJsVendor.test.js` is a smoke suite that verifies the vendored BeerCSS JS partial executes as a classic script (HtmlService-compatible) and exposes `window.ui`.
+- BeerCSS initialises some behaviour lazily; if you are asserting `[data-ui]` click wiring, call `window.ui()` first in the test to force a synchronous setup pass.
+- BeerCSS reads `window.matchMedia` during startup for theme auto-selection; mock `matchMedia` in JSDOM-based tests.
+
 Test utility functions:
 
 - **ABLogger**: Logging functionality
