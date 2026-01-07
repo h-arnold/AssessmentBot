@@ -273,7 +273,10 @@ class UIManager extends BaseSingleton {
    */
   showAssignmentDropdown() {
     const cm = this.ensureClassroomManager();
-    const courseId = cm.getCourseId();
+    const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+    if (!courseId) {
+      ProgressTracker.getInstance().logAndThrowError('Course ID not found in configuration.');
+    }
     const assignments = cm.getAssignments(courseId);
     const maxTitleLength = this.getMaxTitleLength(assignments);
     const modalWidth = Math.max(300, maxTitleLength * 10);
@@ -309,7 +312,10 @@ class UIManager extends BaseSingleton {
     this.safeUiOperation(() => {
       try {
         const assignmentDataObj = JSON.parse(assignmentData);
-        const courseId = this.ensureClassroomManager().getCourseId();
+        const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+        if (!courseId) {
+          throw new Error('Course ID not configured locally.');
+        }
         const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentDataObj.id);
         const topicId = courseWork?.topicId || null;
         const abClassController = new ABClassController();

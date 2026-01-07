@@ -446,4 +446,17 @@ class GoogleClassroomManager {
     const courseId = sheet.getRange('B2').getValue();
     return courseId.toString();
   }
+
+  /**
+   * Deletes the ClassInfo sheet if it exists.
+   * Used after migrating Class Info to Document Properties.
+   */
+  deleteClassInfoSheet() {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName('ClassInfo');
+    if (sheet) {
+      spreadsheet.deleteSheet(sheet);
+      console.log('Legacy ClassInfo sheet deleted.');
+    }
+  }
 }

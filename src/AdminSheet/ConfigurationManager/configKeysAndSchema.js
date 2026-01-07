@@ -27,6 +27,7 @@ const CONFIG_KEYS = Object.freeze({
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
   JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
+  ASSESSMENT_RECORD_CLASS_INFO: 'assessmentRecordClassInfo',
 });
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -72,6 +73,18 @@ const CONFIG_SCHEMA = Object.freeze({
         throw new TypeError('Assessment Record Course ID must be a string.');
       }
       return v;
+    },
+  },
+  [CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO]: {
+    storage: 'document',
+    validate: (v) => {
+      // Expecting a JSON string here as setProperty converts to string if normalized, or handled manually.
+      // But allow object pass-through if the setter handles stringify?
+      // Since specific setter will use JSON.stringify, and validation runs before storage...
+      // but wait, setProperty calls validate.
+      // If I pass JSON string to setProperty, validate receives string.
+      if (typeof v === 'string') return v;
+      throw new TypeError('Assessment Record Class Info must be a JSON string.');
     },
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
