@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <?!= include('UI/partials/Head') ?> <?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!=
     include('UI/vendor/beercss/BeerCssJs') ?>
@@ -30,8 +30,9 @@
       }
     </style>
   </head>
-  <body class="beer">
-    <main class="wizard-content">
+  <body>
+    <div class="beer">
+      <main class="wizard-content">
       <header>
         <p class="muted">
           Choose the Classroom assignment you want to assess before moving on to the document
@@ -74,6 +75,7 @@
         </button>
       </nav>
     </footer>
+    </div>
 
     <script>
       (() => {
@@ -101,11 +103,10 @@
             cancelButton.addEventListener('click', () => this.handleCancel());
           },
           prepareForLoad(placeholder) {
-            startButton.disabled = true;
-            assignmentSelect.disabled = true;
+            this.setControlsEnabled(false);
             this.renderPlaceholder(placeholder);
             this.hideError();
-            this.showSpinner();
+            this.setSpinnerVisible(true);
           },
           fetchAssignments() {
             google.script.run
@@ -124,30 +125,33 @@
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
-            this.hideSpinner();
+            this.setSpinnerVisible(false);
+
             if (this.state.assignments.length === 0) {
-              assignmentSelect.disabled = true;
+              this.setControlsEnabled(false);
               this.renderPlaceholder('No assignments available yet');
               this.showError('No assignments were found for this classroom.');
               return;
             }
+
             this.hideError();
             this.renderPlaceholder('Select an assignment...');
+            // Populate dropdown with assignments
             this.state.assignments.forEach((assignment) => {
               const option = document.createElement('option');
               option.value = assignment.id;
               option.textContent = assignment.title || 'Untitled assignment';
               assignmentSelect.appendChild(option);
             });
+            // Enable select for user choice, but keep button disabled until selection is made
             assignmentSelect.disabled = false;
             startButton.disabled = true;
           },
           handleAssignmentsFailure(error) {
             this.state.assignments = [];
-            this.hideSpinner();
-            assignmentSelect.disabled = true;
+            this.setSpinnerVisible(false);
             this.renderPlaceholder('Unable to load assignments');
-            startButton.disabled = true;
+            this.setControlsEnabled(false);
             this.showError(
               error?.message
                 ? `Failed to load assignments: ${error.message}`
@@ -161,13 +165,13 @@
           handleCancel() {
             google.script.host.close();
           },
-          showSpinner() {
-            spinner.hidden = false;
-            spinner.removeAttribute('aria-hidden');
+          setSpinnerVisible(visible) {
+            spinner.hidden = !visible;
+            spinner.setAttribute('aria-hidden', visible ? 'false' : 'true');
           },
-          hideSpinner() {
-            spinner.hidden = true;
-            spinner.setAttribute('aria-hidden', 'true');
+          setControlsEnabled(enabled) {
+            assignmentSelect.disabled = !enabled;
+            startButton.disabled = !enabled;
           },
           showError(message) {
             errorMessage.textContent = message;
