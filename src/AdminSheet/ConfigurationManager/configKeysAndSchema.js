@@ -7,7 +7,7 @@
 // require them here to avoid duplicate declaration errors when running in
 // the GAS runtime where these are already present on the global object.
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
-/* global validateLogLevel, validateApiKey, validateClassInfo, toBooleanString */
+/* global validateLogLevel, validateApiKey, validateClassInfo, toBooleanString, Validate */
 
 const CONFIG_KEYS = Object.freeze({
   BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
