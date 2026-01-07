@@ -68,8 +68,8 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID]: {
     storage: 'document',
     validate: (v) => {
-      if (v == null || (typeof v === 'string' && v.trim() === '')) return v;
-      if (typeof v !== 'string') {
+      if (v == null || (Validate.isString(v) && v.trim() === '')) return v;
+      if (!Validate.isString(v)) {
         throw new TypeError('Assessment Record Course ID must be a string.');
       }
       return v;

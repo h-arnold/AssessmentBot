@@ -12,7 +12,7 @@ class Utils {
    */
   static generateHash(input) {
     let inputBytes;
-    if (typeof input === 'string') {
+    if (Validate.isString(input)) {
       inputBytes = Utilities.newBlob(input).getBytes();
     } else {
       inputBytes = input; // Assume input is a byte array

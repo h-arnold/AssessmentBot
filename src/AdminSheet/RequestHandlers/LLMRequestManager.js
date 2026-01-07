@@ -156,7 +156,7 @@ class LLMRequestManager extends BaseRequestManager {
       (criterion) =>
         data.hasOwnProperty(criterion) &&
         typeof data[criterion].score === 'number' &&
-        typeof data[criterion].reasoning === 'string'
+        Validate.isString(data[criterion].reasoning)
     );
   }
 

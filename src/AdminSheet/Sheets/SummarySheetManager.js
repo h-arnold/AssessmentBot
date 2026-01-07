@@ -44,7 +44,7 @@ class SummarySheetManager extends BaseSheetManager {
     const rowData = summaryRows.map((row) => ({
       values: row.map((cell) => {
         // If cell is a formula (i.e. starts with "="), store as formula
-        if (typeof cell === 'string' && cell.trim().startsWith('=')) {
+        if (Validate.isString(cell) && cell.trim().startsWith('=')) {
           return { userEnteredValue: { formulaValue: cell.trim() } };
         }
         // Otherwise store as a string

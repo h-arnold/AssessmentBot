@@ -20,7 +20,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    */
   normalizeContent(content) {
     if (content == null) return null;
-    if (typeof content === 'string') return null;
+    if (Validate.isString(content)) return null;
     if (!Array.isArray(content)) return null;
     const rows = content.map((row) =>
       Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
@@ -30,7 +30,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     for (const row of trimmed) {
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
-        if (typeof cell === 'string' && cell.startsWith('=')) {
+        if (Validate.isString(cell) && cell.startsWith('=')) {
           row[c] = this._canonicaliseFormula(cell);
         }
       }

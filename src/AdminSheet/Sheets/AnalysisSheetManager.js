@@ -304,7 +304,7 @@ class AnalysisSheetManager extends BaseSheetManager {
 
     if (t === 'TEXT') return artifact.content;
     if (t === 'TABLE')
-      return typeof artifact.content === 'string' ? artifact.content : String(artifact.content);
+      return Validate.isString(artifact.content) ? artifact.content : String(artifact.content);
     if (t === 'SPREADSHEET')
       return artifact.content.map((r) => r.map((c) => (c == null ? '' : c)).join('\t')).join('\n');
     if (t === 'IMAGE') return artifact.content ? '[image]' : '';
