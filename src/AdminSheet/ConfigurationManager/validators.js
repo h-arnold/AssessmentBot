@@ -77,7 +77,7 @@ function toBooleanString(value) {
 }
 
 function toReadableKey(key) {
-  return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+  return key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
 }
 
 /**
@@ -87,13 +87,8 @@ function toReadableKey(key) {
  * @throws {TypeError} If validation fails
  */
 function validateClassInfo(value) {
-  // Allow null or empty string (no class info set yet)
-  if (value == null || (typeof value === 'string' && value.trim() === '')) {
-    return value;
-  }
-
   // Must be a string
-  if (typeof value !== 'string') {
+  if (!Validate.isString(value)) {
     throw new TypeError('Assessment Record Class Info must be a JSON string.');
   }
 
@@ -112,21 +107,31 @@ function validateClassInfo(value) {
 
   // Validate required properties
   if (!Validate.isNonEmptyString(parsed.ClassName)) {
-    throw new TypeError('Assessment Record Class Info must have a ClassName property (non-empty string).');
+    throw new TypeError(
+      'Assessment Record Class Info must have a ClassName property (non-empty string).'
+    );
   }
 
   if (!Validate.isNonEmptyString(parsed.CourseId)) {
-    throw new TypeError('Assessment Record Class Info must have a CourseId property (non-empty string).');
+    throw new TypeError(
+      'Assessment Record Class Info must have a CourseId property (non-empty string).'
+    );
   }
 
   // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
   const courseIdPattern = /^[A-Za-z0-9_-]+$/;
   if (!courseIdPattern.test(parsed.CourseId)) {
-    throw new TypeError('Assessment Record Class Info CourseId must be alphanumeric (with hyphens/underscores).');
+    throw new TypeError(
+      'Assessment Record Class Info CourseId must be alphanumeric (with hyphens/underscores).'
+    );
   }
 
   // YearGroup is optional but if present must be a number or null
-  if (parsed.YearGroup !== null && parsed.YearGroup !== undefined && typeof parsed.YearGroup !== 'number') {
+  if (
+    parsed.YearGroup !== null &&
+    parsed.YearGroup !== undefined &&
+    !Validate.isNumber(parsed.YearGroup)
+  ) {
     throw new TypeError('Assessment Record Class Info YearGroup must be a number or null.');
   }
 
