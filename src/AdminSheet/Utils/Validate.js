@@ -169,6 +169,72 @@ class Validate {
         throw new Error(`${paramName} is required${contextStr}`);
     }
   }
+
+  /**
+   * Validates that a value is an integer within a specified range.
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @param {number} min - Minimum allowed value (inclusive).
+   * @param {number} max - Maximum allowed value (inclusive).
+   * @returns {number} The validated integer value.
+   * @throws {Error} If value is not an integer or is outside the specified range.
+   */
+  static validateIntegerInRange(label, value, min, max) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+      throw new Error(`${label} must be an integer between ${min} and ${max}.`);
+    }
+    return parsed;
+  }
+
+  /**
+   * Validates that a value is a non-empty string.
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @returns {string} The validated string value.
+   * @throws {Error} If value is not a non-empty string.
+   */
+  static validateNonEmptyString(label, value) {
+    if (!Validate.isNonEmptyString(value)) {
+      throw new Error(`${label} must be a non-empty string.`);
+    }
+    return value;
+  }
+
+  /**
+   * Validates that a value is a valid URL string.
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @returns {string} The validated URL string.
+   * @throws {Error} If value is not a valid URL string.
+   */
+  static validateUrl(label, value) {
+    const isValid = typeof value === 'string' && Validate.isValidUrl(value);
+    if (!isValid) {
+      throw new Error(`${label} must be a valid URL string.`);
+    }
+    return value;
+  }
+
+  /**
+   * Validates and coerces a value to a boolean.
+   * Accepts boolean values, or string representations ('true'/'false').
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @returns {boolean} The validated/coerced boolean value.
+   * @throws {Error} If value cannot be interpreted as a boolean.
+   */
+  static validateBoolean(label, value) {
+    if (Validate.isBoolean(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const lower = value.toLowerCase();
+      if (lower === 'true') return true;
+      if (lower === 'false') return false;
+    }
+    throw new Error(`${label} must be a boolean (true/false).`);
+  }
 }
 
 if (typeof module !== 'undefined') {

@@ -7,45 +7,8 @@ const API_KEY_PATTERN = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
 const DRIVE_ID_PATTERN = /^[A-Za-z0-9-_]{10,}$/;
 const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
 
-function validateIntegerInRange(label, value, min, max) {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    throw new Error(`${label} must be an integer between ${min} and ${max}.`);
-  }
-  return parsed;
-}
-
-function validateNonEmptyString(label, value) {
-  if (!Validate.isNonEmptyString(value)) {
-    throw new Error(`${label} must be a non-empty string.`);
-  }
-  return value;
-}
-
-function validateUrl(label, value) {
-  const isValid = typeof value === 'string' && Validate.isValidUrl(value);
-  if (!isValid) {
-    throw new Error(`${label} must be a valid URL string.`);
-  }
-  return value;
-}
-
-function validateBoolean(label, value) {
-  if (Validate.isBoolean(value)) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const lower = value.toLowerCase();
-    if (lower === 'true') return true;
-    if (lower === 'false') return false;
-  }
-  throw new Error(`${label} must be a boolean (true/false).`);
-}
-
 function validateLogLevel(label, value) {
-  if (!Validate.isNonEmptyString(value)) {
-    throw new Error(`${label} must be a string.`);
-  }
+  Validate.validateNonEmptyString(label, value);
   const upper = value.trim().toUpperCase();
   if (!JSON_DB_LOG_LEVELS.includes(upper)) {
     throw new Error(`${label} must be one of: ${JSON_DB_LOG_LEVELS.join(', ')}`);
@@ -139,10 +102,6 @@ if (typeof module !== 'undefined' && module.exports) {
     API_KEY_PATTERN,
     DRIVE_ID_PATTERN,
     JSON_DB_LOG_LEVELS,
-    validateIntegerInRange,
-    validateNonEmptyString,
-    validateUrl,
-    validateBoolean,
     validateLogLevel,
     validateApiKey,
     validateClassInfo,

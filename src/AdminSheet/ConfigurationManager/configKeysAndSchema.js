@@ -7,7 +7,7 @@
 // require them here to avoid duplicate declaration errors when running in
 // the GAS runtime where these are already present on the global object.
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
-/* global validateIntegerInRange, validateNonEmptyString, validateUrl, validateBoolean, validateLogLevel, validateApiKey, validateClassInfo, toBooleanString */
+/* global validateLogLevel, validateApiKey, validateClassInfo, toBooleanString */
 
 const CONFIG_KEYS = Object.freeze({
   BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
@@ -33,15 +33,15 @@ const CONFIG_KEYS = Object.freeze({
 const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
     storage: 'script',
-    validate: (v) => validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
+    validate: (v) => Validate.validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
   },
   [CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
     storage: 'script',
-    validate: (v) => validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
+    validate: (v) => Validate.validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
   },
   [CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: {
     storage: 'script',
-    validate: (v) => validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
+    validate: (v) => Validate.validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
   },
   [CONFIG_KEYS.API_KEY]: {
     storage: 'script',
@@ -49,16 +49,16 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.BACKEND_URL]: {
     storage: 'script',
-    validate: (v) => validateUrl('Backend Url', v),
+    validate: (v) => Validate.validateUrl('Backend Url', v),
   },
   [CONFIG_KEYS.UPDATE_DETAILS_URL]: {
     storage: 'script',
-    validate: (v) => validateUrl('Update Details Url', v),
+    validate: (v) => Validate.validateUrl('Update Details Url', v),
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID]: {
     storage: 'script',
     validate: (v, instance) => {
-      validateNonEmptyString('Assessment Record Template Id', v);
+      Validate.validateNonEmptyString('Assessment Record Template Id', v);
       if (!instance.isValidGoogleSheetId(v)) {
         throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
       }
@@ -82,7 +82,7 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
     storage: 'script',
     validate: (v, instance) => {
-      validateNonEmptyString('Assessment Record Destination Folder', v);
+      Validate.validateNonEmptyString('Assessment Record Destination Folder', v);
       if (!instance.isValidGoogleDriveFolderId(v)) {
         throw new Error(
           'Assessment Record Destination Folder must be a valid Google Drive Folder ID.'
@@ -103,21 +103,21 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.IS_ADMIN_SHEET]: {
     storage: 'document',
-    validate: (v) => validateBoolean('Is Admin Sheet', v),
+    validate: (v) => Validate.validateBoolean('Is Admin Sheet', v),
     normalize: toBooleanString,
   },
   [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
     storage: 'document',
-    validate: (v) => validateBoolean('Revoke Auth Trigger Set', v),
+    validate: (v) => Validate.validateBoolean('Revoke Auth Trigger Set', v),
     normalize: toBooleanString,
   },
   [CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: {
     storage: 'script',
-    validate: (v) => validateNonEmptyString('JSON DB Master Index Key', v),
+    validate: (v) => Validate.validateNonEmptyString('JSON DB Master Index Key', v),
   },
   [CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
     storage: 'script',
-    validate: (v) => validateIntegerInRange('JSON DB Lock Timeout (ms)', v, 1000, 600000),
+    validate: (v) => Validate.validateIntegerInRange('JSON DB Lock Timeout (ms)', v, 1000, 600000),
   },
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',
@@ -126,7 +126,7 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: {
     storage: 'script',
-    validate: (v) => validateBoolean('JSON DB Backup On Initialise', v),
+    validate: (v) => Validate.validateBoolean('JSON DB Backup On Initialise', v),
     normalize: toBooleanString,
   },
   [CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: {
