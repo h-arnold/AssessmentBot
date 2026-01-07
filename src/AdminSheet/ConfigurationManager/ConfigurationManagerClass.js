@@ -400,8 +400,6 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {Object|null} Class info object with ClassName, CourseId, and YearGroup properties, or null if unavailable.
    */
   getClassInfo() {
-    this.ensureInitialized();
-
     // 1. Check Document Properties
     const jsonString = this.documentProperties.getProperty(
       ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO
@@ -416,7 +414,63 @@ class ConfigurationManager extends BaseSingleton {
       }
     }
 
-    // 2. Migration Logic
+    // 2. Migration Logic - defer to deprecated helper method which performs the same behaviour
+    const migrated = this._migrateClassInfoFromLegacySheet();
+    if (migrated !== undefined) {
+      return migrated;
+    }
+  }
+
+  /**
+   * Sets the Class Info object to document properties.
+   * @param {Object} classInfo - Class information object.
+   * @param {string} classInfo.ClassName - The name of the class.
+   * @param {string} classInfo.CourseId - The Google Classroom course ID.
+   * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
+   */
+  setClassInfo(classInfo) {
+    Validate.requireParams({ classInfo }, 'setClassInfo');
+
+    // Validate structure
+    if (typeof classInfo !== 'object' || classInfo === null || Array.isArray(classInfo)) {
+      throw new TypeError('classInfo must be an object');
+    }
+
+    Validate.requireParams(
+      { ClassName: classInfo.ClassName, CourseId: classInfo.CourseId },
+      'setClassInfo'
+    );
+
+    const courseIdAsString = String(classInfo.CourseId);
+    const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+    if (!courseIdPattern.test(courseIdAsString)) {
+      throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
+    }
+
+    if ('YearGroup' in classInfo) {
+      const { YearGroup } = classInfo;
+      if (YearGroup !== null && !Validate.isNumber(YearGroup)) {
+        throw new TypeError('classInfo.YearGroup must be a number or null');
+      }
+    }
+
+    const classInfoToPersist = {
+      ...classInfo,
+      CourseId: courseIdAsString,
+    };
+
+    const jsonString = JSON.stringify(classInfoToPersist);
+    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
+  }
+
+  /**
+   * Attempts to migrate legacy ClassInfo from a sheet into Document Properties.
+   * @deprecated Remove this method once all ClassInfo sheets are migrated; kept as a helper during rollout.
+   * @return {Object|null|undefined} The migrated classInfo object, null when migration could not proceed
+   *                                due to missing sheet (admin/non-admin distinctions), or undefined when
+   *                                no legacy course id was present.
+   */
+  _migrateClassInfoFromLegacySheet() {
     const gcm = new GoogleClassroomManager();
     // Check if we can get course ID from legacy method (which reads sheet)
     // We use try-catch because getCourseId might throw if sheet is missing/invalid,
@@ -480,7 +534,6 @@ class ConfigurationManager extends BaseSingleton {
 
       this.setClassInfo(classInfo);
 
-      // Delete legacy sheet
       gcm.deleteClassInfoSheet();
 
       ABLogger.getInstance().info(
@@ -490,50 +543,8 @@ class ConfigurationManager extends BaseSingleton {
       return classInfo;
     }
 
-    return null;
-  }
-
-  /**
-   * Sets the Class Info object to document properties.
-   * @param {Object} classInfo - Class information object.
-   * @param {string} classInfo.ClassName - The name of the class.
-   * @param {string} classInfo.CourseId - The Google Classroom course ID.
-   * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
-   */
-  setClassInfo(classInfo) {
-    this.ensureInitialized();
-    Validate.requireParams({ classInfo }, 'setClassInfo');
-
-    // Validate structure
-    if (typeof classInfo !== 'object' || classInfo === null || Array.isArray(classInfo)) {
-      throw new TypeError('classInfo must be an object');
-    }
-
-    Validate.requireParams(
-      { ClassName: classInfo.ClassName, CourseId: classInfo.CourseId },
-      'setClassInfo'
-    );
-
-    const courseIdAsString = String(classInfo.CourseId);
-    const courseIdPattern = /^[A-Za-z0-9_-]+$/;
-    if (!courseIdPattern.test(courseIdAsString)) {
-      throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
-    }
-
-    if ('YearGroup' in classInfo) {
-      const { YearGroup } = classInfo;
-      if (YearGroup !== null && !Validate.isNumber(YearGroup)) {
-        throw new TypeError('classInfo.YearGroup must be a number or null');
-      }
-    }
-
-    const classInfoToPersist = {
-      ...classInfo,
-      CourseId: courseIdAsString,
-    };
-
-    const jsonString = JSON.stringify(classInfoToPersist);
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
+    // No legacy course id present
+    return undefined;
   }
 
   /**
