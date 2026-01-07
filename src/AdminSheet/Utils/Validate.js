@@ -109,7 +109,7 @@ class Validate {
     if (trimmed.length === 0) return false;
     if (/\s/.test(trimmed)) return false;
 
-    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[\/?#]|$)/.exec(trimmed);
+    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[/?#]|$)/.exec(trimmed);
     if (!match) {
       try {
         ProgressTracker.getInstance().logError(`Invalid URL found: ${trimmed}`, { url: trimmed });
