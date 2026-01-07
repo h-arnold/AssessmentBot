@@ -427,7 +427,19 @@ class ConfigurationManager extends BaseSingleton {
     let courseId;
     try {
       courseId = gcm.getCourseId();
-    } catch (ignore) {
+    } catch (error_) {
+      // The AdminSheet isn't assigned a class by default.
+      if (!isAdminSheet) {
+        ABLogger.getInstance().error(
+          `No Class Information in Document Properties or 'ClassInfo' sheet.`,
+          e
+        );
+        throw error_;
+      }
+
+      ABLogger.getInstance().warn(
+        `No Document Properties or 'ClassInfo' sheet to pull class information from.`
+      );
       // Sheet missing or invalid, cannot migrate.
       return null;
     }

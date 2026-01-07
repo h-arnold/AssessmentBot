@@ -19,7 +19,7 @@ describe('ConfigurationManager Class Info Migration', () => {
       getCourseId: vi.fn(),
       deleteClassInfoSheet: vi.fn(),
     };
-    global.GoogleClassroomManager = vi.fn().mockImplementation(function () {
+    globalThis.GoogleClassroomManager = vi.fn().mockImplementation(function () {
       return mockGoogleClassroomManagerInstance;
     });
 
@@ -27,10 +27,10 @@ describe('ConfigurationManager Class Info Migration', () => {
     mockClassroomApiClient = {
       fetchCourse: vi.fn(),
     };
-    global.ClassroomApiClient = mockClassroomApiClient;
+    globalThis.ClasssroomApiClient = mockClassroomApiClient;
 
     // Helper mocks
-    global.ABLogger = {
+    globalThis.ABLogger = {
       getInstance: () => ({
         error: vi.fn(),
         warn: vi.fn(),
@@ -47,9 +47,9 @@ describe('ConfigurationManager Class Info Migration', () => {
   });
 
   afterEach(() => {
-    delete global.GoogleClassroomManager;
-    delete global.ClassroomApiClient;
-    delete global.ABLogger;
+    delete globalThis.GoogleClassroomManager;
+    delete globalThis.ClassroomApiClient;
+    delete globalThis.ABLogger;
     vi.unstubAllGlobals();
   });
 
@@ -69,7 +69,7 @@ describe('ConfigurationManager Class Info Migration', () => {
     expect(mocks.PropertiesService.documentProperties.getProperty).toHaveBeenCalledWith(
       'assessmentRecordClassInfo'
     );
-    expect(global.GoogleClassroomManager).not.toHaveBeenCalled();
+    expect(globalThis.GoogleClassroomManager).not.toHaveBeenCalled();
   });
 
   it('should migrate from legacy sheet if property missing', () => {
@@ -124,7 +124,7 @@ describe('ConfigurationManager Class Info Migration', () => {
     mocks.PropertiesService.documentProperties.getProperty.mockReturnValue('{ invalid json }');
 
     const loggerSpy = vi.fn();
-    global.ABLogger = {
+    globalThis.ABLogger = {
       getInstance: () => ({
         error: loggerSpy,
         warn: vi.fn(),
@@ -139,6 +139,6 @@ describe('ConfigurationManager Class Info Migration', () => {
       'Failed to parse Assessment Record Class Info',
       expect.any(Error)
     );
-    expect(global.GoogleClassroomManager).not.toHaveBeenCalled();
+    expect(globalThis.GoogleClassroomManager).not.toHaveBeenCalled();
   });
 });
