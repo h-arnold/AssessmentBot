@@ -95,7 +95,7 @@ class GoogleClassroomController {
       };
       ConfigurationManager.getInstance().setClassInfo(classInfo);
 
-      console.log(`Classroom saved: ${courseName} (${courseId})`);
+      ABLogger.getInstance().info(`Classroom saved: ${courseName} (${courseId})`);
     } catch (error) {
       progressTracker.logAndThrowError('Error saving classroom: ' + error.message, error);
       Utils.toastMessage('Failed to save classroom: ' + error.message, 'Error', 5);

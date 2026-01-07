@@ -456,7 +456,7 @@ class GoogleClassroomManager {
     const sheet = spreadsheet.getSheetByName('ClassInfo');
     if (sheet) {
       spreadsheet.deleteSheet(sheet);
-      console.log('Legacy ClassInfo sheet deleted.');
+      ABLogger.getInstance().info('Legacy ClassInfo sheet deleted.');
     }
   }
 }

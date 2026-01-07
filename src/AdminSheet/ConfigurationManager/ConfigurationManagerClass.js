@@ -415,54 +415,51 @@ class ConfigurationManager extends BaseSingleton {
         return JSON.parse(jsonString);
       } catch (e) {
         ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', e);
+        return null;
       }
     }
 
     // 2. Migration Logic
+    const gcm = new GoogleClassroomManager();
+    // Check if we can get course ID from legacy method (which reads sheet)
+    // We use try-catch because getCourseId might throw if sheet is missing/invalid,
+    // in which case we just return null (no migration possible).
+    let courseId;
     try {
-      const gcm = new GoogleClassroomManager();
-      // Check if we can get course ID from legacy method (which reads sheet)
-      // We use try-catch because getCourseId might throw if sheet is missing/invalid,
-      // in which case we just return null (no migration possible).
-      let courseId;
+      courseId = gcm.getCourseId();
+    } catch (ignore) {
+      // Sheet missing or invalid, cannot migrate.
+      return null;
+    }
+
+    if (courseId) {
+      // Fetch additional details
+      let className = 'Unknown Class';
       try {
-        courseId = gcm.getCourseId();
-      } catch (ignore) {
-        // Sheet missing or invalid, cannot migrate.
-        return null;
-      }
-
-      if (courseId) {
-        // Fetch additional details
-        let className = 'Unknown Class';
-        try {
-          const course = ClassroomApiClient.fetchCourse(courseId);
-          if (course && course.name) {
-            className = course.name;
-          }
-        } catch (e) {
-          ABLogger.getInstance().warn('Could not fetch course details during migration', e);
+        const course = ClassroomApiClient.fetchCourse(courseId);
+        if (course && course.name) {
+          className = course.name;
         }
-
-        const classInfo = {
-          ClassName: className,
-          CourseId: String(courseId),
-          YearGroup: null, // Default as per requirements
-        };
-
-        this.setClassInfo(classInfo);
-
-        // Delete legacy sheet
-        gcm.deleteClassInfoSheet();
-
-        ABLogger.getInstance().info(
-          'Migrated Class Info from Sheet to DocumentProperties',
-          classInfo
-        );
-        return classInfo;
+      } catch (e) {
+        ABLogger.getInstance().warn('Could not fetch course details during migration', e);
       }
-    } catch (e) {
-      ABLogger.getInstance().error('Error during Class Info migration', e);
+
+      const classInfo = {
+        ClassName: className,
+        CourseId: String(courseId),
+        YearGroup: null, // Default as per requirements
+      };
+
+      this.setClassInfo(classInfo);
+
+      // Delete legacy sheet
+      gcm.deleteClassInfoSheet();
+
+      ABLogger.getInstance().info(
+        'Migrated Class Info from Sheet to DocumentProperties',
+        classInfo
+      );
+      return classInfo;
     }
 
     return null;
@@ -476,6 +473,18 @@ class ConfigurationManager extends BaseSingleton {
    * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
    */
   setClassInfo(classInfo) {
+    Validate.requireParams({ classInfo }, 'setClassInfo');
+
+    // Validate structure
+    if (typeof classInfo !== 'object' || classInfo === null || Array.isArray(classInfo)) {
+      throw new TypeError('classInfo must be an object');
+    }
+
+    Validate.requireParams(
+      { ClassName: classInfo.ClassName, CourseId: classInfo.CourseId },
+      'setClassInfo'
+    );
+
     const jsonString = JSON.stringify(classInfo);
     this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
   }

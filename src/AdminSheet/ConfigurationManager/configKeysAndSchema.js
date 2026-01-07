@@ -7,7 +7,7 @@
 // require them here to avoid duplicate declaration errors when running in
 // the GAS runtime where these are already present on the global object.
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
-/* global validateIntegerInRange, validateNonEmptyString, validateUrl, validateBoolean, validateLogLevel, validateApiKey, toBooleanString */
+/* global validateIntegerInRange, validateNonEmptyString, validateUrl, validateBoolean, validateLogLevel, validateApiKey, validateClassInfo, toBooleanString */
 
 const CONFIG_KEYS = Object.freeze({
   BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
@@ -77,10 +77,7 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO]: {
     storage: 'document',
-    validate: (v) => {
-      if (typeof v === 'string') return v;
-      throw new TypeError('Assessment Record Class Info must be a JSON string.');
-    },
+    validate: validateClassInfo,
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
     storage: 'script',

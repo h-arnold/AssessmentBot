@@ -19,7 +19,9 @@ describe('ConfigurationManager Class Info Migration', () => {
       getCourseId: vi.fn(),
       deleteClassInfoSheet: vi.fn(),
     };
-    global.GoogleClassroomManager = vi.fn(() => mockGoogleClassroomManagerInstance);
+    global.GoogleClassroomManager = vi.fn().mockImplementation(function () {
+      return mockGoogleClassroomManagerInstance;
+    });
 
     // Mock ClassroomApiClient (Static methods)
     mockClassroomApiClient = {
@@ -109,14 +111,34 @@ describe('ConfigurationManager Class Info Migration', () => {
     const result = configManager.getClassInfo();
 
     expect(result).toBeNull();
-    // (mock property service usually has spies, we verify they were NOT called for this key)
     const setPropSpy = mocks.PropertiesService.documentProperties.setProperty;
     if (setPropSpy.mock) {
-      // Check arguments if it was called at all, but expects to not be called for class info
-      // Might be called for other things if ensureInitialized runs, but we forced _initialized=true.
       expect(setPropSpy).not.toHaveBeenCalledWith('assessmentRecordClassInfo', expect.anything());
     }
 
     expect(mockGoogleClassroomManagerInstance.deleteClassInfoSheet).not.toHaveBeenCalled();
+  });
+
+  it('should return null if stored JSON is malformed', () => {
+    // Provide invalid JSON string
+    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue('{ invalid json }');
+
+    const loggerSpy = vi.fn();
+    global.ABLogger = {
+      getInstance: () => ({
+        error: loggerSpy,
+        warn: vi.fn(),
+        info: vi.fn(),
+      }),
+    };
+
+    const result = configManager.getClassInfo();
+
+    expect(result).toBeNull();
+    expect(loggerSpy).toHaveBeenCalledWith(
+      'Failed to parse Assessment Record Class Info',
+      expect.any(Error)
+    );
+    expect(global.GoogleClassroomManager).not.toHaveBeenCalled();
   });
 });
