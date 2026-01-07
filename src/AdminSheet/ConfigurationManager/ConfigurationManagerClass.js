@@ -85,9 +85,6 @@ class ConfigurationManager extends BaseSingleton {
     }
   }
 
-  /** Test helper */
-  static resetForTests() {}
-
   static get CONFIG_KEYS() {
     return ConfigurationManager._CONFIG_KEYS;
   }
@@ -429,10 +426,10 @@ class ConfigurationManager extends BaseSingleton {
       courseId = gcm.getCourseId();
     } catch (error_) {
       // The AdminSheet isn't assigned a class by default.
-      if (!isAdminSheet) {
+      if (!this.getIsAdminSheet()) {
         ABLogger.getInstance().error(
           `No Class Information in Document Properties or 'ClassInfo' sheet.`,
-          e
+          error_
         );
         throw error_;
       }

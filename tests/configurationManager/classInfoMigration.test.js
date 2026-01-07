@@ -27,7 +27,7 @@ describe('ConfigurationManager Class Info Migration', () => {
     mockClassroomApiClient = {
       fetchCourse: vi.fn(),
     };
-    globalThis.ClasssroomApiClient = mockClassroomApiClient;
+    globalThis.ClassroomApiClient = mockClassroomApiClient;
 
     // Helper mocks
     globalThis.ABLogger = {
@@ -107,6 +107,9 @@ describe('ConfigurationManager Class Info Migration', () => {
     mockGoogleClassroomManagerInstance.getCourseId.mockImplementation(() => {
       throw new Error('No sheet');
     });
+
+    // Mock getIsAdminSheet to return true so migration failure is handled gracefully
+    configManager.getIsAdminSheet = vi.fn().mockReturnValue(true);
 
     const result = configManager.getClassInfo();
 
