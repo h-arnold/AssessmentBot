@@ -77,7 +77,7 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO]: {
     storage: 'document',
-    validate: validateClassInfo,
+    validate: (v) => validateClassInfo('Assessment Record Class Info', v),
   },
   [CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
     storage: 'script',

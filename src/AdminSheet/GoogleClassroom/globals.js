@@ -22,7 +22,7 @@ function fetchAssignmentsForWizard() {
   const googleClassroomManager = new GoogleClassroomManager();
   const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
   if (!courseId) {
-    throw new Error('Course ID not configured. Please migrate or set up class info.');
+    throw new Error('No classroom selected. Please select a classroom first.');
   }
   const assignments = googleClassroomManager.getAssignments(courseId);
   return assignments.map((assignment) => ({

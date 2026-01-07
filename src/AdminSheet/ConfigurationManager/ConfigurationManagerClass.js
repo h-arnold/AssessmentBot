@@ -441,11 +441,23 @@ class ConfigurationManager extends BaseSingleton {
       return null;
     }
 
-    if (courseId) {
+    if (courseId != null) {
+      const courseIdString = String(courseId).trim();
+
+      if (courseIdString === '') {
+        const message = `Legacy ClassInfo sheet returned an empty Course ID.`;
+        if (!this.getIsAdminSheet()) {
+          ABLogger.getInstance().error(message);
+          throw new Error(message);
+        }
+        ABLogger.getInstance().warn(message);
+        return null;
+      }
+
       // Fetch additional details
       let className = 'Unknown Class';
       try {
-        const course = ClassroomApiClient.fetchCourse(courseId);
+        const course = ClassroomApiClient.fetchCourse(courseIdString);
         if (course?.name) {
           className = course.name;
         }
@@ -455,7 +467,7 @@ class ConfigurationManager extends BaseSingleton {
 
       const classInfo = {
         ClassName: className,
-        CourseId: String(courseId),
+        CourseId: courseIdString,
         YearGroup: null, // Default as per requirements
       };
 
@@ -482,6 +494,7 @@ class ConfigurationManager extends BaseSingleton {
    * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
    */
   setClassInfo(classInfo) {
+    this.ensureInitialized();
     Validate.requireParams({ classInfo }, 'setClassInfo');
 
     // Validate structure
@@ -494,13 +507,31 @@ class ConfigurationManager extends BaseSingleton {
       'setClassInfo'
     );
 
-    const jsonString = JSON.stringify(classInfo);
+    const courseIdAsString = String(classInfo.CourseId);
+    const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+    if (!courseIdPattern.test(courseIdAsString)) {
+      throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
+    }
+
+    if ('YearGroup' in classInfo) {
+      const { YearGroup } = classInfo;
+      if (YearGroup !== null && !Validate.isNumber(YearGroup)) {
+        throw new TypeError('classInfo.YearGroup must be a number or null');
+      }
+    }
+
+    const classInfoToPersist = {
+      ...classInfo,
+      CourseId: courseIdAsString,
+    };
+
+    const jsonString = JSON.stringify(classInfoToPersist);
     this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
   }
 
   /**
-   * Returns the configured Assessment Record course ID.
-   * Priority: Document Properties -> legacy GoogleClassroomManager.getCourseId() -> null
+   * Returns the configured Assessment Record course ID from stored ClassInfo.
+   * Delegates to getClassInfo(), which performs any necessary legacy migration.
    * Returns null when no value can be determined (useful for admin sheet behaviour).
    * @returns {string|null}
    */
@@ -516,16 +547,25 @@ class ConfigurationManager extends BaseSingleton {
    * @param {string|null} courseId
    */
   setAssessmentRecordCourseId(courseId) {
-    const currentInfo = this.getClassInfo() || {
-      ClassName: 'Unknown',
+    this.ensureInitialized();
+    let currentInfo;
+    try {
+      currentInfo = this.getClassInfo();
+    } catch (error_) {
+      ABLogger.getInstance().error('Unable to read Class Info before updating course ID.', error_);
+      throw error_;
+    }
+
+    const safeInfo = currentInfo || {
+      ClassName: 'Unknown Class',
       CourseId: null,
       YearGroup: null,
     };
     // Create a new object to avoid mutating cached data
     const updatedInfo = {
-      ClassName: currentInfo.ClassName,
+      ClassName: safeInfo.ClassName,
       CourseId: courseId,
-      YearGroup: currentInfo.YearGroup,
+      YearGroup: safeInfo.YearGroup,
     };
     this.setClassInfo(updatedInfo);
   }
