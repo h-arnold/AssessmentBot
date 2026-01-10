@@ -69,11 +69,13 @@ A tiny, dependency-free head fragment was added:
 
 - src/AdminSheet/UI/partials/Head.html
 
-It contains only the essentials for HtmlService pages:
+It contains the essentials for new BeerCSS-backed HtmlService pages:
 
 - `<base target="_top" />`
 - `<meta charset>`
 - `<meta name="viewport">`
+- Vendored BeerCSS scoped stylesheet
+- Vendored BeerCSS JavaScript (for interactive features like field activation, textarea autosize, etc.)
 
 ### 4) Demo dialog scaffold
 
@@ -118,11 +120,10 @@ Global functions that call `getUIManager()` in [97_globals.js](../../src/AdminSh
 ## How to build a new BeerCSS-backed dialog
 
 1. Create a new HtmlService template under `src/AdminSheet/UI/`.
-2. In `<head>`, include the shared head fragment and BeerCSS:
+2. In `<head>`, include the shared head fragment (which includes BeerCSS):
 
 ```html
 <?!= include('UI/partials/Head') ?>
-<?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!= include('UI/vendor/beercss/BeerCssJs') ?>
 ```
 
 3. In `<body>`, wrap your content in a scoped container:

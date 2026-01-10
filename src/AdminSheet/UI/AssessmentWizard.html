@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <?!= include('UI/partials/Head') ?> <?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!=
-    include('UI/vendor/beercss/BeerCssJs') ?>
+    <?!= include('UI/partials/Head') ?>
     <title>Assessment wizard</title>
     <style>
       html,
@@ -33,48 +32,48 @@
   <body>
     <div class="beer">
       <main class="wizard-content">
-      <header>
-        <p class="muted">
-          Choose the Classroom assignment you want to assess before moving on to the document
-          inputs.
-        </p>
-      </header>
+        <header>
+          <p class="muted">
+            Choose the Classroom assignment you want to assess before moving on to the document
+            inputs.
+          </p>
+        </header>
 
-      <fieldset class="field-group">
-        <legend>Assignment</legend>
-        <div class="field label suffix border">
-          <select id="assignmentSelect" disabled>
-            <option value="">Loading assignments...</option>
-          </select>
-          <label for="assignmentSelect">Assignment</label>
-          <progress
-            id="assignmentLoadingSpinner"
-            class="circle indeterminate"
-            aria-hidden="false"
-          ></progress>
-        </div>
-        <output
-          id="assignmentErrorMessage"
-          class="status danger"
-          aria-live="polite"
-          hidden
-        ></output>
-      </fieldset>
-    </main>
+        <fieldset class="field-group">
+          <legend>Assignment</legend>
+          <div class="field label suffix border">
+            <select id="assignmentSelect" disabled>
+              <option value="">Loading assignments...</option>
+            </select>
+            <label for="assignmentSelect">Assignment</label>
+            <progress
+              id="assignmentLoadingSpinner"
+              class="circle indeterminate"
+              aria-hidden="false"
+            ></progress>
+          </div>
+          <output
+            id="assignmentErrorMessage"
+            class="status danger"
+            aria-live="polite"
+            hidden
+          ></output>
+        </fieldset>
+      </main>
 
-    <footer class="wizard-actions">
-      <nav class="group connected">
-        <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-        <button
-          class="button border right-round primary"
-          type="button"
-          id="startAssessment"
-          disabled
-        >
-          Start assessment
-        </button>
-      </nav>
-    </footer>
+      <footer class="wizard-actions">
+        <nav class="group connected">
+          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
+          <button
+            class="button border right-round primary"
+            type="button"
+            id="startAssessment"
+            disabled
+          >
+            Start assessment
+          </button>
+        </nav>
+      </footer>
     </div>
 
     <script>
