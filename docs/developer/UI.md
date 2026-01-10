@@ -81,44 +81,6 @@ It contains the essentials for new BeerCSS-backed HtmlService pages:
 - Vendored BeerCSS scoped stylesheet
 - Vendored BeerCSS JavaScript (for interactive features like field activation, textarea autosize, etc.)
 
-### 3b) Local BeerCSS overrides ✅
-
-A small override partial is included to house local, project-specific CSS tweaks that must live alongside the vendored BeerCSS. This file is included by the shared Head fragment so overrides apply to all BeerCSS-backed dialogs by default:
-
-- `src/AdminSheet/UI/partials/BeerCssOverrides.html`
-
-Current purpose:
-
-- Make the `.beer` root container background transparent (so dialogs inherit the GAS modal chrome background).
-- Provide a central, clearly documented place for small, non-breaking adjustments.
-
-Guidelines for extending this file:
-
-- Keep overrides minimal and targeted; prefer adding dialog-specific classes or scoped selectors rather than broad global rules.
-- Avoid editing the vendored `BeerCssScoped.html` directly — keep project changes in this partial so vendor bumps are simpler and auditable.
-- When adding an override, include a short header comment with the intention, author and date.
-- Prefer non-`!important` rules; use `!important` only when necessary to override vendored behaviour.
-- After changes, perform a quick visual check by opening a BeerCSS dialog (for example the demo or playground) to ensure there are no regressions.
-- For per-dialog overrides consider adding an include from that dialog's template rather than expanding this global partial.
-
-Example (current content):
-
-```html
-<!-- Local overrides: make BeerCSS modal background transparent so GAS modal chrome shows through. -->
-<style>
-  .beer {
-    background-color: transparent !important;
-  }
-  .beer:has(> main) {
-    background-color: transparent !important;
-  }
-</style>
-```
-
-When bumping BeerCSS:
-
-- Regenerate vendored partials (`npm run vendor:beercss`) and verify the overrides still work; adjust selectors where necessary.
-
 ### 4) Demo dialog scaffold
 
 A minimal dialog exists as a reference implementation:

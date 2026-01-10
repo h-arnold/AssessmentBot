@@ -176,38 +176,24 @@
     <div class="beer">
       <main class="wizard-content">
         <header>
-          <p id="assignmentHelp" class="muted">
-            Choose the Classroom assignment you want to assess.
+          <p class="muted">
+            Choose the Classroom assignment you want to assess before moving on to the document
+            inputs.
           </p>
         </header>
 
-        <fieldset id="yearGroupPanel" class="field-group no-border" hidden>
-          <legend>Year Group</legend>
-          <!-- Placeholder for Year Group selection -->
-          <nav class="right-align">
-            <button class="button" type="button" id="yearGroupNext">Next</button>
-          </nav>
-        </fieldset>
-
-        <fieldset id="step1Panel" class="field-group no-border">
+        <fieldset class="field-group">
+          <legend>Assignment</legend>
           <div class="field label suffix border">
-            <input
-              id="assignmentInput"
-              type="text"
-              autocomplete="off"
-              disabled
-              data-ui="#assignmentMenu"
-              placeholder="Loading assignments..."
-            />
-            <label for="assignmentInput" class="active">Assignment</label>
+            <select id="assignmentSelect" disabled>
+              <option value="">Loading assignments...</option>
+            </select>
+            <label for="assignmentSelect">Assignment</label>
             <progress
               id="assignmentLoadingSpinner"
               class="circle indeterminate"
               aria-hidden="false"
             ></progress>
-            <menu id="assignmentMenu" class="assignment-menu">
-              <li class="assignment-row muted">Loading assignments...</li>
-            </menu>
           </div>
           <output
             id="assignmentErrorMessage"
@@ -215,78 +201,21 @@
             aria-live="polite"
             hidden
           ></output>
-          <nav class="right-align">
-            <button class="button" type="button" id="step1Next" disabled>Next</button>
-          </nav>
-        </fieldset>
-
-        <fieldset id="definitionChoicePanel" class="field-group no-border" hidden>
-          <legend>Definition Source</legend>
-          <!-- Placeholder for choosing between linking existing or creating new definition -->
-          <nav class="group center-align">
-            <button class="button border" type="button" id="choiceLink">Link Existing</button>
-            <button class="button fill" type="button" id="choiceCreate">Create New</button>
-          </nav>
-        </fieldset>
-
-        <fieldset id="linkDefinitionPanel" class="field-group no-border" hidden>
-          <legend>Link Existing Definition</legend>
-          <!-- Placeholder for selecting an existing definition to link -->
-          <nav class="right-align">
-            <button class="button primary" type="button" id="linkFinish">Link & Start</button>
-          </nav>
-        </fieldset>
-
-        <fieldset id="step2Panel" class="field-group no-border" hidden>
-          <legend>Provide documents for this assignment</legend>
-          <p class="muted">
-            Paste the URLs of the reference and template documents. We will validate the document
-            type and check the URLs are different before creating the assignment.
-          </p>
-
-          <div class="field label border suffix">
-            <input
-              id="referenceInputStep2"
-              type="text"
-              autocomplete="off"
-              placeholder="Reference document URL"
-            />
-            <label for="referenceInputStep2">Reference document</label>
-            <i id="referenceIcon"></i>
-            <output id="referenceFeedback" class="status" aria-live="polite" hidden></output>
-          </div>
-
-          <div class="field label border suffix">
-            <input
-              id="templateInputStep2"
-              type="text"
-              autocomplete="off"
-              placeholder="Template document URL"
-            />
-            <label for="templateInputStep2">Template document</label>
-            <i id="templateIcon"></i>
-            <output id="templateFeedback" class="status" aria-live="polite" hidden></output>
-          </div>
-
-          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
-          <nav class="right-align">
-            <button class="button" type="button" id="step2Next">Next</button>
-          </nav>
-        </fieldset>
-
-        <fieldset id="weightingsPanel" class="field-group no-border" hidden>
-          <legend>Weightings</legend>
-          <!-- Placeholder for inputting weightings for the new definition -->
-          <nav class="right-align">
-            <button class="button primary" type="button" id="weightingsFinish">
-              Start Assessment
-            </button>
-          </nav>
         </fieldset>
       </main>
 
-      <footer class="wizard-actions" id="wizardFooter">
-        <!-- Stepper container -->
+      <footer class="wizard-actions">
+        <nav class="group connected">
+          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
+          <button
+            class="button border right-round primary"
+            type="button"
+            id="startAssessment"
+            disabled
+          >
+            Start assessment
+          </button>
+        </nav>
       </footer>
     </div>
 
