@@ -205,3 +205,16 @@ DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swal
 FALLBACK: Assume fallback is not required unless explicitly stated.
 
 GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
+
+### 16. Sub-Agent Strategy
+For complex, multi-step tasks in specific domains, use the `runSubagent` tool to delegate work to specialised sub-agents.
+
+**Available Sub-Agents:**
+- **Testing Specialist**: `tests/` creation, debugging, and execution. Instructions: [.github/agents/Testing.agent.md](.github/agents/Testing.agent.md)
+- **UI Specialist**: `src/AdminSheet/UI/` templates and `BeerCSSUIHandler` logic. Instructions: [.github/agents/UI.agent.md](.github/agents/UI.agent.md)
+
+**Usage Guidelines:**
+1. **Delegation**: Use sub-agents when a task requires deep domain knowledge or involves many small steps (e.g., writing a full test suite or refactoring a complex UI component).
+2. **Contextual Handover**: Provide a highly detailed prompt to the sub-agent via `runSubagent`. Include the path to their specific instruction file and the exact task requirements.
+3. **Summarisation**: Once the sub-agent completes its task, provide a concise summary of the results to the user (the "Goldilocks" level of detail—actionable and informative but not overwhelming).
+4. **Statelessness**: Remember that sub-agents are stateless. They cannot communicate back and forth with you. Your initial prompt must contain all necessary context and instructions.
