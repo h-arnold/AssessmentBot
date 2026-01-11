@@ -1,0 +1,15 @@
+<!-- Local overrides: make BeerCSS modal background transparent so GAS modal chrome shows through.
+     Keeps internal surface elements (articles, toolbars etc.) using explicit surface classes.
+-->
+<style>
+  /* Default BeerCSS root container should be transparent so dialogs inherit the GAS modal background */
+  .beer {
+    background-color: transparent !important;
+  }
+
+  /* When .beer is used as a page container with a main element, some BeerCSS builds set a surface background
+     via the :has(> main) selector — ensure that's transparent as well. */
+  .beer:has(> main) {
+    background-color: transparent !important;
+  }
+</style>
