@@ -278,3 +278,129 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Do not pass an empty string as the Apps Script modal title; the dialog may fail to render in some contexts.
 - Reset `html, body` margins to avoid internal scrollbars.
 - Prefer BeerCSS’s field structure (`div.field.label … select then label`) so suffix elements (e.g. `progress.circle`) align correctly.
+
+## Stage 2 change: definition lookup before doc URLs/IDs
+
+We want to move the definition existence check to immediately after assignment selection. If a matching definition exists, skip doc refresh/parsing and proceed straight to trigger creation. If none exists, present wizard choices to link to an existing definition (add alternates) or create a new one (pre-filled metadata), then continue to assessment. The first step of any new definition is collecting the document URLs (not raw IDs); the server will extract fileIds via GAS Drive helpers.
+
+### Impacted flow and files (overview)
+
+- Wizard UI: needs post-selection actions and new panels in [src/AdminSheet/UI/AssessmentWizard.html](src/AdminSheet/UI/AssessmentWizard.html).
+- Wizard entry wiring: [src/AdminSheet/UI/99_BeerCssUIHandler.js](src/AdminSheet/UI/99_BeerCssUIHandler.js) and [src/AdminSheet/UI/97_globals.js](src/AdminSheet/UI/97_globals.js) must route Start to the new lookup flow.
+- Server lookups: need a lightweight “definition by assignment” endpoint (no doc IDs) in [src/AdminSheet/y_controllers/AssignmentDefinitionController.js](src/AdminSheet/y_controllers/AssignmentDefinitionController.js) surfaced via the assignment globals file [src/AdminSheet/Assignment/globals.js](src/AdminSheet/Assignment/globals.js) (per-class globals pattern). Wizard-facing calls should return the full partial definition field set.
+- Trigger path: ensure `triggerProcessSelectedAssignment` still receives a persisted definition key and doc IDs before execution. Relevant pieces live in [src/AdminSheet/y_controllers/AssignmentController.js](src/AdminSheet/y_controllers/AssignmentController.js) and [src/AdminSheet/AssignmentProcessor/globals.js](src/AdminSheet/AssignmentProcessor/globals.js).
+- Legacy doc-ID modal: keep compatibility in [src/AdminSheet/UI/SlideIdsModal.html](src/AdminSheet/UI/SlideIdsModal.html) and its handlers until wizard fully replaces it.
+- Tests: expand UI tests in tests/ui (e.g. new wizard panels) and controller tests for new lookup/link/create behaviours.
+
+### Behavioural changes to design
+
+- After assignment selection:
+  - Compute definition key inputs (title/topic/yearGroup) using Classroom courseWork + ABClass, without requiring doc IDs.
+  - Call new “check definition” endpoint; do not invoke `ensureDefinition` here because it requires doc IDs and runs Drive parsing.
+- If definition exists:
+  - Skip refresh parsing; proceed to scheduling the time-based trigger. Doc freshness will be validated post-`triggerProcessSelectedAssignment` as today.
+  - Bypass doc-ID entry unless needed for the trigger payload; definitions are guaranteed to include doc IDs (validated elsewhere).
+- If definition is missing:
+  - Show a new wizard panel explaining no matching definition exists (copy: “This Assignment has changed recently. Please review the changes before proceeding.” when stale flag applies).
+  - Offer two options:
+    - **Link to existing definition**: select from existing definitions (full partial field set), append to `alternateTitles` / `alternateTopics`, then continue.
+    - **Create new definition**: open a form with `primaryTitle`, `primaryTopic`, `yearGroup` pre-filled from the selected assignment; collect reference/template URLs (not raw IDs), extract IDs via Drive helpers, validate MIME, then continue to assessment setup.
+
+### Likely implementation tasks
+
+- Add wizard state machine to handle steps: `selectAssignment` → `definitionCheck` → `definitionFound` (fast path to trigger) or `definitionMissing` (link/create panel) → doc URL capture → trigger start.
+- Extend wizard HTML with new panels/fieldsets for:
+  - Missing-definition notice and actions (link vs create) plus stale flag banner when `TaskDefinitionsChanged`.
+  - Link flow: client-side filter + list of definitions (last 10 shown by default), showing the full partial definition fields.
+  - Create flow: form for title/topic/yearGroup (pre-populated, editable) and reference/template URL inputs; client-side URL parsing and type check; server-side ID extraction and MIME validation.
+- Wire Start/Continue buttons to new server calls (Apps Script run) and handle success/failure states with clear messages; disable to prevent double clicks.
+- Add a server endpoint to fetch definition presence and summary data (safe to call without doc IDs) and return the full partial definition field set.
+- Add a server endpoint to link an assignment to an existing definition by updating `alternateTitles`/`alternateTopics` and persisting.
+- Add a server endpoint to create a new definition (metadata + doc URLs → server extracts IDs, validates MIME, persists); doc IDs are mandatory, no fallbacks.
+- Ensure trigger scheduling still writes necessary properties (definitionKey, doc IDs) before invoking `triggerProcessSelectedAssignment`.
+- Maintain backward compatibility with Materialize flow until flag/rollout decision.
+
+### Risks and watchpoints
+
+- `ensureDefinition` today requires doc IDs and Drive access; calling it early will throw. New lookup must avoid Drive/Classroom fetch of doc contents.
+- Doc ID persistence: trigger run expects a saved definition with doc IDs; collect and persist from URLs before scheduling; stored definitions must always contain doc IDs.
+- Definition freshness: skipping `definitionNeedsRefresh` until after trigger may delay task re-parse; use stale flag (`TaskDefinitionsChanged`) to warn users inline.
+- Topic/yearGroup resolution relies on Classroom courseWork and ABClass; ensure these are available in the selection step to build keys.
+- UI complexity: multiple new panels increase JS surface; keep state simple and testable (mocked `google.script.run`).
+- Concurrency/race: avoid double-click races on Start/Continue; disable buttons during requests.
+- Naming: choose a user-friendly label for “assignment definition” in the UI.
+
+### Decisions from clarifications
+
+- Terminology: Use “Assignment” throughout the wizard (including missing-definition notice and link/create panels).
+- Stale definitions: Add boolean `TaskDefinitionsChanged` on AssignmentDefinition (and partial JSON) when refresh changes a TaskDefinition key; user copy: “This Assignment has changed recently. Please review the changes before proceeding.”
+- Fast path doc IDs: Stored definitions always include doc IDs (validated elsewhere). No fallbacks to missing IDs.
+- Link existing list: Sort by most recently updated; show the last 10 updated definitions by default with a search/filter. Fetch all definitions once from the backend (JsonDbApp is slow) and filter on the client.
+- Create flow and doc types: Allow Slides or Sheets; reference and template must match. Front-end checks URL patterns; server extracts fileIds from URLs using GAS Drive APIs and validates MIME.
+- Rollout: Keep wizard as separate menu during testing; remove legacy Materialize flow once stable (no legacy fallback needed afterward).
+- Editing topic/yearGroup: Editable; changes are stored as alternates on the existing AssignmentDefinition rather than overwriting definitions.
+- Alternates handling: Normalise (trim, lowercase), de-duplicate, warn inline if duplicates/conflicts; do not block. No ABLogger call for these warnings.
+
+### Additional implementation notes from decisions
+
+- Validation hardening: Extend partial definition validation to enforce presence of reference/template IDs; add a wizard fallback to doc capture only if validation ever fails in production.
+- Stale flag plumbing: Add a boolean to AssignmentDefinition and its partial shape; persist it; notify users in the wizard when set. Update docs/developer/DATA_SHAPES.md accordingly.
+- Lookup/search UX: Implement most-recent-first ordering with default “last 10” view plus client-side search. If BeerCSS lacks a search-with-dropdown widget, build a simple filter input + list.
+- URL/fileId helpers: Add GoogleDrive helpers to derive fileId (and optionally mime inference) from URLs via GAS Drive APIs to support doc-type validation.
+- Doc-type gating: Wizard should confirm reference/template are the same type (Slides or Sheets); block mismatched types client-side and re-validate server-side during parsing.
+- User messaging: When stale-flag is true, surface a clear inline banner before proceeding; do not block runs.
+
+### Detailed change list (files, methods, parameters)
+
+- [src/AdminSheet/UI/AssessmentWizard.html](src/AdminSheet/UI/AssessmentWizard.html)
+  - Extend wizard to multi-step state machine: `selectAssignment` → `definitionCheck` → `definitionFound` (fast trigger) or `definitionMissing` (link/create) → `collectDocUrls` → `starting`.
+  - Add new panels/fieldsets:
+    - Definition found fast-path summary (shows partial definition fields, stale banner when `TaskDefinitionsChanged`).
+    - Definition missing panel with actions: “Link existing” (list + filter) and “Create new” (prefilled form + doc URL inputs).
+  - Client handlers (new functions): `startDefinitionCheck()`, `handleDefinitionFound(payload)`, `handleDefinitionMissing()`, `renderDefinitionList(defs)`, `filterDefinitions(query)`, `handleLinkSubmit(selection)`, `handleCreateSubmit(formState)`, `showStaleBanner()`, `showDocUrlErrors()`, `handleStartTrigger(definitionKey)`.
+  - Inputs: reference/template URL fields; client URL parsing (extract ID if possible, infer type), doc-type match check; inline warnings for duplicate alternates; disable buttons during requests; single `status` output reused for errors.
+  - Data returned from server for definition check and list must include full partial definition field set (see DATA_SHAPES) plus `TaskDefinitionsChanged`.
+
+- [src/AdminSheet/UI/99_BeerCssUIHandler.js](src/AdminSheet/UI/99_BeerCssUIHandler.js)
+  - Keep `showAssessmentWizard` but adjust dialog size if needed; ensure it renders updated template (no new params expected yet).
+
+- [src/AdminSheet/UI/97_globals.js](src/AdminSheet/UI/97_globals.js)
+  - Expose new wizard-facing globals using `Validate.requireParams`:
+    - `checkDefinitionForAssignment(assignmentId)` → calls assignment globals facade; returns `{ exists, definition: partialDefinition, assignmentMeta }`.
+    - `listAllDefinitionsForWizard()` → fetches all partial definitions (client filters/shows last 10 most recent).
+    - `linkAssignmentToDefinition(payload)` where payload includes `definitionKey`, `alternateTitle`, `alternateTopic` (normalised server-side).
+    - `createDefinitionFromUrls(payload)` where payload includes `assignmentId`, `primaryTitle`, `primaryTopic`, `yearGroup`, `documentType`, `referenceUrl`, `templateUrl`.
+    - `startAssessmentFromWizard(assignmentId, definitionKey)` → fast path to trigger creation.
+
+- [src/AdminSheet/Assignment/globals.js](src/AdminSheet/Assignment/globals.js) (per-class globals surface)
+  - Implement the same functions above, delegating to controllers. Ensure logging contract (ProgressTracker for user-facing errors, ABLogger for dev as needed).
+
+- [src/AdminSheet/y_controllers/AssignmentDefinitionController.js](src/AdminSheet/y_controllers/AssignmentDefinitionController.js)
+  - Add `checkDefinitionByAssignment({ courseId, assignmentId })` → builds key from coursework + ABClass yearGroup, returns partial definition (full field set) with `TaskDefinitionsChanged` if present.
+  - Add `listAllPartialDefinitions()` → returns every partial definition sorted most-recent-first (use existing JsonDb collection; fetch once, sorting server-side or in controller). Client will filter and show last 10 by `updatedAt`.
+  - Add `linkAssignmentToDefinition({ definitionKey, alternateTitle, alternateTopic })` → normalise (trim/lowercase), de-duplicate alternates, persist via `saveDefinition`.
+  - Add `createDefinitionFromUrls({ assignmentId, courseId, primaryTitle, primaryTopic, yearGroup, documentType, referenceUrl, templateUrl })` → extract fileIds via Drive helpers, validate MIME match, invoke `ensureDefinition` to create/persist.
+  - Ensure partial validation enforces presence of reference/template IDs (no fallbacks) and includes `TaskDefinitionsChanged` when set.
+
+- [src/AdminSheet/Models/AssignmentDefinition.js](src/AdminSheet/Models/AssignmentDefinition.js)
+  - Add boolean `TaskDefinitionsChanged` to constructor, `toJSON`, `toPartialJSON`, `fromJSON`.
+  - Retain tasks:null invariant for partials; validation already requires doc IDs—keep strict.
+
+- [src/AdminSheet/y_controllers/AssignmentController.js](src/AdminSheet/y_controllers/AssignmentController.js)
+  - Add wizard fast path `startAssessmentFromWizard({ assignmentId, definitionKey })` delegating to `startProcessing` without doc re-entry.
+  - Add helper `createDefinitionAndStart({ assignmentId, courseId, urlsPayload })` that calls `createDefinitionFromUrls` (controller above), then `startProcessing` with returned definitionKey.
+  - Keep legacy `saveStartAndShowProgress` for Materialize modal; do not regress existing behaviour.
+
+- [src/AdminSheet/AssignmentProcessor/globals.js](src/AdminSheet/AssignmentProcessor/globals.js)
+  - Optionally expose `startProcessingFromWizard(assignmentId, definitionKey)` if needed by UI, delegating to `AssignmentController.startProcessing`.
+
+- [src/AdminSheet/UI/SlideIdsModal.html](src/AdminSheet/UI/SlideIdsModal.html)
+  - No functional change; ensure coexistence until legacy flow is removed.
+
+- Drive helpers (existing module to re-use; add only if missing)
+  - Utility to extract fileId and MIME from URL using GAS Drive APIs; used by `createDefinitionFromUrls` to enforce type match.
+
+- Tests
+  - UI: extend/add suites under `tests/ui/` for definition found/missing flows, link/create panels, stale banner, doc URL validation, double-click disable, and error paths.
+  - Controllers: add tests for `checkDefinitionByAssignment`, `listAllPartialDefinitions`, `linkAssignmentToDefinition`, `createDefinitionFromUrls`, and `startAssessmentFromWizard` fast path.
+  - If URL parsing helper is factored into pure JS, add unit tests for Slides/Sheets/Docs shapes, drive links, malformed inputs.
