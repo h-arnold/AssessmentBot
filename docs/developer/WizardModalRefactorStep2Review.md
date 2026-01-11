@@ -266,7 +266,7 @@ google.script.run
 
 The following components interact with the wizard flow but were not explicitly listed in the original plan:
 
-1. **`src/AdminSheet/RequestHandlers/ClassroomApiClient.js`**
+1. **`src/AdminSheet/GoogleClassroom/ClassroomApiClient.js`**
    - Used by `fetchSavedDocumentIds()` to resolve topic names
    - Method: `fetchTopicName(courseId, topicId)`
 
