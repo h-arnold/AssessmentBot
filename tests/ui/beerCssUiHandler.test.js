@@ -31,4 +31,32 @@ describe('BeerCSSUIHandler dialog rendering', () => {
       expect(gasMocks.SpreadsheetApp._calls).toContain('showModalDialog:BeerCSS Playground');
     });
   });
+
+  it('renders the progress and assessment wizard BeerCSS modals', async () => {
+    const harness = new SingletonTestHarness();
+
+    await harness.withFreshSingletons(() => {
+      loadSingletonsWithMocks(harness, { loadUIManager: true });
+      const BeerCSSUIHandler = require('../../src/AdminSheet/UI/99_BeerCssUIHandler.js');
+      const handler = BeerCSSUIHandler.getInstance();
+
+      handler.showProgressModal();
+
+      expect(gasMocks.HtmlService._calls).toContain(
+        'createTemplateFromFile:UI/BeerCssProgressModal'
+      );
+      expect(gasMocks.HtmlService._calls).toContain('setWidth:400');
+      expect(gasMocks.HtmlService._calls).toContain('setHeight:160');
+      expect(gasMocks.SpreadsheetApp._calls).toContain('showModalDialog:Progress');
+
+      handler.showAssessmentWizard();
+
+      expect(gasMocks.HtmlService._calls).toContain('createTemplateFromFile:UI/AssessmentWizard');
+      expect(gasMocks.HtmlService._calls).toContain('setWidth:660');
+      expect(gasMocks.HtmlService._calls).toContain('setHeight:360');
+      expect(gasMocks.SpreadsheetApp._calls).toContain(
+        'showModalDialog:Step 1 - Select assignment'
+      );
+    });
+  });
 });
