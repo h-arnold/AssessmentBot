@@ -26,12 +26,16 @@ A global helper was added:
 
 - `include(filename)` in [src/AdminSheet/UI/97_globals.js](../../src/AdminSheet/UI/97_globals.js)
 
-This returns the contents of a project HTML file so templates can do:
+This helper evaluates the named file as an HtmlService template and returns the resulting HTML. It uses `HtmlService.createTemplateFromFile(filename).evaluate().getContent()` so any server-side scriptlets in the included file (for example further `<?!= include('...') ?>` calls) are processed before the HTML is injected into the parent template. Because evaluation happens server-side, `include()` is not available to client-side scripts — it simply returns evaluated HTML to the template.
+
+Example usage in a template:
 
 ```html
 <?!= include('UI/partials/Head') ?>
 <?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!= include('UI/vendor/beercss/BeerCssJs') ?>
 ```
+
+> Note: If you ever see literal `<?!= include(...) ?>` tags appear in your dialog output, it likely indicates the included file was returned as raw text (not evaluated); using an evaluated include ensures nested scriptlets and imports are handled correctly.
 
 This makes it easy to share a single vendored stylesheet across multiple new dialogs.
 
