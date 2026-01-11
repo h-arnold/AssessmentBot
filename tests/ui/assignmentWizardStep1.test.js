@@ -168,6 +168,28 @@ describe('Assessment wizard Step 1', () => {
     }
   });
 
+  it('renders an empty-state message when no assignments exist', () => {
+    const { document, googleRun, cleanup } = setupWizard();
+    try {
+      googleRun.triggerSuccess([]);
+
+      const assignmentSelect = document.getElementById('assignmentSelect');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
+
+      expect(assignmentSelect.disabled).toBe(true);
+      expect(assignmentSelect.options.length).toBe(1);
+      expect(assignmentSelect.options[0].textContent).toBe('No assignments available yet');
+      expect(spinner.hidden).toBe(true);
+      expect(startButton.disabled).toBe(true);
+      expect(errorMessage.hidden).toBe(false);
+      expect(errorMessage.textContent).toContain('No assignments were found for this classroom.');
+    } finally {
+      cleanup();
+    }
+  });
+
   it('shows the error banner when fetching assignments fails', () => {
     const { document, googleRun, cleanup } = setupWizard();
     try {
