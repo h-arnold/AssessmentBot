@@ -8,7 +8,9 @@
  * @return {string} The HTML content of the file.
  */
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  // Evaluate the file as a template so any nested scriptlets (e.g. other
+  // `<?!= include('...') ?>` tags) are processed before returning the HTML.
+  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
 
 /**
@@ -33,7 +35,7 @@ function openReferenceSlideModal(assignmentData) {
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.showProgressModal();
 }
 
@@ -41,7 +43,7 @@ function showProgressModal() {
  * Shows the configuration dialog modal.
  */
 function showConfigurationDialog() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.showConfigurationDialog();
 }
 
@@ -49,7 +51,7 @@ function showConfigurationDialog() {
  * Shows the assignment dropdown modal.
  */
 function showAssignmentDropdown() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.showAssignmentDropdown();
 }
 
@@ -101,16 +103,16 @@ function showVersionSelector() {
  */
 
 function getClassroomData() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.getClassroomData();
 }
 
 function saveClassroomData(rows) {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.saveClassroomData(rows);
 }
 
 function showClassroomEditorModal() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.showClassroomEditorModal();
 }

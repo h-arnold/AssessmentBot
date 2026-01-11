@@ -35,7 +35,7 @@ class BeerCSSUIHandler extends UIManager {
    * @param {{width?:number,height?:number}} opts - Dialog dimensions (defaults applied if absent)
    * @private
    */
-  _renderBeerCSSDialog(file, data, title, { width = 400, height = 300 } = {}) {
+  _renderDialog(file, data, title, { width = 400, height = 300 } = {}) {
     this.safeUiOperation(() => {
       const template = HtmlService.createTemplateFromFile(file);
       if (data && typeof data === 'object') {
@@ -46,7 +46,7 @@ class BeerCSSUIHandler extends UIManager {
       const htmlOutput = template.evaluate().setWidth(width).setHeight(height);
       // Use the probed UI instance rather than accessing SpreadsheetApp directly
       this.ui.showModalDialog(htmlOutput, title);
-    }, `_renderBeerCSSDialog:${title}`);
+    }, `_renderDialog:${title}`);
   }
 
   /**
@@ -54,7 +54,7 @@ class BeerCSSUIHandler extends UIManager {
    * This is a reference implementation proving the BeerCSS scaffold works end-to-end.
    */
   showBeerCssDemoDialog() {
-    this._renderBeerCSSDialog('UI/BeerCssDemoDialog', {}, 'BeerCSS Demo', {
+    this._renderDialog('UI/BeerCssDemoDialog', {}, 'BeerCSS Demo', {
       width: 420,
       height: 220,
     });
@@ -65,9 +65,19 @@ class BeerCSSUIHandler extends UIManager {
    * Interactive reference for developers building new dialogs.
    */
   showBeerCssPlaygroundDialog() {
-    this._renderBeerCSSDialog('UI/BeerCssPlayground', {}, 'BeerCSS Playground', {
+    this._renderDialog('UI/BeerCssPlayground', {}, 'BeerCSS Playground', {
       width: 800,
       height: 680,
+    });
+  }
+
+  /**
+   * Opens the progress modal using a BeerCSS template.
+   */
+  showProgressModal() {
+    this._renderDialog('UI/BeerCssProgressModal', {}, 'Progress', {
+      width: 400,
+      height: 160,
     });
   }
 
@@ -75,7 +85,7 @@ class BeerCSSUIHandler extends UIManager {
    * Shows the assessment wizard modal for Step 1.
    */
   showAssessmentWizard() {
-    this._renderBeerCSSDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
+    this._renderDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
       width: 660,
       height: 360,
     });
@@ -84,7 +94,7 @@ class BeerCSSUIHandler extends UIManager {
   // TODO: Override parent methods here as you refactor them to BeerCSS
   // Example stub for future migration:
   // showConfigurationDialog() {
-  //   this._renderBeerCSSDialog('UI/ConfigurationDialogNew', {}, 'Settings', {
+  //   this._renderDialog('UI/ConfigurationDialogNew', {}, 'Settings', {
   //     width: 500,
   //     height: 400,
   //   });
