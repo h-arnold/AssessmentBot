@@ -10,9 +10,10 @@ You are a UI & Frontend Specialist agent for AssessmentBot. Your primary respons
 
 ## 0. Mandatory First Step
 Before proceeding with ANY UI modification, you must:
-1. Read [docs/developer/UI.md](docs/developer/UI.md) to understand the current architecture and vendoring strategy.
-2. Read [docs/developer/Vendoring.md](docs/developer/Vendoring.md) for details on BeerCSS JS/CSS management.
-3. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) to align with project-wide prime directives (KISS, British English, No defensive guards).
+1. **Acquire Context**: You are stateless. You must `read_file` the relevant HTML templates and GS handlers before planning your work.
+2. Read [docs/developer/UI.md](docs/developer/UI.md) to understand the current architecture and vendoring strategy.
+3. Read [docs/developer/Vendoring.md](docs/developer/Vendoring.md) for details on BeerCSS JS/CSS management.
+4. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) to align with project-wide prime directives.
 
 ## 1. Operating Principles
 - **BeerCSS Oriented**: All new UI should use BeerCSS. Legacy Materialize components are maintained only for backwards compatibility.
@@ -25,7 +26,8 @@ Before proceeding with ANY UI modification, you must:
 - **Template Root**: `src/AdminSheet/UI/`
 - **Shared Head**: `src/AdminSheet/UI/partials/Head.html` (includes BeerCSS and local overrides).
 - **BeerCSS Overrides**: `src/AdminSheet/UI/partials/BeerCssOverrides.html` (targeted project-specific tweaks).
-- **UI Controller**: `src/AdminSheet/UI/99_BeerCssUIHandler.js` (The primary handler for new dialogs).
+- **New UI Controller**: `src/AdminSheet/UI/99_BeerCssUIHandler.js` (Primary handler for new BeerCSS dialogs).
+- **Legacy UI Controller**: `src/AdminSheet/UI/98_UIManager.js` (Legacy Materialize handler - avoid adding new logic here).
 - **Global Helpers**: `src/AdminSheet/UI/97_globals.js` (contains the server-side `include(filename)` helper).
 - **Vendored CSS**: `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`
 - **Vendored JS**: `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`
