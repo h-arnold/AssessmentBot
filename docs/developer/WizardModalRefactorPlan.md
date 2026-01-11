@@ -40,6 +40,8 @@ A single BeerCSS-scoped wizard modal:
 - Client provides immediate feedback (ID extracted, inferred doc type when possible).
 - On submit, server validates document type (Drive MIME type) and persists settings.
 
+**Status:** Not yet implemented. See "Step 2 Implementation Plan" below.
+
 3. **Start / progress**
 
 - Wizard triggers the assessment process and either:
@@ -278,3 +280,376 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Do not pass an empty string as the Apps Script modal title; the dialog may fail to render in some contexts.
 - Reset `html, body` margins to avoid internal scrollbars.
 - Prefer BeerCSS’s field structure (`div.field.label … select then label`) so suffix elements (e.g. `progress.circle`) align correctly.
+
+## Step 2 Implementation Plan
+
+### Overview
+
+Step 2 allows users to provide Google Drive document links or IDs for reference and template documents. The wizard validates inputs client-side, extracts IDs from URLs, infers document types where possible, and delegates to the server for final validation and persistence.
+
+### UI Components
+
+#### New HTML Template
+
+- **File**: `src/AdminSheet/UI/AssessmentWizard.html` (extend existing template)
+- **Structure**: Add Step 2 panel alongside existing Step 1 panel
+- **Form Fields**:
+  - Reference document input (text field accepting URLs or IDs)
+  - Template document input (text field accepting URLs or IDs)
+  - Real-time feedback area showing extracted IDs and inferred types
+  - Validation error display
+- **Navigation**: "Back" button returns to Step 1, "Next"/"Submit" button triggers server validation
+- **State Management**: Wizard state object extended with `documents` property
+
+#### Client-Side Behaviour
+
+**URL Parsing Logic** (inline in wizard template initially):
+
+```javascript
+function parseGoogleUrl(input) {
+  const trimmed = input.trim();
+  if (!trimmed) return { id: null, inferredType: null };
+
+  // Pattern 1: /presentation/d/<id> → Slides
+  const slidesMatch = trimmed.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+  if (slidesMatch) return { id: slidesMatch[1], inferredType: 'SLIDES' };
+
+  // Pattern 2: /spreadsheets/d/<id> → Sheets
+  const sheetsMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetsMatch) return { id: sheetsMatch[1], inferredType: 'SHEETS' };
+
+  // Pattern 3: /document/d/<id> → Docs (not supported yet)
+  const docsMatch = trimmed.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+  if (docsMatch) return { id: docsMatch[1], inferredType: 'DOCS' };
+
+  // Pattern 4: drive.google.com or open?id= → unknown type
+  const driveMatch = trimmed.match(/(?:drive\.google\.com|open\?id=).*?([a-zA-Z0-9_-]{25,})/);
+  if (driveMatch) return { id: driveMatch[1], inferredType: 'unknown' };
+
+  // Pattern 5: Raw ID (alphanumeric, underscores, hyphens, min length)
+  if (/^[a-zA-Z0-9_-]{25,}$/.test(trimmed)) {
+    return { id: trimmed, inferredType: 'unknown' };
+  }
+
+  return { id: null, inferredType: null };
+}
+```
+
+**Real-Time Feedback**:
+
+- As user types, parse input and display extracted ID
+- Show inferred type (or "Unknown - will validate on server")
+- Show error if ID cannot be extracted from input
+- Disable submit button until both fields have extracted IDs
+
+**Validation Rules**:
+
+- Both reference and template IDs required
+- IDs must be different (same client-side check as legacy `SlideIdsModal`)
+- If types are inferred and differ, show warning (server will reject)
+
+#### Wizard State Extension
+
+Add to existing wizard state object:
+
+```javascript
+state: {
+  step: 'selectAssignment' | 'enterDocuments' | 'starting',
+  assignments: [],
+  selectedAssignmentId: '',
+  selectedAssignmentName: '', // NEW: store for Step 2 display
+  documents: { // NEW
+    reference: { raw: '', id: null, inferredType: null },
+    template: { raw: '', id: null, inferredType: null }
+  },
+  status: { loading: boolean, errorMessage: string | null }
+}
+```
+
+### Server-Side Components
+
+#### New Server Functions
+
+**File**: `src/AdminSheet/GoogleClassroom/globals.js`
+
+```javascript
+/**
+ * Validates document IDs and types, then saves definition for wizard Step 2.
+ * Called when user submits Step 2 form.
+ *
+ * @param {string} assignmentId - The Classroom assignment ID
+ * @param {Object} documentIds - { referenceDocumentId, templateDocumentId }
+ * @returns {Object} { success: boolean, definitionKey?: string, error?: string, documentType?: string }
+ */
+function validateAndSaveDocumentIds(assignmentId, documentIds) {
+  try {
+    // Validate IDs are different
+    if (documentIds.referenceDocumentId === documentIds.templateDocumentId) {
+      return {
+        success: false,
+        error: 'Reference and template document IDs must be different.',
+      };
+    }
+
+    // Use existing AssignmentController logic
+    const controller = new AssignmentController();
+    const { definition } = controller.ensureDefinitionFromInputs({
+      assignmentTitle: null,
+      assignmentId,
+      documentIds,
+    });
+
+    return {
+      success: true,
+      definitionKey: definition.definitionKey,
+      documentType: definition.documentType,
+    };
+  } catch (err) {
+    ABLogger.getInstance().error('validateAndSaveDocumentIds failed', err);
+    return {
+      success: false,
+      error: err.message || 'Failed to validate documents',
+    };
+  }
+}
+
+/**
+ * Fetches previously saved document IDs for an assignment.
+ * Used by wizard Step 2 to pre-fill form.
+ *
+ * @param {string} assignmentId - The assignment ID
+ * @returns {Object} { referenceDocumentId?: string, templateDocumentId?: string }
+ */
+function fetchSavedDocumentIds(assignmentId) {
+  try {
+    const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+    const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
+    const topicId = courseWork?.topicId || null;
+    const primaryTitle = courseWork?.title;
+    const abClassController = new ABClassController();
+    const abClass = abClassController.loadClass(courseId);
+    const yearGroup = abClass?.yearGroup ?? null;
+    const primaryTopic = topicId ? ClassroomApiClient.fetchTopicName(courseId, topicId) : null;
+
+    const definitionKey = AssignmentDefinition.buildDefinitionKey({
+      primaryTitle,
+      primaryTopic,
+      yearGroup,
+    });
+
+    const definition = new AssignmentDefinitionController().getDefinitionByKey(definitionKey);
+
+    if (definition) {
+      return {
+        referenceDocumentId: definition.referenceDocumentId,
+        templateDocumentId: definition.templateDocumentId,
+      };
+    }
+    return {};
+  } catch (err) {
+    ABLogger.getInstance().warn('fetchSavedDocumentIds failed', err);
+    return {};
+  }
+}
+```
+
+**Existing Components Referenced (No Changes)**:
+
+- **`AssignmentController.ensureDefinitionFromInputs()`**: Already validates MIME types and creates definition
+- **`AssignmentController._detectDocumentType()`**: Already validates reference/template types match
+
+### Integration Points
+
+#### Files to Modify
+
+1. **`src/AdminSheet/UI/AssessmentWizard.html`**
+   - Add Step 2 panel HTML
+   - Add URL parsing function
+   - Extend wizard state management
+   - Add step transition logic
+
+2. **`src/AdminSheet/GoogleClassroom/globals.js`**
+   - Add `validateAndSaveDocumentIds()` function
+   - Add `fetchSavedDocumentIds()` function
+
+#### Files Referenced (No Changes)
+
+- `src/AdminSheet/y_controllers/AssignmentController.js` - `ensureDefinitionFromInputs()` and `_detectDocumentType()` already handle validation
+- `src/AdminSheet/y_controllers/AssignmentDefinitionController.js` - `ensureDefinition()` already handles persistence
+- `src/AdminSheet/GoogleDriveManager/DriveManager.js` - `getFileModifiedTime()` used by definition controller
+- `src/AdminSheet/Models/AssignmentDefinition.js` - Model handles persistence and validation
+- `src/AdminSheet/UI/99_BeerCssUIHandler.js` - Wizard already wired via `showAssessmentWizard()`
+- `src/AdminSheet/UI/97_globals.js` - No changes needed
+
+### Testing Strategy
+
+#### UI Behaviour Tests
+
+**New test file**: `tests/ui/assignmentWizardStep2.test.js`
+
+Minimum behaviours to test:
+
+1. **Initial render from Step 1 selection**:
+   - Step 2 panel hidden initially
+   - Becomes visible when Step 1 primary action clicked
+   - Shows selected assignment name from Step 1
+   - Input fields are empty (or pre-filled if saved IDs exist for assignment)
+
+2. **URL parsing**:
+   - Slides URL → extracts ID, shows type "Slides"
+   - Sheets URL → extracts ID, shows type "Sheets"
+   - Drive link → extracts ID, shows type "Unknown"
+   - Raw ID → accepts, shows type "Unknown"
+   - Invalid input → shows error, disables submit
+
+3. **Real-time feedback**:
+   - As user types, feedback updates
+   - Extracted ID displayed
+   - Inferred type displayed
+   - Submit button disabled until both IDs extracted
+
+4. **Validation**:
+   - Both fields required
+   - IDs must differ (shows error if same)
+   - Warning if inferred types differ
+
+5. **Server call on submit**:
+   - Calls `google.script.run.validateAndSaveDocumentIds()`
+   - Loading state shown during call
+   - Success: transitions to Step 3 or starts assessment
+   - Failure: error banner shown, user can retry
+
+6. **Navigation**:
+   - "Back" button returns to Step 1 (preserves Step 1 state)
+   - "Cancel" closes dialog
+
+7. **Pre-fill from server**:
+   - When Step 2 loads, calls `fetchSavedDocumentIds()`
+   - Success: pre-fills inputs
+   - Failure: shows warning, allows user to proceed with empty fields
+
+#### Server-Side Unit Tests
+
+**New test file**: `tests/controllers/assignmentController.wizardStep2.test.js`
+
+1. **`validateAndSaveDocumentIds()` success path**:
+   - Valid, different IDs → returns success with definitionKey
+   - Calls `ensureDefinitionFromInputs()` correctly
+
+2. **`validateAndSaveDocumentIds()` validation failures**:
+   - Same IDs → returns error
+   - Invalid file ID → returns error
+   - MIME type mismatch → returns error
+   - Missing file → returns error
+
+3. **`fetchSavedDocumentIds()` success and failure paths**:
+   - Existing definition → returns IDs
+   - No definition → returns empty object
+   - API failure → returns empty object (graceful degradation)
+
+4. **MIME type validation** (via `_detectDocumentType()`):
+   - Slides reference + Slides template → success
+   - Sheets reference + Sheets template → success
+   - Slides reference + Sheets template → error
+   - Invalid MIME type → error
+
+#### URL Parsing Unit Tests
+
+**Option 1**: If parsing stays inline, test via UI test using JSDOM
+
+**Option 2**: If extracted to separate module:
+
+**New file**: `src/AdminSheet/Utils/GoogleUrlParser.js`
+**New test file**: `tests/utils/googleUrlParser.test.js`
+
+Test cases:
+
+- Slides URLs (various formats)
+- Sheets URLs (various formats)
+- Docs URLs (unsupported type detection)
+- Drive links (`drive.google.com/...`, `open?id=`)
+- Raw IDs
+- Malformed inputs
+- Empty strings
+
+### Migration from Legacy `SlideIdsModal`
+
+**Current flow**:
+
+1. User selects assignment from dropdown (`AssignmentDropdown.html`)
+2. `openReferenceSlideModal()` shows `SlideIdsModal.html`
+3. User enters IDs, clicks "Go"
+4. Calls `saveStartAndShowProgress()`
+
+**New flow**:
+
+1. User opens Assessment Wizard
+2. Step 1: Select assignment
+3. Step 2: Enter document IDs (replaces `SlideIdsModal`)
+4. Step 3: Start assessment (triggers processing)
+
+**Backward Compatibility**:
+
+- Keep `SlideIdsModal.html` until wizard proven
+- Keep `openReferenceSlideModal()` functional
+- Menu provides both options initially
+- Once wizard stable, deprecate legacy modal
+
+### Open Questions
+
+**Q1**: Should we extract the URL parser into a reusable module, or keep it inline?
+
+**Recommendation**: Start inline (KISS). Extract to `src/AdminSheet/Utils/GoogleUrlParser.js` only when:
+
+- Reused in another context
+- Needs comprehensive unit testing beyond JSDOM coverage
+
+**Q2**: Should Step 2 support Docs inputs, or only Slides/Sheets?
+
+**Current Answer**: Client can parse Docs URLs and extract IDs. Server-side `_detectDocumentType()` will reject Docs MIME type with clear error. This allows future extension without client changes.
+
+**Q3**: Should we validate file permissions (user can access file) in Step 2?
+
+**Recommendation**: No. Defer to actual processing stage. Step 2 only validates:
+
+- ID extractable
+- MIME type supported and consistent
+- File exists
+
+Permissions checked when parsing begins (existing behaviour).
+
+**Q4**: Should the wizard transition to Step 3 (progress panel) or close and show existing `ProgressModal`?
+
+**Deferred**: For Step 2 implementation, wizard closes and shows existing `ProgressModal` (same as legacy flow). Step 3 design is separate iteration.
+
+**Q5**: How should wizard handle network failures when fetching saved IDs?
+
+**Recommendation**: Show warning banner but allow user to proceed. Empty fields are valid (new assignment setup).
+
+### Files Summary
+
+#### New Files
+
+- `tests/ui/assignmentWizardStep2.test.js` - UI behaviour tests
+- `tests/controllers/assignmentController.wizardStep2.test.js` - Server validation tests
+- (Optional) `src/AdminSheet/Utils/GoogleUrlParser.js` - URL parser module
+- (Optional) `tests/utils/googleUrlParser.test.js` - Parser unit tests
+
+#### Modified Files
+
+- `src/AdminSheet/UI/AssessmentWizard.html` - Add Step 2 panel and logic
+- `src/AdminSheet/GoogleClassroom/globals.js` - Add `validateAndSaveDocumentIds()` and `fetchSavedDocumentIds()`
+
+#### Referenced (No Changes)
+
+- `src/AdminSheet/y_controllers/AssignmentController.js`
+- `src/AdminSheet/y_controllers/AssignmentDefinitionController.js`
+- `src/AdminSheet/GoogleDriveManager/DriveManager.js`
+- `src/AdminSheet/Models/AssignmentDefinition.js`
+- `src/AdminSheet/UI/99_BeerCssUIHandler.js`
+- `src/AdminSheet/UI/97_globals.js`
+
+#### Legacy (Keep for Now)
+
+- `src/AdminSheet/UI/SlideIdsModal.html` - Original modal (deprecated when wizard stable)
+- `tests/ui/slideIdsModal.test.js` - Legacy tests (keep until migration complete)
