@@ -46,6 +46,7 @@ npm run format    # Format code with Prettier
 8. Do not add production code purely for tests.
 9. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
 10. Use `Validate` class for generic validation. Use `Validate.requireParams()` for parameter existence checks. Only implement class-specific validation within classes.
+11. Delegate UI and testing duties to the appropriate sub-agents; do not implement UI or tests directly — use the `runSubagent` tool to hand over detailed instructions.
 
 Important: Defensive guards policy
 - Do not implement defensive programming guards (existence checks, typeof/feature detection, optional chaining as a gate) for known internal calls or GAS services. Prefer uncaught exceptions over masking issues.
@@ -80,7 +81,7 @@ Additional clarity:
 ### 4. Tests (Vitest: logic only)
 Add tests for any new serialisable or stateful logic:
 Prohibited: Apps Script services, network, timers tied to GAS.
-Always consult testing docs at `./docs/developer/testing.md` before writing or debugging tests.
+Always delegating testing tasks to the testing sub-agent.
 
 ### 5. Validation
 Use the `Validate` utility class (`src/AdminSheet/Utils/Validate.js`) for all generic validation:
@@ -198,23 +199,23 @@ Cohort: Group/class aggregate analysis.
 ### 14. Ambiguity Rule
 State 1–2 concise assumptions, proceed with simplest compliant implementation.
 
-### 15. Ultra‑Compact Quick Card
+### 15. Sub-Agent Strategy
+For all UI and testing duties, always delegate to the appropriate sub-agent using the `runSubagent` tool.
+
+**Available Sub-Agents:**
+- **Testing Specialist**: Handles all `tests/` creation, debugging, and execution. Instructions: [.github/agents/Testing.agent.md](.github/agents/Testing.agent.md)
+- **UI Specialist**: Responsible for all `src/AdminSheet/UI/` templates and `BeerCSSUIHandler` logic. Instructions: [.github/agents/UI.agent.md](.github/agents/UI.agent.md)
+
+**Usage Guidelines:**
+1. **Mandatory Delegation**: Always use sub-agents for any UI or testing-related tasks. Do not implement UI or test logic directly; delegate via `runSubagent`.
+2. **Contextual Handover**: Provide a highly detailed prompt to the sub-agent via `runSubagent`. Include the path to their specific instruction file and the exact task requirements.
+3. **Summarisation**: Once the sub-agent completes its task, provide a concise summary of the results to the user (the "Goldilocks" level of detail—actionable and informative but not overwhelming).
+4. **Statelessness**: Remember that sub-agents are stateless. They cannot communicate back and forth with you. Your initial prompt must contain all necessary context and instructions.
+
+### 16. Ultra‑Compact Quick Card
 PRIORITY: KISS > Explicit request > Style > Logging contract > Tests (logic only)
 DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic, use Validate.requireParams for param checks.
 DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need, duplicate validation logic.
 FALLBACK: Assume fallback is not required unless explicitly stated.
 
 GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
-
-### 16. Sub-Agent Strategy
-For complex, multi-step tasks in specific domains, use the `runSubagent` tool to delegate work to specialised sub-agents.
-
-**Available Sub-Agents:**
-- **Testing Specialist**: `tests/` creation, debugging, and execution. Instructions: [.github/agents/Testing.agent.md](.github/agents/Testing.agent.md)
-- **UI Specialist**: `src/AdminSheet/UI/` templates and `BeerCSSUIHandler` logic. Instructions: [.github/agents/UI.agent.md](.github/agents/UI.agent.md)
-
-**Usage Guidelines:**
-1. **Delegation**: Use sub-agents when a task requires deep domain knowledge or involves many small steps (e.g., writing a full test suite or refactoring a complex UI component).
-2. **Contextual Handover**: Provide a highly detailed prompt to the sub-agent via `runSubagent`. Include the path to their specific instruction file and the exact task requirements.
-3. **Summarisation**: Once the sub-agent completes its task, provide a concise summary of the results to the user (the "Goldilocks" level of detail—actionable and informative but not overwhelming).
-4. **Statelessness**: Remember that sub-agents are stateless. They cannot communicate back and forth with you. Your initial prompt must contain all necessary context and instructions.
