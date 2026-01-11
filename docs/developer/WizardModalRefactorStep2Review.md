@@ -301,7 +301,7 @@ Based on `docs/developer/UI.md` and Step 1 implementation:
      <input type="text" id="referenceInput" />
      <label for="referenceInput">Reference document (URL or ID)</label>
    </div>
-   <output id="referenceF feedback" class="status" aria-live="polite"></output>
+   <output id="referenceFeedback" class="status" aria-live="polite"></output>
    ```
 
 2. **State classes** for validation:
