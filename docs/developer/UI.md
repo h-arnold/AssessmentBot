@@ -208,6 +208,30 @@ BeerCSS positions suffix/prefix adornments (including `progress.circle`) using C
 
 - For suffix spinners/icons, avoid adding bespoke `position: absolute` rules unless you have to. BeerCSS already centres `progress.circle` in a suffix/prefix field.
 
+### Full-width elements in modals
+
+When an element needs to span the full width of a modal (e.g. a progress bar), using `width: 100%` may not achieve the desired result if the parent container shrinks to fit its content due to flexbox centering.
+
+**Symptom**: A full-width progress bar appears narrower in indeterminate state than in error state, or doesn't span the full modal width.
+
+**Solution**: Use `width: 100vw` (viewport width) on the container to force it to span the full viewport width, rather than relying on percentage-based widths that are relative to a constrained parent.
+
+Example:
+
+```css
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.full-width-container {
+  width: 100vw; /* Forces full viewport width */
+}
+```
+
+**Note**: This works well for full-screen modals. For dialogs with a fixed width, constrain the container's max-width separately if needed.
+
 ### Accessibility and lint rules
 
 - For inline status messaging, prefer an `<output>` element rather than `role="status"` on a generic element.
