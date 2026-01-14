@@ -89,13 +89,17 @@
           state: {
             assignments: [],
             selectedAssignmentId: '',
+            // will hold partial definitions returned from server
+            definitions: [],
           },
           init() {
             if (this.initialised) return;
             this.initialised = true;
             this.bindEvents();
             this.prepareForLoad('Loading assignments...');
-            this.fetchAssignments();
+            // Kick off both GAS calls asynchronously on the next tick so neither can block
+            setTimeout(() => this.fetchAssignments(), 0);
+            setTimeout(() => this.fetchPartialDefinitions(), 0);
           },
           bindEvents() {
             assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
@@ -155,6 +159,25 @@
                 ? `Failed to load assignments: ${error.message}`
                 : 'Failed to load assignments.'
             );
+          },
+
+          // Fetch partial definitions to support wizard lookups (stored only for now)
+          fetchPartialDefinitions() {
+            google.script.run
+              .withSuccessHandler((payload) => this.handlePartialDefinitionsSuccess(payload))
+              .withFailureHandler((error) => this.handlePartialDefinitionsFailure(error))
+              .getAllPartialDefinitions();
+          },
+
+          handlePartialDefinitionsSuccess(definitions) {
+            this.state.definitions = Array.isArray(definitions) ? definitions : [];
+          },
+
+          handlePartialDefinitionsFailure(error) {
+            // For now just keep an empty set and log the problem to the console.
+            this.state.definitions = [];
+            // eslint-disable-next-line no-console
+            console.warn('Failed to load partial definitions for wizard:', error);
           },
           handleSelectionChange() {
             this.state.selectedAssignmentId = assignmentSelect.value;
