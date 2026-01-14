@@ -10,7 +10,6 @@
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
   - [Full Hydration (complete payload)](#full-hydration-complete-payload)
   - [Feedback Structure](#feedback-structure)
-    - [Generic Feedback](#generic-feedback)
     - [Cell Reference Feedback (Sheets)](#cell-reference-feedback-sheets)
   - [Full Hydration Example with Assessments and Feedback](#full-hydration-example-with-assessments-and-feedback)
     - [Hydration Guidelines](#hydration-guidelines)
@@ -149,6 +148,7 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. It is 
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
   "definitionKey": "Essay 1_English_10",
+  "TaskDefinitionsChanged": false,
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -187,6 +187,7 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
   "definitionKey": "Essay 1_English_10",
+  "TaskDefinitionsChanged": false,
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -263,6 +264,7 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "templateDocumentId": "DriveTemplate123",
     "assignmentWeighting": null,
     "definitionKey": "Essay 1_English_10",
+    "TaskDefinitionsChanged": false,
     "tasks": null,
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
