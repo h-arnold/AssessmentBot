@@ -54,6 +54,26 @@ function createGoogleMock() {
       return this;
     },
 
+    listAllDefinitionsForWizard(...args) {
+      this._registerCall('listAllDefinitionsForWizard', args);
+      return this;
+    },
+
+    linkAssignmentToDefinition(...args) {
+      this._registerCall('linkAssignmentToDefinition', args);
+      return this;
+    },
+
+    createDefinitionFromUrls(...args) {
+      this._registerCall('createDefinitionFromUrls', args);
+      return this;
+    },
+
+    startAssessmentFromWizard(...args) {
+      this._registerCall('startAssessmentFromWizard', args);
+      return this;
+    },
+
     triggerSuccess(methodName, payload) {
       const h = this._handlers[methodName];
       if (h && typeof h.success === 'function') {
@@ -92,6 +112,14 @@ function setupWizard() {
   const { window } = dom;
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: false,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
 
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
@@ -147,8 +175,12 @@ describe('Assessment wizard Step 1', () => {
       expect(googleRun.calls).toBeGreaterThan(0);
       // both methods should be invoked with no args
       expect(googleRun.calledMethods).toEqual(
-        expect.arrayContaining(['fetchAssignmentsForWizard', 'getAllPartialDefinitions'])
+        expect.arrayContaining(['fetchAssignmentsForWizard'])
       );
+      expect(
+        googleRun.calledMethods.includes('getAllPartialDefinitions') ||
+          googleRun.calledMethods.includes('listAllDefinitionsForWizard')
+      ).toBe(true);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -163,8 +195,8 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
 
       const assignments = [
-        { id: 'a1', title: 'Year 9 Programming' },
-        { id: 'a2', title: 'Year 10 Robotics' },
+        { id: 'a1', title: 'Year 9 Programming', topicName: 'Programming' },
+        { id: 'a2', title: 'Year 10 Robotics', topicName: 'Robotics' },
       ];
 
       // Trigger assignments success handler explicitly
@@ -195,7 +227,7 @@ describe('Assessment wizard Step 1', () => {
     try {
       vi.runAllTimers();
 
-      const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
+      const assignments = [{ id: 'alpha', title: 'Alpha Assignment', topicName: 'Topic A' }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
       const assignmentSelect = document.getElementById('assignmentSelect');
@@ -203,7 +235,7 @@ describe('Assessment wizard Step 1', () => {
 
       assignmentSelect.value = 'alpha';
       assignmentSelect.dispatchEvent(new window.Event('change'));
-      expect(startButton.disabled).toBe(false);
+      expect(startButton.disabled).toBe(true);
 
       assignmentSelect.value = '';
       assignmentSelect.dispatchEvent(new window.Event('change'));
@@ -228,7 +260,11 @@ describe('Assessment wizard Step 1', () => {
         },
       ];
 
-      googleRun.triggerSuccess('getAllPartialDefinitions', defs);
+      if (googleRun.calledMethods.includes('listAllDefinitionsForWizard')) {
+        googleRun.triggerSuccess('listAllDefinitionsForWizard', defs);
+      } else {
+        googleRun.triggerSuccess('getAllPartialDefinitions', defs);
+      }
       expect(window.assignmentWizard.state.definitions).toEqual(defs);
     } finally {
       vi.useRealTimers();

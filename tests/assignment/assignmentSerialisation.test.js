@@ -121,6 +121,8 @@ describe('Assignment Serialisation', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref-partial',
+        templateDocumentId: 'tpl-partial',
         tasks: null,
       });
 
@@ -131,8 +133,8 @@ describe('Assignment Serialisation', () => {
       const restored = Assignment.fromJSON(partialJson);
 
       expect(restored.assignmentDefinition.tasks).toBe(null);
-      expect(restored.assignmentDefinition.referenceDocumentId).toBe(null);
-      expect(restored.assignmentDefinition.templateDocumentId).toBe(null);
+      expect(restored.assignmentDefinition.referenceDocumentId).toBe('ref-partial');
+      expect(restored.assignmentDefinition.templateDocumentId).toBe('tpl-partial');
       expect(restored.documentType).toBe('SLIDES');
     });
   });

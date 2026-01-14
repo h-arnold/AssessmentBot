@@ -16,6 +16,7 @@ class AssignmentDefinition {
    * @param {string|null} [params.templateLastModified=null] - ISO timestamp snapshot for template document.
    * @param {number|null} [params.assignmentWeighting=null] - Optional weighting value.
    * @param {Object<string, TaskDefinition>|Object} [params.tasks={}] - Task definitions keyed by taskId.
+   * @param {boolean} [params.TaskDefinitionsChanged=false] - Whether task definitions changed on refresh.
    * @param {string|null} [params.createdAt=null] - ISO created timestamp; defaults to now when null.
    * @param {string|null} [params.updatedAt=null] - ISO updated timestamp; defaults to now when null.
    * @param {string|null} [params.definitionKey=null] - Composite key used for persistence.
@@ -36,6 +37,7 @@ class AssignmentDefinition {
     createdAt = null,
     updatedAt = null,
     definitionKey = null,
+    TaskDefinitionsChanged = false,
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
@@ -49,6 +51,7 @@ class AssignmentDefinition {
     this.templateLastModified = templateLastModified;
     this.assignmentWeighting = assignmentWeighting ?? null;
     this.definitionKey = definitionKey;
+    this.TaskDefinitionsChanged = TaskDefinitionsChanged ?? false;
     this.createdAt = createdAt || new Date().toISOString();
     this.updatedAt = updatedAt || this.createdAt;
 
@@ -128,6 +131,18 @@ class AssignmentDefinition {
     if (!this.documentType) {
       tracker.logAndThrowError('Missing required assignment property: documentType', {
         devContext: { property: 'documentType', value: this.documentType },
+      });
+    }
+
+    if (!this.referenceDocumentId) {
+      tracker.logAndThrowError('Missing required assignment property: referenceDocumentId', {
+        devContext: { property: 'referenceDocumentId', value: this.referenceDocumentId },
+      });
+    }
+
+    if (!this.templateDocumentId) {
+      tracker.logAndThrowError('Missing required assignment property: templateDocumentId', {
+        devContext: { property: 'templateDocumentId', value: this.templateDocumentId },
       });
     }
   }
@@ -245,6 +260,7 @@ class AssignmentDefinition {
       templateLastModified: this.templateLastModified,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
+      TaskDefinitionsChanged: this.TaskDefinitionsChanged,
       tasks: Object.fromEntries(
         Object.entries(this.tasks).map(([taskId, task]) => [
           taskId,
@@ -268,6 +284,7 @@ class AssignmentDefinition {
       templateDocumentId: this.templateDocumentId,
       assignmentWeighting: this.assignmentWeighting,
       definitionKey: this.definitionKey,
+      TaskDefinitionsChanged: this.TaskDefinitionsChanged,
       tasks: null,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
@@ -294,6 +311,7 @@ class AssignmentDefinition {
       createdAt: json.createdAt ?? null,
       updatedAt: json.updatedAt ?? null,
       definitionKey: json.definitionKey ?? null,
+      TaskDefinitionsChanged: json.TaskDefinitionsChanged ?? false,
     });
   }
 }

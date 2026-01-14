@@ -63,6 +63,8 @@ class AssignmentDefinitionController {
     const templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
 
     let definition = this.getDefinitionByKey(definitionKey, { form: 'full' });
+    const isNewDefinition = !definition;
+    const previousTasks = definition?.tasks || null;
 
     const needsRefresh = Utils.definitionNeedsRefresh(
       definition,
@@ -82,16 +84,19 @@ class AssignmentDefinitionController {
         templateLastModified,
         tasks: {},
         definitionKey,
+        TaskDefinitionsChanged: false,
       });
     }
 
     if (needsRefresh) {
       const tasks = this._parseTasks({ documentType, referenceDocumentId, templateDocumentId });
+      const taskKeysChanged = this._taskKeysChanged(previousTasks, tasks);
       definition.tasks = tasks;
       definition.updateModifiedTimestamps({
         referenceLastModified,
         templateLastModified,
       });
+      definition.TaskDefinitionsChanged = isNewDefinition ? false : taskKeysChanged;
       this.saveDefinition(definition);
     }
 
@@ -129,6 +134,133 @@ class AssignmentDefinitionController {
   getAllPartialDefinitions() {
     const docs = this.dbManager.readAll(this.registryCollectionName) || [];
     return docs.map((doc) => AssignmentDefinition.fromJSON(doc));
+  }
+
+  /**
+   * Return all partial assignment definitions (wizard list).
+   * @return {AssignmentDefinition[]}
+   */
+  listAllPartialDefinitions() {
+    const defs = this.getAllPartialDefinitions();
+    return defs.sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+  }
+
+  /**
+   * Link an assignment to an existing definition by adding alternate metadata.
+   * @param {Object} params
+   * @param {string} params.definitionKey
+   * @param {string} params.alternateTitle
+   * @param {string} params.alternateTopic
+   * @return {AssignmentDefinition}
+   */
+  linkAssignmentToDefinition({ definitionKey, alternateTitle, alternateTopic }) {
+    Validate.requireParams(
+      { definitionKey, alternateTitle, alternateTopic },
+      'linkAssignmentToDefinition'
+    );
+
+    const definition = this.getDefinitionByKey(definitionKey, { form: 'full' });
+    if (!definition) {
+      this.progressTracker.logAndThrowError('Assignment definition not found for link operation.', {
+        devContext: { definitionKey },
+      });
+    }
+
+    const normalise = (value) =>
+      String(value || '')
+        .trim()
+        .toLowerCase();
+    const titleNormalised = normalise(alternateTitle);
+    const topicNormalised = normalise(alternateTopic);
+    const primaryTopicNormalised = normalise(definition.primaryTopic);
+
+    if (titleNormalised) {
+      const existingTitles = definition.alternateTitles || [];
+      const existingNormalised = existingTitles.map(normalise);
+      if (!existingNormalised.includes(titleNormalised)) {
+        definition.alternateTitles = [...existingTitles, alternateTitle.trim()];
+      }
+    }
+
+    if (topicNormalised && topicNormalised !== primaryTopicNormalised) {
+      const existingTopics = definition.alternateTopics || [];
+      const existingNormalised = existingTopics.map(normalise);
+      if (!existingNormalised.includes(topicNormalised)) {
+        definition.alternateTopics = [...existingTopics, alternateTopic.trim()];
+      }
+    }
+
+    return this.saveDefinition(definition);
+  }
+
+  /**
+   * Create a new definition from document URLs or IDs.
+   * @param {Object} params
+   * @param {string} params.assignmentId
+   * @param {string} params.courseId
+   * @param {string} params.primaryTitle
+   * @param {string} params.primaryTopic
+   * @param {number|null} params.yearGroup
+   * @param {string} params.documentType
+   * @param {string} params.referenceUrl
+   * @param {string} params.templateUrl
+   * @return {AssignmentDefinition}
+   */
+  createDefinitionFromUrls({
+    assignmentId,
+    courseId,
+    primaryTitle,
+    primaryTopic,
+    yearGroup = null,
+    documentType,
+    referenceUrl,
+    templateUrl,
+  }) {
+    Validate.requireParams(
+      {
+        assignmentId,
+        courseId,
+        primaryTitle,
+        primaryTopic,
+        referenceUrl,
+        templateUrl,
+      },
+      'createDefinitionFromUrls'
+    );
+
+    const referenceDocumentId = this._extractDriveFileId(referenceUrl);
+    const templateDocumentId = this._extractDriveFileId(templateUrl);
+
+    if (!referenceDocumentId || !templateDocumentId) {
+      this.progressTracker.logAndThrowError('Invalid document URL or ID provided.', {
+        devContext: { referenceUrl, templateUrl },
+      });
+    }
+
+    const assignmentController = new AssignmentController();
+    const detectedType = assignmentController._detectDocumentType(
+      referenceDocumentId,
+      templateDocumentId
+    );
+
+    if (documentType && documentType !== detectedType) {
+      this.progressTracker.logAndThrowError('Document type mismatch for provided URLs.', {
+        devContext: { documentType, detectedType },
+      });
+    }
+
+    return this.ensureDefinition({
+      primaryTitle,
+      primaryTopic,
+      yearGroup,
+      documentType: detectedType,
+      referenceDocumentId,
+      templateDocumentId,
+    });
   }
 
   /**
@@ -255,6 +387,36 @@ class AssignmentDefinitionController {
     return Object.fromEntries(
       definitions.map((td) => [td.getId(), TaskDefinition.fromJSON(td.toJSON())])
     );
+  }
+
+  _taskKeysChanged(previousTasks, nextTasks) {
+    const previousKeys = previousTasks ? Object.keys(previousTasks) : [];
+    const nextKeys = nextTasks ? Object.keys(nextTasks) : [];
+    if (previousKeys.length !== nextKeys.length) return true;
+    const previousSet = new Set(previousKeys);
+    return nextKeys.some((key) => !previousSet.has(key));
+  }
+
+  _extractDriveFileId(value) {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    if (DriveManager.isValidGoogleDriveFileId(trimmed)) {
+      return trimmed;
+    }
+
+    const match = /\/d\/([a-zA-Z0-9_-]{10,})/.exec(trimmed);
+    if (match && DriveManager.isValidGoogleDriveFileId(match[1])) {
+      return match[1];
+    }
+
+    const queryMatch = /[?&]id=([a-zA-Z0-9_-]{10,})/.exec(trimmed);
+    if (queryMatch && DriveManager.isValidGoogleDriveFileId(queryMatch[1])) {
+      return queryMatch[1];
+    }
+
+    return null;
   }
 }
 

@@ -28,6 +28,9 @@ function fetchAssignmentsForWizard() {
   return assignments.map((assignment) => ({
     id: assignment.id,
     title: assignment.title,
+    topicName:
+      assignment.topicName ||
+      (assignment.topicId ? ClassroomApiClient.fetchTopicName(courseId, assignment.topicId) : null),
   }));
 }
 

@@ -85,10 +85,18 @@ class BeerCSSUIHandler extends UIManager {
    * Shows the assessment wizard modal for Step 1.
    */
   showAssessmentWizard() {
-    this._renderDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
-      width: 660,
-      height: 360,
-    });
+    const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+    const abClass = new ABClassController().loadClass(courseId);
+    const yearGroup = abClass.yearGroup ?? null;
+    this._renderDialog(
+      'UI/AssessmentWizard',
+      { wizardContext: { courseId, yearGroup } },
+      'Step 1 - Select assignment',
+      {
+        width: 760,
+        height: 680,
+      }
+    );
   }
 
   // TODO: Override parent methods here as you refactor them to BeerCSS

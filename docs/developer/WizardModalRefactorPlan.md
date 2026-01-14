@@ -273,6 +273,58 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Debug menu entry exists for testing.
 - UI tests cover initial render, server call, success path, failure path, selection gating, and cancel.
 
+### Implemented (Step 2 delivery details)
+
+#### UI (wizard)
+
+- Extended the wizard template with Step 2 panels and state machine:
+  - Definition idle/loading/blocked/found/missing panels.
+  - Link-existing list with filter and last‑10 default rendering.
+  - Create flow with reference/template URL fields and doc type preview.
+  - Shared status output and consistent button disablement while requests are in flight.
+- Added client‑side logic for:
+  - Definition matching using title + topic + yearGroup parity.
+  - Stale banner when `TaskDefinitionsChanged` is true.
+  - Link/create flows with validation and server calls.
+  - Start trigger from wizard via `startAssessmentFromWizard`.
+  - Defensive JSON parse for wizard context in test/runtime split.
+- Files: [src/AdminSheet/UI/AssessmentWizard.html](src/AdminSheet/UI/AssessmentWizard.html), [src/AdminSheet/UI/99_BeerCssUIHandler.js](src/AdminSheet/UI/99_BeerCssUIHandler.js)
+
+#### Google Classroom data
+
+- Added `topicId` to assignment payloads in the Classroom manager.
+- `fetchAssignmentsForWizard()` now returns `topicName` using `topicId` resolution when needed.
+- Files: [src/AdminSheet/GoogleClassroom/GoogleClassroomManager.js](src/AdminSheet/GoogleClassroom/GoogleClassroomManager.js), [src/AdminSheet/GoogleClassroom/globals.js](src/AdminSheet/GoogleClassroom/globals.js)
+
+#### Controllers and globals
+
+- Added wizard‑facing globals for list/link/create/start with `Validate.requireParams` and ProgressTracker logging.
+- Added `listAllPartialDefinitions()`, `linkAssignmentToDefinition()`, `createDefinitionFromUrls()` in `AssignmentDefinitionController`.
+  - Link flow normalises alternates; updates `alternateTopics` only when different to `primaryTopic`.
+  - URL → ID extraction supports `/d/<id>` and `open?id=`; ID format validated.
+  - MIME validation uses `AssignmentController._detectDocumentType()` (Slides/Sheets only).
+- Added `startAssessmentFromWizard()` and task‑change detection in `AssignmentController`.
+- Files: [src/AdminSheet/y_controllers/globals.js](src/AdminSheet/y_controllers/globals.js), [src/AdminSheet/y_controllers/AssignmentDefinitionController.js](src/AdminSheet/y_controllers/AssignmentDefinitionController.js), [src/AdminSheet/y_controllers/AssignmentController.js](src/AdminSheet/y_controllers/AssignmentController.js)
+
+#### Models and data shapes
+
+- Added `TaskDefinitionsChanged` to `AssignmentDefinition` constructor/serialisation.
+- Partial validation now requires `referenceDocumentId` and `templateDocumentId`.
+- Documented `TaskDefinitionsChanged` in data shapes (full + partial).
+- Files: [src/AdminSheet/Models/AssignmentDefinition.js](src/AdminSheet/Models/AssignmentDefinition.js), [docs/developer/DATA_SHAPES.md](docs/developer/DATA_SHAPES.md)
+
+#### Tests
+
+- Added Step 2 wizard UI tests and updated Step 1 gating expectations.
+- Added globals tests for wizard‑facing controller facades.
+- Added Google Classroom wizard assignment shape tests.
+- Updated model/assignment tests for required partial IDs and `TaskDefinitionsChanged`.
+- Files: [tests/ui/assignmentWizardStep2.test.js](tests/ui/assignmentWizardStep2.test.js), [tests/ui/assignmentWizardStep1.test.js](tests/ui/assignmentWizardStep1.test.js), [tests/controllers/assignmentDefinitionGlobals.test.js](tests/controllers/assignmentDefinitionGlobals.test.js), [tests/googleClassroom/fetchAssignmentsForWizard.test.js](tests/googleClassroom/fetchAssignmentsForWizard.test.js), [tests/assignment/assignmentDefinitionValidation.test.js](tests/assignment/assignmentDefinitionValidation.test.js), [tests/models/assignmentDefinition.test.js](tests/models/assignmentDefinition.test.js), [tests/assignment/assignmentSerialisation.test.js](tests/assignment/assignmentSerialisation.test.js), [tests/assignment/assignmentLegacyAliases.test.js](tests/assignment/assignmentLegacyAliases.test.js)
+
+#### Tests run
+
+- `npm test -- tests/ui/assignmentWizardStep1.test.js tests/ui/assignmentWizardStep2.test.js tests/controllers/assignmentDefinitionController.test.js tests/controllers/assignmentDefinitionGlobals.test.js tests/googleClassroom/fetchAssignmentsForWizard.test.js tests/assignment/assignmentDefinitionValidation.test.js tests/models/assignmentDefinition.test.js tests/assignment/assignmentSerialisation.test.js tests/assignment/assignmentLegacyAliases.test.js`
+
 ### Codebase facts (confirmed)
 
 - The wizard already fetches partial definitions via `getAllPartialDefinitions()` (global in `src/AdminSheet/y_controllers/globals.js`).

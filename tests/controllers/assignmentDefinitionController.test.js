@@ -50,9 +50,15 @@ describe('AssignmentDefinitionController', () => {
     globalThis.ClassroomApiClient = ClassroomApiClient;
     globalThis.SlidesParser = SlidesParser;
     globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.AssignmentController = class AssignmentController {
+      _detectDocumentType() {
+        return 'SLIDES';
+      }
+    };
 
     // Setup DriveManager mock
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
+    DriveManager.isValidGoogleDriveFileId = vi.fn().mockReturnValue(true);
 
     // Setup ClassroomApiClient mock
     ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
@@ -239,5 +245,154 @@ describe('AssignmentDefinitionController', () => {
     controller = new AssignmentDefinitionController();
     const defs = controller.getAllPartialDefinitions();
     expect(defs).toEqual([]);
+  });
+
+  it('listAllPartialDefinitions returns partial definitions from registry', () => {
+    const sampleDocs = [
+      {
+        primaryTitle: 'Unit 1',
+        primaryTopic: 'Computing',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref-1234567890',
+        templateDocumentId: 'tpl-1234567890',
+        definitionKey: 'Unit 1_Computing_null',
+        tasks: null,
+      },
+    ];
+
+    DbManager.getInstance.mockReturnValue({
+      getCollection: vi.fn().mockReturnValue(mockCollection),
+      readAll: vi.fn().mockReturnValue(sampleDocs),
+    });
+
+    controller = new AssignmentDefinitionController();
+
+    const defs = controller.listAllPartialDefinitions();
+    expect(defs.length).toBe(1);
+    expect(defs[0]).toBeInstanceOf(AssignmentDefinition);
+    expect(defs[0].definitionKey).toBe('Unit 1_Computing_null');
+  });
+
+  it('linkAssignmentToDefinition adds alternate title and only updates topics when different', () => {
+    const def = new AssignmentDefinition({
+      primaryTitle: 'Alpha',
+      primaryTopic: 'Topic',
+      yearGroup: null,
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-1234567890',
+      templateDocumentId: 'tpl-1234567890',
+      tasks: {},
+      alternateTitles: ['Alpha legacy'],
+      alternateTopics: ['Legacy Topic'],
+    });
+
+    vi.spyOn(controller, 'getDefinitionByKey').mockReturnValue(def);
+    const saveSpy = vi.spyOn(controller, 'saveDefinition').mockReturnValue(def);
+
+    const updated = controller.linkAssignmentToDefinition({
+      definitionKey: def.definitionKey,
+      alternateTitle: 'Alpha new',
+      alternateTopic: 'Topic',
+    });
+
+    expect(updated.alternateTitles).toEqual(expect.arrayContaining(['Alpha legacy', 'Alpha new']));
+    expect(updated.alternateTopics).toEqual(expect.arrayContaining(['Legacy Topic']));
+    expect(updated.alternateTopics).not.toEqual(expect.arrayContaining(['Topic']));
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('linkAssignmentToDefinition updates alternateTopics when topic differs', () => {
+    const def = new AssignmentDefinition({
+      primaryTitle: 'Beta',
+      primaryTopic: 'Science',
+      yearGroup: null,
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-1234567890',
+      templateDocumentId: 'tpl-1234567890',
+      tasks: {},
+    });
+
+    vi.spyOn(controller, 'getDefinitionByKey').mockReturnValue(def);
+    const saveSpy = vi.spyOn(controller, 'saveDefinition').mockReturnValue(def);
+
+    const updated = controller.linkAssignmentToDefinition({
+      definitionKey: def.definitionKey,
+      alternateTitle: 'Beta (Alt)',
+      alternateTopic: 'Physics',
+    });
+
+    expect(updated.alternateTopics).toEqual(expect.arrayContaining(['Physics']));
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('linkAssignmentToDefinition throws when definition is missing', () => {
+    const tracker = ProgressTracker.getInstance();
+    const logSpy = vi.spyOn(tracker, 'logAndThrowError');
+    vi.spyOn(controller, 'getDefinitionByKey').mockReturnValue(null);
+
+    expect(() =>
+      controller.linkAssignmentToDefinition({
+        definitionKey: 'Missing_Key',
+        alternateTitle: 'Alpha',
+        alternateTopic: 'Topic',
+      })
+    ).toThrow();
+
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it('createDefinitionFromUrls extracts IDs and delegates to ensureDefinition', () => {
+    const def = new AssignmentDefinition({
+      primaryTitle: 'Gamma',
+      primaryTopic: 'Maths',
+      yearGroup: null,
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-1234567890',
+      templateDocumentId: 'tpl-1234567890',
+      tasks: {},
+    });
+
+    const ensureSpy = vi.spyOn(controller, 'ensureDefinition').mockReturnValue(def);
+
+    const result = controller.createDefinitionFromUrls({
+      assignmentId: 'a1',
+      courseId: 'course-1',
+      primaryTitle: 'Gamma',
+      primaryTopic: 'Maths',
+      yearGroup: null,
+      documentType: 'SLIDES',
+      referenceUrl: 'ref-1234567890',
+      templateUrl: 'tpl-1234567890',
+    });
+
+    expect(ensureSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceDocumentId: 'ref-1234567890',
+        templateDocumentId: 'tpl-1234567890',
+      })
+    );
+    expect(result).toBe(def);
+  });
+
+  it('createDefinitionFromUrls logs and throws on invalid URLs', () => {
+    const tracker = ProgressTracker.getInstance();
+    const logSpy = vi.spyOn(tracker, 'logAndThrowError');
+    DriveManager.isValidGoogleDriveFileId.mockReturnValue(false);
+
+    expect(() =>
+      controller.createDefinitionFromUrls({
+        assignmentId: 'a1',
+        courseId: 'course-1',
+        primaryTitle: 'Gamma',
+        primaryTopic: 'Maths',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceUrl: 'not-a-valid-id',
+        templateUrl: 'not-a-valid-id',
+      })
+    ).toThrow();
+
+    expect(logSpy).toHaveBeenCalled();
   });
 });

@@ -9,6 +9,8 @@ describe('AssignmentDefinition Validation', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -36,6 +38,9 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTopic: 'English',
           yearGroup: 10,
+          documentType: 'SLIDES',
+          referenceDocumentId: 'ref123',
+          templateDocumentId: 'tmpl123',
           tasks: null,
         });
       }).toThrow('Missing required assignment property: primaryTitle');
@@ -46,9 +51,38 @@ describe('AssignmentDefinition Validation', () => {
         new AssignmentDefinition({
           primaryTitle: 'Essay 1',
           yearGroup: 10,
+          documentType: 'SLIDES',
+          referenceDocumentId: 'ref123',
+          templateDocumentId: 'tmpl123',
           tasks: null,
         });
       }).toThrow('Missing required assignment property: primaryTopic');
+    });
+
+    it('should fail validation if partial definition is missing referenceDocumentId', () => {
+      expect(() => {
+        new AssignmentDefinition({
+          primaryTitle: 'Essay 1',
+          primaryTopic: 'English',
+          yearGroup: 10,
+          documentType: 'SLIDES',
+          templateDocumentId: 'tmpl123',
+          tasks: null,
+        });
+      }).toThrow('Missing required assignment property: referenceDocumentId');
+    });
+
+    it('should fail validation if partial definition is missing templateDocumentId', () => {
+      expect(() => {
+        new AssignmentDefinition({
+          primaryTitle: 'Essay 1',
+          primaryTopic: 'English',
+          yearGroup: 10,
+          documentType: 'SLIDES',
+          referenceDocumentId: 'ref123',
+          tasks: null,
+        });
+      }).toThrow('Missing required assignment property: templateDocumentId');
     });
 
     it('should allow null yearGroup in partial definition', () => {
@@ -57,6 +91,8 @@ describe('AssignmentDefinition Validation', () => {
         primaryTopic: 'English',
         yearGroup: null,
         documentType: 'SLIDES', // Required for partial definitions (routing)
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -69,6 +105,9 @@ describe('AssignmentDefinition Validation', () => {
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
           yearGroup: 10.5,
+          documentType: 'SLIDES',
+          referenceDocumentId: 'ref123',
+          templateDocumentId: 'tmpl123',
           tasks: null,
         });
       }).toThrow('yearGroup must be an integer or null');
@@ -94,14 +133,14 @@ describe('AssignmentDefinition Validation', () => {
     });
 
     it('should allow full definition with doc IDs and tasks: null (validates as partial)', () => {
-      // When tasks: null, it's validated as partial (doc IDs are allowed but not required)
+      // When tasks: null, it's validated as partial (doc IDs are required)
       const def = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
-        referenceDocumentId: 'ref123', // Will be preserved but not validated
-        templateDocumentId: 'tmpl123', // Will be preserved but not validated
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -157,6 +196,8 @@ describe('AssignmentDefinition Validation', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         assignmentWeighting: null,
         definitionKey: 'Essay 1_English_10',
         tasks: null,
@@ -167,8 +208,8 @@ describe('AssignmentDefinition Validation', () => {
       const def = AssignmentDefinition.fromJSON(partialJson);
 
       expect(def.tasks).toBe(null);
-      expect(def.referenceDocumentId).toBe(null);
-      expect(def.templateDocumentId).toBe(null);
+      expect(def.referenceDocumentId).toBe('ref123');
+      expect(def.templateDocumentId).toBe('tmpl123');
       expect(def.documentType).toBe('SLIDES');
     });
 
@@ -178,6 +219,8 @@ describe('AssignmentDefinition Validation', () => {
           primaryTitle: 'Essay 1',
           primaryTopic: 'English',
           yearGroup: 10,
+          referenceDocumentId: 'ref123',
+          templateDocumentId: 'tmpl123',
           tasks: null,
           // Missing documentType - should fail validation
         });
@@ -231,6 +274,8 @@ describe('AssignmentDefinition Validation', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -238,8 +283,8 @@ describe('AssignmentDefinition Validation', () => {
       const restored = AssignmentDefinition.fromJSON(json);
 
       expect(restored.tasks).toBe(null);
-      expect(restored.referenceDocumentId).toBe(null);
-      expect(restored.templateDocumentId).toBe(null);
+      expect(restored.referenceDocumentId).toBe('ref123');
+      expect(restored.templateDocumentId).toBe('tmpl123');
     });
   });
 });

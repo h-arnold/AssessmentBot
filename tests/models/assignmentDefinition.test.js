@@ -9,6 +9,7 @@ describe('AssignmentDefinition', () => {
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-123',
     templateDocumentId: 'tpl-123',
+    TaskDefinitionsChanged: false,
   };
 
   it('should construct with valid parameters', () => {
@@ -51,11 +52,12 @@ describe('AssignmentDefinition', () => {
   });
 
   it('should serialize to JSON correctly', () => {
-    const def = new AssignmentDefinition(validParams);
+    const def = new AssignmentDefinition({ ...validParams, TaskDefinitionsChanged: true });
     const json = def.toJSON();
     expect(json.primaryTitle).toBe(validParams.primaryTitle);
     expect(json.definitionKey).toBe('Test Assignment_Test Topic_10');
     expect(json.tasks).toEqual({});
+    expect(json.TaskDefinitionsChanged).toBe(true);
   });
 
   it('should deserialize from JSON correctly', () => {
@@ -66,6 +68,7 @@ describe('AssignmentDefinition', () => {
       documentType: 'SHEETS',
       referenceDocumentId: 'ref-456',
       templateDocumentId: 'tpl-456',
+      TaskDefinitionsChanged: true,
       definitionKey: 'Restored_Topic_11',
       tasks: {
         t1: {
@@ -79,6 +82,7 @@ describe('AssignmentDefinition', () => {
     expect(def).toBeInstanceOf(AssignmentDefinition);
     expect(def.primaryTitle).toBe('Restored');
     expect(def.tasks.t1).toBeDefined();
+    expect(def.TaskDefinitionsChanged).toBe(true);
   });
 
   it('should set tasks to null in toPartialJSON', () => {
@@ -102,12 +106,13 @@ describe('AssignmentDefinition', () => {
         },
       },
     };
-    const def = new AssignmentDefinition({ ...validParams, tasks });
+    const def = new AssignmentDefinition({ ...validParams, TaskDefinitionsChanged: true, tasks });
     const partial = def.toPartialJSON();
 
     expect(partial.tasks).toBe(null);
     expect(partial.referenceDocumentId).toBe('ref-123');
     expect(partial.templateDocumentId).toBe('tpl-123');
+    expect(partial.TaskDefinitionsChanged).toBe(true);
   });
 
   it('should update modified timestamps', async () => {

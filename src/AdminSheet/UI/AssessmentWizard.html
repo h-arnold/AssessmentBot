@@ -27,6 +27,55 @@
         gap: 0.5rem;
         padding: 0 1rem 1rem;
       }
+
+      .panel {
+        border: 1px solid var(--outline-variant);
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        margin-top: 0.75rem;
+        background: var(--surface);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .definition-summary {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .definition-list {
+        display: grid;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+      }
+
+      .definition-option {
+        display: grid;
+        gap: 0.2rem;
+        border: 1px solid var(--outline-variant);
+        border-radius: 0.6rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--surface-container);
+      }
+
+      .definition-meta {
+        font-size: 0.85rem;
+        color: var(--on-surface-variant);
+      }
+
+      .definition-actions {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .wizard-status {
+        margin-top: 0.75rem;
+      }
     </style>
   </head>
   <body>
@@ -52,12 +101,116 @@
               aria-hidden="false"
             ></progress>
           </div>
-          <output
-            id="assignmentErrorMessage"
-            class="status danger"
-            aria-live="polite"
-            hidden
-          ></output>
+        </fieldset>
+
+        <output
+          id="assignmentErrorMessage"
+          class="status danger wizard-status"
+          aria-live="polite"
+          hidden
+        ></output>
+
+        <fieldset class="field-group">
+          <legend>Definition</legend>
+          <div id="definitionIdlePanel" class="panel">
+            <p class="muted">Select an assignment to check for a matching definition.</p>
+          </div>
+
+          <div id="definitionLoadingPanel" class="panel" hidden>
+            <div class="panel-header">
+              <progress class="circle indeterminate" aria-hidden="false"></progress>
+              <span>Loading definitions...</span>
+            </div>
+            <p class="muted">Hang tight while we load available definitions.</p>
+          </div>
+
+          <div id="definitionBlockedPanel" class="panel" hidden>
+            <p>
+              This assignment has no topic in Classroom. Add a topic to the assignment and try
+              again.
+            </p>
+          </div>
+
+          <div id="definitionFoundPanel" class="panel" hidden>
+            <p class="muted">A matching assignment definition was found.</p>
+            <div class="definition-summary">
+              <div><strong>Title:</strong> <span id="definitionTitle"></span></div>
+              <div><strong>Topic:</strong> <span id="definitionTopic"></span></div>
+              <div><strong>Year group:</strong> <span id="definitionYearGroup"></span></div>
+              <div><strong>Last updated:</strong> <span id="definitionUpdated"></span></div>
+            </div>
+            <output
+              id="definitionStaleBanner"
+              class="status warning"
+              aria-live="polite"
+              hidden
+            ></output>
+          </div>
+
+          <div id="definitionMissingPanel" class="panel" hidden>
+            <p class="muted">
+              No matching definition exists yet. Link an existing definition or create a new
+              one from reference and template documents.
+            </p>
+
+            <div class="definition-actions">
+              <section>
+                <h3 class="small">Link an existing definition</h3>
+                <div class="field label border">
+                  <input
+                    id="definitionFilter"
+                    type="search"
+                    placeholder="Filter by title or topic"
+                  />
+                  <label for="definitionFilter">Filter definitions</label>
+                </div>
+                <p id="definitionListMeta" class="muted"></p>
+                <div id="definitionList" class="definition-list"></div>
+                <button
+                  class="button border"
+                  type="button"
+                  id="linkDefinitionSubmit"
+                  disabled
+                >
+                  Link selected definition
+                </button>
+              </section>
+
+              <section>
+                <h3 class="small">Create a new definition</h3>
+                <div class="field label border">
+                  <input
+                    id="referenceUrl"
+                    type="url"
+                    placeholder="https://docs.google.com/..."
+                    autocomplete="off"
+                  />
+                  <label for="referenceUrl">Reference document URL</label>
+                </div>
+                <div class="field label border">
+                  <input
+                    id="templateUrl"
+                    type="url"
+                    placeholder="https://docs.google.com/..."
+                    autocomplete="off"
+                  />
+                  <label for="templateUrl">Template document URL</label>
+                </div>
+                <div class="field label border">
+                  <input id="detectedDocType" type="text" disabled />
+                  <label for="detectedDocType">Document type</label>
+                </div>
+                <button
+                  class="button border primary"
+                  type="button"
+                  id="createDefinitionSubmit"
+                  disabled
+                >
+                  Create definition
+                </button>
+              </section>
+            </div>
+          </div>
         </fieldset>
       </main>
 
@@ -76,39 +229,91 @@
       </footer>
     </div>
 
+    <script type="application/json" id="wizardContextPayload">
+      <?!= JSON.stringify(wizardContext || {}) ?>
+    </script>
+
     <script>
       (() => {
+        const wizardContextPayload = document.getElementById('wizardContextPayload');
+        let wizardContext = {};
+        if (wizardContextPayload) {
+          try {
+            wizardContext = JSON.parse(wizardContextPayload.textContent || '{}');
+          } catch (error) {
+            wizardContext = {};
+          }
+        }
+
         const assignmentSelect = document.getElementById('assignmentSelect');
         const spinner = document.getElementById('assignmentLoadingSpinner');
         const startButton = document.getElementById('startAssessment');
         const cancelButton = document.getElementById('cancelWizard');
-        const errorMessage = document.getElementById('assignmentErrorMessage');
+        const assignmentErrorMessage = document.getElementById('assignmentErrorMessage');
+
+        const definitionIdlePanel = document.getElementById('definitionIdlePanel');
+        const definitionLoadingPanel = document.getElementById('definitionLoadingPanel');
+        const definitionBlockedPanel = document.getElementById('definitionBlockedPanel');
+        const definitionFoundPanel = document.getElementById('definitionFoundPanel');
+        const definitionMissingPanel = document.getElementById('definitionMissingPanel');
+        const definitionTitle = document.getElementById('definitionTitle');
+        const definitionTopic = document.getElementById('definitionTopic');
+        const definitionYearGroup = document.getElementById('definitionYearGroup');
+        const definitionUpdated = document.getElementById('definitionUpdated');
+        const definitionStaleBanner = document.getElementById('definitionStaleBanner');
+        const definitionFilter = document.getElementById('definitionFilter');
+        const definitionListMeta = document.getElementById('definitionListMeta');
+        const definitionList = document.getElementById('definitionList');
+        const linkDefinitionButton = document.getElementById('linkDefinitionSubmit');
+        const referenceUrlInput = document.getElementById('referenceUrl');
+        const templateUrlInput = document.getElementById('templateUrl');
+        const detectedDocTypeInput = document.getElementById('detectedDocType');
+        const createDefinitionButton = document.getElementById('createDefinitionSubmit');
 
         const assignmentWizard = {
           initialised: false,
           state: {
             assignments: [],
-            selectedAssignmentId: '',
-            // will hold partial definitions returned from server
             definitions: [],
+            selectedAssignmentId: '',
+            selectedAssignment: null,
+            matchedDefinition: null,
+            readyDefinitionKey: '',
+            selectedDefinitionKey: '',
+            step: '',
+            assignmentsLoaded: false,
+            definitionsLoaded: false,
+            busy: false,
+            courseId: wizardContext.courseId || null,
+            yearGroup: wizardContext.yearGroup ?? null,
           },
           init() {
             if (this.initialised) return;
             this.initialised = true;
             this.bindEvents();
             this.prepareForLoad('Loading assignments...');
+            this.setDefinitionPanel('idle');
             // Kick off both GAS calls asynchronously on the next tick so neither can block
             setTimeout(() => this.fetchAssignments(), 0);
-            setTimeout(() => this.fetchPartialDefinitions(), 0);
+            setTimeout(() => this.fetchDefinitions(), 0);
           },
           bindEvents() {
             assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
             cancelButton.addEventListener('click', () => this.handleCancel());
+            startButton.addEventListener('click', () => this.handleStartAssessment());
+            definitionFilter.addEventListener('input', () => this.renderDefinitionList());
+            definitionList.addEventListener('change', (event) =>
+              this.handleDefinitionSelect(event)
+            );
+            linkDefinitionButton.addEventListener('click', () => this.handleLinkDefinition());
+            createDefinitionButton.addEventListener('click', () => this.handleCreateDefinition());
+            referenceUrlInput.addEventListener('input', () => this.updateDocumentTypePreview());
+            templateUrlInput.addEventListener('input', () => this.updateDocumentTypePreview());
           },
           prepareForLoad(placeholder) {
-            this.setControlsEnabled(false);
+            this.setAssignmentControlsEnabled(false);
             this.renderPlaceholder(placeholder);
-            this.hideError();
+            this.hideStatus();
             this.setSpinnerVisible(true);
           },
           fetchAssignments() {
@@ -116,6 +321,18 @@
               .withSuccessHandler((payload) => this.handleAssignmentsSuccess(payload))
               .withFailureHandler((error) => this.handleAssignmentsFailure(error))
               .fetchAssignmentsForWizard();
+          },
+          fetchDefinitions() {
+            google.script.run
+              .withSuccessHandler((payload) => this.handleDefinitionsSuccess(payload))
+              .withFailureHandler((error) => this.handleDefinitionsPreferredFailure(error))
+              .listAllDefinitionsForWizard();
+          },
+          fetchDefinitionsFallback() {
+            google.script.run
+              .withSuccessHandler((payload) => this.handleDefinitionsSuccess(payload))
+              .withFailureHandler((error) => this.handleDefinitionsFailure(error))
+              .getAllPartialDefinitions();
           },
           renderPlaceholder(text) {
             assignmentSelect.innerHTML = '';
@@ -128,60 +345,454 @@
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
+            this.state.assignmentsLoaded = true;
             this.setSpinnerVisible(false);
 
             if (this.state.assignments.length === 0) {
-              this.setControlsEnabled(false);
+              this.setAssignmentControlsEnabled(false);
               this.renderPlaceholder('No assignments available yet');
-              this.showError('No assignments were found for this classroom.');
+              this.showStatus('No assignments were found for this classroom.');
               return;
             }
 
-            this.hideError();
+            this.hideStatus();
             this.renderPlaceholder('Select an assignment...');
-            // Populate dropdown with assignments
             this.state.assignments.forEach((assignment) => {
               const option = document.createElement('option');
               option.value = assignment.id;
               option.textContent = assignment.title || 'Untitled assignment';
               assignmentSelect.appendChild(option);
             });
-            this.setControlsEnabled(true);
+            this.setAssignmentControlsEnabled(true);
             this.handleSelectionChange();
           },
           handleAssignmentsFailure(error) {
             this.state.assignments = [];
+            this.state.assignmentsLoaded = true;
             this.setSpinnerVisible(false);
             this.renderPlaceholder('Unable to load assignments');
-            this.setControlsEnabled(false);
-            this.showError(
-              error?.message
+            this.setAssignmentControlsEnabled(false);
+            this.showStatus(
+              error && error.message
                 ? `Failed to load assignments: ${error.message}`
                 : 'Failed to load assignments.'
             );
           },
-
-          // Fetch partial definitions to support wizard lookups (stored only for now)
-          fetchPartialDefinitions() {
-            google.script.run
-              .withSuccessHandler((payload) => this.handlePartialDefinitionsSuccess(payload))
-              .withFailureHandler((error) => this.handlePartialDefinitionsFailure(error))
-              .getAllPartialDefinitions();
+          handleDefinitionsPreferredFailure(error) {
+            this.fetchDefinitionsFallback();
           },
-
-          handlePartialDefinitionsSuccess(definitions) {
+          handleDefinitionsSuccess(definitions) {
             this.state.definitions = Array.isArray(definitions) ? definitions : [];
+            this.state.definitionsLoaded = true;
+            this.renderDefinitionList();
+            this.refreshDefinitionPanel();
+            this.updateActionStates();
           },
-
-          handlePartialDefinitionsFailure(error) {
-            // For now just keep an empty set and log the problem to the console.
+          handleDefinitionsFailure(error) {
             this.state.definitions = [];
-            // eslint-disable-next-line no-console
-            console.warn('Failed to load partial definitions for wizard:', error);
+            this.state.definitionsLoaded = true;
+            this.renderDefinitionList();
+            this.refreshDefinitionPanel();
+            this.updateActionStates();
+            this.showStatus(
+              error && error.message
+                ? `Failed to load definitions: ${error.message}`
+                : 'Failed to load definitions.'
+            );
           },
           handleSelectionChange() {
             this.state.selectedAssignmentId = assignmentSelect.value;
-            startButton.disabled = !this.state.selectedAssignmentId;
+            this.state.selectedAssignment = this.state.assignments.find(
+              (assignment) => assignment.id === this.state.selectedAssignmentId
+            );
+            this.state.matchedDefinition = null;
+            this.state.readyDefinitionKey = '';
+            this.state.selectedDefinitionKey = '';
+            this.hideStatus();
+            this.refreshDefinitionPanel();
+            this.updateActionStates();
+          },
+          refreshDefinitionPanel() {
+            const assignment = this.state.selectedAssignment;
+            if (!assignment) {
+              this.setDefinitionPanel('idle');
+              return;
+            }
+
+            if (!assignment.topicName) {
+              this.showStatus(
+                'This assignment has no topic in Classroom. Add a topic before using the wizard.'
+              );
+              this.setDefinitionPanel('blocked');
+              return;
+            }
+
+            if (!this.state.definitionsLoaded) {
+              this.setDefinitionPanel('loading');
+              return;
+            }
+
+            const matched = this.findMatchingDefinition(assignment);
+            if (matched) {
+              this.state.matchedDefinition = matched;
+              this.state.readyDefinitionKey = matched.definitionKey || '';
+              this.renderDefinitionFound(matched);
+              this.setDefinitionPanel('found');
+              return;
+            }
+
+            this.setDefinitionPanel('missing');
+          },
+          findMatchingDefinition(assignment) {
+            const assignmentTitle = this.normaliseText(assignment.title);
+            const assignmentTopic = this.normaliseText(assignment.topicName);
+            const targetYear = this.state.yearGroup ?? null;
+            const definitions = this.getSortedDefinitions();
+
+            return (
+              definitions.find((definition) => {
+                const titleMatch = this.matchesTitle(assignmentTitle, definition);
+                const topicMatch = this.matchesTopic(assignmentTopic, definition);
+                const yearMatch = (definition.yearGroup ?? null) === targetYear;
+                return titleMatch && topicMatch && yearMatch;
+              }) || null
+            );
+          },
+          matchesTitle(title, definition) {
+            if (!title) return false;
+            const primary = this.normaliseText(definition.primaryTitle);
+            if (title === primary) return true;
+            const alternates = Array.isArray(definition.alternateTitles)
+              ? definition.alternateTitles
+              : [];
+            return alternates.map((value) => this.normaliseText(value)).includes(title);
+          },
+          matchesTopic(topic, definition) {
+            if (!topic) return false;
+            const primary = this.normaliseText(definition.primaryTopic);
+            if (topic === primary) return true;
+            const alternates = Array.isArray(definition.alternateTopics)
+              ? definition.alternateTopics
+              : [];
+            return alternates.map((value) => this.normaliseText(value)).includes(topic);
+          },
+          renderDefinitionFound(definition) {
+            definitionTitle.textContent = definition.primaryTitle || 'Untitled definition';
+            definitionTopic.textContent = definition.primaryTopic || 'Unspecified';
+            definitionYearGroup.textContent =
+              definition.yearGroup !== null && definition.yearGroup !== undefined
+                ? String(definition.yearGroup)
+                : 'Unspecified';
+            definitionUpdated.textContent = definition.updatedAt || definition.createdAt || '—';
+
+            if (definition.TaskDefinitionsChanged) {
+              definitionStaleBanner.textContent =
+                'Tasks have changed since this definition was last updated. Review before starting.';
+              definitionStaleBanner.hidden = false;
+            } else {
+              definitionStaleBanner.hidden = true;
+              definitionStaleBanner.textContent = '';
+            }
+          },
+          renderDefinitionList(definitionsOverride) {
+            if (Array.isArray(definitionsOverride)) {
+              this.state.definitions = definitionsOverride;
+            }
+            const definitions = this.getSortedDefinitions();
+            const query = this.normaliseText(definitionFilter.value);
+            let filtered;
+            if (query) {
+              filtered = definitions.filter((definition) =>
+                this.definitionMatchesQuery(definition, query)
+              );
+            } else {
+              filtered = definitions.slice(0, 10);
+            }
+
+            definitionList.innerHTML = '';
+            if (filtered.length === 0) {
+              const empty = document.createElement('p');
+              empty.className = 'muted';
+              empty.textContent = query
+                ? 'No definitions match your filter.'
+                : 'No definitions are available yet.';
+              definitionList.appendChild(empty);
+              definitionListMeta.textContent = '';
+              return;
+            }
+
+            filtered.forEach((definition) => {
+              const label = document.createElement('label');
+              label.className = 'definition-option';
+              label.setAttribute('data-definition-key', definition.definitionKey || '');
+              const radio = document.createElement('input');
+              radio.type = 'radio';
+              radio.name = 'definitionOption';
+              radio.value = definition.definitionKey || '';
+              radio.checked = radio.value === this.state.selectedDefinitionKey;
+              const title = document.createElement('div');
+              title.textContent = definition.primaryTitle || 'Untitled definition';
+              const meta = document.createElement('div');
+              meta.className = 'definition-meta';
+              const yearText =
+                definition.yearGroup !== null && definition.yearGroup !== undefined
+                  ? `Year ${definition.yearGroup}`
+                  : 'Year group not set';
+              const topicText = definition.primaryTopic || 'Topic not set';
+              const updatedText = definition.updatedAt || definition.createdAt || '—';
+              meta.textContent = `${topicText} • ${yearText} • Updated ${updatedText}`;
+              label.appendChild(radio);
+              label.appendChild(title);
+              label.appendChild(meta);
+              definitionList.appendChild(label);
+            });
+
+            definitionListMeta.textContent = query
+              ? `Showing ${filtered.length} matching definitions.`
+              : `Showing the latest ${filtered.length} definitions.`;
+          },
+          definitionMatchesQuery(definition, query) {
+            const values = [
+              definition.primaryTitle,
+              definition.primaryTopic,
+              definition.definitionKey,
+            ];
+            const alternateTitles = Array.isArray(definition.alternateTitles)
+              ? definition.alternateTitles
+              : [];
+            const alternateTopics = Array.isArray(definition.alternateTopics)
+              ? definition.alternateTopics
+              : [];
+            return values
+              .concat(alternateTitles)
+              .concat(alternateTopics)
+              .map((value) => this.normaliseText(value))
+              .some((value) => value && value.includes(query));
+          },
+          handleDefinitionSelect(event) {
+            const target = event.target;
+            if (!target || target.name !== 'definitionOption') return;
+            this.state.selectedDefinitionKey = target.value;
+            this.updateActionStates();
+          },
+          handleLinkDefinition() {
+            if (this.state.busy) return;
+            const assignment = this.state.selectedAssignment;
+            const definition = this.state.definitions.find(
+              (item) => item.definitionKey === this.state.selectedDefinitionKey
+            );
+            if (!assignment || !definition) return;
+
+            const primaryTopic = this.normaliseText(definition.primaryTopic);
+            const assignmentTopic = this.normaliseText(assignment.topicName);
+            const alternateTopic =
+              assignmentTopic && assignmentTopic !== primaryTopic ? assignment.topicName : '';
+
+            this.setBusy(true);
+            this.hideStatus();
+
+            google.script.run
+              .withSuccessHandler((payload) => this.handleLinkSuccess(payload))
+              .withFailureHandler((error) => this.handleLinkFailure(error))
+              .linkAssignmentToDefinition({
+                definitionKey: definition.definitionKey,
+                alternateTitle: assignment.title || 'Untitled assignment',
+                alternateTopic,
+              });
+          },
+          handleLinkSuccess(definition) {
+            this.setBusy(false);
+            const updated = definition || null;
+            if (updated) {
+              this.state.matchedDefinition = updated;
+              this.state.readyDefinitionKey = updated.definitionKey || '';
+              this.renderDefinitionFound(updated);
+              this.setDefinitionPanel('found');
+              this.updateActionStates();
+            } else {
+              this.showStatus('Link completed but no definition was returned.');
+            }
+          },
+          handleLinkFailure(error) {
+            this.setBusy(false);
+            this.showStatus(
+              error && error.message
+                ? `Failed to link definition: ${error.message}`
+                : 'Failed to link definition.'
+            );
+          },
+          handleCreateDefinition() {
+            if (this.state.busy) return;
+            const assignment = this.state.selectedAssignment;
+            if (!assignment) return;
+
+            const referenceUrl = referenceUrlInput.value.trim();
+            const templateUrl = templateUrlInput.value.trim();
+            if (!referenceUrl || !templateUrl) {
+              this.showStatus('Reference and template URLs are required.');
+              return;
+            }
+
+            const referenceType = this.detectDocumentType(referenceUrl);
+            const templateType = this.detectDocumentType(templateUrl);
+
+            if (!referenceType || !templateType) {
+              this.showStatus('Use Google Slides or Google Sheets URLs for both documents.');
+              return;
+            }
+
+            if (referenceType !== templateType) {
+              this.showStatus('Reference and template document types must match.');
+              return;
+            }
+
+            this.setBusy(true);
+            this.hideStatus();
+
+            google.script.run
+              .withSuccessHandler((payload) => this.handleCreateSuccess(payload))
+              .withFailureHandler((error) => this.handleCreateFailure(error))
+              .createDefinitionFromUrls({
+                assignmentId: assignment.id,
+                courseId: this.state.courseId,
+                primaryTitle: assignment.title || 'Untitled assignment',
+                primaryTopic: assignment.topicName,
+                yearGroup: this.state.yearGroup,
+                documentType: referenceType,
+                referenceUrl,
+                templateUrl,
+              });
+          },
+          handleCreateSuccess(definition) {
+            this.setBusy(false);
+            const created = definition || null;
+            if (created) {
+              this.state.matchedDefinition = created;
+              this.state.readyDefinitionKey = created.definitionKey || '';
+              this.renderDefinitionFound(created);
+              this.setDefinitionPanel('found');
+              this.updateActionStates();
+            } else {
+              this.showStatus('Definition created but no details were returned.');
+            }
+          },
+          handleCreateFailure(error) {
+            this.setBusy(false);
+            this.showStatus(
+              error && error.message
+                ? `Failed to create definition: ${error.message}`
+                : 'Failed to create definition.'
+            );
+          },
+          handleStartAssessment() {
+            if (this.state.busy) return;
+            const assignment = this.state.selectedAssignment;
+            const definitionKey = this.state.readyDefinitionKey;
+            if (!assignment || !definitionKey) return;
+
+            this.setBusy(true);
+            this.hideStatus();
+
+            google.script.run
+              .withSuccessHandler(() => this.handleStartSuccess())
+              .withFailureHandler((error) => this.handleStartFailure(error))
+              .startAssessmentFromWizard(assignment.id, definitionKey);
+          },
+          handleStartSuccess() {
+            this.setBusy(false);
+            google.script.host.close();
+          },
+          handleStartFailure(error) {
+            this.setBusy(false);
+            this.showStatus(
+              error && error.message
+                ? `Failed to start assessment: ${error.message}`
+                : 'Failed to start assessment.'
+            );
+          },
+          updateDocumentTypePreview() {
+            const referenceType = this.detectDocumentType(referenceUrlInput.value.trim());
+            const templateType = this.detectDocumentType(templateUrlInput.value.trim());
+            let label = 'Unknown';
+            if (referenceType && templateType && referenceType === templateType) {
+              label = referenceType === 'SLIDES' ? 'Google Slides' : 'Google Sheets';
+            } else if (referenceType && !templateType) {
+              label = referenceType === 'SLIDES' ? 'Google Slides' : 'Google Sheets';
+            } else if (templateType && !referenceType) {
+              label = templateType === 'SLIDES' ? 'Google Slides' : 'Google Sheets';
+            }
+            detectedDocTypeInput.value = label;
+            this.updateActionStates();
+          },
+          detectDocumentType(url) {
+            if (!url) return null;
+            const lowered = url.toLowerCase();
+            if (lowered.includes('docs.google.com/presentation')) return 'SLIDES';
+            if (lowered.includes('docs.google.com/spreadsheets')) return 'SHEETS';
+            return null;
+          },
+          handleDefinitionFound(definition) {
+            if (!definition) return;
+            this.state.matchedDefinition = definition;
+            this.state.readyDefinitionKey = definition.definitionKey || '';
+            this.state.step = 'definitionFound';
+            this.renderDefinitionFound(definition);
+            this.setDefinitionPanel('found');
+            this.updateActionStates();
+          },
+          handleDefinitionMissing() {
+            this.state.matchedDefinition = null;
+            this.state.readyDefinitionKey = '';
+            this.state.step = 'definitionMissing';
+            this.setDefinitionPanel('missing');
+            this.updateActionStates();
+          },
+          filterDefinitions(query) {
+            definitionFilter.value = query || '';
+            this.renderDefinitionList();
+          },
+          handleLinkSubmit(payload) {
+            linkDefinitionButton.disabled = true;
+            this.hideStatus();
+            google.script.run
+              .withSuccessHandler((result) => {
+                this.handleLinkSuccess(result);
+                linkDefinitionButton.disabled = false;
+              })
+              .withFailureHandler((error) => {
+                this.handleLinkFailure(error);
+                linkDefinitionButton.disabled = false;
+              })
+              .linkAssignmentToDefinition(payload);
+          },
+          handleCreateSubmit(payload) {
+            createDefinitionButton.disabled = true;
+            this.hideStatus();
+            google.script.run
+              .withSuccessHandler((result) => {
+                this.handleCreateSuccess(result);
+                createDefinitionButton.disabled = false;
+              })
+              .withFailureHandler((error) => {
+                this.handleCreateFailure(error);
+                createDefinitionButton.disabled = false;
+              })
+              .createDefinitionFromUrls(payload);
+          },
+          validateDocUrls(referenceUrl, templateUrl) {
+            const referenceType = this.detectDocumentType(referenceUrl || '');
+            const templateType = this.detectDocumentType(templateUrl || '');
+            return !!referenceType && referenceType === templateType;
+          },
+          getSortedDefinitions() {
+            return [...this.state.definitions].sort((a, b) => {
+              const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+              const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+              return bTime - aTime;
+            });
+          },
+          normaliseText(value) {
+            return String(value || '').trim().toLowerCase();
           },
           handleCancel() {
             google.script.host.close();
@@ -190,17 +801,47 @@
             spinner.hidden = !visible;
             spinner.setAttribute('aria-hidden', visible ? 'false' : 'true');
           },
-          setControlsEnabled(enabled) {
+          setAssignmentControlsEnabled(enabled) {
             assignmentSelect.disabled = !enabled;
-            startButton.disabled = !enabled;
           },
-          showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.hidden = false;
+          setDefinitionPanel(panel) {
+            const panelStepMap = {
+              idle: 'definitionIdle',
+              loading: 'definitionLoading',
+              blocked: 'definitionBlocked',
+              found: 'definitionFound',
+              missing: 'definitionMissing',
+            };
+            this.state.step = panelStepMap[panel] || '';
+            definitionIdlePanel.hidden = panel !== 'idle';
+            definitionLoadingPanel.hidden = panel !== 'loading';
+            definitionBlockedPanel.hidden = panel !== 'blocked';
+            definitionFoundPanel.hidden = panel !== 'found';
+            definitionMissingPanel.hidden = panel !== 'missing';
           },
-          hideError() {
-            errorMessage.hidden = true;
-            errorMessage.textContent = '';
+          setBusy(busy) {
+            this.state.busy = busy;
+            this.updateActionStates();
+          },
+          updateActionStates() {
+            const hasAssignment = !!this.state.selectedAssignment;
+            const canStart = hasAssignment && !!this.state.readyDefinitionKey && !this.state.busy;
+            const canLink =
+              hasAssignment && !!this.state.selectedDefinitionKey && !this.state.busy;
+            const hasUrls = referenceUrlInput.value.trim() && templateUrlInput.value.trim();
+            const canCreate = hasAssignment && hasUrls && !this.state.busy;
+
+            startButton.disabled = !canStart;
+            linkDefinitionButton.disabled = !canLink;
+            createDefinitionButton.disabled = !canCreate;
+          },
+          showStatus(message) {
+            assignmentErrorMessage.textContent = message;
+            assignmentErrorMessage.hidden = false;
+          },
+          hideStatus() {
+            assignmentErrorMessage.hidden = true;
+            assignmentErrorMessage.textContent = '';
           },
         };
 

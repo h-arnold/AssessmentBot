@@ -277,10 +277,13 @@ class AssignmentController {
     );
 
     if (needsRefresh) {
+      const previousTasks = definition.tasks || null;
       this.runStage(
         'Getting the tasks from the reference document.',
         () => {
           assignment.populateTasks();
+          const nextTasks = definition.tasks || null;
+          definition.TaskDefinitionsChanged = this._taskKeysChanged(previousTasks, nextTasks);
           definition.updateModifiedTimestamps({
             referenceLastModified: referenceModified,
             templateLastModified: templateModified,
@@ -342,6 +345,25 @@ class AssignmentController {
       this.progressTracker.updateProgress(completionMessage, false);
     }
     return result;
+  }
+
+  /**
+   * Starts assessment processing for wizard flow without re-entering document IDs.
+   * @param {string} assignmentId - The assignment ID.
+   * @param {string} definitionKey - The definition key to use.
+   */
+  startAssessmentFromWizard(assignmentId, definitionKey) {
+    Validate.requireParams({ assignmentId, definitionKey }, 'startAssessmentFromWizard');
+    this.startProcessing(assignmentId, definitionKey);
+    this.progressTracker.startTracking();
+  }
+
+  _taskKeysChanged(previousTasks, nextTasks) {
+    const previousKeys = previousTasks ? Object.keys(previousTasks) : [];
+    const nextKeys = nextTasks ? Object.keys(nextTasks) : [];
+    if (previousKeys.length !== nextKeys.length) return true;
+    const previousSet = new Set(previousKeys);
+    return nextKeys.some((key) => !previousSet.has(key));
   }
 
   /**

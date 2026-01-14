@@ -10,6 +10,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -42,6 +44,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -58,6 +62,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -76,6 +82,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -109,6 +117,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -142,6 +152,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -176,6 +188,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
@@ -203,32 +217,36 @@ describe('Assignment (legacy alias removal)', () => {
   });
 
   describe('Legacy getters', () => {
-    it('getReferenceDocumentId() should return null for partial', () => {
+    it('getReferenceDocumentId() should return documentId for partial', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.getReferenceDocumentId()).toBe(null);
+      expect(assignment.getReferenceDocumentId()).toBe('ref123');
     });
 
-    it('getTemplateDocumentId() should return null for partial', () => {
+    it('getTemplateDocumentId() should return documentId for partial', () => {
       const partialDef = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
       const assignment = Assignment.create(partialDef, 'C123', 'A1');
 
-      expect(assignment.getTemplateDocumentId()).toBe(null);
+      expect(assignment.getTemplateDocumentId()).toBe('tmpl123');
     });
 
     it('getDocumentType() should return documentType for partial', () => {
@@ -237,6 +255,8 @@ describe('Assignment (legacy alias removal)', () => {
         primaryTopic: 'English',
         yearGroup: 10,
         documentType: 'SLIDES',
+        referenceDocumentId: 'ref123',
+        templateDocumentId: 'tmpl123',
         tasks: null,
       });
 
