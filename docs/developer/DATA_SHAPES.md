@@ -229,6 +229,15 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
   "createdAt": "2025-09-01T10:00:00Z",
   "updatedAt": "2025-09-01T10:00:00Z"
 }
+
+### Controller API 🔧
+
+- **getAllPartialDefinitions()** — `AssignmentDefinitionController.getAllPartialDefinitions()` returns an array of rehydrated `AssignmentDefinition` model instances loaded from the registry collection (`assignment_definitions`).
+  - Uses `DbManager.readAll('assignment_definitions')` to obtain a snapshot of documents and `AssignmentDefinition.fromJSON()` to rehydrate each document.
+  - Preserves *partial* hydration semantics (i.e., `tasks === null`) — callers should rehydrate to full definitions via the controller when they require task artifacts.
+  - Returns an empty array when the registry collection is empty.
+
+Tests: `tests/controllers/assignmentDefinitionController.test.js` (covers populated and empty-registry cases).
 ```
 
 ## Partial Hydration (summary-level)

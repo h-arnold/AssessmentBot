@@ -123,6 +123,15 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Return all partial assignment definitions from the registry as model instances.
+   * @return {AssignmentDefinition[]}
+   */
+  getAllPartialDefinitions() {
+    const docs = this.dbManager.readAll(this.registryCollectionName) || [];
+    return docs.map((doc) => AssignmentDefinition.fromJSON(doc));
+  }
+
+  /**
    * Persist a definition to the JsonDb collection (upsert by definitionKey).
    * @param {AssignmentDefinition|Object} definition
    * @return {AssignmentDefinition}
