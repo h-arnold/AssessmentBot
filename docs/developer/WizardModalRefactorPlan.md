@@ -275,6 +275,15 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Debug menu entry exists for testing.
 - UI tests cover initial render, server call, success path, failure path, selection gating, and cancel.
 
+### Codebase facts (confirmed)
+
+- The wizard already fetches partial definitions via `getAllPartialDefinitions()` (global in `src/AdminSheet/y_controllers/globals.js`).
+- The current wizard state already includes `assignments`, `selectedAssignmentId`, and `definitions` (see `src/AdminSheet/UI/AssessmentWizard.html`).
+- Definition keys are built by `AssignmentDefinition.buildDefinitionKey()` using the format `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (see `src/AdminSheet/Models/AssignmentDefinition.js`).
+- Partial definitions currently include `referenceDocumentId` and `templateDocumentId` in `toPartialJSON()`, but `_validatePartial()` does **not** require these IDs.
+- Document type validation currently lives in `AssignmentController._detectDocumentType()` and uses Drive MIME types (Slides/Sheets only).
+- The legacy start path is `saveStartAndShowProgress()` in `src/AdminSheet/AssignmentProcessor/globals.js`.
+
 ### Styling findings (to reuse)
 
 - Do not pass an empty string as the Apps Script modal title; the dialog may fail to render in some contexts.

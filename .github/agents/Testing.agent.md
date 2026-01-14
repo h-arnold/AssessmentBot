@@ -34,6 +34,7 @@ Match the existing styles found in the codebase:
 2. **Log**: Use `console.log` (only during debugging) or check Vitest output to find the failure point.
 3. **Trace**: Check the interaction with mocks. Ensure globals are set up in `beforeEach` and cleaned up in `afterEach`.
 4. **Fix**: Update the mock or the logic. Never add production code just to satisfy a test.
+5. **Lint check**: Use the 'problems' tool to surface linting issues (ESLint / Prettier) for any files you have created or modified. Address all lint errors/warnings (use `npm run lint`, `npm run lint:fix`, `npm run format` as needed) and re-run the 'problems' tool to confirm no outstanding issues before reporting success to the orchestrator.
 
 ## 4. Reporting (The 'Goldilocks' Rule)
 When reporting back to the orchestrator agent, provide enough detail to be actionable without causing context bloat.
@@ -47,3 +48,9 @@ When reporting back to the orchestrator agent, provide enough detail to be actio
 
 ## 5. Completion
 Once your task is finished, provide a concise summary of your work (files created/modified, test results, and any critical findings) and return control to the orchestrator.
+
+- Always run tests you create or modify before declaring the task complete:
+  - Run the targeted tests first: `npm test -- <path_to_test>` to ensure they execute and behave as expected.
+  - Then run the full suite: `npm test` to detect regressions introduced by your changes.
+  - Iterate on failures until both the targeted tests and the full suite pass locally.
+- Include the test run outcomes (pass counts, failures fixed) succinctly in your completion summary.
