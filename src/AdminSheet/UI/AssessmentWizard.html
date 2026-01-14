@@ -149,8 +149,8 @@
 
           <div id="definitionMissingPanel" class="panel" hidden>
             <p class="muted">
-              No matching definition exists yet. Link an existing definition or create a new
-              one from reference and template documents.
+              No matching definition exists yet. Link an existing definition or create a new one
+              from reference and template documents.
             </p>
 
             <div class="definition-actions">
@@ -166,12 +166,7 @@
                 </div>
                 <p id="definitionListMeta" class="muted"></p>
                 <div id="definitionList" class="definition-list"></div>
-                <button
-                  class="button border"
-                  type="button"
-                  id="linkDefinitionSubmit"
-                  disabled
-                >
+                <button class="button border" type="button" id="linkDefinitionSubmit" disabled>
                   Link selected definition
                 </button>
               </section>
@@ -792,7 +787,9 @@
             });
           },
           normaliseText(value) {
-            return String(value || '').trim().toLowerCase();
+            return String(value || '')
+              .trim()
+              .toLowerCase();
           },
           handleCancel() {
             google.script.host.close();
@@ -826,8 +823,7 @@
           updateActionStates() {
             const hasAssignment = !!this.state.selectedAssignment;
             const canStart = hasAssignment && !!this.state.readyDefinitionKey && !this.state.busy;
-            const canLink =
-              hasAssignment && !!this.state.selectedDefinitionKey && !this.state.busy;
+            const canLink = hasAssignment && !!this.state.selectedDefinitionKey && !this.state.busy;
             const hasUrls = referenceUrlInput.value.trim() && templateUrlInput.value.trim();
             const canCreate = hasAssignment && hasUrls && !this.state.busy;
 
