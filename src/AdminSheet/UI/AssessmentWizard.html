@@ -27,6 +27,32 @@
         gap: 0.5rem;
         padding: 0 1rem 1rem;
       }
+
+      .assignment-menu {
+        max-height: 18rem;
+        overflow-y: auto;
+        width: 100%;
+      }
+
+      .assignment-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+      }
+
+      .assignment-name {
+        flex: 1;
+      }
+
+      .assignment-icons {
+        display: inline-flex;
+        gap: 0.25rem;
+      }
+
+      .assignment-icons i {
+        font-size: 1.1rem;
+      }
     </style>
   </head>
   <body>
@@ -42,15 +68,23 @@
         <fieldset class="field-group">
           <legend>Assignment</legend>
           <div class="field label suffix border">
-            <select id="assignmentSelect" disabled>
-              <option value="">Loading assignments...</option>
-            </select>
-            <label for="assignmentSelect">Assignment</label>
+            <input
+              id="assignmentInput"
+              type="text"
+              autocomplete="off"
+              disabled
+              data-ui="#assignmentMenu"
+              placeholder="Loading assignments..."
+            />
+            <label for="assignmentInput">Assignment</label>
             <progress
               id="assignmentLoadingSpinner"
               class="circle indeterminate"
               aria-hidden="false"
             ></progress>
+            <menu id="assignmentMenu" class="assignment-menu">
+              <li class="assignment-row muted">Loading assignments...</li>
+            </menu>
           </div>
           <output
             id="assignmentErrorMessage"
@@ -78,7 +112,8 @@
 
     <script>
       (() => {
-        const assignmentSelect = document.getElementById('assignmentSelect');
+        const assignmentInput = document.getElementById('assignmentInput');
+        const assignmentMenu = document.getElementById('assignmentMenu');
         const spinner = document.getElementById('assignmentLoadingSpinner');
         const startButton = document.getElementById('startAssessment');
         const cancelButton = document.getElementById('cancelWizard');
@@ -89,6 +124,7 @@
           state: {
             assignments: [],
             selectedAssignmentId: '',
+            filterValue: '',
             // will hold partial definitions returned from server
             definitions: [],
           },
@@ -102,7 +138,8 @@
             setTimeout(() => this.fetchPartialDefinitions(), 0);
           },
           bindEvents() {
-            assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
+            assignmentInput.addEventListener('input', () => this.handleFilterInput());
+            assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
             cancelButton.addEventListener('click', () => this.handleCancel());
             startButton.addEventListener('click', () => this.handleStart());
           },
@@ -120,13 +157,14 @@
               .fetchAssignmentsForWizard();
           },
           renderPlaceholder(text) {
-            assignmentSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = text;
-            placeholderOption.selected = true;
-            placeholderOption.disabled = true;
-            assignmentSelect.appendChild(placeholderOption);
+            this.state.filterValue = '';
+            assignmentInput.value = '';
+            assignmentInput.setAttribute('placeholder', text);
+            assignmentMenu.innerHTML = '';
+            const placeholderItem = document.createElement('li');
+            placeholderItem.className = 'assignment-row muted';
+            placeholderItem.textContent = text;
+            assignmentMenu.appendChild(placeholderItem);
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
@@ -141,13 +179,7 @@
 
             this.hideError();
             this.renderPlaceholder('Select an assignment...');
-            // Populate dropdown with assignments
-            this.state.assignments.forEach((assignment) => {
-              const option = document.createElement('option');
-              option.value = assignment.id;
-              option.textContent = assignment.title || 'Untitled assignment';
-              assignmentSelect.appendChild(option);
-            });
+            this.renderAssignmentMenuItems();
             this.setControlsEnabled(true);
             this.handleSelectionChange();
           },
@@ -173,6 +205,7 @@
 
           handlePartialDefinitionsSuccess(definitions) {
             this.state.definitions = Array.isArray(definitions) ? definitions : [];
+            this.renderAssignmentMenuItems();
           },
 
           /**
@@ -183,14 +216,8 @@
            * - title matches either primaryTitle or any of alternateTitles (case-insensitive, trimmed)
            * If found, render definition panel; otherwise hide it.
            */
-          matchDefinitionForAssignment(assignment) {
-            this.state.matchedDefinition = null;
-            if (!assignment) {
-              return null;
-            }
-
-            if (!this.state.definitions.length) {
-              // Definitions not yet loaded - do not hide primary actions (non-blocking lookup)
+          findMatchingDefinition(assignment) {
+            if (!assignment || !this.state.definitions.length) {
               return null;
             }
 
@@ -199,7 +226,7 @@
             const assignmentTopic = (assignment.topicName || '').toString();
             const assignmentYear = assignment.yearGroup === undefined ? null : assignment.yearGroup;
 
-            const match =
+            return (
               this.state.definitions.find((def) => {
                 if (!def) return false;
                 if ((def.primaryTopic || '') !== assignmentTopic) return false;
@@ -214,7 +241,22 @@
                     return true;
                 }
                 return false;
-              }) || null;
+              }) || null
+            );
+          },
+
+          matchDefinitionForAssignment(assignment) {
+            this.state.matchedDefinition = null;
+            if (!assignment) {
+              return null;
+            }
+
+            if (!this.state.definitions.length) {
+              // Definitions not yet loaded - do not hide primary actions (non-blocking lookup)
+              return null;
+            }
+
+            const match = this.findMatchingDefinition(assignment);
 
             if (match) {
               this.state.matchedDefinition = match;
@@ -246,6 +288,119 @@
             }
 
             return match;
+          },
+
+          getDefinitionStatusForAssignment(assignment) {
+            if (!assignment) return { state: 'unknown', hasDocs: false };
+            if (!this.state.definitions.length) {
+              return { state: 'loading', hasDocs: false };
+            }
+
+            const match = this.findMatchingDefinition(assignment);
+            if (match && match.referenceDocumentId && match.templateDocumentId) {
+              return { state: 'linked', hasDocs: true };
+            }
+
+            return { state: 'missing', hasDocs: false };
+          },
+
+          renderAssignmentMenuItems() {
+            if (!this.state.assignments.length) {
+              return;
+            }
+
+            const filter = (this.state.filterValue || '').toString().trim().toLowerCase();
+            assignmentMenu.innerHTML = '';
+
+            const filteredAssignments = this.state.assignments.filter((assignment) => {
+              const title = (assignment.title || '').toString().toLowerCase();
+              return !filter || title.includes(filter);
+            });
+
+            if (!filteredAssignments.length) {
+              const emptyItem = document.createElement('li');
+              emptyItem.className = 'assignment-row muted';
+              emptyItem.textContent = 'No assignments match your search.';
+              assignmentMenu.appendChild(emptyItem);
+              return;
+            }
+
+            filteredAssignments.forEach((assignment) => {
+              const status = this.getDefinitionStatusForAssignment(assignment);
+              const item = document.createElement('li');
+              item.dataset.assignmentId = assignment.id;
+              item.className = 'assignment-row';
+              if (assignment.id === this.state.selectedAssignmentId) {
+                item.classList.add('active');
+              }
+
+              const name = document.createElement('span');
+              name.className = 'assignment-name';
+              name.textContent = assignment.title || 'Untitled assignment';
+
+              const icons = document.createElement('span');
+              icons.className = 'assignment-icons';
+
+              if (status.state === 'linked') {
+                const checkIcon = document.createElement('i');
+                checkIcon.className = 'green-text';
+                checkIcon.textContent = 'check_circle';
+                checkIcon.title = 'Assignment definition found';
+
+                const editIcon = document.createElement('i');
+                editIcon.className = 'secondary-text';
+                editIcon.textContent = 'edit';
+                editIcon.title = 'Edit assignment definition';
+
+                icons.appendChild(checkIcon);
+                icons.appendChild(editIcon);
+              } else if (status.state === 'loading') {
+                const pendingIcon = document.createElement('i');
+                pendingIcon.className = 'muted';
+                pendingIcon.textContent = 'hourglass_empty';
+                pendingIcon.title = 'Checking definitions';
+                icons.appendChild(pendingIcon);
+              } else {
+                const linkIcon = document.createElement('i');
+                linkIcon.className = 'primary-text';
+                linkIcon.textContent = 'link';
+                linkIcon.title = 'Link existing definition';
+
+                const addIcon = document.createElement('i');
+                addIcon.className = 'primary-text';
+                addIcon.textContent = 'add_circle';
+                addIcon.title = 'Create new definition';
+
+                icons.appendChild(linkIcon);
+                icons.appendChild(addIcon);
+              }
+
+              item.appendChild(name);
+              item.appendChild(icons);
+              assignmentMenu.appendChild(item);
+            });
+          },
+
+          handleFilterInput() {
+            this.state.filterValue = assignmentInput.value || '';
+            this.state.selectedAssignmentId = '';
+            this.state.matchedDefinition = null;
+            startButton.disabled = true;
+            this.renderAssignmentMenuItems();
+          },
+
+          handleMenuSelection(event) {
+            const item = event.target.closest('li[data-assignment-id]');
+            if (!item) return;
+
+            const assignmentId = item.dataset.assignmentId;
+            const assignment = this.state.assignments.find((a) => a.id === assignmentId);
+            if (!assignment) return;
+
+            assignmentInput.value = assignment.title || 'Untitled assignment';
+            this.state.filterValue = '';
+            this.state.selectedAssignmentId = assignmentId;
+            this.handleSelectionChange();
           },
 
           handleStart() {
@@ -292,7 +447,6 @@
             console.warn('Failed to load partial definitions for wizard:', error);
           },
           handleSelectionChange() {
-            this.state.selectedAssignmentId = assignmentSelect.value;
             // Keep existing behaviour: primary button is enabled when an assignment is selected
             startButton.disabled = !this.state.selectedAssignmentId;
 
@@ -302,6 +456,7 @@
                 (a) => a.id === this.state.selectedAssignmentId
               );
               this.matchDefinitionForAssignment(assignment);
+              this.renderAssignmentMenuItems();
             } else {
               this.state.matchedDefinition = null;
             }
@@ -314,7 +469,7 @@
             spinner.setAttribute('aria-hidden', visible ? 'false' : 'true');
           },
           setControlsEnabled(enabled) {
-            assignmentSelect.disabled = !enabled;
+            assignmentInput.disabled = !enabled;
             startButton.disabled = !enabled;
           },
           showError(message) {

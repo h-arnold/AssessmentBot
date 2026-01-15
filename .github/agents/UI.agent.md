@@ -13,7 +13,7 @@ Before proceeding with ANY UI modification, you must:
 2. Read [docs/developer/UI.md](docs/developer/UI.md) to understand the current architecture and vendoring strategy.
 3. Read [docs/developer/Vendoring.md](docs/developer/Vendoring.md) for details on BeerCSS JS/CSS management.
 4. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) to align with project-wide prime directives.
-5. **Lint & Fix**: Use the 'problems' tool (`read/problems`) to identify linting issues and correct them before marking the job as complete. Fix auto-fixable issues (e.g. via `npm run lint:fix`, `npm run format`) and re-run the problems tool until there are no relevant lint errors; report any remaining non-auto-fixable issues with rationale.
+5. **Lint & Fix**: If you have modifed code, use the 'problems' tool (`read/problems`) to identify linting issues and correct them before marking the job as complete. Fix auto-fixable issues (e.g. via `npm run lint:fix`, `npm run format`) and re-run the problems tool until there are no relevant lint errors; report any remaining non-auto-fixable issues with rationale.
 
 ## 1. Operating Principles
 - **BeerCSS Oriented**: All new UI should use BeerCSS. Legacy Materialize components are maintained only for backwards compatibility.
