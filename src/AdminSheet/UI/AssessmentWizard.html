@@ -21,17 +21,30 @@
         flex: 1;
       }
 
+      .beer .wizard-content {
+        overflow: visible !important;
+      }
+
       .wizard-actions {
         display: flex;
         justify-content: flex-end;
         gap: 0.5rem;
         padding: 0 1rem 1rem;
+        position: relative;
+        z-index: 1;
       }
 
       .assignment-menu {
         max-height: 18rem;
         overflow-y: auto;
+        overflow-x: visible;
         width: 100%;
+        z-index: 20;
+      }
+
+      .assignment-menu > li {
+        min-block-size: 2.5rem;
+        padding: 0.3rem 0.75rem;
       }
 
       .assignment-row {
@@ -50,6 +63,42 @@
         gap: 0.25rem;
       }
 
+      .assignment-icons .icon-tooltip {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .assignment-icons .tooltip {
+        z-index: 60;
+        position: absolute;
+        top: -2.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--inverse-surface);
+        color: var(--inverse-on-surface);
+        padding: 0.35rem 0.6rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        visibility: hidden;
+        opacity: 0;
+        transition:
+          opacity 0.12s ease,
+          visibility 0.12s ease;
+        pointer-events: none;
+      }
+
+      .icon-tooltip:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .field-group.no-border {
+        border: none;
+        padding: 0;
+      }
+
       .assignment-icons i {
         font-size: 1.1rem;
       }
@@ -65,8 +114,7 @@
           </p>
         </header>
 
-        <fieldset class="field-group">
-          <legend>Assignment</legend>
+        <fieldset class="field-group no-border">
           <div class="field label suffix border">
             <input
               id="assignmentInput"
@@ -76,7 +124,7 @@
               data-ui="#assignmentMenu"
               placeholder="Loading assignments..."
             />
-            <label for="assignmentInput">Assignment</label>
+            <label for="assignmentInput" class="active">Assignment</label>
             <progress
               id="assignmentLoadingSpinner"
               class="circle indeterminate"
@@ -127,6 +175,8 @@
             filterValue: '',
             // will hold partial definitions returned from server
             definitions: [],
+            definitionsLoaded: false,
+            isStarting: false,
           },
           init() {
             if (this.initialised) return;
@@ -205,6 +255,7 @@
 
           handlePartialDefinitionsSuccess(definitions) {
             this.state.definitions = Array.isArray(definitions) ? definitions : [];
+            this.state.definitionsLoaded = true;
             this.renderAssignmentMenuItems();
           },
 
@@ -264,6 +315,7 @@
               // Fast-path: if both doc IDs exist, immediately start the assessment and close the wizard.
               const hasDocs = !!match.referenceDocumentId && !!match.templateDocumentId;
               if (hasDocs) {
+                this.state.isStarting = true;
                 startButton.disabled = true;
                 this.setSpinnerVisible(true);
 
@@ -273,6 +325,7 @@
                     google.script.host.close();
                   })
                   .withFailureHandler((error) => {
+                    this.state.isStarting = false;
                     startButton.disabled = false;
                     this.setSpinnerVisible(false);
                     this.showError(
@@ -280,6 +333,7 @@
                         ? `Failed to start: ${error.message}`
                         : 'Failed to start assessment.'
                     );
+                    this.updateStartButtonState();
                   })
                   .startAssessmentFromWizard(this.state.selectedAssignmentId, match.definitionKey);
               }
@@ -292,7 +346,7 @@
 
           getDefinitionStatusForAssignment(assignment) {
             if (!assignment) return { state: 'unknown', hasDocs: false };
-            if (!this.state.definitions.length) {
+            if (!this.state.definitionsLoaded) {
               return { state: 'loading', hasDocs: false };
             }
 
@@ -347,13 +401,22 @@
                 checkIcon.textContent = 'check_circle';
                 checkIcon.title = 'Assignment definition found';
 
+                const editWrap = document.createElement('span');
+                editWrap.className = 'icon-tooltip';
+
                 const editIcon = document.createElement('i');
                 editIcon.className = 'secondary-text';
                 editIcon.textContent = 'edit';
-                editIcon.title = 'Edit assignment definition';
+
+                const editTooltip = document.createElement('span');
+                editTooltip.className = 'tooltip';
+                editTooltip.textContent = 'Edit assignment definition';
+
+                editWrap.appendChild(editIcon);
+                editWrap.appendChild(editTooltip);
 
                 icons.appendChild(checkIcon);
-                icons.appendChild(editIcon);
+                icons.appendChild(editWrap);
               } else if (status.state === 'loading') {
                 const pendingIcon = document.createElement('i');
                 pendingIcon.className = 'muted';
@@ -361,18 +424,36 @@
                 pendingIcon.title = 'Checking definitions';
                 icons.appendChild(pendingIcon);
               } else {
+                const linkWrap = document.createElement('span');
+                linkWrap.className = 'icon-tooltip';
+
                 const linkIcon = document.createElement('i');
                 linkIcon.className = 'primary-text';
                 linkIcon.textContent = 'link';
-                linkIcon.title = 'Link existing definition';
+
+                const linkTooltip = document.createElement('span');
+                linkTooltip.className = 'tooltip';
+                linkTooltip.textContent = 'Link to existing assignment';
+
+                linkWrap.appendChild(linkIcon);
+                linkWrap.appendChild(linkTooltip);
+
+                const addWrap = document.createElement('span');
+                addWrap.className = 'icon-tooltip';
 
                 const addIcon = document.createElement('i');
                 addIcon.className = 'primary-text';
                 addIcon.textContent = 'add_circle';
-                addIcon.title = 'Create new definition';
 
-                icons.appendChild(linkIcon);
-                icons.appendChild(addIcon);
+                const addTooltip = document.createElement('span');
+                addTooltip.className = 'tooltip';
+                addTooltip.textContent = 'Create new assignment';
+
+                addWrap.appendChild(addIcon);
+                addWrap.appendChild(addTooltip);
+
+                icons.appendChild(linkWrap);
+                icons.appendChild(addWrap);
               }
 
               item.appendChild(name);
@@ -385,7 +466,8 @@
             this.state.filterValue = assignmentInput.value || '';
             this.state.selectedAssignmentId = '';
             this.state.matchedDefinition = null;
-            startButton.disabled = true;
+            this.state.isStarting = false;
+            this.updateStartButtonState();
             this.renderAssignmentMenuItems();
           },
 
@@ -407,7 +489,7 @@
             // Fast-path: if matchedDefinition is present, start using it; else do nothing for now
             if (!this.state.selectedAssignmentId) return;
             const def = this.state.matchedDefinition;
-            if (!def) {
+            if (!def || !this.hasMatchedDefinitionWithDocs()) {
               this.showError('No definition selected. Please link or create one.');
               return;
             }
@@ -418,7 +500,8 @@
               return;
             }
 
-            startButton.disabled = true;
+            this.state.isStarting = true;
+            this.updateStartButtonState();
             this.setSpinnerVisible(true);
 
             // Call server to start using the existing definition
@@ -429,7 +512,8 @@
                 google.script.host.close();
               })
               .withFailureHandler((error) => {
-                startButton.disabled = false;
+                this.state.isStarting = false;
+                this.updateStartButtonState();
                 this.setSpinnerVisible(false);
                 this.showError(
                   error?.message
@@ -443,13 +527,11 @@
           handlePartialDefinitionsFailure(error) {
             // For now just keep an empty set and log the problem to the console.
             this.state.definitions = [];
+            this.state.definitionsLoaded = true;
             // eslint-disable-next-line no-console
             console.warn('Failed to load partial definitions for wizard:', error);
           },
           handleSelectionChange() {
-            // Keep existing behaviour: primary button is enabled when an assignment is selected
-            startButton.disabled = !this.state.selectedAssignmentId;
-
             // Attempt to match a definition for the selected assignment (non-blocking)
             if (this.state.selectedAssignmentId) {
               const assignment = this.state.assignments.find(
@@ -460,6 +542,8 @@
             } else {
               this.state.matchedDefinition = null;
             }
+
+            this.updateStartButtonState();
           },
           handleCancel() {
             google.script.host.close();
@@ -470,7 +554,15 @@
           },
           setControlsEnabled(enabled) {
             assignmentInput.disabled = !enabled;
-            startButton.disabled = !enabled;
+            this.updateStartButtonState();
+          },
+          hasMatchedDefinitionWithDocs() {
+            const def = this.state.matchedDefinition;
+            return !!(def && def.referenceDocumentId && def.templateDocumentId);
+          },
+          updateStartButtonState() {
+            const hasDocs = this.hasMatchedDefinitionWithDocs();
+            startButton.disabled = !hasDocs || this.state.isStarting;
           },
           showError(message) {
             errorMessage.textContent = message;
