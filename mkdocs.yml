@@ -1,0 +1,78 @@
+site_name: AssessmentBot Documentation
+site_description: A tool designed to simplify tracking and assessing the work of hundreds of students
+site_author: h-arnold
+repo_url: https://github.com/h-arnold/AssessmentBot
+repo_name: h-arnold/AssessmentBot
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: README.md
+  - Setup:
+      - Overview: setup/README.md
+      - Configuration Options: setup/configOptions.md
+      - Setting Up Assessment Records: setup/settingUpAssessmentRecords.md
+      - Setting Up Overview Sheet: setup/settingUpOverviewSheet.md
+  - How-Tos:
+      - Overview: howTos/README.md
+      - Rehydration: howTos/rehydration.md
+      - Singletons: howTos/singletons.md
+  - Developer:
+      - Assessment Flow: developer/AssessmentFlow.md
+      - Data Shapes: developer/DATA_SHAPES.md
+      - OAuth Scopes: developer/oauth-scopes.md
+      - Rehydration: developer/rehydration.md
+      - Singletons: developer/singletons.md
+      - Testing: developer/testing.md
+      - UI: developer/UI.md
+      - Vendoring: developer/Vendoring.md
+      - Wizard Modal Refactor Plan: developer/WizardModalRefactorPlan.md
+      - Wizard Modal Refactor Step 2 Review: developer/WizardModalRefactorStep2Review.md
+  - Pedagogy:
+      - Overview: pedagogy/README.md
+  - Release Notes:
+      - Releases: releaseNotes/RELEASES.md
+      - v0.7.7: releaseNotes/v0.7.7_release_notes.md
+      - v0.7.6: releaseNotes/v0.7.6_release_notes.md
+      - v0.7.5: releaseNotes/v0.7.5_release_notes.md
+      - v0.7.4: releaseNotes/v0.7.4_release_notes.md
+      - v0.7.3: releaseNotes/v0.7.3_release_notes.md
+      - v0.7.1: releaseNotes/v0.7.1_release_notes.md
+      - v0.7.0: releaseNotes/v0.7.0_release_notes.md
+      - v0.6.1: releaseNotes/v0.6.1_release_notes.md
+      - v0.6.0: releaseNotes/v0.6.0_release_notes.md
