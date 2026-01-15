@@ -104,7 +104,9 @@
           bindEvents() {
             assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
             cancelButton.addEventListener('click', () => this.handleCancel());
+            startButton.addEventListener('click', () => this.handleStart());
           },
+
           prepareForLoad(placeholder) {
             this.setControlsEnabled(false);
             this.renderPlaceholder(placeholder);
@@ -173,6 +175,116 @@
             this.state.definitions = Array.isArray(definitions) ? definitions : [];
           },
 
+          /**
+           * Attempt to find a matching partial definition for the provided assignment.
+           * Matching rules (client-side):
+           * - primaryTopic must equal assignment.topicName
+           * - yearGroup must match (null treated as null)
+           * - title matches either primaryTitle or any of alternateTitles (case-insensitive, trimmed)
+           * If found, render definition panel; otherwise hide it.
+           */
+          matchDefinitionForAssignment(assignment) {
+            this.state.matchedDefinition = null;
+            if (!assignment) {
+              return null;
+            }
+
+            if (!this.state.definitions.length) {
+              // Definitions not yet loaded - do not hide primary actions (non-blocking lookup)
+              return null;
+            }
+
+            const normTitle = (s) => (s || '').toString().trim().toLowerCase();
+            const assignmentTitle = normTitle(assignment.title);
+            const assignmentTopic = (assignment.topicName || '').toString();
+            const assignmentYear = assignment.yearGroup === undefined ? null : assignment.yearGroup;
+
+            const match =
+              this.state.definitions.find((def) => {
+                if (!def) return false;
+                if ((def.primaryTopic || '') !== assignmentTopic) return false;
+
+                const defYear = def.yearGroup === undefined ? null : def.yearGroup;
+                // Loose equality for null handling
+                if (defYear !== assignmentYear) return false;
+
+                if (normTitle(def.primaryTitle) === assignmentTitle) return true;
+                if (Array.isArray(def.alternateTitles)) {
+                  if (def.alternateTitles.map((t) => normTitle(t)).includes(assignmentTitle))
+                    return true;
+                }
+                return false;
+              }) || null;
+
+            if (match) {
+              this.state.matchedDefinition = match;
+
+              // Fast-path: if both doc IDs exist, immediately start the assessment and close the wizard.
+              const hasDocs = !!match.referenceDocumentId && !!match.templateDocumentId;
+              if (hasDocs) {
+                startButton.disabled = true;
+                this.setSpinnerVisible(true);
+
+                google.script.run
+                  .withSuccessHandler(() => {
+                    google.script.run.showProgressModal();
+                    google.script.host.close();
+                  })
+                  .withFailureHandler((error) => {
+                    startButton.disabled = false;
+                    this.setSpinnerVisible(false);
+                    this.showError(
+                      error?.message
+                        ? `Failed to start: ${error.message}`
+                        : 'Failed to start assessment.'
+                    );
+                  })
+                  .startAssessmentFromWizard(this.state.selectedAssignmentId, match.definitionKey);
+              }
+            } else {
+              this.state.matchedDefinition = null;
+            }
+
+            return match;
+          },
+
+          handleStart() {
+            // Fast-path: if matchedDefinition is present, start using it; else do nothing for now
+            if (!this.state.selectedAssignmentId) return;
+            const def = this.state.matchedDefinition;
+            if (!def) {
+              this.showError('No definition selected. Please link or create one.');
+              return;
+            }
+
+            // Basic pre-validation
+            if (!def.definitionKey) {
+              this.showError('Selected definition is invalid. Missing definition key.');
+              return;
+            }
+
+            startButton.disabled = true;
+            this.setSpinnerVisible(true);
+
+            // Call server to start using the existing definition
+            google.script.run
+              .withSuccessHandler((processId) => {
+                // Show progress modal and close wizard
+                google.script.run.showProgressModal();
+                google.script.host.close();
+              })
+              .withFailureHandler((error) => {
+                startButton.disabled = false;
+                this.setSpinnerVisible(false);
+                this.showError(
+                  error?.message
+                    ? `Failed to start: ${error.message}`
+                    : 'Failed to start assessment.'
+                );
+              })
+              .startAssessmentFromWizard(this.state.selectedAssignmentId, def.definitionKey);
+          },
+
           handlePartialDefinitionsFailure(error) {
             // For now just keep an empty set and log the problem to the console.
             this.state.definitions = [];
@@ -181,7 +293,18 @@
           },
           handleSelectionChange() {
             this.state.selectedAssignmentId = assignmentSelect.value;
+            // Keep existing behaviour: primary button is enabled when an assignment is selected
             startButton.disabled = !this.state.selectedAssignmentId;
+
+            // Attempt to match a definition for the selected assignment (non-blocking)
+            if (this.state.selectedAssignmentId) {
+              const assignment = this.state.assignments.find(
+                (a) => a.id === this.state.selectedAssignmentId
+              );
+              this.matchDefinitionForAssignment(assignment);
+            } else {
+              this.state.matchedDefinition = null;
+            }
           },
           handleCancel() {
             google.script.host.close();

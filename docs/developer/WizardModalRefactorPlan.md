@@ -274,6 +274,7 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Cancel closes the dialog.
 - Debug menu entry exists for testing.
 - UI tests cover initial render, server call, success path, failure path, selection gating, and cancel.
+- Removed the Step 2 "Definition found" panel and implemented an **auto-start fast-path**: when a matching partial definition with both doc IDs is found, the wizard starts the assessment immediately, opens the progress modal, and closes. New UI tests were added to assert matching + auto-start behaviour and that warnings (`TaskDefinitionsChanged`) do not block the fast-path.
 
 ### Codebase facts (confirmed)
 

@@ -72,6 +72,25 @@ function showClassroomDropdown() {
 }
 
 /**
+ * Starts an assessment from the wizard fast-path using an existing definition.
+ * @param {string} assignmentId - The Classroom assignment id
+ * @param {string} definitionKey - The assignment definition key to use
+ * @returns {string} processId - The created processing job id
+ */
+function startAssessmentFromWizard(assignmentId, definitionKey) {
+  Validate.requireParams({ assignmentId, definitionKey }, 'startAssessmentFromWizard');
+  try {
+    // Delegate to existing processing entrypoint
+    return startProcessing(assignmentId, definitionKey);
+  } catch (err) {
+    ProgressTracker.getInstance().logAndThrowError(
+      'Failed to start assessment from wizard. Please try again.',
+      err
+    );
+  }
+}
+
+/**
  * Saves document IDs for a specific assignment by calling the UIManager's method.
  * @param {string} assignmentId The ID of the assignment.
  * @param {Object} documentIds An object containing reference and template document IDs.
