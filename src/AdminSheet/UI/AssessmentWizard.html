@@ -102,6 +102,17 @@
       .assignment-icons i {
         font-size: 1.1rem;
       }
+
+      /* Step 2 document inputs: make room for an icon to the right of the input */
+      #step2Panel .field.label.border {
+        position: relative;
+      }
+
+      /* Rely on BeerCSS suffix handling for input padding and icon spacing */
+
+      /* Use BeerCSS default label underline behaviour */
+
+      /* Use BeerCSS icon positioning and sizing for .field.suffix */
     </style>
   </head>
   <body>
@@ -114,7 +125,7 @@
           </p>
         </header>
 
-        <fieldset class="field-group no-border">
+        <fieldset id="step1Panel" class="field-group no-border">
           <div class="field label suffix border">
             <input
               id="assignmentInput"
@@ -141,10 +152,47 @@
             hidden
           ></output>
         </fieldset>
+
+        <fieldset id="step2Panel" class="field-group no-border" hidden>
+          <legend>Provide documents for this assignment</legend>
+          <p class="muted">
+            Paste the URLs or raw IDs of the reference and template documents. We will validate the
+            files before creating the assignment.
+          </p>
+
+          <div class="field label border suffix">
+            <input
+              id="referenceInputStep2"
+              type="text"
+              autocomplete="off"
+              placeholder="Reference document URL or ID"
+            />
+            <label for="referenceInputStep2">Reference document</label>
+            <i id="referenceIcon"></i>
+            <output id="referenceFeedback" class="status" aria-live="polite" hidden></output>
+          </div>
+
+          <div class="field label border suffix">
+            <input
+              id="templateInputStep2"
+              type="text"
+              autocomplete="off"
+              placeholder="Template document URL or ID"
+            />
+            <label for="templateInputStep2">Template document</label>
+            <i id="templateIcon"></i>
+            <output id="templateFeedback" class="status" aria-live="polite" hidden></output>
+          </div>
+
+          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
+        </fieldset>
       </main>
 
       <footer class="wizard-actions">
         <nav class="group connected">
+          <button class="button border left-round" type="button" id="backToStep1" hidden>
+            Back
+          </button>
           <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
           <button
             class="button border right-round primary"
@@ -166,6 +214,18 @@
         const startButton = document.getElementById('startAssessment');
         const cancelButton = document.getElementById('cancelWizard');
         const errorMessage = document.getElementById('assignmentErrorMessage');
+
+        // Step 2 elements
+        const step1Panel = document.getElementById('step1Panel');
+        const step2Panel = document.getElementById('step2Panel');
+        const referenceInput = document.getElementById('referenceInputStep2');
+        const templateInput = document.getElementById('templateInputStep2');
+        const referenceIcon = document.getElementById('referenceIcon');
+        const templateIcon = document.getElementById('templateIcon');
+        const referenceFeedback = document.getElementById('referenceFeedback');
+        const templateFeedback = document.getElementById('templateFeedback');
+        const backButton = document.getElementById('backToStep1');
+        const step2ErrorMessage = document.getElementById('step2ErrorMessage');
 
         const assignmentWizard = {
           initialised: false,
@@ -192,6 +252,15 @@
             assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
             cancelButton.addEventListener('click', () => this.handleCancel());
             startButton.addEventListener('click', () => this.handleStart());
+
+            // Step 2 listeners
+            referenceInput.addEventListener('input', (e) =>
+              this.handleDocumentInput('reference', e.target.value)
+            );
+            templateInput.addEventListener('input', (e) =>
+              this.handleDocumentInput('template', e.target.value)
+            );
+            backButton.addEventListener('click', () => this.showStep('selectAssignment'));
           },
 
           prepareForLoad(placeholder) {
@@ -440,10 +509,13 @@
 
                 const addWrap = document.createElement('span');
                 addWrap.className = 'icon-tooltip';
+                addWrap.dataset.action = 'create-definition';
+                addWrap.dataset.assignmentId = assignment.id;
 
                 const addIcon = document.createElement('i');
                 addIcon.className = 'primary-text';
                 addIcon.textContent = 'add_circle';
+                addIcon.tabIndex = 0;
 
                 const addTooltip = document.createElement('span');
                 addTooltip.className = 'tooltip';
@@ -472,6 +544,15 @@
           },
 
           handleMenuSelection(event) {
+            // If the click was on an action (create definition), handle that first
+            const action = event.target.closest('[data-action="create-definition"]');
+            if (action) {
+              const id = action.dataset.assignmentId;
+              const assignment = this.state.assignments.find((a) => a.id === id);
+              if (assignment) return this.openCreateAssignmentPanel(assignment);
+              return;
+            }
+
             const item = event.target.closest('li[data-assignment-id]');
             if (!item) return;
 
@@ -486,6 +567,34 @@
           },
 
           handleStart() {
+            if (this.state.step === 'enterDocuments') {
+              // Step 2: client-side validation only. Do not call backend at this stage.
+              if (!this.state.selectedAssignmentId) return;
+              if (!this.hasValidDocumentInputs()) {
+                step2ErrorMessage.textContent = 'Please provide two different valid document IDs.';
+                step2ErrorMessage.hidden = false;
+                return;
+              }
+
+              if (!this.state.documentsValidated) {
+                // First click: validate and move to 'ready' state locally
+                this.state.documentsValidated = true;
+                step2ErrorMessage.classList.remove('danger');
+                step2ErrorMessage.hidden = false;
+                step2ErrorMessage.textContent =
+                  'Documents validated. Click Start assessment to begin.';
+                startButton.textContent = 'Start assessment';
+                this.updateStartButtonState();
+                return;
+              }
+
+              // Documents already validated: backend action not implemented yet
+              step2ErrorMessage.classList.remove('danger');
+              step2ErrorMessage.hidden = false;
+              step2ErrorMessage.textContent = 'Start action is not yet implemented.';
+              return;
+            }
+
             // Fast-path: if matchedDefinition is present, start using it; else do nothing for now
             if (!this.state.selectedAssignmentId) return;
             const def = this.state.matchedDefinition;
@@ -545,6 +654,154 @@
 
             this.updateStartButtonState();
           },
+
+          showStep(step) {
+            this.state.step = step;
+            step1Panel.hidden = step !== 'selectAssignment';
+            step2Panel.hidden = step !== 'enterDocuments';
+            backButton.hidden = step !== 'enterDocuments';
+            // set primary button label
+            startButton.textContent = step === 'enterDocuments' ? 'Next' : 'Start assessment';
+            // Clear any step2 errors when switching
+            step2ErrorMessage.hidden = true;
+            step2ErrorMessage.textContent = '';
+          },
+
+          openCreateAssignmentPanel(assignment) {
+            // Prepare Step 2 state and UI for creating a new assignment definition
+            this.state.selectedAssignmentId = assignment.id;
+            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
+            this.state.documents = {
+              reference: { raw: '', id: null, inferredType: null },
+              template: { raw: '', id: null, inferredType: null },
+            };
+
+            referenceInput.value = '';
+            templateInput.value = '';
+            this.setFieldValidState('reference', null, null);
+            this.setFieldValidState('template', null, null);
+            this.showStep('enterDocuments');
+            referenceInput.focus();
+            this.updateStartButtonState();
+          },
+
+          parseGoogleUrl(input) {
+            const trimmed = (input || '').toString().trim();
+            if (!trimmed) return { id: null, inferredType: null };
+
+            const slidesMatch = trimmed.match(/\/presentation\/d\/([A-Za-z0-9_-]{25,})/);
+            if (slidesMatch) return { id: slidesMatch[1], inferredType: 'SLIDES' };
+
+            const sheetsMatch = trimmed.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{25,})/);
+            if (sheetsMatch) return { id: sheetsMatch[1], inferredType: 'SHEETS' };
+
+            const docsMatch = trimmed.match(/\/document\/d\/([A-Za-z0-9_-]{25,})/);
+            if (docsMatch) return { id: docsMatch[1], inferredType: 'DOCS' };
+
+            const driveMatch = trimmed.match(
+              /(?:drive\.google\.com|open\?id=).*?([A-Za-z0-9_-]{25,})/
+            );
+            if (driveMatch) return { id: driveMatch[1], inferredType: 'unknown' };
+
+            if (/^[A-Za-z0-9_-]{25,}$/.test(trimmed))
+              return { id: trimmed, inferredType: 'unknown' };
+
+            return { id: null, inferredType: null };
+          },
+
+          handleDocumentInput(fieldKey, rawValue) {
+            const parsed = this.parseGoogleUrl(rawValue);
+            this.state.documents = this.state.documents || { reference: {}, template: {} };
+            this.state.documents[fieldKey] = {
+              raw: rawValue,
+              id: parsed.id,
+              inferredType: parsed.inferredType,
+            };
+
+            this.setFieldValidState(fieldKey, parsed.id, parsed.inferredType);
+            this.updateStartButtonState();
+          },
+
+          setFieldValidState(fieldKey, id, inferredType) {
+            const fieldEl =
+              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
+            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
+            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
+
+            // clear previous
+            fieldEl.classList.remove('invalid');
+            feedbackEl.hidden = true;
+            iconEl.className = '';
+            iconEl.textContent = '';
+
+            if (!id) {
+              fieldEl.classList.add('invalid');
+              feedbackEl.hidden = false;
+              feedbackEl.textContent = 'Could not extract an ID from this input';
+              iconEl.textContent = 'close';
+              iconEl.className = '';
+              return;
+            }
+
+            // Valid id - set icon according to inferred type
+            if (inferredType === 'SLIDES') {
+              iconEl.textContent = 'slideshow';
+            } else if (inferredType === 'SHEETS') {
+              iconEl.textContent = 'grid_on';
+            } else if (inferredType === 'DOCS') {
+              iconEl.textContent = 'description';
+            } else {
+              iconEl.textContent = 'help';
+            }
+          },
+
+          hasValidDocumentInputs() {
+            const ref = this.state.documents?.reference;
+            const tpl = this.state.documents?.template;
+            if (!ref || !tpl) return false;
+            if (!ref.id || !tpl.id) return false;
+            if (ref.id === tpl.id) return false;
+            return true;
+          },
+
+          submitCreateDefinition() {
+            // pre-validated on client, hand off to server to validate & persist
+            const ref = this.state.documents.reference;
+            const tpl = this.state.documents.template;
+            if (!ref || !tpl || !ref.id || !tpl.id) {
+              step2ErrorMessage.textContent = 'Both document IDs are required.';
+              step2ErrorMessage.hidden = false;
+              return;
+            }
+
+            this.state.isStarting = true;
+            this.updateStartButtonState();
+            this.setSpinnerVisible(true);
+
+            google.script.run
+              .withSuccessHandler((processId) => {
+                google.script.run.showProgressModal();
+                google.script.host.close();
+              })
+              .withFailureHandler((error) => {
+                this.state.isStarting = false;
+                this.updateStartButtonState();
+                this.setSpinnerVisible(false);
+                step2ErrorMessage.textContent = error?.message
+                  ? `Failed to start: ${error.message}`
+                  : 'Failed to start assessment.';
+                step2ErrorMessage.hidden = false;
+              })
+              .saveStartAndShowProgress(
+                this.state.selectedAssignmentName,
+                {
+                  referenceDocumentId: ref.id,
+                  templateDocumentId: tpl.id,
+                },
+                this.state.selectedAssignmentId
+              );
+          },
+
           handleCancel() {
             google.script.host.close();
           },
@@ -561,6 +818,15 @@
             return !!(def && def.referenceDocumentId && def.templateDocumentId);
           },
           updateStartButtonState() {
+            if (this.state.step === 'enterDocuments') {
+              if (this.state.documentsValidated) {
+                startButton.disabled = !!this.state.isStarting;
+              } else {
+                startButton.disabled = !this.hasValidDocumentInputs() || this.state.isStarting;
+              }
+              return;
+            }
+
             const hasDocs = this.hasMatchedDefinitionWithDocs();
             startButton.disabled = !hasDocs || this.state.isStarting;
           },

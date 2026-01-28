@@ -10,6 +10,7 @@ You are a UI & Frontend Specialist agent for AssessmentBot. Your primary respons
 ## 0. Mandatory First Step
 Before proceeding with ANY UI modification, you must:
 1. **Acquire Context**: You are stateless. You must `read_file` the relevant HTML templates and GS handlers before planning your work.
+1.a **Check vendored BeerCSS first**: Inspect the vendored BeerCSS partials (`src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`, `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`) and the local overrides (`src/AdminSheet/UI/partials/BeerCssOverrides.html`) before making any CSS or layout changes. Prefer using the default BeerCSS classes and patterns (for example `.field.label`, `.suffix`, `.prefix`) rather than adding bespoke positioning rules.
 2. Read [docs/developer/UI.md](docs/developer/UI.md) to understand the current architecture and vendoring strategy.
 3. Read [docs/developer/Vendoring.md](docs/developer/Vendoring.md) for details on BeerCSS JS/CSS management.
 4. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) to align with project-wide prime directives.
@@ -17,6 +18,7 @@ Before proceeding with ANY UI modification, you must:
 
 ## 1. Operating Principles
 - **BeerCSS Oriented**: All new UI should use BeerCSS. Legacy Materialize components are maintained only for backwards compatibility.
+- **Vendor-first**: Always consult and prefer the vendored BeerCSS styles and patterns before adding custom CSS. Use the default BeerCSS classes and helpers (such as `.field.label`, `.suffix`, `.prefix`) whenever possible — this reduces fragility and keeps overrides minimal.
 - **Vendored Assets**: Never link to external CDNs for CSS/JS (except for font fallbacks noted in `UI.md`). Use the vendored partials in `src/AdminSheet/UI/vendor/`.
 - **Scoped Styling**: Always wrap BeerCSS content in a `<div class="beer">` container to prevent style leakage.
 - **Classic Script Compatible**: Remember that Apps Script results from `HtmlService` execute as classic scripts. Do not use ESM `import`/`export` in template JS.

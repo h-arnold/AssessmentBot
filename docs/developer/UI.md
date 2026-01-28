@@ -237,6 +237,8 @@ HtmlService pages often pick up default browser margins, which can introduce a v
 
 ### BeerCSS field structure matters (labels, suffix/prefix)
 
+**Vendor-first rule:** Always inspect the vendored BeerCSS partials (`src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html` and `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`) and the local overrides (`src/AdminSheet/UI/partials/BeerCssOverrides.html`) before making layout or styling changes. Prefer the default BeerCSS classes and patterns (for example `.field.label`, `.suffix`, `.prefix`) over bespoke positioning or overrides — the vendored stylesheet already handles alignment, clipping and icon spacing in most cases.
+
 BeerCSS positions suffix/prefix adornments (including `progress.circle`) using CSS that expects a particular DOM structure.
 
 - For a labelled field, use the BeerCSS `label` helper pattern:
