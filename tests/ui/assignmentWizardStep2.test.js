@@ -214,12 +214,16 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
       refInput.value = 'https://docs.google.com/presentation/d/1SLIDEIDEXAMPLE1234567890';
       refInput.dispatchEvent(new window.Event('input'));
 
-      // Invalid template
+      // Invalid template: we no longer show per-field text feedback; icon indicates the error
       tplInput.value = 'not a url';
       tplInput.dispatchEvent(new window.Event('input'));
 
       expect(tplField.classList.contains('invalid')).toBe(true);
-      expect(tplFeedback.hidden).toBe(false);
+      // per-field feedback is intentionally hidden to reduce noise
+      expect(tplFeedback.hidden).toBe(true);
+      const tplIcon = document.getElementById('templateIcon');
+      expect(tplIcon.textContent).toBe('close');
+      expect(tplIcon.classList.contains('error-text')).toBe(true);
       expect(startButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
