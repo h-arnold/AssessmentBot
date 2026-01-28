@@ -112,6 +112,21 @@
 
       /* Use BeerCSS default label underline behaviour */
 
+      /* Success underline for green-border fields (small local tweak to apply green colour to the label underline) */
+      #step2Panel .field.green-border.label > label::after {
+        border-block-start-color: #4caf50;
+        color: #4caf50;
+      }
+      /* Ensure the entire control (container + input) shows the green success border and focus state */
+      #step2Panel .field.green-border,
+      #step2Panel .field.green-border > :is(input, textarea, select) {
+        border-color: #4caf50 !important;
+      }
+
+      #step2Panel .field.green-border > :is(input, textarea, select):focus {
+        border-color: #4caf50 !important;
+        outline-color: #4caf50 !important;
+      }
       /* Use BeerCSS icon positioning and sizing for .field.suffix */
     </style>
   </head>
@@ -119,9 +134,8 @@
     <div class="beer">
       <main class="wizard-content">
         <header>
-          <p class="muted">
-            Choose the Classroom assignment you want to assess before moving on to the document
-            inputs.
+          <p id="assignmentHelp" class="muted">
+            Choose the Classroom assignment you want to assess.
           </p>
         </header>
 
@@ -156,8 +170,8 @@
         <fieldset id="step2Panel" class="field-group no-border" hidden>
           <legend>Provide documents for this assignment</legend>
           <p class="muted">
-            Paste the URLs or raw IDs of the reference and template documents. We will validate the
-            files before creating the assignment.
+            Paste the URLs of the reference and template documents. We will validate the document
+            type and check the URLs are different before creating the assignment.
           </p>
 
           <div class="field label border suffix">
@@ -165,7 +179,7 @@
               id="referenceInputStep2"
               type="text"
               autocomplete="off"
-              placeholder="Reference document URL or ID"
+              placeholder="Reference document URL"
             />
             <label for="referenceInputStep2">Reference document</label>
             <i id="referenceIcon"></i>
@@ -177,7 +191,7 @@
               id="templateInputStep2"
               type="text"
               autocomplete="off"
-              placeholder="Template document URL or ID"
+              placeholder="Template document URL"
             />
             <label for="templateInputStep2">Template document</label>
             <i id="templateIcon"></i>
@@ -226,6 +240,7 @@
         const templateFeedback = document.getElementById('templateFeedback');
         const backButton = document.getElementById('backToStep1');
         const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        const assignmentHelp = document.getElementById('assignmentHelp');
 
         const assignmentWizard = {
           initialised: false,
@@ -571,7 +586,7 @@
               // Step 2: client-side validation only. Do not call backend at this stage.
               if (!this.state.selectedAssignmentId) return;
               if (!this.hasValidDocumentInputs()) {
-                step2ErrorMessage.textContent = 'Please provide two different valid document IDs.';
+                step2ErrorMessage.textContent = 'Please provide two different valid document URLs.';
                 step2ErrorMessage.hidden = false;
                 return;
               }
@@ -660,6 +675,8 @@
             step1Panel.hidden = step !== 'selectAssignment';
             step2Panel.hidden = step !== 'enterDocuments';
             backButton.hidden = step !== 'enterDocuments';
+            // Hide the top helper paragraph when entering Step 2 (it's step 1 specific)
+            if (assignmentHelp) assignmentHelp.hidden = step !== 'selectAssignment';
             // set primary button label
             startButton.textContent = step === 'enterDocuments' ? 'Next' : 'Start assessment';
             // Clear any step2 errors when switching
@@ -685,28 +702,38 @@
             this.updateStartButtonState();
           },
 
+          // Infer the document type only. We no longer attempt to extract or validate an ID.
+          // Returns: { raw, inferredType }
           parseGoogleUrl(input) {
             const trimmed = (input || '').toString().trim();
-            if (!trimmed) return { id: null, inferredType: null };
+            if (!trimmed) return { raw: '', inferredType: 'unknown' };
 
-            const slidesMatch = trimmed.match(/\/presentation\/d\/([A-Za-z0-9_-]{25,})/);
-            if (slidesMatch) return { id: slidesMatch[1], inferredType: 'SLIDES' };
+            // Simple detection by URL shape - don't attempt to extract IDs or enforce length checks
+            if (/\/presentation\//i.test(trimmed) || /slide(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'SLIDES' };
+            }
+            if (/\/spreadsheets\//i.test(trimmed) || /sheet(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'SHEETS' };
+            }
+            if (/\/document\//i.test(trimmed) || /doc(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'DOCS' };
+            }
 
-            const sheetsMatch = trimmed.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{25,})/);
-            if (sheetsMatch) return { id: sheetsMatch[1], inferredType: 'SHEETS' };
+            // Not a recognised document type
+            return { raw: trimmed, inferredType: 'unknown' };
+          },
 
-            const docsMatch = trimmed.match(/\/document\/d\/([A-Za-z0-9_-]{25,})/);
-            if (docsMatch) return { id: docsMatch[1], inferredType: 'DOCS' };
-
-            const driveMatch = trimmed.match(
-              /(?:drive\.google\.com|open\?id=).*?([A-Za-z0-9_-]{25,})/
-            );
-            if (driveMatch) return { id: driveMatch[1], inferredType: 'unknown' };
-
-            if (/^[A-Za-z0-9_-]{25,}$/.test(trimmed))
-              return { id: trimmed, inferredType: 'unknown' };
-
-            return { id: null, inferredType: null };
+          // Normalise pasted values for a forgiving equality check (strip trailing edit fragments and query strings)
+          normaliseForComparison(raw) {
+            if (!raw) return '';
+            let s = raw.toString().trim();
+            // Remove querystring and fragments
+            s = s.replace(/[?#].*$/, '');
+            // Remove common trailing edit paths like /edit or /edit#slide=id
+            s = s.replace(/\/edit(?:.*)?$/, '');
+            // Trim trailing slashes
+            s = s.replace(/\/+$/, '');
+            return s;
           },
 
           handleDocumentInput(fieldKey, rawValue) {
@@ -714,36 +741,102 @@
             this.state.documents = this.state.documents || { reference: {}, template: {} };
             this.state.documents[fieldKey] = {
               raw: rawValue,
-              id: parsed.id,
               inferredType: parsed.inferredType,
             };
 
-            this.setFieldValidState(fieldKey, parsed.id, parsed.inferredType);
+            // Consider a field valid if we detected a document type (not 'unknown') and there is some input
+            this.setFieldValidState(
+              fieldKey,
+              parsed.inferredType !== 'unknown',
+              parsed.inferredType
+            );
+            // Check for cross-field conflicts (both values present and equal)
+            this.validateDocumentPair();
             this.updateStartButtonState();
           },
 
-          setFieldValidState(fieldKey, id, inferredType) {
+          // If both document IDs are present and identical, mark both fields invalid and show a helpful message
+          validateDocumentPair() {
+            const ref = this.state.documents?.reference;
+            const tpl = this.state.documents?.template;
+
+            // Clear any previous pair-level message first
+            step2ErrorMessage.hidden = true;
+            step2ErrorMessage.textContent = '';
+
+            if (!ref || !tpl || !ref.raw || !tpl.raw) {
+              // Not enough info to validate pair; clear field-level conflict states if any
+              return false;
+            }
+
+            const normRef = this.normaliseForComparison(ref.raw);
+            const normTpl = this.normaliseForComparison(tpl.raw);
+
+            if (normRef && normTpl && normRef === normTpl) {
+              const msg = 'Reference and template documents must be different.';
+              // mark both fields invalid with conflict messaging (no per-field text)
+              this.setFieldConflictState('reference', msg);
+              this.setFieldConflictState('template', msg);
+
+              step2ErrorMessage.classList.remove('danger');
+              step2ErrorMessage.classList.add('danger');
+              step2ErrorMessage.hidden = false;
+              step2ErrorMessage.textContent = msg;
+
+              return true;
+            }
+
+            // If we reach here they are different; ensure fields show their individual valid/invalid state
+            // Re-run per-field validation to restore green states if applicable
+            this.setFieldValidState('reference', ref.inferredType !== 'unknown', ref.inferredType);
+            this.setFieldValidState('template', tpl.inferredType !== 'unknown', tpl.inferredType);
+            return false;
+          },
+
+          setFieldConflictState(fieldKey, message) {
             const fieldEl =
               fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
             const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
             const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
+            const labelEl = fieldEl.querySelector('label');
 
-            // clear previous
-            fieldEl.classList.remove('invalid');
+            // Remove any success styling
+            fieldEl.classList.remove('green-border');
+            if (labelEl) labelEl.classList.remove('green-text');
+
+            // Show error state (icon + invalid styling) but do not display a per-field text message; use the step-level message instead
+            fieldEl.classList.add('invalid');
+            feedbackEl.hidden = true; // keep per-field feedback hidden to avoid duplication
+            iconEl.textContent = 'close';
+            iconEl.className = 'error-text';
+          },
+
+          // Now called with (fieldKey, isValid, inferredType)
+          setFieldValidState(fieldKey, isValid, inferredType) {
+            const fieldEl =
+              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
+            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
+            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
+            const labelEl = fieldEl.querySelector('label');
+
+            // clear previous states
+            fieldEl.classList.remove('invalid', 'green-border');
+            if (labelEl) labelEl.classList.remove('green-text');
             feedbackEl.hidden = true;
             iconEl.className = '';
             iconEl.textContent = '';
 
-            if (!id) {
+            if (!isValid) {
+              // No recognised doc type – mark visually invalid but avoid a per-field message to reduce noise for users.
               fieldEl.classList.add('invalid');
-              feedbackEl.hidden = false;
-              feedbackEl.textContent = 'Could not extract an ID from this input';
+              feedbackEl.hidden = true;
               iconEl.textContent = 'close';
-              iconEl.className = '';
+              // use BeerCSS error utility for icon colour
+              iconEl.className = 'error-text';
               return;
             }
 
-            // Valid id - set icon according to inferred type
+            // Valid type - set icon according to inferred type
             if (inferredType === 'SLIDES') {
               iconEl.textContent = 'slideshow';
             } else if (inferredType === 'SHEETS') {
@@ -753,14 +846,24 @@
             } else {
               iconEl.textContent = 'help';
             }
+
+            // Indicate success using BeerCSS utilities: green border + green label + green icon
+            fieldEl.classList.add('green-border');
+            iconEl.classList.add('green-text');
+            if (labelEl) labelEl.classList.add('green-text');
           },
 
           hasValidDocumentInputs() {
             const ref = this.state.documents?.reference;
             const tpl = this.state.documents?.template;
             if (!ref || !tpl) return false;
-            if (!ref.id || !tpl.id) return false;
-            if (ref.id === tpl.id) return false;
+            if (!ref.raw || !tpl.raw) return false;
+            if (ref.inferredType === 'unknown' || tpl.inferredType === 'unknown') return false;
+
+            const normRef = this.normaliseForComparison(ref.raw);
+            const normTpl = this.normaliseForComparison(tpl.raw);
+            if (!normRef || !normTpl) return false;
+            if (normRef === normTpl) return false;
             return true;
           },
 
@@ -768,8 +871,8 @@
             // pre-validated on client, hand off to server to validate & persist
             const ref = this.state.documents.reference;
             const tpl = this.state.documents.template;
-            if (!ref || !tpl || !ref.id || !tpl.id) {
-              step2ErrorMessage.textContent = 'Both document IDs are required.';
+            if (!ref || !tpl || !ref.raw || !tpl.raw) {
+              step2ErrorMessage.textContent = 'Both document URLs are required.';
               step2ErrorMessage.hidden = false;
               return;
             }
@@ -795,8 +898,8 @@
               .saveStartAndShowProgress(
                 this.state.selectedAssignmentName,
                 {
-                  referenceDocumentId: ref.id,
-                  templateDocumentId: tpl.id,
+                  referenceDocumentId: ref.raw,
+                  templateDocumentId: tpl.raw,
                 },
                 this.state.selectedAssignmentId
               );
