@@ -11,7 +11,6 @@ This guide explains how to create Assessment Records using Assessment Bot. These
     - [✅ Prerequisites](#-prerequisites)
     - [🪜 Steps to Follow](#-steps-to-follow)
 
-
 ---
 
 ## 🚀 Quickstart
@@ -21,7 +20,7 @@ To quickly test Assessment Bot, set up the Admin Sheet as an Assessment Record:
 1. Click `Assessment Bot` ➡️ `Settings` ➡️ `Debug`.
 2. Select a class you wish to test.
 
-<img src="./images/classroomPicker.png" alt="The Classroom Picker in the 'Debug' section of the settings dialog." width="300px">  
+<img src="./images/classroomPicker.png" alt="The Classroom Picker in the 'Debug' section of the settings dialog." width="300px">
 
 ---
 

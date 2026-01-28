@@ -331,17 +331,14 @@ const apiKey = config.getApiKey();
 ## 🏛️ Architecture Principles
 
 1. **Separation of Construction vs. Initialization**:
-
    - Constructor: Light object setup
    - `ensureInitialized()`: Heavy resource loading
 
 2. **Lazy Loading**:
-
    - No work until first method requiring it is called
    - Transparent to callers - they just call methods normally
 
 3. **Idempotent Operations**:
-
    - Multiple calls to `getInstance()` return same object
    - Multiple calls to `ensureInitialized()` perform work only once
 
@@ -381,15 +378,12 @@ const apiKey = config.getApiKey();
    ```
 
 2. **Heavy work in constructor**:
-
    - Move all Drive/Properties/API calls to `ensureInitialized()`
 
 3. **Not resetting in tests**:
-
    - Always call `YourClass.resetForTests()` in test cleanup
 
 4. **Circular dependencies**:
-
    - Defer cross-singleton access to inside methods, not constructors
 
 5. **Direct constructor usage**:
