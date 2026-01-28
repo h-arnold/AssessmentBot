@@ -138,20 +138,24 @@
 
       /* Use BeerCSS default label underline behaviour */
 
-      /* Success underline for green-border fields (small local tweak to apply green colour to the label underline) */
-      #step2Panel .field.green-border.label > label::after {
+      /* Success underline for validated fields (use composite .field-success to simplify JS) */
+      #step2Panel .field.field-success.label > label::after {
         border-block-start-color: #4caf50;
         color: #4caf50;
       }
       /* Ensure the entire control (container + input) shows the green success border and focus state */
-      #step2Panel .field.green-border,
-      #step2Panel .field.green-border > :is(input, textarea, select) {
+      #step2Panel .field.field-success,
+      #step2Panel .field.field-success > :is(input, textarea, select) {
         border-color: #4caf50 !important;
       }
 
-      #step2Panel .field.green-border > :is(input, textarea, select):focus {
+      #step2Panel .field.field-success > :is(input, textarea, select):focus {
         border-color: #4caf50 !important;
         outline-color: #4caf50 !important;
+      }
+      #step2Panel .field.field-success label,
+      #step2Panel .field.field-success i {
+        color: #4caf50 !important;
       }
       /* Use BeerCSS icon positioning and sizing for .field.suffix */
 
@@ -1481,7 +1485,8 @@
             const labelEl = fieldEl.querySelector('label');
 
             // Remove any success styling
-            fieldEl.classList.remove('green-border');
+            fieldEl.classList.remove('green-border', 'field-success');
+            iconEl.classList.remove('green-text');
             if (labelEl) labelEl.classList.remove('green-text');
 
             // Show error state (icon + invalid styling) but do not display a per-field text message; use the step-level message instead
@@ -1500,7 +1505,8 @@
             const labelEl = fieldEl.querySelector('label');
 
             // clear previous states
-            fieldEl.classList.remove('invalid', 'green-border');
+            fieldEl.classList.remove('invalid', 'green-border', 'field-success');
+            iconEl.classList.remove('green-text');
             if (labelEl) labelEl.classList.remove('green-text');
             feedbackEl.hidden = true;
             iconEl.className = '';
@@ -1527,10 +1533,8 @@
               iconEl.textContent = 'help';
             }
 
-            // Indicate success using BeerCSS utilities: green border + green label + green icon
-            fieldEl.classList.add('green-border');
-            iconEl.classList.add('green-text');
-            if (labelEl) labelEl.classList.add('green-text');
+            // Indicate success using composite helper class
+            fieldEl.classList.add('field-success');
           },
 
           hasValidDocumentInputs() {
