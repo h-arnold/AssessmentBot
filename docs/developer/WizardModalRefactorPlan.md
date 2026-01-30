@@ -166,6 +166,32 @@ A single BeerCSS-scoped wizard modal follows the YAML/mermaid workflow above. Su
 - User selects a `GCAssignment` from the fetched list.
 - On selection, load any assignment-specific data (partial definitions, saved document IDs) needed for the next step.
 
+**Asynchronous fetch of assignments and partial definitions (initialisation)** ⚙️
+
+- On initial render the wizard kicks off two non-blocking server calls in parallel:
+  - `fetchAssignmentsForWizard()` to retrieve the Classroom assignments list.
+  - `getAllPartialDefinitions()` to retrieve cached/partial `AssignmentDefinition` summaries.
+    Both calls are initiated via `setTimeout(..., 0)` so they do not block rendering and use `google.script.run.withSuccessHandler/withFailureHandler` handlers (see `src/AdminSheet/UI/AssessmentWizard.html`).
+
+- UI behaviour while loading:
+  - The assignments control shows a placeholder option and an indeterminate spinner; the primary action is disabled until assignments are returned.
+  - Partial definitions load in the background; the menu shows a "checking" (hourglass) status for items until definitions are available.
+
+- Success handling:
+  - Assignments: on success `state.assignments` is populated, spinner hidden, and controls enabled (or a friendly "no assignments" message shown if empty).
+  - Partial definitions: on success `state.definitions` is populated and `state.definitionsLoaded` is set; menu items are re-rendered to show `linked` / `missing` status and appropriate icons.
+
+- Non-blocking lookup & fast-path:
+  - The lookup for a matching partial definition is deliberately non-blocking: selection and primary actions are allowed as soon as assignments are available.
+  - When definitions become available the wizard re-evaluates matches (`findMatchingDefinition()` / `matchDefinitionForAssignment()`); if a matching definition with both `referenceDocumentId` and `templateDocumentId` is found the wizard takes the **fast-path** and immediately starts the assessment (calls `saveStartAndShowProgress()`), otherwise it surfaces linking/creation choices.
+
+- Failure handling and graceful degradation:
+  - Failure of either call is logged and surfaced via a user-facing message where appropriate, but the UI degrades gracefully: assignments remain selectable and the definition status is treated as `missing` if definitions cannot be loaded.
+
+- Accessibility & UX notes:
+  - Spinner visibility and `aria-hidden` are toggled during load; status messages use `aria-live` containers to ensure screen readers receive updates.
+  - This parallel fetch pattern keeps the UI responsive while still using partial definitions to enhance and accelerate the happy path.
+
 3. **Definition check — fast path or obtain definition (S4 → S9)** ⚡
 
 - If the selected `GCAssignment` already has an `AssignmentDefinition`, take the fast path: call `saveStartAndShowProgress()` and start the assessment.
