@@ -174,8 +174,8 @@ A small, reusable stepper builder is provided to make creating multi-step wizard
 
 Files:
 
-- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup **and** the classic-script wrapper that exposes `WizardStepper` on `globalThis` when `WizardStepper` is available. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
-- `src/AdminSheet/UI/Stepper.js` — small, testable client-side controller that can render, update, and manage step state and events.
+- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup and (optionally) a tiny wrapper that will attach to `globalThis.WizardStepper` if the client script is available. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
+- `src/AdminSheet/UI/partials/Stepper.js` — small, testable client-side controller that can render, update, and manage step state and events. (Import when you need programmatic control or for tests.)
 
 Usage patterns:
 

@@ -5,304 +5,45 @@
   Params:
     steps: Array of { label: string }
     currentStep: number (0-based index)
+
+  NOTE: This partial renders the markup ONLY. When using the stepper in a page,
+  ensure you include BOTH the markup and the client script so the `WizardStepper`
+  class is available at runtime:
+    - `src/AdminSheet/UI/partials/Stepper.html` (markup partial)
+    - `src/AdminSheet/UI/partials/Stepper.js` (client-side script exposing `WizardStepper`)
 -->
 <nav class="wizard-stepper" data-wizard-stepper="true" aria-label="Wizard steps">
-  <ol class="horizontal center-align" style="list-style: none; padding: 0; margin: 0;">
+  <ol class="horizontal center-align" style="list-style: none; padding: 0; margin: 0">
     <? for (let i = 0; i < steps.length; i++) { let step = steps[i]; ?>
-      <li style="display: inline-block; margin: 0 1.5rem 0 0; vertical-align: middle;">
-        <? if (i === currentStep) { ?>
-          <span class="circle small primary" aria-current="step" data-step-index="<?= i ?>">
-            <?= i + 1 ?>
-          </span>
-        <? } else if (i < currentStep) { ?>
-          <span class="circle small muted" data-step-index="<?= i ?>">
-            <?= i + 1 ?>
-          </span>
-        <? } else { ?>
-          <span class="circle small" aria-disabled="true" data-step-index="<?= i ?>">
-            <?= i + 1 ?>
-          </span>
-        <? } ?>
-        <div class="small-margin" style="text-align: center; font-size: 0.95em; margin-top: 0.25rem;">
-          <?= step.label ?>
-        </div>
-      </li>
-      <? if (i < steps.length - 1) { ?>
-        <li style="display: inline-block; vertical-align: middle; margin: 0 0.5rem;">
-          <span class="divider" style="display: inline-block; width: 2.5rem; height: 2px; background: var(--outline-variant, #ccc); vertical-align: middle;"></span>
-        </li>
+    <li style="display: inline-block; margin: 0 1.5rem 0 0; vertical-align: middle">
+      <? if (i === currentStep) { ?>
+      <span class="circle small primary" aria-current="step" data-step-index="<?= i ?>">
+        <?= i + 1 ?>
+      </span>
+      <? } else if (i < currentStep) { ?>
+      <span class="circle small muted" data-step-index="<?= i ?>"> <?= i + 1 ?> </span>
+      <? } else { ?>
+      <span class="circle small" aria-disabled="true" data-step-index="<?= i ?>">
+        <?= i + 1 ?>
+      </span>
       <? } ?>
-    <? } ?>
+      <div class="small-margin" style="text-align: center; font-size: 0.95em; margin-top: 0.25rem">
+        <?= step.label ?>
+      </div>
+    </li>
+    <? if (i < steps.length - 1) { ?>
+    <li style="display: inline-block; vertical-align: middle; margin: 0 0.5rem">
+      <span
+        class="divider"
+        style="
+          display: inline-block;
+          width: 2.5rem;
+          height: 2px;
+          background: var(--outline-variant, #ccc);
+          vertical-align: middle;
+        "
+      ></span>
+    </li>
+    <? } ?> <? } ?>
   </ol>
 </nav>
-
-<script>
-/**
- * WizardStepper — lightweight DOM helper for BeerCSS stepper markup.
- * Provides methods to add, remove and update steps and to enable/disable
- * steps and set the current step.
- *
- * Usage:
- *   // Auto-attach to steppers in the document
- *   WizardStepper.attachAll();
- *
- *   // Or create for a specific element
- *   const root = document.querySelector('[data-wizard-stepper="true"]');
- *   const stepper = new WizardStepper(root, { steps: [{ label: 'One' }, { label: 'Two' }] });
- */
-(function () {
-  'use strict';
-
-  /** Create a step <li> element */
-  function createStepLi(index, label, enabled) {
-    const li = document.createElement('li');
-    li.style.display = 'inline-block';
-    li.style.margin = '0 1.5rem 0 0';
-    li.style.verticalAlign = 'middle';
-
-    const span = document.createElement('span');
-    span.className = 'circle small';
-    span.dataset.stepIndex = String(index);
-    span.textContent = String(index + 1);
-    if (!enabled) span.setAttribute('aria-disabled', 'true');
-
-    const div = document.createElement('div');
-    div.className = 'small-margin';
-    div.style.textAlign = 'center';
-    div.style.fontSize = '0.95em';
-    div.style.marginTop = '0.25rem';
-    div.textContent = label;
-
-    li.appendChild(span);
-    li.appendChild(div);
-    return li;
-  }
-
-  /** Create the divider <li> element that goes between steps */
-  function createDividerLi() {
-    const li = document.createElement('li');
-    li.style.display = 'inline-block';
-    li.style.verticalAlign = 'middle';
-    li.style.margin = '0 0.5rem';
-
-    const span = document.createElement('span');
-    span.className = 'divider';
-    span.style.display = 'inline-block';
-    span.style.width = '2.5rem';
-    span.style.height = '2px';
-    span.style.background = 'var(--outline-variant, #ccc)';
-    span.style.verticalAlign = 'middle';
-
-    li.appendChild(span);
-    return li;
-  }
-
-  /** Read existing DOM spans into a steps model and determine current index */
-  function readSpansToModel(spans) {
-    const steps = [];
-    let current = 0;
-    let idx = 0;
-    Array.from(spans).forEach(function (span) {
-      const li = span.closest('li');
-      const labelDiv = li ? li.querySelector('div') : null;
-      const label = labelDiv ? labelDiv.textContent.trim() : 'Step ' + (idx + 1);
-      const disabled = span.getAttribute('aria-disabled') === 'true';
-      const isCurrent = span.getAttribute('aria-current') === 'step';
-      steps.push({ label: label, enabled: !disabled });
-      if (isCurrent) current = idx;
-      idx += 1;
-    });
-    return { steps: steps, currentStep: current };
-  }
-
-  /** Normalise and apply state to a single span element */
-  function applySpanState(span, i, step, current) {
-    span.dataset.stepIndex = String(i);
-    span.textContent = String(i + 1);
-
-    const li = span.closest('li');
-    const labelDiv = li ? li.querySelector('div') : null;
-    if (labelDiv) labelDiv.textContent = step ? step.label : '';
-
-    // reset state classes/attributes in one place
-    span.removeAttribute('aria-current');
-    span.removeAttribute('aria-disabled');
-    span.classList.remove('primary', 'muted');
-
-    if (!step || step.enabled === false) {
-      span.setAttribute('aria-disabled', 'true');
-    }
-
-    if (i < current) {
-      span.classList.add('muted');
-      span.removeAttribute('aria-disabled');
-      return;
-    }
-
-    if (i === current) {
-      span.classList.add('primary');
-      span.setAttribute('aria-current', 'step');
-      span.removeAttribute('aria-disabled');
-      return;
-    }
-
-    // future step; aria-disabled remains if toggled off
-    if (step && step.enabled === false) {
-      span.setAttribute('aria-disabled', 'true');
-    }
-  }
-
-  /**
-   * @class
-   * @param {Element} rootEl - The root nav element that contains the stepper.
-   * @param {Object} [options]
-   * @param {Array<{label:string,enabled?:boolean}>} [options.steps]
-   * @param {number} [options.currentStep]
-   */
-  function WizardStepper(rootEl, options) {
-    options = options || {};
-    if (!rootEl || !rootEl.querySelector) throw new Error('WizardStepper requires a root element');
-
-    this.root = rootEl;
-    this.ol = this.root.querySelector('ol');
-    if (!this.ol) throw new Error('WizardStepper root must contain an <ol> element');
-
-    this.steps = [];
-    this.currentStep = 0;
-
-    // If the DOM already has steps (rendered from server), read them; otherwise use provided steps
-    const existingSpans = this.root.querySelectorAll('span.circle');
-    if (existingSpans && existingSpans.length) {
-      const parsed = readSpansToModel(existingSpans);
-      this.steps = parsed.steps;
-      this.currentStep = parsed.currentStep;
-      // Normalise DOM indexes/data attributes in case template numbers differ
-      this._syncDom();
-    } else if (Array.isArray(options.steps)) {
-      for (const sItem of options.steps) {
-        const s = sItem || {};
-        this.steps.push({ label: String(s.label || ''), enabled: s.enabled !== false });
-      }
-      this.currentStep = Number.isFinite(options.currentStep) ? options.currentStep : 0;
-      this._render();
-    }
-
-    // Store instance reference on root to avoid double-wiring
-    this.root.__wizardStepper = this;
-  }
-
-  /** Render steps from internal model into the DOM */
-  WizardStepper.prototype._render = function () {
-    // Clear existing
-    this.ol.innerHTML = '';
-
-    this.steps.forEach(function (entry, i) {
-      const stepLi = createStepLi(i, entry.label, entry.enabled);
-      this.ol.appendChild(stepLi);
-      if (i < this.steps.length - 1) {
-        this.ol.appendChild(createDividerLi());
-      }
-    }, this);
-
-    this._syncDom();
-  };
-
-  /** Synchronise DOM attributes (indexes, labels, state) with model */
-  WizardStepper.prototype._syncDom = function () {
-    const spans = this.ol.querySelectorAll('span.circle');
-    Array.from(spans).forEach((span, i) => {
-      applySpanState(span, i, this.steps[i], this.currentStep);
-    });
-  };
-
-  /** Validate index and normalise negative/overflow indexes */
-  WizardStepper.prototype._validateIndex = function (index) {
-    if (!Number.isFinite(index)) throw new Error('Index must be a number');
-    if (index < 0 || index >= this.steps.length) throw new RangeError('Step index out of range');
-  };
-
-  /** Add a new step. If index is omitted, appends to the end. */
-  WizardStepper.prototype.addStep = function (label, index) {
-    const entry = { label: String(label || ''), enabled: true };
-    if (index == null) {
-      this.steps.push(entry);
-    } else {
-      if (index < 0 || index > this.steps.length) throw new RangeError('Index out of range for addStep');
-      this.steps.splice(index, 0, entry);
-    }
-    this._render();
-    return this;
-  };
-
-  /** Remove a step at index */
-  WizardStepper.prototype.removeStep = function (index) {
-    this._validateIndex(index);
-    this.steps.splice(index, 1);
-    // if current step was removed, clamp it
-    if (this.currentStep >= this.steps.length) this.currentStep = Math.max(0, this.steps.length - 1);
-    this._render();
-    return this;
-  };
-
-  /** Update a step label or enabled state */
-  WizardStepper.prototype.updateStep = function (index, opts) {
-    this._validateIndex(index);
-    opts = opts || {};
-    if (opts.label !== undefined) this.steps[index].label = String(opts.label);
-    if (opts.enabled !== undefined) this.steps[index].enabled = !!opts.enabled;
-    this._syncDom();
-    return this;
-  };
-
-  WizardStepper.prototype.enableStep = function (index) {
-    this._validateIndex(index);
-    this.steps[index].enabled = true;
-    this._syncDom();
-    return this;
-  };
-
-  WizardStepper.prototype.disableStep = function (index) {
-    this._validateIndex(index);
-    this.steps[index].enabled = false;
-    this._syncDom();
-    return this;
-  };
-
-  /** Set the current step (0-based) */
-  WizardStepper.prototype.setCurrentStep = function (index) {
-    this._validateIndex(index);
-    this.currentStep = index;
-    this._syncDom();
-    return this;
-  };
-
-  WizardStepper.prototype.getCurrentStep = function () {
-    return this.currentStep;
-  };
-
-  WizardStepper.prototype.getSteps = function () {
-    return this.steps.map(function (s) { return { label: s.label, enabled: !!s.enabled }; });
-  };
-
-  /** Attach instances for all matching steppers in document that are not already initialised */
-  WizardStepper.attachAll = function () {
-    const nodes = document.querySelectorAll('[data-wizard-stepper="true"]');
-    const created = [];
-    Array.from(nodes).forEach(function (node) {
-      if (!node.__wizardStepper) created.push(new WizardStepper(node));
-    });
-    return created;
-  };
-
-  // Expose to global scope
-  globalThis.WizardStepper = WizardStepper;
-
-  // Auto-attach on DOM ready to simplify usage in templates
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { WizardStepper.attachAll(); });
-  } else {
-    // If document already ready, attach immediately
-    setTimeout(function () { WizardStepper.attachAll(); }, 0);
-  }
-})();
-</script>
