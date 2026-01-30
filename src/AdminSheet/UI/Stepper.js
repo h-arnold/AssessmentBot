@@ -142,11 +142,48 @@ class WizardStepper {
     });
   }
 
+  // Convenience alias matching browser API
+  setCurrentStep(index) {
+    return this.setCurrent(index);
+  }
+
   enableStep(index, enabled) {
     const span = this._nav.querySelector(`span[data-step-index="${index}"]`);
     if (!span) return;
     if (enabled) span.setAttribute('aria-disabled', 'false');
     else span.setAttribute('aria-disabled', 'true');
+  }
+
+  // Disable step convenience wrapper
+  disableStep(index) {
+    return this.enableStep(index, false);
+  }
+
+  /** Update step label/enabled state */
+  updateStep(index, opts = {}) {
+    opts = opts || {};
+    if (opts.label !== undefined) {
+      if (this.steps[index]) this.steps[index].label = String(opts.label);
+    }
+    if (opts.enabled !== undefined) {
+      // enabled true => aria-disabled false, enabled false => aria-disabled true
+      this.enableStep(index, !!opts.enabled);
+    }
+    // reflect DOM label if present
+    const span = this._nav.querySelector(`span[data-step-index="${index}"]`);
+    if (span) {
+      const li = span.closest('li');
+      const labelDiv = li ? li.querySelector('div') : null;
+      if (labelDiv && opts.label !== undefined) labelDiv.textContent = String(opts.label);
+    }
+  }
+
+  getCurrentStep() {
+    return this.currentStep;
+  }
+
+  getSteps() {
+    return this.steps.slice();
   }
 
   destroy() {
