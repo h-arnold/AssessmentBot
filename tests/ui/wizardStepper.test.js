@@ -70,6 +70,43 @@ describe('WizardStepper', () => {
     expect(step1.getAttribute('aria-disabled')).toBe('true');
   });
 
+  it('disableStep convenience method works', () => {
+    const s = new WizardStepper(container, {
+      steps: [{ label: 'one' }, { label: 'two' }],
+      currentStep: 0,
+    });
+    s.enableStep(1, true);
+    const step1 = container.querySelector('span[data-step-index="1"]');
+    expect(step1.getAttribute('aria-disabled')).toBe('false');
+    s.disableStep(1);
+    expect(step1.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('updateStep updates label and enabled state', () => {
+    const s = new WizardStepper(container, {
+      steps: [{ label: 'orig' }, { label: 'two' }],
+      currentStep: 0,
+    });
+    s.updateStep(0, { label: 'updated', enabled: false });
+    const span0 = container.querySelector('span[data-step-index="0"]');
+    const li0 = span0.closest('li');
+    const labelDiv = li0.querySelector('div');
+    expect(labelDiv.textContent).toBe('updated');
+    // enabled false should set aria-disabled true
+    expect(span0.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('getCurrentStep and getSteps return expected values and setCurrentStep alias works', () => {
+    const s = new WizardStepper(container, {
+      steps: [{ label: 'a' }, { label: 'b' }, { label: 'c' }],
+      currentStep: 1,
+    });
+    expect(s.getCurrentStep()).toBe(1);
+    expect(s.getSteps().length).toBe(3);
+    s.setCurrentStep(2);
+    expect(s.getCurrentStep()).toBe(2);
+  });
+
   it('invokes onChange when clicking an enabled step and not when disabled', () => {
     const onChange = vi.fn();
     const s = new WizardStepper(container, {
