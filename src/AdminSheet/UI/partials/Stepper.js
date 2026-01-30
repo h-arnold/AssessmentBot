@@ -2,6 +2,12 @@
  * WizardStepper
  * Small, framework-agnostic stepper controller (DOM-friendly) for wizard footers.
  * Designed to be importable in tests and included as a classic script in HTML dialogs.
+ *
+ * NOTE: When using the stepper in a page, include BOTH the markup partial and the
+ * script implementation so the markup and `WizardStepper` class are available:
+ *   - `src/AdminSheet/UI/partials/Stepper.html` (markup partial)
+ *   - `src/AdminSheet/UI/partials/Stepper.js` (client-side script exposing `WizardStepper`)
+ * This adds a small amount of complexity on loading the modal but makes testing much easier.
  */
 class WizardStepper {
   /**
