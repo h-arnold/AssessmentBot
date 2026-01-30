@@ -1,17 +1,20 @@
+<!-- DEPRECATED: merged into `UI/partials/Stepper.html` -->
+<!--
+  This file is retained as a backward-compatibility shim. Callers should include
+  `<?!= include('UI/partials/Stepper', {...}) ?>` instead. Remove this file once
+  all templates no longer reference it.
+-->
 <script>
 /**
- * Classic-script wrapper for WizardStepper.
- * Included selectively in dialogs that need stepper behaviour.
+ * Deprecated shim: the classic-script wrapper for WizardStepper is now bundled into `Stepper.html`.
+ * Including `<?!= include('UI/partials/Stepper', {...}) ?>` will provide the same behaviour.
  */
 (function () {
-  // Inline minimal class to avoid additional includes in Apps Script; keeps parity with Node module
-  /* eslint-disable */
   var WizardStepper = (function () {
     return window.WizardStepper || undefined;
   })();
 
   if (WizardStepper) {
-    // Expose to global scope under a conventional name to be explicit
     globalThis.WizardStepper = WizardStepper;
   }
 })();

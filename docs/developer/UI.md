@@ -174,9 +174,8 @@ A small, reusable stepper builder is provided to make creating multi-step wizard
 
 Files:
 
-- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
+- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup **and** the classic-script wrapper that exposes `WizardStepper` on `globalThis` when `WizardStepper` is available. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
 - `src/AdminSheet/UI/Stepper.js` — small, testable client-side controller that can render, update, and manage step state and events.
-- `src/AdminSheet/UI/partials/StepperScript.html` — classic-script wrapper to expose `WizardStepper` on `globalThis` (include this file only in dialogs that need stepper behaviour).
 
 Usage patterns:
 
@@ -186,10 +185,10 @@ Usage patterns:
 <?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
 ```
 
-- Client-side behaviour (optional): include the wrapper script selectively (not in every dialog) and instantiate the controller to allow dynamic changes:
+- Client-side behaviour (optional): the wrapper is bundled into the partial, so include the partial and instantiate the controller as needed:
 
 ```html
-<?!= include('UI/partials/StepperScript') ?>
+<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
 <script>
   // Example: initialises and exposes the stepper for further control
   const stepperRoot = document.querySelector('[data-wizard-stepper]');
@@ -206,7 +205,7 @@ Usage patterns:
 Design notes:
 
 - The client controller is intentionally small and framework-agnostic. It is attached to `globalThis` to allow easy access in classic-script templates.
-- Include the JS wrapper (`StepperScript.html`) only when you require runtime updates — this keeps small dialogs free from unnecessary code.
+- The JS wrapper is bundled into the `Stepper` partial. Include `<?!= include('UI/partials/Stepper', ...) ?>` when you require runtime updates; a separate `StepperScript.html` include is not required.
 - The controller API includes `setSteps()`, `addStep()`, `removeStep()`, `setCurrent()`, `enableStep()`, and `destroy()`. It emits `onChange` callbacks for user-triggered step changes.
 - Accessible markup: the server partial uses `aria-current="step"` for the active step and `aria-disabled="true"` for disabled steps.
 
