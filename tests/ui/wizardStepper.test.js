@@ -13,10 +13,11 @@ describe('WizardStepper', () => {
   });
 
   it('renders steps and marks the current step', () => {
-    new WizardStepper(container, {
+    const stepper = new WizardStepper(container, {
       steps: [{ label: 'First' }, { label: 'Second' }, { label: 'Third' }],
       currentStep: 1,
     });
+    expect(stepper).toBeInstanceOf(WizardStepper);
 
     const spans = container.querySelectorAll('span[data-step-index]');
     expect(spans.length).toBe(3);
