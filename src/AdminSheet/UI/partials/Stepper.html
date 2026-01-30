@@ -47,3 +47,22 @@
     <? } ?> <? } ?>
   </ol>
 </nav>
+
+<script>
+/**
+ * Classic-script wrapper for WizardStepper.
+ * Bundled into this partial so including `Stepper` also exposes `globalThis.WizardStepper` when available.
+ */
+(function () {
+  // Inline minimal class to avoid additional includes in Apps Script; keeps parity with Node module
+  /* eslint-disable */
+  var WizardStepper = (function () {
+    return window.WizardStepper || undefined;
+  })();
+
+  if (WizardStepper) {
+    // Expose to global scope under a conventional name to be explicit
+    globalThis.WizardStepper = WizardStepper;
+  }
+})();
+</script>
