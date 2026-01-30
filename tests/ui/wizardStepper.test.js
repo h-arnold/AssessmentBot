@@ -13,7 +13,7 @@ describe('WizardStepper', () => {
   });
 
   it('renders steps and marks the current step', () => {
-    const s = new WizardStepper(container, {
+    new WizardStepper(container, {
       steps: [{ label: 'First' }, { label: 'Second' }, { label: 'Third' }],
       currentStep: 1,
     });
@@ -22,11 +22,11 @@ describe('WizardStepper', () => {
     expect(spans.length).toBe(3);
     const active = container.querySelector('span[aria-current="step"]');
     expect(active).not.toBeNull();
-    expect(active.getAttribute('data-step-index')).toBe('1');
+    expect(active.dataset.stepIndex).toBe('1');
     expect(active.classList.contains('primary')).toBe(true);
     const disabled = container.querySelector('span[aria-disabled="true"]');
     // Step 2 (index 2) is after current; should be disabled
-    expect(disabled.getAttribute('data-step-index')).toBe('2');
+    expect(disabled.dataset.stepIndex).toBe('2');
   });
 
   it('setCurrent updates DOM classes and aria attributes', () => {
@@ -36,7 +36,7 @@ describe('WizardStepper', () => {
     });
     s.setCurrent(1);
     const active = container.querySelector('span[aria-current="step"]');
-    expect(active.getAttribute('data-step-index')).toBe('1');
+    expect(active.dataset.stepIndex).toBe('1');
     const first = container.querySelector('span[data-step-index="0"]');
     expect(first.classList.contains('muted')).toBe(true);
   });

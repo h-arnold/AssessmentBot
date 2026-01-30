@@ -42,9 +42,12 @@ class WizardStepper {
       li.style.verticalAlign = 'middle';
 
       const span = document.createElement('span');
-      span.className =
-        `circle small ${i === this.currentStep ? 'primary' : i < this.currentStep ? 'muted' : ''}`.trim();
-      span.setAttribute('data-step-index', String(i));
+      // determine state class explicitly for clarity
+      let stateClass = '';
+      if (i === this.currentStep) stateClass = 'primary';
+      else if (i < this.currentStep) stateClass = 'muted';
+      span.className = `circle small${stateClass ? ' ' + stateClass : ''}`;
+      span.dataset.stepIndex = String(i);
       if (i === this.currentStep) span.setAttribute('aria-current', 'step');
       if (i > this.currentStep) span.setAttribute('aria-disabled', 'true');
       span.tabIndex = i > this.currentStep ? -1 : 0;
@@ -92,7 +95,7 @@ class WizardStepper {
   _handleClick(e) {
     const target = e.target.closest('span[data-step-index]');
     if (!target) return;
-    const index = Number(target.getAttribute('data-step-index'));
+    const index = Number(target.dataset.stepIndex);
     const disabled = target.getAttribute('aria-disabled') === 'true';
     if (disabled) return;
     this.setCurrent(index);
@@ -124,7 +127,7 @@ class WizardStepper {
     // update DOM in place to keep references
     const spans = Array.from(this._nav.querySelectorAll('span[data-step-index]'));
     spans.forEach((span) => {
-      const i = Number(span.getAttribute('data-step-index'));
+      const i = Number(span.dataset.stepIndex);
       span.classList.toggle('primary', i === this.currentStep);
       span.classList.toggle('muted', i < this.currentStep);
       if (i === this.currentStep) span.setAttribute('aria-current', 'step');
@@ -157,7 +160,7 @@ class WizardStepper {
 if (typeof module !== 'undefined' && module.exports) module.exports = WizardStepper;
 
 // Attach to global for browser usage (classical script)
-if (typeof window !== 'undefined') {
+if (typeof globalThis !== 'undefined') {
   // Note: not overwriting if already present
-  if (!window.WizardStepper) window.WizardStepper = WizardStepper;
+  if (!globalThis.WizardStepper) globalThis.WizardStepper = WizardStepper;
 }

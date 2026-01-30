@@ -168,7 +168,49 @@ Global functions that call `getUIManager()` in [97_globals.js](../../src/AdminSh
 <?!= include('UI/partials/Head') ?>
 ```
 
-3. In `<body>`, wrap your content in a scoped container:
+### Stepper partial & builder (reusable wizard stepper)
+
+A small, reusable stepper builder is provided to make creating multi-step wizards consistent and DRY.
+
+Files:
+
+- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
+- `src/AdminSheet/UI/Stepper.js` — small, testable client-side controller that can render, update, and manage step state and events.
+- `src/AdminSheet/UI/partials/StepperScript.html` — classic-script wrapper to expose `WizardStepper` on `globalThis` (include this file only in dialogs that need stepper behaviour).
+
+Usage patterns:
+
+- Server-rendered initial snapshot (progressive enhancement): embed the partial in your template's footer:
+
+```html
+<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
+```
+
+- Client-side behaviour (optional): include the wrapper script selectively (not in every dialog) and instantiate the controller to allow dynamic changes:
+
+```html
+<?!= include('UI/partials/StepperScript') ?>
+<script>
+  // Example: initialises and exposes the stepper for further control
+  const stepperRoot = document.querySelector('[data-wizard-stepper]');
+  const stepper = new globalThis.WizardStepper(stepperRoot, {
+    steps: [{ label: 'Previous' }, { label: 'Current' }, { label: 'Next' }],
+    currentStep: 1,
+    onChange: (index) => {
+      /* handle step change */
+    },
+  });
+</script>
+```
+
+Design notes:
+
+- The client controller is intentionally small and framework-agnostic. It is attached to `globalThis` to allow easy access in classic-script templates.
+- Include the JS wrapper (`StepperScript.html`) only when you require runtime updates — this keeps small dialogs free from unnecessary code.
+- The controller API includes `setSteps()`, `addStep()`, `removeStep()`, `setCurrent()`, `enableStep()`, and `destroy()`. It emits `onChange` callbacks for user-triggered step changes.
+- Accessible markup: the server partial uses `aria-current="step"` for the active step and `aria-disabled="true"` for disabled steps.
+
+This approach follows the project conventions: server-rendered, progressive-enhancement-first, and vendored BeerCSS styling in a `.beer` container. 3. In `<body>`, wrap your content in a scoped container:
 
 ```html
 <div class="beer">

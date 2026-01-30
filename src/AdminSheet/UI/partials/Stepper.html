@@ -10,13 +10,19 @@
   <ol class="horizontal center-align" style="list-style: none; padding: 0; margin: 0;">
     <? for (var i = 0; i < steps.length; i++) { var step = steps[i]; ?>
       <li style="display: inline-block; margin: 0 1.5rem 0 0; vertical-align: middle;">
-        <span
-          class="circle small<? if (i === currentStep) { ?> primary<? } else if (i < currentStep) { ?> muted<? } ?>"
-          aria-current="<? if (i === currentStep) { ?>step<? } ?>"
-          aria-disabled="<? if (i > currentStep) { ?>true<? } else { ?>false<? } ?>"
-        >
-          <?= i + 1 ?>
-        </span>
+        <? if (i === currentStep) { ?>
+          <span class="circle small primary" aria-current="step" data-step-index="<?= i ?>">
+            <?= i + 1 ?>
+          </span>
+        <? } else if (i < currentStep) { ?>
+          <span class="circle small muted" data-step-index="<?= i ?>">
+            <?= i + 1 ?>
+          </span>
+        <? } else { ?>
+          <span class="circle small" aria-disabled="true" data-step-index="<?= i ?>">
+            <?= i + 1 ?>
+          </span>
+        <? } ?>
         <div class="small-margin" style="text-align: center; font-size: 0.95em; margin-top: 0.25rem;">
           <?= step.label ?>
         </div>

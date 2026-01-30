@@ -734,7 +734,9 @@
             // Remove querystring and fragments
             s = s.replace(/[?#].*$/, '');
             // Remove common trailing edit paths like /edit or /edit#slide=id
-            s = s.replace(/\/edit(?:.*)?$/, '');
+            // Avoid matching empty strings inside the optional group by requiring the
+            // fragment/query delimiter when present (prevents redundant `(?:.*)?` patterns)
+            s = s.replace(/\/edit(?:[#?].*)?$/, '');
             // Trim trailing slashes
             s = s.replace(/\/+$/, '');
             return s;

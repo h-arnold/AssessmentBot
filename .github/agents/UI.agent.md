@@ -29,6 +29,7 @@ Before proceeding with ANY UI modification, you must:
 - **Shared Head**: `src/AdminSheet/UI/partials/Head.html` (includes BeerCSS and local overrides).
 - **BeerCSS Overrides**: `src/AdminSheet/UI/partials/BeerCssOverrides.html` (targeted project-specific tweaks).
 - **New UI Controller**: `src/AdminSheet/UI/99_BeerCssUIHandler.js` (Primary handler for new BeerCSS dialogs).
+- **Stepper partial & script**: `src/AdminSheet/UI/partials/Stepper.html`, `src/AdminSheet/UI/partials/StepperScript.html`, and `src/AdminSheet/UI/Stepper.js` (reusable stepper markup and lightweight client controller; include the script selectively in dialogs that require step behaviour).
 - **Legacy UI Controller**: `src/AdminSheet/UI/98_UIManager.js` (Legacy Materialize handler - avoid adding new logic here).
 - **Global Helpers**: `src/AdminSheet/UI/97_globals.js` (contains the server-side `include(filename)` helper).
 - **Vendored CSS**: `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`
