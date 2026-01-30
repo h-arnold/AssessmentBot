@@ -1,0 +1,17 @@
+<script>
+/**
+ * Classic-script wrapper for WizardStepper.
+ * Included selectively in dialogs that need stepper behaviour.
+ */
+(function () {
+  // Inline minimal class to avoid additional includes in Apps Script; keeps parity with Node module
+  /* eslint-disable */
+  var WizardStepper = (function () {
+    return window.WizardStepper || undefined;
+  })();
+
+  if (WizardStepper) {
+    // Expose to global scope under a conventional name to be explicit
+    globalThis.WizardStepper = WizardStepper;
+  }
+</script>
