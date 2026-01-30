@@ -22,31 +22,180 @@ Known downside: loading multiple HTML templates as separate modals can feel slow
 
 ## Proposed workflow
 
-A single BeerCSS-scoped wizard modal:
+### Yaml workflow
 
-1. **Step 1: Select assignment**
+```yaml
+# Workflow: Select GC Assignment and ensure it has an AssignmentDefinition
+# Goal: End by calling saveStartAndShowProgress()
 
-- Wizard modal opens immediately.
-- While the server fetches assignments, the UI shows a disabled select with an indeterminate spinner.
-- Once assignments are returned, the spinner is removed/hidden and the select is enabled.
-- The primary action button stays disabled until an assignment is selected.
-- On selection, the client fetches any assignment-specific data needed for Step 2 (e.g. previously saved reference/template IDs).
+entities:
+  ABClass:
+    properties:
+      yearGroup: 'optional'
+  GCAssignment:
+    properties:
+      assignmentDefinition: 'optional link'
+  AssignmentDefinition:
+    properties:
+      alternateTitle: 'optional'
+      alternateTopic: 'optional'
+      taskDefinitions: 'list'
+      weightings:
+        assignment: '0..1'
+        tasks: '0..1 per TaskDefinition'
 
-**Status:** Implemented (UI + tests). See “Progress update” below.
+inputs_from_user:
+  - yearGroup (only if ABClass.yearGroup is missing)
+  - selected GCAssignment
+  - choice: link_existing_definition | create_new_definition (only if definition missing)
+  - existing AssignmentDefinition to link (if linking)
+  - reference slide URLs + template slide URLs (if creating new)
+  - weightings (0..1) for AssignmentDefinition and each TaskDefinition (if creating new)
 
-2. **Step 2: Provide document links / IDs**
+outputs_side_effects:
+  - ABClass.yearGroup may be set/updated
+  - GCAssignment is linked to an AssignmentDefinition (if it was missing)
+  - AssignmentDefinition may be updated:
+      - alternateTitle / alternateTopic (if needed)
+      - weightings (full and partial)
+  - saveStartAndShowProgress() is called at the end
 
-- User enters URLs or IDs for required documents (e.g. reference Slides, template Slides).
-- Client provides immediate feedback (ID extracted, inferred doc type when possible).
-- On submit, server validates document type (Drive MIME type) and persists settings.
+workflow:
+  - id: S0
+    name: Start
 
-**Status:** Not yet implemented. See "Step 2 Implementation Plan" below.
+  - id: S1
+    name: Ensure ABClass has yearGroup
+    decision:
+      condition: 'ABClass.yearGroup exists?'
+      if_yes: S3
+      if_no: S2
 
-3. **Start / progress**
+  - id: S2
+    name: Capture and persist yearGroup
+    steps:
+      - action: 'User selects yearGroup for their class'
+      - action: 'Update ABClass.yearGroup with selected value'
+    next: S3
 
-- Wizard triggers the assessment process and either:
-  - closes and shows the existing progress modal, or
-  - transitions to a lightweight progress panel within the same wizard (decision deferred).
+  - id: S3
+    name: User selects GC Assignment
+    action: 'User selects GCAssignment'
+    next: S4
+
+  - id: S4
+    name: Check if AssignmentDefinition exists for selected GCAssignment
+    decision:
+      condition: 'GCAssignment.assignmentDefinition exists?'
+      if_yes: S9
+      if_no: S5
+
+  - id: S5
+    name: Decide how to obtain AssignmentDefinition
+    decision:
+      condition: 'User chooses link_existing_definition or create_new_definition'
+      if_link_existing_definition: S6
+      if_create_new_definition: S7
+
+  - id: S6
+    name: Link an existing AssignmentDefinition
+    steps:
+      - action: 'User selects existing AssignmentDefinition to link to'
+      - action: 'Link selected AssignmentDefinition to the selected GCAssignment'
+      - action: 'Update AssignmentDefinition with new alternateTitle and alternateTopic if needed'
+    next: S9
+
+  - id: S7
+    name: Create a new AssignmentDefinition from documents
+    steps:
+      - action: 'User provides reference and template slide URLs'
+      - action: 'Parse documents to create new AssignmentDefinition populated with TaskDefinitions'
+      - action: 'User inputs weightings (0..1) for the AssignmentDefinition and each TaskDefinition'
+      - action: 'Update AssignmentDefinition with weightings (full and partial)'
+      - action: 'Link newly created AssignmentDefinition to the selected GCAssignment'
+    next: S9
+
+  - id: S9
+    name: Persist and show progress
+    action: 'Call saveStartAndShowProgress()'
+    next: S10
+
+  - id: S10
+    name: End
+```
+
+### Mermaid chart of same workflow:
+
+```mermaid
+flowchart LR
+  A([Start]) --> B{ABClass has yearGroup?}
+
+  B -- No --> C[User selects yearGroup]
+  C --> D[Set ABClass.yearGroup]
+  D --> E[User selects GC Assignment]
+
+  B -- Yes --> E
+
+  E --> F{AssignmentDefinition exists?}
+
+  F -- Yes --> Z[Call saveStartAndShowProgress()] --> AA([End])
+
+  F -- No --> G{Link existing or create new?}
+
+  G -- Link --> H[Select existing AssignmentDefinition]
+  H --> I[Update alternateTitle/alternateTopic if needed]
+  I --> Z
+
+  G -- Create --> J[Provide reference & template slide URLs]
+  J --> K[Parse docs → new AssignmentDefinition + TaskDefinitions]
+  K --> L[Input weightings 0..1 for definition and tasks]
+  L --> M[Update weightings (full/partial)]
+  M --> Z
+
+```
+
+A single BeerCSS-scoped wizard modal follows the YAML/mermaid workflow above. Summary of the user-visible flow and decisions (mapped to workflow states S0–S10):
+
+1. **Ensure class yearGroup (S1 → S2 if missing)** ✅
+
+- If the current `ABClass.yearGroup` is missing, prompt the user to select and persist a `yearGroup`.
+- Once set (or if already present), proceed to assignment selection.
+
+2. **Select GC Assignment (S3)** 🔎
+
+- User selects a `GCAssignment` from the fetched list.
+- On selection, load any assignment-specific data (partial definitions, saved document IDs) needed for the next step.
+
+3. **Definition check — fast path or obtain definition (S4 → S9)** ⚡
+
+- If the selected `GCAssignment` already has an `AssignmentDefinition`, take the fast path: call `saveStartAndShowProgress()` and start the assessment.
+- If no definition exists, present the user with a choice: **link an existing definition** or **create a new definition**.
+
+4. **Link existing definition (S5 → S6)** 🔗
+
+- User selects an existing `AssignmentDefinition` to link to the `GCAssignment`.
+- Allow updating `alternateTitle` and `alternateTopic` if required.
+- Persist the link and call `saveStartAndShowProgress()` to start.
+
+5. **Create new definition from documents (S5 → S7)** 📝
+
+- User provides reference and template slide URLs or raw IDs.
+- Client assists by extracting IDs and inferring types; server validates MIME types (Slides expected) and builds a new `AssignmentDefinition` populated with `TaskDefinitions`.
+- User supplies weightings (0–1) for the assignment and each task; persist full/partial weightings as required.
+- Link the newly created `AssignmentDefinition` to the selected `GCAssignment`, then call `saveStartAndShowProgress()` to start.
+
+6. **Persist and show progress (S9 → S10)** 🚀
+
+- After linking or creating a definition, persist changes and present the progress UI (`saveStartAndShowProgress()`).
+- Surface any warnings (for example, `TaskDefinitionsChanged`) but do not block the happy path unless validation fails.
+
+Notes & validation:
+
+- Validate inputs server-side (document MIME type, IDs different, required fields).
+- Surface clear user-facing errors and log dev details using the logging contract (`ProgressTracker` / `ABLogger`).
+- Keep the UX responsive: use the fast-path when a complete partial definition is available; otherwise guide the user through linking or creating a definition.
+
+**Status:** Implementation should follow the YAML state machine above; Step 1 is implemented, Step 2 and the definition creation flow remain to be completed per the Step 2 Implementation Plan.
 
 ## UI layout recommendation
 
