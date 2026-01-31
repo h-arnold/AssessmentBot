@@ -30,10 +30,15 @@ npm run format    # Format code with Prettier
 
 **Key Documentation:**
 
-- `./CONTRIBUTING.md` - General coding and documentation style guide
-- `./docs/developer/testing.md` - Testing patterns and best practices
-- `./docs/developer/singletons.md` - Singleton pattern implementation guide
-- `./docs/developer/DATA_SHAPES.md` - Data structure specifications
+- `./CONTRIBUTING.md` - General coding and documentation style guide.
+- `./docs/developer/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
+- `./docs/developer/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
+- `./docs/developer/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
+- `./docs/developer/testing.md` - Test patterns and best practices for Vitest unit tests, mocking of Apps Script services, and test organisation.
+- `./docs/developer/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
+- `./docs/developer/oauth-scopes.md` - The OAuth scopes required for Google Apps Script integrations and the rationale for each scope.
+- `./docs/developer/UI.md` - Front-end UI conventions, modal/dialog patterns, accessibility considerations and styling guidance.
+- `./docs/developer/Vendoring.md` - Guidance for vendoring third-party libraries into the Apps Script project and the associated tooling/workflows.
 
 ### 0. Prime Directives (Highest Priority – never violate)
 
@@ -46,11 +51,27 @@ npm run format    # Format code with Prettier
 7. Reuse existing classes/utilities before creating new ones.
 8. Do not add production code purely for tests.
 9. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
+10. Use `Validate` class for generic validation. Use `Validate.requireParams()` for parameter existence checks. Only implement class-specific validation within classes.
+11. **MANDATORY**: Delegate all UI and testing duties to the appropriate sub-agents (`Testing Specialist`, `UI Specialist`). Do not implement UI or tests directly.
+
+### 0.1 Sub-Agent Protocols (Stateless Delegation)
+
+**Available Agents:**
+
+- **Testing Specialist**: All `tests/` logic. Instructions: `.github/agents/Testing.agent.md`
+- **UI Specialist**: All `src/AdminSheet/UI/` logic. Instructions: `.github/agents/UI.agent.md`
+
+**Context Management (CRITICAL):**
+
+- Sub-agents are **stateless**. They do not share your chat history or open files.
+- You **MUST** `read_file` relevant context first.
+- You **MUST** include file contents, error logs, and requirements explicitly in the `prompt` field of `runSubagent`.
+- Do not assume the agent knows "what changed". Tell it exactly what changed.
 
 Important: Defensive guards policy
 
 - Do not implement defensive programming guards (existence checks, typeof/feature detection, optional chaining as a gate) for known internal calls or GAS services. Prefer uncaught exceptions over masking issues.
-- The only acceptable guards are explicit parameter validation for public methods/functions.
+- The only acceptable guards are explicit parameter validation for public methods/functions using the `Validate` class.
 
 ### 1. Style & Naming
 
@@ -85,19 +106,39 @@ Additional clarity:
 
 ### 4. Tests (Vitest: logic only)
 
-Add tests for any new serialisable or stateful logic:
-Prohibited: Apps Script services, network, timers tied to GAS.
-Always consult testing docs at `./docs/developer/testing.md` before writing or debugging tests.
+**DELEGATION MANDATORY**: Do not write or run tests directly.
 
-### 5. Singleton Pattern
+1. Identify the logic to test.
+2. Read the source file to be tested.
+3. Call `runSubagent` (Testing Specialist) with the source code and test requirements.
+
+### 5. Validation
+
+Use the `Validate` utility class (`src/AdminSheet/Utils/Validate.js`) for all generic validation:
+
+**Required pattern for parameter existence:**
+
+```javascript
+Validate.requireParams({ paramName1, paramName2 }, 'methodName');
+```
+
+**Rules:**
+
+- Check the `Validate` class for existing validators before implementing new validation logic.
+- Add new generic validators to the `Validate` class when needed for reuse across the codebase.
+- Use `Validate` for generic type/format checks and parameter presence validation.
+- Only implement class-specific validation within classes (e.g., domain-specific business logic).
+- Do not duplicate generic validation logic across classes.
+
+### 6. Singleton Pattern
 
 Always via `Class.getInstance()`. Refer to `./docs/developer/singletons.md` when modifying or creating new Singletons.
 
-### 6. Serialisation
+### 7. Serialisation
 
 Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).
 
-### 7. Hashing & Equality
+### 8. Hashing & Equality
 
 Use `Utils.generateHash`. Do not assert literal hash strings. Assert existence, stability, and change upon content mutation.
 
@@ -107,23 +148,27 @@ Batch using existing utilities (e.g. `BatchUpdateUtility`). No new frameworks. A
 
 ### 9. JSDoc Minimum
 
-```javascript
-/**
- * Concise description.
- * @param {Type} name - Purpose (British English).
- * @return {Type} Meaningful result description.
- * @remarks Edge cases only if non-obvious.
- */
-```
+/\*\*
 
-Inline brief comments for complex branches.
-| ------------------------ | ------------------------------------------- |
-| User-visible failure | ProgressTracker.logError(msg, details) |
-| Dev debug info | ABLogger.getInstance().debugUi(label, data) |
-| Missing required param | Validate then throw/log+throw |
-| Unsure placement | Mirror closest existing pattern |
-| New entity type? | Check Models/Artifacts first |
-| Serialisable logic added | Add tests |
+- Concise description.
+- @param {Type} name - Purpose (British English).
+- @return {Type} Meaningful result description.
+- @remarks Edge cases only if non-obvious.
+  \*/
+  Inline brief comments for complex branches.
+
+### 10. Decision Cheat Sheet
+
+| Situation                 | Action                                          |
+| ------------------------- | ----------------------------------------------- |
+| **UI Change required**    | **Run Sub-Agent: UI Specialist**                |
+| **Logic needs testing**   | **Run Sub-Agent: Testing Specialist**           |
+| User-visible failure      | ProgressTracker.logError(msg, details)          |
+| Dev debug info            | ABLogger.getInstance().debugUi(label, data)     |
+| Missing required param    | Validate.requireParams({ param }, 'methodName') |
+| Generic type/format check | Use Validate.isString/isEmail/etc               |
+| Unsure placement          | Mirror closest existing pattern                 |
+| New entity type?          | Check Models/Artifacts first                    |
 
 ### 11. Anti-Patterns (Never)
 
@@ -136,7 +181,7 @@ Inline brief comments for complex branches.
 - Defensive guards for known internal APIs or GAS services (e.g., `if (SpreadsheetApp && ...)`, `if (DriveApp?.getFileById)`).
 - Feature detection for internal loggers or methods you own (e.g., `typeof logger.info === 'function'`).
 
-#### Example anti-pattern (swallowing errors):
+#### Example anti-pattern (swallowing errors)
 
 ##### Anti pattern
 
@@ -197,11 +242,11 @@ Cohort: Group/class aggregate analysis.
 
 State 1–2 concise assumptions, proceed with simplest compliant implementation.
 
-### 15. Ultra‑Compact Quick Card
+### 16. Ultra‑Compact Quick Card
 
 PRIORITY: KISS > Explicit request > Style > Logging contract > Tests (logic only)
-DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic.
-DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need.
-FALLBACK: If safe+minimal implement; if required value missing validate & throw; if unclear state assumption & proceed.
+DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic, use Validate.requireParams for param checks.
+DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need, duplicate validation logic.
+FALLBACK: Assume fallback is not required unless explicitly stated.
 
-GUARDS: No defensive runtime guards; validate direct parameters only. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
+GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
