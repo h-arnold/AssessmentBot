@@ -217,7 +217,7 @@ export class ApiClient {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
-        const res = await fetch(`${this.baseUrl}${path}`.replace(/\/\//g, '/'), {
+        const res = await fetch(new URL(path, this.baseUrl).href, {
           ...init,
           signal: controller.signal,
           headers: {
