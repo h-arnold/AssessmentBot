@@ -143,6 +143,14 @@
           </p>
         </header>
 
+        <fieldset id="yearGroupPanel" class="field-group no-border" hidden>
+          <legend>Year Group</legend>
+          <!-- Placeholder for Year Group selection -->
+          <nav class="right-align">
+            <button class="button" type="button" id="yearGroupNext">Next</button>
+          </nav>
+        </fieldset>
+
         <fieldset id="step1Panel" class="field-group no-border">
           <div class="field label suffix border">
             <input
@@ -169,6 +177,26 @@
             aria-live="polite"
             hidden
           ></output>
+          <nav class="right-align">
+            <button class="button" type="button" id="step1Next" disabled>Next</button>
+          </nav>
+        </fieldset>
+
+        <fieldset id="definitionChoicePanel" class="field-group no-border" hidden>
+          <legend>Definition Source</legend>
+          <!-- Placeholder for choosing between linking existing or creating new definition -->
+          <nav class="group center-align">
+            <button class="button border" type="button" id="choiceLink">Link Existing</button>
+            <button class="button fill" type="button" id="choiceCreate">Create New</button>
+          </nav>
+        </fieldset>
+
+        <fieldset id="linkDefinitionPanel" class="field-group no-border" hidden>
+          <legend>Link Existing Definition</legend>
+          <!-- Placeholder for selecting an existing definition to link -->
+          <nav class="right-align">
+            <button class="button primary" type="button" id="linkFinish">Link & Start</button>
+          </nav>
         </fieldset>
 
         <fieldset id="step2Panel" class="field-group no-border" hidden>
@@ -203,39 +231,45 @@
           </div>
 
           <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
+          <nav class="right-align">
+            <button class="button" type="button" id="step2Next">Next</button>
+          </nav>
+        </fieldset>
+
+        <fieldset id="weightingsPanel" class="field-group no-border" hidden>
+          <legend>Weightings</legend>
+          <!-- Placeholder for inputting weightings for the new definition -->
+          <nav class="right-align">
+            <button class="button primary" type="button" id="weightingsFinish">
+              Start Assessment
+            </button>
+          </nav>
         </fieldset>
       </main>
 
-      <footer class="wizard-actions">
-        <nav class="group connected">
-          <button class="button border left-round" type="button" id="backToStep1" hidden>
-            Back
-          </button>
-          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-          <button
-            class="button border right-round primary"
-            type="button"
-            id="startAssessment"
-            disabled
-          >
-            Start assessment
-          </button>
-        </nav>
+      <footer class="wizard-actions" id="wizardFooter">
+        <!-- Stepper container -->
       </footer>
     </div>
 
+    <?!= include('UI/partials/StepperJS') ?>
     <script>
       (() => {
         const assignmentInput = document.getElementById('assignmentInput');
         const assignmentMenu = document.getElementById('assignmentMenu');
         const spinner = document.getElementById('assignmentLoadingSpinner');
-        const startButton = document.getElementById('startAssessment');
-        const cancelButton = document.getElementById('cancelWizard');
         const errorMessage = document.getElementById('assignmentErrorMessage');
+        // Old footer buttons removed. New buttons referenced in bindEvents.
+
+        // Panels
+        const yearGroupPanel = document.getElementById('yearGroupPanel');
+        const step1Panel = document.getElementById('step1Panel'); // Assignment selection
+        const definitionChoicePanel = document.getElementById('definitionChoicePanel');
+        const linkDefinitionPanel = document.getElementById('linkDefinitionPanel');
+        const step2Panel = document.getElementById('step2Panel'); // Create definition (docs)
+        const weightingsPanel = document.getElementById('weightingsPanel');
 
         // Step 2 elements
-        const step1Panel = document.getElementById('step1Panel');
-        const step2Panel = document.getElementById('step2Panel');
         const referenceInput = document.getElementById('referenceInputStep2');
         const templateInput = document.getElementById('templateInputStep2');
         const referenceIcon = document.getElementById('referenceIcon');
@@ -260,26 +294,45 @@
           init() {
             if (this.initialised) return;
             this.initialised = true;
+
+            // Initialise Stepper
+            this.stepper = new WizardStepper('#wizardFooter', {
+              steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
+              currentStep: 0,
+              onChange: (index) => {},
+            });
+            this.showStep('yearGroup');
+
             this.bindEvents();
             this.prepareForLoad('Loading assignments...');
-            // Kick off both GAS calls asynchronously on the next tick so neither can block
             setTimeout(() => this.fetchAssignments(), 0);
             setTimeout(() => this.fetchPartialDefinitions(), 0);
           },
           bindEvents() {
             assignmentInput.addEventListener('input', () => this.handleFilterInput());
             assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
-            cancelButton.addEventListener('click', () => this.handleCancel());
-            startButton.addEventListener('click', () => this.handleStart());
 
-            // Step 2 listeners
+            const bindClick = (id, handler) => {
+              const el = document.getElementById(id);
+              if (el) el.addEventListener('click', handler);
+            };
+
+            bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
+            bindClick('step1Next', () => this.handleStep1Next());
+            bindClick('choiceLink', () => this.showStep('linkDefinition'));
+            bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
+            bindClick('linkFinish', () => this.finishSuccess());
+            bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
+            bindClick('weightingsFinish', () => this.finishSuccess());
+            // Back button removed as navigation is linear or via stepper (future)
+
+            // Step 2 inputs
             referenceInput.addEventListener('input', (e) =>
               this.handleDocumentInput('reference', e.target.value)
             );
             templateInput.addEventListener('input', (e) =>
               this.handleDocumentInput('template', e.target.value)
             );
-            backButton.addEventListener('click', () => this.showStep('selectAssignment'));
           },
 
           prepareForLoad(placeholder) {
@@ -585,83 +638,23 @@
             this.handleSelectionChange();
           },
 
-          handleStart() {
-            if (this.state.step === 'enterDocuments') {
-              // Step 2: client-side validation only. Do not call backend at this stage.
-              if (!this.state.selectedAssignmentId) return;
-              if (!this.hasValidDocumentInputs()) {
-                step2ErrorMessage.textContent = 'Please provide two different valid document URLs.';
-                step2ErrorMessage.hidden = false;
-                return;
-              }
+          handleStep1Next() {
+            this.showStep('definitionChoice');
+          },
 
-              if (!this.state.documentsValidated) {
-                // First click: validate and move to 'ready' state locally
-                this.state.documentsValidated = true;
-                step2ErrorMessage.classList.remove('danger');
-                step2ErrorMessage.hidden = false;
-                step2ErrorMessage.textContent =
-                  'Documents validated. Click Start assessment to begin.';
-                startButton.textContent = 'Start assessment';
-                this.updateStartButtonState();
-                return;
-              }
-
-              // Documents already validated: backend action not implemented yet
-              step2ErrorMessage.classList.remove('danger');
-              step2ErrorMessage.hidden = false;
-              step2ErrorMessage.textContent = 'Start action is not yet implemented.';
-              return;
-            }
-
-            // Fast-path: if matchedDefinition is present, start using it; else do nothing for now
-            if (!this.state.selectedAssignmentId) return;
-            const def = this.state.matchedDefinition;
-            if (!def || !this.hasMatchedDefinitionWithDocs()) {
-              this.showError('No definition selected. Please link or create one.');
-              return;
-            }
-
-            // Basic pre-validation
-            if (!def.definitionKey) {
-              this.showError('Selected definition is invalid. Missing definition key.');
-              return;
-            }
-
-            this.state.isStarting = true;
-            this.updateStartButtonState();
-            this.setSpinnerVisible(true);
-
-            // Call server to start using the existing definition
-            google.script.run
-              .withSuccessHandler((processId) => {
-                // Show progress modal and close wizard
-                google.script.run.showProgressModal();
-                google.script.host.close();
-              })
-              .withFailureHandler((error) => {
-                this.state.isStarting = false;
-                this.updateStartButtonState();
-                this.setSpinnerVisible(false);
-                this.showError(
-                  error?.message
-                    ? `Failed to start: ${error.message}`
-                    : 'Failed to start assessment.'
-                );
-              })
-              .startAssessmentFromWizard(this.state.selectedAssignmentId, def.definitionKey);
+          finishSuccess() {
+            google.script.host.close();
           },
 
           handlePartialDefinitionsFailure(error) {
-            // For now just keep an empty set and log the problem to the console.
             this.state.definitions = [];
             this.state.definitionsLoaded = true;
-            // eslint-disable-next-line no-console
             console.warn('Failed to load partial definitions for wizard:', error);
           },
           handleSelectionChange() {
-            // Attempt to match a definition for the selected assignment (non-blocking)
+            const nextBtn = document.getElementById('step1Next');
             if (this.state.selectedAssignmentId) {
+              if (nextBtn) nextBtn.disabled = false;
               const assignment = this.state.assignments.find(
                 (a) => a.id === this.state.selectedAssignmentId
               );
@@ -669,27 +662,75 @@
               this.renderAssignmentMenuItems();
             } else {
               this.state.matchedDefinition = null;
+              if (nextBtn) nextBtn.disabled = true;
             }
-
             this.updateStartButtonState();
           },
 
           showStep(step) {
             this.state.step = step;
-            step1Panel.hidden = step !== 'selectAssignment';
-            step2Panel.hidden = step !== 'enterDocuments';
-            backButton.hidden = step !== 'enterDocuments';
-            // Hide the top helper paragraph when entering Step 2 (it's step 1 specific)
+
+            [
+              yearGroupPanel,
+              step1Panel,
+              definitionChoicePanel,
+              linkDefinitionPanel,
+              step2Panel,
+              weightingsPanel,
+            ].forEach((p) => {
+              if (p) p.hidden = true;
+            });
+
             if (assignmentHelp) assignmentHelp.hidden = step !== 'selectAssignment';
-            // set primary button label
-            startButton.textContent = step === 'enterDocuments' ? 'Next' : 'Start assessment';
-            // Clear any step2 errors when switching
-            step2ErrorMessage.hidden = true;
-            step2ErrorMessage.textContent = '';
+
+            if (step2ErrorMessage) {
+              step2ErrorMessage.hidden = true;
+              step2ErrorMessage.textContent = '';
+            }
+
+            const updateStepper = (steps, index) => {
+              if (this.stepper) {
+                this.stepper.setSteps(steps.map((s) => ({ label: s })));
+                this.stepper.setCurrentStep(index);
+              }
+            };
+
+            switch (step) {
+              case 'yearGroup':
+                if (yearGroupPanel) yearGroupPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment'], 0);
+                break;
+              case 'selectAssignment':
+                step1Panel.hidden = false;
+                updateStepper(['Year Group', 'Assignment'], 1);
+                break;
+              case 'definitionChoice':
+                if (definitionChoicePanel) definitionChoicePanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Source'], 2);
+                break;
+              case 'linkDefinition':
+                if (linkDefinitionPanel) linkDefinitionPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Link'], 2);
+                break;
+              case 'createDefinitionDocs':
+                step2Panel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Docs', 'Weights'], 2);
+                if (!this.state.documents) {
+                  this.state.documents = { reference: {}, template: {} };
+                }
+                setTimeout(() => {
+                  const refIn = document.getElementById('referenceInputStep2');
+                  if (refIn) refIn.focus();
+                }, 50);
+                break;
+              case 'createDefinitionWeights':
+                if (weightingsPanel) weightingsPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Docs', 'Weights'], 3);
+                break;
+            }
           },
 
           openCreateAssignmentPanel(assignment) {
-            // Prepare Step 2 state and UI for creating a new assignment definition
             this.state.selectedAssignmentId = assignment.id;
             this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
             this.state.documents = {
@@ -701,9 +742,15 @@
             templateInput.value = '';
             this.setFieldValidState('reference', null, null);
             this.setFieldValidState('template', null, null);
-            this.showStep('enterDocuments');
+            this.showStep('createDefinitionDocs');
             referenceInput.focus();
-            this.updateStartButtonState();
+          },
+
+          updateStartButtonState() {
+            if (this.state.step === 'createDefinitionDocs') {
+              const step2Next = document.getElementById('step2Next');
+              if (step2Next) step2Next.disabled = !this.hasValidDocumentInputs();
+            }
           },
 
           // Infer the document type only. We no longer attempt to extract or validate an ID.

@@ -1,4 +1,4 @@
-const WizardStepper = require('../../src/AdminSheet/UI/partials/Stepper.js');
+const WizardStepper = require('../../src/AdminSheet/UI/partials/StepperJS.html');
 
 describe('WizardStepper', () => {
   let container;

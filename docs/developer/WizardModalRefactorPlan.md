@@ -223,11 +223,24 @@ Notes & validation:
 
 **Status:** Implementation should follow the YAML state machine above; Step 1 is implemented, Step 2 and the definition creation flow remain to be completed per the Step 2 Implementation Plan.
 
+### UI Panel Reference
+
+The wizard modal is divided into distinct panels corresponding to the workflow states.
+
+| Panel ID                | Workflow State | Description                                                                |
+| ----------------------- | -------------- | -------------------------------------------------------------------------- |
+| `yearGroupPanel`        | S2             | Captures Year Group if missing from ABClass.                               |
+| `step1Panel`            | S3             | Allows user to select a Google Classroom Assignment.                       |
+| `definitionChoicePanel` | S5             | User chooses between linking an existing definition or creating a new one. |
+| `linkDefinitionPanel`   | S6             | User selects an existing AssignmentDefinition to link.                     |
+| `step2Panel`            | S7 (Docs)      | User provides reference and template document URLs.                        |
+| `weightingsPanel`       | S7 (Weights)   | User sets weightings for the new assignment and tasks.                     |
+
 ## UI layout recommendation
 
 ### Wizard structure
 
-- One modal containing two panels (Step 1 / Step 2) and a shared footer.
+- One modal containing multiple panels (managed via `showStep()` logic) and a shared footer.
 - The wizard changes state client-side (show/hide panels) rather than closing/opening separate modals.
 
 ### BeerCSS scoping

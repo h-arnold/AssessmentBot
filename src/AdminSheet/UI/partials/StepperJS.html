@@ -1,14 +1,14 @@
 /**
- * WizardStepper
- * Small, framework-agnostic stepper controller (DOM-friendly) for wizard footers.
- * Designed to be importable in tests and included as a classic script in HTML dialogs.
- *
- * NOTE: When using the stepper in a page, include BOTH the markup partial and the
- * script implementation so the markup and `WizardStepper` class are available:
- *   - `src/AdminSheet/UI/partials/Stepper.html` (markup partial)
- *   - `src/AdminSheet/UI/partials/Stepper.js` (client-side script exposing `WizardStepper`)
- * This adds a small amount of complexity on loading the modal but makes testing much easier.
- */
+  * WizardStepper
+  * Small, framework-agnostic stepper controller (DOM-friendly) for wizard footers.
+  * Designed to be importable in tests and included as a classic script in HTML dialogs.
+  *
+  * NOTE: When using the stepper in a page, include BOTH the markup partial and the
+  * script implementation so the `WizardStepper` class is available:
+  *   - `src/AdminSheet/UI/partials/Stepper.html` (markup partial)
+  *   - `src/AdminSheet/UI/partials/StepperJS.html` (client-side script exposing `WizardStepper`)
+  * This adds a small amount of complexity on loading the modal but makes testing much easier.
+  */
 class WizardStepper {
   /**
    * @param {Element|string} container - Element or selector to render into (replaces content)
@@ -17,7 +17,7 @@ class WizardStepper {
    * @param {number} opts.currentStep - 0-based current step index
    * @param {function(number):void} opts.onChange - callback when user selects a step
    */
-  constructor(container, { steps = [], currentStep = 0, onChange = () => {} } = {}) {
+  constructor(container, { steps = [], currentStep = 0, onChange = () => { } } = {}) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
     this.steps = steps.slice();
     this.currentStep = Number(currentStep) || 0;
@@ -199,11 +199,3 @@ class WizardStepper {
   }
 }
 
-// Export for Node tests
-if (typeof module !== 'undefined' && module.exports) module.exports = WizardStepper;
-
-// Attach to global for browser usage (classical script)
-if (typeof globalThis !== 'undefined') {
-  // Note: not overwriting if already present
-  if (!globalThis.WizardStepper) globalThis.WizardStepper = WizardStepper;
-}
