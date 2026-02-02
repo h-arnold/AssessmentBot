@@ -132,6 +132,44 @@
         color: #4caf50 !important;
       }
       /* Use BeerCSS icon positioning and sizing for .field.suffix */
+
+      /* Stepper styling: override footer flex layout to center stepper */
+      #wizardFooter .wizard-stepper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        flex-direction: row;
+      }
+
+      #wizardFooter .wizard-stepper ol {
+        width: 100%;
+      }
+
+      /* Stepper step indicators: BeerCSS circle class sizing */
+      #wizardFooter .wizard-stepper span.circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        border-radius: 50%;
+        background-color: var(--surface-variant);
+        color: var(--on-surface-variant);
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      #wizardFooter .wizard-stepper span.circle.primary {
+        background-color: var(--primary);
+        color: var(--on-primary);
+      }
+
+      #wizardFooter .wizard-stepper span.circle.muted {
+        background-color: var(--outline-variant);
+        color: var(--on-surface-variant);
+      }
     </style>
   </head>
   <body>
