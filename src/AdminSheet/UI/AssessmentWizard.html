@@ -457,8 +457,8 @@
               const hasDocs = !!match.referenceDocumentId && !!match.templateDocumentId;
               if (hasDocs) {
                 this.state.isStarting = true;
-                startButton.disabled = true;
                 this.setSpinnerVisible(true);
+                this.updateStartButtonState();
 
                 google.script.run
                   .withSuccessHandler(() => {
@@ -467,7 +467,6 @@
                   })
                   .withFailureHandler((error) => {
                     this.state.isStarting = false;
-                    startButton.disabled = false;
                     this.setSpinnerVisible(false);
                     this.showError(
                       error?.message
@@ -746,13 +745,6 @@
             referenceInput.focus();
           },
 
-          updateStartButtonState() {
-            if (this.state.step === 'createDefinitionDocs') {
-              const step2Next = document.getElementById('step2Next');
-              if (step2Next) step2Next.disabled = !this.hasValidDocumentInputs();
-            }
-          },
-
           // Infer the document type only. We no longer attempt to extract or validate an ID.
           // Returns: { raw, inferredType }
           parseGoogleUrl(input) {
@@ -974,17 +966,34 @@
             return !!(def && def.referenceDocumentId && def.templateDocumentId);
           },
           updateStartButtonState() {
-            if (this.state.step === 'enterDocuments') {
-              if (this.state.documentsValidated) {
-                startButton.disabled = !!this.state.isStarting;
-              } else {
-                startButton.disabled = !this.hasValidDocumentInputs() || this.state.isStarting;
+            const step1Next = document.getElementById('step1Next');
+            const linkFinish = document.getElementById('linkFinish');
+            const step2Next = document.getElementById('step2Next');
+            const weightingsFinish = document.getElementById('weightingsFinish');
+
+            if (step1Next) {
+              step1Next.disabled = !this.state.selectedAssignmentId || this.state.isStarting;
+            }
+
+            if (this.state.step === 'linkDefinition') {
+              if (linkFinish) {
+                linkFinish.disabled = this.state.isStarting || !this.hasMatchedDefinitionWithDocs();
               }
               return;
             }
 
-            const hasDocs = this.hasMatchedDefinitionWithDocs();
-            startButton.disabled = !hasDocs || this.state.isStarting;
+            if (this.state.step === 'createDefinitionDocs') {
+              if (step2Next) {
+                step2Next.disabled = !this.hasValidDocumentInputs() || this.state.isStarting;
+              }
+              return;
+            }
+
+            if (this.state.step === 'createDefinitionWeights') {
+              if (weightingsFinish) {
+                weightingsFinish.disabled = this.state.isStarting;
+              }
+            }
           },
           showError(message) {
             errorMessage.textContent = message;

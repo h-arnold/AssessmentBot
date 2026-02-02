@@ -25,7 +25,7 @@ env:
 notes: |
   This repository uses:
   - Google Apps Script for the main application
-  - Node.js (v14+) for testing and development tools
+  - Node.js (v18+) for testing and development tools (Husky requires Node >= 18)
   - Vitest for unit testing
   - ESLint for code linting
   - Prettier for code formatting

@@ -392,3 +392,5 @@ To add or update hooks locally, use the `npx husky add` command. For example:
 ```bash
 npx husky add .husky/pre-commit "npm run lint"
 ```
+
+**Note:** Do not add the legacy two-line header that sources `.husky/_/husky.sh` to hook scripts. Hooks should start with the shebang `#!/usr/bin/env sh` followed by the commands to run. Ensure you are using Node.js v18+ (Husky requires Node >= 18).
