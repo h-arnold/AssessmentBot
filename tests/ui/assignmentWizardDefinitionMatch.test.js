@@ -136,10 +136,10 @@ describe('Assessment wizard definition matching', () => {
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
       // Select assignment
-      const assignmentSelect = document.getElementById('assignmentSelect');
-      const startButton = document.getElementById('startAssessment');
-      assignmentSelect.value = 'a1';
-      assignmentSelect.dispatchEvent(new document.defaultView.Event('change'));
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="a1"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
 
       // Fast path should have triggered startAssessmentFromWizard
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');
@@ -177,10 +177,10 @@ describe('Assessment wizard definition matching', () => {
       ];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
-      const startButton = document.getElementById('startAssessment');
-      assignmentSelect.value = 'b1';
-      assignmentSelect.dispatchEvent(new document.defaultView.Event('change'));
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="b1"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
 
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');
       const call = googleRun._handlers.startAssessmentFromWizard;
@@ -214,15 +214,16 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'g1', title: 'Gamma', topicName: 'Maths', yearGroup: 10 }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const startButton = document.getElementById('startAssessment');
-      assignmentSelect.value = 'g1';
-      assignmentSelect.dispatchEvent(new document.defaultView.Event('change'));
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="g1"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
 
       // No automatic start should have been triggered when yearGroup differs
       expect(googleRun.calledMethods).not.toContain('startAssessmentFromWizard');
-      // Start button still enabled because assignment selection enables it (non-blocking match)
-      expect(startButton.disabled).toBe(false);
+      // Start button remains disabled when no matching definition with docs exists
+      expect(startButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -250,14 +251,15 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'd1', title: 'Delta', topicName: 'Science', yearGroup: 11 }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const startButton = document.getElementById('startAssessment');
-      assignmentSelect.value = 'd1';
-      assignmentSelect.dispatchEvent(new document.defaultView.Event('change'));
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="d1"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
 
       // Definition exists but missing doc IDs, so we should not auto-start
       expect(googleRun.calledMethods).not.toContain('startAssessmentFromWizard');
-      expect(startButton.disabled).toBe(false);
+      expect(startButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -287,9 +289,10 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'e1', title: 'Epsilon', topicName: 'Art', yearGroup: null }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
-      assignmentSelect.value = 'e1';
-      assignmentSelect.dispatchEvent(new document.defaultView.Event('change'));
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="e1"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
 
       // Stale flag should not prevent fast-path starting; start should have been triggered
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');

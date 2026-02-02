@@ -121,13 +121,15 @@ describe('Assessment wizard Step 1', () => {
   it('renders initial loading state with spinner and disabled controls', () => {
     const { document, cleanup } = setupWizard();
     try {
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(true);
-      expect(assignmentSelect.options[0].textContent).toContain('Loading assignments');
+      expect(assignmentInput.disabled).toBe(true);
+      expect(assignmentInput.getAttribute('placeholder')).toContain('Loading assignments');
+      expect(assignmentMenu.querySelector('li')?.textContent).toContain('Loading assignments');
       expect(spinner.hidden).toBe(false);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
@@ -170,15 +172,19 @@ describe('Assessment wizard Step 1', () => {
       // Trigger assignments success handler explicitly
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(false);
-      expect(assignmentSelect.options.length).toBe(assignments.length + 1);
-      expect(assignmentSelect.options[1].value).toBe('a1');
-      expect(assignmentSelect.options[1].textContent).toBe('Year 9 Programming');
+      const menuItems = assignmentMenu.querySelectorAll('li[data-assignment-id]');
+      expect(assignmentInput.disabled).toBe(false);
+      expect(menuItems.length).toBe(assignments.length);
+      expect(menuItems[0].dataset.assignmentId).toBe('a1');
+      expect(menuItems[0].querySelector('.assignment-name')?.textContent).toBe(
+        'Year 9 Programming'
+      );
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
@@ -198,15 +204,18 @@ describe('Assessment wizard Step 1', () => {
       const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const startButton = document.getElementById('startAssessment');
 
-      assignmentSelect.value = 'alpha';
-      assignmentSelect.dispatchEvent(new window.Event('change'));
-      expect(startButton.disabled).toBe(false);
+      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="alpha"]');
+      expect(menuItem).not.toBeNull();
+      menuItem.dispatchEvent(new window.Event('click', { bubbles: true }));
+      expect(assignmentInput.value).toBe('Alpha Assignment');
+      expect(startButton.disabled).toBe(true);
 
-      assignmentSelect.value = '';
-      assignmentSelect.dispatchEvent(new window.Event('change'));
+      assignmentInput.value = '';
+      assignmentInput.dispatchEvent(new window.Event('input'));
       expect(startButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -244,14 +253,15 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerSuccess('fetchAssignmentsForWizard', []);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(true);
-      expect(assignmentSelect.options.length).toBe(1);
-      expect(assignmentSelect.options[0].textContent).toBe('No assignments available yet');
+      expect(assignmentInput.disabled).toBe(true);
+      expect(assignmentMenu.querySelectorAll('li').length).toBe(1);
+      expect(assignmentMenu.querySelector('li')?.textContent).toBe('No assignments available yet');
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);
@@ -270,16 +280,20 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerFailure('fetchAssignmentsForWizard', { message: 'Network error' });
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(true);
+      expect(assignmentInput.disabled).toBe(true);
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);
       expect(errorMessage.textContent).toContain('Network error');
+      expect(assignmentMenu.querySelector('li')?.textContent).toContain(
+        'Unable to load assignments'
+      );
     } finally {
       vi.useRealTimers();
       cleanup();
