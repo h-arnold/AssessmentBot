@@ -125,3 +125,35 @@ export function selectAssignment(document, window, assignmentId) {
   menuItem.dispatchEvent(new window.Event('click', { bubbles: true }));
   return menuItem;
 }
+
+export function buildDefinition(overrides = {}) {
+  return {
+    definitionKey: 'Definition_Key',
+    primaryTitle: 'Default Assignment',
+    primaryTopic: 'English',
+    yearGroup: null,
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref-id',
+    templateDocumentId: 'template-id',
+    ...overrides,
+  };
+}
+
+export function buildAssignment(overrides = {}) {
+  return {
+    id: 'assignment-id',
+    title: 'Default Assignment',
+    topicName: 'English',
+    yearGroup: null,
+    ...overrides,
+  };
+}
+
+export function seedWizardData(googleRun, { definitions = [], assignments = [] } = {}) {
+  if (definitions.length) {
+    googleRun.triggerSuccess('getAllPartialDefinitions', definitions);
+  }
+  if (assignments.length) {
+    googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
+  }
+}
