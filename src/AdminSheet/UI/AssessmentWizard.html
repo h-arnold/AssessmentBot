@@ -328,6 +328,9 @@
             definitions: [],
             definitionsLoaded: false,
             isStarting: false,
+            stepperSteps: [],
+            stepperCurrentIndex: 0,
+            maxReachedStepIndex: 0,
           },
           init() {
             if (this.initialised) return;
@@ -337,7 +340,7 @@
             this.stepper = new WizardStepper('#wizardFooter', {
               steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
               currentStep: 0,
-              onChange: (index) => {},
+              onChange: (index) => this.handleStepperChange(index),
             });
             this.showStep('yearGroup');
 
@@ -726,6 +729,13 @@
             }
 
             const updateStepper = (steps, index) => {
+              this.state.stepperSteps = steps.slice();
+              this.state.stepperCurrentIndex = index;
+              this.state.maxReachedStepIndex = Math.max(
+                this.state.maxReachedStepIndex ?? 0,
+                index
+              );
+
               if (this.stepper) {
                 this.stepper.setSteps(steps.map((s) => ({ label: s })));
                 this.stepper.setCurrentStep(index);
@@ -765,6 +775,30 @@
                 updateStepper(['Year Group', 'Assignment', 'Docs', 'Weights'], 3);
                 break;
             }
+          },
+
+          getStepForStepperLabel(label) {
+            const mapping = {
+              'Year Group': 'yearGroup',
+              Assignment: 'selectAssignment',
+              Source: 'definitionChoice',
+              Link: 'linkDefinition',
+              Docs: 'createDefinitionDocs',
+              Weights: 'createDefinitionWeights',
+            };
+            return mapping[label] || null;
+          },
+
+          handleStepperChange(index) {
+            if (typeof index !== 'number') return;
+            const maxReached = this.state.maxReachedStepIndex ?? 0;
+            if (index > maxReached || index === this.state.stepperCurrentIndex) return;
+
+            const label = this.state.stepperSteps?.[index];
+            const targetStep = this.getStepForStepperLabel(label);
+            if (!targetStep) return;
+
+            this.showStep(targetStep);
           },
 
           openCreateAssignmentPanel(assignment) {
