@@ -1,108 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const templatePath = path.resolve(__dirname, '../../src/AdminSheet/UI/AssessmentWizard.html');
-
-function createGoogleMock() {
-  const host = {
-    close: vi.fn(),
-  };
-
-  const run = {
-    _pendingSuccess: null,
-    _pendingFailure: null,
-    _handlers: {},
-    calls: 0,
-    calledMethods: [],
-
-    withSuccessHandler(handler) {
-      this._pendingSuccess = handler;
-      return this;
-    },
-    withFailureHandler(handler) {
-      this._pendingFailure = handler;
-      return this;
-    },
-
-    _registerCall(methodName, args) {
-      this.calls += 1;
-      this.calledMethods.push(methodName);
-      this._handlers[methodName] = {
-        success: this._pendingSuccess,
-        failure: this._pendingFailure,
-        args,
-      };
-      this._pendingSuccess = null;
-      this._pendingFailure = null;
-    },
-
-    fetchAssignmentsForWizard(...args) {
-      this._registerCall('fetchAssignmentsForWizard', args);
-      return this;
-    },
-
-    getAllPartialDefinitions(...args) {
-      this._registerCall('getAllPartialDefinitions', args);
-      return this;
-    },
-
-    startAssessmentFromWizard(...args) {
-      this._registerCall('startAssessmentFromWizard', args);
-      return this;
-    },
-
-    triggerSuccess(methodName, payload) {
-      const h = this._handlers[methodName];
-      if (h && typeof h.success === 'function') {
-        h.success(payload);
-      }
-    },
-
-    triggerFailure(methodName, error) {
-      const h = this._handlers[methodName];
-      if (h && typeof h.failure === 'function') {
-        h.failure(error);
-      }
-    },
-  };
-
-  return { google: { script: { host, run } }, host, run };
-}
-
-function setupWizard() {
-  const html = renderTemplateWithIncludes(templatePath);
-  const dom = new JSDOM(html, {
-    url: 'https://example.test',
-    runScripts: 'outside-only',
-    resources: 'usable',
-  });
-
-  const { window } = dom;
-  const googleMock = createGoogleMock();
-  window.google = googleMock.google;
-
-  const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
-    (script) => !script.src && script.textContent.includes('assignmentWizard')
-  );
-  if (!inlineScript) throw new Error('Inline wizard script was not found');
-
-  window.eval(inlineScript.textContent);
-  window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
-
-  return {
-    dom,
-    window,
-    document: window.document,
-    cleanup: () => dom.window.close(),
-    googleRun: googleMock.run,
-    googleHost: googleMock.host,
-  };
-}
+import {
+  getWizardElements,
+  selectAssignment,
+  setupWizard,
+} from '../helpers/assessmentWizardTestUtils.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -136,10 +37,7 @@ describe('Assessment wizard definition matching', () => {
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
       // Select assignment
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="a1"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
+      selectAssignment(document, document.defaultView, 'a1');
 
       // Fast path should have triggered startAssessmentFromWizard
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');
@@ -177,10 +75,7 @@ describe('Assessment wizard definition matching', () => {
       ];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="b1"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
+      selectAssignment(document, document.defaultView, 'b1');
 
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');
       const call = googleRun._handlers.startAssessmentFromWizard;
@@ -214,11 +109,8 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'g1', title: 'Gamma', topicName: 'Maths', yearGroup: 10 }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const startButton = document.getElementById('startAssessment');
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="g1"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
+      const { startButton } = getWizardElements(document);
+      selectAssignment(document, document.defaultView, 'g1');
 
       // No automatic start should have been triggered when yearGroup differs
       expect(googleRun.calledMethods).not.toContain('startAssessmentFromWizard');
@@ -251,11 +143,8 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'd1', title: 'Delta', topicName: 'Science', yearGroup: 11 }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const startButton = document.getElementById('startAssessment');
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="d1"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
+      const { startButton } = getWizardElements(document);
+      selectAssignment(document, document.defaultView, 'd1');
 
       // Definition exists but missing doc IDs, so we should not auto-start
       expect(googleRun.calledMethods).not.toContain('startAssessmentFromWizard');
@@ -289,10 +178,7 @@ describe('Assessment wizard definition matching', () => {
       const assignments = [{ id: 'e1', title: 'Epsilon', topicName: 'Art', yearGroup: null }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="e1"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new document.defaultView.Event('click', { bubbles: true }));
+      selectAssignment(document, document.defaultView, 'e1');
 
       // Stale flag should not prevent fast-path starting; start should have been triggered
       expect(googleRun.calledMethods).toContain('startAssessmentFromWizard');

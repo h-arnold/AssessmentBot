@@ -1,117 +1,9 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { JSDOM } from 'jsdom';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const templatePath = path.resolve(__dirname, '../../src/AdminSheet/UI/AssessmentWizard.html');
-
-function createGoogleMock() {
-  const host = {
-    close: vi.fn(),
-  };
-
-  // A small per-method handler emulation so tests can handle concurrent calls
-  const run = {
-    _pendingSuccess: null,
-    _pendingFailure: null,
-    _handlers: {}, // methodName => { success, failure }
-    calls: 0,
-    calledMethods: [],
-
-    withSuccessHandler(handler) {
-      this._pendingSuccess = handler;
-      return this;
-    },
-    withFailureHandler(handler) {
-      this._pendingFailure = handler;
-      return this;
-    },
-
-    // Called when a GAS method is invoked; record handlers under method name
-    _registerCall(methodName, args) {
-      this.calls += 1;
-      this.calledMethods.push(methodName);
-      this._handlers[methodName] = {
-        success: this._pendingSuccess,
-        failure: this._pendingFailure,
-        args,
-      };
-      // clear pending handlers for next chain
-      this._pendingSuccess = null;
-      this._pendingFailure = null;
-    },
-
-    fetchAssignmentsForWizard(...args) {
-      this._registerCall('fetchAssignmentsForWizard', args);
-      return this;
-    },
-
-    getAllPartialDefinitions(...args) {
-      this._registerCall('getAllPartialDefinitions', args);
-      return this;
-    },
-
-    triggerSuccess(methodName, payload) {
-      const h = this._handlers[methodName];
-      if (h && typeof h.success === 'function') {
-        h.success(payload);
-      }
-    },
-
-    triggerFailure(methodName, error) {
-      const h = this._handlers[methodName];
-      if (h && typeof h.failure === 'function') {
-        h.failure(error);
-      }
-    },
-  };
-
-  return {
-    google: {
-      script: {
-        host,
-        run,
-      },
-    },
-    host,
-    run,
-  };
-}
-
-function setupWizard() {
-  const html = renderTemplateWithIncludes(templatePath);
-  const dom = new JSDOM(html, {
-    url: 'https://example.test',
-    runScripts: 'outside-only',
-    resources: 'usable',
-  });
-
-  const { window } = dom;
-  const googleMock = createGoogleMock();
-  window.google = googleMock.google;
-
-  const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
-    (script) => !script.src && script.textContent.includes('assignmentWizard')
-  );
-  if (!inlineScript) {
-    throw new Error('Inline wizard script was not found');
-  }
-
-  window.eval(inlineScript.textContent);
-  window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
-
-  return {
-    dom,
-    window,
-    document: window.document,
-    cleanup: () => dom.window.close(),
-    googleRun: googleMock.run,
-    googleHost: googleMock.host,
-  };
-}
+import {
+  getWizardElements,
+  selectAssignment,
+  setupWizard,
+} from '../helpers/assessmentWizardTestUtils.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -121,11 +13,8 @@ describe('Assessment wizard Step 1', () => {
   it('renders initial loading state with spinner and disabled controls', () => {
     const { document, cleanup } = setupWizard();
     try {
-      const assignmentInput = document.getElementById('assignmentInput');
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const spinner = document.getElementById('assignmentLoadingSpinner');
-      const startButton = document.getElementById('startAssessment');
-      const errorMessage = document.getElementById('assignmentErrorMessage');
+      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
+        getWizardElements(document);
 
       expect(assignmentInput.disabled).toBe(true);
       expect(assignmentInput.getAttribute('placeholder')).toContain('Loading assignments');
@@ -172,11 +61,8 @@ describe('Assessment wizard Step 1', () => {
       // Trigger assignments success handler explicitly
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentInput = document.getElementById('assignmentInput');
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const spinner = document.getElementById('assignmentLoadingSpinner');
-      const startButton = document.getElementById('startAssessment');
-      const errorMessage = document.getElementById('assignmentErrorMessage');
+      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
+        getWizardElements(document);
 
       const menuItems = assignmentMenu.querySelectorAll('li[data-assignment-id]');
       expect(assignmentInput.disabled).toBe(false);
@@ -204,13 +90,9 @@ describe('Assessment wizard Step 1', () => {
       const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentInput = document.getElementById('assignmentInput');
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const startButton = document.getElementById('startAssessment');
+      const { assignmentInput, startButton } = getWizardElements(document);
 
-      const menuItem = assignmentMenu.querySelector('li[data-assignment-id="alpha"]');
-      expect(menuItem).not.toBeNull();
-      menuItem.dispatchEvent(new window.Event('click', { bubbles: true }));
+      selectAssignment(document, window, 'alpha');
       expect(assignmentInput.value).toBe('Alpha Assignment');
       expect(startButton.disabled).toBe(true);
 
@@ -253,11 +135,8 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerSuccess('fetchAssignmentsForWizard', []);
 
-      const assignmentInput = document.getElementById('assignmentInput');
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const spinner = document.getElementById('assignmentLoadingSpinner');
-      const startButton = document.getElementById('startAssessment');
-      const errorMessage = document.getElementById('assignmentErrorMessage');
+      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
+        getWizardElements(document);
 
       expect(assignmentInput.disabled).toBe(true);
       expect(assignmentMenu.querySelectorAll('li').length).toBe(1);
@@ -280,11 +159,8 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerFailure('fetchAssignmentsForWizard', { message: 'Network error' });
 
-      const assignmentInput = document.getElementById('assignmentInput');
-      const assignmentMenu = document.getElementById('assignmentMenu');
-      const spinner = document.getElementById('assignmentLoadingSpinner');
-      const startButton = document.getElementById('startAssessment');
-      const errorMessage = document.getElementById('assignmentErrorMessage');
+      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
+        getWizardElements(document);
 
       expect(assignmentInput.disabled).toBe(true);
       expect(spinner.hidden).toBe(true);
