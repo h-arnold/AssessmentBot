@@ -53,7 +53,7 @@ describe('BeerCSSUIHandler dialog rendering', () => {
 
       expect(gasMocks.HtmlService._calls).toContain('createTemplateFromFile:UI/AssessmentWizard');
       expect(gasMocks.HtmlService._calls).toContain('setWidth:660');
-      expect(gasMocks.HtmlService._calls).toContain('setHeight:360');
+      expect(gasMocks.HtmlService._calls).toContain('setHeight:440');
       expect(gasMocks.SpreadsheetApp._calls).toContain(
         'showModalDialog:Step 1 - Select assignment'
       );
