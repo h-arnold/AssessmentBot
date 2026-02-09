@@ -263,46 +263,123 @@
           },
           init() {
             if (this.initialised) return;
-            this.initialised = true;
 
-            // Initialise Stepper
-            this.stepper = new WizardStepper('#wizardFooter', {
-              steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
-              currentStep: 0,
-              onChange: (index) => this.handleStepperChange(index),
-            });
-            this.showStep('yearGroup');
+            try {
+              // Validate that google.script.run is available
+              if (!window.google || !window.google.script || !window.google.script.run) {
+                const errorMsg =
+                  'Google Apps Script client API (google.script.run) is not available. ' +
+                  'This dialog must be opened from within Google Apps Script.';
+                console.error('[AssessmentWizard] Critical error:', errorMsg);
+                this.showError(errorMsg);
+                return;
+              }
 
-            this.bindEvents();
-            this.prepareForLoad('Loading assignments...');
-            setTimeout(() => this.fetchAssignments(), 0);
-            setTimeout(() => this.fetchPartialDefinitions(), 0);
+              // Check that required server-side functions are callable
+              const requiredFunctions = [
+                'fetchAssignmentsForWizard',
+                'getAllPartialDefinitions',
+                'saveStartAndShowProgress',
+                'startAssessmentFromWizard',
+                'showProgressModal',
+              ];
+
+              const missingFunctions = requiredFunctions.filter(
+                (fn) => typeof google.script.run[fn] !== 'function'
+              );
+
+              if (missingFunctions.length > 0) {
+                const errorMsg =
+                  'Required server-side functions are not available: ' +
+                  missingFunctions.join(', ') +
+                  '. Please ensure the Apps Script project has been deployed correctly.';
+                console.error('[AssessmentWizard] Missing functions:', missingFunctions);
+                this.showError(errorMsg);
+                return;
+              }
+
+              this.initialised = true;
+
+              // Initialise Stepper
+              this.stepper = new WizardStepper('#wizardFooter', {
+                steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
+                currentStep: 0,
+                onChange: (index) => this.handleStepperChange(index),
+              });
+              this.showStep('yearGroup');
+
+              this.bindEvents();
+              this.prepareForLoad('Loading assignments...');
+              setTimeout(() => this.fetchAssignments(), 0);
+              setTimeout(() => this.fetchPartialDefinitions(), 0);
+            } catch (error) {
+              console.error('[AssessmentWizard] Initialisation error:', {
+                error,
+                message: error?.message,
+                stack: error?.stack,
+              });
+              this.showError(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            }
           },
           bindEvents() {
-            assignmentInput.addEventListener('input', () => this.handleFilterInput());
-            assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
+            try {
+              assignmentInput.addEventListener('input', () => this.handleFilterInput());
+              assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
 
-            const bindClick = (id, handler) => {
-              const el = document.getElementById(id);
-              if (el) el.addEventListener('click', handler);
-            };
+              const bindClick = (id, handler) => {
+                const el = document.getElementById(id);
+                if (el) {
+                  el.addEventListener('click', () => {
+                    try {
+                      handler();
+                    } catch (error) {
+                      console.error(`[AssessmentWizard] Error in ${id} click handler:`, {
+                        error,
+                        message: error?.message,
+                        stack: error?.stack,
+                      });
+                      this.showError(
+                        `Action failed: ${error?.message || error}. Check the browser console (F12) for details.`
+                      );
+                    }
+                  });
+                }
+              };
 
-            bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
-            bindClick('step1Next', () => this.handleStep1Next());
-            bindClick('choiceLink', () => this.showStep('linkDefinition'));
-            bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
-            bindClick('linkFinish', () => this.finishSuccess());
-            bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
-            bindClick('weightingsFinish', () => this.finishSuccess());
-            // Back button removed as navigation is linear or via stepper (future)
+              bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
+              bindClick('step1Next', () => this.handleStep1Next());
+              bindClick('choiceLink', () => this.showStep('linkDefinition'));
+              bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
+              bindClick('linkFinish', () => this.finishSuccess());
+              bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
+              bindClick('weightingsFinish', () => this.finishSuccess());
+              // Back button removed as navigation is linear or via stepper (future)
 
-            // Step 2 inputs
-            referenceInput.addEventListener('input', (e) =>
-              this.handleDocumentInput('reference', e.target.value)
-            );
-            templateInput.addEventListener('input', (e) =>
-              this.handleDocumentInput('template', e.target.value)
-            );
+              // Step 2 inputs
+              referenceInput.addEventListener('input', (e) => {
+                try {
+                  this.handleDocumentInput('reference', e.target.value);
+                } catch (error) {
+                  console.error('[AssessmentWizard] Error in reference input handler:', error);
+                }
+              });
+              templateInput.addEventListener('input', (e) => {
+                try {
+                  this.handleDocumentInput('template', e.target.value);
+                } catch (error) {
+                  console.error('[AssessmentWizard] Error in template input handler:', error);
+                }
+              });
+            } catch (error) {
+              console.error('[AssessmentWizard] Error in bindEvents:', {
+                error,
+                message: error?.message,
+                stack: error?.stack,
+              });
+              throw error; // Re-throw to be caught by init
+            }
           },
 
           prepareForLoad(placeholder) {
@@ -314,7 +391,10 @@
           fetchAssignments() {
             google.script.run
               .withSuccessHandler((payload) => this.handleAssignmentsSuccess(payload))
-              .withFailureHandler((error) => this.handleAssignmentsFailure(error))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] fetchAssignmentsForWizard failed:', error);
+                this.handleAssignmentsFailure(error);
+              })
               .fetchAssignmentsForWizard();
           },
           renderPlaceholder(text) {
@@ -345,22 +425,37 @@
             this.handleSelectionChange();
           },
           handleAssignmentsFailure(error) {
+            console.error('[AssessmentWizard] handleAssignmentsFailure:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+              type: typeof error,
+            });
+
             this.state.assignments = [];
             this.setSpinnerVisible(false);
             this.renderPlaceholder('Unable to load assignments');
             this.setControlsEnabled(false);
-            this.showError(
-              error?.message
-                ? `Failed to load assignments: ${error.message}`
-                : 'Failed to load assignments.'
-            );
+
+            // Provide detailed error message
+            let errorMsg = 'Failed to load assignments.';
+            if (error?.message) {
+              errorMsg = `Assignment loading error: ${error.message}`;
+            } else if (typeof error === 'string') {
+              errorMsg = `Assignment loading error: ${error}`;
+            }
+
+            this.showError(errorMsg + ' Please refresh the page and try again.');
           },
 
           // Fetch partial definitions to support wizard lookups (stored only for now)
           fetchPartialDefinitions() {
             google.script.run
               .withSuccessHandler((payload) => this.handlePartialDefinitionsSuccess(payload))
-              .withFailureHandler((error) => this.handlePartialDefinitionsFailure(error))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] getAllPartialDefinitions failed:', error);
+                this.handlePartialDefinitionsFailure(error);
+              })
               .getAllPartialDefinitions();
           },
 
@@ -432,17 +527,31 @@
 
                 google.script.run
                   .withSuccessHandler(() => {
+                    console.log('[AssessmentWizard] startAssessmentFromWizard succeeded');
                     google.script.run.showProgressModal();
                     google.script.host.close();
                   })
                   .withFailureHandler((error) => {
+                    console.error('[AssessmentWizard] startAssessmentFromWizard failed:', {
+                      error,
+                      message: error?.message,
+                      stack: error?.stack,
+                      type: typeof error,
+                      assignmentId: this.state.selectedAssignmentId,
+                      definitionKey: match.definitionKey,
+                    });
+
                     this.state.isStarting = false;
                     this.setSpinnerVisible(false);
-                    this.showError(
-                      error?.message
-                        ? `Failed to start: ${error.message}`
-                        : 'Failed to start assessment.'
-                    );
+
+                    let errorMsg = 'Failed to start assessment.';
+                    if (error?.message) {
+                      errorMsg = `Start assessment error: ${error.message}`;
+                    } else if (typeof error === 'string') {
+                      errorMsg = `Start assessment error: ${error}`;
+                    }
+
+                    this.showError(errorMsg + ' Check the browser console (F12) for details.');
                     this.updateStartButtonState();
                   })
                   .startAssessmentFromWizard(this.state.selectedAssignmentId, match.definitionKey);
@@ -616,9 +725,21 @@
           },
 
           handlePartialDefinitionsFailure(error) {
+            console.error('[AssessmentWizard] handlePartialDefinitionsFailure:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+              type: typeof error,
+            });
+
             this.state.definitions = [];
             this.state.definitionsLoaded = true;
-            console.warn('Failed to load partial definitions for wizard:', error);
+
+            // Non-blocking: definitions are optional, so we just log the error
+            // but allow the wizard to continue functioning
+            console.warn(
+              'Failed to load partial definitions for wizard. Wizard will continue without definition lookups.'
+            );
           },
           handleSelectionChange() {
             const nextBtn = document.getElementById('step1Next');
@@ -929,16 +1050,34 @@
 
             google.script.run
               .withSuccessHandler((processId) => {
+                console.log('[AssessmentWizard] saveStartAndShowProgress succeeded:', processId);
                 google.script.run.showProgressModal();
                 google.script.host.close();
               })
               .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] saveStartAndShowProgress failed:', {
+                  error,
+                  message: error?.message,
+                  stack: error?.stack,
+                  type: typeof error,
+                  assignmentId: this.state.selectedAssignmentId,
+                  assignmentName: this.state.selectedAssignmentName,
+                  referenceDocumentId: ref.raw,
+                  templateDocumentId: tpl.raw,
+                });
+
                 this.state.isStarting = false;
                 this.updateStartButtonState();
                 this.setSpinnerVisible(false);
-                step2ErrorMessage.textContent = error?.message
-                  ? `Failed to start: ${error.message}`
-                  : 'Failed to start assessment.';
+
+                let errorMsg = 'Failed to start assessment.';
+                if (error?.message) {
+                  errorMsg = `Assessment start error: ${error.message}`;
+                } else if (typeof error === 'string') {
+                  errorMsg = `Assessment start error: ${error}`;
+                }
+
+                step2ErrorMessage.textContent = errorMsg + ' Check the browser console (F12) for details.';
                 step2ErrorMessage.hidden = false;
               })
               .saveStartAndShowProgress(
@@ -1008,7 +1147,64 @@
 
         globalThis.assignmentWizard = assignmentWizard;
 
-        const kickOff = () => assignmentWizard.init();
+        // Global error handler for uncaught errors
+        window.addEventListener('error', (event) => {
+          console.error('[AssessmentWizard] Uncaught error:', {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error,
+            stack: event.error?.stack,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            assignmentWizard.showError(
+              `Unexpected error: ${event.message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        // Global handler for unhandled promise rejections
+        window.addEventListener('unhandledrejection', (event) => {
+          console.error('[AssessmentWizard] Unhandled promise rejection:', {
+            reason: event.reason,
+            promise: event.promise,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            const message =
+              event.reason?.message || event.reason?.toString() || 'Unknown promise rejection';
+            assignmentWizard.showError(
+              `Unexpected error: ${message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        const kickOff = () => {
+          try {
+            console.log('[AssessmentWizard] Initialising wizard...');
+            assignmentWizard.init();
+          } catch (error) {
+            console.error('[AssessmentWizard] Failed to initialise wizard:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+            });
+
+            if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+              assignmentWizard.showError(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            } else {
+              // Fallback if showError isn't available
+              alert(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            }
+          }
+        };
+
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', kickOff);
         } else {
