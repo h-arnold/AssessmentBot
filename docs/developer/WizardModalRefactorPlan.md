@@ -124,7 +124,7 @@ workflow:
     name: End
 ```
 
-### Mermaid chart of same workflow:
+### Mermaid chart of same workflow
 
 ```mermaid
 flowchart LR
@@ -161,7 +161,7 @@ A single BeerCSS-scoped wizard modal follows the YAML/mermaid workflow above. Su
 - If the current `ABClass.yearGroup` is missing, prompt the user to select and persist a `yearGroup`.
 - Once set (or if already present), proceed to assignment selection.
 
-2. **Select GC Assignment (S3)** 🔎
+1. **Select GC Assignment (S3)** 🔎
 
 - User selects a `GCAssignment` from the fetched list.
 - On selection, load any assignment-specific data (partial definitions, saved document IDs) needed for the next step.
@@ -192,25 +192,25 @@ A single BeerCSS-scoped wizard modal follows the YAML/mermaid workflow above. Su
   - Spinner visibility and `aria-hidden` are toggled during load; status messages use `aria-live` containers to ensure screen readers receive updates.
   - This parallel fetch pattern keeps the UI responsive while still using partial definitions to enhance and accelerate the happy path.
 
-3. **Definition check — fast path or obtain definition (S4 → S9)** ⚡
+1. **Definition check — fast path or obtain definition (S4 → S9)** ⚡
 
 - If the selected `GCAssignment` already has an `AssignmentDefinition`, take the fast path: call `saveStartAndShowProgress()` and start the assessment.
 - If no definition exists, present the user with a choice: **link an existing definition** or **create a new definition**.
 
-4. **Link existing definition (S5 → S6)** 🔗
+1. **Link existing definition (S5 → S6)** 🔗
 
 - User selects an existing `AssignmentDefinition` to link to the `GCAssignment`.
 - Allow updating `alternateTitle` and `alternateTopic` if required.
 - Persist the link and call `saveStartAndShowProgress()` to start.
 
-5. **Create new definition from documents (S5 → S7)** 📝
+1. **Create new definition from documents (S5 → S7)** 📝
 
 - User provides reference and template slide URLs or raw IDs.
 - Client assists by extracting IDs and inferring types; server validates MIME types (Slides expected) and builds a new `AssignmentDefinition` populated with `TaskDefinitions`.
 - User supplies weightings (0–1) for the assignment and each task; persist full/partial weightings as required.
 - Link the newly created `AssignmentDefinition` to the selected `GCAssignment`, then call `saveStartAndShowProgress()` to start.
 
-6. **Persist and show progress (S9 → S10)** 🚀
+1. **Persist and show progress (S9 → S10)** 🚀
 
 - After linking or creating a definition, persist changes and present the progress UI (`saveStartAndShowProgress()`).
 - Surface any warnings (for example, `TaskDefinitionsChanged`) but do not block the happy path unless validation fails.

@@ -179,7 +179,7 @@ This approach follows the project conventions: server-rendered, progressive-enha
 </div>
 ```
 
-4. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
+1. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
 
 ```javascript
 showMyNewDialog() {
@@ -190,7 +190,7 @@ showMyNewDialog() {
 }
 ```
 
-5. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
+1. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
 
 ## Updating BeerCSS
 
@@ -202,7 +202,7 @@ When you need to bump BeerCSS:
 npm install beercss@<version>
 ```
 
-2. Regenerate the vendored partials:
+1. Regenerate the vendored partials:
 
 ```bash
 npm run vendor:beercss
@@ -213,8 +213,8 @@ This updates:
 - `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`
 - `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`
 
-3. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
-4. Run `npm test` to verify UI tests still pass.
+1. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
+2. Run `npm test` to verify UI tests still pass.
 
 ## Notes / constraints (Apps Script HtmlService)
 
