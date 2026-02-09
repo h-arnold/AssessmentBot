@@ -409,7 +409,7 @@ class AssignmentController {
    *   - templateDocumentId or templateSlideId
    * @return {Object} { definition, courseId, abClass }
    */
-  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds }) {
+  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds, yearGroup = null }) {
     const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
     const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
 
@@ -426,7 +426,12 @@ class AssignmentController {
 
     const abClassController = new ABClassController();
     const abClass = abClassController.loadClass(courseId);
-    const yearGroup = abClass?.yearGroup ?? null;
+
+    // Use provided yearGroup (wizard input) if supplied, otherwise fallback to the class value
+    const finalYearGroup =
+      yearGroup !== undefined && yearGroup !== null
+        ? Number.parseInt(yearGroup, 10)
+        : (abClass?.yearGroup ?? null);
 
     const definitionController = new AssignmentDefinitionController();
     const definition = definitionController.ensureDefinition({
@@ -434,7 +439,7 @@ class AssignmentController {
       primaryTopic: null,
       topicId,
       courseId,
-      yearGroup,
+      yearGroup: finalYearGroup,
       documentType,
       referenceDocumentId: referenceId,
       templateDocumentId: templateId,
@@ -461,12 +466,14 @@ class AssignmentController {
     assignmentTitle,
     referenceDocumentId,
     templateDocumentId,
+    yearGroup = null,
   }) {
     ABLogger.getInstance().info('AssignmentController.createDefinitionFromWizardInputs invoked:', {
       assignmentId,
       assignmentTitle,
       referenceDocumentId,
       templateDocumentId,
+      yearGroup,
     });
 
     // Validate required parameters
@@ -497,11 +504,27 @@ class AssignmentController {
 
     try {
       // Call existing pipeline to get/create definition with full tasks
-      const { definition } = this.ensureDefinitionFromInputs({
+      const { definition, abClass } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
         documentIds,
+        yearGroup,
       });
+
+      // If a yearGroup was supplied and it differs from the stored class value, persist it
+      if (yearGroup !== null && yearGroup !== undefined && abClass) {
+        const parsedYear = Number.isInteger(yearGroup) ? yearGroup : Number.parseInt(yearGroup, 10);
+        if (Number.isNaN(parsedYear) === false && abClass.yearGroup !== parsedYear) {
+          const abClassController = new ABClassController();
+          abClass.yearGroup = parsedYear;
+          // Persist the class yearGroup. Fail fast if persisting fails.
+          abClassController.saveClass(abClass);
+          ABLogger.getInstance().info('ABClass.yearGroup updated from wizard input', {
+            classId: abClass.classId,
+            yearGroup: parsedYear,
+          });
+        }
+      }
 
       // Return full definition payload including tasks
       return definition.toJSON();

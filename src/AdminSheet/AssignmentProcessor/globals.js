@@ -57,6 +57,7 @@ function createDefinitionFromWizardInputs({
   assignmentTitle,
   referenceDocumentId,
   templateDocumentId,
+  yearGroup = null,
 }) {
   const controller = new AssignmentController();
   try {
@@ -65,6 +66,7 @@ function createDefinitionFromWizardInputs({
       assignmentTitle,
       referenceDocumentId,
       templateDocumentId,
+      yearGroup,
     });
   } catch (err) {
     ABLogger.getInstance().error(

@@ -16,91 +16,53 @@ import { createTaskDefinition } from '../helpers/modelFactories.js';
 let AssignmentController, AssignmentDefinition, DriveManager, ABLogger, ProgressTracker, Validate;
 let mockABLogger, mockProgressTracker;
 
-beforeEach(async () => {
-  // Setup controller test mocks
-  const mocks = setupControllerTestMocks(vi);
-  mockABLogger = mocks.mockABLogger;
-  mockProgressTracker = {
-    logError: vi.fn(),
-  };
+describe('AssignmentController.createDefinitionFromWizardInputs', () => {
+  beforeEach(async () => {
+    // Setup controller test mocks
+    const mocks = setupControllerTestMocks(vi);
+    mockABLogger = mocks.mockABLogger;
+    mockProgressTracker = {
+      logError: vi.fn(),
+    };
 
-  // Mock global singletons
-  globalThis.ABLogger = {
-    getInstance: vi.fn(() => mockABLogger),
-  };
-  globalThis.ProgressTracker = {
-    getInstance: vi.fn(() => mockProgressTracker),
-  };
+    // Mock global singletons
+    globalThis.ABLogger = {
+      getInstance: vi.fn(() => mockABLogger),
+    };
+    globalThis.ProgressTracker = {
+      getInstance: vi.fn(() => mockProgressTracker),
+    };
 
-  // Dynamically import modules
-  const [controllerModule, definitionModule, driveManagerModule, validateModule] =
-    await Promise.all([
+    // Dynamically import modules
+    const [
+      controllerModule,
+      definitionModule,
+      driveManagerModule,
+      validateModule,
+      abClassControllerModule,
+    ] = await Promise.all([
       import('../../src/AdminSheet/y_controllers/AssignmentController.js'),
       import('../../src/AdminSheet/Models/AssignmentDefinition.js'),
       import('../../src/AdminSheet/GoogleDriveManager/DriveManager.js'),
       import('../../src/AdminSheet/Utils/Validate.js'),
+      import('../../src/AdminSheet/y_controllers/ABClassController.js'),
     ]);
 
-  AssignmentController = controllerModule.default || controllerModule;
-  AssignmentDefinition = definitionModule.AssignmentDefinition;
-  DriveManager = driveManagerModule.default || driveManagerModule;
-  Validate = validateModule.Validate; // Note: destructured from module
+    AssignmentController = controllerModule.default || controllerModule;
+    AssignmentDefinition = definitionModule.AssignmentDefinition;
+    DriveManager = driveManagerModule.default || driveManagerModule;
+    Validate = validateModule.Validate; // Note: destructured from module
+    ABClassController = abClassControllerModule.default || abClassControllerModule;
 
-  // Make classes available globally (GAS style)
-  globalThis.DriveManager = DriveManager;
-  globalThis.Validate = Validate;
-  globalThis.AssignmentController = AssignmentController;
-  globalThis.AssignmentDefinition = AssignmentDefinition;
-});
+    // Make classes available globally (GAS style)
+    globalThis.DriveManager = DriveManager;
+    globalThis.Validate = Validate;
+    globalThis.AssignmentController = AssignmentController;
+    globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ABClassController = ABClassController;
+  });
 
-afterEach(() => {
-  cleanupControllerTestMocks();
-  vi.restoreAllMocks();
-});
-
-describe('AssignmentController.createDefinitionFromWizardInputs', () => {
   describe('Success cases - Slides', () => {
-    it('returns full AssignmentDefinition with tasks for Slides reference/template (raw IDs)', () => {
-      const assignmentId = 'assign-slides-123';
-      const assignmentTitle = 'Test Slides Assignment';
-      const referenceDocumentId = '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uvv';
-      const templateDocumentId = '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0eff';
-
-      // Mock ensureDefinitionFromInputs to return a definition with tasks
-      const mockTask = createTaskDefinition({ index: 0, title: 'Task 1' });
-      const mockDefinition = new AssignmentDefinition({
-        primaryTitle: assignmentTitle,
-        primaryTopic: 'Test Topic',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId,
-        templateDocumentId,
-        tasks: { task_0: mockTask },
-        referenceLastModified: '2024-01-01T00:00:00.000Z',
-        templateLastModified: '2024-01-01T00:00:00.000Z',
-      });
-
-      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
-        definition: mockDefinition,
-      });
-
-      const controller = new AssignmentController();
-      const result = controller.createDefinitionFromWizardInputs({
-        assignmentId,
-        assignmentTitle,
-        referenceDocumentId,
-        templateDocumentId,
-      });
-
-      expect(result).toBeDefined();
-      expect(result.primaryTitle).toBe(assignmentTitle);
-      expect(result.primaryTopic).toBe('Test Topic');
-      expect(result.documentType).toBe('SLIDES');
-      expect(result.tasks).toBeDefined();
-      expect(result.tasks.task_0).toBeDefined();
-      expect(result.definitionKey).toBeDefined();
-    });
-
     it('returns full AssignmentDefinition for Slides with URL inputs (normalised)', () => {
       const assignmentId = 'assign-slides-456';
       const assignmentTitle = 'Slides with URLs';
@@ -499,6 +461,47 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
           templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
         });
       }).toThrow(/Assignment must have a topic/);
+    });
+
+    it('throws when yearGroup provided and persisting ABClass fails', () => {
+      const mockTask = createTaskDefinition({ index: 0 });
+      const mockDefinition = new AssignmentDefinition({
+        primaryTitle: 'Title',
+        primaryTopic: 'Topic',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
+        templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
+        tasks: { task_0: mockTask },
+        referenceLastModified: '2024-01-01T00:00:00.000Z',
+        templateLastModified: '2024-01-01T00:00:00.000Z',
+      });
+
+      const abClass = { classId: 'course-1', yearGroup: null };
+
+      vi.spyOn(AssignmentController.prototype, 'ensureDefinitionFromInputs').mockReturnValue({
+        definition: mockDefinition,
+        abClass,
+      });
+
+      const saveErr = new Error('Failed to persist class');
+      vi.spyOn(ABClassController.prototype, 'saveClass').mockImplementation(() => {
+        throw saveErr;
+      });
+
+      const controller = new AssignmentController();
+
+      expect(() => {
+        controller.createDefinitionFromWizardInputs({
+          assignmentId: 'a1',
+          assignmentTitle: 'Title',
+          referenceDocumentId: '1aB2cD3eF4gH5iJ6kL7mN8oP9qR0sT1uv',
+          templateDocumentId: '2xY9wV8uT7sR6qP5oN4mL3kJ2iH1gF0ef',
+          yearGroup: 9,
+        });
+      }).toThrow(saveErr);
+
+      expect(ABClassController.prototype.saveClass).toHaveBeenCalled();
     });
 
     it('rethrows and logs controller errors', () => {

@@ -433,6 +433,7 @@
             stepperSteps: [],
             stepperCurrentIndex: 0,
             maxReachedStepIndex: 0,
+            yearGroup: null,
           },
           init() {
             if (this.initialised) return;
@@ -521,7 +522,12 @@
                 }
               };
 
-              bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
+              bindClick('yearGroupNext', () => {
+                const sel = document.getElementById('yearGroupSelect');
+                const val = sel && sel.value ? Number.parseInt(sel.value, 10) : null;
+                this.state.yearGroup = Number.isNaN(val) ? null : val;
+                this.showStep('selectAssignment');
+              });
               bindClick('step1Next', () => this.handleStep1Next());
               bindClick('choiceLink', () => this.showStep('linkDefinition'));
               bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
@@ -949,6 +955,7 @@
                 assignmentTitle: this.state.selectedAssignmentName,
                 referenceDocumentId: ref.raw,
                 templateDocumentId: tpl.raw,
+                yearGroup: this.state.yearGroup,
               });
           },
 
