@@ -34,6 +34,24 @@
         z-index: 1;
       }
 
+      .wizard-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0 1rem 1rem;
+      }
+
+      .wizard-footer-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .wizard-stepper-wrap {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+      }
+
       .assignment-menu {
         max-height: 18rem;
         overflow-y: auto;
@@ -244,17 +262,23 @@
           </header>
           <fieldset class="field-group">
             <legend>Assignment Definition</legend>
-            <div class="field label border">
-              <label>
-                <input type="radio" name="definitionChoice" value="link" id="choiceLink" />
-                Link to existing definition
-              </label>
-              <label>
-                <input type="radio" name="definitionChoice" value="create" id="choiceCreate" />
-                Create new definition
-              </label>
-            </div>
+            <label>
+              <input type="radio" name="definitionChoice" value="link" id="choiceLink" />
+              Link to existing definition
+            </label>
+            <label>
+              <input type="radio" name="definitionChoice" value="create" id="choiceCreate" />
+              Create new definition
+            </label>
           </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="definitionChoiceLink">
+              Link existing
+            </button>
+            <button class="button border" type="button" id="definitionChoiceCreate">
+              Create new
+            </button>
+          </div>
         </section>
 
         <!-- Link Definition Panel -->
@@ -327,7 +351,23 @@
           <fieldset class="field-group">
             <legend>Weightings</legend>
             <p class="muted">You can set weightings for overall assignment and individual tasks.</p>
-            <!-- Weightings controls will be added here dynamically if needed -->
+            <div class="field label border">
+              <select id="overallWeightingSelect">
+                <option value="">Use default weighting</option>
+                <option value="1">1.0 (equal weighting)</option>
+                <option value="0.8">0.8</option>
+                <option value="0.6">0.6</option>
+              </select>
+              <label for="overallWeightingSelect">Overall Weighting</label>
+            </div>
+            <div class="field label border">
+              <select id="taskWeightingSelect">
+                <option value="">Use task defaults</option>
+                <option value="equal">Equal per task</option>
+                <option value="manual">Manual (coming soon)</option>
+              </select>
+              <label for="taskWeightingSelect">Task Weighting</label>
+            </div>
           </fieldset>
           <div class="wizard-actions">
             <button class="button border" type="button" id="weightingsFinish">Finish</button>
@@ -335,18 +375,21 @@
         </section>
       </main>
 
-      <footer id="wizardFooter" class="wizard-actions">
-        <nav class="group connected">
-          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-          <button
-            class="button border right-round primary"
-            type="button"
-            id="startAssessment"
-            disabled
-          >
-            Start assessment
-          </button>
-        </nav>
+      <footer id="wizardFooter" class="wizard-footer">
+        <div id="wizardStepper" class="wizard-stepper-wrap"></div>
+        <div class="wizard-footer-actions">
+          <nav class="group connected">
+            <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
+            <button
+              class="button border right-round primary"
+              type="button"
+              id="startAssessment"
+              disabled
+            >
+              Start assessment
+            </button>
+          </nav>
+        </div>
       </footer>
     </div>
 
@@ -431,7 +474,7 @@
               this.initialised = true;
 
               // Initialise Stepper
-              this.stepper = new WizardStepper('#wizardFooter', {
+              this.stepper = new WizardStepper('#wizardStepper', {
                 steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
                 currentStep: 0,
                 onChange: (index) => this.handleStepperChange(index),
@@ -482,9 +525,12 @@
               bindClick('step1Next', () => this.handleStep1Next());
               bindClick('choiceLink', () => this.showStep('linkDefinition'));
               bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
+              bindClick('definitionChoiceLink', () => this.showStep('linkDefinition'));
+              bindClick('definitionChoiceCreate', () => this.showStep('createDefinitionDocs'));
               bindClick('linkFinish', () => this.finishSuccess());
-              bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
+              bindClick('step2Next', () => this.handleStep2Next());
               bindClick('weightingsFinish', () => this.finishSuccess());
+              bindClick('cancelWizard', () => this.handleCancel());
               // Back button removed as navigation is linear or via stepper (future)
 
               // Step 2 inputs
@@ -848,6 +894,63 @@
 
           handleStep1Next() {
             this.showStep('definitionChoice');
+          },
+
+          handleStep2Next() {
+            const ref = this.state.documents?.reference;
+            const tpl = this.state.documents?.template;
+
+            if (!ref || !tpl || !ref.raw || !tpl.raw) {
+              this.showError('Both reference and template documents are required.');
+              return;
+            }
+
+            this.state.isStarting = true;
+            this.setSpinnerVisible(true);
+            this.updateStartButtonState();
+
+            google.script.run
+              .withSuccessHandler((definition) => {
+                console.log('[AssessmentWizard] createDefinitionFromWizardInputs succeeded:', definition);
+                this.state.createdDefinition = definition;
+                this.state.isStarting = false;
+                this.setSpinnerVisible(false);
+                this.updateStartButtonState();
+                this.showStep('createDefinitionWeights');
+              })
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] createDefinitionFromWizardInputs failed:', {
+                  error,
+                  message: error?.message,
+                  stack: error?.stack,
+                  type: typeof error,
+                  assignmentId: this.state.selectedAssignmentId,
+                  assignmentName: this.state.selectedAssignmentName,
+                  referenceDocumentId: ref.raw,
+                  templateDocumentId: tpl.raw,
+                });
+
+                this.state.isStarting = false;
+                this.setSpinnerVisible(false);
+                this.updateStartButtonState();
+
+                let errorMsg = 'Failed to create definition from documents.';
+                if (error?.message) {
+                  errorMsg = `Definition error: ${error.message}`;
+                } else if (typeof error === 'string') {
+                  errorMsg = `Definition error: ${error}`;
+                }
+
+                this.showError(errorMsg + ' Check the browser console (F12) for details.');
+              })
+              .createDefinitionFromWizardInputs(
+                this.state.selectedAssignmentId,
+                this.state.selectedAssignmentName,
+                ref.raw,
+                tpl.raw,
+                ref.inferredType,
+                tpl.inferredType
+              );
           },
 
           finishSuccess() {
