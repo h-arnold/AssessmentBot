@@ -889,6 +889,7 @@
             assignmentInput.value = assignment.title || 'Untitled assignment';
             this.state.filterValue = '';
             this.state.selectedAssignmentId = assignmentId;
+            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
             this.handleSelectionChange();
           },
 
@@ -943,14 +944,12 @@
 
                 this.showError(errorMsg + ' Check the browser console (F12) for details.');
               })
-              .createDefinitionFromWizardInputs(
-                this.state.selectedAssignmentId,
-                this.state.selectedAssignmentName,
-                ref.raw,
-                tpl.raw,
-                ref.inferredType,
-                tpl.inferredType
-              );
+              .createDefinitionFromWizardInputs({
+                assignmentId: this.state.selectedAssignmentId,
+                assignmentTitle: this.state.selectedAssignmentName,
+                referenceDocumentId: ref.raw,
+                templateDocumentId: tpl.raw,
+              });
           },
 
           finishSuccess() {
