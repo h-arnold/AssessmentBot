@@ -175,36 +175,167 @@
   <body>
     <div class="beer">
       <main class="wizard-content">
-        <header>
-          <p class="muted">
-            Choose the Classroom assignment you want to assess before moving on to the document
-            inputs.
-          </p>
-        </header>
-
-        <fieldset class="field-group">
-          <legend>Assignment</legend>
-          <div class="field label suffix border">
-            <select id="assignmentSelect" disabled>
-              <option value="">Loading assignments...</option>
-            </select>
-            <label for="assignmentSelect">Assignment</label>
-            <progress
-              id="assignmentLoadingSpinner"
-              class="circle indeterminate"
-              aria-hidden="false"
-            ></progress>
+        <!-- Year Group Panel -->
+        <section id="yearGroupPanel" hidden>
+          <header>
+            <p class="muted">Select your year group to personalise your assessment settings.</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Year Group</legend>
+            <div class="field label border">
+              <select id="yearGroupSelect">
+                <option value="">Select a year group...</option>
+                <option value="7">Year 7</option>
+                <option value="8">Year 8</option>
+                <option value="9">Year 9</option>
+                <option value="10">Year 10</option>
+                <option value="11">Year 11</option>
+              </select>
+              <label for="yearGroupSelect">Year Group</label>
+            </div>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="yearGroupNext">Next</button>
           </div>
-          <output
-            id="assignmentErrorMessage"
-            class="status danger"
-            aria-live="polite"
-            hidden
-          ></output>
-        </fieldset>
+        </section>
+
+        <!-- Assignment Selection Panel (Step 1) -->
+        <section id="step1Panel" hidden>
+          <header>
+            <p class="muted" id="assignmentHelp">
+              Choose the Classroom assignment you want to assess.
+            </p>
+          </header>
+
+          <fieldset class="field-group">
+            <legend>Assignment</legend>
+            <div class="field label suffix border">
+              <input
+                id="assignmentInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Loading assignments..."
+                disabled
+              />
+              <label for="assignmentInput">Assignment</label>
+              <progress
+                id="assignmentLoadingSpinner"
+                class="circle indeterminate"
+                aria-hidden="false"
+              ></progress>
+            </div>
+            <ul id="assignmentMenu" class="assignment-menu"></ul>
+            <output
+              id="assignmentErrorMessage"
+              class="status danger"
+              aria-live="polite"
+              hidden
+            ></output>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="step1Next" disabled>Next</button>
+          </div>
+        </section>
+
+        <!-- Definition Choice Panel -->
+        <section id="definitionChoicePanel" hidden>
+          <header>
+            <p class="muted">How would you like to define this assignment?</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Assignment Definition</legend>
+            <div class="field label border">
+              <label>
+                <input type="radio" name="definitionChoice" value="link" id="choiceLink" />
+                Link to existing definition
+              </label>
+              <label>
+                <input type="radio" name="definitionChoice" value="create" id="choiceCreate" />
+                Create new definition
+              </label>
+            </div>
+          </fieldset>
+        </section>
+
+        <!-- Link Definition Panel -->
+        <section id="linkDefinitionPanel" hidden>
+          <header>
+            <p class="muted">Select an existing assignment definition to link.</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Existing Definitions</legend>
+            <div class="field label border">
+              <select id="definitionSelect">
+                <option value="">Loading definitions...</option>
+              </select>
+              <label for="definitionSelect">Definition</label>
+            </div>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="linkFinish">Finish</button>
+          </div>
+        </section>
+
+        <!-- Step 2: Create Definition (Documents) Panel -->
+        <section id="step2Panel" hidden>
+          <header>
+            <p class="muted">Provide reference and template documents for this assignment.</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Assignment Documents</legend>
+            <div class="field label suffix border">
+              <input
+                id="referenceInputStep2"
+                type="text"
+                autocomplete="off"
+                placeholder="Paste the reference document link..."
+              />
+              <label for="referenceInputStep2">Reference Document</label>
+              <i id="referenceIcon"></i>
+            </div>
+            <small id="referenceFeedback" hidden></small>
+
+            <div class="field label suffix border">
+              <input
+                id="templateInputStep2"
+                type="text"
+                autocomplete="off"
+                placeholder="Paste the template document link..."
+              />
+              <label for="templateInputStep2">Template Document</label>
+              <i id="templateIcon"></i>
+            </div>
+            <small id="templateFeedback" hidden></small>
+
+            <output
+              id="step2ErrorMessage"
+              class="status danger"
+              aria-live="polite"
+              hidden
+            ></output>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="step2Next" disabled>Next</button>
+          </div>
+        </section>
+
+        <!-- Weightings Panel -->
+        <section id="weightingsPanel" hidden>
+          <header>
+            <p class="muted">Configure the assessment weightings (optional).</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Weightings</legend>
+            <p class="muted">You can set weightings for overall assignment and individual tasks.</p>
+            <!-- Weightings controls will be added here dynamically if needed -->
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="weightingsFinish">Finish</button>
+          </div>
+        </section>
       </main>
 
-      <footer class="wizard-actions">
+      <footer id="wizardFooter" class="wizard-actions">
         <nav class="group connected">
           <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
           <button
@@ -243,7 +374,6 @@
         const templateIcon = document.getElementById('templateIcon');
         const referenceFeedback = document.getElementById('referenceFeedback');
         const templateFeedback = document.getElementById('templateFeedback');
-        const backButton = document.getElementById('backToStep1');
         const step2ErrorMessage = document.getElementById('step2ErrorMessage');
         const assignmentHelp = document.getElementById('assignmentHelp');
 
@@ -266,7 +396,7 @@
 
             try {
               // Validate that google.script.run is available
-              if (!window.google || !window.google.script || !window.google.script.run) {
+              if (!globalThis.google || !globalThis.google.script || !globalThis.google.script.run) {
                 const errorMsg =
                   'Google Apps Script client API (google.script.run) is not available. ' +
                   'This dialog must be opened from within Google Apps Script.';
@@ -1148,7 +1278,7 @@
         globalThis.assignmentWizard = assignmentWizard;
 
         // Global error handler for uncaught errors
-        window.addEventListener('error', (event) => {
+        globalThis.addEventListener('error', (event) => {
           console.error('[AssessmentWizard] Uncaught error:', {
             message: event.message,
             filename: event.filename,
@@ -1166,7 +1296,7 @@
         });
 
         // Global handler for unhandled promise rejections
-        window.addEventListener('unhandledrejection', (event) => {
+        globalThis.addEventListener('unhandledrejection', (event) => {
           console.error('[AssessmentWizard] Unhandled promise rejection:', {
             reason: event.reason,
             promise: event.promise,
