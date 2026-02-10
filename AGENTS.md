@@ -251,7 +251,7 @@ FALLBACK: Assume fallback is not required unless explicitly stated.
 
 GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
 
-## Codex delegation (codex-delegate)
+### 17. Codex delegation (codex-delegate)
 
 ````markdown
 ## Spawning sub-agents
