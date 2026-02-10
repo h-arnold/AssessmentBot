@@ -250,3 +250,74 @@ DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swal
 FALLBACK: Assume fallback is not required unless explicitly stated.
 
 GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
+
+### 17. Codex delegation (codex-delegate)
+
+````markdown
+## Spawning sub-agents
+
+Use `codex-delegate` to spawn a focused sub-agent for a specific task. Keep tasks small, pass constraints in `--instructions`, and set `--timeout-minutes` to 10 or more for long-running jobs.
+
+Example:
+
+```bash
+codex-delegate --role implementation \
+  --task "Add input validation to the assessor controller" \
+  --instructions "Use existing DTO patterns; update tests." \
+  --working-dir packages/my-app \
+  --timeout-minutes 10
+```
+
+While a sub-agent is running, expect a heartbeat line (`agent is still working`) roughly every minute if no new stream events arrive.
+
+**IMPORTANT**: Be patient. Some tasks will take several minutes and if the agent is thinking, you may not see any output for a while. If you see the heartbeat line, it is still working. If there is an error with the agent, `codex-delegate` will throw an error. If you stop it early, you may lose the work it has done so far. If you think it has stalled, check the logs for details `codex-delegate.log` (or set `--log-file` to write logs to a different path).
+
+### Sub-agent roles
+
+Sub-agent roles are defined in the `.codex` folder, along with the configuration file. To create a new role, add a markdown file with the role name (e.g. `implementation.md`) and a prompt template for that role. Empty files are ignored. Use `--list-roles` to see the discovered roles.
+````
+
+## Creating new agents (roles)
+
+Roles are defined by prompt templates in the `.codex` folder. To create a new agent:
+
+1. Create a new file at `.codex/<role>.md` with the prompt template for that role.
+2. Keep the template non-empty; empty files are ignored.
+3. Run `codex-delegate --list-roles` to confirm it is discovered.
+4. Invoke it with `codex-delegate --role <role> --task "..."`
+
+`AGENTS.md` files inside `.codex` are ignored for role discovery.
+
+## Configuration (.codex)
+
+The CLI uses a per-project `.codex` folder for both configuration and role templates.
+
+- Config file: `.codex/codex-delegate-config.json`
+- Role templates: `.codex/<role>.md` (ignored if empty)
+- `AGENTS.md` is always ignored for role discovery
+
+Run the init command to create the default config file, or let the CLI create it on first run:
+
+```bash
+codex-delegate init
+```
+
+Config defaults (stored when the file is first created) come from the CLI defaults:
+
+- `sandbox`: `danger-full-access`
+- `approval`: `never`
+- `network`: `true`
+- `webSearch`: `live`
+- `overrideWireApi`: `true`
+- `verbose`: `false`
+- `timeoutMinutes`: `10`
+
+Role, task, and instructions are CLI-only and are never read from config files.
+
+Config precedence is:
+
+1. Built-in defaults
+2. `.codex/codex-delegate-config.json`
+3. CLI flags
+
+Wire API note: `codex-delegate` overrides `wire_api` to `responses` by default. If you set `overrideWireApi` to `false`, ensure your Codex `config.toml` uses `wire_api = "responses"` or `wire_api = "chat"` to avoid startup errors. If `responses_websocket` is detected in `config.toml`, `codex-delegate` will isolate `CODEX_HOME` to a local `.codex/codex-home` folder to avoid the failure.
