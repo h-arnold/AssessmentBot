@@ -824,40 +824,6 @@
                 pendingIcon.textContent = 'hourglass_empty';
                 pendingIcon.title = 'Checking definitions';
                 icons.appendChild(pendingIcon);
-              } else {
-                const linkWrap = document.createElement('span');
-                linkWrap.className = 'icon-tooltip';
-
-                const linkIcon = document.createElement('i');
-                linkIcon.className = 'primary-text';
-                linkIcon.textContent = 'link';
-
-                const linkTooltip = document.createElement('span');
-                linkTooltip.className = 'tooltip';
-                linkTooltip.textContent = 'Link to existing assignment';
-
-                linkWrap.appendChild(linkIcon);
-                linkWrap.appendChild(linkTooltip);
-
-                const addWrap = document.createElement('span');
-                addWrap.className = 'icon-tooltip';
-                addWrap.dataset.action = 'create-definition';
-                addWrap.dataset.assignmentId = assignment.id;
-
-                const addIcon = document.createElement('i');
-                addIcon.className = 'primary-text';
-                addIcon.textContent = 'add_circle';
-                addIcon.tabIndex = 0;
-
-                const addTooltip = document.createElement('span');
-                addTooltip.className = 'tooltip';
-                addTooltip.textContent = 'Create new assignment';
-
-                addWrap.appendChild(addIcon);
-                addWrap.appendChild(addTooltip);
-
-                icons.appendChild(linkWrap);
-                icons.appendChild(addWrap);
               }
 
               item.appendChild(name);
