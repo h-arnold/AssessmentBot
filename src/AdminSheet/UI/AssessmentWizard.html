@@ -52,15 +52,23 @@
         width: 100%;
       }
 
-      .assignment-menu {
-        max-height: 18rem;
-        overflow-y: auto;
-        overflow-x: visible;
-        width: 100%;
-        z-index: 20;
+      #assignmentMenu {
+        position: relative;
+        opacity: 1;
+        visibility: visible;
+        box-shadow: none;
+        z-index: 10;
+        max-block-size: 18rem;
+        transform: none;
+        background-color: var(--surface-container);
+        border-radius: 0.25rem;
       }
 
-      .assignment-menu > li {
+      #assignmentMenu:not(.active) {
+        display: none;
+      }
+
+      #assignmentMenu > li {
         min-block-size: 2.5rem;
         padding: 0.3rem 0.75rem;
       }
@@ -242,7 +250,7 @@
                 aria-hidden="false"
               ></progress>
             </div>
-            <ul id="assignmentMenu" class="assignment-menu"></ul>
+            <menu id="assignmentMenu"></menu>
             <output
               id="assignmentErrorMessage"
               class="status danger"
@@ -500,6 +508,14 @@
           bindEvents() {
             try {
               assignmentInput.addEventListener('input', () => this.handleFilterInput());
+              assignmentInput.addEventListener('focus', () => {
+                // Show menu when input receives focus (allows re-opening dropdown after selection)
+                assignmentMenu.classList.add('active');
+              });
+              assignmentInput.addEventListener('blur', () => {
+                // Close menu with a small delay to allow menu item clicks to register
+                setTimeout(() => assignmentMenu.classList.remove('active'), 100);
+              });
               assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
 
               const bindClick = (id, handler) => {
@@ -588,6 +604,8 @@
             placeholderItem.className = 'assignment-row muted';
             placeholderItem.textContent = text;
             assignmentMenu.appendChild(placeholderItem);
+            // Show placeholder menu
+            assignmentMenu.classList.add('active');
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
@@ -839,6 +857,10 @@
             this.state.isStarting = false;
             this.updateStartButtonState();
             this.renderAssignmentMenuItems();
+            // Show menu when user is typing to filter
+            if (this.state.filterValue.length > 0 || this.state.assignments.length > 0) {
+              assignmentMenu.classList.add('active');
+            }
           },
 
           handleMenuSelection(event) {
@@ -862,6 +884,8 @@
             this.state.filterValue = '';
             this.state.selectedAssignmentId = assignmentId;
             this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
+            // Hide menu after selection
+            assignmentMenu.classList.remove('active');
             this.handleSelectionChange();
           },
 
