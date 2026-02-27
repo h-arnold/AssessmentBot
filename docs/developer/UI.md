@@ -251,6 +251,35 @@ BeerCSS positions suffix/prefix adornments (including `progress.circle`) using C
 
 - For suffix spinners/icons, avoid adding bespoke `position: absolute` rules unless you have to. BeerCSS already centres `progress.circle` in a suffix/prefix field.
 
+### Floating labels and placeholder text overlap
+
+BeerCSS's `.field.label` class adds a floating animation where the label moves up when the field is focused or has content. However, when using `<input type="text">` with `placeholder` text, the label animates _over_ the placeholder during the transition, creating an ugly overlapping appearance.
+
+**Solution**: For text inputs with placeholder text, omit the `.label` class and `<label>` element. Instead:
+
+- Remove `class="field label"`; use `class="field"` only
+- Remove the `<label for="...">` element
+- Add `aria-label="..."` to the input for accessibility
+
+Example:
+
+```html
+<!-- ❌ Avoid: label will overlap placeholder text -->
+<div class="field label suffix border">
+  <input type="text" placeholder="Paste the document link..." />
+  <label for="docInput">Document</label>
+  <i id="docIcon"></i>
+</div>
+
+<!-- ✅ Correct: no animation, placeholder is always visible, accessible -->
+<div class="field suffix border">
+  <input type="text" placeholder="Paste the document link..." aria-label="Document" />
+  <i id="docIcon"></i>
+</div>
+```
+
+**Why**: Select elements and other controls without placeholder text do not have this issue, because the floating label animation happens over empty space. Only text inputs with placeholder content exhibit the problem.
+
 ### Full-width elements in modals
 
 When an element needs to span the full width of a modal (e.g. a progress bar), using `width: 100%` may not achieve the desired result if the parent container shrinks to fit its content due to flexbox centering.

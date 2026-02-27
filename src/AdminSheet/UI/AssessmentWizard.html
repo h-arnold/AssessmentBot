@@ -235,15 +235,15 @@
 
           <fieldset class="field-group">
             <legend>Assignment</legend>
-            <div class="field label suffix border">
+            <div class="field suffix border">
               <input
                 id="assignmentInput"
                 type="text"
                 autocomplete="off"
                 placeholder="Loading assignments..."
                 disabled
+                aria-label="Assignment"
               />
-              <label for="assignmentInput">Assignment</label>
               <progress
                 id="assignmentLoadingSpinner"
                 class="circle indeterminate"
@@ -315,26 +315,26 @@
           </header>
           <fieldset class="field-group">
             <legend>Assignment Documents</legend>
-            <div class="field label suffix border">
+            <div class="field suffix border">
               <input
                 id="referenceInputStep2"
                 type="text"
                 autocomplete="off"
                 placeholder="Paste the reference document link..."
+                aria-label="Reference Document"
               />
-              <label for="referenceInputStep2">Reference Document</label>
               <i id="referenceIcon"></i>
             </div>
             <small id="referenceFeedback" hidden></small>
 
-            <div class="field label suffix border">
+            <div class="field suffix border">
               <input
                 id="templateInputStep2"
                 type="text"
                 autocomplete="off"
                 placeholder="Paste the template document link..."
+                aria-label="Template Document"
               />
-              <label for="templateInputStep2">Template Document</label>
               <i id="templateIcon"></i>
             </div>
             <small id="templateFeedback" hidden></small>
