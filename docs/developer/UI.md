@@ -188,7 +188,7 @@ This approach follows the project conventions: server-rendered, progressive-enha
 </div>
 ```
 
-4. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
+1. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
 
 ```javascript
 showMyNewDialog() {
@@ -199,7 +199,7 @@ showMyNewDialog() {
 }
 ```
 
-5. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
+1. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
 
 ## Updating BeerCSS
 
@@ -211,7 +211,7 @@ When you need to bump BeerCSS:
 npm install beercss@<version>
 ```
 
-2. Regenerate the vendored partials:
+1. Regenerate the vendored partials:
 
 ```bash
 npm run vendor:beercss
@@ -222,8 +222,8 @@ This updates:
 - `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`
 - `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`
 
-3. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
-4. Run `npm test` to verify UI tests still pass.
+1. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
+2. Run `npm test` to verify UI tests still pass.
 
 ## Notes / constraints (Apps Script HtmlService)
 
@@ -259,6 +259,35 @@ BeerCSS positions suffix/prefix adornments (including `progress.circle`) using C
   - label immediately after (`select + label` is used by BeerCSS CSS/JS)
 
 - For suffix spinners/icons, avoid adding bespoke `position: absolute` rules unless you have to. BeerCSS already centres `progress.circle` in a suffix/prefix field.
+
+### Floating labels and placeholder text overlap
+
+BeerCSS's `.field.label` class adds a floating animation where the label moves up when the field is focused or has content. However, when using `<input type="text">` with `placeholder` text, the label animates _over_ the placeholder during the transition, creating an ugly overlapping appearance.
+
+**Solution**: For text inputs with placeholder text, omit the `.label` class and `<label>` element. Instead:
+
+- Remove `class="field label"`; use `class="field"` only
+- Remove the `<label for="...">` element
+- Add `aria-label="..."` to the input for accessibility
+
+Example:
+
+```html
+<!-- ❌ Avoid: label will overlap placeholder text -->
+<div class="field label suffix border">
+  <input type="text" placeholder="Paste the document link..." />
+  <label for="docInput">Document</label>
+  <i id="docIcon"></i>
+</div>
+
+<!-- ✅ Correct: no animation, placeholder is always visible, accessible -->
+<div class="field suffix border">
+  <input type="text" placeholder="Paste the document link..." aria-label="Document" />
+  <i id="docIcon"></i>
+</div>
+```
+
+**Why**: Select elements and other controls without placeholder text do not have this issue, because the floating label animation happens over empty space. Only text inputs with placeholder content exhibit the problem.
 
 ### Full-width elements in modals
 

@@ -369,6 +369,15 @@ class AssignmentController {
     if (!referenceDocumentId || !templateDocumentId) {
       progressTracker.logAndThrowError('referenceDocumentId and templateDocumentId are required.');
     }
+
+    // Enforce that reference and template documents are different
+    if (referenceDocumentId === templateDocumentId) {
+      progressTracker.logAndThrowError('Reference and template documents must be different.', {
+        referenceDocumentId,
+        templateDocumentId,
+      });
+    }
+
     const SLIDES_MIME = 'application/vnd.google-apps.presentation';
     const SHEETS_MIME = 'application/vnd.google-apps.spreadsheet';
     const resolveType = (docId) => {
@@ -400,7 +409,7 @@ class AssignmentController {
    *   - templateDocumentId or templateSlideId
    * @return {Object} { definition, courseId, abClass }
    */
-  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds }) {
+  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds, yearGroup = null }) {
     const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
     const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
 
@@ -417,7 +426,12 @@ class AssignmentController {
 
     const abClassController = new ABClassController();
     const abClass = abClassController.loadClass(courseId);
-    const yearGroup = abClass?.yearGroup ?? null;
+
+    // Use provided yearGroup (wizard input) if supplied, otherwise fallback to the class value
+    const finalYearGroup =
+      yearGroup !== undefined && yearGroup !== null
+        ? Number.parseInt(yearGroup, 10)
+        : (abClass?.yearGroup ?? null);
 
     const definitionController = new AssignmentDefinitionController();
     const definition = definitionController.ensureDefinition({
@@ -425,13 +439,102 @@ class AssignmentController {
       primaryTopic: null,
       topicId,
       courseId,
-      yearGroup,
+      yearGroup: finalYearGroup,
       documentType,
       referenceDocumentId: referenceId,
       templateDocumentId: templateId,
     });
 
     return { definition, courseId, abClass };
+  }
+
+  /**
+   * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
+   * Normalises reference and template document URLs/IDs, validates them, and returns a complete
+   * definition payload with tasks for Step 4 (weightings).
+   *
+   * @param {Object} params - Wizard input parameters.
+   * @param {string} params.assignmentId - Google Classroom assignment ID (required).
+   * @param {string} [params.assignmentTitle] - Assignment title (fallback if not fetched from Classroom).
+   * @param {string} params.referenceDocumentId - Reference document URL or file ID.
+   * @param {string} params.templateDocumentId - Template document URL or file ID.
+   * @return {Object} Full AssignmentDefinition JSON payload including tasks and artifacts.
+   * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
+   */
+  createDefinitionFromWizardInputs({
+    assignmentId,
+    assignmentTitle,
+    referenceDocumentId,
+    templateDocumentId,
+    yearGroup = null,
+  }) {
+    ABLogger.getInstance().info('AssignmentController.createDefinitionFromWizardInputs invoked:', {
+      assignmentId,
+      assignmentTitle,
+      referenceDocumentId,
+      templateDocumentId,
+      yearGroup,
+    });
+
+    // Validate required parameters
+    Validate.requireParams(
+      { assignmentId, referenceDocumentId, templateDocumentId },
+      'createDefinitionFromWizardInputs'
+    );
+
+    // Normalise URLs/IDs to Drive file IDs
+    const normalisedReferenceId = DriveManager.normaliseToFileId(referenceDocumentId);
+    const normalisedTemplateId = DriveManager.normaliseToFileId(templateDocumentId);
+
+    // Enforce that reference and template IDs are different
+    if (normalisedReferenceId === normalisedTemplateId) {
+      const errorMsg = 'Reference and template documents must be different.';
+      this.progressTracker.logError(errorMsg, {
+        referenceDocumentId: normalisedReferenceId,
+        templateDocumentId: normalisedTemplateId,
+      });
+      throw new Error(errorMsg);
+    }
+
+    // Build documentIds object for ensureDefinitionFromInputs
+    const documentIds = {
+      referenceDocumentId: normalisedReferenceId,
+      templateDocumentId: normalisedTemplateId,
+    };
+
+    try {
+      // Call existing pipeline to get/create definition with full tasks
+      const { definition, abClass } = this.ensureDefinitionFromInputs({
+        assignmentTitle,
+        assignmentId,
+        documentIds,
+        yearGroup,
+      });
+
+      // If a yearGroup was supplied and it differs from the stored class value, persist it
+      if (yearGroup !== null && yearGroup !== undefined && abClass) {
+        const parsedYear = Number.isInteger(yearGroup) ? yearGroup : Number.parseInt(yearGroup, 10);
+        if (Number.isNaN(parsedYear) === false && abClass.yearGroup !== parsedYear) {
+          const abClassController = new ABClassController();
+          abClass.yearGroup = parsedYear;
+          // Persist the class yearGroup. Fail fast if persisting fails.
+          abClassController.saveClass(abClass);
+          ABLogger.getInstance().info('ABClass.yearGroup updated from wizard input', {
+            classId: abClass.classId,
+            yearGroup: parsedYear,
+          });
+        }
+      }
+
+      // Return full definition payload including tasks
+      return definition.toJSON();
+    } catch (err) {
+      ABLogger.getInstance().error(
+        'Error in AssignmentController.createDefinitionFromWizardInputs:',
+        err?.message ?? err
+      );
+      throw err;
+    }
   }
 
   /**

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes, evalWizardScripts } from '../helpers/htmlTemplateRenderer.js';
+import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,8 +92,6 @@ function setupWizard() {
   const { window } = dom;
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
-
-  evalWizardScripts(window, vi);
 
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
@@ -288,11 +286,14 @@ describe('Assessment wizard Step 1', () => {
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentInput.disabled).toBe(true);
+      expect(assignmentSelect.disabled).toBe(true);
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);
       expect(errorMessage.textContent).toContain('Network error');
+      expect(assignmentMenu.querySelector('li')?.textContent).toContain(
+        'Unable to load assignments'
+      );
     } finally {
       vi.useRealTimers();
       cleanup();

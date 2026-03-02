@@ -34,15 +34,41 @@
         z-index: 1;
       }
 
-      .assignment-menu {
-        max-height: 18rem;
-        overflow-y: auto;
-        overflow-x: visible;
-        width: 100%;
-        z-index: 20;
+      .wizard-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0 1rem 1rem;
       }
 
-      .assignment-menu > li {
+      .wizard-footer-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .wizard-stepper-wrap {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+      }
+
+      #assignmentMenu {
+        position: relative;
+        opacity: 1;
+        visibility: visible;
+        box-shadow: none;
+        z-index: 10;
+        max-block-size: 18rem;
+        transform: none;
+        background-color: var(--surface-container);
+        border-radius: 0.25rem;
+      }
+
+      #assignmentMenu:not(.active) {
+        display: none;
+      }
+
+      #assignmentMenu > li {
         min-block-size: 2.5rem;
         padding: 0.3rem 0.75rem;
       }
@@ -210,22 +236,30 @@
             ></output>
           </fieldset>
           <div class="wizard-actions">
-            <button class="button border primary" type="button" id="step1Next" disabled>Next</button>
+            <button class="button border primary" type="button" id="step1Next" disabled>
+              Next
+            </button>
           </div>
         </div>
 
         <div id="definitionChoicePanel" hidden>
           <p>This assignment does not have a definition yet. What would you like to do?</p>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="choiceLink">Link existing definition</button>
-            <button class="button border primary" type="button" id="choiceCreate">Create new definition</button>
+            <button class="button border" type="button" id="choiceLink">
+              Link existing definition
+            </button>
+            <button class="button border primary" type="button" id="choiceCreate">
+              Create new definition
+            </button>
           </div>
         </div>
 
         <div id="linkDefinitionPanel" hidden>
           <p>Link this assignment to an existing definition.</p>
           <div class="wizard-actions">
-            <button class="button border primary" type="button" id="linkFinish" disabled>Finish</button>
+            <button class="button border primary" type="button" id="linkFinish" disabled>
+              Finish
+            </button>
           </div>
         </div>
 
@@ -244,24 +278,32 @@
           <output id="templateFeedback" hidden></output>
           <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
           <div id="assignmentHelp" hidden>
-            <p class="muted">Paste the Google Drive URLs for the reference and template documents.</p>
+            <p class="muted">
+              Paste the Google Drive URLs for the reference and template documents.
+            </p>
           </div>
           <div class="wizard-actions">
-            <button class="button border primary" type="button" id="step2Next" disabled>Next</button>
+            <button class="button border primary" type="button" id="step2Next" disabled>
+              Next
+            </button>
           </div>
         </div>
 
         <div id="weightingsPanel" hidden>
           <p>Set the assessment weightings.</p>
           <div class="wizard-actions">
-            <button class="button border primary" type="button" id="weightingsFinish">Finish</button>
+            <button class="button border primary" type="button" id="weightingsFinish">
+              Finish
+            </button>
           </div>
         </div>
       </main>
 
       <div class="wizard-actions-bar">
         <button class="button border" type="button" id="cancelWizard">Cancel</button>
-        <button class="button" type="button" id="startAssessment" disabled hidden>Start assessment</button>
+        <button class="button" type="button" id="startAssessment" disabled hidden>
+          Start assessment
+        </button>
       </div>
 
       <footer id="wizardFooter" class="wizard-actions"></footer>
@@ -293,6 +335,26 @@
         const templateFeedback = document.getElementById('templateFeedback');
         const backButton = document.getElementById('backToStep1');
         const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        const assignmentHelp = document.getElementById('assignmentHelp');
+
+        // Step 2 elements
+        const step1Panel = document.getElementById('step1Panel');
+        const step2Panel = document.getElementById('step2Panel');
+        const referenceInput = document.getElementById('referenceInputStep2');
+        const templateInput = document.getElementById('templateInputStep2');
+        const referenceIcon = document.getElementById('referenceIcon');
+        const templateIcon = document.getElementById('templateIcon');
+        const referenceFeedback = document.getElementById('referenceFeedback');
+        const templateFeedback = document.getElementById('templateFeedback');
+        const backButton = document.getElementById('backToStep1');
+        const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        // Old footer buttons removed. New buttons referenced in bindEvents.
+
+        // Panels
+        const yearGroupPanel = document.getElementById('yearGroupPanel');
+        const definitionChoicePanel = document.getElementById('definitionChoicePanel');
+        const linkDefinitionPanel = document.getElementById('linkDefinitionPanel');
+        const weightingsPanel = document.getElementById('weightingsPanel');
         const assignmentHelp = document.getElementById('assignmentHelp');
 
         const assignmentWizard = {
@@ -363,7 +425,10 @@
           fetchAssignments() {
             google.script.run
               .withSuccessHandler((payload) => this.handleAssignmentsSuccess(payload))
-              .withFailureHandler((error) => this.handleAssignmentsFailure(error))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] fetchAssignmentsForWizard failed:', error);
+                this.handleAssignmentsFailure(error);
+              })
               .fetchAssignmentsForWizard();
           },
           renderPlaceholder(text) {
@@ -375,6 +440,8 @@
             placeholderItem.className = 'assignment-row muted';
             placeholderItem.textContent = text;
             assignmentMenu.appendChild(placeholderItem);
+            // Show placeholder menu
+            assignmentMenu.classList.add('active');
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
@@ -394,22 +461,37 @@
             this.handleSelectionChange();
           },
           handleAssignmentsFailure(error) {
+            console.error('[AssessmentWizard] handleAssignmentsFailure:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+              type: typeof error,
+            });
+
             this.state.assignments = [];
             this.setSpinnerVisible(false);
             this.renderPlaceholder('Unable to load assignments');
             this.setControlsEnabled(false);
-            this.showError(
-              error?.message
-                ? `Failed to load assignments: ${error.message}`
-                : 'Failed to load assignments.'
-            );
+
+            // Provide detailed error message
+            let errorMsg = 'Failed to load assignments.';
+            if (error?.message) {
+              errorMsg = `Assignment loading error: ${error.message}`;
+            } else if (typeof error === 'string') {
+              errorMsg = `Assignment loading error: ${error}`;
+            }
+
+            this.showError(errorMsg + ' Please refresh the page and try again.');
           },
 
           // Fetch partial definitions to support wizard lookups (stored only for now)
           fetchPartialDefinitions() {
             google.script.run
               .withSuccessHandler((payload) => this.handlePartialDefinitionsSuccess(payload))
-              .withFailureHandler((error) => this.handlePartialDefinitionsFailure(error))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] getAllPartialDefinitions failed:', error);
+                this.handlePartialDefinitionsFailure(error);
+              })
               .getAllPartialDefinitions();
           },
 
@@ -481,17 +563,31 @@
 
                 google.script.run
                   .withSuccessHandler(() => {
+                    console.log('[AssessmentWizard] startAssessmentFromWizard succeeded');
                     google.script.run.showProgressModal();
                     google.script.host.close();
                   })
                   .withFailureHandler((error) => {
+                    console.error('[AssessmentWizard] startAssessmentFromWizard failed:', {
+                      error,
+                      message: error?.message,
+                      stack: error?.stack,
+                      type: typeof error,
+                      assignmentId: this.state.selectedAssignmentId,
+                      definitionKey: match.definitionKey,
+                    });
+
                     this.state.isStarting = false;
                     this.setSpinnerVisible(false);
-                    this.showError(
-                      error?.message
-                        ? `Failed to start: ${error.message}`
-                        : 'Failed to start assessment.'
-                    );
+
+                    let errorMsg = 'Failed to start assessment.';
+                    if (error?.message) {
+                      errorMsg = `Start assessment error: ${error.message}`;
+                    } else if (typeof error === 'string') {
+                      errorMsg = `Start assessment error: ${error}`;
+                    }
+
+                    this.showError(errorMsg + ' Check the browser console (F12) for details.');
                     this.updateStartButtonState();
                   })
                   .startAssessmentFromWizard(this.state.selectedAssignmentId, match.definitionKey);
@@ -631,6 +727,10 @@
             this.state.isStarting = false;
             this.updateStartButtonState();
             this.renderAssignmentMenuItems();
+            // Show menu when user is typing to filter
+            if (this.state.filterValue.length > 0 || this.state.assignments.length > 0) {
+              assignmentMenu.classList.add('active');
+            }
           },
 
           handleMenuSelection(event) {
@@ -653,6 +753,9 @@
             assignmentInput.value = assignment.title || 'Untitled assignment';
             this.state.filterValue = '';
             this.state.selectedAssignmentId = assignmentId;
+            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
+            // Hide menu after selection
+            assignmentMenu.classList.remove('active');
             this.handleSelectionChange();
           },
 
@@ -708,10 +811,7 @@
             const updateStepper = (steps, index) => {
               this.state.stepperSteps = steps.slice();
               this.state.stepperCurrentIndex = index;
-              this.state.maxReachedStepIndex = Math.max(
-                this.state.maxReachedStepIndex ?? 0,
-                index
-              );
+              this.state.maxReachedStepIndex = Math.max(this.state.maxReachedStepIndex ?? 0, index);
 
               if (this.stepper) {
                 this.stepper.setSteps(steps.map((s) => ({ label: s })));
@@ -1056,7 +1156,64 @@
 
         globalThis.assignmentWizard = assignmentWizard;
 
-        const kickOff = () => assignmentWizard.init();
+        // Global error handler for uncaught errors
+        globalThis.addEventListener('error', (event) => {
+          console.error('[AssessmentWizard] Uncaught error:', {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error,
+            stack: event.error?.stack,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            assignmentWizard.showError(
+              `Unexpected error: ${event.message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        // Global handler for unhandled promise rejections
+        globalThis.addEventListener('unhandledrejection', (event) => {
+          console.error('[AssessmentWizard] Unhandled promise rejection:', {
+            reason: event.reason,
+            promise: event.promise,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            const message =
+              event.reason?.message || event.reason?.toString() || 'Unknown promise rejection';
+            assignmentWizard.showError(
+              `Unexpected error: ${message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        const kickOff = () => {
+          try {
+            console.log('[AssessmentWizard] Initialising wizard...');
+            assignmentWizard.init();
+          } catch (error) {
+            console.error('[AssessmentWizard] Failed to initialise wizard:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+            });
+
+            if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+              assignmentWizard.showError(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            } else {
+              // Fallback if showError isn't available
+              alert(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            }
+          }
+        };
+
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', kickOff);
         } else {
