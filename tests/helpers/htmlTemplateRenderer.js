@@ -49,3 +49,32 @@ export function createDomFromTemplate(templatePath, options = {}) {
     resources: 'usable',
   });
 }
+
+/**
+ * Sets up the matchMedia mock and evals all non-main wizard scripts on the window.
+ * Exposes WizardStepper to window if found in the evaluated scripts.
+ * @param {object} window - The JSDOM window object.
+ * @param {object} vi - The Vitest `vi` object for creating mocks.
+ */
+export function evalWizardScripts(window, vi) {
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: false,
+    media: '',
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+
+  // Eval all non-main scripts first (e.g. WizardStepper class from StepperJS.html)
+  Array.from(window.document.querySelectorAll('script')).forEach((script) => {
+    if (!script.src && !script.textContent.includes('assignmentWizard')) {
+      const suffix = script.textContent.includes('class WizardStepper')
+        ? '\nwindow.WizardStepper = WizardStepper;'
+        : '';
+      window.eval(script.textContent + suffix);
+    }
+  });
+}

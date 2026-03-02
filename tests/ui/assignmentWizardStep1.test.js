@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
+import { renderTemplateWithIncludes, evalWizardScripts } from '../helpers/htmlTemplateRenderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,16 +92,8 @@ function setupWizard() {
   const { window } = dom;
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
-  window.matchMedia = vi.fn().mockImplementation(() => ({
-    matches: false,
-    media: '',
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }));
+
+  evalWizardScripts(window, vi);
 
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
@@ -110,15 +102,6 @@ function setupWizard() {
     throw new Error('Inline wizard script was not found');
   }
 
-  // Eval all non-main scripts first (e.g. WizardStepper class from StepperJS.html)
-  Array.from(window.document.querySelectorAll('script')).forEach((script) => {
-    if (!script.src && !script.textContent.includes('assignmentWizard')) {
-      const suffix = script.textContent.includes('class WizardStepper')
-        ? '\nwindow.WizardStepper = WizardStepper;'
-        : '';
-      window.eval(script.textContent + suffix);
-    }
-  });
   window.eval(inlineScript.textContent);
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
 
