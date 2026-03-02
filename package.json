@@ -8,6 +8,8 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:all": "INCLUDE_LEGACY_UI_TESTS=true vitest run",
+    "test:legacy-ui": "INCLUDE_LEGACY_UI_TESTS=true vitest run tests/ui/**/*.test.js tests/singletons/uiLazyProbe.test.js",
     "test:watch": "vitest",
     "lint": "eslint --config eslint.config.js src/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/**/*.js",
