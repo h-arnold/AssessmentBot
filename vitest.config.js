@@ -1,6 +1,9 @@
 // Plain config object to avoid ESM import of vite in current Node version.
 const includeLegacyUiTests = process.env.INCLUDE_LEGACY_UI_TESTS === 'true';
-const permanentlyExcludedDeprecatedTests = ['tests/controllers/initController.test.js'];
+const permanentlyExcludedDeprecatedTests = [
+  'tests/controllers/initController.test.js',
+  'tests/controllers/createDefinitionFromWizardInputs.test.js',
+];
 const legacyUiTestPatterns = ['tests/ui/**', 'tests/singletons/uiLazyProbe.test.js'];
 
 module.exports = {

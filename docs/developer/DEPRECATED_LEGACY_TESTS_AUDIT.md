@@ -14,6 +14,7 @@ Implemented in this change:
 
 - `vitest.config.js` now skips legacy UI-linked tests unless `INCLUDE_LEGACY_UI_TESTS=true`.
 - `tests/controllers/initController.test.js` is permanently excluded from all runs.
+- `tests/controllers/createDefinitionFromWizardInputs.test.js` is permanently excluded from all runs.
 - `package.json` adds:
   - `npm run test:all` to run all tests including legacy UI tests.
   - `npm run test:legacy-ui` to run only legacy UI tests.
@@ -43,6 +44,13 @@ Reason: These validate legacy HtmlService dialog templates, `google.script.run` 
 Reason: This is coupled to `onOpen`, menu creation, authorisation menu states, and first-run/update initialisation flow.
 Status: Permanently skipped and excluded from all suites.
 
+### 2.1) Legacy wizard modal definition-creation tests
+
+- `tests/controllers/createDefinitionFromWizardInputs.test.js`
+
+Reason: This suite validates the legacy wizard modal definition-creation flow that is being replaced by the React frontend.
+Status: Permanently skipped and excluded from all suites.
+
 ### 3) Legacy UI probe singleton test
 
 - `tests/singletons/uiLazyProbe.test.js`
@@ -70,3 +78,4 @@ These are not skipped directly, but primarily support deprecated tests:
 Notes:
 
 - `npm run test:all` still excludes `tests/controllers/initController.test.js` by design.
+- `npm run test:all` also excludes `tests/controllers/createDefinitionFromWizardInputs.test.js` by design.
