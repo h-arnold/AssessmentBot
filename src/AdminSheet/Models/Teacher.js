@@ -90,10 +90,13 @@ class Teacher {
   }
 
   toJSON() {
-    return Object.assign({
-      email: this.email,
-      userId: this.userId,
-    }, this.teacherName == null ? {} : { teacherName: this.teacherName });
+    return Object.assign(
+      {
+        email: this.email,
+        userId: this.userId,
+      },
+      this.teacherName == null ? {} : { teacherName: this.teacherName }
+    );
   }
 
   static fromJSON(json) {

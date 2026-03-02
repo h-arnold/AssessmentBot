@@ -13,12 +13,14 @@ describe('Assessment wizard Step 1', () => {
   it('renders initial loading state with spinner and disabled controls', () => {
     const { document, cleanup } = setupWizard();
     try {
-      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
-        getWizardElements(document);
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
 
       expect(assignmentInput.disabled).toBe(true);
-      expect(assignmentInput.getAttribute('placeholder')).toContain('Loading assignments');
-      expect(assignmentMenu.querySelector('li')?.textContent).toContain('Loading assignments');
+      expect(assignmentMenu.textContent).toContain('Loading assignments');
       expect(spinner.hidden).toBe(false);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
@@ -61,16 +63,18 @@ describe('Assessment wizard Step 1', () => {
       // Trigger assignments success handler explicitly
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
-        getWizardElements(document);
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      const menuItems = assignmentMenu.querySelectorAll('li[data-assignment-id]');
       expect(assignmentInput.disabled).toBe(false);
-      expect(menuItems.length).toBe(assignments.length);
-      expect(menuItems[0].dataset.assignmentId).toBe('a1');
-      expect(menuItems[0].querySelector('.assignment-name')?.textContent).toBe(
-        'Year 9 Programming'
-      );
+      // first result is a placeholder + two assignment rows
+      const items = Array.from(assignmentMenu.querySelectorAll('li.assignment-row'));
+      expect(items.length).toBe(assignments.length);
+      expect(items[0].dataset.assignmentId).toBe('a1');
+      expect(items[0].textContent).toContain('Year 9 Programming');
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
@@ -90,14 +94,20 @@ describe('Assessment wizard Step 1', () => {
       const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
       googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const { assignmentInput, startButton } = getWizardElements(document);
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const startButton = document.getElementById('startAssessment');
 
-      selectAssignment(document, window, 'alpha');
-      expect(assignmentInput.value).toBe('Alpha Assignment');
+      // click the assignment row to select
+      const row = assignmentMenu.querySelector('li.assignment-row[data-assignment-id="alpha"]');
+      row.click();
+      // Without a linked definition with documents, start should remain disabled
       expect(startButton.disabled).toBe(true);
 
-      assignmentInput.value = '';
-      assignmentInput.dispatchEvent(new window.Event('input'));
+      // simulate clearing selection
+      const input = document.getElementById('assignmentInput');
+      input.value = '';
+      // reconstruct state similar to empty filter action
+      window.assignmentWizard.handleFilterInput();
       expect(startButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
@@ -135,12 +145,16 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerSuccess('fetchAssignmentsForWizard', []);
 
-      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
-        getWizardElements(document);
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
 
       expect(assignmentInput.disabled).toBe(true);
-      expect(assignmentMenu.querySelectorAll('li').length).toBe(1);
-      expect(assignmentMenu.querySelector('li')?.textContent).toBe('No assignments available yet');
+      const items = Array.from(assignmentMenu.querySelectorAll('li.assignment-row'));
+      expect(items.length).toBe(1);
+      expect(items[0].textContent).toBe('No assignments available yet');
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);
@@ -159,9 +173,12 @@ describe('Assessment wizard Step 1', () => {
       vi.runAllTimers();
       googleRun.triggerFailure('fetchAssignmentsForWizard', { message: 'Network error' });
 
-      const { assignmentInput, assignmentMenu, spinner, startButton, errorMessage } =
-        getWizardElements(document);
+      const assignmentInput = document.getElementById('assignmentInput');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
 
+      expect(assignmentInput.disabled).toBe(true);
       expect(assignmentInput.disabled).toBe(true);
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);

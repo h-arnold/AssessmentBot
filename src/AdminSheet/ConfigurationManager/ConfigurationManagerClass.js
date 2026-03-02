@@ -400,6 +400,9 @@ class ConfigurationManager extends BaseSingleton {
    * @returns {Object|null} Class info object with ClassName, CourseId, and YearGroup properties, or null if unavailable.
    */
   getClassInfo() {
+    // Ensure the singleton has been initialised so document/script properties are available.
+    this.ensureInitialized();
+
     // 1. Check Document Properties
     const jsonString = this.documentProperties.getProperty(
       ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO

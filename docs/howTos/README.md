@@ -38,7 +38,7 @@ For Assessment Bot to identify which parts of the document to assess, the releva
 
 #### 🔖 How to Tag a Task for Assessment
 
-> 💡 **Tip:** Create the *Slide Template* first and tag that. Then, make a copy and add your answers to create the *Reference Slides*. This ensures tagging consistency.
+> 💡 **Tip:** Create the _Slide Template_ first and tag that. Then, make a copy and add your answers to create the _Reference Slides_. This ensures tagging consistency.
 
 ##### 📝 Text or Table Tasks
 
@@ -69,14 +69,14 @@ At present, there's no need to tag anything in Google Sheets. Assessment Bot cur
 - Correct,
 - Incorrect
 - Not attempted.
-  
-It determines this by comparing the formulae in the *Reference Sheet* with the formulae in the *Template Sheet*. Formulae that are present in the *Reference Sheet* but not in the *Template Sheet* are identified as tasks to assess. This means that any formulae you put in the template for scaffolding purposes will not be assessed.
+
+It determines this by comparing the formulae in the _Reference Sheet_ with the formulae in the _Template Sheet_. Formulae that are present in the _Reference Sheet_ but not in the _Template Sheet_ are identified as tasks to assess. This means that any formulae you put in the template for scaffolding purposes will not be assessed.
 
 ---
 
 ## 📤 Distributing Tasks to Your Students
 
-Attach the *Slide Template* to your Google Classroom assignment as normal.
+Attach the _Slide Template_ to your Google Classroom assignment as normal.
 
 ---
 
@@ -87,8 +87,8 @@ Attach the *Slide Template* to your Google Classroom assignment as normal.
 If you have followed the process above, you should have:
 
 1. **A Slide Template**: The blank template for students to complete.
-2. **Reference Slides**: A completed version of the *Slide Template* that would score a `5` for completeness, accuracy, and SPaG.
-3. **A Google Classroom Assignment**: The *Slide Template* attached for students to complete.
+2. **Reference Slides**: A completed version of the _Slide Template_ that would score a `5` for completeness, accuracy, and SPaG.
+3. **A Google Classroom Assignment**: The _Slide Template_ attached for students to complete.
 
 > **Note:** Ensure students have completed at least part of the task before proceeding.
 
@@ -96,7 +96,7 @@ If you are missing any of these components, go back and complete them first.
 
 ### 🆔 Getting the Slide IDs
 
-You need the *Reference Slides* and *Slide Template* IDs to assess the work. To get these:
+You need the _Reference Slides_ and _Slide Template_ IDs to assess the work. To get these:
 
 1. Open each document.
 2. Select the part of the URL after `/d/` and before `/edit`.
@@ -112,6 +112,6 @@ You need the *Reference Slides* and *Slide Template* IDs to assess the work. To 
 2. Click **Assessment Bot** from the menu at the top of the screen.
 3. Click **Assess Student Work**.
 4. Select the assignment you want to assess and click **Go**.
-5. Enter the Slide IDs for the *Reference Slides* (top) and *Template* (bottom) [which you obtained earlier](#-getting-the-slide-ids) and click **Go**.
+5. Enter the Slide IDs for the _Reference Slides_ (top) and _Template_ (bottom) [which you obtained earlier](#-getting-the-slide-ids) and click **Go**.
 6. Wait patiently. The assessment can take 2 to 10 minutes depending on the document's size and complexity. Image tasks take significantly longer than text or table tasks.
 7. Once complete, you will have a RAG-coloured table summarising all the students' work.

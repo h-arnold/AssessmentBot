@@ -9,6 +9,9 @@
  *  - (Optional) set a static FREEZE_AFTER_INIT = true to enable automatic Object.freeze(instance)
  */
 class BaseSingleton {
+  /**
+   *
+   */
   constructor() {
     if (new.target === BaseSingleton) {
       throw new Error('BaseSingleton is abstract and cannot be instantiated directly.');

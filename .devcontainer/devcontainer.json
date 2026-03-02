@@ -25,7 +25,11 @@
         "github.copilot-chat",
         "yzhang.markdown-all-in-one",
         "ms-vscode.js-debug",
-        "vscjava.vscode-java-pack"
+        "vscjava.vscode-java-pack",
+        "DavidAnson.vscode-markdownlint",
+        "bierner.markdown-mermaid",
+        "openai.chatgpt",
+        "github.vscode-github-actions"
       ],
       "settings": {
         "editor.wordWrap": "on",

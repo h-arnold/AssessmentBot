@@ -476,6 +476,62 @@ class DriveManager {
   }
 
   /**
+   * Normalises a Google Drive URL or file ID to a file ID.
+   * Accepts either a full Google Drive/Docs/Slides/Sheets URL or a raw file ID.
+   * If the input is already a valid file ID, it is returned unchanged.
+   * If the input is a URL, the file ID is extracted and validated.
+   *
+   * Supported URL patterns:
+   * - https://docs.google.com/presentation/d/{id}/edit
+   * - https://docs.google.com/spreadsheets/d/{id}/edit
+   * - https://drive.google.com/file/d/{id}/view
+   * - https://drive.google.com/open?id={id}
+   * - https://docs.google.com/document/d/{id}/edit
+   * - Query parameter format: ?id={id}
+   *
+   * @param {string} urlOrId - A Google Drive URL or file ID.
+   * @return {string} The extracted or validated file ID.
+   * @throws {Error} If the input is not a valid URL or file ID.
+   */
+  static normaliseToFileId(urlOrId) {
+    Validate.requireParams({ urlOrId }, 'normaliseToFileId');
+
+    const input = String(urlOrId).trim();
+
+    // Fast path: if it's already a valid file ID, return it unchanged.
+    if (DriveManager.isValidGoogleDriveFileId(input)) {
+      return input;
+    }
+
+    // Attempt to extract ID from URL patterns.
+    // Pattern 1: /d/{id}/ or /d/{id}/edit or /d/{id}/view etc.
+    const pathMatch = input.match(/\/d\/([a-zA-Z0-9_-]{33,44})/);
+    if (pathMatch && pathMatch[1]) {
+      const extractedId = pathMatch[1];
+      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+        return extractedId;
+      }
+    }
+
+    // Pattern 2: ?id={id} or open?id={id}
+    const queryMatch = input.match(/[?&]id=([a-zA-Z0-9_-]{33,44})/);
+    if (queryMatch && queryMatch[1]) {
+      const extractedId = queryMatch[1];
+      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+        return extractedId;
+      }
+    }
+
+    // If we reach here, the input is neither a valid ID nor a recognised URL.
+    ProgressTracker.getInstance().logError('Invalid Google Drive URL or file ID provided.', {
+      input: urlOrId,
+    });
+    throw new Error(
+      `Invalid Google Drive URL or file ID: "${urlOrId}". Please provide a valid URL or file ID.`
+    );
+  }
+
+  /**
    * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
    * @param {string} fileId - Drive file ID.
    * @return {string} ISO 8601 timestamp of the file's last modified time.

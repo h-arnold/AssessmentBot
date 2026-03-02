@@ -1,4 +1,5 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
+const jsdoc = require('eslint-plugin-jsdoc');
 
 module.exports = [
   {
@@ -41,7 +42,7 @@ module.exports = [
         SummarySheetManager: 'readonly',
       },
     },
-    plugins: { googleappsscript },
+    plugins: { googleappsscript, jsdoc },
     rules: {
       // Enforce using the aggregator instead of direct numbered artifact files.
       'no-restricted-imports': [
@@ -130,6 +131,25 @@ module.exports = [
             'Use InitController.getInstance() instead of new InitController(). Direct constructor calls violate the singleton pattern.',
         },
       ],
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          require: {
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+            ClassDeclaration: true,
+          },
+        },
+      ],
+      'no-magic-numbers': [
+        'error',
+        {
+          ignore: [0, 1],
+          ignoreArrayIndexes: true,
+          enforceConst: true,
+          detectObjects: false,
+        },
+      ],
     },
   },
   // Add an override to allow BaseSingleton definition in the canonical base file.
@@ -174,6 +194,8 @@ module.exports = [
             'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
         },
       ],
+      'jsdoc/require-jsdoc': 'off',
+      'no-magic-numbers': 'off',
     },
   },
 ];

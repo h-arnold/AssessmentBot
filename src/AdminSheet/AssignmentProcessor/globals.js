@@ -40,6 +40,44 @@ function startProcessing(assignmentId, definitionKey) {
 }
 
 /**
+ * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
+ * Normalises reference and template document URLs/IDs, validates them, and returns a complete
+ * definition payload with tasks for Step 4 (weightings).
+ *
+ * @param {Object} params - Wizard input parameters.
+ * @param {string} params.assignmentId - Google Classroom assignment ID (required).
+ * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
+ * @param {string} params.referenceDocumentId - Reference document URL or file ID.
+ * @param {string} params.templateDocumentId - Template document URL or file ID.
+ * @return {Object} Full AssignmentDefinition JSON payload including tasks and artifacts.
+ * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
+ */
+function createDefinitionFromWizardInputs({
+  assignmentId,
+  assignmentTitle,
+  referenceDocumentId,
+  templateDocumentId,
+  yearGroup = null,
+}) {
+  const controller = new AssignmentController();
+  try {
+    return controller.createDefinitionFromWizardInputs({
+      assignmentId,
+      assignmentTitle,
+      referenceDocumentId,
+      templateDocumentId,
+      yearGroup,
+    });
+  } catch (err) {
+    ABLogger.getInstance().error(
+      'Error in globals.createDefinitionFromWizardInputs:',
+      err?.message ?? err
+    );
+    throw err;
+  }
+}
+
+/**
  * Processes the selected assignment by retrieving parameters and executing the workflow.
  */
 function triggerProcessSelectedAssignment() {
@@ -63,4 +101,16 @@ function removeTrigger(functionName) {
 function testWorkflow() {
   const controller = new AssignmentController();
   controller.testWorkflow();
+}
+
+// Export for Node.js testing environment
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    saveStartAndShowProgress,
+    startProcessing,
+    createDefinitionFromWizardInputs,
+    triggerProcessSelectedAssignment,
+    removeTrigger,
+    testWorkflow,
+  };
 }

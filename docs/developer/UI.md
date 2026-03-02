@@ -81,44 +81,6 @@ It contains the essentials for new BeerCSS-backed HtmlService pages:
 - Vendored BeerCSS scoped stylesheet
 - Vendored BeerCSS JavaScript (for interactive features like field activation, textarea autosize, etc.)
 
-### 3b) Local BeerCSS overrides ✅
-
-A small override partial is included to house local, project-specific CSS tweaks that must live alongside the vendored BeerCSS. This file is included by the shared Head fragment so overrides apply to all BeerCSS-backed dialogs by default:
-
-- `src/AdminSheet/UI/partials/BeerCssOverrides.html`
-
-Current purpose:
-
-- Make the `.beer` root container background transparent (so dialogs inherit the GAS modal chrome background).
-- Provide a central, clearly documented place for small, non-breaking adjustments.
-
-Guidelines for extending this file:
-
-- Keep overrides minimal and targeted; prefer adding dialog-specific classes or scoped selectors rather than broad global rules.
-- Avoid editing the vendored `BeerCssScoped.html` directly — keep project changes in this partial so vendor bumps are simpler and auditable.
-- When adding an override, include a short header comment with the intention, author and date.
-- Prefer non-`!important` rules; use `!important` only when necessary to override vendored behaviour.
-- After changes, perform a quick visual check by opening a BeerCSS dialog (for example the demo or playground) to ensure there are no regressions.
-- For per-dialog overrides consider adding an include from that dialog's template rather than expanding this global partial.
-
-Example (current content):
-
-```html
-<!-- Local overrides: make BeerCSS modal background transparent so GAS modal chrome shows through. -->
-<style>
-  .beer {
-    background-color: transparent !important;
-  }
-  .beer:has(> main) {
-    background-color: transparent !important;
-  }
-</style>
-```
-
-When bumping BeerCSS:
-
-- Regenerate vendored partials (`npm run vendor:beercss`) and verify the overrides still work; adjust selectors where necessary.
-
 ### 4) Demo dialog scaffold
 
 A minimal dialog exists as a reference implementation:
@@ -168,7 +130,48 @@ Global functions that call `getUIManager()` in [97_globals.js](../../src/AdminSh
 <?!= include('UI/partials/Head') ?>
 ```
 
-3. In `<body>`, wrap your content in a scoped container:
+### Stepper partial & builder (reusable wizard stepper)
+
+A small, reusable stepper builder is provided to make creating multi-step wizards consistent and DRY.
+
+Files:
+
+- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup and (optionally) a tiny wrapper that will attach to `globalThis.WizardStepper` if the client script is available. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
+- `src/AdminSheet/UI/partials/StepperJS.html` — small, testable client-side controller that can render, update, and manage step state and events. (Import when you need programmatic control or for tests.)
+
+Usage patterns:
+
+- Server-rendered initial snapshot (progressive enhancement): embed the partial in your template's footer:
+
+```html
+<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
+```
+
+- Client-side behaviour (optional): the wrapper is bundled into the partial, so include the partial and instantiate the controller as needed:
+
+```html
+<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
+<script>
+  // Example: initialises and exposes the stepper for further control
+  const stepperRoot = document.querySelector('[data-wizard-stepper]');
+  const stepper = new globalThis.WizardStepper(stepperRoot, {
+    steps: [{ label: 'Previous' }, { label: 'Current' }, { label: 'Next' }],
+    currentStep: 1,
+    onChange: (index) => {
+      /* handle step change */
+    },
+  });
+</script>
+```
+
+Design notes:
+
+- The client controller is intentionally small and framework-agnostic. It is attached to `globalThis` to allow easy access in classic-script templates.
+- The JS wrapper is bundled into the `Stepper` partial. Include `<?!= include('UI/partials/Stepper', ...) ?>` when you require runtime updates; a separate `StepperScript.html` include is not required.
+- The controller API includes `setSteps()`, `addStep()`, `removeStep()`, `setCurrent()`, `enableStep()`, and `destroy()`. It emits `onChange` callbacks for user-triggered step changes.
+- Accessible markup: the server partial uses `aria-current="step"` for the active step and `aria-disabled="true"` for disabled steps.
+
+This approach follows the project conventions: server-rendered, progressive-enhancement-first, and vendored BeerCSS styling in a `.beer` container. 3. In `<body>`, wrap your content in a scoped container:
 
 ```html
 <div class="beer">
@@ -176,7 +179,7 @@ Global functions that call `getUIManager()` in [97_globals.js](../../src/AdminSh
 </div>
 ```
 
-4. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
+1. Add a method to [BeerCSSUIHandler](../../src/AdminSheet/UI/99_BeerCssUIHandler.js) using the `_renderBeerCSSDialog()` helper:
 
 ```javascript
 showMyNewDialog() {
@@ -187,7 +190,7 @@ showMyNewDialog() {
 }
 ```
 
-5. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
+1. When refactoring an existing UIManager method, override it in `BeerCSSUIHandler` with your BeerCSS implementation. The parent class remains unchanged for reference.
 
 ## Updating BeerCSS
 
@@ -199,7 +202,7 @@ When you need to bump BeerCSS:
 npm install beercss@<version>
 ```
 
-2. Regenerate the vendored partials:
+1. Regenerate the vendored partials:
 
 ```bash
 npm run vendor:beercss
@@ -210,8 +213,8 @@ This updates:
 - `src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html`
 - `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`
 
-3. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
-4. Run `npm test` to verify UI tests still pass.
+1. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
+2. Run `npm test` to verify UI tests still pass.
 
 ## Notes / constraints (Apps Script HtmlService)
 
@@ -237,6 +240,8 @@ HtmlService pages often pick up default browser margins, which can introduce a v
 
 ### BeerCSS field structure matters (labels, suffix/prefix)
 
+**Vendor-first rule:** Always inspect the vendored BeerCSS partials (`src/AdminSheet/UI/vendor/beercss/BeerCssScoped.html` and `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`) and the local overrides (`src/AdminSheet/UI/partials/BeerCssOverrides.html`) before making layout or styling changes. Prefer the default BeerCSS classes and patterns (for example `.field.label`, `.suffix`, `.prefix`) over bespoke positioning or overrides — the vendored stylesheet already handles alignment, clipping and icon spacing in most cases.
+
 BeerCSS positions suffix/prefix adornments (including `progress.circle`) using CSS that expects a particular DOM structure.
 
 - For a labelled field, use the BeerCSS `label` helper pattern:
@@ -245,6 +250,35 @@ BeerCSS positions suffix/prefix adornments (including `progress.circle`) using C
   - label immediately after (`select + label` is used by BeerCSS CSS/JS)
 
 - For suffix spinners/icons, avoid adding bespoke `position: absolute` rules unless you have to. BeerCSS already centres `progress.circle` in a suffix/prefix field.
+
+### Floating labels and placeholder text overlap
+
+BeerCSS's `.field.label` class adds a floating animation where the label moves up when the field is focused or has content. However, when using `<input type="text">` with `placeholder` text, the label animates _over_ the placeholder during the transition, creating an ugly overlapping appearance.
+
+**Solution**: For text inputs with placeholder text, omit the `.label` class and `<label>` element. Instead:
+
+- Remove `class="field label"`; use `class="field"` only
+- Remove the `<label for="...">` element
+- Add `aria-label="..."` to the input for accessibility
+
+Example:
+
+```html
+<!-- ❌ Avoid: label will overlap placeholder text -->
+<div class="field label suffix border">
+  <input type="text" placeholder="Paste the document link..." />
+  <label for="docInput">Document</label>
+  <i id="docIcon"></i>
+</div>
+
+<!-- ✅ Correct: no animation, placeholder is always visible, accessible -->
+<div class="field suffix border">
+  <input type="text" placeholder="Paste the document link..." aria-label="Document" />
+  <i id="docIcon"></i>
+</div>
+```
+
+**Why**: Select elements and other controls without placeholder text do not have this issue, because the floating label animation happens over empty space. Only text inputs with placeholder content exhibit the problem.
 
 ### Full-width elements in modals
 

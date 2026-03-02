@@ -139,7 +139,7 @@ class DbManager extends BaseSingleton {
     }
     const db = this.getDb();
     try {
-      return db.collection(name);
+      return db.getCollection(name);
     } catch (error) {
       this.progressTracker.logAndThrowError(`Failed to get collection "${name}".`, error);
     }
