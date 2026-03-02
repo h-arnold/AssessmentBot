@@ -101,9 +101,9 @@ The existing test pattern from `tests/ui/assignmentWizardStep1.test.js` should b
 **Supported formats**:
 
 | Input Type | Pattern                              | Inferred Type | Example                                          |
-| ---------- | ------------------------------------ | ------------- | ------------------------------------------------ | --- |
+| ---------- | ------------------------------------ | ------------- | ------------------------------------------------ |
 | Slides URL | `/presentation/d/<id>`               | `SLIDES`      | `https://docs.google.com/presentation/d/1ABC...` |
-| Sheets URL | `/spreadsheets/d/<id>`               | `SHEETS`      | `https://docs.google.com/spreadsheets/d/1XYZ...` |     |
+| Sheets URL | `/spreadsheets/d/<id>`               | `SHEETS`      | `https://docs.google.com/spreadsheets/d/1XYZ...` |
 | Drive link | `drive.google.com/...` or `open?id=` | `unknown`     | `https://drive.google.com/file/d/1GHI...`        |
 | Raw ID     | Alphanumeric + `_-`, 25+ chars       | `unknown`     | `1AbCdEfGhIjKlMnOpQrStUvWxYz...`                 |
 
