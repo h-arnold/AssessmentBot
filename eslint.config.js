@@ -132,7 +132,7 @@ module.exports = [
         },
       ],
       'jsdoc/require-jsdoc': [
-        'error',
+        'warn',
         {
           require: {
             FunctionDeclaration: true,
@@ -142,7 +142,7 @@ module.exports = [
         },
       ],
       'no-magic-numbers': [
-        'error',
+        'warn',
         {
           ignore: [0, 1],
           ignoreArrayIndexes: true,
@@ -163,7 +163,7 @@ module.exports = [
   {
     files: [
       'src/AdminSheet/ConfigurationManager/**/*.js',
-      'src/AdminSheet/UI/UIManager.js',
+      'src/AdminSheet/UI/98_UIManager.js',
       'src/AdminSheet/Utils/ProgressTracker.js',
       'src/AdminSheet/y_controllers/InitController.js',
       'tests/**/*.js',

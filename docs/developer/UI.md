@@ -136,25 +136,31 @@ A small, reusable stepper builder is provided to make creating multi-step wizard
 
 Files:
 
-- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup and (optionally) a tiny wrapper that will attach to `globalThis.WizardStepper` if the client script is available. Accepts `steps` (array of `{ label }`) and `currentStep` (0-based index) as parameters via `include()`.
-- `src/AdminSheet/UI/partials/StepperJS.html` — small, testable client-side controller that can render, update, and manage step state and events. (Import when you need programmatic control or for tests.)
+- `src/AdminSheet/UI/partials/Stepper.html` — server-side partial rendering the initial stepper markup only. Template variables `steps` (array of `{ label }`) and `currentStep` (0-based index) must be set on the parent template before evaluation; `include()` only accepts a filename and does not forward extra arguments.
+- `src/AdminSheet/UI/partials/StepperJS.html` — client-side controller script that exposes the `WizardStepper` class in the page scope. Include this separately when you need programmatic control over stepper state at runtime.
+- `src/AdminSheet/UI/partials/WizardStepper.js` — the same `WizardStepper` class as a Node-compatible module for use in Vitest unit tests.
 
 Usage patterns:
 
-- Server-rendered initial snapshot (progressive enhancement): embed the partial in your template's footer:
+- Server-rendered initial snapshot (progressive enhancement): set template variables before including the partial:
 
-```html
-<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
+```javascript
+// In the parent template file (server-side scriptlet)
+template.steps = [{ label: 'Previous' }, { label: 'Current' }, { label: 'Next' }];
+template.currentStep = 1;
 ```
 
-- Client-side behaviour (optional): the wrapper is bundled into the partial, so include the partial and instantiate the controller as needed:
+```html
+<?!= include('UI/partials/Stepper') ?>
+```
+
+- Client-side behaviour: include `StepperJS` separately to get the `WizardStepper` class, then instantiate it with a DOM container:
 
 ```html
-<?!= include('UI/partials/Stepper', { steps: [{label:'Previous'},{label:'Current'},{label:'Next'}], currentStep: 1 }) ?>
+<?!= include('UI/partials/StepperJS') ?>
 <script>
-  // Example: initialises and exposes the stepper for further control
-  const stepperRoot = document.querySelector('[data-wizard-stepper]');
-  const stepper = new globalThis.WizardStepper(stepperRoot, {
+  // WizardStepper is available in page scope after StepperJS is included
+  const stepper = new WizardStepper('#myStepperContainer', {
     steps: [{ label: 'Previous' }, { label: 'Current' }, { label: 'Next' }],
     currentStep: 1,
     onChange: (index) => {
@@ -166,12 +172,15 @@ Usage patterns:
 
 Design notes:
 
-- The client controller is intentionally small and framework-agnostic. It is attached to `globalThis` to allow easy access in classic-script templates.
-- The JS wrapper is bundled into the `Stepper` partial. Include `<?!= include('UI/partials/Stepper', ...) ?>` when you require runtime updates; a separate `StepperScript.html` include is not required.
+- The client controller is intentionally small and framework-agnostic. It is available as `WizardStepper` in classic-script templates after including `StepperJS.html`.
+- `Stepper.html` (markup) and `StepperJS.html` (client script) are separate includes; include both when you need the initial server-rendered snapshot AND runtime updates.
 - The controller API includes `setSteps()`, `addStep()`, `removeStep()`, `setCurrent()`, `enableStep()`, and `destroy()`. It emits `onChange` callbacks for user-triggered step changes.
 - Accessible markup: the server partial uses `aria-current="step"` for the active step and `aria-disabled="true"` for disabled steps.
+- For testing, import from `WizardStepper.js` directly: `const WizardStepper = require('.../WizardStepper.js')`.
 
-This approach follows the project conventions: server-rendered, progressive-enhancement-first, and vendored BeerCSS styling in a `.beer` container. 3. In `<body>`, wrap your content in a scoped container:
+This approach follows the project conventions: server-rendered, progressive-enhancement-first, and vendored BeerCSS styling in a `.beer` container.
+
+3. In `<body>`, wrap your content in a scoped container:
 
 ```html
 <div class="beer">
