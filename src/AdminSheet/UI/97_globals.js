@@ -121,16 +121,25 @@ function showVersionSelector() {
  * This code is preserved for future UI improvements.
  */
 
+/**
+ *
+ */
 function getClassroomData() {
   const uiManager = getUIManager();
   return uiManager.getClassroomData();
 }
 
+/**
+ *
+ */
 function saveClassroomData(rows) {
   const uiManager = getUIManager();
   uiManager.saveClassroomData(rows);
 }
 
+/**
+ *
+ */
 function showClassroomEditorModal() {
   const uiManager = getUIManager();
   uiManager.showClassroomEditorModal();

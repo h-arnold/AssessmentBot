@@ -8,6 +8,9 @@
  * 3) Copying document properties from the source (optional).
  */
 class SheetCloner {
+  /**
+   *
+   */
   constructor() {
     // Ensure this is only run from the admin sheet. Throws an error if not.
     Utils.validateIsAdminSheet(true);

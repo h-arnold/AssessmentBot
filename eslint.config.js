@@ -154,7 +154,7 @@ module.exports = [
   },
   // Add an override to allow BaseSingleton definition in the canonical base file.
   {
-    files: ['src/AdminSheet/00_BaseSingleton.js'],
+    files: ['src/AdminSheet/00_BaseSingleton.js', 'src/backend/00_BaseSingleton.js'],
     rules: {
       'no-restricted-syntax': 'off',
     },

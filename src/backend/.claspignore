@@ -1,0 +1,7 @@
+# Ignore local artifact index aggregator used only for tests
+
+Models/Artifacts/index.js
+
+# Ignore local HTML file used only for tests
+
+UI/StepperPlayground.local.html

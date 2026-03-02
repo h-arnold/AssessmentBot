@@ -2,6 +2,9 @@
  * Controller methods for the UpdateManager class.
  */
 class UpdateController {
+  /**
+   *
+   */
   constructor() {
     this.updateManager = new UpdateManager();
     this.uiManager = UIManager.getInstance();
