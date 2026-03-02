@@ -159,36 +159,6 @@
       }
       /* Use BeerCSS icon positioning and sizing for .field.suffix */
 
-      /* Step 2 document inputs: make room for an icon to the right of the input */
-      #step2Panel .field.label.border {
-        position: relative;
-      }
-
-      /* Rely on BeerCSS suffix handling for input padding and icon spacing */
-
-      /* Use BeerCSS default label underline behaviour */
-
-      /* Success underline for validated fields (use composite .field-success to simplify JS) */
-      #step2Panel .field.field-success.label > label::after {
-        border-block-start-color: #4caf50;
-        color: #4caf50;
-      }
-      /* Ensure the entire control (container + input) shows the green success border and focus state */
-      #step2Panel .field.field-success,
-      #step2Panel .field.field-success > :is(input, textarea, select) {
-        border-color: #4caf50 !important;
-      }
-
-      #step2Panel .field.field-success > :is(input, textarea, select):focus {
-        border-color: #4caf50 !important;
-        outline-color: #4caf50 !important;
-      }
-      #step2Panel .field.field-success label,
-      #step2Panel .field.field-success i {
-        color: #4caf50 !important;
-      }
-      /* Use BeerCSS icon positioning and sizing for .field.suffix */
-
       /* Stepper styling: override footer flex layout to center stepper */
       #wizardFooter .wizard-stepper {
         display: flex;
@@ -231,117 +201,33 @@
   <body>
     <div class="beer">
       <main class="wizard-content">
-        <!-- Year Group Panel -->
-        <section id="yearGroupPanel" hidden>
+        <div id="yearGroupPanel" hidden>
           <header>
-            <p class="muted">Select your year group to personalise your assessment settings.</p>
+            <p class="muted">Select the year group for this assessment.</p>
           </header>
-          <fieldset class="field-group">
-            <legend>Year Group</legend>
-            <div class="field label border">
-              <select id="yearGroupSelect">
-                <option value="">Select a year group...</option>
-                <option value="7">Year 7</option>
-                <option value="8">Year 8</option>
-                <option value="9">Year 9</option>
-                <option value="10">Year 10</option>
-                <option value="11">Year 11</option>
-              </select>
-              <label for="yearGroupSelect">Year Group</label>
-            </div>
-          </fieldset>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="yearGroupNext">Next</button>
+            <button class="button border primary" type="button" id="yearGroupNext">Next</button>
           </div>
-        </section>
+        </div>
 
-        <!-- Assignment Selection Panel (Step 1) -->
-        <section id="step1Panel" hidden>
+        <div id="step1Panel" hidden>
           <header>
-            <p class="muted" id="assignmentHelp">
-              Choose the Classroom assignment you want to assess.
-            </p>
+            <p class="muted">Choose the Classroom assignment you want to assess.</p>
           </header>
-
-        <fieldset id="step1Panel" class="field-group no-border">
-          <div class="field label suffix border">
-            <input
-              id="assignmentInput"
-              type="text"
-              autocomplete="off"
-              disabled
-              data-ui="#assignmentMenu"
-              placeholder="Loading assignments..."
-            />
-            <label for="assignmentInput" class="active">Assignment</label>
-            <progress
-              id="assignmentLoadingSpinner"
-              class="circle indeterminate"
-              aria-hidden="false"
-            ></progress>
-            <menu id="assignmentMenu" class="assignment-menu">
-              <li class="assignment-row muted">Loading assignments...</li>
-            </menu>
-          </div>
-          <output
-            id="assignmentErrorMessage"
-            class="status danger"
-            aria-live="polite"
-            hidden
-          ></output>
-        </fieldset>
-
-        <fieldset id="step2Panel" class="field-group no-border" hidden>
-          <legend>Provide documents for this assignment</legend>
-          <p class="muted">
-            Paste the URLs of the reference and template documents. We will validate the document
-            type and check the URLs are different before creating the assignment.
-          </p>
-
-          <div class="field label border suffix">
-            <input
-              id="referenceInputStep2"
-              type="text"
-              autocomplete="off"
-              placeholder="Reference document URL"
-            />
-            <label for="referenceInputStep2">Reference document</label>
-            <i id="referenceIcon"></i>
-            <output id="referenceFeedback" class="status" aria-live="polite" hidden></output>
-          </div>
-
-          <div class="field label border suffix">
-            <input
-              id="templateInputStep2"
-              type="text"
-              autocomplete="off"
-              placeholder="Template document URL"
-            />
-            <label for="templateInputStep2">Template document</label>
-            <i id="templateIcon"></i>
-            <output id="templateFeedback" class="status" aria-live="polite" hidden></output>
-          </div>
-
-          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
-        </fieldset>
           <fieldset class="field-group">
             <legend>Assignment</legend>
-            <div class="field suffix border">
-              <input
-                id="assignmentInput"
-                type="text"
-                autocomplete="off"
-                placeholder="Loading assignments..."
-                disabled
-                aria-label="Assignment"
-              />
+            <div class="field label suffix border">
+              <input id="assignmentInput" type="text" disabled autocomplete="off" />
+              <label for="assignmentInput">Assignment</label>
               <progress
                 id="assignmentLoadingSpinner"
                 class="circle indeterminate"
                 aria-hidden="false"
               ></progress>
             </div>
-            <menu id="assignmentMenu"></menu>
+            <ul id="assignmentMenu" class="menu" hidden>
+              <li class="assignment-row muted">Loading assignments...</li>
+            </ul>
             <output
               id="assignmentErrorMessage"
               class="status danger"
@@ -350,161 +236,77 @@
             ></output>
           </fieldset>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="step1Next" disabled>Next</button>
+            <button class="button border primary" type="button" id="step1Next" disabled>
+              Next
+            </button>
           </div>
-        </section>
+        </div>
 
-        <!-- Definition Choice Panel -->
-        <section id="definitionChoicePanel" hidden>
-          <header>
-            <p class="muted">How would you like to define this assignment?</p>
-          </header>
-          <fieldset class="field-group">
-            <legend>Assignment Definition</legend>
-            <label>
-              <input type="radio" name="definitionChoice" value="link" id="choiceLink" />
-              Link to existing definition
-            </label>
-            <label>
-              <input type="radio" name="definitionChoice" value="create" id="choiceCreate" />
+        <div id="definitionChoicePanel" hidden>
+          <p>This assignment does not have a definition yet. What would you like to do?</p>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="choiceLink">
+              Link existing definition
+            </button>
+            <button class="button border primary" type="button" id="choiceCreate">
               Create new definition
-            </label>
-          </fieldset>
-          <div class="wizard-actions">
-            <button class="button border" type="button" id="definitionChoiceLink">
-              Link existing
-            </button>
-            <button class="button border" type="button" id="definitionChoiceCreate">
-              Create new
             </button>
           </div>
-        </section>
+        </div>
 
-        <!-- Link Definition Panel -->
-        <section id="linkDefinitionPanel" hidden>
-          <header>
-            <p class="muted">Select an existing assignment definition to link.</p>
-          </header>
-          <fieldset class="field-group">
-            <legend>Existing Definitions</legend>
-            <div class="field label border">
-              <select id="definitionSelect">
-                <option value="">Loading definitions...</option>
-              </select>
-              <label for="definitionSelect">Definition</label>
-            </div>
-          </fieldset>
+        <div id="linkDefinitionPanel" hidden>
+          <p>Link this assignment to an existing definition.</p>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="linkFinish">Finish</button>
+            <button class="button border primary" type="button" id="linkFinish" disabled>
+              Finish
+            </button>
           </div>
-        </section>
+        </div>
 
-        <!-- Step 2: Create Definition (Documents) Panel -->
-        <section id="step2Panel" hidden>
-          <header>
-            <p class="muted">Provide reference and template documents for this assignment.</p>
-          </header>
-          <fieldset class="field-group">
-            <legend>Assignment Documents</legend>
-            <div class="field suffix border">
-              <input
-                id="referenceInputStep2"
-                type="text"
-                autocomplete="off"
-                placeholder="Paste the reference document link..."
-                aria-label="Reference Document"
-              />
-              <i id="referenceIcon"></i>
-            </div>
-            <small id="referenceFeedback" hidden></small>
-
-            <div class="field suffix border">
-              <input
-                id="templateInputStep2"
-                type="text"
-                autocomplete="off"
-                placeholder="Paste the template document link..."
-                aria-label="Template Document"
-              />
-              <i id="templateIcon"></i>
-            </div>
-            <small id="templateFeedback" hidden></small>
-
-            <output
-              id="step2ErrorMessage"
-              class="status danger"
-              aria-live="polite"
-              hidden
-            ></output>
-          </fieldset>
+        <div id="step2Panel" hidden>
+          <div class="field label suffix border">
+            <input id="referenceInputStep2" type="text" />
+            <label for="referenceInputStep2">Reference document URL</label>
+            <i id="referenceIcon"></i>
+          </div>
+          <output id="referenceFeedback" hidden></output>
+          <div class="field label suffix border">
+            <input id="templateInputStep2" type="text" />
+            <label for="templateInputStep2">Template document URL</label>
+            <i id="templateIcon"></i>
+          </div>
+          <output id="templateFeedback" hidden></output>
+          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
+          <div id="assignmentHelp" hidden>
+            <p class="muted">
+              Paste the Google Drive URLs for the reference and template documents.
+            </p>
+          </div>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="step2Next" disabled>Next</button>
+            <button class="button border primary" type="button" id="step2Next" disabled>
+              Next
+            </button>
           </div>
-        </section>
+        </div>
 
-        <!-- Weightings Panel -->
-        <section id="weightingsPanel" hidden>
-          <header>
-            <p class="muted">Configure the assessment weightings (optional).</p>
-          </header>
-          <fieldset class="field-group">
-            <legend>Weightings</legend>
-            <p class="muted">You can set weightings for overall assignment and individual tasks.</p>
-            <div class="field label border">
-              <select id="overallWeightingSelect">
-                <option value="">Use default weighting</option>
-                <option value="1">1.0 (equal weighting)</option>
-                <option value="0.8">0.8</option>
-                <option value="0.6">0.6</option>
-              </select>
-              <label for="overallWeightingSelect">Overall Weighting</label>
-            </div>
-            <div class="field label border">
-              <select id="taskWeightingSelect">
-                <option value="">Use task defaults</option>
-                <option value="equal">Equal per task</option>
-                <option value="manual">Manual (coming soon)</option>
-              </select>
-              <label for="taskWeightingSelect">Task Weighting</label>
-            </div>
-          </fieldset>
+        <div id="weightingsPanel" hidden>
+          <p>Set the assessment weightings.</p>
           <div class="wizard-actions">
-            <button class="button border" type="button" id="weightingsFinish">Finish</button>
+            <button class="button border primary" type="button" id="weightingsFinish">
+              Finish
+            </button>
           </div>
-        </section>
+        </div>
       </main>
 
-      <footer class="wizard-actions">
-        <nav class="group connected">
-          <button class="button border left-round" type="button" id="backToStep1" hidden>
-            Back
-          </button>
-          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-          <button
-            class="button border right-round primary"
-            type="button"
-            id="startAssessment"
-            disabled
-          >
-            Start assessment
-          </button>
-        </nav>
-      <footer id="wizardFooter" class="wizard-footer">
-        <div id="wizardStepper" class="wizard-stepper-wrap"></div>
-        <div class="wizard-footer-actions">
-          <nav class="group connected">
-            <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-            <button
-              class="button border right-round primary"
-              type="button"
-              id="startAssessment"
-              disabled
-            >
-              Start assessment
-            </button>
-          </nav>
-        </div>
-      </footer>
+      <div class="wizard-actions-bar">
+        <button class="button border" type="button" id="cancelWizard">Cancel</button>
+        <button class="button" type="button" id="startAssessment" disabled hidden>
+          Start assessment
+        </button>
+      </div>
+
+      <footer id="wizardFooter" class="wizard-actions"></footer>
     </div>
 
     <?!= include('UI/partials/StepperJS') ?>
@@ -514,6 +316,26 @@
         const assignmentMenu = document.getElementById('assignmentMenu');
         const spinner = document.getElementById('assignmentLoadingSpinner');
         const errorMessage = document.getElementById('assignmentErrorMessage');
+        // Old footer buttons removed. New buttons referenced in bindEvents.
+
+        // Panels
+        const yearGroupPanel = document.getElementById('yearGroupPanel');
+        const step1Panel = document.getElementById('step1Panel'); // Assignment selection
+        const definitionChoicePanel = document.getElementById('definitionChoicePanel');
+        const linkDefinitionPanel = document.getElementById('linkDefinitionPanel');
+        const step2Panel = document.getElementById('step2Panel'); // Create definition (docs)
+        const weightingsPanel = document.getElementById('weightingsPanel');
+
+        // Step 2 elements
+        const referenceInput = document.getElementById('referenceInputStep2');
+        const templateInput = document.getElementById('templateInputStep2');
+        const referenceIcon = document.getElementById('referenceIcon');
+        const templateIcon = document.getElementById('templateIcon');
+        const referenceFeedback = document.getElementById('referenceFeedback');
+        const templateFeedback = document.getElementById('templateFeedback');
+        const backButton = document.getElementById('backToStep1');
+        const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        const assignmentHelp = document.getElementById('assignmentHelp');
 
         // Step 2 elements
         const step1Panel = document.getElementById('step1Panel');
@@ -548,156 +370,50 @@
             stepperSteps: [],
             stepperCurrentIndex: 0,
             maxReachedStepIndex: 0,
-            yearGroup: null,
           },
           init() {
             if (this.initialised) return;
+            this.initialised = true;
 
-            try {
-              // Validate that google.script.run is available
-              if (!globalThis.google || !globalThis.google.script || !globalThis.google.script.run) {
-                const errorMsg =
-                  'Google Apps Script client API (google.script.run) is not available. ' +
-                  'This dialog must be opened from within Google Apps Script.';
-                console.error('[AssessmentWizard] Critical error:', errorMsg);
-                this.showError(errorMsg);
-                return;
-              }
+            // Initialise Stepper
+            this.stepper = new WizardStepper('#wizardFooter', {
+              steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
+              currentStep: 0,
+              onChange: (index) => this.handleStepperChange(index),
+            });
+            this.showStep('yearGroup');
 
-              // Check that required server-side functions are callable
-              const requiredFunctions = [
-                'fetchAssignmentsForWizard',
-                'getAllPartialDefinitions',
-                'saveStartAndShowProgress',
-                'startAssessmentFromWizard',
-                'showProgressModal',
-              ];
-
-              const missingFunctions = requiredFunctions.filter(
-                (fn) => typeof google.script.run[fn] !== 'function'
-              );
-
-              if (missingFunctions.length > 0) {
-                const errorMsg =
-                  'Required server-side functions are not available: ' +
-                  missingFunctions.join(', ') +
-                  '. Please ensure the Apps Script project has been deployed correctly.';
-                console.error('[AssessmentWizard] Missing functions:', missingFunctions);
-                this.showError(errorMsg);
-                return;
-              }
-
-              this.initialised = true;
-
-              // Initialise Stepper
-              this.stepper = new WizardStepper('#wizardStepper', {
-                steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
-                currentStep: 0,
-                onChange: (index) => this.handleStepperChange(index),
-              });
-              this.showStep('yearGroup');
-
-              this.bindEvents();
-              this.prepareForLoad('Loading assignments...');
-              setTimeout(() => this.fetchAssignments(), 0);
-              setTimeout(() => this.fetchPartialDefinitions(), 0);
-            } catch (error) {
-              console.error('[AssessmentWizard] Initialisation error:', {
-                error,
-                message: error?.message,
-                stack: error?.stack,
-              });
-              this.showError(
-                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
-              );
-            }
+            this.bindEvents();
+            this.prepareForLoad('Loading assignments...');
+            setTimeout(() => this.fetchAssignments(), 0);
+            setTimeout(() => this.fetchPartialDefinitions(), 0);
           },
           bindEvents() {
             assignmentInput.addEventListener('input', () => this.handleFilterInput());
             assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
-            cancelButton.addEventListener('click', () => this.handleCancel());
-            startButton.addEventListener('click', () => this.handleStart());
 
-            // Step 2 listeners
+            const bindClick = (id, handler) => {
+              const el = document.getElementById(id);
+              if (el) el.addEventListener('click', handler);
+            };
+
+            bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
+            bindClick('step1Next', () => this.handleStep1Next());
+            bindClick('choiceLink', () => this.showStep('linkDefinition'));
+            bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
+            bindClick('linkFinish', () => this.finishSuccess());
+            bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
+            bindClick('weightingsFinish', () => this.finishSuccess());
+            bindClick('cancelWizard', () => this.handleCancel());
+            // Back button removed as navigation is linear or via stepper (future)
+
+            // Step 2 inputs
             referenceInput.addEventListener('input', (e) =>
               this.handleDocumentInput('reference', e.target.value)
             );
             templateInput.addEventListener('input', (e) =>
               this.handleDocumentInput('template', e.target.value)
             );
-            backButton.addEventListener('click', () => this.showStep('selectAssignment'));
-            try {
-              assignmentInput.addEventListener('input', () => this.handleFilterInput());
-              assignmentInput.addEventListener('focus', () => {
-                // Show menu when input receives focus (allows re-opening dropdown after selection)
-                assignmentMenu.classList.add('active');
-              });
-              assignmentInput.addEventListener('blur', () => {
-                // Close menu with a small delay to allow menu item clicks to register
-                setTimeout(() => assignmentMenu.classList.remove('active'), 100);
-              });
-              assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
-
-              const bindClick = (id, handler) => {
-                const el = document.getElementById(id);
-                if (el) {
-                  el.addEventListener('click', () => {
-                    try {
-                      handler();
-                    } catch (error) {
-                      console.error(`[AssessmentWizard] Error in ${id} click handler:`, {
-                        error,
-                        message: error?.message,
-                        stack: error?.stack,
-                      });
-                      this.showError(
-                        `Action failed: ${error?.message || error}. Check the browser console (F12) for details.`
-                      );
-                    }
-                  });
-                }
-              };
-
-              bindClick('yearGroupNext', () => {
-                const sel = document.getElementById('yearGroupSelect');
-                const val = sel && sel.value ? Number.parseInt(sel.value, 10) : null;
-                this.state.yearGroup = Number.isNaN(val) ? null : val;
-                this.showStep('selectAssignment');
-              });
-              bindClick('step1Next', () => this.handleStep1Next());
-              bindClick('choiceLink', () => this.showStep('linkDefinition'));
-              bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
-              bindClick('definitionChoiceLink', () => this.showStep('linkDefinition'));
-              bindClick('definitionChoiceCreate', () => this.showStep('createDefinitionDocs'));
-              bindClick('linkFinish', () => this.finishSuccess());
-              bindClick('step2Next', () => this.handleStep2Next());
-              bindClick('weightingsFinish', () => this.finishSuccess());
-              bindClick('cancelWizard', () => this.handleCancel());
-              // Back button removed as navigation is linear or via stepper (future)
-
-              // Step 2 inputs
-              referenceInput.addEventListener('input', (e) => {
-                try {
-                  this.handleDocumentInput('reference', e.target.value);
-                } catch (error) {
-                  console.error('[AssessmentWizard] Error in reference input handler:', error);
-                }
-              });
-              templateInput.addEventListener('input', (e) => {
-                try {
-                  this.handleDocumentInput('template', e.target.value);
-                } catch (error) {
-                  console.error('[AssessmentWizard] Error in template input handler:', error);
-                }
-              });
-            } catch (error) {
-              console.error('[AssessmentWizard] Error in bindEvents:', {
-                error,
-                message: error?.message,
-                stack: error?.stack,
-              });
-              throw error; // Re-throw to be caught by init
-            }
           },
 
           prepareForLoad(placeholder) {
@@ -1027,15 +743,6 @@
               return;
             }
 
-            // If the click was on an action (create definition), handle that first
-            const action = event.target.closest('[data-action="create-definition"]');
-            if (action) {
-              const id = action.dataset.assignmentId;
-              const assignment = this.state.assignments.find((a) => a.id === id);
-              if (assignment) return this.openCreateAssignmentPanel(assignment);
-              return;
-            }
-
             const item = event.target.closest('li[data-assignment-id]');
             if (!item) return;
 
@@ -1052,104 +759,8 @@
             this.handleSelectionChange();
           },
 
-          handleStart() {
-            if (this.state.step === 'enterDocuments') {
-              // Step 2: client-side validation only. Do not call backend at this stage.
-              if (!this.state.selectedAssignmentId) return;
-              if (!this.hasValidDocumentInputs()) {
-                step2ErrorMessage.textContent = 'Please provide two different valid document URLs.';
-                step2ErrorMessage.hidden = false;
-                return;
-              }
-
-              if (!this.state.documentsValidated) {
-                // First click: validate and move to 'ready' state locally
-                this.state.documentsValidated = true;
-                step2ErrorMessage.classList.remove('danger');
-                step2ErrorMessage.hidden = false;
-                step2ErrorMessage.textContent =
-                  'Documents validated. Click Start assessment to begin.';
-                startButton.textContent = 'Start assessment';
-                this.updateStartButtonState();
-                return;
-              }
-
-              // Documents already validated: backend action not implemented yet
-              step2ErrorMessage.classList.remove('danger');
-              step2ErrorMessage.hidden = false;
-              step2ErrorMessage.textContent = 'Start action is not yet implemented.';
-              return;
-            }
-
-            // Fast-path: if matchedDefinition is present, start using it; else do nothing for now
-            if (!this.state.selectedAssignmentId) return;
-            const def = this.state.matchedDefinition;
-            if (!def || !this.hasMatchedDefinitionWithDocs()) {
-              this.showError('No definition selected. Please link or create one.');
-              return;
-            }
-
-            // Basic pre-validation
-            if (!def.definitionKey) {
-              this.showError('Selected definition is invalid. Missing definition key.');
           handleStep1Next() {
             this.showStep('definitionChoice');
-          },
-
-          handleStep2Next() {
-            const ref = this.state.documents?.reference;
-            const tpl = this.state.documents?.template;
-
-            if (!ref || !tpl || !ref.raw || !tpl.raw) {
-              this.showError('Both reference and template documents are required.');
-              return;
-            }
-
-            this.state.isStarting = true;
-            this.setSpinnerVisible(true);
-            this.updateStartButtonState();
-
-            google.script.run
-              .withSuccessHandler((definition) => {
-                console.log('[AssessmentWizard] createDefinitionFromWizardInputs succeeded:', definition);
-                this.state.createdDefinition = definition;
-                this.state.isStarting = false;
-                this.setSpinnerVisible(false);
-                this.updateStartButtonState();
-                this.showStep('createDefinitionWeights');
-              })
-              .withFailureHandler((error) => {
-                console.error('[AssessmentWizard] createDefinitionFromWizardInputs failed:', {
-                  error,
-                  message: error?.message,
-                  stack: error?.stack,
-                  type: typeof error,
-                  assignmentId: this.state.selectedAssignmentId,
-                  assignmentName: this.state.selectedAssignmentName,
-                  referenceDocumentId: ref.raw,
-                  templateDocumentId: tpl.raw,
-                });
-
-                this.state.isStarting = false;
-                this.setSpinnerVisible(false);
-                this.updateStartButtonState();
-
-                let errorMsg = 'Failed to create definition from documents.';
-                if (error?.message) {
-                  errorMsg = `Definition error: ${error.message}`;
-                } else if (typeof error === 'string') {
-                  errorMsg = `Definition error: ${error}`;
-                }
-
-                this.showError(errorMsg + ' Check the browser console (F12) for details.');
-              })
-              .createDefinitionFromWizardInputs({
-                assignmentId: this.state.selectedAssignmentId,
-                assignmentTitle: this.state.selectedAssignmentName,
-                referenceDocumentId: ref.raw,
-                templateDocumentId: tpl.raw,
-                yearGroup: this.state.yearGroup,
-              });
           },
 
           finishSuccess() {
@@ -1157,21 +768,8 @@
           },
 
           handlePartialDefinitionsFailure(error) {
-            console.error('[AssessmentWizard] handlePartialDefinitionsFailure:', {
-              error,
-              message: error?.message,
-              stack: error?.stack,
-              type: typeof error,
-            });
-
             this.state.definitions = [];
             this.state.definitionsLoaded = true;
-
-            // Non-blocking: definitions are optional, so we just log the error
-            // but allow the wizard to continue functioning
-            console.warn(
-              'Failed to load partial definitions for wizard. Wizard will continue without definition lookups.'
-            );
           },
           handleSelectionChange() {
             const nextBtn = document.getElementById('step1Next');
@@ -1213,10 +811,7 @@
             const updateStepper = (steps, index) => {
               this.state.stepperSteps = steps.slice();
               this.state.stepperCurrentIndex = index;
-              this.state.maxReachedStepIndex = Math.max(
-                this.state.maxReachedStepIndex ?? 0,
-                index
-              );
+              this.state.maxReachedStepIndex = Math.max(this.state.maxReachedStepIndex ?? 0, index);
 
               if (this.stepper) {
                 this.stepper.setSteps(steps.map((s) => ({ label: s })));
@@ -1297,93 +892,6 @@
             this.setFieldValidState('template', null, null);
             this.showStep('createDefinitionDocs');
             referenceInput.focus();
-          },
-
-          // Infer the document type only. We no longer attempt to extract or validate an ID.
-          // Returns: { raw, inferredType }
-          parseGoogleUrl(input) {
-            const trimmed = (input || '').toString().trim();
-            if (!trimmed) return { raw: '', inferredType: 'unknown' };
-
-            // Simple detection by URL shape - don't attempt to extract IDs or enforce length checks
-            if (/\/presentation\//i.test(trimmed) || /slide(s)?/i.test(trimmed)) {
-              return { raw: trimmed, inferredType: 'SLIDES' };
-            }
-            if (/\/spreadsheets\//i.test(trimmed) || /sheet(s)?/i.test(trimmed)) {
-              return { raw: trimmed, inferredType: 'SHEETS' };
-            }
-            if (/\/document\//i.test(trimmed) || /doc(s)?/i.test(trimmed)) {
-              return { raw: trimmed, inferredType: 'DOCS' };
-            }
-
-            // Not a recognised document type
-            return { raw: trimmed, inferredType: 'unknown' };
-          },
-
-          // Normalise pasted values for a forgiving equality check (strip trailing edit fragments and query strings)
-          normaliseForComparison(raw) {
-            if (!raw) return '';
-            let s = raw.toString().trim();
-            // Remove querystring and fragments
-            s = s.replace(/[?#].*$/, '');
-            // Remove common trailing edit paths like /edit or /edit#slide=id
-            // Avoid matching empty strings inside the optional group by requiring the
-            // fragment/query delimiter when present (prevents redundant `(?:.*)?` patterns)
-            s = s.replace(/\/edit(?:[#?].*)?$/, '');
-            // Trim trailing slashes
-            s = s.replace(/\/+$/, '');
-            return s;
-          },
-
-          handleDocumentInput(fieldKey, rawValue) {
-            const parsed = this.parseGoogleUrl(rawValue);
-            this.state.documents = this.state.documents || { reference: {}, template: {} };
-            this.state.documents[fieldKey] = {
-              raw: rawValue,
-              inferredType: parsed.inferredType,
-            };
-
-            // Consider a field valid if we detected a document type (not 'unknown') and there is some input
-            this.setFieldValidState(
-              fieldKey,
-              parsed.inferredType !== 'unknown',
-              parsed.inferredType
-            );
-            // Check for cross-field conflicts (both values present and equal)
-            this.validateDocumentPair();
-            this.updateStartButtonState();
-          },
-
-          showStep(step) {
-            this.state.step = step;
-            step1Panel.hidden = step !== 'selectAssignment';
-            step2Panel.hidden = step !== 'enterDocuments';
-            backButton.hidden = step !== 'enterDocuments';
-            // Hide the top helper paragraph when entering Step 2 (it's step 1 specific)
-            if (assignmentHelp) assignmentHelp.hidden = step !== 'selectAssignment';
-            // set primary button label
-            startButton.textContent = step === 'enterDocuments' ? 'Next' : 'Start assessment';
-            // Clear any step2 errors when switching
-            step2ErrorMessage.hidden = true;
-            step2ErrorMessage.textContent = '';
-          },
-
-          openCreateAssignmentPanel(assignment) {
-            // Prepare Step 2 state and UI for creating a new assignment definition
-            this.state.selectedAssignmentId = assignment.id;
-            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
-            this.state.documents = {
-              reference: { raw: '', id: null, inferredType: null },
-              template: { raw: '', id: null, inferredType: null },
-            };
-
-            referenceInput.value = '';
-            templateInput.value = '';
-            this.setFieldValidState('reference', null, null);
-            this.setFieldValidState('template', null, null);
-            this.showStep('enterDocuments');
-            referenceInput.focus();
-            this.updateStartButtonState();
           },
 
           // Infer the document type only. We no longer attempt to extract or validate an ID.
@@ -1591,175 +1099,6 @@
               );
           },
 
-
-          // If both document IDs are present and identical, mark both fields invalid and show a helpful message
-          validateDocumentPair() {
-            const ref = this.state.documents?.reference;
-            const tpl = this.state.documents?.template;
-
-            // Clear any previous pair-level message first
-            step2ErrorMessage.hidden = true;
-            step2ErrorMessage.textContent = '';
-
-            if (!ref || !tpl || !ref.raw || !tpl.raw) {
-              // Not enough info to validate pair; clear field-level conflict states if any
-              return false;
-            }
-
-            const normRef = this.normaliseForComparison(ref.raw);
-            const normTpl = this.normaliseForComparison(tpl.raw);
-
-            if (normRef && normTpl && normRef === normTpl) {
-              const msg = 'Reference and template documents must be different.';
-              // mark both fields invalid with conflict messaging (no per-field text)
-              this.setFieldConflictState('reference', msg);
-              this.setFieldConflictState('template', msg);
-
-              step2ErrorMessage.classList.remove('danger');
-              step2ErrorMessage.classList.add('danger');
-              step2ErrorMessage.hidden = false;
-              step2ErrorMessage.textContent = msg;
-
-              return true;
-            }
-
-            // If we reach here they are different; ensure fields show their individual valid/invalid state
-            // Re-run per-field validation to restore green states if applicable
-            this.setFieldValidState('reference', ref.inferredType !== 'unknown', ref.inferredType);
-            this.setFieldValidState('template', tpl.inferredType !== 'unknown', tpl.inferredType);
-            return false;
-          },
-
-          setFieldConflictState(fieldKey, message) {
-            const fieldEl =
-              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
-            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
-            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
-            const labelEl = fieldEl.querySelector('label');
-
-            // Remove any success styling
-            fieldEl.classList.remove('green-border', 'field-success');
-            iconEl.classList.remove('green-text');
-            if (labelEl) labelEl.classList.remove('green-text');
-
-            // Show error state (icon + invalid styling) but do not display a per-field text message; use the step-level message instead
-            fieldEl.classList.add('invalid');
-            feedbackEl.hidden = true; // keep per-field feedback hidden to avoid duplication
-            iconEl.textContent = 'close';
-            iconEl.className = 'error-text';
-          },
-
-          // Now called with (fieldKey, isValid, inferredType)
-          setFieldValidState(fieldKey, isValid, inferredType) {
-            const fieldEl =
-              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
-            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
-            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
-            const labelEl = fieldEl.querySelector('label');
-
-            // clear previous states
-            fieldEl.classList.remove('invalid', 'green-border', 'field-success');
-            iconEl.classList.remove('green-text');
-            if (labelEl) labelEl.classList.remove('green-text');
-            feedbackEl.hidden = true;
-            iconEl.className = '';
-            iconEl.textContent = '';
-
-            if (!isValid) {
-              // No recognised doc type – mark visually invalid but avoid a per-field message to reduce noise for users.
-              fieldEl.classList.add('invalid');
-              feedbackEl.hidden = true;
-              iconEl.textContent = 'close';
-              // use BeerCSS error utility for icon colour
-              iconEl.className = 'error-text';
-              return;
-            }
-
-            // Valid type - set icon according to inferred type
-            if (inferredType === 'SLIDES') {
-              iconEl.textContent = 'slideshow';
-            } else if (inferredType === 'SHEETS') {
-              iconEl.textContent = 'grid_on';
-            } else if (inferredType === 'DOCS') {
-              iconEl.textContent = 'description';
-            } else {
-              iconEl.textContent = 'help';
-            }
-
-            // Indicate success using composite helper class
-            fieldEl.classList.add('field-success');
-          },
-
-          hasValidDocumentInputs() {
-            const ref = this.state.documents?.reference;
-            const tpl = this.state.documents?.template;
-            if (!ref || !tpl) return false;
-            if (!ref.raw || !tpl.raw) return false;
-            if (ref.inferredType === 'unknown' || tpl.inferredType === 'unknown') return false;
-
-            const normRef = this.normaliseForComparison(ref.raw);
-            const normTpl = this.normaliseForComparison(tpl.raw);
-            if (!normRef || !normTpl) return false;
-            if (normRef === normTpl) return false;
-            return true;
-          },
-
-          submitCreateDefinition() {
-            // pre-validated on client, hand off to server to validate & persist
-            const ref = this.state.documents.reference;
-            const tpl = this.state.documents.template;
-            if (!ref || !tpl || !ref.raw || !tpl.raw) {
-              step2ErrorMessage.textContent = 'Both document URLs are required.';
-              step2ErrorMessage.hidden = false;
-              return;
-            }
-
-            this.state.isStarting = true;
-            this.updateStartButtonState();
-            this.setSpinnerVisible(true);
-
-            google.script.run
-              .withSuccessHandler((processId) => {
-                console.log('[AssessmentWizard] saveStartAndShowProgress succeeded:', processId);
-                google.script.run.showProgressModal();
-                google.script.host.close();
-              })
-              .withFailureHandler((error) => {
-                console.error('[AssessmentWizard] saveStartAndShowProgress failed:', {
-                  error,
-                  message: error?.message,
-                  stack: error?.stack,
-                  type: typeof error,
-                  assignmentId: this.state.selectedAssignmentId,
-                  assignmentName: this.state.selectedAssignmentName,
-                  referenceDocumentId: ref.raw,
-                  templateDocumentId: tpl.raw,
-                });
-
-                this.state.isStarting = false;
-                this.updateStartButtonState();
-                this.setSpinnerVisible(false);
-
-                let errorMsg = 'Failed to start assessment.';
-                if (error?.message) {
-                  errorMsg = `Assessment start error: ${error.message}`;
-                } else if (typeof error === 'string') {
-                  errorMsg = `Assessment start error: ${error}`;
-                }
-
-                step2ErrorMessage.textContent = errorMsg + ' Check the browser console (F12) for details.';
-                step2ErrorMessage.hidden = false;
-              })
-              .saveStartAndShowProgress(
-                this.state.selectedAssignmentName,
-                {
-                  referenceDocumentId: ref.raw,
-                  templateDocumentId: tpl.raw,
-                },
-                this.state.selectedAssignmentId
-              );
-          },
-
           handleCancel() {
             google.script.host.close();
           },
@@ -1776,17 +1115,6 @@
             return !!(def && def.referenceDocumentId && def.templateDocumentId);
           },
           updateStartButtonState() {
-            if (this.state.step === 'enterDocuments') {
-              if (this.state.documentsValidated) {
-                startButton.disabled = !!this.state.isStarting;
-              } else {
-                startButton.disabled = !this.hasValidDocumentInputs() || this.state.isStarting;
-              }
-              return;
-            }
-
-            const hasDocs = this.hasMatchedDefinitionWithDocs();
-            startButton.disabled = !hasDocs || this.state.isStarting;
             const step1Next = document.getElementById('step1Next');
             const linkFinish = document.getElementById('linkFinish');
             const step2Next = document.getElementById('step2Next');
