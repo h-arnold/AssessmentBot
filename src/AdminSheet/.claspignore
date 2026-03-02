@@ -4,4 +4,4 @@ Models/Artifacts/index.js
 
 # Ignore local HTML file used only for tests
 
-src/AdminSheet/UI/StepperPlayground.local.html
+UI/StepperPlayground.local.html

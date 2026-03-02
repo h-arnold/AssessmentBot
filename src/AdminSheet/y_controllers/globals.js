@@ -10,7 +10,7 @@ function getAllPartialDefinitions() {
   const controller = new AssignmentDefinitionController();
   try {
     const defs = controller.getAllPartialDefinitions();
-    return defs.map((d) => (d && typeof d.toPartialJSON === 'function' ? d.toPartialJSON() : d));
+    return defs.map((d) => d.toPartialJSON());
   } catch (err) {
     const progressTracker = ProgressTracker.getInstance();
     progressTracker.logAndThrowError(

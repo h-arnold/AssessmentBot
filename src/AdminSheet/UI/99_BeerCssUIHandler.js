@@ -14,7 +14,6 @@
  * const uiHandler = BeerCSSUIHandler.getInstance();
  * uiHandler.showConfigurationDialog(); // Uses BeerCSS version once implemented
  */
-
 class BeerCSSUIHandler extends UIManager {
   /**
    * Constructor for BeerCSSUIHandler
@@ -54,9 +53,11 @@ class BeerCSSUIHandler extends UIManager {
    * This is a reference implementation proving the BeerCSS scaffold works end-to-end.
    */
   showBeerCssDemoDialog() {
+    const DEMO_WIDTH = 420;
+    const DEMO_HEIGHT = 220;
     this._renderDialog('UI/BeerCssDemoDialog', {}, 'BeerCSS Demo', {
-      width: 420,
-      height: 220,
+      width: DEMO_WIDTH,
+      height: DEMO_HEIGHT,
     });
   }
 
@@ -65,9 +66,11 @@ class BeerCSSUIHandler extends UIManager {
    * Interactive reference for developers building new dialogs.
    */
   showBeerCssPlaygroundDialog() {
+    const PLAYGROUND_WIDTH = 800;
+    const PLAYGROUND_HEIGHT = 680;
     this._renderDialog('UI/BeerCssPlayground', {}, 'BeerCSS Playground', {
-      width: 800,
-      height: 680,
+      width: PLAYGROUND_WIDTH,
+      height: PLAYGROUND_HEIGHT,
     });
   }
 
@@ -75,9 +78,11 @@ class BeerCSSUIHandler extends UIManager {
    * Opens the progress modal using a BeerCSS template.
    */
   showProgressModal() {
+    const PROGRESS_WIDTH = 400;
+    const PROGRESS_HEIGHT = 160;
     this._renderDialog('UI/BeerCssProgressModal', {}, 'Progress', {
-      width: 400,
-      height: 160,
+      width: PROGRESS_WIDTH,
+      height: PROGRESS_HEIGHT,
     });
   }
 
@@ -85,9 +90,11 @@ class BeerCSSUIHandler extends UIManager {
    * Shows the assessment wizard modal for Step 1.
    */
   showAssessmentWizard() {
+    const WIZARD_WIDTH = 660;
+    const WIZARD_HEIGHT = 440;
     this._renderDialog('UI/AssessmentWizard', {}, 'Step 1 - Select assignment', {
-      width: 660,
-      height: 440,
+      width: WIZARD_WIDTH,
+      height: WIZARD_HEIGHT,
     });
   }
 

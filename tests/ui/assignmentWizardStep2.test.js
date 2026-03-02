@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
+import { renderTemplateWithIncludes, evalWizardScripts } from '../helpers/htmlTemplateRenderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,6 +99,8 @@ function setupWizard() {
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
 
+  evalWizardScripts(window, vi);
+
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
   );
@@ -141,14 +143,12 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
 
       const step2 = document.getElementById('step2Panel');
       const refInput = document.getElementById('referenceInputStep2');
-      const backButton = document.getElementById('backToStep1');
-      const startButton = document.getElementById('startAssessment');
+      const nextButton = document.getElementById('step2Next');
 
       expect(step2.hidden).toBe(false);
       expect(document.activeElement.id).toBe(refInput.id);
-      expect(backButton.hidden).toBe(false);
-      expect(startButton.textContent.trim()).toBe('Next');
-      expect(startButton.disabled).toBe(true);
+      expect(nextButton.textContent.trim()).toBe('Next');
+      expect(nextButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -172,7 +172,7 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
       const tplInput = document.getElementById('templateInputStep2');
       const refIcon = document.getElementById('referenceIcon');
       const tplIcon = document.getElementById('templateIcon');
-      const startButton = document.getElementById('startAssessment');
+      const nextButton = document.getElementById('step2Next');
 
       // Paste a Slides URL
       refInput.value = 'https://docs.google.com/presentation/d/1SLIDEIDEXAMPLE1234567890';
@@ -185,7 +185,7 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
       expect(tplIcon.textContent).toBe('grid_on');
 
       // Now Next should be enabled (ids different)
-      expect(startButton.disabled).toBe(false);
+      expect(nextButton.disabled).toBe(false);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -275,27 +275,21 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
 
       const refInput = document.getElementById('referenceInputStep2');
       const tplInput = document.getElementById('templateInputStep2');
-      const startButton = document.getElementById('startAssessment');
-      const step2Error = document.getElementById('step2ErrorMessage');
+      const nextButton = document.getElementById('step2Next');
+      const weightingsPanel = document.getElementById('weightingsPanel');
 
       refInput.value = 'https://docs.google.com/presentation/d/1SLIDEIDEXAMPLE1234567890';
       tplInput.value = 'https://docs.google.com/presentation/d/1OTHERIDEXAMPLE1234567890';
       refInput.dispatchEvent(new window.Event('input'));
       tplInput.dispatchEvent(new window.Event('input'));
 
-      expect(startButton.disabled).toBe(false);
+      expect(nextButton.disabled).toBe(false);
 
-      // Click Next (first click) - should validate and not call the backend
-      startButton.click();
+      // Click Next - should advance to weights panel and not call backend
+      nextButton.click();
 
       expect(googleRun.calledMethods).not.toContain('saveStartAndShowProgress');
-      expect(step2Error.hidden).toBe(false);
-      expect(step2Error.textContent).toContain('Documents validated');
-      expect(startButton.textContent.trim()).toBe('Start assessment');
-
-      // Clicking again (Start assessment) should still not call backend at this time
-      startButton.click();
-      expect(googleRun.calledMethods).not.toContain('saveStartAndShowProgress');
+      expect(weightingsPanel.hidden).toBe(false);
     } finally {
       vi.useRealTimers();
       cleanup();
