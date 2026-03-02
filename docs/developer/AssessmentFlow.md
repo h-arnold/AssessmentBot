@@ -78,6 +78,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   4. Calculates modal width based on longest assignment title
   5. Calls `_showTemplateDialog()` with assignment data
 - **Data Passed**:
+
   ```javascript
   {
     assignments: [
@@ -86,6 +87,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
     ];
   }
   ```
+
 - **Template Shown**: `UI/AssignmentDropdown.html`
 
 **GoogleClassroomManager Methods**:
@@ -127,6 +129,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   9. Extracts saved document IDs from definition if it exists
   10. Shows modal with assignment data and saved document IDs
 - **Data Passed to Template**:
+
   ```javascript
   {
     assignmentDataObj: { id: "assignmentId", name: "Assignment Name" },
@@ -136,6 +139,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
     }
   }
   ```
+
 - **Template Shown**: `UI/SlideIdsModal.html`
 
 **Classes Used**:
@@ -196,6 +200,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 - **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:398-427`
 - **Parameters**:
+
   ```javascript
   {
     assignmentTitle: string | null,
@@ -206,6 +211,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
     }
   }
   ```
+
 - **Process**:
   1. Detects document type (SLIDES or SHEETS) via `_detectDocumentType()`
   2. Fetches courseWork from Google Classroom API
@@ -213,6 +219,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   4. Loads ABClass to get yearGroup
   5. Calls `AssignmentDefinitionController.ensureDefinition()` to get/create definition
 - **Returns**:
+
   ```javascript
   {
     definition: AssignmentDefinition,
@@ -436,6 +443,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 - **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:6-695`
 - **Constructor Properties**:
+
   ```javascript
   {
     courseId: string,
@@ -450,6 +458,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
     _hydrationLevel: 'full'
   }
   ```
+
 - **Legacy Aliases**: Via `_applyLegacyAliases()` for backward compatibility
   - `documentType`, `referenceDocumentId`, `templateDocumentId`, `tasks`
 
@@ -489,6 +498,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
   4. Attaches legacy student metadata (non-persisted)
   5. Adds to submissions array
 - **StudentSubmission Created**:
+
   ```javascript
   new StudentSubmission(
     studentId, // from student.id
@@ -541,6 +551,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 - **Location**: `/src/AdminSheet/Models/TaskDefinition.js`
 - **Properties**:
+
   ```javascript
   {
     id: string,              // Generated ID
@@ -553,6 +564,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
     }
   }
   ```
+
 - **Methods**:
   - `validate()`: Checks for required artifacts
   - `getId()`: Returns task ID
@@ -645,6 +657,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 - **Location**: `/src/AdminSheet/Models/StudentSubmission.js` (both classes in same file)
 - **Properties**:
+
   ```javascript
   {
     id: string,              // Derived ID (ssi_{hash})
@@ -754,6 +767,7 @@ assignment.submissions = [
   4. Builds UID index for response routing
   5. Returns array of request objects
 - **Request Object Structure**:
+
   ```javascript
   {
     uid: string,           // Unique identifier
@@ -770,6 +784,7 @@ assignment.submissions = [
     muteHttpExceptions: true
   }
   ```
+
 - **Logging**: Reports cache hits, new requests, and not-attempted count
 
 **Method**: `processStudentResponses(requests, assignment)`
@@ -812,6 +827,7 @@ assignment.submissions = [
 
 - **Location**: `/src/AdminSheet/Models/Assessment.js`
 - **Properties**:
+
   ```javascript
   {
     category: string,      // completeness, accuracy, spag
@@ -877,6 +893,7 @@ submission.items["task_001"] = {
   5. Generates spag assessment (formula syntax quality)
   6. Creates feedback for incorrect cell references
 - **Returns**:
+
   ```javascript
   {
     completenessAssessment: Assessment,

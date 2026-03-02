@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <?!= include('UI/partials/Head') ?> <?!= include('UI/vendor/beercss/BeerCssScoped') ?> <?!=
-    include('UI/vendor/beercss/BeerCssJs') ?>
+    <?!= include('UI/partials/Head') ?>
     <title>Assessment wizard</title>
     <style>
       html,
@@ -22,86 +21,401 @@
         flex: 1;
       }
 
+      .beer .wizard-content {
+        overflow: visible !important;
+      }
+
       .wizard-actions {
         display: flex;
         justify-content: flex-end;
         gap: 0.5rem;
         padding: 0 1rem 1rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .wizard-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0 1rem 1rem;
+      }
+
+      .wizard-footer-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .wizard-stepper-wrap {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+      }
+
+      #assignmentMenu {
+        position: relative;
+        opacity: 1;
+        visibility: visible;
+        box-shadow: none;
+        z-index: 10;
+        max-block-size: 18rem;
+        transform: none;
+        background-color: var(--surface-container);
+        border-radius: 0.25rem;
+      }
+
+      #assignmentMenu:not(.active) {
+        display: none;
+      }
+
+      #assignmentMenu > li {
+        min-block-size: 2.5rem;
+        padding: 0.3rem 0.75rem;
+      }
+
+      .assignment-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+      }
+
+      .assignment-name {
+        flex: 1;
+      }
+
+      .assignment-icons {
+        display: inline-flex;
+        gap: 0.25rem;
+      }
+
+      .assignment-icons .icon-tooltip {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .assignment-icons .tooltip {
+        z-index: 60;
+        position: absolute;
+        top: -2.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--inverse-surface);
+        color: var(--inverse-on-surface);
+        padding: 0.35rem 0.6rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        visibility: hidden;
+        opacity: 0;
+        transition:
+          opacity 0.12s ease,
+          visibility 0.12s ease;
+        pointer-events: none;
+      }
+
+      .icon-tooltip:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+      }
+
+      .field-group.no-border {
+        border: none;
+        padding: 0;
+      }
+
+      .assignment-icons i {
+        font-size: 1.1rem;
+      }
+
+      /* Step 2 document inputs: make room for an icon to the right of the input */
+      #step2Panel .field.label.border {
+        position: relative;
+      }
+
+      /* Rely on BeerCSS suffix handling for input padding and icon spacing */
+
+      /* Use BeerCSS default label underline behaviour */
+
+      /* Success underline for validated fields (use composite .field-success to simplify JS) */
+      #step2Panel .field.field-success.label > label::after {
+        border-block-start-color: #4caf50;
+        color: #4caf50;
+      }
+      /* Ensure the entire control (container + input) shows the green success border and focus state */
+      #step2Panel .field.field-success,
+      #step2Panel .field.field-success > :is(input, textarea, select) {
+        border-color: #4caf50 !important;
+      }
+
+      #step2Panel .field.field-success > :is(input, textarea, select):focus {
+        border-color: #4caf50 !important;
+        outline-color: #4caf50 !important;
+      }
+      #step2Panel .field.field-success label,
+      #step2Panel .field.field-success i {
+        color: #4caf50 !important;
+      }
+      /* Use BeerCSS icon positioning and sizing for .field.suffix */
+
+      /* Stepper styling: override footer flex layout to center stepper */
+      #wizardFooter .wizard-stepper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        flex-direction: row;
+      }
+
+      #wizardFooter .wizard-stepper ol {
+        width: 100%;
+      }
+
+      /* Stepper step indicators: BeerCSS circle class sizing */
+      #wizardFooter .wizard-stepper span.circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        border-radius: 50%;
+        background-color: var(--surface-variant);
+        color: var(--on-surface-variant);
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      #wizardFooter .wizard-stepper span.circle.primary {
+        background-color: var(--primary);
+        color: var(--on-primary);
+      }
+
+      #wizardFooter .wizard-stepper span.circle.muted {
+        background-color: var(--outline-variant);
+        color: var(--on-surface-variant);
       }
     </style>
   </head>
   <body>
     <div class="beer">
       <main class="wizard-content">
-      <header>
-        <p class="muted">
-          Choose the Classroom assignment you want to assess before moving on to the document
-          inputs.
-        </p>
-      </header>
-
-      <fieldset class="field-group">
-        <legend>Assignment</legend>
-        <div class="field label suffix border">
-          <select id="assignmentSelect" disabled>
-            <option value="">Loading assignments...</option>
-          </select>
-          <label for="assignmentSelect">Assignment</label>
-          <progress
-            id="assignmentLoadingSpinner"
-            class="circle indeterminate"
-            aria-hidden="false"
-          ></progress>
+        <div id="yearGroupPanel" hidden>
+          <header>
+            <p class="muted">Select the year group for this assessment.</p>
+          </header>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="yearGroupNext">Next</button>
+          </div>
         </div>
-        <output
-          id="assignmentErrorMessage"
-          class="status danger"
-          aria-live="polite"
-          hidden
-        ></output>
-      </fieldset>
-    </main>
 
-    <footer class="wizard-actions">
-      <nav class="group connected">
-        <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-        <button
-          class="button border right-round primary"
-          type="button"
-          id="startAssessment"
-          disabled
-        >
+        <div id="step1Panel" hidden>
+          <header>
+            <p class="muted">Choose the Classroom assignment you want to assess.</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Assignment</legend>
+            <div class="field label suffix border">
+              <input id="assignmentInput" type="text" disabled autocomplete="off" />
+              <label for="assignmentInput">Assignment</label>
+              <progress
+                id="assignmentLoadingSpinner"
+                class="circle indeterminate"
+                aria-hidden="false"
+              ></progress>
+            </div>
+            <ul id="assignmentMenu" class="menu" hidden>
+              <li class="assignment-row muted">Loading assignments...</li>
+            </ul>
+            <output
+              id="assignmentErrorMessage"
+              class="status danger"
+              aria-live="polite"
+              hidden
+            ></output>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="step1Next" disabled>
+              Next
+            </button>
+          </div>
+        </div>
+
+        <div id="definitionChoicePanel" hidden>
+          <p>This assignment does not have a definition yet. What would you like to do?</p>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="choiceLink">
+              Link existing definition
+            </button>
+            <button class="button border primary" type="button" id="choiceCreate">
+              Create new definition
+            </button>
+          </div>
+        </div>
+
+        <div id="linkDefinitionPanel" hidden>
+          <p>Link this assignment to an existing definition.</p>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="linkFinish" disabled>
+              Finish
+            </button>
+          </div>
+        </div>
+
+        <div id="step2Panel" hidden>
+          <div class="field label suffix border">
+            <input id="referenceInputStep2" type="text" />
+            <label for="referenceInputStep2">Reference document URL</label>
+            <i id="referenceIcon"></i>
+          </div>
+          <output id="referenceFeedback" hidden></output>
+          <div class="field label suffix border">
+            <input id="templateInputStep2" type="text" />
+            <label for="templateInputStep2">Template document URL</label>
+            <i id="templateIcon"></i>
+          </div>
+          <output id="templateFeedback" hidden></output>
+          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
+          <div id="assignmentHelp" hidden>
+            <p class="muted">
+              Paste the Google Drive URLs for the reference and template documents.
+            </p>
+          </div>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="step2Next" disabled>
+              Next
+            </button>
+          </div>
+        </div>
+
+        <div id="weightingsPanel" hidden>
+          <p>Set the assessment weightings.</p>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="weightingsFinish">
+              Finish
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <div class="wizard-actions-bar">
+        <button class="button border" type="button" id="cancelWizard">Cancel</button>
+        <button class="button" type="button" id="startAssessment" disabled hidden>
           Start assessment
         </button>
-      </nav>
-    </footer>
+      </div>
+
+      <footer id="wizardFooter" class="wizard-actions"></footer>
     </div>
 
+    <?!= include('UI/partials/StepperJS') ?>
     <script>
       (() => {
-        const assignmentSelect = document.getElementById('assignmentSelect');
+        const assignmentInput = document.getElementById('assignmentInput');
+        const assignmentMenu = document.getElementById('assignmentMenu');
         const spinner = document.getElementById('assignmentLoadingSpinner');
-        const startButton = document.getElementById('startAssessment');
-        const cancelButton = document.getElementById('cancelWizard');
         const errorMessage = document.getElementById('assignmentErrorMessage');
+        // Old footer buttons removed. New buttons referenced in bindEvents.
+
+        // Panels
+        const yearGroupPanel = document.getElementById('yearGroupPanel');
+        const step1Panel = document.getElementById('step1Panel'); // Assignment selection
+        const definitionChoicePanel = document.getElementById('definitionChoicePanel');
+        const linkDefinitionPanel = document.getElementById('linkDefinitionPanel');
+        const step2Panel = document.getElementById('step2Panel'); // Create definition (docs)
+        const weightingsPanel = document.getElementById('weightingsPanel');
+
+        // Step 2 elements
+        const referenceInput = document.getElementById('referenceInputStep2');
+        const templateInput = document.getElementById('templateInputStep2');
+        const referenceIcon = document.getElementById('referenceIcon');
+        const templateIcon = document.getElementById('templateIcon');
+        const referenceFeedback = document.getElementById('referenceFeedback');
+        const templateFeedback = document.getElementById('templateFeedback');
+        const backButton = document.getElementById('backToStep1');
+        const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        const assignmentHelp = document.getElementById('assignmentHelp');
+
+        // Step 2 elements
+        const step1Panel = document.getElementById('step1Panel');
+        const step2Panel = document.getElementById('step2Panel');
+        const referenceInput = document.getElementById('referenceInputStep2');
+        const templateInput = document.getElementById('templateInputStep2');
+        const referenceIcon = document.getElementById('referenceIcon');
+        const templateIcon = document.getElementById('templateIcon');
+        const referenceFeedback = document.getElementById('referenceFeedback');
+        const templateFeedback = document.getElementById('templateFeedback');
+        const backButton = document.getElementById('backToStep1');
+        const step2ErrorMessage = document.getElementById('step2ErrorMessage');
+        // Old footer buttons removed. New buttons referenced in bindEvents.
+
+        // Panels
+        const yearGroupPanel = document.getElementById('yearGroupPanel');
+        const definitionChoicePanel = document.getElementById('definitionChoicePanel');
+        const linkDefinitionPanel = document.getElementById('linkDefinitionPanel');
+        const weightingsPanel = document.getElementById('weightingsPanel');
+        const assignmentHelp = document.getElementById('assignmentHelp');
 
         const assignmentWizard = {
           initialised: false,
           state: {
             assignments: [],
             selectedAssignmentId: '',
+            filterValue: '',
+            // will hold partial definitions returned from server
+            definitions: [],
+            definitionsLoaded: false,
+            isStarting: false,
+            stepperSteps: [],
+            stepperCurrentIndex: 0,
+            maxReachedStepIndex: 0,
           },
           init() {
             if (this.initialised) return;
             this.initialised = true;
+
+            // Initialise Stepper
+            this.stepper = new WizardStepper('#wizardFooter', {
+              steps: [{ label: 'Year Group' }, { label: 'Select Assignment' }],
+              currentStep: 0,
+              onChange: (index) => this.handleStepperChange(index),
+            });
+            this.showStep('yearGroup');
+
             this.bindEvents();
             this.prepareForLoad('Loading assignments...');
-            this.fetchAssignments();
+            setTimeout(() => this.fetchAssignments(), 0);
+            setTimeout(() => this.fetchPartialDefinitions(), 0);
           },
           bindEvents() {
-            assignmentSelect.addEventListener('change', () => this.handleSelectionChange());
-            cancelButton.addEventListener('click', () => this.handleCancel());
+            assignmentInput.addEventListener('input', () => this.handleFilterInput());
+            assignmentMenu.addEventListener('click', (event) => this.handleMenuSelection(event));
+
+            const bindClick = (id, handler) => {
+              const el = document.getElementById(id);
+              if (el) el.addEventListener('click', handler);
+            };
+
+            bindClick('yearGroupNext', () => this.showStep('selectAssignment'));
+            bindClick('step1Next', () => this.handleStep1Next());
+            bindClick('choiceLink', () => this.showStep('linkDefinition'));
+            bindClick('choiceCreate', () => this.showStep('createDefinitionDocs'));
+            bindClick('linkFinish', () => this.finishSuccess());
+            bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
+            bindClick('weightingsFinish', () => this.finishSuccess());
+            bindClick('cancelWizard', () => this.handleCancel());
+            // Back button removed as navigation is linear or via stepper (future)
+
+            // Step 2 inputs
+            referenceInput.addEventListener('input', (e) =>
+              this.handleDocumentInput('reference', e.target.value)
+            );
+            templateInput.addEventListener('input', (e) =>
+              this.handleDocumentInput('template', e.target.value)
+            );
           },
+
           prepareForLoad(placeholder) {
             this.setControlsEnabled(false);
             this.renderPlaceholder(placeholder);
@@ -111,17 +425,23 @@
           fetchAssignments() {
             google.script.run
               .withSuccessHandler((payload) => this.handleAssignmentsSuccess(payload))
-              .withFailureHandler((error) => this.handleAssignmentsFailure(error))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] fetchAssignmentsForWizard failed:', error);
+                this.handleAssignmentsFailure(error);
+              })
               .fetchAssignmentsForWizard();
           },
           renderPlaceholder(text) {
-            assignmentSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = text;
-            placeholderOption.selected = true;
-            placeholderOption.disabled = true;
-            assignmentSelect.appendChild(placeholderOption);
+            this.state.filterValue = '';
+            assignmentInput.value = '';
+            assignmentInput.setAttribute('placeholder', text);
+            assignmentMenu.innerHTML = '';
+            const placeholderItem = document.createElement('li');
+            placeholderItem.className = 'assignment-row muted';
+            placeholderItem.textContent = text;
+            assignmentMenu.appendChild(placeholderItem);
+            // Show placeholder menu
+            assignmentMenu.classList.add('active');
           },
           handleAssignmentsSuccess(assignments) {
             this.state.assignments = Array.isArray(assignments) ? assignments : [];
@@ -136,31 +456,649 @@
 
             this.hideError();
             this.renderPlaceholder('Select an assignment...');
-            // Populate dropdown with assignments
-            this.state.assignments.forEach((assignment) => {
-              const option = document.createElement('option');
-              option.value = assignment.id;
-              option.textContent = assignment.title || 'Untitled assignment';
-              assignmentSelect.appendChild(option);
-            });
+            this.renderAssignmentMenuItems();
             this.setControlsEnabled(true);
             this.handleSelectionChange();
           },
           handleAssignmentsFailure(error) {
+            console.error('[AssessmentWizard] handleAssignmentsFailure:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+              type: typeof error,
+            });
+
             this.state.assignments = [];
             this.setSpinnerVisible(false);
             this.renderPlaceholder('Unable to load assignments');
             this.setControlsEnabled(false);
-            this.showError(
-              error?.message
-                ? `Failed to load assignments: ${error.message}`
-                : 'Failed to load assignments.'
+
+            // Provide detailed error message
+            let errorMsg = 'Failed to load assignments.';
+            if (error?.message) {
+              errorMsg = `Assignment loading error: ${error.message}`;
+            } else if (typeof error === 'string') {
+              errorMsg = `Assignment loading error: ${error}`;
+            }
+
+            this.showError(errorMsg + ' Please refresh the page and try again.');
+          },
+
+          // Fetch partial definitions to support wizard lookups (stored only for now)
+          fetchPartialDefinitions() {
+            google.script.run
+              .withSuccessHandler((payload) => this.handlePartialDefinitionsSuccess(payload))
+              .withFailureHandler((error) => {
+                console.error('[AssessmentWizard] getAllPartialDefinitions failed:', error);
+                this.handlePartialDefinitionsFailure(error);
+              })
+              .getAllPartialDefinitions();
+          },
+
+          handlePartialDefinitionsSuccess(definitions) {
+            this.state.definitions = Array.isArray(definitions) ? definitions : [];
+            this.state.definitionsLoaded = true;
+            this.renderAssignmentMenuItems();
+          },
+
+          /**
+           * Attempt to find a matching partial definition for the provided assignment.
+           * Matching rules (client-side):
+           * - primaryTopic must equal assignment.topicName
+           * - yearGroup must match (null treated as null)
+           * - title matches either primaryTitle or any of alternateTitles (case-insensitive, trimmed)
+           * If found, render definition panel; otherwise hide it.
+           */
+          findMatchingDefinition(assignment) {
+            if (!assignment || !this.state.definitions.length) {
+              return null;
+            }
+
+            const normTitle = (s) => (s || '').toString().trim().toLowerCase();
+            const assignmentTitle = normTitle(assignment.title);
+            const assignmentTopic = (assignment.topicName || '').toString();
+            const assignmentYear = assignment.yearGroup === undefined ? null : assignment.yearGroup;
+
+            return (
+              this.state.definitions.find((def) => {
+                if (!def) return false;
+                if ((def.primaryTopic || '') !== assignmentTopic) return false;
+
+                const defYear = def.yearGroup === undefined ? null : def.yearGroup;
+                // Loose equality for null handling
+                if (defYear !== assignmentYear) return false;
+
+                if (normTitle(def.primaryTitle) === assignmentTitle) return true;
+                if (Array.isArray(def.alternateTitles)) {
+                  if (def.alternateTitles.map((t) => normTitle(t)).includes(assignmentTitle))
+                    return true;
+                }
+                return false;
+              }) || null
             );
           },
-          handleSelectionChange() {
-            this.state.selectedAssignmentId = assignmentSelect.value;
-            startButton.disabled = !this.state.selectedAssignmentId;
+
+          matchDefinitionForAssignment(assignment) {
+            this.state.matchedDefinition = null;
+            if (!assignment) {
+              return null;
+            }
+
+            if (!this.state.definitions.length) {
+              // Definitions not yet loaded - do not hide primary actions (non-blocking lookup)
+              return null;
+            }
+
+            const match = this.findMatchingDefinition(assignment);
+
+            if (match) {
+              this.state.matchedDefinition = match;
+
+              // Fast-path: if both doc IDs exist, immediately start the assessment and close the wizard.
+              const hasDocs = !!match.referenceDocumentId && !!match.templateDocumentId;
+              if (hasDocs) {
+                this.state.isStarting = true;
+                this.setSpinnerVisible(true);
+                this.updateStartButtonState();
+
+                google.script.run
+                  .withSuccessHandler(() => {
+                    console.log('[AssessmentWizard] startAssessmentFromWizard succeeded');
+                    google.script.run.showProgressModal();
+                    google.script.host.close();
+                  })
+                  .withFailureHandler((error) => {
+                    console.error('[AssessmentWizard] startAssessmentFromWizard failed:', {
+                      error,
+                      message: error?.message,
+                      stack: error?.stack,
+                      type: typeof error,
+                      assignmentId: this.state.selectedAssignmentId,
+                      definitionKey: match.definitionKey,
+                    });
+
+                    this.state.isStarting = false;
+                    this.setSpinnerVisible(false);
+
+                    let errorMsg = 'Failed to start assessment.';
+                    if (error?.message) {
+                      errorMsg = `Start assessment error: ${error.message}`;
+                    } else if (typeof error === 'string') {
+                      errorMsg = `Start assessment error: ${error}`;
+                    }
+
+                    this.showError(errorMsg + ' Check the browser console (F12) for details.');
+                    this.updateStartButtonState();
+                  })
+                  .startAssessmentFromWizard(this.state.selectedAssignmentId, match.definitionKey);
+              }
+            } else {
+              this.state.matchedDefinition = null;
+            }
+
+            return match;
           },
+
+          getDefinitionStatusForAssignment(assignment) {
+            if (!assignment) return { state: 'unknown', hasDocs: false };
+            if (!this.state.definitionsLoaded) {
+              return { state: 'loading', hasDocs: false };
+            }
+
+            const match = this.findMatchingDefinition(assignment);
+            if (match && match.referenceDocumentId && match.templateDocumentId) {
+              return { state: 'linked', hasDocs: true };
+            }
+
+            return { state: 'missing', hasDocs: false };
+          },
+
+          renderAssignmentMenuItems() {
+            if (!this.state.assignments.length) {
+              return;
+            }
+
+            const filter = (this.state.filterValue || '').toString().trim().toLowerCase();
+            assignmentMenu.innerHTML = '';
+
+            const filteredAssignments = this.state.assignments.filter((assignment) => {
+              const title = (assignment.title || '').toString().toLowerCase();
+              return !filter || title.includes(filter);
+            });
+
+            if (!filteredAssignments.length) {
+              const emptyItem = document.createElement('li');
+              emptyItem.className = 'assignment-row muted';
+              emptyItem.textContent = 'No assignments match your search.';
+              assignmentMenu.appendChild(emptyItem);
+              return;
+            }
+
+            filteredAssignments.forEach((assignment) => {
+              const status = this.getDefinitionStatusForAssignment(assignment);
+              const item = document.createElement('li');
+              item.dataset.assignmentId = assignment.id;
+              item.className = 'assignment-row';
+              if (assignment.id === this.state.selectedAssignmentId) {
+                item.classList.add('active');
+              }
+
+              const name = document.createElement('span');
+              name.className = 'assignment-name';
+              name.textContent = assignment.title || 'Untitled assignment';
+
+              const icons = document.createElement('span');
+              icons.className = 'assignment-icons';
+
+              if (status.state === 'linked') {
+                const checkIcon = document.createElement('i');
+                checkIcon.className = 'green-text';
+                checkIcon.textContent = 'check_circle';
+                checkIcon.title = 'Assignment definition found';
+
+                const editWrap = document.createElement('span');
+                editWrap.className = 'icon-tooltip';
+
+                const editIcon = document.createElement('i');
+                editIcon.className = 'secondary-text';
+                editIcon.textContent = 'edit';
+
+                const editTooltip = document.createElement('span');
+                editTooltip.className = 'tooltip';
+                editTooltip.textContent = 'Edit assignment definition';
+
+                editWrap.appendChild(editIcon);
+                editWrap.appendChild(editTooltip);
+
+                icons.appendChild(checkIcon);
+                icons.appendChild(editWrap);
+              } else if (status.state === 'loading') {
+                const pendingIcon = document.createElement('i');
+                pendingIcon.className = 'muted';
+                pendingIcon.textContent = 'hourglass_empty';
+                pendingIcon.title = 'Checking definitions';
+                icons.appendChild(pendingIcon);
+              } else {
+                const linkWrap = document.createElement('span');
+                linkWrap.className = 'icon-tooltip';
+
+                const linkIcon = document.createElement('i');
+                linkIcon.className = 'primary-text';
+                linkIcon.textContent = 'link';
+
+                const linkTooltip = document.createElement('span');
+                linkTooltip.className = 'tooltip';
+                linkTooltip.textContent = 'Link to existing assignment';
+
+                linkWrap.appendChild(linkIcon);
+                linkWrap.appendChild(linkTooltip);
+
+                const addWrap = document.createElement('span');
+                addWrap.className = 'icon-tooltip';
+                addWrap.dataset.action = 'create-definition';
+                addWrap.dataset.assignmentId = assignment.id;
+
+                const addIcon = document.createElement('i');
+                addIcon.className = 'primary-text';
+                addIcon.textContent = 'add_circle';
+                addIcon.tabIndex = 0;
+
+                const addTooltip = document.createElement('span');
+                addTooltip.className = 'tooltip';
+                addTooltip.textContent = 'Create new assignment';
+
+                addWrap.appendChild(addIcon);
+                addWrap.appendChild(addTooltip);
+
+                icons.appendChild(linkWrap);
+                icons.appendChild(addWrap);
+              }
+
+              item.appendChild(name);
+              item.appendChild(icons);
+              assignmentMenu.appendChild(item);
+            });
+          },
+
+          handleFilterInput() {
+            this.state.filterValue = assignmentInput.value || '';
+            this.state.selectedAssignmentId = '';
+            this.state.matchedDefinition = null;
+            this.state.isStarting = false;
+            this.updateStartButtonState();
+            this.renderAssignmentMenuItems();
+            // Show menu when user is typing to filter
+            if (this.state.filterValue.length > 0 || this.state.assignments.length > 0) {
+              assignmentMenu.classList.add('active');
+            }
+          },
+
+          handleMenuSelection(event) {
+            // If the click was on an action (create definition), handle that first
+            const action = event.target.closest('[data-action="create-definition"]');
+            if (action) {
+              const id = action.dataset.assignmentId;
+              const assignment = this.state.assignments.find((a) => a.id === id);
+              if (assignment) return this.openCreateAssignmentPanel(assignment);
+              return;
+            }
+
+            const item = event.target.closest('li[data-assignment-id]');
+            if (!item) return;
+
+            const assignmentId = item.dataset.assignmentId;
+            const assignment = this.state.assignments.find((a) => a.id === assignmentId);
+            if (!assignment) return;
+
+            assignmentInput.value = assignment.title || 'Untitled assignment';
+            this.state.filterValue = '';
+            this.state.selectedAssignmentId = assignmentId;
+            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
+            // Hide menu after selection
+            assignmentMenu.classList.remove('active');
+            this.handleSelectionChange();
+          },
+
+          handleStep1Next() {
+            this.showStep('definitionChoice');
+          },
+
+          finishSuccess() {
+            google.script.host.close();
+          },
+
+          handlePartialDefinitionsFailure(error) {
+            this.state.definitions = [];
+            this.state.definitionsLoaded = true;
+          },
+          handleSelectionChange() {
+            const nextBtn = document.getElementById('step1Next');
+            if (this.state.selectedAssignmentId) {
+              if (nextBtn) nextBtn.disabled = false;
+              const assignment = this.state.assignments.find(
+                (a) => a.id === this.state.selectedAssignmentId
+              );
+              this.matchDefinitionForAssignment(assignment);
+              this.renderAssignmentMenuItems();
+            } else {
+              this.state.matchedDefinition = null;
+              if (nextBtn) nextBtn.disabled = true;
+            }
+            this.updateStartButtonState();
+          },
+
+          showStep(step) {
+            this.state.step = step;
+
+            [
+              yearGroupPanel,
+              step1Panel,
+              definitionChoicePanel,
+              linkDefinitionPanel,
+              step2Panel,
+              weightingsPanel,
+            ].forEach((p) => {
+              if (p) p.hidden = true;
+            });
+
+            if (assignmentHelp) assignmentHelp.hidden = step !== 'selectAssignment';
+
+            if (step2ErrorMessage) {
+              step2ErrorMessage.hidden = true;
+              step2ErrorMessage.textContent = '';
+            }
+
+            const updateStepper = (steps, index) => {
+              this.state.stepperSteps = steps.slice();
+              this.state.stepperCurrentIndex = index;
+              this.state.maxReachedStepIndex = Math.max(this.state.maxReachedStepIndex ?? 0, index);
+
+              if (this.stepper) {
+                this.stepper.setSteps(steps.map((s) => ({ label: s })));
+                this.stepper.setCurrentStep(index);
+              }
+            };
+
+            switch (step) {
+              case 'yearGroup':
+                if (yearGroupPanel) yearGroupPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment'], 0);
+                break;
+              case 'selectAssignment':
+                step1Panel.hidden = false;
+                updateStepper(['Year Group', 'Assignment'], 1);
+                break;
+              case 'definitionChoice':
+                if (definitionChoicePanel) definitionChoicePanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Source'], 2);
+                break;
+              case 'linkDefinition':
+                if (linkDefinitionPanel) linkDefinitionPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Link'], 2);
+                break;
+              case 'createDefinitionDocs':
+                step2Panel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Docs', 'Weights'], 2);
+                if (!this.state.documents) {
+                  this.state.documents = { reference: {}, template: {} };
+                }
+                setTimeout(() => {
+                  const refIn = document.getElementById('referenceInputStep2');
+                  if (refIn) refIn.focus();
+                }, 50);
+                break;
+              case 'createDefinitionWeights':
+                if (weightingsPanel) weightingsPanel.hidden = false;
+                updateStepper(['Year Group', 'Assignment', 'Docs', 'Weights'], 3);
+                break;
+            }
+          },
+
+          getStepForStepperLabel(label) {
+            const mapping = {
+              'Year Group': 'yearGroup',
+              Assignment: 'selectAssignment',
+              Source: 'definitionChoice',
+              Link: 'linkDefinition',
+              Docs: 'createDefinitionDocs',
+              Weights: 'createDefinitionWeights',
+            };
+            return mapping[label] || null;
+          },
+
+          handleStepperChange(index) {
+            if (typeof index !== 'number') return;
+            const maxReached = this.state.maxReachedStepIndex ?? 0;
+            if (index > maxReached || index === this.state.stepperCurrentIndex) return;
+
+            const label = this.state.stepperSteps?.[index];
+            const targetStep = this.getStepForStepperLabel(label);
+            if (!targetStep) return;
+
+            this.showStep(targetStep);
+          },
+
+          openCreateAssignmentPanel(assignment) {
+            this.state.selectedAssignmentId = assignment.id;
+            this.state.selectedAssignmentName = assignment.title || 'Untitled assignment';
+            this.state.documents = {
+              reference: { raw: '', id: null, inferredType: null },
+              template: { raw: '', id: null, inferredType: null },
+            };
+
+            referenceInput.value = '';
+            templateInput.value = '';
+            this.setFieldValidState('reference', null, null);
+            this.setFieldValidState('template', null, null);
+            this.showStep('createDefinitionDocs');
+            referenceInput.focus();
+          },
+
+          // Infer the document type only. We no longer attempt to extract or validate an ID.
+          // Returns: { raw, inferredType }
+          parseGoogleUrl(input) {
+            const trimmed = (input || '').toString().trim();
+            if (!trimmed) return { raw: '', inferredType: 'unknown' };
+
+            // Simple detection by URL shape - don't attempt to extract IDs or enforce length checks
+            if (/\/presentation\//i.test(trimmed) || /slide(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'SLIDES' };
+            }
+            if (/\/spreadsheets\//i.test(trimmed) || /sheet(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'SHEETS' };
+            }
+            if (/\/document\//i.test(trimmed) || /doc(s)?/i.test(trimmed)) {
+              return { raw: trimmed, inferredType: 'DOCS' };
+            }
+
+            // Not a recognised document type
+            return { raw: trimmed, inferredType: 'unknown' };
+          },
+
+          // Normalise pasted values for a forgiving equality check (strip trailing edit fragments and query strings)
+          normaliseForComparison(raw) {
+            if (!raw) return '';
+            let s = raw.toString().trim();
+            // Remove querystring and fragments
+            s = s.replace(/[?#].*$/, '');
+            // Remove common trailing edit paths like /edit or /edit#slide=id
+            // Avoid matching empty strings inside the optional group by requiring the
+            // fragment/query delimiter when present (prevents redundant `(?:.*)?` patterns)
+            s = s.replace(/\/edit(?:[#?].*)?$/, '');
+            // Trim trailing slashes
+            s = s.replace(/\/+$/, '');
+            return s;
+          },
+
+          handleDocumentInput(fieldKey, rawValue) {
+            const parsed = this.parseGoogleUrl(rawValue);
+            this.state.documents = this.state.documents || { reference: {}, template: {} };
+            this.state.documents[fieldKey] = {
+              raw: rawValue,
+              inferredType: parsed.inferredType,
+            };
+
+            // Consider a field valid if we detected a document type (not 'unknown') and there is some input
+            this.setFieldValidState(
+              fieldKey,
+              parsed.inferredType !== 'unknown',
+              parsed.inferredType
+            );
+            // Check for cross-field conflicts (both values present and equal)
+            this.validateDocumentPair();
+            this.updateStartButtonState();
+          },
+
+          // If both document IDs are present and identical, mark both fields invalid and show a helpful message
+          validateDocumentPair() {
+            const ref = this.state.documents?.reference;
+            const tpl = this.state.documents?.template;
+
+            // Clear any previous pair-level message first
+            step2ErrorMessage.hidden = true;
+            step2ErrorMessage.textContent = '';
+
+            if (!ref || !tpl || !ref.raw || !tpl.raw) {
+              // Not enough info to validate pair; clear field-level conflict states if any
+              return false;
+            }
+
+            const normRef = this.normaliseForComparison(ref.raw);
+            const normTpl = this.normaliseForComparison(tpl.raw);
+
+            if (normRef && normTpl && normRef === normTpl) {
+              const msg = 'Reference and template documents must be different.';
+              // mark both fields invalid with conflict messaging (no per-field text)
+              this.setFieldConflictState('reference', msg);
+              this.setFieldConflictState('template', msg);
+
+              step2ErrorMessage.classList.remove('danger');
+              step2ErrorMessage.classList.add('danger');
+              step2ErrorMessage.hidden = false;
+              step2ErrorMessage.textContent = msg;
+
+              return true;
+            }
+
+            // If we reach here they are different; ensure fields show their individual valid/invalid state
+            // Re-run per-field validation to restore green states if applicable
+            this.setFieldValidState('reference', ref.inferredType !== 'unknown', ref.inferredType);
+            this.setFieldValidState('template', tpl.inferredType !== 'unknown', tpl.inferredType);
+            return false;
+          },
+
+          setFieldConflictState(fieldKey, message) {
+            const fieldEl =
+              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
+            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
+            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
+            const labelEl = fieldEl.querySelector('label');
+
+            // Remove any success styling
+            fieldEl.classList.remove('green-border', 'field-success');
+            iconEl.classList.remove('green-text');
+            if (labelEl) labelEl.classList.remove('green-text');
+
+            // Show error state (icon + invalid styling) but do not display a per-field text message; use the step-level message instead
+            fieldEl.classList.add('invalid');
+            feedbackEl.hidden = true; // keep per-field feedback hidden to avoid duplication
+            iconEl.textContent = 'close';
+            iconEl.className = 'error-text';
+          },
+
+          // Now called with (fieldKey, isValid, inferredType)
+          setFieldValidState(fieldKey, isValid, inferredType) {
+            const fieldEl =
+              fieldKey === 'reference' ? referenceInput.parentElement : templateInput.parentElement;
+            const iconEl = fieldKey === 'reference' ? referenceIcon : templateIcon;
+            const feedbackEl = fieldKey === 'reference' ? referenceFeedback : templateFeedback;
+            const labelEl = fieldEl.querySelector('label');
+
+            // clear previous states
+            fieldEl.classList.remove('invalid', 'green-border', 'field-success');
+            iconEl.classList.remove('green-text');
+            if (labelEl) labelEl.classList.remove('green-text');
+            feedbackEl.hidden = true;
+            iconEl.className = '';
+            iconEl.textContent = '';
+
+            if (!isValid) {
+              // No recognised doc type – mark visually invalid but avoid a per-field message to reduce noise for users.
+              fieldEl.classList.add('invalid');
+              feedbackEl.hidden = true;
+              iconEl.textContent = 'close';
+              // use BeerCSS error utility for icon colour
+              iconEl.className = 'error-text';
+              return;
+            }
+
+            // Valid type - set icon according to inferred type
+            if (inferredType === 'SLIDES') {
+              iconEl.textContent = 'slideshow';
+            } else if (inferredType === 'SHEETS') {
+              iconEl.textContent = 'grid_on';
+            } else if (inferredType === 'DOCS') {
+              iconEl.textContent = 'description';
+            } else {
+              iconEl.textContent = 'help';
+            }
+
+            // Indicate success using composite helper class
+            fieldEl.classList.add('field-success');
+          },
+
+          hasValidDocumentInputs() {
+            const ref = this.state.documents?.reference;
+            const tpl = this.state.documents?.template;
+            if (!ref || !tpl) return false;
+            if (!ref.raw || !tpl.raw) return false;
+            if (ref.inferredType === 'unknown' || tpl.inferredType === 'unknown') return false;
+
+            const normRef = this.normaliseForComparison(ref.raw);
+            const normTpl = this.normaliseForComparison(tpl.raw);
+            if (!normRef || !normTpl) return false;
+            if (normRef === normTpl) return false;
+            return true;
+          },
+
+          submitCreateDefinition() {
+            // pre-validated on client, hand off to server to validate & persist
+            const ref = this.state.documents.reference;
+            const tpl = this.state.documents.template;
+            if (!ref || !tpl || !ref.raw || !tpl.raw) {
+              step2ErrorMessage.textContent = 'Both document URLs are required.';
+              step2ErrorMessage.hidden = false;
+              return;
+            }
+
+            this.state.isStarting = true;
+            this.updateStartButtonState();
+            this.setSpinnerVisible(true);
+
+            google.script.run
+              .withSuccessHandler((processId) => {
+                google.script.run.showProgressModal();
+                google.script.host.close();
+              })
+              .withFailureHandler((error) => {
+                this.state.isStarting = false;
+                this.updateStartButtonState();
+                this.setSpinnerVisible(false);
+                step2ErrorMessage.textContent = error?.message
+                  ? `Failed to start: ${error.message}`
+                  : 'Failed to start assessment.';
+                step2ErrorMessage.hidden = false;
+              })
+              .saveStartAndShowProgress(
+                this.state.selectedAssignmentName,
+                {
+                  referenceDocumentId: ref.raw,
+                  templateDocumentId: tpl.raw,
+                },
+                this.state.selectedAssignmentId
+              );
+          },
+
           handleCancel() {
             google.script.host.close();
           },
@@ -169,8 +1107,42 @@
             spinner.setAttribute('aria-hidden', visible ? 'false' : 'true');
           },
           setControlsEnabled(enabled) {
-            assignmentSelect.disabled = !enabled;
-            startButton.disabled = !enabled;
+            assignmentInput.disabled = !enabled;
+            this.updateStartButtonState();
+          },
+          hasMatchedDefinitionWithDocs() {
+            const def = this.state.matchedDefinition;
+            return !!(def && def.referenceDocumentId && def.templateDocumentId);
+          },
+          updateStartButtonState() {
+            const step1Next = document.getElementById('step1Next');
+            const linkFinish = document.getElementById('linkFinish');
+            const step2Next = document.getElementById('step2Next');
+            const weightingsFinish = document.getElementById('weightingsFinish');
+
+            if (step1Next) {
+              step1Next.disabled = !this.state.selectedAssignmentId || this.state.isStarting;
+            }
+
+            if (this.state.step === 'linkDefinition') {
+              if (linkFinish) {
+                linkFinish.disabled = this.state.isStarting || !this.hasMatchedDefinitionWithDocs();
+              }
+              return;
+            }
+
+            if (this.state.step === 'createDefinitionDocs') {
+              if (step2Next) {
+                step2Next.disabled = !this.hasValidDocumentInputs() || this.state.isStarting;
+              }
+              return;
+            }
+
+            if (this.state.step === 'createDefinitionWeights') {
+              if (weightingsFinish) {
+                weightingsFinish.disabled = this.state.isStarting;
+              }
+            }
           },
           showError(message) {
             errorMessage.textContent = message;
@@ -184,7 +1156,64 @@
 
         globalThis.assignmentWizard = assignmentWizard;
 
-        const kickOff = () => assignmentWizard.init();
+        // Global error handler for uncaught errors
+        globalThis.addEventListener('error', (event) => {
+          console.error('[AssessmentWizard] Uncaught error:', {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error,
+            stack: event.error?.stack,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            assignmentWizard.showError(
+              `Unexpected error: ${event.message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        // Global handler for unhandled promise rejections
+        globalThis.addEventListener('unhandledrejection', (event) => {
+          console.error('[AssessmentWizard] Unhandled promise rejection:', {
+            reason: event.reason,
+            promise: event.promise,
+          });
+
+          if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+            const message =
+              event.reason?.message || event.reason?.toString() || 'Unknown promise rejection';
+            assignmentWizard.showError(
+              `Unexpected error: ${message}. Check the browser console (F12) for details.`
+            );
+          }
+        });
+
+        const kickOff = () => {
+          try {
+            console.log('[AssessmentWizard] Initialising wizard...');
+            assignmentWizard.init();
+          } catch (error) {
+            console.error('[AssessmentWizard] Failed to initialise wizard:', {
+              error,
+              message: error?.message,
+              stack: error?.stack,
+            });
+
+            if (assignmentWizard && typeof assignmentWizard.showError === 'function') {
+              assignmentWizard.showError(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            } else {
+              // Fallback if showError isn't available
+              alert(
+                `Wizard initialisation failed: ${error?.message || error}. Check the browser console (F12) for details.`
+              );
+            }
+          }
+        };
+
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', kickOff);
         } else {

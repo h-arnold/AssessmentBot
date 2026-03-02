@@ -8,7 +8,9 @@
  * @return {string} The HTML content of the file.
  */
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  // Evaluate the file as a template so any nested scriptlets (e.g. other
+  // `<?!= include('...') ?>` tags) are processed before returning the HTML.
+  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
 
 /**
@@ -33,7 +35,7 @@ function openReferenceSlideModal(assignmentData) {
  * Opens the progress modal dialog.
  */
 function showProgressModal() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.showProgressModal();
 }
 
@@ -41,7 +43,7 @@ function showProgressModal() {
  * Shows the configuration dialog modal.
  */
 function showConfigurationDialog() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.showConfigurationDialog();
 }
 
@@ -49,7 +51,7 @@ function showConfigurationDialog() {
  * Shows the assignment dropdown modal.
  */
 function showAssignmentDropdown() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.showAssignmentDropdown();
 }
 
@@ -67,6 +69,25 @@ function showAssessmentWizard() {
 function showClassroomDropdown() {
   const uiManager = getUIManager();
   return uiManager.showClassroomDropdown();
+}
+
+/**
+ * Starts an assessment from the wizard fast-path using an existing definition.
+ * @param {string} assignmentId - The Classroom assignment id
+ * @param {string} definitionKey - The assignment definition key to use
+ * @returns {string} processId - The created processing job id
+ */
+function startAssessmentFromWizard(assignmentId, definitionKey) {
+  Validate.requireParams({ assignmentId, definitionKey }, 'startAssessmentFromWizard');
+  try {
+    // Delegate to existing processing entrypoint
+    return startProcessing(assignmentId, definitionKey);
+  } catch (err) {
+    ProgressTracker.getInstance().logAndThrowError(
+      'Failed to start assessment from wizard. Please try again.',
+      err
+    );
+  }
 }
 
 /**
@@ -101,16 +122,16 @@ function showVersionSelector() {
  */
 
 function getClassroomData() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   return uiManager.getClassroomData();
 }
 
 function saveClassroomData(rows) {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.saveClassroomData(rows);
 }
 
 function showClassroomEditorModal() {
-  const uiManager = UIManager.getInstance();
+  const uiManager = getUIManager();
   uiManager.showClassroomEditorModal();
 }

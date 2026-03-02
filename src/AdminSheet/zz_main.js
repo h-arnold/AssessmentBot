@@ -87,6 +87,9 @@ function showBeerCssPlaygroundDialog() {
 // Placing these last means that all other necessary classes and functions have been
 // defined already.
 
+/**
+ *
+ */
 function onOpen() {
   /**
    * @function onOpen

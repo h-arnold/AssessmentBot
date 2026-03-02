@@ -13,32 +13,58 @@ function createGoogleMock() {
     close: vi.fn(),
   };
 
+  // A small per-method handler emulation so tests can handle concurrent calls
   const run = {
-    successHandler: null,
-    failureHandler: null,
-    savedArgs: null,
+    _pendingSuccess: null,
+    _pendingFailure: null,
+    _handlers: {}, // methodName => { success, failure }
     calls: 0,
+    calledMethods: [],
+
     withSuccessHandler(handler) {
-      this.successHandler = handler;
+      this._pendingSuccess = handler;
       return this;
     },
     withFailureHandler(handler) {
-      this.failureHandler = handler;
+      this._pendingFailure = handler;
       return this;
     },
-    fetchAssignmentsForWizard(...args) {
+
+    // Called when a GAS method is invoked; record handlers under method name
+    _registerCall(methodName, args) {
       this.calls += 1;
-      this.savedArgs = args;
+      this.calledMethods.push(methodName);
+      this._handlers[methodName] = {
+        success: this._pendingSuccess,
+        failure: this._pendingFailure,
+        args,
+      };
+      // clear pending handlers for next chain
+      this._pendingSuccess = null;
+      this._pendingFailure = null;
+    },
+
+    fetchAssignmentsForWizard(...args) {
+      this._registerCall('fetchAssignmentsForWizard', args);
       return this;
     },
-    triggerSuccess(payload) {
-      if (typeof this.successHandler === 'function') {
-        this.successHandler(payload);
+
+    getAllPartialDefinitions(...args) {
+      this._registerCall('getAllPartialDefinitions', args);
+      return this;
+    },
+
+    triggerSuccess(methodName, payload) {
+      const h = this._handlers[methodName];
+      if (h && typeof h.success === 'function') {
+        h.success(payload);
       }
     },
-    triggerFailure(error) {
-      if (typeof this.failureHandler === 'function') {
-        this.failureHandler(error);
+
+    triggerFailure(methodName, error) {
+      const h = this._handlers[methodName];
+      if (h && typeof h.failure === 'function') {
+        h.failure(error);
       }
     },
   };
@@ -95,13 +121,14 @@ describe('Assessment wizard Step 1', () => {
   it('renders initial loading state with spinner and disabled controls', () => {
     const { document, cleanup } = setupWizard();
     try {
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(true);
-      expect(assignmentSelect.options[0].textContent).toContain('Loading assignments');
+      expect(assignmentInput.disabled).toBe(true);
+      expect(assignmentMenu.textContent).toContain('Loading assignments');
       expect(spinner.hidden).toBe(false);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
@@ -110,70 +137,151 @@ describe('Assessment wizard Step 1', () => {
     }
   });
 
-  it('asks GAS for assignments after the template loads', () => {
+  it('asks GAS for assignments and partial definitions after the template loads', () => {
+    // Use fake timers so we can control the next-tick setTimeouts scheduled by init()
+    vi.useFakeTimers();
     const { googleRun, cleanup } = setupWizard();
     try {
+      // Advance timers so the setTimeouts used in init() run
+      vi.runAllTimers();
+
       expect(googleRun.calls).toBeGreaterThan(0);
-      expect(googleRun.savedArgs).toEqual([]);
+      // both methods should be invoked with no args
+      expect(googleRun.calledMethods).toEqual(
+        expect.arrayContaining(['fetchAssignmentsForWizard', 'getAllPartialDefinitions'])
+      );
     } finally {
+      vi.useRealTimers();
       cleanup();
     }
   });
 
   it('enables the select and hides the spinner once assignments arrive', () => {
+    // Ensure setTimeouts scheduled in init() run so GAS call handlers are registered
+    vi.useFakeTimers();
     const { document, googleRun, cleanup } = setupWizard();
     try {
+      vi.runAllTimers();
+
       const assignments = [
         { id: 'a1', title: 'Year 9 Programming' },
         { id: 'a2', title: 'Year 10 Robotics' },
       ];
 
-      googleRun.triggerSuccess(assignments);
+      // Trigger assignments success handler explicitly
+      googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(false);
-      expect(assignmentSelect.options.length).toBe(assignments.length + 1);
-      expect(assignmentSelect.options[1].value).toBe('a1');
-      expect(assignmentSelect.options[1].textContent).toBe('Year 9 Programming');
+      expect(assignmentInput.disabled).toBe(false);
+      // first result is a placeholder + two assignment rows
+      const items = Array.from(assignmentMenu.querySelectorAll('li.assignment-row'));
+      expect(items.length).toBe(assignments.length);
+      expect(items[0].dataset.assignmentId).toBe('a1');
+      expect(items[0].textContent).toContain('Year 9 Programming');
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(true);
     } finally {
+      vi.useRealTimers();
       cleanup();
     }
   });
 
   it('toggles the primary button as the selection changes', () => {
+    // Ensure GAS handlers are registered first
+    vi.useFakeTimers();
     const { document, googleRun, window, cleanup } = setupWizard();
     try {
-      const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
-      googleRun.triggerSuccess(assignments);
+      vi.runAllTimers();
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignments = [{ id: 'alpha', title: 'Alpha Assignment' }];
+      googleRun.triggerSuccess('fetchAssignmentsForWizard', assignments);
+
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const startButton = document.getElementById('startAssessment');
 
-      assignmentSelect.value = 'alpha';
-      assignmentSelect.dispatchEvent(new window.Event('change'));
-      expect(startButton.disabled).toBe(false);
+      // click the assignment row to select
+      const row = assignmentMenu.querySelector('li.assignment-row[data-assignment-id="alpha"]');
+      row.click();
+      // Without a linked definition with documents, start should remain disabled
+      expect(startButton.disabled).toBe(true);
 
-      assignmentSelect.value = '';
-      assignmentSelect.dispatchEvent(new window.Event('change'));
+      // simulate clearing selection
+      const input = document.getElementById('assignmentInput');
+      input.value = '';
+      // reconstruct state similar to empty filter action
+      window.assignmentWizard.handleFilterInput();
       expect(startButton.disabled).toBe(true);
     } finally {
+      vi.useRealTimers();
+      cleanup();
+    }
+  });
+
+  it('stores partial definitions returned by backend', () => {
+    // Ensure handlers are registered
+    vi.useFakeTimers();
+    const { window, googleRun, cleanup } = setupWizard();
+    try {
+      vi.runAllTimers();
+
+      const defs = [
+        {
+          definitionKey: 'd1',
+          primaryTitle: 'Alpha',
+        },
+      ];
+
+      googleRun.triggerSuccess('getAllPartialDefinitions', defs);
+      expect(window.assignmentWizard.state.definitions).toEqual(defs);
+    } finally {
+      vi.useRealTimers();
+      cleanup();
+    }
+  });
+
+  it('renders an empty-state message when no assignments exist', () => {
+    // Ensure GAS handlers are registered first
+    vi.useFakeTimers();
+    const { document, googleRun, cleanup } = setupWizard();
+    try {
+      vi.runAllTimers();
+      googleRun.triggerSuccess('fetchAssignmentsForWizard', []);
+
+      const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
+      const spinner = document.getElementById('assignmentLoadingSpinner');
+      const startButton = document.getElementById('startAssessment');
+      const errorMessage = document.getElementById('assignmentErrorMessage');
+
+      expect(assignmentInput.disabled).toBe(true);
+      const items = Array.from(assignmentMenu.querySelectorAll('li.assignment-row'));
+      expect(items.length).toBe(1);
+      expect(items[0].textContent).toBe('No assignments available yet');
+      expect(spinner.hidden).toBe(true);
+      expect(startButton.disabled).toBe(true);
+      expect(errorMessage.hidden).toBe(false);
+      expect(errorMessage.textContent).toContain('No assignments were found for this classroom.');
+    } finally {
+      vi.useRealTimers();
       cleanup();
     }
   });
 
   it('shows the error banner when fetching assignments fails', () => {
+    // Ensure GAS handlers are registered first
+    vi.useFakeTimers();
     const { document, googleRun, cleanup } = setupWizard();
     try {
-      googleRun.triggerFailure({ message: 'Network error' });
+      vi.runAllTimers();
+      googleRun.triggerFailure('fetchAssignmentsForWizard', { message: 'Network error' });
 
-      const assignmentSelect = document.getElementById('assignmentSelect');
+      const assignmentInput = document.getElementById('assignmentInput');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
@@ -183,7 +291,11 @@ describe('Assessment wizard Step 1', () => {
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);
       expect(errorMessage.textContent).toContain('Network error');
+      expect(assignmentMenu.querySelector('li')?.textContent).toContain(
+        'Unable to load assignments'
+      );
     } finally {
+      vi.useRealTimers();
       cleanup();
     }
   });

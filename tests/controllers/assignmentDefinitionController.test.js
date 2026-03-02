@@ -152,4 +152,92 @@ describe('AssignmentDefinitionController', () => {
 
     expect(ClassroomApiClient.fetchTopicName).toHaveBeenCalledWith('course-123', 'topic-123');
   });
+
+  it('getAllPartialDefinitions returns all partial definitions from registry', () => {
+    // Sample registry payload (partial documents) from production-like data
+    const sampleDocs = [
+      {
+        _id: '585c9ad9-2993-4a0d-b3a4-f513133da1a0',
+        primaryTitle: '1.1 Learning to Research',
+        primaryTopic: 'Space',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
+        templateDocumentId: '1blHtdE5Ieyr7F_XYuAta1O4PlVhDcmJJw0OJd0BakKY',
+        definitionKey: '1.1 Learning to Research_Space_null',
+        tasks: null,
+      },
+      {
+        _id: '9387cd91-c034-4e0a-a896-f25a7bcfca4a',
+        primaryTitle: '8. Secondary Storage - Cloud',
+        primaryTopic: '1.1 Computer Architecture',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
+        templateDocumentId: '1kfWiX2QfzK39q98r_RxPqEvteShuUMfCdOg2wtJgCfg',
+        definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_null',
+        tasks: null,
+      },
+      {
+        _id: 'cb412c10-a619-4e3c-bba2-821b0ce33a08',
+        primaryTitle: '1. DigiTech Pathways',
+        primaryTopic: 'Pathways',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
+        templateDocumentId: '1nguALHo-wXxxMlml49_7JoQ8sFt0-0_eF9ec4_pX6JQ',
+        definitionKey: '1. DigiTech Pathways_Pathways_null',
+        tasks: null,
+      },
+      {
+        _id: '7fc01a34-4301-4b69-941d-eb629c126b8f',
+        primaryTitle: '7. Social Engineering',
+        primaryTopic: 'Starters',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '13UhXRtuJf8uqwH5wYJkjVTBQhqpniZwPBhpMjT7KQxc',
+        templateDocumentId: '1jKuG_CK2Z31rUs_5W8WDWl5WRjU0d1udq5eVGCki2-Y',
+        definitionKey: '7. Social Engineering_Starters_null',
+        tasks: null,
+      },
+      {
+        _id: 'c130e72f-ed48-4045-917e-688244da35c7',
+        primaryTitle: '7. Survival Challenges Reflect and Review',
+        primaryTopic: 'Survival',
+        yearGroup: null,
+        documentType: 'SLIDES',
+        referenceDocumentId: '1MXnBAxkTLcg8CIPxVWa0wEc9CgIz3DPfjqXMv3LPmNw',
+        templateDocumentId: '12HMxnplFzBKpq1FknTRBirhtltWnuRoseQVUUoum5S8',
+        definitionKey: '7. Survival Challenges Reflect and Review_Survival_null',
+        tasks: null,
+      },
+    ];
+
+    // Configure DbManager mock to return these docs via readAll
+    DbManager.getInstance.mockReturnValue({
+      getCollection: vi.fn().mockReturnValue(mockCollection),
+      readAll: vi.fn().mockReturnValue(sampleDocs),
+    });
+
+    // Recreate controller to pick up new DbManager.mock behaviour
+    controller = new AssignmentDefinitionController();
+
+    const defs = controller.getAllPartialDefinitions();
+    expect(Array.isArray(defs)).toBe(true);
+    expect(defs.length).toBe(5);
+    expect(defs[0]).toBeInstanceOf(AssignmentDefinition);
+    const keys = defs.map((d) => d.definitionKey);
+    expect(keys).toEqual(sampleDocs.map((d) => d.definitionKey));
+  });
+
+  it('getAllPartialDefinitions returns empty array when registry empty', () => {
+    DbManager.getInstance.mockReturnValue({
+      getCollection: vi.fn().mockReturnValue(mockCollection),
+      readAll: vi.fn().mockReturnValue([]),
+    });
+
+    controller = new AssignmentDefinitionController();
+    const defs = controller.getAllPartialDefinitions();
+    expect(defs).toEqual([]);
+  });
 });

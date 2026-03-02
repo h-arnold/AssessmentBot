@@ -1,0 +1,42 @@
+<!-- Local overrides: make BeerCSS modal background transparent so GAS modal chrome shows through.
+     Keeps internal surface elements (articles, toolbars etc.) using explicit surface classes.
+-->
+<style>
+  /* Default BeerCSS root container should be transparent so dialogs inherit the GAS modal background */
+  .beer {
+    background-color: transparent !important;
+  }
+
+  /* When .beer is used as a page container with a main element, some BeerCSS builds set a surface background
+     via the :has(> main) selector — ensure that's transparent as well. */
+  .beer:has(> main) {
+    background-color: transparent !important;
+  }
+
+  /* Composite success state for validated fields. Use this instead of adding/removing multiple
+     BeerCSS utility classes from JavaScript. Targets container, label and icon colours. */
+  .field-success {
+    border-color: #4caf50 !important;
+    transition:
+      border-color 120ms ease,
+      color 120ms ease;
+  }
+  .field-success label,
+  .field-success i {
+    color: #4caf50 !important;
+  }
+
+  /* Specific adaptations for the wizard Step 2 inputs to preserve underline/focus behaviour */
+  #step2Panel .field.field-success.label > label::after {
+    border-block-start-color: #4caf50;
+    color: #4caf50;
+  }
+  #step2Panel .field.field-success,
+  #step2Panel .field.field-success > :is(input, textarea, select) {
+    border-color: #4caf50 !important;
+  }
+  #step2Panel .field.field-success > :is(input, textarea, select):focus {
+    border-color: #4caf50 !important;
+    outline-color: #4caf50 !important;
+  }
+</style>

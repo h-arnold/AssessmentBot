@@ -371,6 +371,7 @@ class GoogleClassroomManager {
           return {
             id: assignment.id,
             title: assignment.title,
+            topicId: assignment.topicId || null,
             updateTime: new Date(assignment.updateTime),
           };
         });

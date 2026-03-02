@@ -1,6 +1,6 @@
 # 🛠️ Setting up Assessment Bot
 
-This guide will walk you through setting up the Google Slides Assessor, a tool designed to streamline the assessment of student work in Google Slides. 
+This guide will walk you through setting up the Google Slides Assessor, a tool designed to streamline the assessment of student work in Google Slides.
 
 - [🛠️ Setting up Assessment Bot](#️-setting-up-assessment-bot)
   - [📝 Prerequisites](#-prerequisites)
@@ -15,7 +15,6 @@ This guide will walk you through setting up the Google Slides Assessor, a tool d
       - [2️⃣ Creating the Assessment Records](#2️⃣-creating-the-assessment-records)
       - [4️⃣ Getting started with your first assessment.](#4️⃣-getting-started-with-your-first-assessment)
   - [🌟 Final Thoughts](#-final-thoughts)
-
 
 ## 📝 Prerequisites
 
@@ -32,19 +31,20 @@ Understanding the system's components will help you see how it all fits together
 
 ### 1️⃣ Assessment Bot Backend
 
--  ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
+- ([The Assessment Bot Backend](https://github.com/h-arnold/AssessmentBot-Backend)) provides the LLM (Large Language Model) backend for handling assessments. This allows for automated interpretation and marking of student submissions.
 
 ### 2️⃣ Admin Sheet
 
- - The Admin Sheet contains a bound script containing the frontend source code which is used as a library for the Assessment Records. It also allows you to:
+- The Admin Sheet contains a bound script containing the frontend source code which is used as a library for the Assessment Records. It also allows you to:
 
-  - Create and Manage Assessment Records for each class
-  - Handle updates
-  - Analyse whole-cohort data
+- Create and Manage Assessment Records for each class
+- Handle updates
+- Analyse whole-cohort data
 
 ### 3️⃣ Assessment Records
 
 - A separate Google Sheet for each class, where assessment data is stored. This will be the tool most commonly used by your team.
+
 ---
 
 ## 🚀 The Setup Process
@@ -70,7 +70,6 @@ This section is primarily for Heads of Department or administrators responsible 
 #### [2️⃣ Creating the Assessment Records](./settingUpAssessmentRecords.md)
 
 - **Note**: Current docs are out of date. Check back later for updated versions¬
-
 
 #### [4️⃣ Getting started with your first assessment.](/docs/howTos/README.md)
 

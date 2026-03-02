@@ -25,10 +25,36 @@ function fetchAssignmentsForWizard() {
     throw new Error('No classroom selected. Please select a classroom first.');
   }
   const assignments = googleClassroomManager.getAssignments(courseId);
-  return assignments.map((assignment) => ({
-    id: assignment.id,
-    title: assignment.title,
-  }));
+
+  // Load ABClass to obtain the yearGroup for definition key parity
+  const abClassController = new ABClassController();
+  const abClass = abClassController.loadClass(courseId);
+  const yearGroup = abClass ? abClass.yearGroup : null;
+
+  return assignments.map((assignment) => {
+    // Resolve topic name server-side to match backend keys (topicId may be present)
+    let topicName = null;
+    try {
+      if (assignment.topicId) {
+        topicName = ClassroomApiClient.fetchTopicName(courseId, assignment.topicId);
+      }
+    } catch (e) {
+      // Non-fatal: if topic look-up fails, leave topicName null and let client handle missing topics
+      ABLogger.getInstance().warn('fetchAssignmentsForWizard: failed to resolve topicName', {
+        assignmentId: assignment.id,
+        topicId: assignment.topicId,
+        err: e?.message || e,
+      });
+      topicName = null;
+    }
+
+    return {
+      id: assignment.id,
+      title: assignment.title,
+      topicName: topicName,
+      yearGroup: yearGroup,
+    };
+  });
 }
 
 /**

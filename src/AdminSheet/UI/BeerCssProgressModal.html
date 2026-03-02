@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <?!= include('UI/partials/Head') ?>
+    <title>Progress</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+
+      .progress-container {
+        width: 100vw;
+      }
+
+      .status {
+        margin-top: 0.6rem;
+      }
+
+      /* Provide simple colour helpers so we can show success/error */
+      progress.success {
+        --progress: 100%;
+        background: #e8f5e9;
+      }
+
+      progress.success::-webkit-progress-value {
+        background-color: #43a047;
+      }
+
+      progress.error {
+        background: #ffebee;
+      }
+
+      progress.error::-webkit-progress-value {
+        background-color: #e53935;
+      }
+
+      /* Make determinate progress appear full-width and 6px tall */
+      progress {
+        width: 100%;
+        height: 6px;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      /* Indeterminate behaviour is handled by BeerCSS; keep a fallback animation */
+      progress.indeterminate::-webkit-progress-value {
+        animation: indeterminate 1.2s linear infinite;
+      }
+
+      @keyframes indeterminate {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="beer">
+      <div class="progress-container">
+        <progress id="progress-bar" value="100" max="100" class="indeterminate"></progress>
+        <output id="status-message" class="status" aria-live="polite">Initialising...</output>
+      </div>
+    </div>
+
+    <script>
+      function startPolling() {
+        fetchStatus();
+        globalThis.pollingInterval = setInterval(fetchStatus, 2000);
+      }
+
+      function fetchStatus() {
+        google.script.run
+          .withSuccessHandler(updateProgress)
+          .withFailureHandler(handleError)
+          .requestStatus();
+      }
+
+      function updateProgress(progress) {
+        const statusMessage = document.getElementById('status-message');
+        const progressBar = document.getElementById('progress-bar');
+
+        if (progress.error) {
+          clearInterval(globalThis.pollingInterval);
+          statusMessage.textContent = `Error: ${progress.error}`;
+          progressBar.classList.remove('indeterminate');
+          progressBar.classList.add('error');
+          progressBar.value = 100;
+          return;
+        }
+
+        statusMessage.textContent = `Step ${progress.step}: ${progress.message}`;
+
+        if (progress.completed) {
+          clearInterval(globalThis.pollingInterval);
+          statusMessage.textContent += ' (Completed)';
+          progressBar.classList.remove('indeterminate');
+          progressBar.classList.remove('error');
+          progressBar.classList.add('success');
+          progressBar.value = 100;
+
+          setTimeout(() => {
+            google.script.host.close();
+          }, 2000);
+        }
+      }
+
+      function handleError(error) {
+        clearInterval(globalThis.pollingInterval);
+        const statusMessage = document.getElementById('status-message');
+        statusMessage.textContent = `Error fetching progress: ${error.message}`;
+        const progressBar = document.getElementById('progress-bar');
+        progressBar.classList.remove('indeterminate');
+        progressBar.classList.add('error');
+        progressBar.value = 100;
+      }
+
+      document.addEventListener('DOMContentLoaded', startPolling);
+    </script>
+  </body>
+</html>

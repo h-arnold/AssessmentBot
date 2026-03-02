@@ -52,7 +52,7 @@ A single BeerCSS-scoped wizard modal:
 
 ### Wizard structure
 
-- One modal containing two panels (Step 1 / Step 2) and a shared footer.
+- One modal containing multiple panels (managed via `showStep()` logic) and a shared footer.
 - The wizard changes state client-side (show/hide panels) rather than closing/opening separate modals.
 
 ### BeerCSS scoping
@@ -274,6 +274,16 @@ If parsing stays inline in HtmlService only, keep it minimal and rely on manual 
 - Cancel closes the dialog.
 - Debug menu entry exists for testing.
 - UI tests cover initial render, server call, success path, failure path, selection gating, and cancel.
+- Removed the Step 2 "Definition found" panel and implemented an **auto-start fast-path**: when a matching partial definition with both doc IDs is found, the wizard starts the assessment immediately, opens the progress modal, and closes. New UI tests were added to assert matching + auto-start behaviour and that warnings (`TaskDefinitionsChanged`) do not block the fast-path.
+
+### Codebase facts (confirmed)
+
+- The wizard already fetches partial definitions via `getAllPartialDefinitions()` (global in `src/AdminSheet/y_controllers/globals.js`).
+- The current wizard state already includes `assignments`, `selectedAssignmentId`, and `definitions` (see `src/AdminSheet/UI/AssessmentWizard.html`).
+- Definition keys are built by `AssignmentDefinition.buildDefinitionKey()` using the format `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}` (see `src/AdminSheet/Models/AssignmentDefinition.js`).
+- Partial definitions currently include `referenceDocumentId` and `templateDocumentId` in `toPartialJSON()`, but `_validatePartial()` does **not** require these IDs.
+- Document type validation currently lives in `AssignmentController._detectDocumentType()` and uses Drive MIME types (Slides/Sheets only).
+- The legacy start path is `saveStartAndShowProgress()` in `src/AdminSheet/AssignmentProcessor/globals.js`.
 
 ### Styling findings (to reuse)
 
