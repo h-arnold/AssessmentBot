@@ -199,7 +199,9 @@
                 aria-hidden="false"
               ></progress>
             </div>
-            <ul id="assignmentMenu" class="menu" hidden></ul>
+            <ul id="assignmentMenu" class="menu" hidden>
+              <li class="assignment-row muted">Loading assignments...</li>
+            </ul>
             <output
               id="assignmentErrorMessage"
               class="status danger"
@@ -256,6 +258,11 @@
           </div>
         </div>
       </main>
+
+      <div class="wizard-actions-bar">
+        <button class="button border" type="button" id="cancelWizard">Cancel</button>
+        <button class="button" type="button" id="startAssessment" disabled hidden>Start assessment</button>
+      </div>
 
       <footer id="wizardFooter" class="wizard-actions"></footer>
     </div>
@@ -335,6 +342,7 @@
             bindClick('linkFinish', () => this.finishSuccess());
             bindClick('step2Next', () => this.showStep('createDefinitionWeights'));
             bindClick('weightingsFinish', () => this.finishSuccess());
+            bindClick('cancelWizard', () => this.handleCancel());
             // Back button removed as navigation is linear or via stepper (future)
 
             // Step 2 inputs

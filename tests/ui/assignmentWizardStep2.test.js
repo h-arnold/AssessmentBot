@@ -98,6 +98,16 @@ function setupWizard() {
   const { window } = dom;
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
+  window.matchMedia = vi.fn().mockImplementation(() => ({
+    matches: false,
+    media: '',
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
 
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
@@ -106,6 +116,15 @@ function setupWizard() {
     throw new Error('Inline wizard script was not found');
   }
 
+  // Eval all non-main scripts first (e.g. WizardStepper class from StepperJS.html)
+  Array.from(window.document.querySelectorAll('script')).forEach((script) => {
+    if (!script.src && !script.textContent.includes('assignmentWizard')) {
+      const suffix = script.textContent.includes('class WizardStepper')
+        ? '\nwindow.WizardStepper = WizardStepper;'
+        : '';
+      window.eval(script.textContent + suffix);
+    }
+  });
   window.eval(inlineScript.textContent);
   window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
 
@@ -141,14 +160,12 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
 
       const step2 = document.getElementById('step2Panel');
       const refInput = document.getElementById('referenceInputStep2');
-      const backButton = document.getElementById('backToStep1');
-      const startButton = document.getElementById('startAssessment');
+      const nextButton = document.getElementById('step2Next');
 
       expect(step2.hidden).toBe(false);
       expect(document.activeElement.id).toBe(refInput.id);
-      expect(backButton.hidden).toBe(false);
-      expect(startButton.textContent.trim()).toBe('Next');
-      expect(startButton.disabled).toBe(true);
+      expect(nextButton.textContent.trim()).toBe('Next');
+      expect(nextButton.disabled).toBe(true);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -172,7 +189,7 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
       const tplInput = document.getElementById('templateInputStep2');
       const refIcon = document.getElementById('referenceIcon');
       const tplIcon = document.getElementById('templateIcon');
-      const startButton = document.getElementById('startAssessment');
+      const nextButton = document.getElementById('step2Next');
 
       // Paste a Slides URL
       refInput.value = 'https://docs.google.com/presentation/d/1SLIDEIDEXAMPLE1234567890';
@@ -185,7 +202,7 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
       expect(tplIcon.textContent).toBe('grid_on');
 
       // Now Next should be enabled (ids different)
-      expect(startButton.disabled).toBe(false);
+      expect(nextButton.disabled).toBe(false);
     } finally {
       vi.useRealTimers();
       cleanup();
@@ -275,27 +292,21 @@ describe('Assessment wizard Step 2 (create new assignment)', () => {
 
       const refInput = document.getElementById('referenceInputStep2');
       const tplInput = document.getElementById('templateInputStep2');
-      const startButton = document.getElementById('startAssessment');
-      const step2Error = document.getElementById('step2ErrorMessage');
+      const nextButton = document.getElementById('step2Next');
+      const weightingsPanel = document.getElementById('weightingsPanel');
 
       refInput.value = 'https://docs.google.com/presentation/d/1SLIDEIDEXAMPLE1234567890';
       tplInput.value = 'https://docs.google.com/presentation/d/1OTHERIDEXAMPLE1234567890';
       refInput.dispatchEvent(new window.Event('input'));
       tplInput.dispatchEvent(new window.Event('input'));
 
-      expect(startButton.disabled).toBe(false);
+      expect(nextButton.disabled).toBe(false);
 
-      // Click Next (first click) - should validate and not call the backend
-      startButton.click();
+      // Click Next - should advance to weights panel and not call backend
+      nextButton.click();
 
       expect(googleRun.calledMethods).not.toContain('saveStartAndShowProgress');
-      expect(step2Error.hidden).toBe(false);
-      expect(step2Error.textContent).toContain('Documents validated');
-      expect(startButton.textContent.trim()).toBe('Start assessment');
-
-      // Clicking again (Start assessment) should still not call backend at this time
-      startButton.click();
-      expect(googleRun.calledMethods).not.toContain('saveStartAndShowProgress');
+      expect(weightingsPanel.hidden).toBe(false);
     } finally {
       vi.useRealTimers();
       cleanup();
