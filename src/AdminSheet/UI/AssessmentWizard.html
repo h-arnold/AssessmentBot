@@ -175,48 +175,89 @@
   <body>
     <div class="beer">
       <main class="wizard-content">
-        <header>
-          <p class="muted">
-            Choose the Classroom assignment you want to assess before moving on to the document
-            inputs.
-          </p>
-        </header>
-
-        <fieldset class="field-group">
-          <legend>Assignment</legend>
-          <div class="field label suffix border">
-            <select id="assignmentSelect" disabled>
-              <option value="">Loading assignments...</option>
-            </select>
-            <label for="assignmentSelect">Assignment</label>
-            <progress
-              id="assignmentLoadingSpinner"
-              class="circle indeterminate"
-              aria-hidden="false"
-            ></progress>
+        <div id="yearGroupPanel" hidden>
+          <header>
+            <p class="muted">Select the year group for this assessment.</p>
+          </header>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="yearGroupNext">Next</button>
           </div>
-          <output
-            id="assignmentErrorMessage"
-            class="status danger"
-            aria-live="polite"
-            hidden
-          ></output>
-        </fieldset>
+        </div>
+
+        <div id="step1Panel" hidden>
+          <header>
+            <p class="muted">Choose the Classroom assignment you want to assess.</p>
+          </header>
+          <fieldset class="field-group">
+            <legend>Assignment</legend>
+            <div class="field label suffix border">
+              <input id="assignmentInput" type="text" disabled autocomplete="off" />
+              <label for="assignmentInput">Assignment</label>
+              <progress
+                id="assignmentLoadingSpinner"
+                class="circle indeterminate"
+                aria-hidden="false"
+              ></progress>
+            </div>
+            <ul id="assignmentMenu" class="menu" hidden></ul>
+            <output
+              id="assignmentErrorMessage"
+              class="status danger"
+              aria-live="polite"
+              hidden
+            ></output>
+          </fieldset>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="step1Next" disabled>Next</button>
+          </div>
+        </div>
+
+        <div id="definitionChoicePanel" hidden>
+          <p>This assignment does not have a definition yet. What would you like to do?</p>
+          <div class="wizard-actions">
+            <button class="button border" type="button" id="choiceLink">Link existing definition</button>
+            <button class="button border primary" type="button" id="choiceCreate">Create new definition</button>
+          </div>
+        </div>
+
+        <div id="linkDefinitionPanel" hidden>
+          <p>Link this assignment to an existing definition.</p>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="linkFinish" disabled>Finish</button>
+          </div>
+        </div>
+
+        <div id="step2Panel" hidden>
+          <div class="field label suffix border">
+            <input id="referenceInputStep2" type="text" />
+            <label for="referenceInputStep2">Reference document URL</label>
+            <i id="referenceIcon"></i>
+          </div>
+          <output id="referenceFeedback" hidden></output>
+          <div class="field label suffix border">
+            <input id="templateInputStep2" type="text" />
+            <label for="templateInputStep2">Template document URL</label>
+            <i id="templateIcon"></i>
+          </div>
+          <output id="templateFeedback" hidden></output>
+          <output id="step2ErrorMessage" class="status danger" aria-live="polite" hidden></output>
+          <div id="assignmentHelp" hidden>
+            <p class="muted">Paste the Google Drive URLs for the reference and template documents.</p>
+          </div>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="step2Next" disabled>Next</button>
+          </div>
+        </div>
+
+        <div id="weightingsPanel" hidden>
+          <p>Set the assessment weightings.</p>
+          <div class="wizard-actions">
+            <button class="button border primary" type="button" id="weightingsFinish">Finish</button>
+          </div>
+        </div>
       </main>
 
-      <footer class="wizard-actions">
-        <nav class="group connected">
-          <button class="button border left-round" type="button" id="cancelWizard">Cancel</button>
-          <button
-            class="button border right-round primary"
-            type="button"
-            id="startAssessment"
-            disabled
-          >
-            Start assessment
-          </button>
-        </nav>
-      </footer>
+      <footer id="wizardFooter" class="wizard-actions"></footer>
     </div>
 
     <?!= include('UI/partials/StepperJS') ?>
@@ -618,7 +659,6 @@
           handlePartialDefinitionsFailure(error) {
             this.state.definitions = [];
             this.state.definitionsLoaded = true;
-            console.warn('Failed to load partial definitions for wizard:', error);
           },
           handleSelectionChange() {
             const nextBtn = document.getElementById('step1Next');
