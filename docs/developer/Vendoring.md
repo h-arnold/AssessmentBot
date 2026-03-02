@@ -54,7 +54,7 @@ If BeerCSS ever introduces ESM `import` statements into its CDN build, the vendo
 Always run:
 
 ```bash
-npm test
+npm run test:legacy-ui
 ```
 
 …and review the diffs to the vendored assets before committing.

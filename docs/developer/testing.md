@@ -6,10 +6,10 @@ AssessmentBot uses **Vitest** as the testing framework for unit and integration 
 
 ## Test Framework
 
-- **Framework**: Vitest v3.2.4 (see `package.json`)
+- **Framework**: Vitest v4.0.18 (see `package.json`)
 - **Environment**: Node.js (no browser DOM by default; UI suites spin up JSDOM when required)
 - **Configuration**: `vitest.config.js` (loads `tests/setupGlobals.js`)
-- **Test Runner (one-off)**: `npm test`
+- **Test Runner (one-off)**: `npm test` (default non-legacy suite)
 - **Watch Mode**: `npm run test:watch`
 - **Module System**: Test files must use ESM `import` syntax for vitest (production code uses CommonJS `require`)
 
@@ -43,8 +43,14 @@ tests/
 ## Running Tests
 
 ```bash
-# Run all tests (single run)
+# Run default non-legacy suite (single run)
 npm test
+
+# Run full suite (legacy UI included, except permanently excluded deprecated tests)
+npm run test:all
+
+# Run legacy UI-focused tests
+npm run test:legacy-ui
 
 # Run all tests in watch mode
 npm run test:watch
@@ -148,9 +154,13 @@ Test assignment-related functionality:
 Test controller logic for managing domain entities and coordinating persistence:
 
 - **ABClassController**: Loading, saving, and managing ABClass instances
-- **InitController**: Initialisation workflows
 - **Assignment Persistence**: Full and partial assignment storage workflows
 - **Assignment Rehydration**: Restoring full assignments from partial summaries
+
+Note: `tests/controllers/initController.test.js` and
+`tests/controllers/createDefinitionFromWizardInputs.test.js` are permanently
+excluded as deprecated legacy UI/init coverage. See
+`docs/developer/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
 
 **Key patterns**:
 
@@ -238,6 +248,8 @@ Test utility functions:
 Exercise client-side logic that lives inside Apps Script HTML templates (e.g. modal dialogs).
 
 - **Environment**: `jsdom` (Vitest default Node runner with per-suite DOM setup).
+- **Execution**: These are legacy UI tests and are excluded from `npm test` by default.
+  Use `npm run test:legacy-ui` to execute them.
 - **Focus**: Validation flows, interactions with `google.script.run`, side-effects such as Materialize toasts, and templated data hydration.
 - **Patterns**:
   - Read the HTML template from `src/AdminSheet/UI/` and replace templating placeholders (`<?= ... ?>`) with fixture values before instantiating `JSDOM`.

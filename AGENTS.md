@@ -14,14 +14,16 @@ AssessmentBot automates assessment of student work in Google Slides and Sheets b
 **Key Directories:**
 
 - `src/AdminSheet/` - Main application code (Controllers, Models, Sheets, Utils, etc.)
-- `src/assessmentRecordTemplate/` - Template for individual assignment records
+- `src/AssessmentRecordTemplate/` - Template for individual assignment records
 - `tests/` - Vitest unit tests (logic only, no GAS services)
 - `docs/` - User and developer documentation
 
 **Essential Commands:**
 
 ```bash
-npm test          # Run all tests
+npm test          # Run default non-legacy test suite
+npm run test:all  # Run full suite (still excludes permanently deprecated tests)
+npm run test:legacy-ui # Run legacy UI-focused tests only
 npm run test:watch # Run tests in watch mode
 npm run lint      # Check code style
 npm run lint:fix  # Auto-fix linting issues

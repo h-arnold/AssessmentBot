@@ -223,7 +223,7 @@ This updates:
 - `src/AdminSheet/UI/vendor/beercss/BeerCssJs.html`
 
 1. Check whether the upstream licence text changed and update `src/AdminSheet/UI/vendor/beercss/LICENCE_BeerCSS.txt` if required.
-2. Run `npm test` to verify UI tests still pass.
+2. Run `npm run test:legacy-ui` to verify legacy UI tests still pass.
 
 ## Notes / constraints (Apps Script HtmlService)
 

@@ -34,7 +34,7 @@ Please modify my code/documentation to match with the style guide provided. Ensu
 - **Add tips and notes**: Use phrases like "💡 Tip" or "⚠️ Note" to call out additional details or warnings.
 - **Clarity over complexity**: Avoid jargon. Provide meaningful names for variables, methods, and explain technical terms when they are first introduced.
 - **Consistency**: Ensure code and documentation align with the style and structure of the existing project.
-- **Testing**: Run Node unit tests locally (npm test) and avoid GAS services in unit tests; for end-to-end/manual checks, verify in the Apps Script Editor with mock data or test spreadsheets. Preview documentation to ensure layout and links are correct.
+- **Testing**: Run Node unit tests locally (`npm test` for default non-legacy suite, `npm run test:all` for full suite), and avoid GAS services in unit tests; for end-to-end/manual checks, verify in the Apps Script Editor with mock data or test spreadsheets. Preview documentation to ensure layout and links are correct.
 
 ## Testing in Node (unit tests)
 
