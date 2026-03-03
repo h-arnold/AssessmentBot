@@ -1,47 +1,131 @@
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 import { BuildStageError } from '../lib/errors.js';
 import { pathExists } from '../lib/fs.js';
 import type { BuilderPaths, ResolveJsonDbSourceResult } from '../types.js';
 
 const STAGE_ID = 'resolve-jsondb-source' as const;
+const JSON_DB_RELEASE_TAG = 'v0.1.0';
+const JSON_DB_RELEASE_TARBALL_URL =
+  'https://github.com/h-arnold/JsonDbApp/archive/refs/tags/v0.1.0.tar.gz';
+const execFileAsync = promisify(execFile);
 
 /**
- * Resolves absolute source file paths for the configured JsonDbApp snapshot.
+ * Downloads a URL to disk using fetch with curl fallback.
  *
- * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {string[]} Absolute file paths in deterministic order.
+ * @param {string} url - Source URL to download.
+ * @param {string} outputPath - Absolute destination file path.
+ * @return {Promise<void>} Resolves when download is complete.
  */
-export function resolveJsonDbSourceFilePaths(paths: BuilderPaths): string[] {
-  return [...paths.jsonDbAppSourceFiles]
-    .sort((left, right) => left.localeCompare(right))
-    .map((relativeFilePath) => path.join(paths.jsonDbAppPinnedSnapshotDir, relativeFilePath));
+async function downloadArchive(url: string, outputPath: string): Promise<void> {
+  try {
+    const releaseResponse = await fetch(url);
+    if (!releaseResponse.ok) {
+      throw new BuildStageError(STAGE_ID, `Failed to download JsonDbApp release archive: ${url}`);
+    }
+
+    const archiveBytes = new Uint8Array(await releaseResponse.arrayBuffer());
+    await fs.writeFile(outputPath, archiveBytes);
+    return;
+  } catch (err) {
+    if (err instanceof BuildStageError) {
+      throw err;
+    }
+  }
+
+  try {
+    await execFileAsync('curl', ['-fsSL', url, '-o', outputPath]);
+  } catch (err) {
+    throw new BuildStageError(STAGE_ID, `Failed to download JsonDbApp release archive: ${url}`, err);
+  }
 }
 
 /**
- * Validates and resolves JsonDbApp source files from a pinned snapshot.
+ * Recursively lists JavaScript source files under a directory.
+ *
+ * @param {string} rootDir - Absolute directory to scan.
+ * @param {string} baseDir - Base directory for relative output paths.
+ * @return {Promise<string[]>} Relative JavaScript file paths.
+ */
+async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): Promise<string[]> {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const sortedEntries = [...entries].sort((left, right) => left.name.localeCompare(right.name));
+  const files: string[] = [];
+
+  for (const entry of sortedEntries) {
+    const entryPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listJavaScriptFilesRecursive(entryPath, baseDir)));
+      continue;
+    }
+
+    if (entry.isFile() && entry.name.endsWith('.js')) {
+      files.push(path.relative(baseDir, entryPath).replace(/\\/g, '/'));
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Downloads and extracts the pinned JsonDbApp release snapshot.
+ *
+ * @param {BuilderPaths} paths - Resolved builder path configuration.
+ * @return {Promise<string>} Absolute extraction root path.
+ */
+async function materialisePinnedJsonDbRelease(paths: BuilderPaths): Promise<string> {
+  const archivePath = path.join(paths.buildWorkDir, `jsondbapp-${JSON_DB_RELEASE_TAG}.tar.gz`);
+  const extractRoot = path.join(paths.buildWorkDir, `jsondbapp-${JSON_DB_RELEASE_TAG}`);
+
+  await fs.mkdir(paths.buildWorkDir, { recursive: true });
+  await downloadArchive(JSON_DB_RELEASE_TARBALL_URL, archivePath);
+  await fs.rm(extractRoot, { recursive: true, force: true });
+  await fs.mkdir(extractRoot, { recursive: true });
+
+  await execFileAsync('tar', ['-xzf', archivePath, '-C', extractRoot, '--strip-components=1']);
+
+  return extractRoot;
+}
+
+/**
+ * Validates and resolves JsonDbApp source files from the pinned GitHub release.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
  * @return {Promise<ResolveJsonDbSourceResult>} Deterministic source file list.
  */
 export async function runResolveJsonDbSource(paths: BuilderPaths): Promise<ResolveJsonDbSourceResult> {
-  const sourceFilePaths = resolveJsonDbSourceFilePaths(paths);
-  const sourceFiles: string[] = [];
+  try {
+    const releaseRoot = await materialisePinnedJsonDbRelease(paths);
+    const sourceRoot = path.join(releaseRoot, 'src');
+    const manifestPath = path.join(releaseRoot, 'appsscript.json');
 
-  for (const sourcePath of sourceFilePaths) {
-    const exists = await pathExists(sourcePath);
-    if (!exists) {
-      throw new BuildStageError(
-        STAGE_ID,
-        `Pinned JsonDbApp source file is missing: ${sourcePath}`,
-      );
+    if (!(await pathExists(sourceRoot))) {
+      throw new BuildStageError(STAGE_ID, `JsonDbApp release is missing source directory: ${sourceRoot}`);
+    }
+    if (!(await pathExists(manifestPath))) {
+      throw new BuildStageError(STAGE_ID, `JsonDbApp release is missing manifest: ${manifestPath}`);
     }
 
-    sourceFiles.push(path.relative(paths.jsonDbAppPinnedSnapshotDir, sourcePath).replace(/\\/g, '/'));
-  }
+    const sourceFiles = await listJavaScriptFilesRecursive(sourceRoot, releaseRoot);
+    if (sourceFiles.length === 0) {
+      throw new BuildStageError(STAGE_ID, 'JsonDbApp release contains no JavaScript source files in src/.');
+    }
 
-  return {
-    stage: STAGE_ID,
-    sourceFiles,
-  };
+    paths.jsonDbAppPinnedSnapshotDir = releaseRoot;
+    paths.jsonDbAppManifestPath = manifestPath;
+    paths.jsonDbAppSourceFiles = sourceFiles;
+
+    return {
+      stage: STAGE_ID,
+      sourceFiles,
+    };
+  } catch (err) {
+    if (err instanceof BuildStageError) {
+      throw err;
+    }
+    throw new BuildStageError(STAGE_ID, 'Failed to resolve JsonDbApp release sources.', err);
+  }
 }

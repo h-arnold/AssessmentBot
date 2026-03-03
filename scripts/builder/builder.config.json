@@ -5,6 +5,6 @@
   "jsonDbApp": {
     "pinnedSnapshotDir": "scripts/builder/vendor/jsondbapp",
     "sourceFiles": ["src/01-core.js", "src/02-database.js"],
-    "publicExports": ["loadDatabase", "createAndInitialiseDatabase", "DatabaseConfig"]
+    "publicExports": ["loadDatabase", "createAndInitialiseDatabase"]
   }
 }

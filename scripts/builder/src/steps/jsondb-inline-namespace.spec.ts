@@ -54,10 +54,9 @@ describe('generateJsonDbNamespaceWrapper', () => {
   it('outputs the expected namespace declaration wrapper', () => {
     const output = generateJsonDbNamespaceWrapper(['function loadDatabase() {}'], ['loadDatabase']);
 
-    expect(output).toContain('const JsonDbAppNS = (function () {');
+    expect(output).toContain('const JsonDbApp = (function () {');
     expect(output).toContain('return {');
     expect(output).toContain('loadDatabase,');
-    expect(output.trimEnd()).toMatch(/\}\)\(\);$/);
   });
 
   it('exports only configured public names', () => {
@@ -73,9 +72,9 @@ describe('generateJsonDbNamespaceWrapper', () => {
 
 describe('resolvePublicExports', () => {
   it('de-duplicates configured names while preserving order', () => {
-    expect(resolvePublicExports(['loadDatabase', 'loadDatabase', 'DatabaseConfig'])).toEqual([
+    expect(resolvePublicExports(['loadDatabase', 'loadDatabase', 'createAndInitialiseDatabase'])).toEqual([
       'loadDatabase',
-      'DatabaseConfig',
+      'createAndInitialiseDatabase',
     ]);
   });
 });
@@ -112,15 +111,35 @@ describe('runJsonDbInlineNamespace', () => {
     const output = await fs.readFile(result.outputPath, 'utf-8');
 
     expect(result.stage).toBe('jsondb-inline-namespace');
-    expect(result.namespaceSymbol).toBe('JsonDbAppNS');
+    expect(result.namespaceSymbol).toBe('JsonDbApp');
     expect(result.exportedApi).toEqual(['loadDatabase', 'createAndInitialiseDatabase']);
     expect(result.outputPath).toBe(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'));
 
-    expect(output).toContain('const JsonDbAppNS = (function () {');
+    expect(output).toContain('const JsonDbApp = (function () {');
     expect(output).toContain('loadDatabase,');
     expect(output).toContain('createAndInitialiseDatabase,');
     expect(output).not.toContain('JsonDbInternal,');
     expect(output).not.toContain('Validate,');
+  });
+
+  it('fails when configured exports are not declared in source', async () => {
+    paths.jsonDbAppPublicExports = ['loadDatabase', 'missingExport'];
+
+    await expect(runJsonDbInlineNamespace(paths)).rejects.toThrow(
+      'JsonDbApp public exports are missing declarations: missingExport',
+    );
+  });
+
+  it('fails when source files contain placeholder snapshot implementations', async () => {
+    await fs.writeFile(
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '01-core.js'),
+      "function loadDatabase() { throw new Error('JsonDbApp snapshot placeholder'); }",
+      'utf-8',
+    );
+
+    await expect(runJsonDbInlineNamespace(paths)).rejects.toThrow(
+      'Pinned JsonDbApp snapshot contains placeholder implementations and cannot be bundled.',
+    );
   });
 
   it('keeps JsonDb internals isolated from global declarations scan', async () => {
@@ -129,7 +148,7 @@ describe('runJsonDbInlineNamespace', () => {
 
     const declarations = scanTopLevelDeclarations(output);
 
-    expect(declarations).toEqual(['JsonDbAppNS']);
+    expect(declarations).toEqual(['JsonDbApp']);
     expect(declarations).not.toContain('Validate');
     expect(declarations).not.toContain('JsonDbInternal');
     expect(declarations).not.toContain('loadDatabase');

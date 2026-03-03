@@ -164,6 +164,28 @@ describe('runFrontendHtmlServiceTransform', () => {
     expect(output).not.toContain('/assets/');
   });
 
+
+
+  it('fails when asset references resolve outside the frontend build directory', async () => {
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html>',
+        '  <head></head>',
+        '  <body>',
+        '    <div id="root"></div>',
+        '    <script type="module" src="../secrets.js"></script>',
+        '  </body>',
+        '</html>',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow('Invalid frontend asset reference');
+  });
+
   it('fails when unresolved /assets references remain in transformed output', async () => {
     await fs.writeFile(
       path.join(paths.buildFrontendDir, 'index.html'),

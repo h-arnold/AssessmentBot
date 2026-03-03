@@ -137,7 +137,7 @@ describe('findDuplicateProtectedGlobals', () => {
     const duplicates = findDuplicateProtectedGlobals({
       'a.js': 'class Validate {}',
       'b.js': 'function Validate() {}',
-      'JsonDbApp.inlined.js': 'const JsonDbAppNS = {};',
+      'JsonDbApp.inlined.js': 'const JsonDbApp = {};',
     });
 
     expect(duplicates).toEqual({
@@ -149,14 +149,14 @@ describe('findDuplicateProtectedGlobals', () => {
 describe('scanFileTopLevelDeclarations', () => {
   it('ignores declarations nested inside top-level wrappers', () => {
     const declarations = scanFileTopLevelDeclarations(`
-const JsonDbAppNS = (function () {
+const JsonDbApp = (function () {
   class Validate {}
   function hiddenHelper() {}
   return {};
 })();
 `);
 
-    expect(declarations).toEqual(['JsonDbAppNS']);
+    expect(declarations).toEqual(['JsonDbApp']);
   });
 
   it('ignores braces in comments, strings and template literal text', () => {

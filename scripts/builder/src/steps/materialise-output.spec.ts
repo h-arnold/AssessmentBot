@@ -7,6 +7,8 @@ import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
 import { runMaterialiseOutput } from './materialise-output.js';
 
+const EXPECTED_GAS_FILE_COUNT = 4;
+
 /**
  * Creates a unique temporary directory for each test run.
  *
@@ -70,7 +72,7 @@ describe('runMaterialiseOutput', () => {
 
     expect(result.stage).toBe('materialise-output');
     expect(result.gasRootPath).toBe(paths.buildGasDir);
-    expect(result.fileCount).toBe(4);
+    expect(result.fileCount).toBe(EXPECTED_GAS_FILE_COUNT);
     expect(result.totalBytes).toBeGreaterThan(0);
   });
 
