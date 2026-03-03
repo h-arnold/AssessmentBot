@@ -68,7 +68,7 @@ class BaseRequestManager {
   /**
    * Sends a single HTTP request with retries and exponential backoff.
    * @param {Object} request - The request object compatible with UrlFetchApp.fetch().
-   * @param {number} [maxRetries=3] - Maximum number of retries.
+   * @param {number} [maxRetries=2] - Maximum number of retries.
    * @return {HTTPResponse|null} - The HTTPResponse object or null if all retries fail.
    */
   sendRequestWithRetries(request, maxRetries = DEFAULT_MAX_RETRIES) {

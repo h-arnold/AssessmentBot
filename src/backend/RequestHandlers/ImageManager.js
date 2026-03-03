@@ -1,5 +1,3 @@
-const HTTP_STATUS_OK = 200;
-
 /**
  * Image manager.
  */

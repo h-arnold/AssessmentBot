@@ -4,11 +4,7 @@
  * Manages the creation, caching, and sending of request objects to the LLM.
  */
 const VALIDATION_RETRY_LIMIT = 3;
-const HTTP_STATUS_OK = 200;
-const HTTP_STATUS_CREATED = 201;
-const TOAST_DURATION_SECONDS = 5;
-const HTTP_STATUS_UNAUTHORISED = 401;
-const HTTP_STATUS_FORBIDDEN = 403;
+const LLM_TOAST_DURATION_SECONDS = 5;
 const HTTP_STATUS_BAD_REQUEST = 400;
 const HTTP_STATUS_PAYLOAD_TOO_LARGE = 413;
 
@@ -267,7 +263,7 @@ class LLMRequestManager extends BaseRequestManager {
     Utils.toastMessage(
       'Failed to process assessment for UID: ' + uid,
       'Error',
-      TOAST_DURATION_SECONDS
+      LLM_TOAST_DURATION_SECONDS
     );
   }
 
@@ -279,7 +275,7 @@ class LLMRequestManager extends BaseRequestManager {
     Utils.toastMessage(
       'Failed to process assessment for UID: ' + uid,
       'Error',
-      TOAST_DURATION_SECONDS
+      LLM_TOAST_DURATION_SECONDS
     );
   }
 
