@@ -2,72 +2,187 @@
 
 ## Scope and Goal
 
-This document captures the agreed implementation direction for bundling the new React frontend and GAS backend into one deployable Google Apps Script project.
+This document defines the implementation contract for a TypeScript builder that produces one deployable Google Apps Script (GAS) project containing:
+
+- React frontend (Vite build transformed for HtmlService)
+- AssessmentBot backend GAS source
+- JsonDbApp source inlined behind a dedicated namespace
 
 Goal:
 
-- Build React with Vite into a GAS HtmlService-compatible artefact.
-- Copy AssessmentBot backend into a single build target.
-- Inline [JsonDbApp source](https://github.com/h-arnold/JsonDbApp/tree/main/src) into the same GAS project without global symbol collisions.
+- One deterministic build command that always materialises a clasp-ready `build/gas/` directory.
 
 Non-goals:
 
-- No code changes are implemented in this document.
-- No deployment behaviour is changed yet.
+- No runtime feature changes to AssessmentBot logic.
+- No deployment automation in this phase.
+
+## Technical Direction
+
+### Language and standards
+
+Builder code should be written in TypeScript and match frontend defaults to avoid divergence:
+
+- ESM modules (`"type": "module"` style)
+- Strict TypeScript (`strict: true`, `noUnusedLocals`, `noUnusedParameters`)
+- ESLint flat config with TypeScript ESLint rules
+- Prettier formatting using repository `.prettierrc`
+- 2-space indentation
+
+### Proposed builder location
+
+- Source: `scripts/builder/src/**/*.ts`
+- Entrypoint: `scripts/builder/src/build-gas-bundle.ts`
+- Compiled runner: `scripts/builder/dist/build-gas-bundle.js`
+- Tests: inlined with source modules using `.spec.ts` suffix (for example `merge-manifest.spec.ts`)
+
+### Proposed npm scripts (root)
+
+- `builder:build`: compile the builder TypeScript
+- `builder:run`: execute builder and produce `build/gas`
+- `builder:test`: run builder unit tests
+- `builder:lint`: lint builder TypeScript
 
 ## Viability Summary
 
-Plan A is viable, with required packaging constraints:
+Plan is viable with these hard constraints:
 
-- GAS uses a shared global namespace across project files, so direct raw copy of JsonDbApp source will cause collisions (confirmed collision: `Validate`).
-- Only one effective `appsscript.json` should exist in the final build output; manifests must be merged, not copied independently.
-- Standard Vite dist output is not directly HtmlService-safe unless transformed (module scripts, asset graph, path assumptions).
+- GAS project files share one global namespace.
+- JsonDbApp cannot be copied raw because collisions are guaranteed (for example `Validate`).
+- Final artefact must contain one authoritative `appsscript.json`.
+- Vite output must be transformed for HtmlService (no module script/runtime asset assumptions).
 
-## Required Vite/Frontend Build Changes for HtmlService
+## Target Build Outputs
 
-1. Build for inline/single-file delivery (or equivalent post-processing):
+- `build/frontend/` - raw frontend build artefacts
+- `build/work/` - temporary transformation workspace (optional, but recommended)
+- `build/gas/` - final clasp-ready GAS project
 
-- Inline JS/CSS output.
-- Avoid runtime `/assets/*` fetches.
+Required final files (minimum):
 
-1. Configure Vite for HtmlService compatibility:
+- `build/gas/appsscript.json`
+- `build/gas/UI/ReactApp.html`
+- `build/gas/JsonDbApp.inlined.js`
+- Backend `.js` files copied from `src/backend/`
 
-- `base: './'` (or empty).
-- `build.cssCodeSplit = false`.
-- `build.modulePreload = false`.
-- `rollupOptions.output.inlineDynamicImports = true`.
+## Pipeline Contract (Step-by-Step)
 
-1. Routing:
+### Step 1: Preflight and clean
 
-- Use hash routing for SPA navigation in GAS web app URLs.
+Required functionality:
 
-1. API bridge:
+- Validate required directories/files exist (`src/frontend`, `src/backend`, builder config).
+- Remove previous `build/` output.
+- Recreate base directories with deterministic structure.
 
-- Frontend should call GAS-exposed backend functions via `google.script.run` wrapper layer (not a generic REST assumption).
+Acceptance criteria:
 
-## JsonDbApp Namespacing Strategy
+- Build fails fast with a clear error if required inputs are missing.
+- Re-running immediately after a successful build starts from a clean state.
+- No stale artefacts remain from prior runs.
 
-### Why namespacing is required
+Test cases:
 
-GAS project files share one global scope. Copying AssessmentBot backend + JsonDbApp source as-is causes collisions.
+- Unit: missing `src/backend` path throws expected error.
+- Unit: clean removes nested stale files under `build/gas/`.
+- Integration: two consecutive runs produce identical file list.
 
-### Recommended approach: generated IIFE wrapper
+### Step 2: Frontend build (Vite)
 
-Do not copy JsonDbApp source files raw into build output.
+Required functionality:
 
-Instead:
+- Execute frontend build from `src/frontend`.
+- Use HtmlService-compatible configuration profile:
+  - `base: './'` (or empty equivalent)
+  - `build.cssCodeSplit = false`
+  - `build.modulePreload = false`
+  - `rollupOptions.output.inlineDynamicImports = true`
+- Capture build metadata (entry html path, generated chunks, warnings).
 
-1. Resolve JsonDbApp source files in deterministic load order.
-2. Concatenate them.
-3. Wrap concatenated source in one IIFE.
-4. Expose only one global namespace object.
+Acceptance criteria:
 
-Example shape:
+- Vite exits successfully.
+- Output exists in `build/frontend` (or configured output path).
+- Build log includes generated entry HTML.
+
+Test cases:
+
+- Integration: frontend build command is invoked with expected working directory.
+- Integration: build failure propagates non-zero exit and halts pipeline.
+
+### Step 3: Convert frontend for HtmlService
+
+Required functionality:
+
+- Transform built `index.html` into `UI/ReactApp.html` for GAS HtmlService.
+- Inline JS and CSS into HTML template (or equivalent single-delivery strategy).
+- Remove incompatible module semantics and asset URL assumptions.
+- Preserve essential meta tags and root mount node.
+
+Acceptance criteria:
+
+- Output contains no external `/assets/*` references.
+- Output is valid HtmlService template file.
+- React root node is present and script executes in GAS client context.
+
+Test cases:
+
+- Unit: HTML transformer inlines `<script type="module">` content.
+- Unit: CSS link tags are replaced with inline style block.
+- Integration: transformed file contains no `type="module"` and no `/assets/` path.
+
+### Step 4: Copy AssessmentBot backend
+
+Required functionality:
+
+- Copy backend JS files from `src/backend` into `build/gas` preserving relative structure.
+- Exclude non-runtime noise (`*.test.*`, temporary files, source maps).
+- Preserve top-level callable GAS functions and file naming.
+
+Acceptance criteria:
+
+- All required runtime backend files are present in `build/gas`.
+- No test-only files appear in final output.
+- Existing backend behaviour entrypoints remain intact.
+
+Test cases:
+
+- Unit: file filter includes `.js` runtime files and excludes tests.
+- Integration: expected backend file manifest matches actual output.
+
+### Step 5: Resolve JsonDbApp source
+
+Required functionality:
+
+- Source JsonDbApp from a pinned snapshot (vendored path or pinned commit archive).
+- Resolve deterministic load order for concatenation.
+- Validate all expected JsonDbApp source files are present before proceeding.
+
+Acceptance criteria:
+
+- Build fails if pinned source revision is unavailable.
+- Load order is stable across runs.
+- Source list is logged for traceability.
+
+Test cases:
+
+- Unit: load-order resolver returns deterministic ordering.
+- Unit: missing required JsonDbApp file produces explicit failure.
+
+### Step 6: Generate `JsonDbApp.inlined.js` with namespace isolation
+
+Required functionality:
+
+- Concatenate ordered JsonDbApp source.
+- Wrap in IIFE.
+- Expose a single global namespace (for example `JsonDbAppNS`).
+- Export only approved API surface from wrapper return object.
+
+Example target shape:
 
 ```javascript
 const JsonDbAppNS = (function () {
-  // concatenated JsonDbApp source files
-
+  // inlined JsonDbApp internals
   return {
     loadDatabase,
     createAndInitialiseDatabase,
@@ -76,124 +191,152 @@ const JsonDbAppNS = (function () {
 })();
 ```
 
-Result:
+Acceptance criteria:
 
-- Internals (including `Validate`) stay function-scoped inside the IIFE.
-- Only `JsonDbAppNS` enters global scope.
-- AssessmentBot globals remain unaffected.
+- Only one new global symbol from JsonDbApp is introduced.
+- Known collision names (for example `Validate`) are not leaked globally.
+- File is syntactically valid JavaScript for GAS runtime.
 
-## Final Shape of the Builder Script
+Test cases:
 
-Location:
+- Unit: wrapper generator outputs expected namespace declaration.
+- Unit: export list contains only configured public names.
+- Integration: duplicate global scan does not report JsonDb internals.
 
-- `scripts/builder/` (new orchestration area)
+### Step 7: Merge manifests into one `appsscript.json`
 
-Proposed entrypoint:
+Required functionality:
 
-- `scripts/builder/build-gas-bundle.js`
+- Use AssessmentBot manifest as base.
+- Union scopes/services required by backend + JsonDbApp.
+- Preserve required fields and stable key ordering for deterministic diffs.
 
-Proposed output:
+Acceptance criteria:
 
-- `build/frontend/` (intermediate frontend build output)
-- `build/backend/` (intermediate backend copy)
-- `build/gas/` (final clasp-ready unified artefact)
+- Exactly one final manifest exists in `build/gas`.
+- No duplicate scope entries.
+- All required advanced services remain enabled.
 
-### Pipeline steps
+Test cases:
 
-1. Clean previous `build/` directories.
-2. Run frontend build with HtmlService-compatible config.
-3. Convert frontend output into GAS HTML template(s) (e.g. `ReactApp.html`).
-4. Copy AssessmentBot backend JS into build workspace.
-5. Fetch/synchronise JsonDbApp source (pinned ref or vendored snapshot).
-6. Generate `JsonDbApp.inlined.js` using the IIFE namespace wrapper.
-7. Merge manifest scopes/services into one final `appsscript.json`.
-8. Materialise final GAS project structure under `build/gas/`.
-9. Validate build (duplicate symbol checks, required files, manifest sanity).
+- Unit: scope merge de-duplicates and sorts deterministically.
+- Unit: service merge keeps existing service versions.
+- Integration: final manifest passes JSON parse and required-field assertions.
 
-### Suggested script module layout
+### Step 8: Materialise final GAS project structure
 
-- `scripts/builder/build-gas-bundle.js` (orchestrator)
-- `scripts/builder/steps/buildFrontend.js`
-- `scripts/builder/steps/convertFrontendToHtmlService.js`
-- `scripts/builder/steps/copyBackend.js`
-- `scripts/builder/steps/prepareJsonDbApp.js`
-- `scripts/builder/steps/mergeManifest.js`
-- `scripts/builder/steps/validateOutput.js`
-- `scripts/builder/lib/fs.js`
-- `scripts/builder/lib/order.js`
+Required functionality:
 
-### Pseudocode (agreed shape)
+- Write all generated/copied assets into `build/gas`.
+- Ensure consistent directory layout (`UI`, backend files, manifest, inlined JsonDb file).
+- Optionally emit build metadata file (for example input revisions and timestamps).
 
-```javascript
-async function buildGasBundle() {
-  cleanBuildDirs();
+Acceptance criteria:
 
-  await buildFrontend({
-    outDir: 'build/frontend',
-    htmlServiceCompat: true,
-  });
+- `build/gas` is directly usable by clasp without manual edits.
+- Required file set is complete.
 
-  const frontendHtml = await convertFrontendToHtmlService({
-    distDir: 'build/frontend',
-    outFile: 'build/gas/UI/ReactApp.html',
-  });
+Test cases:
 
-  await copyAssessmentBotBackend({
-    srcDir: 'src/backend',
-    outDir: 'build/gas',
-  });
+- Integration: file tree assertion for expected structure.
+- Integration: no temporary workspace files leak into final output.
 
-  const jsonDbSources = await getJsonDbAppSources({
-    source: 'pinned-repo-ref-or-local-vendor',
-  });
+### Step 9: Validate output and fail fast
 
-  const jsonDbIife = buildIifeNamespace({
-    namespace: 'JsonDbAppNS',
-    sourcesInLoadOrder: jsonDbSources,
-    exports: ['loadDatabase', 'createAndInitialiseDatabase', 'DatabaseConfig'],
-  });
+Required functionality:
 
-  writeFile('build/gas/JsonDbApp.inlined.js', jsonDbIife);
+- Run final checks:
+  - required files present
+  - manifest sanity
+  - duplicate global symbol detection for protected names
+  - frontend HTML has no forbidden external asset references
+- Emit concise build summary.
 
-  const mergedManifest = mergeAppsscriptJson({
-    base: 'src/backend/appsscript.json',
-    additions: {
-      scopes: [
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/script.storage',
-        'https://www.googleapis.com/auth/script.scriptapp',
-      ],
-      services: ['drive:v3', 'sheets:v4', 'slides:v1', 'classroom:v1'],
-    },
-  });
+Acceptance criteria:
 
-  writeJson('build/gas/appsscript.json', mergedManifest);
+- Any failed check aborts build with actionable message.
+- Successful build prints output path and key artefact sizes.
 
-  validateOutput({
-    gasDir: 'build/gas',
-    assertNoDuplicateGlobalSymbols: ['Validate', 'ABLogger', 'ProgressTracker'],
-    assertRequiredFiles: ['appsscript.json', 'JsonDbApp.inlined.js', 'UI/ReactApp.html'],
-  });
-}
-```
+Test cases:
 
-## Manifest and Scope Notes
+- Unit: duplicate symbol detector flags known collision fixture.
+- Unit: required-file validator fails with missing file list.
+- Integration: happy-path run ends with success summary and zero exit.
 
-- Final artefact should include one authoritative `appsscript.json`.
-- Merge (union) scopes from AssessmentBot backend and JsonDbApp requirements.
-- Preserve required enabled advanced services for AssessmentBot.
+## Suggested TypeScript Module Layout
 
-## Risk Checklist
+- `scripts/builder/src/build-gas-bundle.ts` (orchestrator)
+- `scripts/builder/src/config.ts` (paths, constants, defaults)
+- `scripts/builder/src/steps/preflight-clean.ts`
+- `scripts/builder/src/steps/build-frontend.ts`
+- `scripts/builder/src/steps/convert-htmlservice.ts`
+- `scripts/builder/src/steps/copy-backend.ts`
+- `scripts/builder/src/steps/resolve-jsondb-source.ts`
+- `scripts/builder/src/steps/generate-jsondb-inline.ts`
+- `scripts/builder/src/steps/merge-manifest.ts`
+- `scripts/builder/src/steps/materialise-output.ts`
+- `scripts/builder/src/steps/validate-output.ts`
+- `scripts/builder/src/lib/fs.ts`
+- `scripts/builder/src/lib/process.ts`
+- `scripts/builder/src/lib/hash.ts`
+- `scripts/builder/src/types.ts`
 
-- Global symbol collisions if JsonDbApp is copied raw.
-- Incorrect source order when concatenating JsonDbApp classes.
-- HtmlService runtime failures if module assumptions leak into output.
-- Oversized UI payload if all assets are inlined without pruning.
+## Error Handling Contract for Builder
 
-## Acceptance Criteria for First Implementation
+- Fail fast; never swallow errors.
+- Throw typed errors with stage context (for example `BuildStageError`).
+- Include:
+  - pipeline stage id
+  - concise human-readable message
+  - underlying error object
+- Exit non-zero on first hard failure.
 
-- `build/gas/` contains one valid GAS project (`appsscript.json` + JS/HTML files).
-- React app renders in HtmlService without external runtime asset fetches.
+## Determinism Requirements
+
+- Stable file ordering for concatenation and copy operations.
+- Stable JSON serialisation order for manifest writes.
+- Optional content-hash output to verify repeatability.
+
+Acceptance criteria:
+
+- Two builds from unchanged inputs produce identical checksums for core outputs:
+  - `appsscript.json`
+  - `JsonDbApp.inlined.js`
+  - `UI/ReactApp.html`
+
+## Test Strategy (Builder)
+
+Test levels:
+
+- Unit tests for pure transforms and merge logic.
+- Integration tests for pipeline stages using fixture directories.
+- Smoke test for end-to-end build with representative sample inputs.
+
+Test file convention:
+
+- Colocate tests with implementation in `scripts/builder/src/`.
+- Use `.spec.ts` suffix for all builder tests to keep TypeScript conventions idiomatic.
+
+Recommended coverage focus:
+
+- HtmlService conversion edge cases
+- Manifest merge correctness
+- JsonDb namespacing and collision prevention
+- Deterministic output ordering
+
+## Initial Milestones
+
+1. Implement steps 1-3 with fixture-based integration tests.
+2. Add backend copy + manifest merge (steps 4 and 7).
+3. Add JsonDb resolution/inlining (steps 5 and 6).
+4. Add materialisation + final validators (steps 8 and 9).
+5. Wire npm scripts and CI checks for builder lint/test/run.
+
+## Final Acceptance Criteria (MVP)
+
+- Single command builds `build/gas` from clean checkout.
+- React app renders via HtmlService without runtime asset fetch failures.
 - Backend callable functions remain available.
-- JsonDbApp operations are accessible only via `JsonDbAppNS.*` and do not collide with AssessmentBot globals.
-- Build is repeatable from a single command.
+- JsonDb functionality is accessible via namespace only (`JsonDbAppNS.*`).
+- One valid merged `appsscript.json` is emitted.
+- Build is deterministic across repeat runs with unchanged inputs.
