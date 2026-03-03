@@ -8,6 +8,13 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - Avoid drift between frontend and builder defaults.
 - Isolate runtime-specific settings (browser vs Node.js) to leaf configs.
 
+## Why this structure is intentional
+
+- One neutral root base keeps shared standards in a single place.
+- Leaf configs stay explicit about runtime behaviour (frontend app, frontend Node tooling, builder Node CLI).
+- This avoids hidden coupling where one runtime config accidentally becomes the parent for another runtime.
+- A frontend-only intermediate base could remove a small amount of duplication, but adds another inheritance layer with limited practical benefit at current project size.
+
 ## TypeScript hierarchy
 
 ### 1) Single global base
@@ -58,6 +65,34 @@ This project uses a shared configuration tree so TypeScript and linting standard
 - `eslint.config.js` (repo root)
   - Remains focused on existing backend GAS JavaScript linting rules.
   - Does not replace frontend/builder TypeScript lint configs.
+
+## Running lint checks
+
+Run all lint checks across the codebase from repo root:
+
+```bash
+npm run lint && npm run frontend:lint && npm run builder:lint
+```
+
+Run lint for a specific module:
+
+- Backend GAS JavaScript:
+
+```bash
+npm run lint
+```
+
+- Frontend TypeScript/React:
+
+```bash
+npm run frontend:lint
+```
+
+- Builder TypeScript:
+
+```bash
+npm run builder:lint
+```
 
 ## Change policy
 
