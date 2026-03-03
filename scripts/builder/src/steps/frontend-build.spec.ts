@@ -78,8 +78,6 @@ describe('runFrontendBuild', () => {
         '--outDir',
         paths.buildFrontendDir,
         '--emptyOutDir',
-        '--cssCodeSplit=false',
-        '--modulePreload=false',
       ],
       expect.objectContaining({
         cwd: paths.repoRoot,

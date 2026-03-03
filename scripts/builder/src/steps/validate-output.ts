@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import ts from 'typescript';
 
 import { BuildStageError } from '../lib/errors.js';
+import { checksumUtf8 } from '../lib/hash.js';
 import type { BuilderPaths, ValidateOutputResult } from '../types.js';
 
 const STAGE_ID = 'validate-output' as const;
@@ -69,48 +71,9 @@ function validateRequiredFiles(relativeFiles: Set<string>): void {
  * @return {void} No return value.
  */
 export function validateManifestSanity(manifestContent: string): void {
-  let parsedManifest: GasManifest;
-  try {
-    parsedManifest = JSON.parse(manifestContent) as GasManifest;
-  } catch (err) {
-    throw new BuildStageError(STAGE_ID, 'Final appsscript.json is not valid JSON.', err);
-  }
-
-  if (!Array.isArray(parsedManifest.oauthScopes) || parsedManifest.oauthScopes.length === 0) {
-    throw new BuildStageError(STAGE_ID, 'Final appsscript.json must include a non-empty oauthScopes array.');
-  }
-
-  const duplicatedScopes = parsedManifest.oauthScopes.filter(
-    (scope, index, list) => list.indexOf(scope) !== index,
-  );
-  if (duplicatedScopes.length > 0) {
-    throw new BuildStageError(
-      STAGE_ID,
-      `Final appsscript.json contains duplicated oauth scopes: ${[...new Set(duplicatedScopes)].join(', ')}`,
-    );
-  }
-
-  const services = parsedManifest.dependencies?.enabledAdvancedServices;
-  if (services) {
-    if (!Array.isArray(services)) {
-      throw new BuildStageError(
-        STAGE_ID,
-        'Final appsscript.json dependencies.enabledAdvancedServices must be an array when present.',
-      );
-    }
-
-    const serviceIds = services.map((service) => service.serviceId);
-    const duplicatedServiceIds = serviceIds.filter(
-      (serviceId, index, list) => list.indexOf(serviceId) !== index,
-    );
-
-    if (duplicatedServiceIds.length > 0) {
-      throw new BuildStageError(
-        STAGE_ID,
-        `Final appsscript.json contains duplicated advanced services: ${[...new Set(duplicatedServiceIds)].join(', ')}`,
-      );
-    }
-  }
+  const parsedManifest = parseManifestContent(manifestContent);
+  validateOauthScopes(parsedManifest.oauthScopes);
+  validateAdvancedServices(parsedManifest.dependencies?.enabledAdvancedServices);
 }
 
 /**
@@ -142,16 +105,7 @@ export function findDuplicateProtectedGlobals(
   const protectedDeclarations = new Map<string, Set<string>>();
 
   for (const [relativePath, source] of Object.entries(jsSourcesByPath)) {
-    const declaredNames = scanFileTopLevelDeclarations(source);
-
-    for (const symbol of PROTECTED_GLOBALS) {
-      if (declaredNames.includes(symbol)) {
-        if (!protectedDeclarations.has(symbol)) {
-          protectedDeclarations.set(symbol, new Set<string>());
-        }
-        protectedDeclarations.get(symbol)?.add(relativePath);
-      }
-    }
+    addProtectedDeclarationMatches(protectedDeclarations, relativePath, scanFileTopLevelDeclarations(source));
   }
 
   const duplicates: Record<string, string[]> = {};
@@ -171,185 +125,139 @@ export function findDuplicateProtectedGlobals(
  * @return {string[]} Declaration names detected at brace depth zero.
  */
 export function scanFileTopLevelDeclarations(source: string): string[] {
-  const sanitisedSource = sanitiseSourceForTopLevelScan(source);
   const names: string[] = [];
-  const lines = sanitisedSource.split(/\r?\n/);
-  let braceDepth = 0;
+  const sourceFile = ts.createSourceFile('build-output.js', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
 
-  for (const line of lines) {
-    const depthBeforeLine = braceDepth;
-    for (const character of line) {
-      if (character === '{') {
-        braceDepth += 1;
-      } else if (character === '}') {
-        braceDepth = Math.max(0, braceDepth - 1);
-      }
-    }
-
-    if (depthBeforeLine !== 0) {
-      continue;
-    }
-
-    const match = line.match(/^\s*(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)\b/);
-    if (match?.[1]) {
-      names.push(match[1]);
-    }
+  for (const statement of sourceFile.statements) {
+    const declarationNames = getTopLevelDeclarationNames(statement);
+    names.push(...declarationNames);
   }
 
   return names;
 }
 
 /**
- * Sanitises JavaScript source for declaration scanning by removing comment and string literal content.
+ * Parses manifest JSON and wraps parse failures with stage context.
  *
- * @param {string} source - JavaScript source text.
- * @return {string} Source with non-code literal/comment content replaced by spaces.
+ * @param {string} manifestContent - Raw manifest JSON string.
+ * @return {GasManifest} Parsed manifest object.
  */
-function sanitiseSourceForTopLevelScan(source: string): string {
-  const output: string[] = [];
-  let index = 0;
-  let inSingleQuote = false;
-  let inDoubleQuote = false;
-  let inTemplateLiteral = false;
-  let inLineComment = false;
-  let inBlockComment = false;
-  let templateExpressionDepth = 0;
+function parseManifestContent(manifestContent: string): GasManifest {
+  try {
+    return JSON.parse(manifestContent) as GasManifest;
+  } catch (err) {
+    throw new BuildStageError(STAGE_ID, 'Final appsscript.json is not valid JSON.', err);
+  }
+}
 
-  while (index < source.length) {
-    const character = source[index] ?? '';
-    const nextCharacter = source[index + 1] ?? '';
-
-    if (inLineComment) {
-      if (character === '\n') {
-        inLineComment = false;
-        output.push('\n');
-      } else {
-        output.push(' ');
-      }
-      index += 1;
-      continue;
-    }
-
-    if (inBlockComment) {
-      if (character === '*' && nextCharacter === '/') {
-        output.push(' ');
-        output.push(' ');
-        inBlockComment = false;
-        index += 2;
-      } else {
-        output.push(character === '\n' ? '\n' : ' ');
-        index += 1;
-      }
-      continue;
-    }
-
-    if (inSingleQuote) {
-      if (character === '\\') {
-        output.push(' ');
-        output.push(nextCharacter === '\n' ? '\n' : ' ');
-        index += 2;
-        continue;
-      }
-      output.push(character === '\n' ? '\n' : ' ');
-      if (character === "'") {
-        inSingleQuote = false;
-      }
-      index += 1;
-      continue;
-    }
-
-    if (inDoubleQuote) {
-      if (character === '\\') {
-        output.push(' ');
-        output.push(nextCharacter === '\n' ? '\n' : ' ');
-        index += 2;
-        continue;
-      }
-      output.push(character === '\n' ? '\n' : ' ');
-      if (character === '"') {
-        inDoubleQuote = false;
-      }
-      index += 1;
-      continue;
-    }
-
-    if (inTemplateLiteral) {
-      if (character === '\\') {
-        output.push(' ');
-        output.push(nextCharacter === '\n' ? '\n' : ' ');
-        index += 2;
-        continue;
-      }
-
-      if (character === '$' && nextCharacter === '{') {
-        output.push('$');
-        output.push('{');
-        inTemplateLiteral = false;
-        templateExpressionDepth = 1;
-        index += 2;
-        continue;
-      }
-
-      output.push(character === '\n' ? '\n' : ' ');
-      if (character === '`') {
-        inTemplateLiteral = false;
-      }
-      index += 1;
-      continue;
-    }
-
-    if (character === '/' && nextCharacter === '/') {
-      output.push(' ');
-      output.push(' ');
-      inLineComment = true;
-      index += 2;
-      continue;
-    }
-
-    if (character === '/' && nextCharacter === '*') {
-      output.push(' ');
-      output.push(' ');
-      inBlockComment = true;
-      index += 2;
-      continue;
-    }
-
-    if (character === "'") {
-      output.push(' ');
-      inSingleQuote = true;
-      index += 1;
-      continue;
-    }
-
-    if (character === '"') {
-      output.push(' ');
-      inDoubleQuote = true;
-      index += 1;
-      continue;
-    }
-
-    if (character === '`') {
-      output.push(' ');
-      inTemplateLiteral = true;
-      index += 1;
-      continue;
-    }
-
-    output.push(character);
-    if (templateExpressionDepth > 0) {
-      if (character === '{') {
-        templateExpressionDepth += 1;
-      } else if (character === '}') {
-        templateExpressionDepth -= 1;
-        if (templateExpressionDepth === 0) {
-          inTemplateLiteral = true;
-        }
-      }
-    }
-    index += 1;
+/**
+ * Validates oauth scope requirements for the merged manifest.
+ *
+ * @param {string[] | undefined} oauthScopes - Optional oauth scopes list.
+ * @return {void} No return value.
+ */
+function validateOauthScopes(oauthScopes: string[] | undefined): void {
+  if (!Array.isArray(oauthScopes) || oauthScopes.length === 0) {
+    throw new BuildStageError(STAGE_ID, 'Final appsscript.json must include a non-empty oauthScopes array.');
   }
 
-  return output.join('');
+  const duplicatedScopes = findDuplicatedValues(oauthScopes);
+  if (duplicatedScopes.length === 0) {
+    return;
+  }
+
+  throw new BuildStageError(
+    STAGE_ID,
+    `Final appsscript.json contains duplicated oauth scopes: ${[...new Set(duplicatedScopes)].join(', ')}`,
+  );
+}
+
+/**
+ * Validates advanced services requirements for the merged manifest.
+ *
+ * @param {GasManifest['dependencies']['enabledAdvancedServices']} services - Optional advanced services list.
+ * @return {void} No return value.
+ */
+function validateAdvancedServices(
+  services: NonNullable<GasManifest['dependencies']>['enabledAdvancedServices'],
+): void {
+  if (!services) {
+    return;
+  }
+
+  if (!Array.isArray(services)) {
+    throw new BuildStageError(
+      STAGE_ID,
+      'Final appsscript.json dependencies.enabledAdvancedServices must be an array when present.',
+    );
+  }
+
+  const duplicatedServiceIds = findDuplicatedValues(services.map((service) => service.serviceId));
+  if (duplicatedServiceIds.length === 0) {
+    return;
+  }
+
+  throw new BuildStageError(
+    STAGE_ID,
+    `Final appsscript.json contains duplicated advanced services: ${[...new Set(duplicatedServiceIds)].join(', ')}`,
+  );
+}
+
+/**
+ * Returns duplicate values while preserving repeated entries.
+ *
+ * @param {string[]} values - Input values.
+ * @return {string[]} Values that appear more than once.
+ */
+function findDuplicatedValues(values: string[]): string[] {
+  return values.filter((value, index, list) => list.indexOf(value) !== index);
+}
+
+/**
+ * Adds declaration matches for protected symbols from one source file.
+ *
+ * @param {Map<string, Set<string>>} protectedDeclarations - Collected protected declarations map.
+ * @param {string} relativePath - Relative source path being processed.
+ * @param {string[]} declaredNames - Top-level declarations found in source.
+ * @return {void} No return value.
+ */
+function addProtectedDeclarationMatches(
+  protectedDeclarations: Map<string, Set<string>>,
+  relativePath: string,
+  declaredNames: string[],
+): void {
+  for (const symbol of PROTECTED_GLOBALS) {
+    if (!declaredNames.includes(symbol)) {
+      continue;
+    }
+
+    if (!protectedDeclarations.has(symbol)) {
+      protectedDeclarations.set(symbol, new Set<string>());
+    }
+
+    protectedDeclarations.get(symbol)!.add(relativePath);
+  }
+}
+
+/**
+ * Extracts top-level declaration names from a parsed JavaScript statement node.
+ *
+ * @param {ts.Statement} statement - TypeScript AST statement node.
+ * @return {string[]} Declaration names from supported declaration statements.
+ */
+function getTopLevelDeclarationNames(statement: ts.Statement): string[] {
+  if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
+    return statement.name ? [statement.name.text] : [];
+  }
+
+  if (!ts.isVariableStatement(statement)) {
+    return [];
+  }
+
+  return statement.declarationList.declarations
+    .map((declaration) => declaration.name)
+    .filter((name): name is ts.Identifier => ts.isIdentifier(name))
+    .map((identifier) => identifier.text);
 }
 
 /**
@@ -398,10 +306,13 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
     }
 
     const artefactSizes: Record<string, number> = {};
+    const artefactChecksums: Record<string, string> = {};
     for (const requiredPath of REQUIRED_FILES) {
       const absolutePath = path.join(paths.buildGasDir, requiredPath);
+      const content = await fs.readFile(absolutePath, 'utf-8');
       const stats = await fs.stat(absolutePath);
       artefactSizes[requiredPath] = stats.size;
+      artefactChecksums[requiredPath] = checksumUtf8(content);
     }
 
     return {
@@ -411,6 +322,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
       gasFileCount: relativeFiles.length,
       duplicateProtectedGlobalCount: 0,
       artefactSizes,
+      artefactChecksums,
     };
   } catch (err) {
     if (err instanceof BuildStageError) {

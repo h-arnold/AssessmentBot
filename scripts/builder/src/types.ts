@@ -95,4 +95,5 @@ export type ValidateOutputResult = {
   gasFileCount: number;
   duplicateProtectedGlobalCount: number;
   artefactSizes: Record<string, number>;
+  artefactChecksums: Record<string, string>;
 };

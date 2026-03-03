@@ -58,6 +58,9 @@ async function run(): Promise<void> {
   logInfo(
     `Build summary: appsscript.json=${validateOutputResult.artefactSizes['appsscript.json']} bytes, JsonDbApp.inlined.js=${validateOutputResult.artefactSizes['JsonDbApp.inlined.js']} bytes, UI/ReactApp.html=${validateOutputResult.artefactSizes['UI/ReactApp.html']} bytes.`,
   );
+  logInfo(
+    `Determinism checksums: appsscript.json=${validateOutputResult.artefactChecksums['appsscript.json']}, JsonDbApp.inlined.js=${validateOutputResult.artefactChecksums['JsonDbApp.inlined.js']}, UI/ReactApp.html=${validateOutputResult.artefactChecksums['UI/ReactApp.html']}.`,
+  );
 }
 
 run().catch((err) => {

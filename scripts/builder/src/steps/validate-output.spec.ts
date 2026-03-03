@@ -193,16 +193,36 @@ describe('runValidateOutput', () => {
 
     const result = await runValidateOutput(paths);
 
+    const expectedRequiredFileCount = 3;
+    const expectedGasFileCount = 4;
+
     expect(result.stage).toBe('validate-output');
     expect(result.outputPath).toBe(paths.buildGasDir);
-    expect(result.requiredFileCount).toBe(3);
-    expect(result.gasFileCount).toBe(4);
+    expect(result.requiredFileCount).toBe(expectedRequiredFileCount);
+    expect(result.gasFileCount).toBe(expectedGasFileCount);
     expect(result.duplicateProtectedGlobalCount).toBe(0);
     expect(Object.keys(result.artefactSizes)).toEqual([
       'appsscript.json',
       'JsonDbApp.inlined.js',
       'UI/ReactApp.html',
     ]);
+    expect(Object.keys(result.artefactChecksums)).toEqual([
+      'appsscript.json',
+      'JsonDbApp.inlined.js',
+      'UI/ReactApp.html',
+    ]);
+    expect(result.artefactChecksums['appsscript.json']).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artefactChecksums['JsonDbApp.inlined.js']).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artefactChecksums['UI/ReactApp.html']).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('returns stable checksums for unchanged outputs across runs', async () => {
+    await writeValidGasArtefacts(paths);
+
+    const first = await runValidateOutput(paths);
+    const second = await runValidateOutput(paths);
+
+    expect(second.artefactChecksums).toEqual(first.artefactChecksums);
   });
 
   it('fails with actionable error on duplicate protected globals', async () => {

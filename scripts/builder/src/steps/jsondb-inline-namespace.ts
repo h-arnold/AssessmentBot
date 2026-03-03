@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 
 import { BuildStageError } from '../lib/errors.js';
 import type { BuilderPaths, JsonDbInlineNamespaceResult } from '../types.js';
+import { scanFileTopLevelDeclarations } from './validate-output.js';
 
 const STAGE_ID = 'jsondb-inline-namespace' as const;
 const NAMESPACE_SYMBOL = 'JsonDbAppNS';
@@ -59,16 +60,7 @@ export function generateJsonDbNamespaceWrapper(sourceChunks: string[], publicExp
  * @return {string[]} Declared symbol names.
  */
 export function scanTopLevelDeclarations(source: string): string[] {
-  const declarationMatches = source.matchAll(
-    /^\s*(?:function|class|const|let|var)\s+([A-Za-z_$][\w$]*)/gm,
-  );
-
-  const names: string[] = [];
-  for (const match of declarationMatches) {
-    names.push(match[1]);
-  }
-
-  return names;
+  return scanFileTopLevelDeclarations(source);
 }
 
 /**

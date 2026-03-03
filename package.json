@@ -25,7 +25,8 @@
     "builder:build": "tsc -p scripts/builder/tsconfig.json",
     "builder:run": "node scripts/builder/dist/build-gas-bundle.js",
     "builder:test": "vitest run --config scripts/builder/vitest.config.ts",
-    "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts"
+    "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts",
+    "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build && npm run builder:run"
   },
   "keywords": [],
   "author": "",

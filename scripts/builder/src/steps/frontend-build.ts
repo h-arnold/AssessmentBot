@@ -25,8 +25,6 @@ export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBui
     '--outDir',
     paths.buildFrontendDir,
     '--emptyOutDir',
-    '--cssCodeSplit=false',
-    '--modulePreload=false',
   ];
 
   let commandOutput: { stdout: string; stderr: string };
