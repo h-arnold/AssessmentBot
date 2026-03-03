@@ -24,7 +24,10 @@ async function downloadArchive(url: string, outputPath: string): Promise<void> {
   try {
     const releaseResponse = await fetch(url);
     if (!releaseResponse.ok) {
-      throw new BuildStageError(STAGE_ID, `Failed to download JsonDbApp release archive: ${url}`);
+      throw new BuildStageError(
+        STAGE_ID,
+        `Failed to download JsonDbApp release archive: ${url} (HTTP ${releaseResponse.status} ${releaseResponse.statusText})`,
+      );
     }
 
     const archiveBytes = new Uint8Array(await releaseResponse.arrayBuffer());
