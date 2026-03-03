@@ -19,6 +19,23 @@ async function writeConfig(dirName: string, content: string): Promise<string> {
   return configPath;
 }
 
+function createValidConfig(): {
+  frontendDir: string;
+  backendDir: string;
+  buildDir: string;
+  jsonDbApp: { pinnedSnapshotDir: string; sourceFiles: string[] };
+} {
+  return {
+    frontendDir: 'src/frontend',
+    backendDir: 'src/backend',
+    buildDir: 'build',
+    jsonDbApp: {
+      pinnedSnapshotDir: 'vendor/jsondbapp',
+      sourceFiles: ['src/a.js'],
+    },
+  };
+}
+
 async function assertBuildStageError(
   run: () => unknown | Promise<unknown>,
 ): Promise<BuildStageError> {
@@ -62,7 +79,7 @@ describe('loadBuilderConfig', () => {
   it('throws BuildStageError with stage "preflight-clean" when required fields are missing', async () => {
     const configPath = await writeConfig(
       'missing-fields',
-      JSON.stringify({ frontendDir: 'src/frontend' }),
+      JSON.stringify({ frontendDir: 'src/frontend', jsonDbApp: {} }),
     );
 
     await expect(loadBuilderConfig(configPath)).rejects.toMatchObject({
@@ -120,7 +137,7 @@ describe('resolveBuilderPaths', () => {
   let repoRoot: string;
   let configPath: string;
 
-  async function writeBuilderConfig(config: Record<string, string>): Promise<void> {
+  async function writeBuilderConfig(config: Record<string, unknown>): Promise<void> {
     await fs.writeFile(configPath, JSON.stringify(config));
   }
 
@@ -140,9 +157,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when frontendDir is empty or whitespace', async () => {
     await writeBuilderConfig({
+      ...createValidConfig(),
       frontendDir: '',
-      backendDir: 'src/backend',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -150,9 +166,8 @@ describe('resolveBuilderPaths', () => {
     );
 
     await writeBuilderConfig({
+      ...createValidConfig(),
       frontendDir: '   ',
-      backendDir: 'src/backend',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -162,9 +177,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when backendDir is empty or whitespace', async () => {
     await writeBuilderConfig({
-      frontendDir: 'src/frontend',
+      ...createValidConfig(),
       backendDir: '',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -172,9 +186,8 @@ describe('resolveBuilderPaths', () => {
     );
 
     await writeBuilderConfig({
-      frontendDir: 'src/frontend',
+      ...createValidConfig(),
       backendDir: '   ',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -184,9 +197,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when frontendDir resolves to repo root', async () => {
     await writeBuilderConfig({
+      ...createValidConfig(),
       frontendDir: '.',
-      backendDir: 'src/backend',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -196,9 +208,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when backendDir resolves to repo root', async () => {
     await writeBuilderConfig({
-      frontendDir: 'src/frontend',
+      ...createValidConfig(),
       backendDir: '.',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -208,9 +219,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when frontendDir resolves outside repo root', async () => {
     await writeBuilderConfig({
+      ...createValidConfig(),
       frontendDir: '..',
-      backendDir: 'src/backend',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>
@@ -220,9 +230,8 @@ describe('resolveBuilderPaths', () => {
 
   it('throws BuildStageError with stage "preflight-clean" when backendDir resolves outside repo root', async () => {
     await writeBuilderConfig({
-      frontendDir: 'src/frontend',
+      ...createValidConfig(),
       backendDir: '..',
-      buildDir: 'build',
     });
 
     await assertBuildStageError(() =>

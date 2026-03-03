@@ -2,12 +2,17 @@ export type BuildStageId =
   | 'preflight-clean'
   | 'frontend-build'
   | 'frontend-htmlservice-transform'
-  | 'backend-copy';
+  | 'backend-copy'
+  | 'resolve-jsondb-source';
 
 export type BuilderConfig = {
   frontendDir: string;
   backendDir: string;
   buildDir: string;
+  jsonDbApp: {
+    pinnedSnapshotDir: string;
+    sourceFiles: string[];
+  };
 };
 
 export type BuilderPaths = {
@@ -21,6 +26,8 @@ export type BuilderPaths = {
   buildWorkDir: string;
   buildGasDir: string;
   buildGasUiDir: string;
+  jsonDbAppPinnedSnapshotDir: string;
+  jsonDbAppSourceFiles: string[];
 };
 
 export type PreflightCleanResult = {
@@ -45,4 +52,9 @@ export type FrontendHtmlServiceTransformResult = {
 export type BackendCopyResult = {
   stage: BuildStageId;
   copiedFiles: string[];
+};
+
+export type ResolveJsonDbSourceResult = {
+  stage: BuildStageId;
+  sourceFiles: string[];
 };

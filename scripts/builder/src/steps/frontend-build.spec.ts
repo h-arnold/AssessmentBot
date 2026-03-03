@@ -41,6 +41,8 @@ function createBuilderPaths(): BuilderPaths {
     buildWorkDir: '/repo/build/work',
     buildGasDir: '/repo/build/gas',
     buildGasUiDir: '/repo/build/gas/UI',
+    jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
+    jsonDbAppSourceFiles: ['src/01-core.js'],
   };
 }
 

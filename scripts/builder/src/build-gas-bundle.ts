@@ -4,6 +4,7 @@ import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
+import { runResolveJsonDbSource } from './steps/resolve-jsondb-source.js';
 
 /**
  * Runs the builder pipeline entrypoint.
@@ -25,6 +26,11 @@ async function run(): Promise<void> {
 
   const backendCopyResult = await runBackendCopy(paths);
   logInfo(`Step 4 complete: copied ${backendCopyResult.copiedFiles.length} backend runtime files.`);
+
+  const resolveJsonDbSourceResult = await runResolveJsonDbSource(paths);
+  logInfo(
+    `Step 5 complete: resolved JsonDbApp source files (${resolveJsonDbSourceResult.sourceFiles.length}): ${resolveJsonDbSourceResult.sourceFiles.join(', ')}`,
+  );
 }
 
 run().catch((err) => {

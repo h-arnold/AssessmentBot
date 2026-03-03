@@ -61,6 +61,19 @@ function parseConfig(configPath: string, raw: string): BuilderConfig {
     );
   }
 
+  if (
+    !config.jsonDbApp ||
+    typeof config.jsonDbApp !== 'object' ||
+    typeof config.jsonDbApp.pinnedSnapshotDir !== 'string' ||
+    !Array.isArray(config.jsonDbApp.sourceFiles) ||
+    config.jsonDbApp.sourceFiles.some((entry) => typeof entry !== 'string')
+  ) {
+    throw new BuildStageError(
+      'preflight-clean',
+      'Builder config jsonDbApp must define pinnedSnapshotDir and sourceFiles string array.',
+    );
+  }
+
   return config as BuilderConfig;
 }
 
@@ -170,6 +183,12 @@ export async function resolveBuilderPaths(
   const buildWorkDir = path.join(buildDir, 'work');
   const buildGasDir = path.join(buildDir, 'gas');
   const buildGasUiDir = path.join(buildGasDir, 'UI');
+  const jsonDbAppPinnedSnapshotDir = resolveSourceDir(
+    repoRoot,
+    config.jsonDbApp.pinnedSnapshotDir,
+    'jsonDbApp.pinnedSnapshotDir',
+  );
+  const jsonDbAppSourceFiles = config.jsonDbApp.sourceFiles;
 
   return {
     repoRoot,
@@ -182,5 +201,7 @@ export async function resolveBuilderPaths(
     buildWorkDir,
     buildGasDir,
     buildGasUiDir,
+    jsonDbAppPinnedSnapshotDir,
+    jsonDbAppSourceFiles,
   };
 }
