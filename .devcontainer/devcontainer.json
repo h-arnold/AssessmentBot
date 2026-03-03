@@ -54,7 +54,7 @@
       }
     }
   },
-  "postCreateCommand": "npm install && gh --version || true",
+  "postCreateCommand": "npm install && npm install -g typescript",
   "remoteUser": "node",
   "mounts": [
     "source=${localWorkspaceFolder}/.git,target=/workspaces/${localWorkspaceFolderBasename}/.git,type=bind,consistency=cached"
