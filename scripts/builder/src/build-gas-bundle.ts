@@ -1,5 +1,6 @@
 import { resolveBuilderPaths } from './config.js';
 import { logBuildFailure, logInfo } from './lib/process.js';
+import { runFrontendBuild } from './steps/frontend-build.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 
 /**
@@ -11,6 +12,9 @@ async function run(): Promise<void> {
   const paths = await resolveBuilderPaths();
   await runPreflightClean(paths);
   logInfo('Step 1 complete: preflight checks passed and build directories prepared.');
+
+  const frontendBuildResult = await runFrontendBuild(paths);
+  logInfo(`Step 2 complete: frontend build generated entry HTML at ${frontendBuildResult.entryHtmlPath}`);
 }
 
 run().catch((err) => {

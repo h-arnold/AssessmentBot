@@ -1,4 +1,4 @@
-export type BuildStageId = 'preflight-clean';
+export type BuildStageId = 'preflight-clean' | 'frontend-build';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -22,4 +22,11 @@ export type BuilderPaths = {
 export type PreflightCleanResult = {
   stage: BuildStageId;
   createdDirs: string[];
+};
+
+export type FrontendBuildResult = {
+  stage: BuildStageId;
+  entryHtmlPath: string;
+  generatedChunks: string[];
+  warnings: string[];
 };
