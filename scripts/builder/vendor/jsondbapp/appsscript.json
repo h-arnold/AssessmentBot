@@ -1,0 +1,6 @@
+{
+  "oauthScopes": ["https://www.googleapis.com/auth/script.storage"],
+  "dependencies": {
+    "enabledAdvancedServices": []
+  }
+}

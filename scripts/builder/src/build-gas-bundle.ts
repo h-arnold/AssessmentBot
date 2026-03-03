@@ -4,6 +4,7 @@ import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
 import { runJsonDbInlineNamespace } from './steps/jsondb-inline-namespace.js';
+import { runMergeManifest } from './steps/merge-manifest.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 import { runResolveJsonDbSource } from './steps/resolve-jsondb-source.js';
 
@@ -36,6 +37,11 @@ async function run(): Promise<void> {
   const jsonDbInlineNamespaceResult = await runJsonDbInlineNamespace(paths);
   logInfo(
     `Step 6 complete: generated ${jsonDbInlineNamespaceResult.outputPath} with namespace ${jsonDbInlineNamespaceResult.namespaceSymbol} and exports: ${jsonDbInlineNamespaceResult.exportedApi.join(', ')}`,
+  );
+
+  const mergeManifestResult = await runMergeManifest(paths);
+  logInfo(
+    `Step 7 complete: merged manifest written to ${mergeManifestResult.outputPath} with ${mergeManifestResult.mergedScopeCount} scopes and ${mergeManifestResult.mergedServiceCount} enabled advanced services.`,
   );
 }
 

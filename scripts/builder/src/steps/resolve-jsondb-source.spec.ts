@@ -21,7 +21,9 @@ function createBuilderPaths(): BuilderPaths {
     buildWorkDir: '/repo/build/work',
     buildGasDir: '/repo/build/gas',
     buildGasUiDir: '/repo/build/gas/UI',
+    backendManifestPath: '/repo/src/backend/appsscript.json',
     jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
+    jsonDbAppManifestPath: '/repo/vendor/jsondbapp/appsscript.json',
     jsonDbAppSourceFiles: ['src/z-last.js', 'src/a-first.js', 'src/m-middle.js'],
     jsonDbAppPublicExports: ['loadDatabase'],
   };

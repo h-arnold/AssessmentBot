@@ -42,7 +42,9 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
     buildWorkDir: path.join(buildDir, 'work'),
     buildGasDir,
     buildGasUiDir: path.join(buildGasDir, 'UI'),
+    backendManifestPath: path.join(repoRoot, 'src', 'backend', 'appsscript.json'),
     jsonDbAppPinnedSnapshotDir: path.join(repoRoot, 'vendor', 'jsondbapp'),
+    jsonDbAppManifestPath: path.join(repoRoot, 'vendor', 'jsondbapp', 'appsscript.json'),
     jsonDbAppSourceFiles: ['src/01-core.js', 'src/02-database.js'],
     jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
   };

@@ -185,11 +185,13 @@ export async function resolveBuilderPaths(
   const buildWorkDir = path.join(buildDir, 'work');
   const buildGasDir = path.join(buildDir, 'gas');
   const buildGasUiDir = path.join(buildGasDir, 'UI');
+  const backendManifestPath = path.join(backendDir, 'appsscript.json');
   const jsonDbAppPinnedSnapshotDir = resolveSourceDir(
     repoRoot,
     config.jsonDbApp.pinnedSnapshotDir,
     'jsonDbApp.pinnedSnapshotDir',
   );
+  const jsonDbAppManifestPath = path.join(jsonDbAppPinnedSnapshotDir, 'appsscript.json');
   const jsonDbAppSourceFiles = config.jsonDbApp.sourceFiles;
   const jsonDbAppPublicExports = config.jsonDbApp.publicExports;
 
@@ -204,7 +206,9 @@ export async function resolveBuilderPaths(
     buildWorkDir,
     buildGasDir,
     buildGasUiDir,
+    backendManifestPath,
     jsonDbAppPinnedSnapshotDir,
+    jsonDbAppManifestPath,
     jsonDbAppSourceFiles,
     jsonDbAppPublicExports,
   };

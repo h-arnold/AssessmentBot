@@ -4,7 +4,8 @@ export type BuildStageId =
   | 'frontend-htmlservice-transform'
   | 'backend-copy'
   | 'resolve-jsondb-source'
-  | 'jsondb-inline-namespace';
+  | 'jsondb-inline-namespace'
+  | 'merge-manifest';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -28,7 +29,9 @@ export type BuilderPaths = {
   buildWorkDir: string;
   buildGasDir: string;
   buildGasUiDir: string;
+  backendManifestPath: string;
   jsonDbAppPinnedSnapshotDir: string;
+  jsonDbAppManifestPath: string;
   jsonDbAppSourceFiles: string[];
   jsonDbAppPublicExports: string[];
 };
@@ -67,4 +70,11 @@ export type JsonDbInlineNamespaceResult = {
   outputPath: string;
   namespaceSymbol: string;
   exportedApi: string[];
+};
+
+export type MergeManifestResult = {
+  stage: BuildStageId;
+  outputPath: string;
+  mergedScopeCount: number;
+  mergedServiceCount: number;
 };
