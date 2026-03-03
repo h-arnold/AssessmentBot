@@ -5,8 +5,6 @@
  */
 const VALIDATION_RETRY_LIMIT = 3;
 const LLM_TOAST_DURATION_SECONDS = 5;
-const HTTP_STATUS_BAD_REQUEST = 400;
-const HTTP_STATUS_PAYLOAD_TOO_LARGE = 413;
 
 /**
  * LLM request manager.
@@ -336,7 +334,7 @@ class LLMRequestManager extends BaseRequestManager {
   _handleHttpError(response, uid) {
     const code = response ? response.getResponseCode() : null;
     const text = response ? response.getContentText() : 'No response';
-    if (code === HTTP_STATUS_UNAUTHORISED) {
+    if (code === 401) {
       // Unauthorised: invalid API key, abort script
       this.progressTracker.logAndThrowError(
         `Unauthorised (401) for UID: ${uid}. Invalid API key. Aborting script.`,
@@ -344,7 +342,7 @@ class LLMRequestManager extends BaseRequestManager {
       );
       return;
     }
-    if (code === HTTP_STATUS_FORBIDDEN) {
+    if (code === 403) {
       // Forbidden: insufficient permissions, abort script
       this.progressTracker.logAndThrowError(
         `Forbidden (403) for UID: ${uid}. Check API key permissions. Aborting script.`,
@@ -352,13 +350,13 @@ class LLMRequestManager extends BaseRequestManager {
       );
       return;
     }
-    if (code === HTTP_STATUS_BAD_REQUEST) {
+    if (code === 400) {
       // Bad request: skip and log
       console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
       return;
     }
-    if (code === HTTP_STATUS_PAYLOAD_TOO_LARGE) {
+    if (code === 413) {
       // Payload too large: skip and log
       console.warn(`Payload Too Large (413) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(

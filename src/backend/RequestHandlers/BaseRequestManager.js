@@ -3,16 +3,8 @@
  *
  * Handles generic URL requests with error handling, retries, and exponential backoff.
  */
-const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
-const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
-const HTTP_STATUS_UNAUTHORISED = 401;
-const HTTP_STATUS_FORBIDDEN = 403;
-const HTTP_STATUS_NOT_FOUND = 404;
 const DEFAULT_MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY_MS = 5000;
-const HTTP_STATUS_OK = 200;
-const HTTP_STATUS_CREATED = 201;
-const HTTP_STATUS_BAD_REQUEST_MIN = 400;
 const RETRY_DELAY_MULTIPLIER = 1.5;
 
 /**
@@ -41,10 +33,7 @@ class BaseRequestManager {
     // - 500: Internal Server Error
     // - 503: Service Unavailable
     // - Any 5xx except those that indicate permanent failures
-    return (
-      statusCode === HTTP_STATUS_TOO_MANY_REQUESTS ||
-      statusCode >= HTTP_STATUS_INTERNAL_SERVER_ERROR
-    );
+    return statusCode === 429 || statusCode >= 500;
   }
 
   /**
@@ -58,11 +47,7 @@ class BaseRequestManager {
     // - 401: Unauthorised (invalid API key)
     // - 403: Forbidden (insufficient permissions)
     // - 404: Not Found (resource missing / incorrect endpoint)
-    return (
-      statusCode === HTTP_STATUS_UNAUTHORISED ||
-      statusCode === HTTP_STATUS_FORBIDDEN ||
-      statusCode === HTTP_STATUS_NOT_FOUND
-    );
+    return statusCode === 401 || statusCode === 403 || statusCode === 404;
   }
 
   /**
@@ -81,7 +66,7 @@ class BaseRequestManager {
         const responseCode = response.getResponseCode();
 
         // Success responses - return immediately
-        if (responseCode === HTTP_STATUS_OK || responseCode === HTTP_STATUS_CREATED) {
+        if (responseCode === 200 || responseCode === 201) {
           return response;
         }
 
@@ -104,11 +89,7 @@ class BaseRequestManager {
         }
 
         // Check if error is non-retryable (client errors)
-        if (
-          responseCode >= HTTP_STATUS_BAD_REQUEST_MIN &&
-          responseCode < HTTP_STATUS_INTERNAL_SERVER_ERROR &&
-          !this._isRetryableError(responseCode)
-        ) {
+        if (responseCode >= 400 && responseCode < 500 && !this._isRetryableError(responseCode)) {
           // Non-retryable client errors (400, 413, etc.) - return response for caller to handle
           this.logger.warn(`Non-retryable client error ${responseCode} for ${request.url}`, {
             responseCode,
@@ -200,10 +181,7 @@ class BaseRequestManager {
       // Handle each response with retries if necessary
       responses.forEach((response, idx) => {
         const originalRequest = batch[idx];
-        if (
-          response.getResponseCode() !== HTTP_STATUS_OK &&
-          response.getResponseCode() !== HTTP_STATUS_CREATED
-        ) {
+        if (response.getResponseCode() !== 200 && response.getResponseCode() !== 201) {
           console.warn(
             `Batch ${index + 1}, Request ${
               idx + 1

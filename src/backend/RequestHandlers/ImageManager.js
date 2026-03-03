@@ -133,7 +133,7 @@ class ImageManager extends BaseRequestManager {
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
       responses.forEach((resp, idx) => {
         const entry = batch[idx];
-        if (resp?.getResponseCode?.() === HTTP_STATUS_OK) {
+        if (resp?.getResponseCode?.() === 200) {
           try {
             const blob = resp.getBlob();
             results.push({ uid: entry.uid, blob });
