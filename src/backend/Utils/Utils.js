@@ -3,6 +3,15 @@
  *
  * Provides utility functions for the application.
  */
+const BYTE_NEGATIVE_OFFSET = 256;
+const HEX_RADIX = 16;
+const ALPHABET_LENGTH = 26;
+const UPPERCASE_A_CODE_POINT = 65;
+const DEFAULT_TOAST_TIMEOUT_SECONDS = 3;
+
+/**
+ * Utility methods used across the backend.
+ */
 class Utils {
   /**
    * Generates a SHA-256 hash for a given input.
@@ -21,7 +30,7 @@ class Utils {
     const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, inputBytes);
     const hash = rawHash
       .map((e) => {
-        const hex = (e < 0 ? e + 256 : e).toString(16);
+        const hex = (e < 0 ? e + BYTE_NEGATIVE_OFFSET : e).toString(HEX_RADIX);
         return hex.length === 1 ? '0' + hex : hex;
       })
       .join('');
@@ -43,9 +52,9 @@ class Utils {
     let temp;
     let letter = '';
     while (columnIndex >= 0) {
-      temp = columnIndex % 26;
-      letter = String.fromCodePoint(temp + 65) + letter;
-      columnIndex = Math.floor((columnIndex - temp) / 26) - 1;
+      temp = columnIndex % ALPHABET_LENGTH;
+      letter = String.fromCodePoint(temp + UPPERCASE_A_CODE_POINT) + letter;
+      columnIndex = Math.floor((columnIndex - temp) / ALPHABET_LENGTH) - 1;
     }
     return letter;
   }
@@ -90,7 +99,7 @@ class Utils {
    * @param {string} [title=''] - Optional title for the toast.
    * @param {number} [timeoutSeconds=3] - Duration for which the toast is visible.
    */
-  static toastMessage(message, title = '', timeoutSeconds = 3) {
+  static toastMessage(message, title = '', timeoutSeconds = DEFAULT_TOAST_TIMEOUT_SECONDS) {
     try {
       const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       if (activeSpreadsheet) {

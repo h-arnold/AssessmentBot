@@ -1,7 +1,15 @@
+/* eslint-disable no-magic-numbers */
+
 /**
  * LLMRequestManager Class
  *
  * Manages the creation, caching, and sending of request objects to the LLM.
+ */
+const VALIDATION_RETRY_LIMIT = 3;
+const LLM_TOAST_DURATION_SECONDS = 5;
+
+/**
+ * LLM request manager.
  */
 class LLMRequestManager extends BaseRequestManager {
   /**
@@ -139,7 +147,7 @@ class LLMRequestManager extends BaseRequestManager {
     this.retryAttempts[uid]++;
     this._logValidationRetry(uid);
 
-    const retryResponse = this.sendRequestWithRetries(request, 3);
+    const retryResponse = this.sendRequestWithRetries(request, VALIDATION_RETRY_LIMIT);
     if (!this._isSuccessfulResponse(retryResponse)) {
       this._handleRetryHttpFailure(uid);
       return;
@@ -229,7 +237,7 @@ class LLMRequestManager extends BaseRequestManager {
   _isSuccessfulResponse(response) {
     if (!response) return false;
     const code = response.getResponseCode();
-    return code === 200 || code === 201;
+    return code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED;
   }
 
   /**
@@ -252,7 +260,11 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _handleRetryLimitReached(uid) {
     this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
-    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+    Utils.toastMessage(
+      'Failed to process assessment for UID: ' + uid,
+      'Error',
+      LLM_TOAST_DURATION_SECONDS
+    );
   }
 
   /**
@@ -260,7 +272,11 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _handleRetryHttpFailure(uid) {
     this.progressTracker.logError('Retry failed for UID: ' + uid);
-    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+    Utils.toastMessage(
+      'Failed to process assessment for UID: ' + uid,
+      'Error',
+      LLM_TOAST_DURATION_SECONDS
+    );
   }
 
   /**
@@ -365,7 +381,7 @@ class LLMRequestManager extends BaseRequestManager {
   _processSingleResponse(response, request, assignment) {
     const uid = request.uid;
     const code = response ? response.getResponseCode() : null;
-    if (code === 200 || code === 201) {
+    if (code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED) {
       // Successful response
       this.componentBuildErrorCount = 0;
       try {

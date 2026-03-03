@@ -1,6 +1,12 @@
 // This file contains all the global functions needed to make use of the ConfigurationManager class.
 // Note that the Configuration Manager is instantiated as a singleton in the `singletons.js` file in the `frontend` folder.
 
+const API_KEY_MASK_VISIBLE_SUFFIX_LENGTH = 4;
+const API_KEY_MASK_PREFIX = '****';
+const DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE = 30;
+const DEFAULT_DAYS_UNTIL_AUTH_REVOKE = 60;
+const DEFAULT_SLIDES_FETCH_BATCH_SIZE = 20;
+
 /**
  * Retrieves the current configuration settings from the ConfigurationManager.
  * @returns {object} An object containing the current configuration values.
@@ -30,8 +36,8 @@ function getConfiguration() {
   function maskApiKey(key) {
     if (!key) return '';
     const s = String(key);
-    if (s.length <= 4) return '****';
-    return '****' + s.slice(-4);
+    if (s.length <= API_KEY_MASK_VISIBLE_SUFFIX_LENGTH) return API_KEY_MASK_PREFIX;
+    return API_KEY_MASK_PREFIX + s.slice(-API_KEY_MASK_VISIBLE_SUFFIX_LENGTH);
   }
 
   const cfg = ConfigurationManager.getInstance();
@@ -41,7 +47,7 @@ function getConfiguration() {
     backendAssessorBatchSize: safeGet(
       () => cfg.getBackendAssessorBatchSize(),
       'backendAssessorBatchSize',
-      30
+      DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE
     ),
     // Return a redacted API key to prevent accidental clear-text logging.
     apiKey: maskApiKey(rawApiKey),
@@ -66,8 +72,16 @@ function getConfiguration() {
       'revokeAuthTriggerSet',
       false
     ),
-    daysUntilAuthRevoke: safeGet(() => cfg.getDaysUntilAuthRevoke(), 'daysUntilAuthRevoke', 60),
-    slidesFetchBatchSize: safeGet(() => cfg.getSlidesFetchBatchSize(), 'slidesFetchBatchSize', 20),
+    daysUntilAuthRevoke: safeGet(
+      () => cfg.getDaysUntilAuthRevoke(),
+      'daysUntilAuthRevoke',
+      DEFAULT_DAYS_UNTIL_AUTH_REVOKE
+    ),
+    slidesFetchBatchSize: safeGet(
+      () => cfg.getSlidesFetchBatchSize(),
+      'slidesFetchBatchSize',
+      DEFAULT_SLIDES_FETCH_BATCH_SIZE
+    ),
     jsonDbMasterIndexKey: safeGet(
       () => cfg.getJsonDbMasterIndexKey(),
       'jsonDbMasterIndexKey',

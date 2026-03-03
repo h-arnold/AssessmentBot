@@ -1,3 +1,6 @@
+const WRAPPED_FORMULA_MIN_LENGTH = 2;
+const BOUNDING_BOX_EMPTY_INDEX = -1;
+
 /**
  * SheetsParser Class
  *
@@ -144,7 +147,11 @@ class SheetsParser extends DocumentParser {
     if (!formula) return formula;
 
     // Remove surrounding quotes if they exist (as returned by getFormulas in GAS)
-    if (formula.length >= 2 && formula.startsWith('"') && formula.endsWith('"')) {
+    if (
+      formula.length >= WRAPPED_FORMULA_MIN_LENGTH &&
+      formula.startsWith('"') &&
+      formula.endsWith('"')
+    ) {
       // Extract the content between quotes, handling escape sequences
       try {
         // Use a safe way to remove the surrounding quotes
@@ -255,8 +262,8 @@ class SheetsParser extends DocumentParser {
     // Initialize with extreme values
     let startRow = Infinity;
     let startColumn = Infinity;
-    let endRow = -1;
-    let endColumn = -1;
+    let endRow = BOUNDING_BOX_EMPTY_INDEX;
+    let endColumn = BOUNDING_BOX_EMPTY_INDEX;
 
     // Find minimum and maximum row/column indices
     differences.forEach((diff) => {

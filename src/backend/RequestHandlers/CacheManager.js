@@ -3,6 +3,13 @@
  *
  * Handles caching of assessment data to prevent redundant processing.
  */
+const CACHE_EXPIRY_HOURS = 6;
+const MINUTES_PER_HOUR = 60;
+const SECONDS_PER_MINUTE = 60;
+
+/**
+ * Cache manager.
+ */
 class CacheManager {
   /**
    *
@@ -67,7 +74,7 @@ class CacheManager {
     if (!cacheKey) return;
 
     const serialized = JSON.stringify(assessmentData);
-    const cacheExpirationInSeconds = 6 * 60 * 60; // 6 hours
+    const cacheExpirationInSeconds = CACHE_EXPIRY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE;
     try {
       this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
     } catch (e) {

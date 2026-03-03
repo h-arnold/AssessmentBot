@@ -3,6 +3,11 @@
  *
  * Base class representing an assignment within a course, managing tasks and student submissions.
  */
+const INFO_TOAST_DURATION_SECONDS = 3;
+
+/**
+ * Assignment class.
+ */
 class Assignment {
   /**
    * Constructs an Assignment instance.
@@ -538,7 +543,7 @@ class Assignment {
     const manager = this._getLLMManager();
     const requests = manager.generateRequestObjects(this);
     if (!requests || requests.length === 0) {
-      Utils.toastMessage('No LLM requests to send.', 'Info', 3);
+      Utils.toastMessage('No LLM requests to send.', 'Info', INFO_TOAST_DURATION_SECONDS);
       return;
     }
     manager.processStudentResponses(requests, this);

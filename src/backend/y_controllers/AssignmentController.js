@@ -1,5 +1,8 @@
 // AssignmentController.js
 
+const TOAST_DURATION_SECONDS = 5;
+const PROCESS_LOCK_TIMEOUT_MS = 5000;
+
 /**
  * AssignmentController Class
  *
@@ -41,7 +44,11 @@ class AssignmentController {
 
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
     } catch (error) {
-      this.utils.toastMessage('Failed to start processing: ' + error.message, 'Error', 5);
+      this.utils.toastMessage(
+        'Failed to start processing: ' + error.message,
+        'Error',
+        TOAST_DURATION_SECONDS
+      );
       this.progressTracker.logAndThrowError(
         'Error in saveStartAndShowProgress: ' + error.message,
         error
@@ -71,7 +78,11 @@ class AssignmentController {
       );
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error creating trigger: ${error.message}`, error);
-      this.utils.toastMessage('Failed to create trigger: ' + error.message, 'Error', 5);
+      this.utils.toastMessage(
+        'Failed to create trigger: ' + error.message,
+        'Error',
+        TOAST_DURATION_SECONDS
+      );
     }
 
     try {
@@ -83,7 +94,11 @@ class AssignmentController {
       ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
-      this.utils.toastMessage('Failed to set processing properties: ' + error.message, 'Error', 5);
+      this.utils.toastMessage(
+        'Failed to set processing properties: ' + error.message,
+        'Error',
+        TOAST_DURATION_SECONDS
+      );
     }
   }
 
@@ -113,9 +128,13 @@ class AssignmentController {
   processSelectedAssignment() {
     const lock = LockService.getDocumentLock();
 
-    if (!lock.tryLock(5000)) {
+    if (!lock.tryLock(PROCESS_LOCK_TIMEOUT_MS)) {
       this.progressTracker.logError(`Script is already running. Please try again later.`);
-      this.utils.toastMessage('Another process is currently running. Please wait.', 'Error', 5);
+      this.utils.toastMessage(
+        'Another process is currently running. Please wait.',
+        'Error',
+        TOAST_DURATION_SECONDS
+      );
       return;
     }
 
@@ -183,7 +202,11 @@ class AssignmentController {
       this.progressTracker.updateProgress('Assessment run completed successfully.', false);
       this.progressTracker.complete();
 
-      this.utils.toastMessage('Assessment run completed successfully.', 'Success', 5);
+      this.utils.toastMessage(
+        'Assessment run completed successfully.',
+        'Success',
+        TOAST_DURATION_SECONDS
+      );
       ABLogger.getInstance().info('Assessment run completed successfully.');
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);

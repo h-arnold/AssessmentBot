@@ -3,8 +3,11 @@
  *
  */
 
+const FORMULAE_SCORE_MAX = 5;
+const FORMULAE_SCORE_DECIMAL_PLACES = 2;
+
 /**
- *
+ * Sheets Assessor class.
  */
 class SheetsAssessor {
   /**
@@ -284,15 +287,16 @@ class SheetsAssessor {
     }
     // If all formulae are attempted, return 5 to avoid division by zero
     if (scores.notAttempted === 0) {
-      return 5;
+      return FORMULAE_SCORE_MAX;
     }
     // Calculate completeness score based on the number of attempted formulae
     // and the total number of formulae
     // Scale the score to a range of 0 to 5
     // and round to 2 decimal places
 
-    const completenessScore = ((countOfFormulae - scores.notAttempted) / countOfFormulae) * 5;
-    return Number(completenessScore.toFixed(2)); // Round score to  2 decimal places
+    const completenessScore =
+      ((countOfFormulae - scores.notAttempted) / countOfFormulae) * FORMULAE_SCORE_MAX;
+    return Number(completenessScore.toFixed(FORMULAE_SCORE_DECIMAL_PLACES)); // Round score to 2 decimal places
   }
 
   /**
@@ -310,13 +314,14 @@ class SheetsAssessor {
     }
     // If all formulae are correct, return 5 to avoid division by zero
     if (scores.correct === countOfFormulae) {
-      return 5;
+      return FORMULAE_SCORE_MAX;
     }
     // Calculate accuracy score based on the number of correct formulae
     // and the total number of formulae
     // Scale the score to a range of 0 to 5
     // and round to 2 decimal places
-    const accuracyScore = (scores.correct / (countOfFormulae - scores.notAttempted)) * 5;
-    return Number(accuracyScore.toFixed(2)); // Round score to 2 decimal places
+    const accuracyScore =
+      (scores.correct / (countOfFormulae - scores.notAttempted)) * FORMULAE_SCORE_MAX;
+    return Number(accuracyScore.toFixed(FORMULAE_SCORE_DECIMAL_PLACES)); // Round score to 2 decimal places
   }
 }

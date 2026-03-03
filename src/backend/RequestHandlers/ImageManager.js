@@ -1,5 +1,7 @@
+/* eslint-disable no-magic-numbers */
+
 /**
- *
+ * Image manager.
  */
 class ImageManager extends BaseRequestManager {
   /**

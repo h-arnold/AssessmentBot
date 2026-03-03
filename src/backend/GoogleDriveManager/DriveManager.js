@@ -1,3 +1,6 @@
+const RETRY_BACKOFF_BASE_MS = 500;
+const RETRY_BACKOFF_MULTIPLIER = 2;
+
 /**
  * Handles Drive-related operations.
  */
@@ -319,7 +322,7 @@ class DriveManager {
         );
         return null;
       } catch (error) {
-        const waitMs = 500 * Math.pow(2, attempt);
+        const waitMs = RETRY_BACKOFF_BASE_MS * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
         ABLogger.getInstance().warn(
           `DriveApp.getParents() attempt ${attempt + 1} failed for ${fileId}: ${error.message}${
             attempt < retries - 1 ? `; retrying in ${waitMs}ms` : ''
@@ -584,7 +587,7 @@ class DriveManager {
         return date.toISOString();
       } catch (error) {
         if (attempt < retries - 1) {
-          const wait = baseWaitMs * Math.pow(2, attempt);
+          const wait = baseWaitMs * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
           Utilities.sleep(wait);
           continue;
         }
@@ -611,7 +614,7 @@ class DriveManager {
         return parsed.toISOString();
       } catch (error) {
         if (attempt < retries - 1) {
-          const wait = baseWaitMs * Math.pow(2, attempt);
+          const wait = baseWaitMs * Math.pow(RETRY_BACKOFF_MULTIPLIER, attempt);
           Utilities.sleep(wait);
           continue;
         }

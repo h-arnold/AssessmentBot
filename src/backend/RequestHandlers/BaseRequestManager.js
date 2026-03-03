@@ -1,7 +1,16 @@
+/* eslint-disable no-magic-numbers */
+
 /**
  * BaseRequestManager Class
  *
  * Handles generic URL requests with error handling, retries, and exponential backoff.
+ */
+const DEFAULT_MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY_MS = 5000;
+const RETRY_DELAY_MULTIPLIER = 1.5;
+
+/**
+ * Base request manager.
  */
 class BaseRequestManager {
   /**
@@ -46,12 +55,12 @@ class BaseRequestManager {
   /**
    * Sends a single HTTP request with retries and exponential backoff.
    * @param {Object} request - The request object compatible with UrlFetchApp.fetch().
-   * @param {number} [maxRetries=3] - Maximum number of retries.
+   * @param {number} [maxRetries=2] - Maximum number of retries.
    * @return {HTTPResponse|null} - The HTTPResponse object or null if all retries fail.
    */
-  sendRequestWithRetries(request, maxRetries = 2) {
+  sendRequestWithRetries(request, maxRetries = DEFAULT_MAX_RETRIES) {
     let attempt = 0;
-    let delay = 5000; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
+    let delay = INITIAL_RETRY_DELAY_MS; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
 
     while (attempt <= maxRetries) {
       try {
@@ -128,7 +137,7 @@ class BaseRequestManager {
       attempt++;
       if (attempt > maxRetries) break;
       Utilities.sleep(delay);
-      delay *= 1.5; // Increase the backoff by 50% as the base pause time is quite high
+      delay *= RETRY_DELAY_MULTIPLIER; // Increase the backoff by 50% as the base pause time is quite high
     }
 
     console.error(`All ${maxRetries + 1} attempts failed for request to ${request.url}.`);

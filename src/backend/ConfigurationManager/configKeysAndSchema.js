@@ -9,6 +9,13 @@
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
 /* global validateLogLevel, validateApiKey, validateClassInfo, toBooleanString, Validate */
 
+const BACKEND_ASSESSOR_BATCH_MAX = 500;
+const SLIDES_FETCH_BATCH_MAX = 100;
+const DAYS_UNTIL_AUTH_REVOKE_MAX = 365;
+const UPDATE_STAGE_MAX = 2;
+const JSON_DB_LOCK_TIMEOUT_MIN_MS = 1000;
+const JSON_DB_LOCK_TIMEOUT_MAX_MS = 600000;
+
 const CONFIG_KEYS = Object.freeze({
   BACKEND_ASSESSOR_BATCH_SIZE: 'backendAssessorBatchSize',
   SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
@@ -33,15 +40,23 @@ const CONFIG_KEYS = Object.freeze({
 const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: {
     storage: 'script',
-    validate: (v) => Validate.validateIntegerInRange('Backend Assessor Batch Size', v, 1, 500),
+    validate: (v) =>
+      Validate.validateIntegerInRange(
+        'Backend Assessor Batch Size',
+        v,
+        1,
+        BACKEND_ASSESSOR_BATCH_MAX
+      ),
   },
   [CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: {
     storage: 'script',
-    validate: (v) => Validate.validateIntegerInRange('Slides Fetch Batch Size', v, 1, 100),
+    validate: (v) =>
+      Validate.validateIntegerInRange('Slides Fetch Batch Size', v, 1, SLIDES_FETCH_BATCH_MAX),
   },
   [CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: {
     storage: 'script',
-    validate: (v) => Validate.validateIntegerInRange('Days Until Auth Revoke', v, 1, 365),
+    validate: (v) =>
+      Validate.validateIntegerInRange('Days Until Auth Revoke', v, 1, DAYS_UNTIL_AUTH_REVOKE_MAX),
   },
   [CONFIG_KEYS.API_KEY]: {
     storage: 'script',
@@ -95,7 +110,7 @@ const CONFIG_SCHEMA = Object.freeze({
     storage: 'script',
     validate: (v) => {
       const stage = Number.parseInt(v, 10);
-      if (!Number.isInteger(stage) || stage < 0 || stage > 2) {
+      if (!Number.isInteger(stage) || stage < 0 || stage > UPDATE_STAGE_MAX) {
         throw new Error('Update Stage must be 0, 1, or 2');
       }
       return stage;
@@ -117,7 +132,13 @@ const CONFIG_SCHEMA = Object.freeze({
   },
   [CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: {
     storage: 'script',
-    validate: (v) => Validate.validateIntegerInRange('JSON DB Lock Timeout (ms)', v, 1000, 600000),
+    validate: (v) =>
+      Validate.validateIntegerInRange(
+        'JSON DB Lock Timeout (ms)',
+        v,
+        JSON_DB_LOCK_TIMEOUT_MIN_MS,
+        JSON_DB_LOCK_TIMEOUT_MAX_MS
+      ),
   },
   [CONFIG_KEYS.JSON_DB_LOG_LEVEL]: {
     storage: 'script',

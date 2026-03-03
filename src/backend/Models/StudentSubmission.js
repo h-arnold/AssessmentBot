@@ -1,6 +1,8 @@
 // StudentSubmission.js
 // Defines StudentSubmission and StudentSubmissionItem classes.
 
+const STUDENT_SUBMISSION_ITEM_HASH_LENGTH = 16;
+
 /**
  *
  */
@@ -33,7 +35,7 @@ class StudentSubmissionItem {
     const hasPrimaryUid = Validate.isNonEmptyString(primaryUid);
     const resolvedUid = hasPrimaryUid ? primaryUid : (this.artifact.contentHash ?? '');
     const base = `${this.taskId}::${resolvedUid}`;
-    return 'ssi_' + Utils.generateHash(base).substring(0, 16);
+    return 'ssi_' + Utils.generateHash(base).substring(0, STUDENT_SUBMISSION_ITEM_HASH_LENGTH);
   }
 
   /**
