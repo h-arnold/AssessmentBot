@@ -1,5 +1,6 @@
 import { resolveBuilderPaths } from './config.js';
 import { logBuildFailure, logInfo } from './lib/process.js';
+import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
@@ -21,6 +22,9 @@ async function run(): Promise<void> {
   logInfo(
     `Step 3 complete: HtmlService ReactApp generated at ${htmlServiceTransformResult.reactAppPath}`,
   );
+
+  const backendCopyResult = await runBackendCopy(paths);
+  logInfo(`Step 4 complete: copied ${backendCopyResult.copiedFiles.length} backend runtime files.`);
 }
 
 run().catch((err) => {

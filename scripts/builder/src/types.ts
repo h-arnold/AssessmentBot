@@ -1,7 +1,8 @@
 export type BuildStageId =
   | 'preflight-clean'
   | 'frontend-build'
-  | 'frontend-htmlservice-transform';
+  | 'frontend-htmlservice-transform'
+  | 'backend-copy';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -39,4 +40,9 @@ export type FrontendHtmlServiceTransformResult = {
   reactAppPath: string;
   inlinedScriptCount: number;
   inlinedStyleCount: number;
+};
+
+export type BackendCopyResult = {
+  stage: BuildStageId;
+  copiedFiles: string[];
 };
