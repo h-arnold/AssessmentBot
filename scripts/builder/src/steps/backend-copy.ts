@@ -13,7 +13,7 @@ const STAGE_ID = 'backend-copy' as const;
  * @return {boolean} `true` when the file should be copied.
  */
 export function isRuntimeBackendFile(filePath: string): boolean {
-  const normalised = filePath.replace(/\\/g, '/');
+  const normalised = filePath.replaceAll('\\', '/');
   if (!normalised.endsWith('.js')) {
     return false;
   }
@@ -76,10 +76,10 @@ export async function runBackendCopy(paths: BuilderPaths): Promise<BackendCopyRe
     const destinationDir = path.dirname(destinationPath);
     await fs.mkdir(destinationDir, { recursive: true });
     await fs.copyFile(sourcePath, destinationPath);
-    copiedFiles.push(relativePath.replace(/\\/g, '/'));
+    copiedFiles.push(relativePath.replaceAll('\\', '/'));
   }
 
-  copiedFiles.sort();
+  copiedFiles.sort((a, b) => a.localeCompare(b));
 
   return {
     stage: STAGE_ID,
