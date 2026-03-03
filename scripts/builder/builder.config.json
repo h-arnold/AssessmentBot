@@ -1,0 +1,5 @@
+{
+  "frontendDir": "src/frontend",
+  "backendDir": "src/backend",
+  "buildDir": "build"
+}
