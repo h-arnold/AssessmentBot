@@ -4,9 +4,11 @@ import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
 import { runJsonDbInlineNamespace } from './steps/jsondb-inline-namespace.js';
+import { runMaterialiseOutput } from './steps/materialise-output.js';
 import { runMergeManifest } from './steps/merge-manifest.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 import { runResolveJsonDbSource } from './steps/resolve-jsondb-source.js';
+import { runValidateOutput } from './steps/validate-output.js';
 
 /**
  * Runs the builder pipeline entrypoint.
@@ -42,6 +44,19 @@ async function run(): Promise<void> {
   const mergeManifestResult = await runMergeManifest(paths);
   logInfo(
     `Step 7 complete: merged manifest written to ${mergeManifestResult.outputPath} with ${mergeManifestResult.mergedScopeCount} scopes and ${mergeManifestResult.mergedServiceCount} enabled advanced services.`,
+  );
+
+  const materialiseOutputResult = await runMaterialiseOutput(paths);
+  logInfo(
+    `Step 8 complete: materialised ${materialiseOutputResult.fileCount} files in ${materialiseOutputResult.gasRootPath} (${materialiseOutputResult.totalBytes} bytes).`,
+  );
+
+  const validateOutputResult = await runValidateOutput(paths);
+  logInfo(
+    `Step 9 complete: validated ${validateOutputResult.outputPath} with ${validateOutputResult.requiredFileCount} required artefacts (${validateOutputResult.gasFileCount} total files).`,
+  );
+  logInfo(
+    `Build summary: appsscript.json=${validateOutputResult.artefactSizes['appsscript.json']} bytes, JsonDbApp.inlined.js=${validateOutputResult.artefactSizes['JsonDbApp.inlined.js']} bytes, UI/ReactApp.html=${validateOutputResult.artefactSizes['UI/ReactApp.html']} bytes.`,
   );
 }
 

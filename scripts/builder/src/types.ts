@@ -5,7 +5,9 @@ export type BuildStageId =
   | 'backend-copy'
   | 'resolve-jsondb-source'
   | 'jsondb-inline-namespace'
-  | 'merge-manifest';
+  | 'merge-manifest'
+  | 'materialise-output'
+  | 'validate-output';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -77,4 +79,20 @@ export type MergeManifestResult = {
   outputPath: string;
   mergedScopeCount: number;
   mergedServiceCount: number;
+};
+
+export type MaterialiseOutputResult = {
+  stage: BuildStageId;
+  gasRootPath: string;
+  fileCount: number;
+  totalBytes: number;
+};
+
+export type ValidateOutputResult = {
+  stage: BuildStageId;
+  outputPath: string;
+  requiredFileCount: number;
+  gasFileCount: number;
+  duplicateProtectedGlobalCount: number;
+  artefactSizes: Record<string, number>;
 };
