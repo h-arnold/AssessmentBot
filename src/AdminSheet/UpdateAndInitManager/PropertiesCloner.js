@@ -4,6 +4,9 @@
  * and stores them in a hidden Google Sheet so that they can be deserialised again.
  * Currently this is used to manage updates of sheets.
  **************************************************/
+/**
+ *
+ */
 class PropertiesCloner extends BaseSheetManager {
   /**
    * A subclass of BaseSheetManager for cloning Document and Script properties.

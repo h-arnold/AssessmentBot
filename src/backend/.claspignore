@@ -1,0 +1,2 @@
+# Ignore local artifact index aggregator used only for tests
+Models/Artifacts/index.js

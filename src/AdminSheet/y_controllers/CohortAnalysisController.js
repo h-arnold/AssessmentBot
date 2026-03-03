@@ -5,6 +5,9 @@
  * Extracts data from assessment records and creates summary sheets for year groups.
  */
 class CohortAnalysisController {
+  /**
+   *
+   */
   constructor() {
     // Access the singleton instance of ProgressTracker
     this.progressTracker = ProgressTracker.getInstance();

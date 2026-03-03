@@ -1,5 +1,8 @@
 // CohortAnalysisSheetManager.js
 
+/**
+ *
+ */
 class CohortAnalysisSheetManager extends BaseSheetManager {
   /**
    * Creates or updates a Year Group sheet for each yearGroup in overviewData,

@@ -875,3 +875,13 @@ const MyClass = MyClassExport.MyClass || MyClassExport;
 - Clear `require.cache` in `afterEach`
 - Use singleton `resetForTests()` if available
 - Ensure globals are deleted in `afterEach`
+
+## Frontend test commands
+
+The new React frontend under `src/frontend` has its own Vitest and Playwright configuration:
+
+- `npm run frontend:test` runs frontend unit tests.
+- `npm run frontend:test:e2e` runs Playwright browser tests against the Vite dev server.
+- `npm run frontend:test:watch` runs frontend Vitest in watch mode.
+
+Backend tests remain under `tests/` and should continue to avoid GAS runtime calls.

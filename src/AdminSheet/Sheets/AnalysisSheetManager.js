@@ -1,5 +1,8 @@
 // AnalysisSheetManager.gs
 
+/**
+ *
+ */
 class AnalysisSheetManager extends BaseSheetManager {
   /**
    * Constructs an AnalysisSheetManager instance.

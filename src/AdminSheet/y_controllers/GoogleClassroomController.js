@@ -1,8 +1,17 @@
+/**
+ *
+ */
 class GoogleClassroomController {
+  /**
+   *
+   */
   constructor() {
     this.classroomManager = new GoogleClassroomManager();
   }
 
+  /**
+   *
+   */
   fetchGoogleClassrooms() {
     const progressTracker = ProgressTracker.getInstance();
     try {
@@ -32,6 +41,9 @@ class GoogleClassroomController {
     }
   }
 
+  /**
+   *
+   */
   createGoogleClassrooms() {
     const progressTracker = ProgressTracker.getInstance();
     try {
@@ -44,6 +56,9 @@ class GoogleClassroomController {
     }
   }
 
+  /**
+   *
+   */
   updateGoogleClassrooms() {
     const progressTracker = ProgressTracker.getInstance();
     try {
@@ -57,6 +72,9 @@ class GoogleClassroomController {
     }
   }
 
+  /**
+   *
+   */
   createAssessmentRecords() {
     const progressTracker = ProgressTracker.getInstance();
     const uiManager = UIManager.getInstance();
@@ -84,6 +102,9 @@ class GoogleClassroomController {
     }
   }
 
+  /**
+   *
+   */
   saveClassroom(courseName, courseId) {
     const progressTracker = ProgressTracker.getInstance();
     try {
@@ -102,6 +123,9 @@ class GoogleClassroomController {
     }
   }
 
+  /**
+   *
+   */
   getClassrooms() {
     return this.classroomManager.getActiveClassrooms();
   }

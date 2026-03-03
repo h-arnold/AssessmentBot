@@ -12,6 +12,9 @@
  * - Validating and setting the template file IDs.
  */
 class BaseUpdateAndInit {
+  /**
+   *
+   */
   constructor() {
     // Set up common properties
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();

@@ -37,6 +37,9 @@
  * @returns {UpdateManager} The initialized UpdateManager instance.
  */
 class UpdateManager extends BaseUpdateAndInit {
+  /**
+   *
+   */
   constructor() {
     // Call the superclass constructor.
     super();

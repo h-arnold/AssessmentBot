@@ -6,28 +6,34 @@ AssessmentBot automates assessment of student work in Google Slides and Sheets b
 
 **Technology Stack:**
 
-- Google Apps Script (GAS) for frontend/automation
-- Node.js + Vitest for unit testing
+- Google Apps Script (GAS) backend (vanilla V8 JavaScript)
+- React + TypeScript frontend (Vite, Ant Design)
+- Vitest for unit testing (backend and frontend)
+- Playwright for browser end-to-end tests
 - ESLint for linting
 - Prettier for code formatting
 
 **Key Directories:**
 
-- `src/AdminSheet/` - Main application code (Controllers, Models, Sheets, Utils, etc.)
-- `src/AssessmentRecordTemplate/` - Template for individual assignment records
-- `tests/` - Vitest unit tests (logic only, no GAS services)
+- `src/backend/` - Active GAS backend code migrated from AdminSheet non-deprecated modules
+- `src/AdminSheet/` - Legacy GAS source retained during migration
+- `src/frontend/` - React + TypeScript web frontend (Vite + Ant Design)
+- `tests/` - Backend Vitest unit tests (logic only, no GAS services)
+- `src/frontend/tests/` - Frontend Playwright tests
 - `docs/` - User and developer documentation
 
 **Essential Commands:**
 
 ```bash
-npm test          # Run default non-legacy test suite
-npm run test:all  # Run full suite (still excludes permanently deprecated tests)
-npm run test:legacy-ui # Run legacy UI-focused tests only
-npm run test:watch # Run tests in watch mode
-npm run lint      # Check code style
-npm run lint:fix  # Auto-fix linting issues
-npm run format    # Format code with Prettier
+npm test                    # Run backend default non-legacy Vitest suite
+npm run test:all            # Run backend full suite (still excludes permanently deprecated tests)
+npm run test:legacy-ui      # Run backend legacy UI-focused tests only
+npm run frontend:test       # Run frontend Vitest suite
+npm run frontend:test:e2e   # Run frontend Playwright suite
+npm run frontend:lint       # Lint frontend TypeScript/React code
+npm run lint                # Check backend code style
+npm run lint:fix            # Auto-fix backend linting issues
+npm run format              # Format code with Prettier
 ```
 
 **Key Documentation:**
