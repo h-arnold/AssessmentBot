@@ -39,16 +39,6 @@ class AssignmentController {
       this.startProcessing(assignmentId, definition.definitionKey);
       this.progressTracker.startTracking();
 
-      // UIManager may not be available in non-UI contexts (e.g., time-based triggers)
-      try {
-        UIManager.getInstance().showProgressModal();
-      } catch (uiError) {
-        ABLogger.getInstance().warn(
-          'UIManager not available or failed to show progress modal.',
-          uiError
-        );
-      }
-
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
     } catch (error) {
       this.utils.toastMessage('Failed to start processing: ' + error.message, 'Error', 5);
@@ -95,23 +85,6 @@ class AssignmentController {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
       this.utils.toastMessage('Failed to set processing properties: ' + error.message, 'Error', 5);
     }
-  }
-
-  /**
-  /**
-   * Analyses the assignment data and generates analysis and overview sheets.
-   * @param {SlidesAssignment} assignment - The processed SlidesAssignment instance
-   */
-  analyseAssignmentData(assignment) {
-    this.progressTracker.updateProgress('Creating the analysis sheet.');
-    const analysisSheet = new AnalysisSheetManager(assignment);
-    analysisSheet.createAnalysisSheet();
-    this.progressTracker.updateProgress('Analysis sheet created.', false);
-
-    this.progressTracker.updateProgress('Updating the overview sheet.');
-    const overviewSheetManager = new OverviewSheetManager();
-    overviewSheetManager.createOverviewSheet();
-    this.progressTracker.updateProgress('Overview sheet updated.', false);
   }
 
   /**
@@ -206,9 +179,6 @@ class AssignmentController {
       // Persist assignment using controller pattern - writes full assignment to dedicated
       // collection and stores partial summary in ABClass
       abClassController.persistAssignmentRun(abClass, assignment);
-
-      // Analyse assignment data
-      this.analyseAssignmentData(assignment);
 
       this.progressTracker.updateProgress('Assessment run completed successfully.', false);
       this.progressTracker.complete();

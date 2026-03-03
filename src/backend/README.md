@@ -1,12 +1,17 @@
-# Google Slides Assessor
+# AssessmentBot backend (GAS runtime)
 
-[_See the docs for more details_](/docs/setup/README.md)
+This folder contains the active, non-UI Google Apps Script backend modules used by the React WebApp migration.
 
-This script handles the bulk of the client side grunt work. It:
+## Included
 
-- collates the student submissions for a given Google Classroom assignment
-- collects and uses the reference and empty slide Ids for comparison with the student work
-- parses all the data from said slides, converting them into distinct tasks based on how you tagged them in the reference and student slides.
-- sends all that data off to the Langflow backend (while keeping any PII firmly within your work Google Account)
-- creates an analysis sheet for you to see what the results of the assessment was.
-- creates and or updates an overview sheet which averages out all the Completeness, Accuracy and SPaG scores from all their work.
+- Assessment pipeline logic (assignment processing, parsers, assessors, request handlers).
+- Core models, controllers and utilities required for runtime execution.
+- GAS-compatible V8 JavaScript modules.
+
+## Excluded as deprecated for React migration
+
+- Legacy spreadsheet UI and menu lifecycle code.
+- Legacy sheet rendering/management modules used to display analysis in Google Sheets.
+- Legacy update and provisioning wizard flows.
+
+See `docs/developer/DEPRECATED_LEGACY_UI_AUDIT.md` for the deprecation map.
