@@ -1,7 +1,7 @@
 const tsBaseRules = {
-  complexity: ['warn', 7],
+  complexity: ['error', 7],
   'jsdoc/require-jsdoc': [
-    'warn',
+    'error',
     {
       require: {
         FunctionDeclaration: true,
