@@ -29,7 +29,11 @@
         "DavidAnson.vscode-markdownlint",
         "bierner.markdown-mermaid",
         "openai.chatgpt",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "GitHub.copilot-chat",
+        "ms-vscode.vscode-typescript-next",
+        "rvest.vs-code-prettier-eslint",
+        "SonarSource.sonarlint-vscode"
       ],
       "settings": {
         "editor.wordWrap": "on",
