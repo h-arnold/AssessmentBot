@@ -8,7 +8,7 @@ Goal:
 
 - Build React with Vite into a GAS HtmlService-compatible artefact.
 - Copy AssessmentBot backend into a single build target.
-- Inline JsonDbApp source into the same GAS project without global symbol collisions.
+- Inline [JsonDbApp source](https://github.com/h-arnold/JsonDbApp/tree/main/src) into the same GAS project without global symbol collisions.
 
 Non-goals:
 
