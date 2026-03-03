@@ -7,11 +7,22 @@ import { runPreflightClean } from './preflight-clean.js';
 import { BuildStageError } from '../lib/errors.js';
 import type { BuilderPaths } from '../types.js';
 
-const createTempDir = async (): Promise<string> => {
+/**
+ * Creates a unique temporary directory for a test case.
+ *
+ * @return {Promise<string>} Path to the created temporary directory.
+ */
+async function createTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'preflight-clean-'));
-};
+}
 
-const createBuilderPaths = (rootDir: string): BuilderPaths => {
+/**
+ * Builds a complete `BuilderPaths` object rooted at a temporary directory.
+ *
+ * @param {string} rootDir - Root temporary directory for the test fixture.
+ * @return {BuilderPaths} Resolved builder paths for test setup.
+ */
+function createBuilderPaths(rootDir: string): BuilderPaths {
   const repoRoot = path.join(rootDir, 'repo');
   const builderRoot = path.join(rootDir, 'builder');
   const configPath = path.join(builderRoot, 'builder.config.json');
@@ -35,18 +46,36 @@ const createBuilderPaths = (rootDir: string): BuilderPaths => {
     buildGasDir,
     buildGasUiDir,
   };
-};
+}
 
-const ensureFile = async (targetPath: string): Promise<void> => {
+/**
+ * Ensures a file exists with placeholder content.
+ *
+ * @param {string} targetPath - File path to create.
+ * @return {Promise<void>} Resolves when the file is written.
+ */
+async function ensureFile(targetPath: string): Promise<void> {
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
   await fs.writeFile(targetPath, 'content');
-};
+}
 
-const ensureDir = async (targetPath: string): Promise<void> => {
+/**
+ * Ensures a directory exists.
+ *
+ * @param {string} targetPath - Directory path to create.
+ * @return {Promise<void>} Resolves when the directory exists.
+ */
+async function ensureDir(targetPath: string): Promise<void> {
   await fs.mkdir(targetPath, { recursive: true });
-};
+}
 
-const listTree = async (rootDir: string): Promise<string[]> => {
+/**
+ * Recursively lists files and directories relative to a root path.
+ *
+ * @param {string} rootDir - Root directory to enumerate.
+ * @return {Promise<string[]>} Relative path list for comparison assertions.
+ */
+async function listTree(rootDir: string): Promise<string[]> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
   const results: string[] = [];
 
@@ -64,7 +93,7 @@ const listTree = async (rootDir: string): Promise<string[]> => {
   }
 
   return results;
-};
+}
 
 describe('runPreflightClean', () => {
   let tempDir: string;

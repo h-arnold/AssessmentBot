@@ -2,11 +2,16 @@ import { resolveBuilderPaths } from './config.js';
 import { logBuildFailure, logInfo } from './lib/process.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 
-const run = async (): Promise<void> => {
+/**
+ * Runs the builder pipeline entrypoint.
+ *
+ * @return {Promise<void>} Resolves when the configured build steps complete.
+ */
+async function run(): Promise<void> {
   const paths = await resolveBuilderPaths();
   await runPreflightClean(paths);
   logInfo('Step 1 complete: preflight checks passed and build directories prepared.');
-};
+}
 
 run().catch((err) => {
   logBuildFailure(err);

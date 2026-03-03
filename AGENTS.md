@@ -96,6 +96,12 @@ Important: Defensive guards policy
 
 Avoid abbreviations unless universally recognised (URL, ID, API).
 
+### 1.2 Export Style
+
+- Prefer `export function name(...)` for reusable exported module utilities.
+- Use exported arrow constants only when function-expression semantics are required.
+- Keep arrow functions for local single-use callbacks or closures that are not reused exports.
+
 ### 1.1 TypeScript and Lint Config Updates
 
 Before changing any TypeScript or ESLint configuration file, you **MUST** read:

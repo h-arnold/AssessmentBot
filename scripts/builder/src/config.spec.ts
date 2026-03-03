@@ -6,22 +6,22 @@ import { loadBuilderConfig, resolveBuildDir, resolveBuilderPaths } from './confi
 import { BuildStageError } from './lib/errors.js';
 
 const TEMP_ROOT = path.join(os.tmpdir(), 'builder-config-spec');
-const resetDir = async (targetPath: string): Promise<void> => {
+async function resetDir(targetPath: string): Promise<void> {
   await fs.rm(targetPath, { recursive: true, force: true });
   await fs.mkdir(targetPath, { recursive: true });
-};
+}
 
-const writeConfig = async (dirName: string, content: string): Promise<string> => {
+async function writeConfig(dirName: string, content: string): Promise<string> {
   const targetDir = path.join(TEMP_ROOT, dirName);
   await fs.mkdir(targetDir, { recursive: true });
   const configPath = path.join(targetDir, 'builder.config.json');
   await fs.writeFile(configPath, content);
   return configPath;
-};
+}
 
-const assertBuildStageError = async (
+async function assertBuildStageError(
   run: () => unknown | Promise<unknown>,
-): Promise<BuildStageError> => {
+): Promise<BuildStageError> {
   let thrownError: BuildStageError | undefined;
 
   try {
@@ -37,7 +37,7 @@ const assertBuildStageError = async (
   });
 
   return thrownError as BuildStageError;
-};
+}
 
 describe('loadBuilderConfig', () => {
   beforeEach(async () => {
@@ -120,9 +120,9 @@ describe('resolveBuilderPaths', () => {
   let repoRoot: string;
   let configPath: string;
 
-  const writeBuilderConfig = async (config: Record<string, string>): Promise<void> => {
+  async function writeBuilderConfig(config: Record<string, string>): Promise<void> {
     await fs.writeFile(configPath, JSON.stringify(config));
-  };
+  }
 
   beforeEach(async () => {
     tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'builder-config-spec-'));

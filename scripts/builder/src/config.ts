@@ -7,15 +7,34 @@ import type { BuilderConfig, BuilderPaths } from './types.js';
 
 const CONFIG_FILENAME = 'builder.config.json';
 
-const getBuilderRoot = (): string => {
+/**
+ * Resolves the absolute path to the builder module root.
+ *
+ * @return {string} Absolute builder root directory path.
+ */
+function getBuilderRoot(): string {
   const currentFile = fileURLToPath(import.meta.url);
   return path.resolve(path.dirname(currentFile), '..');
-};
+}
 
-const getRepoRoot = (builderRoot: string): string =>
-  path.resolve(builderRoot, '..', '..');
+/**
+ * Resolves the repository root from the builder root.
+ *
+ * @param {string} builderRoot - Absolute builder root path.
+ * @return {string} Absolute repository root directory path.
+ */
+function getRepoRoot(builderRoot: string): string {
+  return path.resolve(builderRoot, '..', '..');
+}
 
-const parseConfig = (configPath: string, raw: string): BuilderConfig => {
+/**
+ * Parses and validates raw builder configuration JSON.
+ *
+ * @param {string} configPath - Path to the configuration file for error context.
+ * @param {string} raw - Raw JSON string loaded from disk.
+ * @return {BuilderConfig} Validated builder configuration object.
+ */
+function parseConfig(configPath: string, raw: string): BuilderConfig {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -43,9 +62,16 @@ const parseConfig = (configPath: string, raw: string): BuilderConfig => {
   }
 
   return config as BuilderConfig;
-};
+}
 
-export const resolveBuildDir = (repoRoot: string, buildDirInput: string): string => {
+/**
+ * Resolves and validates the configured build output directory.
+ *
+ * @param {string} repoRoot - Absolute repository root path.
+ * @param {string} buildDirInput - Configured build directory path.
+ * @return {string} Absolute build directory path inside the repository.
+ */
+export function resolveBuildDir(repoRoot: string, buildDirInput: string): string {
   if (!buildDirInput || buildDirInput.trim().length === 0) {
     throw new BuildStageError(
       'preflight-clean',
@@ -64,9 +90,17 @@ export const resolveBuildDir = (repoRoot: string, buildDirInput: string): string
   }
 
   return resolvedBuildDir;
-};
+}
 
-const resolveSourceDir = (repoRoot: string, dirInput: string, label: string): string => {
+/**
+ * Resolves and validates a configured source directory path.
+ *
+ * @param {string} repoRoot - Absolute repository root path.
+ * @param {string} dirInput - Configured source directory path.
+ * @param {string} label - Config field name for error context.
+ * @return {string} Absolute source directory path inside the repository.
+ */
+function resolveSourceDir(repoRoot: string, dirInput: string, label: string): string {
   if (!dirInput || dirInput.trim().length === 0) {
     throw new BuildStageError(
       'preflight-clean',
@@ -85,9 +119,15 @@ const resolveSourceDir = (repoRoot: string, dirInput: string, label: string): st
   }
 
   return resolvedDir;
-};
+}
 
-export const loadBuilderConfig = async (configPath: string): Promise<BuilderConfig> => {
+/**
+ * Loads and validates the builder configuration file.
+ *
+ * @param {string} configPath - Absolute path to `builder.config.json`.
+ * @return {Promise<BuilderConfig>} Parsed and validated builder configuration.
+ */
+export async function loadBuilderConfig(configPath: string): Promise<BuilderConfig> {
   try {
     const raw = await readFile(configPath, 'utf-8');
     return parseConfig(configPath, raw);
@@ -101,7 +141,7 @@ export const loadBuilderConfig = async (configPath: string): Promise<BuilderConf
       err,
     );
   }
-};
+}
 
 type ResolveBuilderPathsOptions = {
   builderRoot?: string;
@@ -109,9 +149,15 @@ type ResolveBuilderPathsOptions = {
   configPath?: string;
 };
 
-export const resolveBuilderPaths = async (
+/**
+ * Resolves all required absolute paths for the builder pipeline.
+ *
+ * @param {ResolveBuilderPathsOptions} options - Optional root and config path overrides.
+ * @return {Promise<BuilderPaths>} Fully resolved and validated builder paths.
+ */
+export async function resolveBuilderPaths(
   options: ResolveBuilderPathsOptions = {},
-): Promise<BuilderPaths> => {
+): Promise<BuilderPaths> {
   const builderRoot = options.builderRoot ?? getBuilderRoot();
   const repoRoot = options.repoRoot ?? getRepoRoot(builderRoot);
   const configPath = options.configPath ?? path.join(builderRoot, CONFIG_FILENAME);
@@ -137,4 +183,4 @@ export const resolveBuilderPaths = async (
     buildGasDir,
     buildGasUiDir,
   };
-};
+}
