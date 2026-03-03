@@ -3,6 +3,8 @@ const jsdoc = require('eslint-plugin-jsdoc');
 
 module.exports = [
   {
+    // ignore the legacy GAS source folders entirely rather than linting them
+    ignores: ['src/AdminSheet/**', 'src/AssessmentRecordTemplate/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -44,51 +46,6 @@ module.exports = [
     },
     plugins: { googleappsscript, jsdoc },
     rules: {
-      // Enforce using the aggregator instead of direct numbered artifact files.
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '../src/AdminSheet/Models/Artifacts/0_BaseTaskArtifact.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-            {
-              name: '../src/AdminSheet/Models/Artifacts/1_TextTaskArtifact.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-            {
-              name: '../src/AdminSheet/Models/Artifacts/2_TableTaskArtifact.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-            {
-              name: '../src/AdminSheet/Models/Artifacts/3_SpreadsheetTaskArtifact.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-            {
-              name: '../src/AdminSheet/Models/Artifacts/4_ImageTaskArtifact.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-            {
-              name: '../src/AdminSheet/Models/Artifacts/5_ArtifactFactory.js',
-              message:
-                'Import from Models/Artifacts/index.js instead of individual artifact files.',
-            },
-          ],
-          patterns: [
-            {
-              group: ['**/Models/Artifacts/[0-9]_*.js'],
-              message:
-                'Use Models/Artifacts/index.js as the import surface, not numbered artifact files.',
-            },
-          ],
-        },
-      ],
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
@@ -150,52 +107,6 @@ module.exports = [
           detectObjects: false,
         },
       ],
-    },
-  },
-  // Add an override to allow BaseSingleton definition in the canonical base file.
-  {
-    files: ['src/AdminSheet/00_BaseSingleton.js', 'src/backend/00_BaseSingleton.js'],
-    rules: {
-      'no-restricted-syntax': 'off',
-    },
-  },
-  // Allow singleton constructor calls in their defining modules and tests.
-  {
-    files: [
-      'src/AdminSheet/ConfigurationManager/**/*.js',
-      'src/AdminSheet/UI/98_UIManager.js',
-      'src/AdminSheet/Utils/ProgressTracker.js',
-      'src/AdminSheet/y_controllers/InitController.js',
-      'tests/**/*.js',
-      'tests/**/*.mjs',
-    ],
-    languageOptions: {
-      sourceType: 'module',
-    },
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        // Keep BaseSingleton restrictions but remove singleton constructor restrictions
-        {
-          selector:
-            "Program:not([sourceType='module']) VariableDeclarator[id.name='BaseSingleton']",
-          message:
-            'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
-        },
-        {
-          selector:
-            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
-          message:
-            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
-        },
-        {
-          selector: "AssignmentExpression[left.name='BaseSingleton']",
-          message:
-            'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
-        },
-      ],
-      'jsdoc/require-jsdoc': 'off',
-      'no-magic-numbers': 'off',
     },
   },
 ];
