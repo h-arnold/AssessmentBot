@@ -1,26 +1,12 @@
 {
-  "extends": "@tsconfig/node24/tsconfig.json",
+  "extends": "../../tsconfig.base.bundler.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2024",
     "useDefineForClassFields": true,
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
     "types": ["vite/client", "vitest/globals"],
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
-    "rootDir": ".src/frontend"
+    "rootDir": "./src"
   },
-  "include": ["src/frontend"]
+  "include": ["src"]
 }
