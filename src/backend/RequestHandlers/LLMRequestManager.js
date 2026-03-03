@@ -3,6 +3,18 @@
  *
  * Manages the creation, caching, and sending of request objects to the LLM.
  */
+const VALIDATION_RETRY_LIMIT = 3;
+const HTTP_STATUS_OK = 200;
+const HTTP_STATUS_CREATED = 201;
+const TOAST_DURATION_SECONDS = 5;
+const HTTP_STATUS_UNAUTHORISED = 401;
+const HTTP_STATUS_FORBIDDEN = 403;
+const HTTP_STATUS_BAD_REQUEST = 400;
+const HTTP_STATUS_PAYLOAD_TOO_LARGE = 413;
+
+/**
+ * LLM request manager.
+ */
 class LLMRequestManager extends BaseRequestManager {
   /**
    *
@@ -139,7 +151,7 @@ class LLMRequestManager extends BaseRequestManager {
     this.retryAttempts[uid]++;
     this._logValidationRetry(uid);
 
-    const retryResponse = this.sendRequestWithRetries(request, 3);
+    const retryResponse = this.sendRequestWithRetries(request, VALIDATION_RETRY_LIMIT);
     if (!this._isSuccessfulResponse(retryResponse)) {
       this._handleRetryHttpFailure(uid);
       return;
@@ -229,7 +241,7 @@ class LLMRequestManager extends BaseRequestManager {
   _isSuccessfulResponse(response) {
     if (!response) return false;
     const code = response.getResponseCode();
-    return code === 200 || code === 201;
+    return code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED;
   }
 
   /**
@@ -252,7 +264,11 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _handleRetryLimitReached(uid) {
     this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
-    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+    Utils.toastMessage(
+      'Failed to process assessment for UID: ' + uid,
+      'Error',
+      TOAST_DURATION_SECONDS
+    );
   }
 
   /**
@@ -260,7 +276,11 @@ class LLMRequestManager extends BaseRequestManager {
    */
   _handleRetryHttpFailure(uid) {
     this.progressTracker.logError('Retry failed for UID: ' + uid);
-    Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
+    Utils.toastMessage(
+      'Failed to process assessment for UID: ' + uid,
+      'Error',
+      TOAST_DURATION_SECONDS
+    );
   }
 
   /**
@@ -320,7 +340,7 @@ class LLMRequestManager extends BaseRequestManager {
   _handleHttpError(response, uid) {
     const code = response ? response.getResponseCode() : null;
     const text = response ? response.getContentText() : 'No response';
-    if (code === 401) {
+    if (code === HTTP_STATUS_UNAUTHORISED) {
       // Unauthorised: invalid API key, abort script
       this.progressTracker.logAndThrowError(
         `Unauthorised (401) for UID: ${uid}. Invalid API key. Aborting script.`,
@@ -328,7 +348,7 @@ class LLMRequestManager extends BaseRequestManager {
       );
       return;
     }
-    if (code === 403) {
+    if (code === HTTP_STATUS_FORBIDDEN) {
       // Forbidden: insufficient permissions, abort script
       this.progressTracker.logAndThrowError(
         `Forbidden (403) for UID: ${uid}. Check API key permissions. Aborting script.`,
@@ -336,13 +356,13 @@ class LLMRequestManager extends BaseRequestManager {
       );
       return;
     }
-    if (code === 400) {
+    if (code === HTTP_STATUS_BAD_REQUEST) {
       // Bad request: skip and log
       console.warn(`Bad Request (400) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(`Bad Request (400) for UID: ${uid}. Payload invalid.`, text);
       return;
     }
-    if (code === 413) {
+    if (code === HTTP_STATUS_PAYLOAD_TOO_LARGE) {
       // Payload too large: skip and log
       console.warn(`Payload Too Large (413) for UID: ${uid}. Skipping request. Response: ${text}`);
       this.progressTracker.logError(
@@ -365,7 +385,7 @@ class LLMRequestManager extends BaseRequestManager {
   _processSingleResponse(response, request, assignment) {
     const uid = request.uid;
     const code = response ? response.getResponseCode() : null;
-    if (code === 200 || code === 201) {
+    if (code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED) {
       // Successful response
       this.componentBuildErrorCount = 0;
       try {

@@ -1,5 +1,10 @@
 // Validate.js
 
+const HOSTNAME_MAX_LENGTH = 253;
+const MIN_HOSTNAME_LABEL_COUNT = 2;
+const HOSTNAME_LABEL_MAX_LENGTH = 63;
+const IPV4_OCTET_MAX_VALUE = 255;
+
 /**
  * Validate Utility
  *
@@ -127,10 +132,11 @@ class Validate {
     if (Validate._isIPv4(hostname)) return false;
 
     // Minimal DNS hostname validation.
-    if (hostname.length > 253) return false;
+    if (hostname.length > HOSTNAME_MAX_LENGTH) return false;
     const labels = hostname.split('.');
-    if (labels.length < 2) return false;
-    if (labels.some((label) => label.length === 0 || label.length > 63)) return false;
+    if (labels.length < MIN_HOSTNAME_LABEL_COUNT) return false;
+    if (labels.some((label) => label.length === 0 || label.length > HOSTNAME_LABEL_MAX_LENGTH))
+      return false;
     if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
     if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
 
@@ -144,7 +150,7 @@ class Validate {
     const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
     if (!ipv4Exec) return false;
     const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
-    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > 255)) return false;
+    if (octets.some((o) => Number.isNaN(o) || o < 0 || o > IPV4_OCTET_MAX_VALUE)) return false;
     return true;
   }
 

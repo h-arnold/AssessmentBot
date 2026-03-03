@@ -1,5 +1,7 @@
+const DEFAULT_TRIGGER_DELAY_SECONDS = 5;
+
 /**
- *
+ * Trigger controller.
  */
 class TriggerController {
   /**
@@ -16,7 +18,7 @@ class TriggerController {
 
       if (!triggerTime) {
         triggerTime = new Date();
-        triggerTime.setSeconds(triggerTime.getSeconds() + 5);
+        triggerTime.setSeconds(triggerTime.getSeconds() + DEFAULT_TRIGGER_DELAY_SECONDS);
       }
 
       const trigger = ScriptApp.newTrigger(functionName).timeBased().at(triggerTime).create();

@@ -4,6 +4,8 @@
 // Expect Utils to exist in global scope in GAS environment (generateHash, etc.).
 // Artifacts are defined in `Artifacts.js` and loaded in the same runtime. We only reference by name here.
 
+const TASK_DEFINITION_HASH_LENGTH = 12;
+
 /**
  *
  */
@@ -45,7 +47,7 @@ class TaskDefinition {
    */
   _deriveId(taskTitle, pageId) {
     const base = `${taskTitle || ''}::${pageId || ''}`;
-    return 't_' + Utils.generateHash(base).substring(0, 12); // shorter stable prefix
+    return 't_' + Utils.generateHash(base).substring(0, TASK_DEFINITION_HASH_LENGTH); // shorter stable prefix
   }
 
   /**

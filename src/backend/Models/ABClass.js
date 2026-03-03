@@ -1,3 +1,5 @@
+const ITEM_NOT_FOUND_INDEX = -1;
+
 /**
  * ABClass
  *
@@ -178,7 +180,7 @@ class ABClass {
    */
   removeTeacher(predicate) {
     const idx = this.teachers.findIndex(predicate);
-    if (idx === -1) return null;
+    if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.teachers.splice(idx, 1)[0];
   }
 
@@ -204,7 +206,7 @@ class ABClass {
    */
   removeStudent(predicate) {
     const idx = this.students.findIndex(predicate);
-    if (idx === -1) return null;
+    if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.students.splice(idx, 1)[0];
   }
 
@@ -230,7 +232,7 @@ class ABClass {
    */
   removeAssignment(predicate) {
     const idx = this.assignments.findIndex(predicate);
-    if (idx === -1) return null;
+    if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.assignments.splice(idx, 1)[0];
   }
 

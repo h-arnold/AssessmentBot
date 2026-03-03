@@ -3,6 +3,21 @@
  *
  * Handles generic URL requests with error handling, retries, and exponential backoff.
  */
+const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+const HTTP_STATUS_UNAUTHORISED = 401;
+const HTTP_STATUS_FORBIDDEN = 403;
+const HTTP_STATUS_NOT_FOUND = 404;
+const DEFAULT_MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY_MS = 5000;
+const HTTP_STATUS_OK = 200;
+const HTTP_STATUS_CREATED = 201;
+const HTTP_STATUS_BAD_REQUEST_MIN = 400;
+const RETRY_DELAY_MULTIPLIER = 1.5;
+
+/**
+ * Base request manager.
+ */
 class BaseRequestManager {
   /**
    *
@@ -26,7 +41,10 @@ class BaseRequestManager {
     // - 500: Internal Server Error
     // - 503: Service Unavailable
     // - Any 5xx except those that indicate permanent failures
-    return statusCode === 429 || statusCode >= 500;
+    return (
+      statusCode === HTTP_STATUS_TOO_MANY_REQUESTS ||
+      statusCode >= HTTP_STATUS_INTERNAL_SERVER_ERROR
+    );
   }
 
   /**
@@ -40,7 +58,11 @@ class BaseRequestManager {
     // - 401: Unauthorised (invalid API key)
     // - 403: Forbidden (insufficient permissions)
     // - 404: Not Found (resource missing / incorrect endpoint)
-    return statusCode === 401 || statusCode === 403 || statusCode === 404;
+    return (
+      statusCode === HTTP_STATUS_UNAUTHORISED ||
+      statusCode === HTTP_STATUS_FORBIDDEN ||
+      statusCode === HTTP_STATUS_NOT_FOUND
+    );
   }
 
   /**
@@ -49,9 +71,9 @@ class BaseRequestManager {
    * @param {number} [maxRetries=3] - Maximum number of retries.
    * @return {HTTPResponse|null} - The HTTPResponse object or null if all retries fail.
    */
-  sendRequestWithRetries(request, maxRetries = 2) {
+  sendRequestWithRetries(request, maxRetries = DEFAULT_MAX_RETRIES) {
     let attempt = 0;
-    let delay = 5000; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
+    let delay = INITIAL_RETRY_DELAY_MS; // Initial delay of 5 seconds. When extracting whole slide images you get rate limited quite early. A 5 second delay seems to be the minimum needed to avoid a retry.
 
     while (attempt <= maxRetries) {
       try {
@@ -59,7 +81,7 @@ class BaseRequestManager {
         const responseCode = response.getResponseCode();
 
         // Success responses - return immediately
-        if (responseCode === 200 || responseCode === 201) {
+        if (responseCode === HTTP_STATUS_OK || responseCode === HTTP_STATUS_CREATED) {
           return response;
         }
 
@@ -82,7 +104,11 @@ class BaseRequestManager {
         }
 
         // Check if error is non-retryable (client errors)
-        if (responseCode >= 400 && responseCode < 500 && !this._isRetryableError(responseCode)) {
+        if (
+          responseCode >= HTTP_STATUS_BAD_REQUEST_MIN &&
+          responseCode < HTTP_STATUS_INTERNAL_SERVER_ERROR &&
+          !this._isRetryableError(responseCode)
+        ) {
           // Non-retryable client errors (400, 413, etc.) - return response for caller to handle
           this.logger.warn(`Non-retryable client error ${responseCode} for ${request.url}`, {
             responseCode,
@@ -128,7 +154,7 @@ class BaseRequestManager {
       attempt++;
       if (attempt > maxRetries) break;
       Utilities.sleep(delay);
-      delay *= 1.5; // Increase the backoff by 50% as the base pause time is quite high
+      delay *= RETRY_DELAY_MULTIPLIER; // Increase the backoff by 50% as the base pause time is quite high
     }
 
     console.error(`All ${maxRetries + 1} attempts failed for request to ${request.url}.`);
@@ -174,7 +200,10 @@ class BaseRequestManager {
       // Handle each response with retries if necessary
       responses.forEach((response, idx) => {
         const originalRequest = batch[idx];
-        if (response.getResponseCode() !== 200 && response.getResponseCode() !== 201) {
+        if (
+          response.getResponseCode() !== HTTP_STATUS_OK &&
+          response.getResponseCode() !== HTTP_STATUS_CREATED
+        ) {
           console.warn(
             `Batch ${index + 1}, Request ${
               idx + 1
