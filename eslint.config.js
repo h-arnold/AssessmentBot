@@ -144,9 +144,7 @@ module.exports = [
       'no-magic-numbers': [
         'warn',
         {
-          // HTTP status codes are protocol-defined constants and intentionally
-          // used as literals where request handling branches are read.
-          ignore: [0, 1, 200, 201, 400, 401, 403, 404, 413, 429, 500],
+          ignore: [0, 1],
           ignoreArrayIndexes: true,
           enforceConst: true,
           detectObjects: false,
