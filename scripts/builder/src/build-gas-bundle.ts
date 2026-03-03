@@ -1,6 +1,7 @@
 import { resolveBuilderPaths } from './config.js';
 import { logBuildFailure, logInfo } from './lib/process.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
+import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 
 /**
@@ -15,6 +16,11 @@ async function run(): Promise<void> {
 
   const frontendBuildResult = await runFrontendBuild(paths);
   logInfo(`Step 2 complete: frontend build generated entry HTML at ${frontendBuildResult.entryHtmlPath}`);
+
+  const htmlServiceTransformResult = await runFrontendHtmlServiceTransform(paths);
+  logInfo(
+    `Step 3 complete: HtmlService ReactApp generated at ${htmlServiceTransformResult.reactAppPath}`,
+  );
 }
 
 run().catch((err) => {

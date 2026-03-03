@@ -1,4 +1,7 @@
-export type BuildStageId = 'preflight-clean' | 'frontend-build';
+export type BuildStageId =
+  | 'preflight-clean'
+  | 'frontend-build'
+  | 'frontend-htmlservice-transform';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -29,4 +32,11 @@ export type FrontendBuildResult = {
   entryHtmlPath: string;
   generatedChunks: string[];
   warnings: string[];
+};
+
+export type FrontendHtmlServiceTransformResult = {
+  stage: BuildStageId;
+  reactAppPath: string;
+  inlinedScriptCount: number;
+  inlinedStyleCount: number;
 };
