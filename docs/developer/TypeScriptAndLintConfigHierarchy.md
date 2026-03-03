@@ -10,7 +10,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 
 ## TypeScript hierarchy
 
-### 1) Global base
+### 1) Single global base
 
 - `tsconfig.base.json`
 - Defines shared language and safety defaults used everywhere:
@@ -24,28 +24,16 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - `noUncheckedSideEffectImports`
   - `erasableSyntaxOnly`
 
-### 2) Global runtime bases
-
-- `tsconfig.base.bundler.json`
-  - For Vite/bundler-mode projects.
-  - Sets `module: ESNext`, `moduleResolution: bundler`, `noEmit`, plus bundler-related module flags.
-- `tsconfig.base.node.json`
-  - For Node.js runtime/CLI code.
-  - Sets `module: NodeNext`, `moduleResolution: NodeNext`, Node `types`, and Node library target.
-- `tsconfig.base.node-bundler.json`
-  - For Node-targeted files that still use bundler-style resolution (for example Vite config files).
-  - Extends `tsconfig.base.bundler.json` and adds Node libs/types.
-
-### 3) Component leaf configs
+### 2) Component leaf configs
 
 - `src/frontend/tsconfig.app.json`
-  - Extends `../../tsconfig.base.bundler.json`.
+  - Extends `../../tsconfig.base.json`.
   - Adds frontend app specifics only: DOM libs, JSX, Vite/Vitest types, app include paths.
 - `src/frontend/tsconfig.node.json`
-  - Extends `../../tsconfig.base.node-bundler.json`.
+  - Extends `../../tsconfig.base.json`.
   - Adds frontend tooling specifics only: include for `vite.config.ts`, build info path.
 - `scripts/builder/tsconfig.json`
-  - Extends `../../tsconfig.base.node.json`.
+  - Extends `../../tsconfig.base.json`.
   - Adds builder specifics only: `rootDir`, `outDir`, JSON module resolution, include paths.
 
 ## ESLint hierarchy
@@ -75,7 +63,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 
 When updating TypeScript or lint standards:
 
-1. Update root shared base first (`tsconfig.base*.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
+1. Update root shared base first (`tsconfig.base.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
    - `npm run builder:build`

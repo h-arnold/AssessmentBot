@@ -1,6 +1,10 @@
 {
-  "extends": "../../tsconfig.base.node.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"],
     "rootDir": "./src",
     "outDir": "./dist",
     "resolveJsonModule": true
