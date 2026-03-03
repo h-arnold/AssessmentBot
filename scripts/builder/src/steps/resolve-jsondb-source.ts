@@ -74,6 +74,26 @@ async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): P
 }
 
 /**
+ * Validates archive entries to prevent path traversal and link attacks.
+ *
+ * @param {string} archivePath - Absolute path to the tar.gz archive.
+ * @return {Promise<void>} Resolves when all entries are safe.
+ */
+async function validateArchiveContents(archivePath: string): Promise<void> {
+  const { stdout } = await execFileAsync('tar', ['-tzf', archivePath]);
+  const entries = stdout.trim().split('\n').filter(Boolean);
+
+  for (const entry of entries) {
+    if (path.isAbsolute(entry)) {
+      throw new BuildStageError(STAGE_ID, `Unsafe archive entry with absolute path: ${entry}`);
+    }
+    if (entry.split('/').includes('..')) {
+      throw new BuildStageError(STAGE_ID, `Unsafe archive entry with path traversal: ${entry}`);
+    }
+  }
+}
+
+/**
  * Downloads and extracts the pinned JsonDbApp release snapshot.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
@@ -85,6 +105,7 @@ async function materialisePinnedJsonDbRelease(paths: BuilderPaths): Promise<stri
 
   await fs.mkdir(paths.buildWorkDir, { recursive: true });
   await downloadArchive(JSON_DB_RELEASE_TARBALL_URL, archivePath);
+  await validateArchiveContents(archivePath);
   await fs.rm(extractRoot, { recursive: true, force: true });
   await fs.mkdir(extractRoot, { recursive: true });
 
