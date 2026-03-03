@@ -3,6 +3,7 @@ import { logBuildFailure, logInfo } from './lib/process.js';
 import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuild } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
+import { runJsonDbInlineNamespace } from './steps/jsondb-inline-namespace.js';
 import { runPreflightClean } from './steps/preflight-clean.js';
 import { runResolveJsonDbSource } from './steps/resolve-jsondb-source.js';
 
@@ -30,6 +31,11 @@ async function run(): Promise<void> {
   const resolveJsonDbSourceResult = await runResolveJsonDbSource(paths);
   logInfo(
     `Step 5 complete: resolved JsonDbApp source files (${resolveJsonDbSourceResult.sourceFiles.length}): ${resolveJsonDbSourceResult.sourceFiles.join(', ')}`,
+  );
+
+  const jsonDbInlineNamespaceResult = await runJsonDbInlineNamespace(paths);
+  logInfo(
+    `Step 6 complete: generated ${jsonDbInlineNamespaceResult.outputPath} with namespace ${jsonDbInlineNamespaceResult.namespaceSymbol} and exports: ${jsonDbInlineNamespaceResult.exportedApi.join(', ')}`,
   );
 }
 

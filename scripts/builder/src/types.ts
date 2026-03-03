@@ -3,7 +3,8 @@ export type BuildStageId =
   | 'frontend-build'
   | 'frontend-htmlservice-transform'
   | 'backend-copy'
-  | 'resolve-jsondb-source';
+  | 'resolve-jsondb-source'
+  | 'jsondb-inline-namespace';
 
 export type BuilderConfig = {
   frontendDir: string;
@@ -12,6 +13,7 @@ export type BuilderConfig = {
   jsonDbApp: {
     pinnedSnapshotDir: string;
     sourceFiles: string[];
+    publicExports: string[];
   };
 };
 
@@ -28,6 +30,7 @@ export type BuilderPaths = {
   buildGasUiDir: string;
   jsonDbAppPinnedSnapshotDir: string;
   jsonDbAppSourceFiles: string[];
+  jsonDbAppPublicExports: string[];
 };
 
 export type PreflightCleanResult = {
@@ -57,4 +60,11 @@ export type BackendCopyResult = {
 export type ResolveJsonDbSourceResult = {
   stage: BuildStageId;
   sourceFiles: string[];
+};
+
+export type JsonDbInlineNamespaceResult = {
+  stage: BuildStageId;
+  outputPath: string;
+  namespaceSymbol: string;
+  exportedApi: string[];
 };

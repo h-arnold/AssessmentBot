@@ -23,6 +23,7 @@ function createBuilderPaths(): BuilderPaths {
     buildGasUiDir: '/repo/build/gas/UI',
     jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
     jsonDbAppSourceFiles: ['src/z-last.js', 'src/a-first.js', 'src/m-middle.js'],
+    jsonDbAppPublicExports: ['loadDatabase'],
   };
 }
 

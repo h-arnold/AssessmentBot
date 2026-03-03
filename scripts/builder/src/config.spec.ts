@@ -23,7 +23,7 @@ function createValidConfig(): {
   frontendDir: string;
   backendDir: string;
   buildDir: string;
-  jsonDbApp: { pinnedSnapshotDir: string; sourceFiles: string[] };
+  jsonDbApp: { pinnedSnapshotDir: string; sourceFiles: string[]; publicExports: string[] };
 } {
   return {
     frontendDir: 'src/frontend',
@@ -32,6 +32,7 @@ function createValidConfig(): {
     jsonDbApp: {
       pinnedSnapshotDir: 'vendor/jsondbapp',
       sourceFiles: ['src/a.js'],
+      publicExports: ['loadDatabase'],
     },
   };
 }
