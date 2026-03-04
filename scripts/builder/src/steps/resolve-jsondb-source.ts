@@ -80,15 +80,38 @@ async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): P
  * @return {Promise<void>} Resolves when all entries are safe.
  */
 async function validateArchiveContents(archivePath: string): Promise<void> {
-  const { stdout } = await execFileAsync('tar', ['-tzf', archivePath]);
-  const entries = stdout.trim().split('\n').filter(Boolean);
+  // Use verbose listing so we can inspect entry types and reject links.
+  const { stdout } = await execFileAsync('tar', ['-tzvf', archivePath]);
+  const lines = stdout.trim().split('\n').filter(Boolean);
 
-  for (const entry of entries) {
-    if (path.isAbsolute(entry)) {
-      throw new BuildStageError(STAGE_ID, `Unsafe archive entry with absolute path: ${entry}`);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const columns = trimmed.split(/\s+/);
+    const perms = columns[0];
+
+    // perms starts with a character indicating the entry type: '-', 'd', 'l', 'h', etc.
+    if (perms && (perms[0] === 'l' || perms[0] === 'h')) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with link type '${perms[0]}' detected in: ${trimmed}`,
+      );
     }
-    if (entry.split('/').includes('..')) {
-      throw new BuildStageError(STAGE_ID, `Unsafe archive entry with path traversal: ${entry}`);
+
+    // The entry path is the name field; for symlinks it is before ' -> target'.
+    const nameWithMaybeTarget = columns.slice(5).join(' ');
+    const [entryPath] = nameWithMaybeTarget.split(' -> ');
+
+    if (path.isAbsolute(entryPath)) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with absolute path: ${entryPath}`,
+      );
+    }
+    if (entryPath.split('/').includes('..')) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with path traversal: ${entryPath}`,
+      );
     }
   }
 }
