@@ -2,6 +2,13 @@
 
 Applies when editing `src/backend/**` and backend runtime behaviour.
 
+## 0. Backend API Entry Layer
+
+- `src/backend/Api` is the primary entry surface for functions called from the frontend via `google.script.run`.
+- Organise API files by domain/resource in a REST-ish style.
+- Keep API functions thin and delegate to controller classes unless delegation would add unnecessary verbosity.
+- Existing backend `globals.js` files are migration references and should be removed once equivalent `Api` functions exist.
+
 ## 1. Runtime Model (GAS V8 Script)
 
 - Target runtime is Google Apps Script V8 (`src/backend/appsscript.json`).

@@ -1,12 +1,6 @@
 name: Build Documentation
 
 on:
-  push:
-    paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'requirements-docs.txt'
-      - '.github/workflows/build-docs.yml'
   pull_request:
     paths:
       - 'docs/**'

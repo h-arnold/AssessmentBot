@@ -55,6 +55,7 @@ nav:
   - Developer:
       - Backend:
           - Agent Instructions: developer/backend/AGENT_BACKEND.md
+          - API Layer: developer/backend/api-layer.md
           - Assessment Flow: developer/backend/AssessmentFlow.md
           - Data Shapes: developer/backend/DATA_SHAPES.md
           - OAuth Scopes: developer/backend/oauth-scopes.md

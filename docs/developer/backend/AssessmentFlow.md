@@ -22,6 +22,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 ### Key Components
 
+- **Backend API Layer**: `src/backend/Api` thin GAS global wrappers for frontend `google.script.run` calls
 - **UI Layer**: `UIManager`, HTML templates
 - **Controllers**: `AssignmentController`, `AssignmentDefinitionController`, `ABClassController`
 - **Models**: `Assignment` (base), `SlidesAssignment`, `SheetsAssignment`, `AssignmentDefinition`, `TaskDefinition`, `StudentSubmission`
@@ -47,6 +48,16 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 10. **Document Properties**: Used for cross-execution parameter passing between trigger setup and execution
 11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
 12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
+
+---
+
+## Migration Note: API Layer
+
+The active backend is moving to `src/backend/Api` as the canonical GAS entry layer for frontend calls.
+
+- API functions should stay thin and delegate to controllers.
+- Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.
+- Some detailed examples below still describe legacy AdminSheet/UI flows and should be treated as reference until fully migrated.
 
 ---
 
