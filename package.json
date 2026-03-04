@@ -22,6 +22,7 @@
         "frontend:test": "npm --prefix src/frontend run test",
         "frontend:test:watch": "npm --prefix src/frontend run test:watch",
         "frontend:test:e2e": "npm --prefix src/frontend run test:e2e",
+        "frontend:test:coverage": "npm --prefix src/frontend run test:coverage",
         "builder:compile": "tsc -p scripts/builder/tsconfig.json",
         "builder:run": "node scripts/builder/dist/build-gas-bundle.js",
         "builder:build": "npm run builder:compile && npm run builder:run --",
@@ -29,8 +30,9 @@
         "builder:build:prod": "npm run builder:compile && npm run builder:run -- --frontend-mode=production",
         "builder:test": "vitest run --config scripts/builder/vitest.config.ts",
         "builder:test:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
+        "builder:test:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
         "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts",
-        "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build:prod"
+        "builder:ci": "npm run builder:lint && npm run builder:test:coverage && npm run builder:build:prod"
     },
     "keywords": [],
     "author": "",
@@ -39,6 +41,7 @@
         "@types/node": "^24.3.1",
         "@typescript-eslint/eslint-plugin": "^8.43.0",
         "@typescript-eslint/parser": "^8.43.0",
+        "@vitest/coverage-v8": "^4.0.18",
         "@vitest/coverage-v8": "^4.0.18",
         "eslint-plugin-unicorn": "^63.0.0",
         "eslint": "latest",
