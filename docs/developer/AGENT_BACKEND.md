@@ -17,6 +17,8 @@ Use GAS-native services where applicable:
 - HTTP: `UrlFetchApp`
 - Workspace data access: `SpreadsheetApp`, `SlidesApp`, `DriveApp`, advanced services in manifest
 
+**Important**: Many of these GAS services alrady have wrapper modules. Check the codebase for these before using them directly.
+
 Do not replace GAS service calls with Node/browser equivalents that do not execute in Apps Script.
 
 ## 2. Validation Contract (Backend Only)
