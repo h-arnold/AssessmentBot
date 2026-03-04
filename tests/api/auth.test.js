@@ -10,7 +10,7 @@ describe('Api/auth.getAuthorisationStatus', () => {
   });
 
   afterEach(() => {
-    if (typeof originalScriptAppManager === 'undefined') {
+    if (originalScriptAppManager === undefined) {
       delete globalThis.ScriptAppManager;
     } else {
       globalThis.ScriptAppManager = originalScriptAppManager;
