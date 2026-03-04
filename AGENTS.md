@@ -1,247 +1,59 @@
-## AssessmentBot – LLM Execution Contract (Optimised)
-
-### Project Overview
-
-AssessmentBot automates assessment of student work in Google Slides and Sheets by comparing submissions against reference materials. Built with Google Apps Script, it integrates with Google Classroom and uses an LLM backend for intelligent evaluation. The tool scores submissions on Completeness, Accuracy, and SPaG (Spelling, Punctuation, Grammar).
-
-**Technology Stack:**
-
-- Google Apps Script (GAS) backend (vanilla V8 JavaScript)
-- React + TypeScript frontend (Vite, Ant Design)
-- Vitest for unit testing (backend and frontend)
-- Playwright for browser end-to-end tests
-- ESLint for linting
-- Prettier for code formatting
+## AssessmentBot – Agent Execution Contract (Trimmed)
 
-**Key Directories:**
+This file contains project-specific constraints that are not reliably discoverable from code alone.
+Discover architecture details, scripts, and local workflows from the repository when needed.
 
-- `src/backend/` - Active GAS backend code migrated from AdminSheet non-deprecated modules
-- `src/AdminSheet/` - Legacy GAS source retained during migration
-- `src/frontend/` - React + TypeScript web frontend (Vite + Ant Design)
-- `tests/` - Backend Vitest unit tests (logic only, no GAS services)
-- `src/frontend/tests/` - Frontend Playwright tests
-- `docs/` - User and developer documentation
+### 1. Prime Directives (Do Not Violate)
 
-**Essential Commands:**
+1. KISS: implement the simplest working solution. No speculative abstraction.
+2. Only fulfil the explicit request. No scope creep unless blocked.
+3. Use British English in code comments, docs, and user-facing text.
+4. Reuse existing classes/utilities before creating new ones.
+5. Do not add production code purely to satisfy tests.
+6. Do not silently swallow errors. Fail fast, or log and rethrow.
+7. No defensive runtime guards for known internal/GAS APIs.
+8. Validate direct parameters only, using `Validate`.
+9. Follow the logging contract exactly (below); do not duplicate error logs.
+10. Delegate UI and testing tasks to the specified sub-agents.
 
-```bash
-npm test                    # Run backend default non-legacy Vitest suite
-npm run test:all            # Run backend full suite (still excludes permanently deprecated tests)
-npm run test:legacy-ui      # Run backend legacy UI-focused tests only
-npm run frontend:test       # Run frontend Vitest suite
-npm run frontend:test:e2e   # Run frontend Playwright suite
-npm run frontend:lint       # Lint frontend TypeScript/React code
-npm run lint                # Check backend code style
-npm run lint:fix            # Auto-fix backend linting issues
-npm run format              # Format code with Prettier
-```
+### 2. Mandatory Sub-Agent Delegation
 
-**Key Documentation:**
+- Test work: delegate to `Testing Specialist` (`.github/agents/Testing.agent.md`).
+- Do not implement UI or tests directly in the main agent.
 
-- `./CONTRIBUTING.md` - General coding and documentation style guide.
-- `./docs/developer/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
-- `./docs/developer/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
-- `./docs/developer/TypeScriptAndLintConfigHierarchy.md` - Authoritative TypeScript/ESLint configuration tree and ownership rules (shared base vs component-specific overrides).
-- `./docs/developer/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
-- `./docs/developer/testing.md` - Test patterns and best practices for Vitest unit tests, mocking of Apps Script services, and test organisation.
-- `./docs/developer/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
-- `./docs/developer/oauth-scopes.md` - The OAuth scopes required for Google Apps Script integrations and the rationale for each scope.
-- `./docs/developer/UI.md` - Front-end UI conventions, modal/dialog patterns, accessibility considerations and styling guidance.
-- `./docs/developer/Vendoring.md` - Guidance for vendoring third-party libraries into the Apps Script project and the associated tooling/workflows.
+Sub-agent protocol (critical):
 
-### 0. Prime Directives (Highest Priority – never violate)
+- Sub-agents are stateless.
+- Read relevant files first.
+- Pass concrete context in `runSubagent` prompt: relevant source snippets, errors, requirements, and expected output.
+- Explicitly describe what changed; do not assume shared history.
 
-1. KISS: simplest working solution. No speculative abstraction.
-2. Assume all modules, classes, functions and methods are present. Do not guard against this. Do not add existence checks or feature detection for GAS APIs, singletons, or internal calls; only validate direct function parameters.
-3. Only fulfil the explicit request (no scope creep). Ask ONLY if truly blocked.
-4. British English everywhere.
-5. Obey naming & style rules (below). Stay consistent with existing patterns.
-6. Never silently swallow errors. Fail fast or surface via required logging pattern.
-7. Reuse existing classes/utilities before creating new ones.
-8. Do not add production code purely for tests.
-9. For errors: either `ProgressTracker.logError(userMsg, devDetails)` OR `ABLogger.*` (dev). Do not duplicate same error in both unless dev details not passed to logError.
-10. Use `Validate` class for generic validation. Use `Validate.requireParams()` for parameter existence checks. Only implement class-specific validation within classes.
-11. **MANDATORY**: Delegate all UI and testing duties to the appropriate sub-agents (`Testing Specialist`, `UI Specialist`). Do not implement UI or tests directly.
+### 3. Validation and Defensive-Guard Policy
 
-### 0.1 Sub-Agent Protocols (Stateless Delegation)
+- Use `Validate.requireParams({ ... }, 'methodName')` for required parameter presence checks.
+- Use existing generic validators in `src/AdminSheet/Utils/Validate.js` before adding new ones.
+- Add new reusable generic validators to `Validate`, not ad hoc in multiple classes.
+- Keep class-specific business validation inside the owning class.
+- Do not add existence/type/feature checks for internal classes, singletons, logger methods, or GAS services.
+- Prefer uncaught exceptions over masking misconfiguration.
 
-**Available Agents:**
+### 4. Error and Logging Contract
 
-- **Testing Specialist**: All `tests/` logic. Instructions: `.github/agents/Testing.agent.md`
-- **UI Specialist**: All `src/AdminSheet/UI/` logic. Instructions: `.github/agents/UI.agent.md`
+User-visible failures:
 
-**Context Management (CRITICAL):**
+- `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`
 
-- Sub-agents are **stateless**. They do not share your chat history or open files.
-- You **MUST** `read_file` relevant context first.
-- You **MUST** include file contents, error logs, and requirements explicitly in the `prompt` field of `runSubagent`.
-- Do not assume the agent knows "what changed". Tell it exactly what changed.
+Developer diagnostics:
 
-Important: Defensive guards policy
+- `ABLogger.getInstance().debugUi/info/warn/error(...)`
 
-- Do not implement defensive programming guards (existence checks, typeof/feature detection, optional chaining as a gate) for known internal calls or GAS services. Prefer uncaught exceptions over masking issues.
-- The only acceptable guards are explicit parameter validation for public methods/functions using the `Validate` class.
+Rules:
 
-### 1. Style & Naming
+- If equivalent developer detail is already passed to `logError`, do not separately log the same error detail via `ABLogger.error`.
+- No `console.*` in new code.
+- Do not wrap logger calls in defensive checks.
 
-| Item                | Rule                                 |
-| ------------------- | ------------------------------------ |
-| Classes             | PascalCase                           |
-| Methods / variables | camelCase                            |
-| Constants           | const NAME (UPPER or clear semantic) |
-| Indent              | 2 spaces                             |
-| Language            | British English                      |
-| Paths               | Core: `src/AdminSheet`               |
-| Load order          | Preserve numeric prefixes            |
-
-Avoid abbreviations unless universally recognised (URL, ID, API).
-
-### 1.2 Export Style
-
-- Prefer `export function name(...)` for reusable exported module utilities.
-- Use exported arrow constants only when function-expression semantics are required.
-- Keep arrow functions for local single-use callbacks or closures that are not reused exports.
-
-### 1.1 TypeScript and Lint Config Updates
-
-Before changing any TypeScript or ESLint configuration file, you **MUST** read:
-
-- `./docs/developer/TypeScriptAndLintConfigHierarchy.md`
-
-Rule: shared standards belong in the root shared configs; only runtime/component-specific behaviour belongs in leaf configs.
-
-### 2. Architecture Map
-
-Singleton base: `src/AdminSheet/00_BaseSingleton.js` (canonical). Examples: `ABLogger`, `ProgressTracker`, `ConfigurationManager`, `DbManager`.
-Domains: Controllers (`y_controllers`), Sheets, AssignmentProcessor, Models (+ Artifacts), RequestHandlers, DocumentParsers, UpdateAndInitManager, Utils.
-
-### 3. Error & Logging Contract
-
-User-facing failure: `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`.
-Developer diagnostics: `ABLogger.getInstance().debugUi/info/warn/error(...)`.
-If dev details already provided as second param to `logError`, do NOT separately call `ABLogger.error` with the same info.
-No `console.*` in new code.
-Required value absent? Validate & throw (or log + throw). Optional deep access may use `?.` but not to hide bugs.
-
-Additional clarity:
-
-- Do not wrap logger usage in existence/type checks (e.g., `if (logger && typeof logger.info === 'function')`). Assume `ABLogger.getInstance()` and its methods exist; call them directly. Let failures surface.
-
-### 4. Tests (Vitest: logic only)
-
-**DELEGATION MANDATORY**: Do not write or run tests directly.
-
-1. Identify the logic to test.
-2. Read the source file to be tested.
-3. Call `runSubagent` (Testing Specialist) with the source code and test requirements.
-
-### 5. Validation
-
-Use the `Validate` utility class (`src/AdminSheet/Utils/Validate.js`) for all generic validation:
-
-**Required pattern for parameter existence:**
-
-```javascript
-Validate.requireParams({ paramName1, paramName2 }, 'methodName');
-```
-
-**Rules:**
-
-- Check the `Validate` class for existing validators before implementing new validation logic.
-- Add new generic validators to the `Validate` class when needed for reuse across the codebase.
-- Use `Validate` for generic type/format checks and parameter presence validation.
-- Only implement class-specific validation within classes (e.g., domain-specific business logic).
-- Do not duplicate generic validation logic across classes.
-
-### 6. Singleton Pattern
-
-Always via `Class.getInstance()`. Refer to `./docs/developer/singletons.md` when modifying or creating new Singletons.
-
-### 7. Serialisation
-
-Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).
-
-### 8. Hashing & Equality
-
-Use `Utils.generateHash`. Do not assert literal hash strings. Assert existence, stability, and change upon content mutation.
-
-### 8. Performance & Quotas
-
-Batch using existing utilities (e.g. `BatchUpdateUtility`). No new frameworks. Avoid premature caching—add only if duplication is measurable.
-
-### 9. JSDoc Minimum
-
-/\*\*
-
-- Concise description.
-- @param {Type} name - Purpose (British English).
-- @return {Type} Meaningful result description.
-- @remarks Edge cases only if non-obvious.
-  \*/
-  Inline brief comments for complex branches.
-
-### 10. Decision Cheat Sheet
-
-| Situation                 | Action                                          |
-| ------------------------- | ----------------------------------------------- |
-| **UI Change required**    | **Run Sub-Agent: UI Specialist**                |
-| **Logic needs testing**   | **Run Sub-Agent: Testing Specialist**           |
-| User-visible failure      | ProgressTracker.logError(msg, details)          |
-| Dev debug info            | ABLogger.getInstance().debugUi(label, data)     |
-| Missing required param    | Validate.requireParams({ param }, 'methodName') |
-| Generic type/format check | Use Validate.isString/isEmail/etc               |
-| Unsure placement          | Mirror closest existing pattern                 |
-| New entity type?          | Check Models/Artifacts first                    |
-
-### 11. Anti-Patterns (Never)
-
-- Empty catch blocks.
-- Parallel custom logger utilities.
-- Environment-specific values inside models.
-- Overuse of optional chaining to mask logic requirements.
-- Abstractions “for future flexibility” without need.
-- Apps Script service calls inside tests.
-- Defensive guards for known internal APIs or GAS services (e.g., `if (SpreadsheetApp && ...)`, `if (DriveApp?.getFileById)`).
-- Feature detection for internal loggers or methods you own (e.g., `typeof logger.info === 'function'`).
-
-#### Example anti-pattern (swallowing errors)
-
-##### Anti pattern
-
-Unnecessary type guard that makes code difficult to read.
-
-```javascript
-const client = typeof ABClass !== 'undefined' ? ABClass : require('../GoogleClassroom/ABClass.js');
-if (!client || typeof client.fetchCourse !== 'function')
-  throw new Error('ABClass.fetchCourse is not available');
-```
-
-##### Correct implementation
-
-Directly calls the class, method or function.
-
-```javascript
-const abClass = new ABClass(classId);
-```
-
-Rationale: do not hide errors. Fail fast (throw) or log via ProgressTracker so failures are visible and debuggable. **Prefer uncaught exceptions over silent errors**.
-
-#### Additional anti-pattern (logger feature detection)
-
-```javascript
-// Anti-pattern: defensive existence/type checks
-const logger = ABLogger && ABLogger.getInstance ? ABLogger.getInstance() : null;
-if (logger && typeof logger.info === 'function') {
-  logger.info('Ensured folder exists');
-}
-```
-
-```javascript
-// Correct: assume availability and fail fast if misconfigured
-ABLogger.getInstance().info('Ensured folder exists');
-```
-
-### 12. Top-Level Triggers Template
+Top-level trigger template:
 
 ```javascript
 try {
@@ -249,98 +61,63 @@ try {
 } catch (err) {
   ProgressTracker.getInstance().logError('Readable user message', { err });
   ABLogger.getInstance().error('Contextual dev message', err);
-  throw err; // preserve fail-fast
+  throw err;
 }
 ```
 
-### 13. Domain Glossary
+### 5. Naming, Style, and Structure
 
-Assessment: Evaluation of student submission vs reference artefacts.
-Artifact: Normalised extracted content unit (text, image, table, etc.).
-TaskDefinition: Specification of expected artefacts & criteria.
-Submission: Student-submitted document(s).
-Cohort: Group/class aggregate analysis.
+- Classes: `PascalCase`
+- Methods/variables: `camelCase`
+- Constants: `const NAME` (UPPER_CASE or clear semantic constant naming)
+- Indentation: 2 spaces
+- Keep existing numeric load-order prefixes intact where present
+- Avoid unnecessary abbreviations (except standard ones such as URL, ID, API)
 
-### 14. Ambiguity Rule
+Export style:
 
-State 1–2 concise assumptions, proceed with simplest compliant implementation.
+- Prefer `export function name(...)` for reusable exported module utilities.
+- Use exported arrow constants only when function-expression semantics are required.
 
-### 16. Ultra‑Compact Quick Card
+### 6. TypeScript/ESLint Config Rule
 
-PRIORITY: KISS > Explicit request > Style > Logging contract > Tests (logic only)
-DO: Reuse, JSDoc minimal, singletons via getInstance, proper error logging, tests for serialisable/stateful logic, use Validate.requireParams for param checks.
-DON'T: Duplicate logs, add speculative abstractions, use GAS APIs in tests, swallow errors, broad refactors without need, duplicate validation logic.
-FALLBACK: Assume fallback is not required unless explicitly stated.
+Before modifying any TypeScript or ESLint configuration file, read:
 
-GUARDS: No defensive runtime guards; validate direct parameters only using Validate class. Assume internal/GAS APIs exist and let failures surface (prefer uncaught exceptions over masking issues).
+- `./docs/developer/TypeScriptAndLintConfigHierarchy.md`
 
-### 17. Codex delegation (codex-delegate)
+Rule:
 
-````markdown
-## Spawning sub-agents
+- Shared standards belong in shared/root configs.
+- Runtime/component-specific behaviour belongs in leaf configs only.
 
-Use `codex-delegate` to spawn a focused sub-agent for a specific task. Keep tasks small, pass constraints in `--instructions`, and set `--timeout-minutes` to 10 or more for long-running jobs.
+### 7. Singleton, Serialisation, Hashing
 
-Example:
+Singletons:
 
-```bash
-codex-delegate --role implementation \
-  --task "Add input validation to the assessor controller" \
-  --instructions "Use existing DTO patterns; update tests." \
-  --working-dir packages/my-app \
-  --timeout-minutes 10
-```
+- Access via `Class.getInstance()`.
+- Reference: `./docs/developer/singletons.md` when adding/changing singleton behaviour.
 
-While a sub-agent is running, expect a heartbeat line (`agent is still working`) roughly every minute if no new stream events arrive.
+Serialisation:
 
-**IMPORTANT**: Be patient. Some tasks will take several minutes and if the agent is thinking, you may not see any output for a while. If you see the heartbeat line, it is still working. If there is an error with the agent, `codex-delegate` will throw an error. If you stop it early, you may lose the work it has done so far. If you think it has stalled, check the logs for details `codex-delegate.log` (or set `--log-file` to write logs to a different path).
+- New serialisable entities must implement `toJSON()` and static `fromJSON()`.
+- Persist only primitives/plain objects/arrays.
+- Strip runtime-only references (GAS objects, functions); normalise dates.
 
-### Sub-agent roles
+Hash/equality:
 
-Sub-agent roles are defined in the `.codex` folder, along with the configuration file. To create a new role, add a markdown file with the role name (e.g. `implementation.md`) and a prompt template for that role. Empty files are ignored. Use `--list-roles` to see the discovered roles.
-````
+- Use `Utils.generateHash`.
+- Do not assert literal hash strings; assert existence, stability, and mutation sensitivity.
 
-## Creating new agents (roles)
+### 8. High-Risk Anti-Patterns (Never)
 
-Roles are defined by prompt templates in the `.codex` folder. To create a new agent:
+- Empty `catch` blocks.
+- Defensive feature detection for internal methods/services you own.
+- Optional chaining used to hide required logic failures.
+- Duplicate logging of the same underlying error context.
+- New abstractions added only for hypothetical future flexibility.
+- Apps Script service calls inside logic unit tests.
 
-1. Create a new file at `.codex/<role>.md` with the prompt template for that role.
-2. Keep the template non-empty; empty files are ignored.
-3. Run `codex-delegate --list-roles` to confirm it is discovered.
-4. Invoke it with `codex-delegate --role <role> --task "..."`
+### 9. Ambiguity Rule
 
-`AGENTS.md` files inside `.codex` are ignored for role discovery.
-
-## Configuration (.codex)
-
-The CLI uses a per-project `.codex` folder for both configuration and role templates.
-
-- Config file: `.codex/codex-delegate-config.json`
-- Role templates: `.codex/<role>.md` (ignored if empty)
-- `AGENTS.md` is always ignored for role discovery
-
-Run the init command to create the default config file, or let the CLI create it on first run:
-
-```bash
-codex-delegate init
-```
-
-Config defaults (stored when the file is first created) come from the CLI defaults:
-
-- `sandbox`: `danger-full-access`
-- `approval`: `never`
-- `network`: `true`
-- `webSearch`: `live`
-- `overrideWireApi`: `true`
-- `verbose`: `false`
-- `timeoutMinutes`: `10`
-
-Role, task, and instructions are CLI-only and are never read from config files.
-
-Config precedence is:
-
-1. Built-in defaults
-2. `.codex/codex-delegate-config.json`
-3. CLI flags
-
-Wire API note: `codex-delegate` overrides `wire_api` to `responses` by default. If you set `overrideWireApi` to `false`, ensure your Codex `config.toml` uses `wire_api = "responses"` or `wire_api = "chat"` to avoid startup errors. If `responses_websocket` is detected in `config.toml`, `codex-delegate` will isolate `CODEX_HOME` to a local `.codex/codex-home` folder to avoid the failure.
+- State 1-2 concise assumptions and proceed with the simplest compliant implementation.
+- If placement is unclear, mirror the closest existing pattern.
