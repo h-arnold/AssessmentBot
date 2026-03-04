@@ -38,7 +38,7 @@ Follow this sequence to ensure a comprehensive review:
       - `npm run frontend:lint`
       - `npm run builder:lint`
     - Run TypeScript compile checks for frontend and builder:
-      - `npm --prefix src/frontend exec tsc -b`
+      - `npm --prefix src/frontend exec tsc -- -b`
       - `npm run builder:build`
 
 2.  **Test Verification**:
