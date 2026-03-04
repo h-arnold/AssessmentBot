@@ -6,6 +6,7 @@ import type { BuilderPaths, MergeManifestResult } from '../types.js';
 
 const STAGE_ID = 'merge-manifest' as const;
 const OUTPUT_FILENAME = 'appsscript.json';
+const JSON_INDENT_SPACES = 2;
 
 type ManifestService = {
   userSymbol: string;
@@ -122,7 +123,7 @@ export async function runMergeManifest(paths: BuilderPaths): Promise<MergeManife
   };
 
   const outputPath = path.join(paths.buildGasDir, OUTPUT_FILENAME);
-  const outputJson = `${JSON.stringify(sortKeysDeep(mergedManifest), null, 2)}\n`;
+  const outputJson = `${JSON.stringify(sortKeysDeep(mergedManifest), null, JSON_INDENT_SPACES)}\n`;
 
   try {
     await fs.writeFile(outputPath, outputJson, 'utf-8');

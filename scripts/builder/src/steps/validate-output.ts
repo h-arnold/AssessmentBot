@@ -8,7 +8,7 @@ import type { BuilderPaths, ValidateOutputResult } from '../types.js';
 
 const STAGE_ID = 'validate-output' as const;
 const REQUIRED_FILES = ['appsscript.json', 'JsonDbApp.inlined.js', 'UI/ReactApp.html'];
-const PROTECTED_GLOBALS = ['Validate', 'JsonDbAppNS'];
+const PROTECTED_GLOBALS = ['Validate', 'JsonDbApp'];
 const FORBIDDEN_ASSET_PATTERNS = [
   /(?:src|href)=["']https?:\/\//i,
   /(?:src|href)=["']\/assets\//i,

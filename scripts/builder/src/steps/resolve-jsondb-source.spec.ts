@@ -1,53 +1,89 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
-import { resolveJsonDbSourceFilePaths, runResolveJsonDbSource } from './resolve-jsondb-source.js';
+import { runResolveJsonDbSource } from './resolve-jsondb-source.js';
+
+const execFileAsync = promisify(execFile);
 
 /**
- * Builds a representative `BuilderPaths` fixture for step tests.
+ * Builds a complete `BuilderPaths` object rooted at a temporary directory.
  *
+ * @param {string} rootDir - Root temporary directory for the test fixture.
  * @return {BuilderPaths} Fully resolved builder path values.
  */
-function createBuilderPaths(): BuilderPaths {
+function createBuilderPaths(rootDir: string): BuilderPaths {
   return {
-    repoRoot: '/repo',
-    builderRoot: '/repo/scripts/builder',
-    configPath: '/repo/scripts/builder/builder.config.json',
-    frontendDir: '/repo/src/frontend',
-    backendDir: '/repo/src/backend',
-    buildDir: '/repo/build',
-    buildFrontendDir: '/repo/build/frontend',
-    buildWorkDir: '/repo/build/work',
-    buildGasDir: '/repo/build/gas',
-    buildGasUiDir: '/repo/build/gas/UI',
-    backendManifestPath: '/repo/src/backend/appsscript.json',
-    jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
-    jsonDbAppManifestPath: '/repo/vendor/jsondbapp/appsscript.json',
-    jsonDbAppSourceFiles: ['src/z-last.js', 'src/a-first.js', 'src/m-middle.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
+    repoRoot: rootDir,
+    builderRoot: path.join(rootDir, 'scripts', 'builder'),
+    configPath: path.join(rootDir, 'scripts', 'builder', 'builder.config.json'),
+    frontendDir: path.join(rootDir, 'src', 'frontend'),
+    backendDir: path.join(rootDir, 'src', 'backend'),
+    buildDir: path.join(rootDir, 'build'),
+    buildFrontendDir: path.join(rootDir, 'build', 'frontend'),
+    buildWorkDir: path.join(rootDir, 'build', 'work'),
+    buildGasDir: path.join(rootDir, 'build', 'gas'),
+    buildGasUiDir: path.join(rootDir, 'build', 'gas', 'UI'),
+    backendManifestPath: path.join(rootDir, 'src', 'backend', 'appsscript.json'),
+    jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
+    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', 'appsscript.json'),
+    jsonDbAppSourceFiles: [],
+    jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
   };
 }
 
-describe('resolveJsonDbSourceFilePaths', () => {
-  it('returns deterministic load order from configured source files', () => {
-    const paths = createBuilderPaths();
-    expect(resolveJsonDbSourceFilePaths(paths)).toEqual([
-      '/repo/vendor/jsondbapp/src/a-first.js',
-      '/repo/vendor/jsondbapp/src/m-middle.js',
-      '/repo/vendor/jsondbapp/src/z-last.js',
-    ]);
-  });
-});
-
 describe('runResolveJsonDbSource', () => {
-  it('throws explicit failure when a required file is missing', async () => {
-    const paths = createBuilderPaths();
-    paths.jsonDbAppSourceFiles = ['src/missing.js'];
+  let tempRoot: string;
+
+  beforeEach(async () => {
+    tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'resolve-jsondb-source-'));
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tempRoot, { recursive: true, force: true });
+  });
+
+  it('downloads, extracts, and resolves sorted src JavaScript files from the release archive', async () => {
+    const releaseFixtureDir = path.join(tempRoot, 'release-fixture');
+    const releaseFixtureRoot = path.join(releaseFixtureDir, 'JsonDbApp-0.1.0');
+    const archivePath = path.join(tempRoot, 'jsondbapp-release.tar.gz');
+    const paths = createBuilderPaths(tempRoot);
+
+    await fs.mkdir(path.join(releaseFixtureRoot, 'src', 'nested'), { recursive: true });
+    await fs.writeFile(path.join(releaseFixtureRoot, 'appsscript.json'), '{"oauthScopes":[]}', 'utf-8');
+    await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'z-last.js'), 'function z(){}', 'utf-8');
+    await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'a-first.js'), 'function a(){}', 'utf-8');
+    await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'nested', 'b-middle.js'), 'function b(){}', 'utf-8');
+    await execFileAsync('tar', ['-czf', archivePath, '-C', releaseFixtureDir, 'JsonDbApp-0.1.0']);
+
+    const archiveBytes = await fs.readFile(archivePath);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(archiveBytes, { status: 200, statusText: 'OK' }),
+    );
+
+    const result = await runResolveJsonDbSource(paths);
+
+    expect(result.sourceFiles).toEqual(['src/a-first.js', 'src/nested/b-middle.js', 'src/z-last.js']);
+    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(path.join(paths.buildWorkDir, 'jsondbapp-v0.1.0'));
+    expect(paths.jsonDbAppManifestPath).toBe(
+      path.join(paths.buildWorkDir, 'jsondbapp-v0.1.0', 'appsscript.json'),
+    );
+    expect(paths.jsonDbAppSourceFiles).toEqual(result.sourceFiles);
+  });
+
+  it('throws BuildStageError when the release download fails', async () => {
+    const paths = createBuilderPaths(tempRoot);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('error', { status: 404 }));
 
     await expect(runResolveJsonDbSource(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runResolveJsonDbSource(paths)).rejects.toThrow(
-      'Pinned JsonDbApp source file is missing:',
+      'Failed to download JsonDbApp release archive',
     );
   });
 });

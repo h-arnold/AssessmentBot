@@ -20,10 +20,7 @@ export function isRuntimeBackendFile(filePath: string): boolean {
   if (/\.(test|spec)\./i.test(normalised)) {
     return false;
   }
-  if (normalised.endsWith('.map')) {
-    return false;
-  }
-  if (/(~|\.tmp|\.temp)$/i.test(normalised)) {
+  if (/\.(tmp|temp)\.js$/i.test(normalised) || /~\.js$/i.test(normalised)) {
     return false;
   }
   return true;

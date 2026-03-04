@@ -15,7 +15,14 @@ const STAGE_ID = 'frontend-htmlservice-transform' as const;
  */
 function resolveBuiltAssetPath(paths: BuilderPaths, assetRef: string): string {
   const sanitisedRef = assetRef.replace(/^\.\//, '');
-  return path.resolve(paths.buildFrontendDir, sanitisedRef);
+  const resolvedPath = path.resolve(paths.buildFrontendDir, sanitisedRef);
+  const relativePath = path.relative(paths.buildFrontendDir, resolvedPath);
+
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new BuildStageError(STAGE_ID, `Invalid frontend asset reference: ${assetRef}`);
+  }
+
+  return resolvedPath;
 }
 
 /**
