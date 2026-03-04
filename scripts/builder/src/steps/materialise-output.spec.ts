@@ -63,7 +63,7 @@ describe('runMaterialiseOutput', () => {
 
   it('returns deterministic metadata for complete gas output', async () => {
     await fs.writeFile(path.join(paths.buildGasDir, 'appsscript.json'), '{"oauthScopes":["a"]}', 'utf-8');
-    await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbAppNS = {};', 'utf-8');
+    await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbApp = {};', 'utf-8');
     await fs.writeFile(path.join(paths.buildGasUiDir, 'ReactApp.html'), '<div id="root"></div>', 'utf-8');
     await fs.mkdir(path.join(paths.buildGasDir, 'Models'), { recursive: true });
     await fs.writeFile(path.join(paths.buildGasDir, 'Models', 'Thing.js'), 'class Thing {}', 'utf-8');
@@ -88,7 +88,7 @@ describe('runMaterialiseOutput', () => {
   it('fails when work directory artefacts leak into gas output', async () => {
     await fs.mkdir(path.join(paths.buildGasDir, 'work'), { recursive: true });
     await fs.writeFile(path.join(paths.buildGasDir, 'appsscript.json'), '{"oauthScopes":["a"]}', 'utf-8');
-    await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbAppNS = {};', 'utf-8');
+    await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbApp = {};', 'utf-8');
     await fs.writeFile(path.join(paths.buildGasUiDir, 'ReactApp.html'), '<div id="root"></div>', 'utf-8');
     await fs.writeFile(path.join(paths.buildGasDir, 'work', 'leftover.txt'), 'stale', 'utf-8');
 

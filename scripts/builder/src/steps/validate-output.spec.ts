@@ -69,7 +69,7 @@ async function writeValidGasArtefacts(paths: BuilderPaths): Promise<void> {
     }),
     'utf-8',
   );
-  await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbAppNS = {};', 'utf-8');
+  await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbApp = {};', 'utf-8');
   await fs.writeFile(path.join(paths.buildGasUiDir, 'ReactApp.html'), '<div id="root"></div>', 'utf-8');
   await fs.writeFile(path.join(paths.buildGasDir, 'Utils', 'Validate.js'), 'class Validate {}', 'utf-8');
 }

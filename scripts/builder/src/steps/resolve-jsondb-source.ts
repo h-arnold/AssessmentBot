@@ -74,6 +74,49 @@ async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): P
 }
 
 /**
+ * Validates archive entries to prevent path traversal and link attacks.
+ *
+ * @param {string} archivePath - Absolute path to the tar.gz archive.
+ * @return {Promise<void>} Resolves when all entries are safe.
+ */
+async function validateArchiveContents(archivePath: string): Promise<void> {
+  // Use verbose listing so we can inspect entry types and reject links.
+  const { stdout } = await execFileAsync('tar', ['-tzvf', archivePath]);
+  const lines = stdout.trim().split('\n').filter(Boolean);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const columns = trimmed.split(/\s+/);
+    const perms = columns[0];
+
+    // perms starts with a character indicating the entry type: '-', 'd', 'l', 'h', etc.
+    if (perms && (perms[0] === 'l' || perms[0] === 'h')) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with link type '${perms[0]}' detected in: ${trimmed}`,
+      );
+    }
+
+    // The entry path is the name field; for symlinks it is before ' -> target'.
+    const nameWithMaybeTarget = columns.slice(5).join(' ');
+    const [entryPath] = nameWithMaybeTarget.split(' -> ');
+
+    if (path.isAbsolute(entryPath)) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with absolute path: ${entryPath}`,
+      );
+    }
+    if (entryPath.split('/').includes('..')) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Unsafe archive entry with path traversal: ${entryPath}`,
+      );
+    }
+  }
+}
+
+/**
  * Downloads and extracts the pinned JsonDbApp release snapshot.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
@@ -85,6 +128,7 @@ async function materialisePinnedJsonDbRelease(paths: BuilderPaths): Promise<stri
 
   await fs.mkdir(paths.buildWorkDir, { recursive: true });
   await downloadArchive(JSON_DB_RELEASE_TARBALL_URL, archivePath);
+  await validateArchiveContents(archivePath);
   await fs.rm(extractRoot, { recursive: true, force: true });
   await fs.mkdir(extractRoot, { recursive: true });
 
