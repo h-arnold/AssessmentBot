@@ -2,9 +2,98 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 
 describe('App', () => {
-  it('renders the scaffold heading', () => {
+  afterEach(() => {
+    delete window.google;
+  });
+
+  it('shows loading then authorised status when backend returns true', async () => {
+    const runMock = {
+      withSuccessHandler(handler: (result: boolean) => void) {
+        queueMicrotask(() => {
+          handler(true);
+        });
+        return runMock;
+      },
+      withFailureHandler() {
+        return runMock;
+      },
+      getAuthorisationStatus() {},
+    };
+
+    window.google = {
+      script: {
+        run: runMock,
+      },
+    };
+
     render(<App />);
+
     expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
-    expect(screen.getByText('React + Vite + Ant Design baseline')).toBeInTheDocument();
+    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+  });
+
+  it("shows unauthroised status when backend returns false", async () => {
+    const runMock = {
+      withSuccessHandler(handler: (result: boolean) => void) {
+        queueMicrotask(() => {
+          handler(false);
+        });
+        return runMock;
+      },
+      withFailureHandler() {
+        return runMock;
+      },
+      getAuthorisationStatus() {},
+    };
+
+    window.google = {
+      script: {
+        run: runMock,
+      },
+    };
+
+    render(<App />);
+
+    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+  });
+
+  it('shows backend failure message when backend call fails', async () => {
+    const backendFailure = new Error('Backend authorisation check failed.');
+    const runMock = {
+      withSuccessHandler() {
+        return runMock;
+      },
+      withFailureHandler(handler: (error: unknown) => void) {
+        queueMicrotask(() => {
+          handler(backendFailure);
+        });
+        return runMock;
+      },
+      getAuthorisationStatus() {},
+    };
+
+    window.google = {
+      script: {
+        run: runMock,
+      },
+    };
+
+    render(<App />);
+
+    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
+  });
+
+  it('shows runtime failure message when google.script.run is unavailable', async () => {
+    render(<App />);
+
+    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(
+      await screen.findByText('google.script.run is unavailable in this runtime.'),
+    ).toBeInTheDocument();
   });
 });

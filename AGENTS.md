@@ -7,9 +7,9 @@ For implementation details, always load component-specific instructions first.
 
 Before editing code, read the instruction file(s) for every component you touch:
 
-- Backend (`src/backend/**`): `docs/developer/backend/AGENT_BACKEND.md`
-- Frontend (`src/frontend/**`): `docs/developer/frontend/AGENT_FRONTEND.md`
-- Builder (`scripts/builder/**`, `build/**` pipeline behaviour): `docs/developer/builder/AGENT_BUILDER.md`
+- Backend (`src/backend/**`): `src/backend/AGENTS.md`
+- Frontend (`src/frontend/**`): `src/frontend/AGENTS.md`
+- Builder (`scripts/builder/**`, `build/**` pipeline behaviour): `scripts/builder/AGENTS.md`
 
 If a task spans multiple components, read and apply all relevant instruction files.
 If rules conflict, prefer the stricter rule and preserve runtime compatibility.
