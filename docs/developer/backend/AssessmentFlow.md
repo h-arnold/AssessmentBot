@@ -1466,7 +1466,7 @@ To add new processing stages:
 1. **No GAS Services in Tests**: Tests use Vitest and cannot call Apps Script services
 2. **Test Serialisation**: All models must implement `toJSON()` and `fromJSON()`
 3. **Mock External APIs**: Google Classroom, Drive, Slides, Sheets APIs must be mocked
-4. **See**: `/docs/developer/testing.md` for complete testing guidelines
+4. **See**: `/docs/developer/backend/backend-testing.md` for complete backend testing guidelines
 
 ### Common Troubleshooting Scenarios
 

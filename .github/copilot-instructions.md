@@ -26,14 +26,14 @@ npm run format    # Format code with Prettier
 
 **Key Documentation:**
 - `./CONTRIBUTING.md` - General coding and documentation style guide.
-- `./docs/developer/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
-- `./docs/developer/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
-- `./docs/developer/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
-- `./docs/developer/testing.md` - Test patterns and best practices for Vitest unit tests, mocking of Apps Script services, and test organisation.
-- `./docs/developer/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
-- `./docs/developer/oauth-scopes.md` - The OAuth scopes required for Google Apps Script integrations and the rationale for each scope.
-- `./docs/developer/UI.md` - Front-end UI conventions, modal/dialog patterns, accessibility considerations and styling guidance.
-- `./docs/developer/Vendoring.md` - Guidance for vendoring third-party libraries into the Apps Script project and the associated tooling/workflows.
+- `./docs/developer/backend/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
+- `./docs/developer/backend/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
+- `./docs/developer/backend/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
+- `./docs/developer/backend/backend-testing.md` - Backend test patterns and best practices for Vitest unit tests, including GAS mocking.
+- `./docs/developer/frontend/frontend-testing.md` - Frontend testing guidance for Vitest + Testing Library and Playwright E2E.
+- `./docs/developer/backend/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
+- `./docs/developer/backend/oauth-scopes.md` - The OAuth scopes required for Google Apps Script integrations and the rationale for each scope.
+- `./docs/developer/backend/Vendoring.md` - Guidance for vendoring third-party libraries into the Apps Script project and the associated tooling/workflows.
 
 ### 0. Prime Directives (Highest Priority – never violate)
 1. KISS: simplest working solution. No speculative abstraction.
@@ -111,7 +111,7 @@ Validate.requireParams({ paramName1, paramName2 }, 'methodName');
 - Do not duplicate generic validation logic across classes.
 
 ### 6. Singleton Pattern
-Always via `Class.getInstance()`. Refer to `./docs/developer/singletons.md` when modifying or creating new Singletons.
+Always via `Class.getInstance()`. Refer to `./docs/developer/backend/singletons.md` when modifying or creating new Singletons.
 
 ### 7. Serialisation
 Implement `toJSON()` / static `fromJSON()` for new serialisable entities. Use only primitives & plain objects/arrays. Strip runtime-only refs (GAS objects, functions, Dates → normalise).

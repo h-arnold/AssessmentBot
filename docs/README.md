@@ -26,11 +26,12 @@ This documentation provides comprehensive guidance on using, setting up, and und
 
 Technical documentation for developers contributing to the AssessmentBot codebase:
 
-- [**Testing Structure**](./developer/testing.md) – Comprehensive guide to the testing framework, patterns, and best practices
-- [**Builder Script**](./developer/builder-script.md) – How to use the build pipeline and how each stage works internally
-- [**Singleton Pattern**](./developer/singletons.md) – How to work with singletons in the codebase
-- [**Data Shapes**](./developer/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
-- [**Rehydration**](./developer/rehydration.md) – Guide to deserialising and reconstructing objects
-- [**BeerCSS (vendored UI)**](./developer/beer-css.md) – How BeerCSS is vendored and used for new HtmlService dialogs
+- [**Backend Testing Structure**](./developer/backend/backend-testing.md) – Comprehensive guide to backend testing patterns and practices
+- [**Frontend Testing Guidelines**](./developer/frontend/frontend-testing.md) – Lightweight guide to frontend unit and E2E testing
+- [**Builder Script**](./developer/builder/builder-script.md) – How to use the build pipeline and how each stage works internally
+- [**Singleton Pattern**](./developer/backend/singletons.md) – How to work with singletons in the codebase
+- [**Data Shapes**](./developer/backend/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
+- [**Rehydration**](./developer/backend/rehydration.md) – Guide to deserialising and reconstructing objects
+- [**Vendoring**](./developer/backend/Vendoring.md) – How vendored third-party UI assets are managed
 
 ---

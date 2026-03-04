@@ -160,7 +160,7 @@ Test controller logic for managing domain entities and coordinating persistence:
 Note: `tests/controllers/initController.test.js` and
 `tests/controllers/createDefinitionFromWizardInputs.test.js` are permanently
 excluded as deprecated legacy UI/init coverage. See
-`docs/developer/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
+`docs/developer/backend/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
 
 **Key patterns**:
 

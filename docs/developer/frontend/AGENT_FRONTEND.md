@@ -45,5 +45,5 @@ Frontend build output is consumed by the GAS builder pipeline.
 
 ## 7. Config and Test Rules
 
-- Before changing TS/ESLint config, read `docs/developer/TypeScriptAndLintConfigHierarchy.md`.
+- Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate test implementation work to `Testing Specialist`.
