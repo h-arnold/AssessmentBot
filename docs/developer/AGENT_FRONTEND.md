@@ -1,0 +1,49 @@
+# Frontend Agent Instructions (`src/frontend`)
+
+Applies when editing `src/frontend/**`.
+
+## 1. Language and Runtime
+
+- Use idiomatic TypeScript targeting modern ECMAScript (ES2024-level standards in project config).
+- Frontend code is ESM React + Vite, not GAS runtime code.
+- Prefer typed, composable React function components and explicit data contracts.
+
+## 2. Frontend Structure
+
+- App code: `src/frontend/src/**`
+- Unit tests: `src/frontend/src/**/*.test.tsx`
+- Browser E2E tests: `src/frontend/tests/**`
+- Frontend package/tooling is self-contained under `src/frontend/package.json`.
+
+Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
+
+## 3. Framework and UI Baseline
+
+- Current scaffold uses React + Ant Design.
+- Preserve required runtime patch import in entrypoint:
+  - `@ant-design/v5-patch-for-react-19`
+- Keep UI work within frontend boundaries; do not add new UI behaviour in deprecated `src/AdminSheet/UI` unless explicitly requested.
+
+## 4. Backend Boundary
+
+- Do not import runtime modules directly from `src/backend` into frontend code.
+- Treat frontend/backend integration as an API boundary.
+- Keep frontend free of GAS global/service assumptions.
+
+## 5. Error Handling and Quality
+
+- Fail loudly in development; do not hide failures behind broad catch-and-ignore logic.
+- Never implement or fall back to defaults unless explicitly instucted to do so.
+- Keep component state and side effects predictable and testable.
+
+## 6. Builder Compatibility Notes
+
+Frontend build output is consumed by the GAS builder pipeline.
+
+- Avoid introducing runtime assumptions that require external CDN assets at execution time.
+- Keep `index.html`-driven asset wiring compatible with builder inlining to HtmlService output.
+
+## 7. Config and Test Rules
+
+- Before changing TS/ESLint config, read `docs/developer/TypeScriptAndLintConfigHierarchy.md`.
+- Delegate test implementation work to `Testing Specialist`.
