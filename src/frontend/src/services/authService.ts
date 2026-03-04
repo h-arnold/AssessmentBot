@@ -4,13 +4,18 @@ type GoogleScriptRun = {
   getAuthorisationStatus: () => void;
 };
 
+type GoogleScript = {
+  script?: {
+    run?: GoogleScriptRun;
+  };
+};
+
 declare global {
+  // Global injected by Apps Script HtmlService runtime.
+  // Declared for both `window.google` and `globalThis.google` access patterns.
+  var google: GoogleScript | undefined;
   interface Window {
-    google?: {
-      script?: {
-        run?: GoogleScriptRun;
-      };
-    };
+    google?: GoogleScript;
   }
 }
 
@@ -18,7 +23,7 @@ declare global {
  * Calls the backend API layer and returns current authorisation status.
  */
 export async function getAuthorisationStatus(): Promise<boolean> {
-  const runner = window.google?.script?.run;
+  const runner = globalThis.google?.script?.run;
   if (!runner) {
     throw new Error('google.script.run is unavailable in this runtime.');
   }

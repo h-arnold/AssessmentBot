@@ -13,7 +13,6 @@ const { tsBaseRules } = require('../../config/eslint/ts-base-rules.cjs');
 
 export default defineConfig([
   globalIgnores(['dist', 'playwright-report']),
-  // Apply unicorn's complete rule set (modern JS preferences + more)
   unicorn.configs.all,
   {
     files: ['**/*.{ts,tsx}'],
@@ -32,9 +31,7 @@ export default defineConfig([
     },
     rules: {
       ...tsBaseRules,
-      // unicorn rules customization for frontend
       'unicorn/no-array-for-each': 'off',
-      'unicorn/catch-error-name': 'error',
       'unicorn/no-null': 'off',
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-keyword-prefix': 'off',

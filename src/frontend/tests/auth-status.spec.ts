@@ -1,4 +1,4 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type AuthServiceMockScenario =
   | {
@@ -12,6 +12,9 @@ type AuthServiceMockScenario =
       delayMs?: number;
     };
 
+/**
+ * Installs a `google.script.run` mock before page scripts execute.
+ */
 async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario) {
   await page.addInitScript((mockScenario: AuthServiceMockScenario) => {
     const delayMs = mockScenario.delayMs ?? 0;
@@ -39,7 +42,7 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
       },
     };
 
-    window.google = {
+    globalThis.google = {
       script: {
         run,
       },
@@ -72,7 +75,7 @@ test.describe('auth status flow', () => {
     await expect(page.getByText('Authorised')).toBeVisible();
   });
 
-  test('shows Unauthroised when backend returns false', async ({ page }) => {
+  test('shows unauthorised when backend returns false', async ({ page }) => {
     await mockGoogleScriptRun(page, {
       kind: 'success',
       result: false,

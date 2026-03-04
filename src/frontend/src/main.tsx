@@ -5,7 +5,12 @@ import { ConfigProvider, theme } from 'antd';
 import App from './App';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.querySelector('#root');
+if (!(rootElement instanceof HTMLElement)) {
+  throw new TypeError('Root element "#root" was not found.');
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <ConfigProvider
       theme={{

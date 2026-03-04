@@ -33,12 +33,12 @@ Follow this sequence to ensure a comprehensive review:
     - Use `read/problems` to check for syntax and linting errors.
     - Use `sonarqube_analyzeFile` (if applicable) to check for deeper issues.
     - Do not ignore warnings; explain them.
-    - Run lint checks for all active surfaces that may be affected:
+    - Run mandatory lint checks for active surfaces:
       - `npm run lint`
       - `npm run frontend:lint`
       - `npm run builder:lint`
-    - Run TypeScript compile checks for frontend and builder:
-      - `npm --prefix src/frontend exec tsc -- -b`
+    - Run mandatory TypeScript compile checks:
+      - `npm exec tsc -- -b src/frontend/tsconfig.json`
       - `npm run builder:build`
 
 2.  **Test Verification**:
@@ -46,7 +46,7 @@ Follow this sequence to ensure a comprehensive review:
     - Ensure tests are "hermetic" (Node.js only, no GAS services).
     - Check that tests use `Assignment.fromJSON` (or similar) instead of `new Assignment` where appropriate to avoid side effects.
     - If needed, run specific tests using `npm test -- <filename>` via the `execute/run_in_terminal` tool to confirm behavior.
-    - When frontend or builder code changes, also run:
+    - Run mandatory frontend and builder test suites:
       - `npm run frontend:test`
       - `npm run builder:test`
 

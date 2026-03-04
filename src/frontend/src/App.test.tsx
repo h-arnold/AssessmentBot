@@ -3,7 +3,7 @@ import App from './App';
 
 describe('App', () => {
   afterEach(() => {
-    delete window.google;
+    delete globalThis.google;
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
@@ -20,7 +20,7 @@ describe('App', () => {
       getAuthorisationStatus() {},
     };
 
-    window.google = {
+    globalThis.google = {
       script: {
         run: runMock,
       },
@@ -33,7 +33,7 @@ describe('App', () => {
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
   });
 
-  it("shows unauthroised status when backend returns false", async () => {
+  it('shows unauthorised status when backend returns false', async () => {
     const runMock = {
       withSuccessHandler(handler: (result: boolean) => void) {
         queueMicrotask(() => {
@@ -47,7 +47,7 @@ describe('App', () => {
       getAuthorisationStatus() {},
     };
 
-    window.google = {
+    globalThis.google = {
       script: {
         run: runMock,
       },
@@ -74,7 +74,7 @@ describe('App', () => {
       getAuthorisationStatus() {},
     };
 
-    window.google = {
+    globalThis.google = {
       script: {
         run: runMock,
       },
