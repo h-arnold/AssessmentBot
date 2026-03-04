@@ -2,7 +2,9 @@
 
 ## Purpose
 
-`src/backend/Api` contains Google Apps Script global functions intended to be invoked by the React frontend via `google.script.run`.
+`src/backend/Api` is the destination for Google Apps Script global functions invoked by the React frontend via `google.script.run`.
+
+This is an active migration area. During migration, some entry points still exist in legacy backend `globals.js` files.
 
 This layer is deliberately REST-ish in structure:
 

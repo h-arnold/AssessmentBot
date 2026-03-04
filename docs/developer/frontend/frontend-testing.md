@@ -27,7 +27,7 @@ npm run frontend:test:e2e
 Target a specific unit test pattern:
 
 ```bash
-npm run frontend:test -- src/frontend/src/App.test.tsx
+npm run frontend:test -- src/App.test.tsx
 ```
 
 ## Current Structure

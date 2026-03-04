@@ -51,7 +51,7 @@ nav:
   - How-Tos:
       - Overview: howTos/README.md
       - Rehydration: howTos/rehydration.md
-      - Singletons: howTos/singletons.md
+      - Singletons: developer/backend/singletons.md
   - Developer:
       - Backend:
           - Agent Instructions: developer/backend/AGENT_BACKEND.md

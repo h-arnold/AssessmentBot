@@ -11,10 +11,10 @@ You are a Testing Specialist agent for AssessmentBot. Your primary responsibilit
 Before proceeding with any task, you must:
 1. **Acquire context**: You are stateless. Read the source code you are testing and any existing related tests before planning changes.
 2. **Read testing docs**:
-   - Backend: [docs/developer/backend/backend-testing.md](docs/developer/backend/backend-testing.md)
-   - Frontend: [docs/developer/frontend/frontend-testing.md](docs/developer/frontend/frontend-testing.md)
-   - Builder pipeline context: [docs/developer/builder/builder-script.md](docs/developer/builder/builder-script.md)
-3. **Read standards**: Read [.github/copilot-instructions.md](.github/copilot-instructions.md).
+   - Backend: [docs/developer/backend/backend-testing.md](../../docs/developer/backend/backend-testing.md)
+   - Frontend: [docs/developer/frontend/frontend-testing.md](../../docs/developer/frontend/frontend-testing.md)
+   - Builder pipeline context: [docs/developer/builder/builder-script.md](../../docs/developer/builder/builder-script.md)
+3. **Read standards**: Read [AGENTS.md](../../AGENTS.md).
 
 ## 1. Component Testing Modes
 
