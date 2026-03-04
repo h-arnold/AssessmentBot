@@ -54,7 +54,9 @@ nav:
       - Singletons: howTos/singletons.md
   - Developer:
       - Assessment Flow: developer/AssessmentFlow.md
+      - Builder Script: developer/builder-script.md
       - Data Shapes: developer/DATA_SHAPES.md
+      - TypeScript and Lint Config Hierarchy: developer/TypeScriptAndLintConfigHierarchy.md
       - OAuth Scopes: developer/oauth-scopes.md
       - Rehydration: developer/rehydration.md
       - Singletons: developer/singletons.md

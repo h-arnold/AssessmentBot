@@ -27,6 +27,7 @@ This documentation provides comprehensive guidance on using, setting up, and und
 Technical documentation for developers contributing to the AssessmentBot codebase:
 
 - [**Testing Structure**](./developer/testing.md) – Comprehensive guide to the testing framework, patterns, and best practices
+- [**Builder Script**](./developer/builder-script.md) – How to use the build pipeline and how each stage works internally
 - [**Singleton Pattern**](./developer/singletons.md) – How to work with singletons in the codebase
 - [**Data Shapes**](./developer/DATA_SHAPES.md) – Documentation of data structures and serialisation formats
 - [**Rehydration**](./developer/rehydration.md) – Guide to deserialising and reconstructing objects

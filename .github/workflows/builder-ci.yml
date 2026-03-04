@@ -1,0 +1,50 @@
+name: Builder CI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/builder-ci.yml'
+      - 'scripts/builder/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'config/eslint/ts-base-rules.cjs'
+  pull_request:
+    paths:
+      - '.github/workflows/builder-ci.yml'
+      - 'scripts/builder/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - 'config/eslint/ts-base-rules.cjs'
+  workflow_dispatch:
+
+jobs:
+  builder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install frontend dependencies
+        run: npm --prefix src/frontend ci
+
+      - name: Run builder lint, tests and pipeline
+        run: npm run builder:ci
+
+      - name: Upload GAS build artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-build
+          path: build/gas/
+          if-no-files-found: error

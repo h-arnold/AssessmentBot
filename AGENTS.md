@@ -41,6 +41,7 @@ npm run format              # Format code with Prettier
 - `./CONTRIBUTING.md` - General coding and documentation style guide.
 - `./docs/developer/AssessmentFlow.md` - High-level overview of the assessment pipeline: how submissions are ingested, compared to references, and scored.
 - `./docs/developer/DATA_SHAPES.md` - Authoritative definitions of serialisable data structures and shapes used across models, requests and persistence.
+- `./docs/developer/TypeScriptAndLintConfigHierarchy.md` - Authoritative TypeScript/ESLint configuration tree and ownership rules (shared base vs component-specific overrides).
 - `./docs/developer/rehydration.md` - How assignment and application state is persisted and rehydrated, including versioning and migration notes.
 - `./docs/developer/testing.md` - Test patterns and best practices for Vitest unit tests, mocking of Apps Script services, and test organisation.
 - `./docs/developer/singletons.md` - Conventions and examples for the singleton pattern used across the codebase (`getInstance` usage, lifecycle considerations).
@@ -94,6 +95,20 @@ Important: Defensive guards policy
 | Load order          | Preserve numeric prefixes            |
 
 Avoid abbreviations unless universally recognised (URL, ID, API).
+
+### 1.2 Export Style
+
+- Prefer `export function name(...)` for reusable exported module utilities.
+- Use exported arrow constants only when function-expression semantics are required.
+- Keep arrow functions for local single-use callbacks or closures that are not reused exports.
+
+### 1.1 TypeScript and Lint Config Updates
+
+Before changing any TypeScript or ESLint configuration file, you **MUST** read:
+
+- `./docs/developer/TypeScriptAndLintConfigHierarchy.md`
+
+Rule: shared standards belong in the root shared configs; only runtime/component-specific behaviour belongs in leaf configs.
 
 ### 2. Architecture Map
 

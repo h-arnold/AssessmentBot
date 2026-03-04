@@ -5,4 +5,7 @@
 *.clasprc.json
 *credentials.json
 /site
-
+.codex-home
+/scripts/builder/dist/
+/scripts/builder/node_modules/
+build
