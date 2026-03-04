@@ -24,7 +24,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
   - `@ant-design/v5-patch-for-react-19`
 - Keep UI work within frontend boundaries; do not add new UI behaviour in deprecated `src/AdminSheet/UI` unless explicitly requested.
 
-**Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or compoents you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
+**Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or components you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
 
 ## 4. Backend Boundary
 
