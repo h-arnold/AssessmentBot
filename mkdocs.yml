@@ -51,20 +51,27 @@ nav:
   - How-Tos:
       - Overview: howTos/README.md
       - Rehydration: howTos/rehydration.md
-      - Singletons: howTos/singletons.md
+      - Singletons: developer/backend/singletons.md
   - Developer:
-      - Assessment Flow: developer/AssessmentFlow.md
-      - Builder Script: developer/builder-script.md
-      - Data Shapes: developer/DATA_SHAPES.md
-      - TypeScript and Lint Config Hierarchy: developer/TypeScriptAndLintConfigHierarchy.md
-      - OAuth Scopes: developer/oauth-scopes.md
-      - Rehydration: developer/rehydration.md
-      - Singletons: developer/singletons.md
-      - Testing: developer/testing.md
-      - UI: developer/UI.md
-      - Vendoring: developer/Vendoring.md
-      - Wizard Modal Refactor Plan: developer/WizardModalRefactorPlan.md
-      - Wizard Modal Refactor Step 2 Review: developer/WizardModalRefactorStep2Review.md
+      - Backend:
+          - Agent Instructions: developer/backend/AGENT_BACKEND.md
+          - API Layer: developer/backend/api-layer.md
+          - Assessment Flow: developer/backend/AssessmentFlow.md
+          - Data Shapes: developer/backend/DATA_SHAPES.md
+          - OAuth Scopes: developer/backend/oauth-scopes.md
+          - Rehydration: developer/backend/rehydration.md
+          - Singletons: developer/backend/singletons.md
+          - Testing: developer/backend/backend-testing.md
+          - Vendoring: developer/backend/Vendoring.md
+          - Deprecated Legacy UI Audit: developer/backend/DEPRECATED_LEGACY_UI_AUDIT.md
+          - Deprecated Legacy Tests Audit: developer/backend/DEPRECATED_LEGACY_TESTS_AUDIT.md
+      - Frontend:
+          - Agent Instructions: developer/frontend/AGENT_FRONTEND.md
+          - Testing: developer/frontend/frontend-testing.md
+      - Builder:
+          - Agent Instructions: developer/builder/AGENT_BUILDER.md
+          - Builder Script: developer/builder/builder-script.md
+          - TypeScript and Lint Config Hierarchy: developer/builder/TypeScriptAndLintConfigHierarchy.md
   - Pedagogy:
       - Overview: pedagogy/README.md
   - Release Notes:

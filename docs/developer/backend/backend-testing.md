@@ -1,8 +1,10 @@
-# Testing Structure and Guidelines
+# Backend Testing Structure and Guidelines
 
 ## Overview
 
 AssessmentBot uses **Vitest** as the testing framework for unit and integration tests. Tests focus on logic, serialisation, state management, and behaviour in an isolated environment that mimics (but never invokes) Google Apps Script (GAS) services. External GAS / network calls are always mocked.
+
+Backend now also includes an API entry layer under `src/backend/Api` for `google.script.run` calls from the frontend. These API functions should be tested as thin wrappers around controller delegation and error propagation.
 
 ## Test Framework
 
@@ -160,7 +162,7 @@ Test controller logic for managing domain entities and coordinating persistence:
 Note: `tests/controllers/initController.test.js` and
 `tests/controllers/createDefinitionFromWizardInputs.test.js` are permanently
 excluded as deprecated legacy UI/init coverage. See
-`docs/developer/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
+`docs/developer/backend/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
 
 **Key patterns**:
 
@@ -171,6 +173,16 @@ excluded as deprecated legacy UI/init coverage. See
 - Use factory functions to create test data
 - Test edge cases (null inputs, missing data, corrupt data)
 - Verify logging calls for all significant operations
+
+### 6.1 API Layer Tests (`src/backend/Api`)
+
+Test API-layer functions as boundary wrappers:
+
+- Delegation to the correct controller method
+- Required parameter behaviour
+- Error propagation (fail-fast semantics)
+
+Do not duplicate deep business-logic tests at API wrapper level; cover those in controller/service suites.
 
 **Example controller test structure**:
 
