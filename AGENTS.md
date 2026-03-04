@@ -1,4 +1,4 @@
-## AssessmentBot – Agent Execution Contract (Trimmed)
+## AssessmentBot – Agent Execution Contract
 
 This file contains project-specific constraints that are not reliably discoverable from code alone.
 Discover architecture details, scripts, and local workflows from the repository when needed.
