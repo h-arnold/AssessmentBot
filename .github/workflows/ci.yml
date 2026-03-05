@@ -3,7 +3,7 @@ name: Component Quality CI
 on:
   push:
     paths:
-      - '.github/workflows/builder-ci.yml'
+      - '.github/workflows/ci.yml'
       - 'scripts/builder/**'
       - 'src/backend/**'
       - 'src/frontend/**'
@@ -19,7 +19,7 @@ on:
       - 'config/eslint/ts-base-rules.cjs'
   pull_request:
     paths:
-      - '.github/workflows/builder-ci.yml'
+      - '.github/workflows/ci.yml'
       - 'scripts/builder/**'
       - 'src/backend/**'
       - 'src/frontend/**'
