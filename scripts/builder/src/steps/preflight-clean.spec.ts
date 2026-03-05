@@ -162,10 +162,14 @@ describe('runPreflightClean', () => {
 
   it('produces identical file lists across consecutive runs', async () => {
     await runPreflightClean(paths);
-    const firstList = (await listTree(paths.buildDir)).sort();
+    const firstList = (await listTree(paths.buildDir)).sort((left, right) =>
+      left.localeCompare(right),
+    );
 
     await runPreflightClean(paths);
-    const secondList = (await listTree(paths.buildDir)).sort();
+    const secondList = (await listTree(paths.buildDir)).sort((left, right) =>
+      left.localeCompare(right),
+    );
 
     expect(secondList).toEqual(firstList);
   });

@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import { createRequire } from 'node:module';
 import jsdoc from 'eslint-plugin-jsdoc';
+import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -22,6 +23,7 @@ export default defineConfig([
     ],
     plugins: {
       jsdoc,
+      sonarjs,
     },
     languageOptions: {
       ecmaVersion: 2024,
