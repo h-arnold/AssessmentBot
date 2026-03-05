@@ -29,6 +29,13 @@ export async function runFrontendBuildWithMode(
   mode: FrontendBuildMode
 ): Promise<FrontendBuildResult> {
   const entryHtmlPath = path.join(paths.buildFrontendDir, 'index.html');
+  const commandEnv =
+    mode === 'dev'
+      ? {
+          ...process.env,
+          NODE_ENV: 'development',
+        }
+      : process.env;
   const commandArgs = [
     '--prefix',
     paths.frontendDir,
@@ -39,14 +46,14 @@ export async function runFrontendBuildWithMode(
     '--outDir',
     paths.buildFrontendDir,
     '--emptyOutDir',
-    ...(mode === 'dev' ? ['--minify=false', '--sourcemap=inline'] : []),
+    ...(mode === 'dev' ? ['--mode=development', '--minify=false'] : []),
   ];
 
   let commandOutput: { stdout: string; stderr: string };
   try {
     commandOutput = await runCommand('npm', commandArgs, {
       cwd: paths.repoRoot,
-      env: process.env,
+      env: commandEnv,
     });
   } catch (err) {
     if (err instanceof CommandExecutionError) {

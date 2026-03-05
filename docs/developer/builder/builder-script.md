@@ -32,15 +32,18 @@ Use the builder commands from the root `package.json`:
 
 ```bash
 # Compile builder TypeScript into scripts/builder/dist
+npm run builder:compile
+
+# Compile and execute the pipeline in production mode (default; minified frontend output)
 npm run builder:build
+# Equivalent explicit production command
+npm run builder:build:prod
 
-# Execute the pipeline in production mode (default; minified frontend output)
-npm run builder:run
-# Equivalent explicit flag
-npm run builder:run -- --frontend-mode=production
+# Compile and execute the pipeline in development mode (non-minified frontend output)
+npm run builder:build:dev
 
-# Execute the pipeline in development mode (non-minified frontend output + inline source maps)
-npm run builder:run -- --frontend-mode=dev
+# Optional: pass mode explicitly through builder:build
+npm run builder:build -- --frontend-mode=dev
 ```
 
 Useful supporting commands:
@@ -52,6 +55,7 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
+# Full builder CI sequence: lint -> test -> compile and run production pipeline
 # Builder coverage check (minimum 85%)
 npm run builder:test:coverage
 
@@ -65,10 +69,9 @@ Builder unit tests must meet a minimum coverage threshold of **85%** for lines, 
 
 ### Typical local workflow
 
-1. `npm run builder:build`
-2. `npm run builder:run`
-3. Inspect `build/gas`
-4. Deploy with your normal clasp workflow
+1. `npm run builder:build` (or `npm run builder:build:dev` during frontend debugging)
+2. Inspect `build/gas`
+3. Deploy with your normal clasp workflow
 
 ### Output directories
 
@@ -103,6 +106,7 @@ Notes:
 
 - Paths must resolve inside the repository root.
 - `buildDir` is fully removed and recreated during preflight.
+- If `build/gas/.clasp.json` exists before preflight, it is preserved and restored after directory recreation.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
 - `jsonDbApp.publicExports` controls what is exposed on `JsonDbAppNS`.
 
@@ -146,9 +150,10 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 
 - Reads `build/frontend/index.html`.
 - Replaces stylesheet `<link ... href="...">` tags with inline `<style>` blocks.
-- Replaces `<script type="module" src="..."></script>` with inline classic `<script>` blocks.
+- Replaces local `<script type="module" src="..."></script>` references with inline `<script>` blocks, removing only `src` and preserving remaining attributes (including `type="module"`).
 - Writes final HtmlService template to `build/gas/UI/ReactApp.html`.
-- Fails if unresolved asset references or module scripts remain.
+- Fails if unresolved asset references remain, or if any module script still has an unresolved external `src` after transform.
+- Handles module script attributes in quoted or unquoted form, and supports either `src`/`type` attribute order.
 
 ### Stage 4: Backend copy
 
