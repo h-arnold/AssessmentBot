@@ -19,7 +19,7 @@ import { BuildStageError } from '../lib/errors.js';
 import { pathExists } from '../lib/fs.js';
 import { CommandExecutionError } from '../lib/process.js';
 import { runCommand } from '../lib/process.js';
-import { runFrontendBuild } from './frontend-build.js';
+import { runFrontendBuild, runFrontendBuildWithMode } from './frontend-build.js';
 
 const runCommandMock = vi.mocked(runCommand);
 const pathExistsMock = vi.mocked(pathExists);
@@ -81,7 +81,37 @@ describe('runFrontendBuild', () => {
       ],
       expect.objectContaining({
         cwd: paths.repoRoot,
-      }),
+      })
+    );
+  });
+
+  it('passes development build flags when mode is dev', async () => {
+    runCommandMock.mockResolvedValue({
+      stdout: 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js',
+      stderr: '',
+    });
+    pathExistsMock.mockResolvedValue(true);
+
+    await runFrontendBuildWithMode(paths, 'dev');
+
+    expect(runCommandMock).toHaveBeenCalledWith(
+      'npm',
+      [
+        '--prefix',
+        paths.frontendDir,
+        'run',
+        'build',
+        '--',
+        '--base=./',
+        '--outDir',
+        paths.buildFrontendDir,
+        '--emptyOutDir',
+        '--minify=false',
+        '--sourcemap=inline',
+      ],
+      expect.objectContaining({
+        cwd: paths.repoRoot,
+      })
     );
   });
 
@@ -113,7 +143,7 @@ describe('runFrontendBuild', () => {
         signal: null,
         stdout: 'vite stdout',
         stderr: 'vite stderr',
-      }),
+      })
     );
 
     const result = runFrontendBuild(paths);
