@@ -142,9 +142,10 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 
 - Reads `build/frontend/index.html`.
 - Replaces stylesheet `<link ... href="...">` tags with inline `<style>` blocks.
-- Replaces `<script type="module" src="..."></script>` with inline classic `<script>` blocks.
+- Replaces local `<script type="module" src="..."></script>` references with inline `<script>` blocks, removing only `src` and preserving remaining attributes (including `type="module"`).
 - Writes final HtmlService template to `build/gas/UI/ReactApp.html`.
-- Fails if unresolved asset references or module scripts remain.
+- Fails if unresolved asset references remain, or if any module script still has an unresolved external `src` after transform.
+- Handles module script attributes in quoted or unquoted form, and supports either `src`/`type` attribute order.
 
 ### Stage 4: Backend copy
 
