@@ -4,6 +4,11 @@ import { Button, Card, Layout, Space, Statistic, Typography } from 'antd';
 const { Header, Content } = Layout;
 const { Title, Paragraph } = Typography;
 
+/**
+ * Renders the main frontend scaffold view.
+ *
+ * @returns {JSX.Element} Frontend application shell.
+ */
 function App() {
   return (
     <Layout>

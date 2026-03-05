@@ -45,48 +45,6 @@ class TriggerController {
   }
 
   /**
-   * Removes existing onOpen triggers.
-   */
-  removeOnOpenTriggers() {
-    const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach((trigger) => {
-      if (trigger.getEventType() === ScriptApp.EventType.ON_OPEN) {
-        ScriptApp.deleteTrigger(trigger);
-        console.log(`Existing onOpen trigger deleted.`);
-      }
-    });
-  }
-
-  /**
-   * Creates an onOpen trigger for the specified function, removing any existing onOpen triggers beforehand.
-   *
-   * @param {string} functionName - The name of the function to trigger on open.
-   * @returns {string} The unique ID of the created trigger.
-   */
-  createOnOpenTrigger(functionName) {
-    try {
-      // Ensure user has granted required permissions for trigger installation and execution
-      ScriptApp.requireScopes(ScriptApp.AuthMode.FULL, TriggerController.REQUIRED_SCOPES);
-
-      this.removeOnOpenTriggers();
-
-      // Create new onOpen trigger
-      const trigger = ScriptApp.newTrigger(functionName)
-        .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
-        .onOpen()
-        .create();
-      console.log(`OnOpen trigger created for ${functionName}.`);
-      return trigger.getUniqueId();
-    } catch (error) {
-      const progressTracker = ProgressTracker.getInstance();
-      progressTracker.logAndThrowError(
-        `Error creating onOpen trigger for ${functionName}: ${error.message}`,
-        error
-      );
-    }
-  }
-
-  /**
    * Removes all triggers associated with the specified function name.
    *
    * @param {string} functionName - The name of the function whose triggers are to be removed.
@@ -136,3 +94,7 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/script.scriptapp',
   'https://www.googleapis.com/auth/classroom.topics.readonly',
 ];
+
+if (typeof module !== 'undefined') {
+  module.exports = { TriggerController };
+}
