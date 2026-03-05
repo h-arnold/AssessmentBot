@@ -37,7 +37,13 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
   };
 }
 
-
+/**
+ * Creates a tar.gz release fixture and returns its bytes for mocked download tests.
+ *
+ * @param {string} tempRoot - Temporary root directory for fixture files.
+ * @param {(releaseFixtureRoot: string) => Promise<void>} setup - Fixture setup callback.
+ * @return {Promise<Uint8Array>} Archive bytes for use in mocked fetch responses.
+ */
 async function createReleaseArchive(
   tempRoot: string,
   setup: (releaseFixtureRoot: string) => Promise<void>,
@@ -88,8 +94,6 @@ describe('runResolveJsonDbSource', () => {
     );
     expect(paths.jsonDbAppSourceFiles).toEqual(result.sourceFiles);
   });
-
-
 
   it('throws BuildStageError when the release is missing a source directory', async () => {
     const paths = createBuilderPaths(tempRoot);
