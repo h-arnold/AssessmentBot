@@ -21,7 +21,6 @@ describe('backend API WebApp doGet', () => {
 
   afterEach(() => {
     delete globalThis.HtmlService;
-    delete require.cache[require.resolve('../../src/backend/Api/WebApp.js')];
   });
 
   it('renders the React app HtmlService template', () => {

@@ -36,7 +36,6 @@ describe('backend TriggerController', () => {
   afterEach(() => {
     delete globalThis.ScriptApp;
     delete globalThis.ProgressTracker;
-    delete require.cache[require.resolve('../../src/backend/Utils/TriggerController.js')];
   });
 
   it('does not expose removed on-open helper methods', () => {
