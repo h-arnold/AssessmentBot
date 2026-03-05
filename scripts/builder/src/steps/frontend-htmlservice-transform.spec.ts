@@ -303,4 +303,72 @@ describe('runFrontendHtmlServiceTransform', () => {
       'unresolved external module script references',
     );
   });
+
+  it('leaves regular scripts intact when the type attribute is missing', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src="./local/index-abc.js"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+    await fs.mkdir(path.join(paths.buildFrontendDir, 'local'), { recursive: true });
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'local', 'index-abc.js'),
+      'window.__plainScript = true;',
+      'utf-8',
+    );
+
+    const { result, output } = await runTransformAndReadOutput(paths);
+
+    expect(result.inlinedScriptCount).toBe(0);
+    expect(output).toContain('src="./local/index-abc.js"');
+  });
+
+  it('fails when attribute values still reference assets/ without a leading slash', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <img src="assets/logo.svg">',
+      '  </body>',
+      '</html>',
+    ]);
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'still contains unresolved asset src/href references',
+    );
+  });
+
+  it('detects unresolved module scripts after skipping non-module siblings', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src="./local/lib.js"></script>',
+      '    <script type="module" src="https://cdn.example.com/module.js"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+
+    await fs.mkdir(path.join(paths.buildFrontendDir, 'local'), { recursive: true });
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'local', 'lib.js'),
+      'export const lib = true;',
+      'utf-8',
+    );
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'unresolved external module script references',
+    );
+  });
 });

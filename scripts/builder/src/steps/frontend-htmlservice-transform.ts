@@ -69,11 +69,11 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern =
-    /<script\s+([^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>|$)[^>]*)><\/script>/gim;
+  const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
   html = await replaceAsync(html, moduleScriptPattern, async (_, attributes: string) => {
+    const typeValue = readAttributeValue(attributes, 'type');
     const src = readAttributeValue(attributes, 'src');
-    if (!src) {
+    if (typeValue?.toLowerCase() !== 'module' || !src) {
       return `<script ${attributes}>` + '</script>';
     }
 
@@ -224,15 +224,10 @@ function removeAttribute(
   attributes: string,
   name: 'src' | 'href' | 'type' | 'rel',
 ): string {
-  const attributePattern = /([^\s=/>]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gim;
-  const keptAttributes: string[] = [];
-  let match: RegExpExecArray | null = attributePattern.exec(attributes);
-  while (match !== null) {
-    const attributeName = (match[1] ?? '').toLowerCase();
-    if (attributeName !== name) {
-      keptAttributes.push(match[0] ?? '');
-    }
-    match = attributePattern.exec(attributes);
-  }
-  return keptAttributes.join(' ').trim();
+  const attributePattern = new RegExp(
+    `(^|\\s+)${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'=<>\\\`]+)`,
+    'i',
+  );
+  const updated = attributes.replace(attributePattern, (_, leading = '') => leading);
+  return updated.trim();
 }

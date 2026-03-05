@@ -16,7 +16,7 @@ export function useAuthorisationStatus() {
   useEffect(() => {
     let isMounted = true;
 
-    void getAuthorisationStatus()
+    getAuthorisationStatus()
       .then((isAuthorised) => {
         if (!isMounted) {
           return;
