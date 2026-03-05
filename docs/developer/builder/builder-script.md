@@ -47,9 +47,16 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Full builder CI sequence: lint -> test -> build -> run
+# Builder coverage check (minimum 85%)
+npm run builder:test:coverage
+
+# Full builder CI sequence: lint -> coverage -> build -> run
 npm run builder:ci
 ```
+
+### Coverage requirement
+
+Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
 
 ### Typical local workflow
 
