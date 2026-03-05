@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -162,11 +162,54 @@ describe('runPreflightClean', () => {
 
   it('produces identical file lists across consecutive runs', async () => {
     await runPreflightClean(paths);
-    const firstList = (await listTree(paths.buildDir)).sort();
+    const firstList = (await listTree(paths.buildDir)).sort((left, right) =>
+      left.localeCompare(right),
+    );
 
     await runPreflightClean(paths);
-    const secondList = (await listTree(paths.buildDir)).sort();
+    const secondList = (await listTree(paths.buildDir)).sort((left, right) =>
+      left.localeCompare(right),
+    );
 
     expect(secondList).toEqual(firstList);
+  });
+
+  it('preserves build/gas/.clasp.json across preflight clean', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const claspConfig = JSON.stringify({ scriptId: 'abc123' });
+    await ensureFile(claspConfigPath);
+    await fs.writeFile(claspConfigPath, claspConfig);
+    await ensureFile(path.join(paths.buildGasDir, 'stale.js'));
+
+    await runPreflightClean(paths);
+
+    await expect(fs.readFile(claspConfigPath, 'utf8')).resolves.toBe(claspConfig);
+    await expect(fs.stat(path.join(paths.buildGasDir, 'stale.js'))).rejects.toBeInstanceOf(Error);
+  });
+
+  it('wraps .clasp.json read failures as BuildStageError with preflight stage context', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    await ensureDir(claspConfigPath);
+
+    await expect(runPreflightClean(paths)).rejects.toMatchObject({
+      stage: 'preflight-clean',
+      name: 'BuildStageError',
+    });
+    await expect(runPreflightClean(paths)).rejects.toThrow(claspConfigPath);
+  });
+
+  it('wraps .clasp.json write failures as BuildStageError with preflight stage context', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const writeErr = new Error('write failed');
+    await ensureFile(claspConfigPath);
+
+    const writeSpy = vi.spyOn(fs, 'writeFile').mockRejectedValueOnce(writeErr);
+    const run = runPreflightClean(paths);
+    await expect(run).rejects.toMatchObject({
+      stage: 'preflight-clean',
+      name: 'BuildStageError',
+    });
+    await expect(run).rejects.toThrow('Failed to restore');
+    writeSpy.mockRestore();
   });
 });

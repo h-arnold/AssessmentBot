@@ -81,6 +81,7 @@ describe('runFrontendBuild', () => {
       ],
       expect.objectContaining({
         cwd: paths.repoRoot,
+        env: process.env,
       })
     );
   });
@@ -106,11 +107,14 @@ describe('runFrontendBuild', () => {
         '--outDir',
         paths.buildFrontendDir,
         '--emptyOutDir',
+        '--mode=development',
         '--minify=false',
-        '--sourcemap=inline',
       ],
       expect.objectContaining({
         cwd: paths.repoRoot,
+        env: expect.objectContaining({
+          NODE_ENV: 'development',
+        }),
       })
     );
   });

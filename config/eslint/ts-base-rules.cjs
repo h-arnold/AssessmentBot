@@ -1,4 +1,7 @@
+const sonarjs = require('eslint-plugin-sonarjs');
+
 const tsBaseRules = {
+  ...sonarjs.configs.recommended.rules,
   complexity: ['error', 7],
   'jsdoc/require-jsdoc': [
     'error',

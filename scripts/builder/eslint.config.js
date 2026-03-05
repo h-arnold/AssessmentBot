@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import jsdoc from 'eslint-plugin-jsdoc';
 import tseslint from '@typescript-eslint/eslint-plugin';
+import sonarjs from 'eslint-plugin-sonarjs';
 import tsParser from '@typescript-eslint/parser';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,6 +26,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       jsdoc,
+      sonarjs,
     },
     rules: {
       ...tseslint.configs.recommended.rules,

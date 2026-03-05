@@ -48,6 +48,48 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
   };
 }
 
+/**
+ * Writes the frontend `index.html` fixture for the current test.
+ *
+ * @param {BuilderPaths} paths - Builder path set for the test fixture.
+ * @param {string[]} htmlLines - HTML lines that will be joined using newlines.
+ * @return {Promise<void>} Resolves when the fixture is written.
+ */
+async function writeFrontendIndexHtml(paths: BuilderPaths, htmlLines: string[]): Promise<void> {
+  await fs.writeFile(path.join(paths.buildFrontendDir, 'index.html'), htmlLines.join('\n'), 'utf-8');
+}
+
+/**
+ * Writes a single asset file under `build/frontend/assets`.
+ *
+ * @param {BuilderPaths} paths - Builder path set for the test fixture.
+ * @param {string} assetName - Asset file name relative to `assets`.
+ * @param {string} contents - File contents to write.
+ * @return {Promise<void>} Resolves when the asset file is written.
+ */
+async function writeFrontendAsset(
+  paths: BuilderPaths,
+  assetName: string,
+  contents: string,
+): Promise<void> {
+  await fs.writeFile(path.join(paths.buildFrontendDir, 'assets', assetName), contents, 'utf-8');
+}
+
+/**
+ * Runs the transform and reads the emitted HtmlService template output.
+ *
+ * @param {BuilderPaths} paths - Builder path set for the test fixture.
+ * @return {Promise<{ result: Awaited<ReturnType<typeof runFrontendHtmlServiceTransform>>; output: string }>}
+ * Stage result and transformed HTML output.
+ */
+async function runTransformAndReadOutput(
+  paths: BuilderPaths,
+): Promise<{ result: Awaited<ReturnType<typeof runFrontendHtmlServiceTransform>>; output: string }> {
+  const result = await runFrontendHtmlServiceTransform(paths);
+  const output = await fs.readFile(result.reactAppPath, 'utf-8');
+  return { result, output };
+}
+
 describe('runFrontendHtmlServiceTransform', () => {
   let tempRoot: string;
   let paths: BuilderPaths;
@@ -64,61 +106,84 @@ describe('runFrontendHtmlServiceTransform', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('inlines module script content and removes module type declaration', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head></head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '    <script type="module" src="./assets/index-abc.js"></script>',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'assets', 'index-abc.js'),
-      'window.__testReactBoot = true;',
-      'utf-8',
-    );
+  it('inlines module script content and preserves module script attributes', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script type="module" crossorigin src="./assets/index-abc.js"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+    await writeFrontendAsset(paths, 'index-abc.js', 'window.__testReactBoot = true;');
 
-    const result = await runFrontendHtmlServiceTransform(paths);
-    const output = await fs.readFile(result.reactAppPath, 'utf-8');
+    const { result, output } = await runTransformAndReadOutput(paths);
 
     expect(result.stage).toBe('frontend-htmlservice-transform');
     expect(result.inlinedScriptCount).toBe(1);
-    expect(output).toContain('<script>');
+    expect(output).toContain('<script type="module" crossorigin>');
     expect(output).toContain('window.__testReactBoot = true;');
-    expect(output).not.toContain('type="module"');
+  });
+
+  it('inlines module scripts when src attribute appears before type', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src="./assets/index-abc.js" type="module"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+    await writeFrontendAsset(paths, 'index-abc.js', 'window.__srcBeforeType = true;');
+
+    const { result, output } = await runTransformAndReadOutput(paths);
+
+    expect(result.inlinedScriptCount).toBe(1);
+    expect(output).toContain('<script type="module">');
+    expect(output).toContain('window.__srcBeforeType = true;');
+    expect(output).not.toContain('src="./assets/index-abc.js"');
+  });
+
+  it('inlines module scripts with unquoted local src and type attributes', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src=./assets/index-abc.js type=module></script>',
+      '  </body>',
+      '</html>',
+    ]);
+    await writeFrontendAsset(paths, 'index-abc.js', 'window.__unquotedModuleAttrs = true;');
+
+    const { result, output } = await runTransformAndReadOutput(paths);
+
+    expect(result.inlinedScriptCount).toBe(1);
+    expect(output).toContain('<script type=module>');
+    expect(output).toContain('window.__unquotedModuleAttrs = true;');
+    expect(output).not.toContain('src=./assets/index-abc.js');
   });
 
   it('replaces stylesheet links with inline style blocks', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head>',
-        '    <link rel="stylesheet" href="./assets/index-abc.css">',
-        '  </head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'assets', 'index-abc.css'),
-      'body { color: rgb(1, 2, 3); }',
-      'utf-8',
-    );
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head>',
+      '    <link rel="stylesheet" href="./assets/index-abc.css">',
+      '  </head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '  </body>',
+      '</html>',
+    ]);
+    await writeFrontendAsset(paths, 'index-abc.css', 'body { color: rgb(1, 2, 3); }');
 
-    const result = await runFrontendHtmlServiceTransform(paths);
-    const output = await fs.readFile(result.reactAppPath, 'utf-8');
+    const { result, output } = await runTransformAndReadOutput(paths);
 
     expect(result.inlinedStyleCount).toBe(1);
     expect(output).toContain('<style>');
@@ -126,81 +191,58 @@ describe('runFrontendHtmlServiceTransform', () => {
     expect(output).not.toContain('<link rel="stylesheet"');
   });
 
-  it('produces output with no module declaration and no /assets references', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head>',
-        '    <meta charset="UTF-8">',
-        '    <link rel="stylesheet" href="./assets/index-abc.css">',
-        '  </head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '    <script type="module" src="./assets/index-abc.js"></script>',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'assets', 'index-abc.css'),
-      ':root { --accent: #123456; }',
-      'utf-8',
-    );
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'assets', 'index-abc.js'),
-      'document.getElementById("root");',
-      'utf-8',
-    );
+  it('produces output with module declaration and no /assets references', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head>',
+      '    <meta charset="UTF-8">',
+      '    <link rel="stylesheet" href="./assets/index-abc.css">',
+      '  </head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script type="module" src="./assets/index-abc.js"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+    await writeFrontendAsset(paths, 'index-abc.css', ':root { --accent: #123456; }');
+    await writeFrontendAsset(paths, 'index-abc.js', 'document.getElementById("root");');
 
-    const result = await runFrontendHtmlServiceTransform(paths);
-    const output = await fs.readFile(result.reactAppPath, 'utf-8');
+    const { output } = await runTransformAndReadOutput(paths);
 
     expect(output).toContain('<meta charset="UTF-8">');
     expect(output).toContain('<div id="root"></div>');
-    expect(output).not.toContain('type="module"');
+    expect(output).toContain('type="module"');
     expect(output).not.toContain('/assets/');
   });
 
-
-
   it('fails when asset references resolve outside the frontend build directory', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head></head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '    <script type="module" src="../secrets.js"></script>',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script type="module" src="../secrets.js"></script>',
+      '  </body>',
+      '</html>',
+    ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow('Invalid frontend asset reference');
   });
 
   it('fails when unresolved /assets references remain in transformed output', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head></head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '    <img src="/assets/logo.svg">',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <img src="/assets/logo.svg">',
+      '  </body>',
+      '</html>',
+    ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
@@ -209,24 +251,56 @@ describe('runFrontendHtmlServiceTransform', () => {
   });
 
   it('fails when unresolved relative assets references remain in transformed output', async () => {
-    await fs.writeFile(
-      path.join(paths.buildFrontendDir, 'index.html'),
-      [
-        '<!doctype html>',
-        '<html>',
-        '  <head></head>',
-        '  <body>',
-        '    <div id="root"></div>',
-        '    <img src="./assets/logo.svg">',
-        '  </body>',
-        '</html>',
-      ].join('\n'),
-      'utf-8',
-    );
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <img src="./assets/logo.svg">',
+      '  </body>',
+      '</html>',
+    ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
       'forbidden /assets/ references',
+    );
+  });
+
+  it('fails when unresolved external module scripts remain after transform', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src="https://cdn.example.com/app.js" type="module"></script>',
+      '  </body>',
+      '</html>',
+    ]);
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'unresolved external module script references',
+    );
+  });
+
+  it('fails when unresolved unquoted external module scripts remain after transform', async () => {
+    await writeFrontendIndexHtml(paths, [
+      '<!doctype html>',
+      '<html>',
+      '  <head></head>',
+      '  <body>',
+      '    <div id="root"></div>',
+      '    <script src=https://cdn.example.com/app.js type=module></script>',
+      '  </body>',
+      '</html>',
+    ]);
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'unresolved external module script references',
     );
   });
 });

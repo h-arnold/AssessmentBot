@@ -45,8 +45,18 @@ export async function runFrontendHtmlServiceTransform(
   }
 
   let inlinedStyleCount = 0;
-  const stylesheetPattern = /<link\s+[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gim;
-  html = await replaceAsync(html, stylesheetPattern, async (_, href: string) => {
+  const linkTagPattern = /<link\b([^>]*)>/gim;
+  html = await replaceAsync(html, linkTagPattern, async (match: string, attributes: string) => {
+    const rel = readAttributeValue(attributes, 'rel');
+    if (rel?.toLowerCase() !== 'stylesheet') {
+      return match;
+    }
+
+    const href = readAttributeValue(attributes, 'href');
+    if (!href) {
+      return match;
+    }
+
     const cssPath = resolveBuiltAssetPath(paths, href);
     let css: string;
     try {
@@ -60,8 +70,16 @@ export async function runFrontendHtmlServiceTransform(
 
   let inlinedScriptCount = 0;
   const moduleScriptPattern =
-    /<script\s+[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptPattern, async (_, src: string) => {
+    /<script\s+([^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>|$)[^>]*)><\/script>/gim;
+  html = await replaceAsync(html, moduleScriptPattern, async (_, attributes: string) => {
+    const src = readAttributeValue(attributes, 'src');
+    if (!src) {
+      return `<script ${attributes}>` + '</script>';
+    }
+
+    if (/^(https?:)?\/\//i.test(src)) {
+      return `<script ${attributes}>` + '</script>';
+    }
     const scriptPath = resolveBuiltAssetPath(paths, src);
     let script: string;
     try {
@@ -70,7 +88,9 @@ export async function runFrontendHtmlServiceTransform(
       throw new BuildStageError(STAGE_ID, `Unable to read script asset: ${scriptPath}`, err);
     }
     inlinedScriptCount += 1;
-    return `<script>\n${script}\n</script>`;
+    const preservedAttributes = removeAttribute(attributes, 'src');
+    const tagAttributes = preservedAttributes.length > 0 ? ` ${preservedAttributes}` : '';
+    return `<script${tagAttributes}>\n${script}\n</script>`;
   });
 
   if (html.includes('/assets/')) {
@@ -79,19 +99,18 @@ export async function runFrontendHtmlServiceTransform(
       'Transformed ReactApp HTML still contains forbidden /assets/ references.',
     );
   }
-  if (/(src|href)=["'][^"']*assets\/[^"']*["']/i.test(html)) {
+  if (hasUnresolvedAssetAttributeReference(html)) {
     throw new BuildStageError(
       STAGE_ID,
       'Transformed ReactApp HTML still contains unresolved asset src/href references.',
     );
   }
-  if (html.includes('type="module"') || html.includes("type='module'")) {
+  if (hasUnresolvedExternalModuleScriptReference(html)) {
     throw new BuildStageError(
       STAGE_ID,
-      'Transformed ReactApp HTML still contains forbidden module script declarations.',
+      'Transformed ReactApp HTML still contains unresolved external module script references.',
     );
   }
-
   try {
     await writeFile(reactAppPath, html, 'utf-8');
   } catch (err) {
@@ -124,8 +143,96 @@ async function replaceAsync(
     return input;
   }
 
-  const replacements = await Promise.all(matches.map((match) => replacer(match[0], ...match.slice(1))));
+  const replacements: string[] = await Promise.all(
+    matches.map((match) => replacer(match[0], ...match.slice(1))),
+  );
 
   let replacementIndex = 0;
-  return input.replace(pattern, () => replacements[replacementIndex++] as string);
+  return input.replace(pattern, () => replacements[replacementIndex++] ?? '');
+}
+
+/**
+ * Reads an attribute value from an HTML tag attributes string.
+ *
+ * @param {string} attributes - Tag attributes text.
+ * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to read.
+ * @return {string | null} Parsed attribute value, or null when absent.
+ */
+function readAttributeValue(
+  attributes: string,
+  name: 'src' | 'href' | 'type' | 'rel',
+): string | null {
+  const pattern = new RegExp(
+    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\\`]+))`,
+    'i',
+  );
+  const match = pattern.exec(attributes);
+  if (!match) {
+    return null;
+  }
+  return match[1] ?? match[2] ?? match[3] ?? null;
+}
+
+/**
+ * Detects unresolved local `assets/` references in src/href attributes.
+ *
+ * @param {string} html - HTML to scan.
+ * @return {boolean} True when unresolved asset references are present.
+ */
+function hasUnresolvedAssetAttributeReference(html: string): boolean {
+  const attributePattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gim;
+  let match: RegExpExecArray | null = attributePattern.exec(html);
+  while (match !== null) {
+    const value = match[1] ?? match[2] ?? match[3] ?? '';
+    if (value.includes('assets/')) {
+      return true;
+    }
+    match = attributePattern.exec(html);
+  }
+  return false;
+}
+
+/**
+ * Detects `<script ... type=module ... src=...></script>` tags that remain unresolved.
+ *
+ * @param {string} html - HTML to scan.
+ * @return {boolean} True when unresolved external module scripts are present.
+ */
+function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
+  const scriptTagPattern = /<script\b([^>]*)><\/script>/gim;
+  let match: RegExpExecArray | null = scriptTagPattern.exec(html);
+  while (match !== null) {
+    const attributes = match[1] ?? '';
+    const typeValue = readAttributeValue(attributes, 'type');
+    const srcValue = readAttributeValue(attributes, 'src');
+    if (typeValue?.toLowerCase() === 'module' && srcValue) {
+      return true;
+    }
+    match = scriptTagPattern.exec(html);
+  }
+  return false;
+}
+
+/**
+ * Removes one attribute name from a tag attributes string.
+ *
+ * @param {string} attributes - Tag attributes text.
+ * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to remove.
+ * @return {string} Attributes without the named attribute.
+ */
+function removeAttribute(
+  attributes: string,
+  name: 'src' | 'href' | 'type' | 'rel',
+): string {
+  const attributePattern = /([^\s=/>]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gim;
+  const keptAttributes: string[] = [];
+  let match: RegExpExecArray | null = attributePattern.exec(attributes);
+  while (match !== null) {
+    const attributeName = (match[1] ?? '').toLowerCase();
+    if (attributeName !== name) {
+      keptAttributes.push(match[0] ?? '');
+    }
+    match = attributePattern.exec(attributes);
+  }
+  return keptAttributes.join(' ').trim();
 }
