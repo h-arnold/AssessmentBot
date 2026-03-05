@@ -64,7 +64,7 @@ describe('runFrontendHtmlServiceTransform', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('inlines module script content and preserves module type declaration', async () => {
+  it('inlines module script content and preserves module script attributes', async () => {
     await fs.writeFile(
       path.join(paths.buildFrontendDir, 'index.html'),
       [
@@ -73,7 +73,7 @@ describe('runFrontendHtmlServiceTransform', () => {
         '  <head></head>',
         '  <body>',
         '    <div id="root"></div>',
-        '    <script type="module" src="./assets/index-abc.js"></script>',
+        '    <script type="module" crossorigin src="./assets/index-abc.js"></script>',
         '  </body>',
         '</html>',
       ].join('\n'),
@@ -90,8 +90,68 @@ describe('runFrontendHtmlServiceTransform', () => {
 
     expect(result.stage).toBe('frontend-htmlservice-transform');
     expect(result.inlinedScriptCount).toBe(1);
-    expect(output).toContain('<script type="module">');
+    expect(output).toContain('<script type="module" crossorigin>');
     expect(output).toContain('window.__testReactBoot = true;');
+  });
+
+  it('inlines module scripts when src attribute appears before type', async () => {
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html>',
+        '  <head></head>',
+        '  <body>',
+        '    <div id="root"></div>',
+        '    <script src="./assets/index-abc.js" type="module"></script>',
+        '  </body>',
+        '</html>',
+      ].join('\n'),
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'assets', 'index-abc.js'),
+      'window.__srcBeforeType = true;',
+      'utf-8',
+    );
+
+    const result = await runFrontendHtmlServiceTransform(paths);
+    const output = await fs.readFile(result.reactAppPath, 'utf-8');
+
+    expect(result.inlinedScriptCount).toBe(1);
+    expect(output).toContain('<script type="module">');
+    expect(output).toContain('window.__srcBeforeType = true;');
+    expect(output).not.toContain('src="./assets/index-abc.js"');
+  });
+
+  it('inlines module scripts with unquoted local src and type attributes', async () => {
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html>',
+        '  <head></head>',
+        '  <body>',
+        '    <div id="root"></div>',
+        '    <script src=./assets/index-abc.js type=module></script>',
+        '  </body>',
+        '</html>',
+      ].join('\n'),
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'assets', 'index-abc.js'),
+      'window.__unquotedModuleAttrs = true;',
+      'utf-8',
+    );
+
+    const result = await runFrontendHtmlServiceTransform(paths);
+    const output = await fs.readFile(result.reactAppPath, 'utf-8');
+
+    expect(result.inlinedScriptCount).toBe(1);
+    expect(output).toContain('<script type=module>');
+    expect(output).toContain('window.__unquotedModuleAttrs = true;');
+    expect(output).not.toContain('src=./assets/index-abc.js');
   });
 
   it('replaces stylesheet links with inline style blocks', async () => {
@@ -226,6 +286,50 @@ describe('runFrontendHtmlServiceTransform', () => {
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
       'forbidden /assets/ references',
+    );
+  });
+
+  it('fails when unresolved external module scripts remain after transform', async () => {
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html>',
+        '  <head></head>',
+        '  <body>',
+        '    <div id="root"></div>',
+        '    <script src="https://cdn.example.com/app.js" type="module"></script>',
+        '  </body>',
+        '</html>',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'unresolved external module script references',
+    );
+  });
+
+  it('fails when unresolved unquoted external module scripts remain after transform', async () => {
+    await fs.writeFile(
+      path.join(paths.buildFrontendDir, 'index.html'),
+      [
+        '<!doctype html>',
+        '<html>',
+        '  <head></head>',
+        '  <body>',
+        '    <div id="root"></div>',
+        '    <script src=https://cdn.example.com/app.js type=module></script>',
+        '  </body>',
+        '</html>',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'unresolved external module script references',
     );
   });
 });

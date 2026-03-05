@@ -59,9 +59,18 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern =
-    /<script\s+[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptPattern, async (_, src: string) => {
+  const moduleScriptWithSrcPattern =
+    /<script\s+([^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>|$)[^>]*)><\/script>/gim;
+  html = await replaceAsync(html, moduleScriptWithSrcPattern, async (_, attributes: string) => {
+    const srcMatch = attributes.match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s"'=<>`]+))/i);
+    if (!srcMatch) {
+      return `<script ${attributes}>` + '</script>';
+    }
+
+    const src = srcMatch[1] ?? srcMatch[2] ?? srcMatch[3];
+    if (/^(https?:)?\/\//i.test(src)) {
+      return `<script ${attributes}>` + '</script>';
+    }
     const scriptPath = resolveBuiltAssetPath(paths, src);
     let script: string;
     try {
@@ -70,7 +79,11 @@ export async function runFrontendHtmlServiceTransform(
       throw new BuildStageError(STAGE_ID, `Unable to read script asset: ${scriptPath}`, err);
     }
     inlinedScriptCount += 1;
-    return `<script type="module">\n${script}\n</script>`;
+    const preservedAttributes = attributes
+      .replace(/\s*\bsrc\s*=\s*(?:"[^"]+"|'[^']+'|[^\s"'=<>`]+)/i, '')
+      .trim();
+    const tagAttributes = preservedAttributes.length > 0 ? ` ${preservedAttributes}` : '';
+    return `<script${tagAttributes}>\n${script}\n</script>`;
   });
 
   if (html.includes('/assets/')) {
@@ -79,10 +92,24 @@ export async function runFrontendHtmlServiceTransform(
       'Transformed ReactApp HTML still contains forbidden /assets/ references.',
     );
   }
-  if (/(src|href)=["'][^"']*assets\/[^"']*["']/i.test(html)) {
+  if (
+    /\b(?:src|href)\s*=\s*(?:"[^"]*assets\/[^"]*"|'[^']*assets\/[^']*'|[^\s"'=<>`]*assets\/[^\s"'=<>`]*)/i.test(
+      html,
+    )
+  ) {
     throw new BuildStageError(
       STAGE_ID,
       'Transformed ReactApp HTML still contains unresolved asset src/href references.',
+    );
+  }
+  if (
+    /<script\b(?=[^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>))(?=[^>]*\bsrc\s*=\s*(?:"[^"]+"|'[^']+'|[^\s"'=<>`]+))[^>]*><\/script>/i.test(
+      html,
+    )
+  ) {
+    throw new BuildStageError(
+      STAGE_ID,
+      'Transformed ReactApp HTML still contains unresolved external module script references.',
     );
   }
   try {
