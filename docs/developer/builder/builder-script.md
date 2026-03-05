@@ -34,8 +34,13 @@ Use the builder commands from the root `package.json`:
 # Compile builder TypeScript into scripts/builder/dist
 npm run builder:build
 
-# Execute the pipeline (writes build/frontend and build/gas)
+# Execute the pipeline in production mode (default; minified frontend output)
 npm run builder:run
+# Equivalent explicit flag
+npm run builder:run -- --frontend-mode=production
+
+# Execute the pipeline in development mode (non-minified frontend output + inline source maps)
+npm run builder:run -- --frontend-mode=dev
 ```
 
 Useful supporting commands:
