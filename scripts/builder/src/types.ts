@@ -9,6 +9,8 @@ export type BuildStageId =
   | 'materialise-output'
   | 'validate-output';
 
+export type FrontendBuildMode = 'production' | 'dev';
+
 export type BuilderConfig = {
   frontendDir: string;
   backendDir: string;
