@@ -71,6 +71,15 @@ npm run frontend:test:e2e -- --headed --debug src/frontend/tests/auth-status.spe
 
 Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run frontend:test:coverage`.
 
+## Shared test helpers
+
+Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.
+
+- Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
+- Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
+
+When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec.
+
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.test.tsx`

@@ -2,61 +2,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 
-import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
+import {
+  createBuilderPaths,
+  createReleaseArchive,
+  writeReleaseFile,
+  writeReleaseManifest,
+} from '../test/jsondb-source-test-helpers.js';
 import { runResolveJsonDbSource } from './resolve-jsondb-source.js';
 
-const execFileAsync = promisify(execFile);
-
 /**
- * Builds a complete `BuilderPaths` object rooted at a temporary directory.
+ * Mocks a successful release download for resolve-jsondb-source tests.
  *
- * @param {string} rootDir - Root temporary directory for the test fixture.
- * @return {BuilderPaths} Fully resolved builder path values.
+ * @param {Uint8Array} archiveBytes - Tar archive payload returned by mocked fetch.
+ * @return {void} No return value.
  */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  return {
-    repoRoot: rootDir,
-    builderRoot: path.join(rootDir, 'scripts', 'builder'),
-    configPath: path.join(rootDir, 'scripts', 'builder', 'builder.config.json'),
-    frontendDir: path.join(rootDir, 'src', 'frontend'),
-    backendDir: path.join(rootDir, 'src', 'backend'),
-    buildDir: path.join(rootDir, 'build'),
-    buildFrontendDir: path.join(rootDir, 'build', 'frontend'),
-    buildWorkDir: path.join(rootDir, 'build', 'work'),
-    buildGasDir: path.join(rootDir, 'build', 'gas'),
-    buildGasUiDir: path.join(rootDir, 'build', 'gas', 'UI'),
-    backendManifestPath: path.join(rootDir, 'src', 'backend', 'appsscript.json'),
-    jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', 'appsscript.json'),
-    jsonDbAppSourceFiles: [],
-    jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
-  };
-}
-
-/**
- * Creates a tar.gz release fixture and returns its bytes for mocked download tests.
- *
- * @param {string} tempRoot - Temporary root directory for fixture files.
- * @param {(releaseFixtureRoot: string) => Promise<void>} setup - Fixture setup callback.
- * @return {Promise<Uint8Array>} Archive bytes for use in mocked fetch responses.
- */
-async function createReleaseArchive(
-  tempRoot: string,
-  setup: (releaseFixtureRoot: string) => Promise<void>,
-): Promise<Uint8Array> {
-  const releaseFixtureDir = path.join(tempRoot, 'release-fixture');
-  const releaseFixtureRoot = path.join(releaseFixtureDir, 'JsonDbApp-0.1.0');
-  const archivePath = path.join(tempRoot, 'jsondbapp-release.tar.gz');
-
-  await fs.mkdir(releaseFixtureRoot, { recursive: true });
-  await setup(releaseFixtureRoot);
-  await execFileAsync('tar', ['-czf', archivePath, '-C', releaseFixtureDir, 'JsonDbApp-0.1.0']);
-
-  return fs.readFile(archivePath);
+function mockSuccessfulReleaseDownload(archiveBytes: Uint8Array): void {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    new Response(archiveBytes, { status: 200, statusText: 'OK' }),
+  );
 }
 
 describe('runResolveJsonDbSource', () => {
@@ -75,15 +40,12 @@ describe('runResolveJsonDbSource', () => {
     const paths = createBuilderPaths(tempRoot);
 
     const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await fs.mkdir(path.join(releaseFixtureRoot, 'src', 'nested'), { recursive: true });
-      await fs.writeFile(path.join(releaseFixtureRoot, 'appsscript.json'), '{"oauthScopes":[]}', 'utf-8');
-      await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'z-last.js'), 'function z(){}', 'utf-8');
-      await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'a-first.js'), 'function a(){}', 'utf-8');
-      await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'nested', 'b-middle.js'), 'function b(){}', 'utf-8');
+      await writeReleaseManifest(releaseFixtureRoot);
+      await writeReleaseFile(releaseFixtureRoot, 'src/z-last.js', 'function z(){}');
+      await writeReleaseFile(releaseFixtureRoot, 'src/a-first.js', 'function a(){}');
+      await writeReleaseFile(releaseFixtureRoot, 'src/nested/b-middle.js', 'function b(){}');
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(archiveBytes, { status: 200, statusText: 'OK' }),
-    );
+    mockSuccessfulReleaseDownload(archiveBytes);
 
     const result = await runResolveJsonDbSource(paths);
 
@@ -98,11 +60,9 @@ describe('runResolveJsonDbSource', () => {
   it('throws BuildStageError when the release is missing a source directory', async () => {
     const paths = createBuilderPaths(tempRoot);
     const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await fs.writeFile(path.join(releaseFixtureRoot, 'appsscript.json'), '{"oauthScopes":[]}', 'utf-8');
+      await writeReleaseManifest(releaseFixtureRoot);
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(archiveBytes, { status: 200, statusText: 'OK' }),
-    );
+    mockSuccessfulReleaseDownload(archiveBytes);
 
     await expect(runResolveJsonDbSource(paths)).rejects.toThrow('missing source directory');
   });
@@ -110,12 +70,9 @@ describe('runResolveJsonDbSource', () => {
   it('throws BuildStageError when the release is missing a manifest', async () => {
     const paths = createBuilderPaths(tempRoot);
     const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await fs.mkdir(path.join(releaseFixtureRoot, 'src'), { recursive: true });
-      await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'entry.js'), 'const x = 1;', 'utf-8');
+      await writeReleaseFile(releaseFixtureRoot, 'src/entry.js', 'const x = 1;');
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(archiveBytes, { status: 200, statusText: 'OK' }),
-    );
+    mockSuccessfulReleaseDownload(archiveBytes);
 
     await expect(runResolveJsonDbSource(paths)).rejects.toThrow('missing manifest');
   });
@@ -123,13 +80,10 @@ describe('runResolveJsonDbSource', () => {
   it('throws BuildStageError when src has no JavaScript files', async () => {
     const paths = createBuilderPaths(tempRoot);
     const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await fs.mkdir(path.join(releaseFixtureRoot, 'src'), { recursive: true });
-      await fs.writeFile(path.join(releaseFixtureRoot, 'appsscript.json'), '{"oauthScopes":[]}', 'utf-8');
-      await fs.writeFile(path.join(releaseFixtureRoot, 'src', 'README.md'), '# not js', 'utf-8');
+      await writeReleaseManifest(releaseFixtureRoot);
+      await writeReleaseFile(releaseFixtureRoot, 'src/README.md', '# not js');
     });
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(archiveBytes, { status: 200, statusText: 'OK' }),
-    );
+    mockSuccessfulReleaseDownload(archiveBytes);
 
     await expect(runResolveJsonDbSource(paths)).rejects.toThrow('contains no JavaScript source files');
   });
