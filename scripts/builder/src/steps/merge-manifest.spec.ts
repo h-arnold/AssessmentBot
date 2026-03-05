@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
-import { mergeScopes, mergeServices, runMergeManifest } from './merge-manifest.js';
+import { mergeScopes, mergeServices, runMergeManifest, sortKeysDeep } from './merge-manifest.js';
 
 /**
  * Creates a unique temporary directory for a test case.
@@ -48,6 +48,21 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
   };
 }
 
+
+
+describe('sortKeysDeep', () => {
+  it('sorts object keys recursively while preserving arrays', () => {
+    const sorted = sortKeysDeep({
+      b: { d: 1, c: 2 },
+      a: [{ z: 1, y: 2 }],
+    }) as { a: Array<Record<string, number>>; b: Record<string, number> };
+
+    expect(Object.keys(sorted)).toEqual(['a', 'b']);
+    expect(Object.keys(sorted.b)).toEqual(['c', 'd']);
+    expect(Object.keys(sorted.a[0])).toEqual(['y', 'z']);
+  });
+});
+
 describe('mergeScopes', () => {
   it('de-duplicates and sorts scopes deterministically', () => {
     expect(mergeScopes(['scope.b', 'scope.a'], ['scope.b', 'scope.c'])).toEqual([
@@ -56,6 +71,11 @@ describe('mergeScopes', () => {
       'scope.c',
     ]);
   });
+
+  it('returns an empty list when both scope lists are undefined', () => {
+    expect(mergeScopes(undefined, undefined)).toEqual([]);
+  });
+
 });
 
 describe('mergeServices', () => {
@@ -77,6 +97,11 @@ describe('mergeServices', () => {
       { userSymbol: 'Slides', serviceId: 'slides', version: 'v1' },
     ]);
   });
+
+  it('returns an empty list when both service lists are undefined', () => {
+    expect(mergeServices(undefined, undefined)).toEqual([]);
+  });
+
 });
 
 describe('runMergeManifest', () => {
@@ -136,6 +161,17 @@ describe('runMergeManifest', () => {
       { userSymbol: 'Sheets', serviceId: 'sheets', version: 'v4' },
     ]);
     expect(Object.keys(parsed)).toEqual(['dependencies', 'oauthScopes', 'runtimeVersion']);
+  });
+
+
+  it('fails with BuildStageError when output directory is not writable', async () => {
+    await fs.writeFile(paths.backendManifestPath, JSON.stringify({ oauthScopes: [] }), 'utf-8');
+    await fs.writeFile(paths.jsonDbAppManifestPath, JSON.stringify({ oauthScopes: [] }), 'utf-8');
+
+    paths.buildGasDir = path.join(tempRoot, 'missing-output-dir');
+
+    await expect(runMergeManifest(paths)).rejects.toBeInstanceOf(BuildStageError);
+    await expect(runMergeManifest(paths)).rejects.toThrow('Unable to write merged manifest');
   });
 
   it('fails with BuildStageError when JsonDb manifest is missing', async () => {

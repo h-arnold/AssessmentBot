@@ -87,6 +87,34 @@ describe('App', () => {
     expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
   });
 
+
+  it('shows string failure message when backend call fails with non-Error values', async () => {
+    const runMock = {
+      withSuccessHandler() {
+        return runMock;
+      },
+      withFailureHandler(handler: (error: unknown) => void) {
+        queueMicrotask(() => {
+          handler('Backend call failed with a string.');
+        });
+        return runMock;
+      },
+      getAuthorisationStatus() {},
+    };
+
+    globalThis.google = {
+      script: {
+        run: runMock,
+      },
+    };
+
+    render(<App />);
+
+    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Backend call failed with a string.')).toBeInTheDocument();
+  });
+
   it('shows runtime failure message when google.script.run is unavailable', async () => {
     render(<App />);
 

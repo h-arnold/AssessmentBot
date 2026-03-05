@@ -22,9 +22,11 @@
     "frontend:test": "npm --prefix src/frontend run test",
     "frontend:test:watch": "npm --prefix src/frontend run test:watch",
     "frontend:test:e2e": "npm --prefix src/frontend run test:e2e",
+    "frontend:test:coverage": "npm --prefix src/frontend run test:coverage",
     "builder:build": "tsc -p scripts/builder/tsconfig.json",
     "builder:run": "node scripts/builder/dist/build-gas-bundle.js",
     "builder:test": "vitest run --config scripts/builder/vitest.config.ts",
+    "builder:test:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
     "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts",
     "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build && npm run builder:run"
   },
@@ -43,7 +45,8 @@
     "jsdom": "^27.4.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.2",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@vitest/coverage-v8": "^4.0.18"
   },
   "dependencies": {
     "@google/clasp": "^3.1.3",

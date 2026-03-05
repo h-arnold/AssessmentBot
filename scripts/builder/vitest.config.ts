@@ -10,5 +10,14 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.spec.ts'],
     globals: false,
+    coverage: {
+      reporter: ['text', 'html'],
+      thresholds: {
+        lines: 85,
+        functions: 85,
+        statements: 85,
+        branches: 85,
+      },
+    },
   },
 });
