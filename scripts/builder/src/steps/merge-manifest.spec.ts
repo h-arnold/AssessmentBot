@@ -164,7 +164,7 @@ describe('runMergeManifest', () => {
   });
 
 
-  it('fails with BuildStageError when output directory is not writable', async () => {
+  it('fails with BuildStageError when output directory does not exist', async () => {
     await fs.writeFile(paths.backendManifestPath, JSON.stringify({ oauthScopes: [] }), 'utf-8');
     await fs.writeFile(paths.jsonDbAppManifestPath, JSON.stringify({ oauthScopes: [] }), 'utf-8');
 

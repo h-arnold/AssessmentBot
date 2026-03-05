@@ -83,7 +83,7 @@ test.describe('auth status flow', () => {
 
     await page.goto('/');
 
-    await expect(page.getByText('Unauthroised')).toBeVisible();
+    await expect(page.getByText('Unauthorised')).toBeVisible();
   });
 
   test('shows backend error subtitle when backend call fails', async ({ page }) => {
@@ -94,14 +94,14 @@ test.describe('auth status flow', () => {
 
     await page.goto('/');
 
-    await expect(page.getByText('Unauthroised')).toBeVisible();
+    await expect(page.getByText('Unauthorised')).toBeVisible();
     await expect(page.getByText('Backend authorisation check failed.')).toBeVisible();
   });
 
   test('shows runtime error when google.script.run is unavailable', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page.getByText('Unauthroised')).toBeVisible();
+    await expect(page.getByText('Unauthorised')).toBeVisible();
     await expect(page.getByText('google.script.run is unavailable in this runtime.')).toBeVisible();
   });
 });

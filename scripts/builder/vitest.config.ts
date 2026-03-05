@@ -11,6 +11,8 @@ export default defineConfig({
     include: ['src/**/*.spec.ts'],
     globals: false,
     coverage: {
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts'],
       reporter: ['text', 'html'],
       thresholds: {
         lines: 85,

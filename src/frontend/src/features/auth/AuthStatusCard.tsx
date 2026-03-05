@@ -22,7 +22,7 @@ export function AuthStatusCard() {
         ) : (
           <Result
             status={isAuthorised ? 'success' : 'error'}
-            title={isAuthorised ? 'Authorised' : 'Unauthroised'}
+            title={isAuthorised ? 'Authorised' : 'Unauthorised'}
             subTitle={authError ?? undefined}
           />
         )}

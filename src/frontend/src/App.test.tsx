@@ -56,7 +56,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
-    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
   });
 
   it('shows backend failure message when backend call fails', async () => {
@@ -83,7 +83,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
-    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
   });
 
@@ -111,7 +111,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
-    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(await screen.findByText('Backend call failed with a string.')).toBeInTheDocument();
   });
 
@@ -119,7 +119,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
-    expect(await screen.findByText('Unauthroised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(
       await screen.findByText('google.script.run is unavailable in this runtime.'),
     ).toBeInTheDocument();
