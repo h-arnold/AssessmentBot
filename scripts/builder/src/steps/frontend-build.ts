@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import { BuildStageError } from '../lib/errors.js';
 import { CommandExecutionError, runCommand } from '../lib/process.js';
-import type { BuilderPaths, FrontendBuildResult } from '../types.js';
+import type { BuilderPaths, FrontendBuildMode, FrontendBuildResult } from '../types.js';
 import { pathExists } from '../lib/fs.js';
 
 const FRONTEND_BUILD_STAGE = 'frontend-build';
@@ -14,6 +14,20 @@ const FRONTEND_BUILD_STAGE = 'frontend-build';
  * @return {Promise<FrontendBuildResult>} Build output metadata.
  */
 export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBuildResult> {
+  return runFrontendBuildWithMode(paths, 'production');
+}
+
+/**
+ * Runs the frontend Vite build with explicit build-mode options.
+ *
+ * @param {BuilderPaths} paths - Resolved builder filesystem paths.
+ * @param {FrontendBuildMode} mode - Frontend bundle mode.
+ * @return {Promise<FrontendBuildResult>} Build output metadata.
+ */
+export async function runFrontendBuildWithMode(
+  paths: BuilderPaths,
+  mode: FrontendBuildMode
+): Promise<FrontendBuildResult> {
   const entryHtmlPath = path.join(paths.buildFrontendDir, 'index.html');
   const commandArgs = [
     '--prefix',
@@ -25,6 +39,7 @@ export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBui
     '--outDir',
     paths.buildFrontendDir,
     '--emptyOutDir',
+    ...(mode === 'dev' ? ['--minify=false', '--sourcemap=inline'] : []),
   ];
 
   let commandOutput: { stdout: string; stderr: string };
@@ -39,13 +54,13 @@ export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBui
       throw new BuildStageError(
         FRONTEND_BUILD_STAGE,
         `Frontend build failed while running Vite build command. Diagnostics: ${diagnostics}`,
-        err,
+        err
       );
     }
     throw new BuildStageError(
       FRONTEND_BUILD_STAGE,
       'Frontend build failed while running Vite build command.',
-      err,
+      err
     );
   }
 
@@ -53,7 +68,7 @@ export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBui
   if (!hasEntryHtml) {
     throw new BuildStageError(
       FRONTEND_BUILD_STAGE,
-      `Frontend build did not generate entry HTML: ${entryHtmlPath}. stdout: ${commandOutput.stdout.trim()} stderr: ${commandOutput.stderr.trim()}`,
+      `Frontend build did not generate entry HTML: ${entryHtmlPath}. stdout: ${commandOutput.stdout.trim()} stderr: ${commandOutput.stderr.trim()}`
     );
   }
 
