@@ -59,9 +59,9 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptWithSrcPattern =
+  const moduleScriptPattern =
     /<script\s+([^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>|$)[^>]*)><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptWithSrcPattern, async (_, attributes: string) => {
+  html = await replaceAsync(html, moduleScriptPattern, async (_, attributes: string) => {
     const srcMatch = attributes.match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s"'=<>`]+))/i);
     if (!srcMatch) {
       return `<script ${attributes}>` + '</script>';

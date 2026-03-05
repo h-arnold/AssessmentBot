@@ -44,7 +44,15 @@ export async function runPreflightClean(
 
   await ensureDirs(dirsToCreate);
   if (claspConfigContents !== null) {
-    await fs.writeFile(claspConfigPath, claspConfigContents);
+    try {
+      await fs.writeFile(claspConfigPath, claspConfigContents);
+    } catch (err) {
+      throw new BuildStageError(
+        STAGE_ID,
+        `Failed to restore ${claspConfigPath} while preserving clasp configuration.`,
+        err,
+      );
+    }
   }
 
   return {

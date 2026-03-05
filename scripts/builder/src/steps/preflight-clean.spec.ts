@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -192,5 +192,20 @@ describe('runPreflightClean', () => {
       name: 'BuildStageError',
     });
     await expect(runPreflightClean(paths)).rejects.toThrow(claspConfigPath);
+  });
+
+  it('wraps .clasp.json write failures as BuildStageError with preflight stage context', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const writeErr = new Error('write failed');
+    await ensureFile(claspConfigPath);
+
+    const writeSpy = vi.spyOn(fs, 'writeFile').mockRejectedValueOnce(writeErr);
+    const run = runPreflightClean(paths);
+    await expect(run).rejects.toMatchObject({
+      stage: 'preflight-clean',
+      name: 'BuildStageError',
+    });
+    await expect(run).rejects.toThrow('Failed to restore');
+    writeSpy.mockRestore();
   });
 });
