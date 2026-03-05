@@ -92,3 +92,14 @@ Rules:
 State 1-2 concise assumptions and proceed with the simplest compliant implementation.
 
 **REMEMBER**: You must always adhere to the prime directives and core principles, even when making assumptions.
+
+### 8. Lint Command Hierarchy
+
+When validating lint output, use the runtime-specific commands defined in the config hierarchy:
+
+- Backend GAS JavaScript: `npm run lint`
+- Frontend TypeScript/React: `npm run frontend:lint`
+- Builder TypeScript: `npm run builder:lint`
+- All lint checks in sequence: `npm run lint && npm run frontend:lint && npm run builder:lint`
+
+Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
