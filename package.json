@@ -28,7 +28,7 @@
     "builder:test": "vitest run --config scripts/builder/vitest.config.ts",
     "builder:test:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
     "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts",
-    "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build && npm run builder:run"
+    "builder:ci": "npm run builder:lint && npm run builder:test:coverage && npm run builder:build && npm run builder:run"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +37,7 @@
     "@types/node": "^24.3.1",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
     "eslint-plugin-googleappsscript": "^1.0.5",
     "eslint-plugin-jsdoc": "^62.5.0",
@@ -45,8 +46,7 @@
     "jsdom": "^27.4.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.2",
-    "vitest": "^4.0.18",
-    "@vitest/coverage-v8": "^4.0.18"
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "@google/clasp": "^3.1.3",
