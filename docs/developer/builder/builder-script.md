@@ -32,15 +32,18 @@ Use the builder commands from the root `package.json`:
 
 ```bash
 # Compile builder TypeScript into scripts/builder/dist
+npm run builder:compile
+
+# Compile and execute the pipeline in production mode (default; minified frontend output)
 npm run builder:build
+# Equivalent explicit production command
+npm run builder:build:prod
 
-# Execute the pipeline in production mode (default; minified frontend output)
-npm run builder:run
-# Equivalent explicit flag
-npm run builder:run -- --frontend-mode=production
+# Compile and execute the pipeline in development mode (non-minified frontend output)
+npm run builder:build:dev
 
-# Execute the pipeline in development mode (non-minified frontend output + inline source maps)
-npm run builder:run -- --frontend-mode=dev
+# Optional: pass mode explicitly through builder:build
+npm run builder:build -- --frontend-mode=dev
 ```
 
 Useful supporting commands:
@@ -52,16 +55,15 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Full builder CI sequence: lint -> test -> build -> run
+# Full builder CI sequence: lint -> test -> compile and run production pipeline
 npm run builder:ci
 ```
 
 ### Typical local workflow
 
-1. `npm run builder:build`
-2. `npm run builder:run`
-3. Inspect `build/gas`
-4. Deploy with your normal clasp workflow
+1. `npm run builder:build` (or `npm run builder:build:dev` during frontend debugging)
+2. Inspect `build/gas`
+3. Deploy with your normal clasp workflow
 
 ### Output directories
 
@@ -96,6 +98,7 @@ Notes:
 
 - Paths must resolve inside the repository root.
 - `buildDir` is fully removed and recreated during preflight.
+- If `build/gas/.clasp.json` exists before preflight, it is preserved and restored after directory recreation.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
 - `jsonDbApp.publicExports` controls what is exposed on `JsonDbAppNS`.
 

@@ -169,4 +169,28 @@ describe('runPreflightClean', () => {
 
     expect(secondList).toEqual(firstList);
   });
+
+  it('preserves build/gas/.clasp.json across preflight clean', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const claspConfig = JSON.stringify({ scriptId: 'abc123' });
+    await ensureFile(claspConfigPath);
+    await fs.writeFile(claspConfigPath, claspConfig);
+    await ensureFile(path.join(paths.buildGasDir, 'stale.js'));
+
+    await runPreflightClean(paths);
+
+    await expect(fs.readFile(claspConfigPath, 'utf8')).resolves.toBe(claspConfig);
+    await expect(fs.stat(path.join(paths.buildGasDir, 'stale.js'))).rejects.toBeInstanceOf(Error);
+  });
+
+  it('wraps .clasp.json read failures as BuildStageError with preflight stage context', async () => {
+    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    await ensureDir(claspConfigPath);
+
+    await expect(runPreflightClean(paths)).rejects.toMatchObject({
+      stage: 'preflight-clean',
+      name: 'BuildStageError',
+    });
+    await expect(runPreflightClean(paths)).rejects.toThrow(claspConfigPath);
+  });
 });
