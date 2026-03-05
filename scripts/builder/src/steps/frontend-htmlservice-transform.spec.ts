@@ -64,7 +64,7 @@ describe('runFrontendHtmlServiceTransform', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('inlines module script content and removes module type declaration', async () => {
+  it('inlines module script content and preserves module type declaration', async () => {
     await fs.writeFile(
       path.join(paths.buildFrontendDir, 'index.html'),
       [
@@ -90,9 +90,8 @@ describe('runFrontendHtmlServiceTransform', () => {
 
     expect(result.stage).toBe('frontend-htmlservice-transform');
     expect(result.inlinedScriptCount).toBe(1);
-    expect(output).toContain('<script>');
+    expect(output).toContain('<script type="module">');
     expect(output).toContain('window.__testReactBoot = true;');
-    expect(output).not.toContain('type="module"');
   });
 
   it('replaces stylesheet links with inline style blocks', async () => {
@@ -126,7 +125,7 @@ describe('runFrontendHtmlServiceTransform', () => {
     expect(output).not.toContain('<link rel="stylesheet"');
   });
 
-  it('produces output with no module declaration and no /assets references', async () => {
+  it('produces output with module declaration and no /assets references', async () => {
     await fs.writeFile(
       path.join(paths.buildFrontendDir, 'index.html'),
       [
@@ -160,7 +159,7 @@ describe('runFrontendHtmlServiceTransform', () => {
 
     expect(output).toContain('<meta charset="UTF-8">');
     expect(output).toContain('<div id="root"></div>');
-    expect(output).not.toContain('type="module"');
+    expect(output).toContain('type="module"');
     expect(output).not.toContain('/assets/');
   });
 

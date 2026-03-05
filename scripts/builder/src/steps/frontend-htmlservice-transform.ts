@@ -70,7 +70,7 @@ export async function runFrontendHtmlServiceTransform(
       throw new BuildStageError(STAGE_ID, `Unable to read script asset: ${scriptPath}`, err);
     }
     inlinedScriptCount += 1;
-    return `<script>\n${script}\n</script>`;
+    return `<script type="module">\n${script}\n</script>`;
   });
 
   if (html.includes('/assets/')) {
@@ -85,13 +85,6 @@ export async function runFrontendHtmlServiceTransform(
       'Transformed ReactApp HTML still contains unresolved asset src/href references.',
     );
   }
-  if (html.includes('type="module"') || html.includes("type='module'")) {
-    throw new BuildStageError(
-      STAGE_ID,
-      'Transformed ReactApp HTML still contains forbidden module script declarations.',
-    );
-  }
-
   try {
     await writeFile(reactAppPath, html, 'utf-8');
   } catch (err) {
