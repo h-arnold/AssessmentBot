@@ -31,19 +31,11 @@ Make sure these inputs exist:
 Use the builder commands from the root `package.json`:
 
 ```bash
-# Compile builder TypeScript into scripts/builder/dist
-npm run builder:compile
+# Standard production builder routine (lint + tests + production build pipeline)
+npm run build
 
-# Compile and execute the pipeline in production mode (default; minified frontend output)
-npm run builder:build
-# Equivalent explicit production command
-npm run builder:build:prod
-
-# Compile and execute the pipeline in development mode (non-minified frontend output)
-npm run builder:build:dev
-
-# Optional: pass mode explicitly through builder:build
-npm run builder:build -- --frontend-mode=dev
+# Fast development builder routine (skip lint/tests, build with frontend debug mode)
+npm run build:dev
 ```
 
 Useful supporting commands:
@@ -55,15 +47,10 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Full builder CI sequence: lint -> test -> build -> run
+# Full builder CI sequence: lint -> test -> build
 npm run builder:ci
 ```
 
-````
-
-### Coverage requirement
-
-Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
 
 ### Coverage requirement
 
@@ -71,7 +58,7 @@ Builder unit tests must meet a minimum coverage threshold of **85%** for lines, 
 
 ### Typical local workflow
 
-1. `npm run builder:build` (or `npm run builder:build:dev` during frontend debugging)
+1. `npm run build` (or `npm run build:dev` during frontend debugging)
 2. Inspect `build/gas`
 3. Deploy with your normal clasp workflow
 
