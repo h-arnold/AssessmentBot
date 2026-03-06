@@ -22,6 +22,9 @@ npm run frontend:test:watch
 
 # Frontend Playwright E2E suite
 npm run frontend:test:e2e
+
+# Frontend unit/component coverage check (minimum 85%)
+npm run frontend:test:coverage
 ```
 
 Target a specific unit test pattern:
@@ -29,6 +32,53 @@ Target a specific unit test pattern:
 ```bash
 npm run frontend:test -- src/App.test.tsx
 ```
+
+## Previewing mocked frontend pages locally
+
+If you want to inspect page rendering and usability with the same mocked runtime states used in E2E tests, use Playwright in interactive mode.
+
+### Quick preview options
+
+From repository root:
+
+```bash
+# Open Playwright UI (good for clicking through scenarios)
+npm run frontend:test:e2e -- --ui
+
+# Run in a visible browser with Playwright Inspector
+npm run frontend:test:e2e -- --headed --debug
+```
+
+Run a single mocked scenario by test name:
+
+```bash
+npm run frontend:test:e2e -- --headed --debug src/frontend/tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
+```
+
+### How this maps to existing mocks
+
+- `src/frontend/tests/auth-status.spec.ts` already installs `google.script.run` mocks before the app loads.
+- Each test scenario then navigates to `/` and asserts user-visible state.
+- In `--ui` or `--headed --debug` mode, those same scenarios double as a manual preview harness.
+
+### Recommended VS Code workflow
+
+- Install and use the Playwright Test extension.
+- Run or debug individual tests from the Testing panel.
+- Keep a dedicated preview-style spec for key UI states (for example authorised, unauthorised, backend error, delayed loading) so you can quickly verify usability during development.
+
+## Coverage requirement
+
+Frontend unit/component tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `src/frontend/vite.config.ts` and checked via `npm run frontend:test:coverage`.
+
+## Shared test helpers
+
+Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.
+
+- Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
+- Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
+
+When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec.
 
 ## Current Structure
 

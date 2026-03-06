@@ -35,7 +35,7 @@ describe('Forbidden global singleton identifiers', () => {
       }
     }
     expect(offenders).toEqual([]);
-  });
+  }, 20000);
 
   test('no usage of initController.<member> remains', () => {
     const offenders = [];

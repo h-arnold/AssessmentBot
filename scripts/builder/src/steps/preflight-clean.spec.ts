@@ -7,6 +7,9 @@ import { runPreflightClean } from './preflight-clean.js';
 import { BuildStageError } from '../lib/errors.js';
 import type { BuilderPaths } from '../types.js';
 
+const PREFLIGHT_STAGE = 'preflight-clean';
+const CLASP_FILE = '.clasp.json';
+
 /**
  * Creates a unique temporary directory for a test case.
  *
@@ -121,7 +124,7 @@ describe('runPreflightClean', () => {
     await fs.rm(paths.backendDir, { recursive: true, force: true });
 
     await expect(runPreflightClean(paths)).rejects.toMatchObject({
-      stage: 'preflight-clean',
+      stage: PREFLIGHT_STAGE,
       name: 'BuildStageError',
     });
 
@@ -132,7 +135,7 @@ describe('runPreflightClean', () => {
     await fs.rm(paths.frontendDir, { recursive: true, force: true });
 
     await expect(runPreflightClean(paths)).rejects.toMatchObject({
-      stage: 'preflight-clean',
+      stage: PREFLIGHT_STAGE,
       name: 'BuildStageError',
     });
 
@@ -143,7 +146,7 @@ describe('runPreflightClean', () => {
     await fs.rm(paths.configPath, { force: true });
 
     await expect(runPreflightClean(paths)).rejects.toMatchObject({
-      stage: 'preflight-clean',
+      stage: PREFLIGHT_STAGE,
       name: 'BuildStageError',
     });
 
@@ -175,7 +178,7 @@ describe('runPreflightClean', () => {
   });
 
   it('preserves build/gas/.clasp.json across preflight clean', async () => {
-    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const claspConfigPath = path.join(paths.buildGasDir, CLASP_FILE);
     const claspConfig = JSON.stringify({ scriptId: 'abc123' });
     await ensureFile(claspConfigPath);
     await fs.writeFile(claspConfigPath, claspConfig);
@@ -188,25 +191,25 @@ describe('runPreflightClean', () => {
   });
 
   it('wraps .clasp.json read failures as BuildStageError with preflight stage context', async () => {
-    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const claspConfigPath = path.join(paths.buildGasDir, CLASP_FILE);
     await ensureDir(claspConfigPath);
 
     await expect(runPreflightClean(paths)).rejects.toMatchObject({
-      stage: 'preflight-clean',
+      stage: PREFLIGHT_STAGE,
       name: 'BuildStageError',
     });
     await expect(runPreflightClean(paths)).rejects.toThrow(claspConfigPath);
   });
 
   it('wraps .clasp.json write failures as BuildStageError with preflight stage context', async () => {
-    const claspConfigPath = path.join(paths.buildGasDir, '.clasp.json');
+    const claspConfigPath = path.join(paths.buildGasDir, CLASP_FILE);
     const writeErr = new Error('write failed');
     await ensureFile(claspConfigPath);
 
     const writeSpy = vi.spyOn(fs, 'writeFile').mockRejectedValueOnce(writeErr);
     const run = runPreflightClean(paths);
     await expect(run).rejects.toMatchObject({
-      stage: 'preflight-clean',
+      stage: PREFLIGHT_STAGE,
       name: 'BuildStageError',
     });
     await expect(run).rejects.toThrow('Failed to restore');

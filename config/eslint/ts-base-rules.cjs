@@ -29,4 +29,5 @@ const tsBaseRules = {
 
 module.exports = {
   tsBaseRules,
+  sonarjs,
 };

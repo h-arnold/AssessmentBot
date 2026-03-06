@@ -9,13 +9,10 @@ class ImageManager extends BaseRequestManager {
    */
   constructor() {
     super();
-    // In GAS runtime BaseRequestManager should supply configManager.
-    // For test environments where it may be absent, guard access.
-    if (this.configManager && typeof this.configManager.getApiKey === 'function') {
-      this.apiKey = this.configManager.getApiKey();
-    } else {
-      this.apiKey = null; // not required for tested logic
-    }
+    this.apiKey =
+      this.configManager && typeof this.configManager.getApiKey === 'function'
+        ? this.configManager.getApiKey()
+        : null;
     this.progressTracker = ProgressTracker.getInstance();
   }
 
@@ -99,11 +96,11 @@ class ImageManager extends BaseRequestManager {
 
     if (!entries?.length) return [];
     // Group by documentId
-    const byDoc = entries.reduce((acc, e) => {
-      acc[e.documentId] = acc[e.documentId] || [];
-      acc[e.documentId].push(e);
-      return acc;
-    }, {});
+    const byDoc = {};
+    for (const entry of entries) {
+      byDoc[entry.documentId] = byDoc[entry.documentId] || [];
+      byDoc[entry.documentId].push(entry);
+    }
     // Round-robin merge
     const merged = [];
     const docLists = Object.values(byDoc);
@@ -111,7 +108,7 @@ class ImageManager extends BaseRequestManager {
     while (added) {
       added = false;
       for (const list of docLists) {
-        if (list.length) {
+        if (list.length > 0) {
           merged.push(list.shift());
           added = true;
         }
@@ -139,8 +136,8 @@ class ImageManager extends BaseRequestManager {
           try {
             const blob = resp.getBlob();
             results.push({ uid: entry.uid, blob });
-          } catch (e) {
-            console.warn('Failed to read blob for image uid ' + entry.uid, e);
+          } catch (error) {
+            console.warn('Failed to read blob for image uid ' + entry.uid, error);
           }
         } else {
           console.warn('Failed to fetch image for uid ' + entry.uid);
@@ -199,8 +196,8 @@ class ImageManager extends BaseRequestManager {
       if (artifact?.setContentFromBlob) {
         try {
           artifact.setContentFromBlob(blob);
-        } catch (e) {
-          ABLogger.getInstance().warn('Failed to write blob to artifact', { uid, err: e });
+        } catch (error) {
+          ABLogger.getInstance().warn('Failed to write blob to artifact', { uid, err: error });
         }
       } else {
         ABLogger.getInstance().warn('Blob uid did not match any artifact', { uid });

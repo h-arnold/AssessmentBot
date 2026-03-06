@@ -45,9 +45,16 @@ Use commands relevant to the component under test:
 - Backend full: `npm test`
 - Frontend targeted/full: `npm run frontend:test -- <pattern>` or `npm run frontend:test`
 - Frontend E2E: `npm run frontend:test:e2e`
+- Frontend coverage gate (minimum 85%): `npm run frontend:test:coverage`
 - Builder tests: `npm run builder:test`
+- Builder coverage gate (minimum 85%): `npm run builder:test:coverage`
 
 If you add or modify tests, run the smallest targeted command first, then the relevant broader suite.
+
+## 2.1 Coverage requirements
+
+- Frontend and builder unit test suites must satisfy minimum coverage thresholds of **85%** for lines, functions, statements, and branches.
+- Use the dedicated coverage commands to verify the enforced thresholds before handoff.
 
 ## 3. Idiomatic Patterns
 

@@ -40,12 +40,12 @@ class SheetsFeedback {
           false
         );
         const requests = this.generateBatchRequestsForSubmission(sub);
-        if (requests && requests.length) {
+        if (requests && requests.length > 0) {
           batchUpdates.push({ requests, spreadsheetId: sub.documentId });
         }
       });
       this.progressTracker.updateProgress(`Applying feedback to student sheets`);
-      if (batchUpdates.length) {
+      if (batchUpdates.length > 0) {
         BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
         this.progressTracker.updateProgress(
           `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
@@ -54,9 +54,9 @@ class SheetsFeedback {
       } else {
         this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
       }
-    } catch (e) {
-      console.error('Error applying spreadsheet feedback:', e);
-      this.progressTracker.logError('Failed to apply spreadsheet feedback', e);
+    } catch (error) {
+      console.error('Error applying spreadsheet feedback:', error);
+      this.progressTracker.logError('Failed to apply spreadsheet feedback', error);
     }
   }
 
@@ -126,42 +126,46 @@ class SheetsFeedback {
    */
   getFormatForStatus(status) {
     switch (status) {
-      case 'correct':
+      case 'correct': {
         return {
           backgroundColor: {
             red: 0.7137, // #b6
             green: 0.8431, // #d7
             blue: 0.6588, // #a8
-            alpha: 1.0,
+            alpha: 1,
           },
         };
-      case 'incorrect':
+      }
+      case 'incorrect': {
         return {
           backgroundColor: {
             red: 0.9176, // #ea
             green: 0.6, // #99
             blue: 0.6, // #99
-            alpha: 1.0,
+            alpha: 1,
           },
         };
-      case 'notAttempted':
+      }
+      case 'notAttempted': {
         return {
           backgroundColor: {
-            red: 1.0, // #ff
+            red: 1, // #ff
             green: 0.898, // #e5
             blue: 0.6, // #99
-            alpha: 1.0,
+            alpha: 1,
           },
         };
-      default:
+      }
+      default: {
         return {
           backgroundColor: {
-            red: 1.0,
-            green: 1.0,
-            blue: 1.0,
-            alpha: 1.0,
+            red: 1,
+            green: 1,
+            blue: 1,
+            alpha: 1,
           },
         };
+      }
     }
   }
 }

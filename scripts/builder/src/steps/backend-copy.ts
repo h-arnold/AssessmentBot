@@ -17,13 +17,9 @@ export function isRuntimeBackendFile(filePath: string): boolean {
   if (!normalised.endsWith('.js')) {
     return false;
   }
-  if (/\.(test|spec)\./i.test(normalised)) {
-    return false;
-  }
-  if (/\.(tmp|temp)\.js$/i.test(normalised) || /~\.js$/i.test(normalised)) {
-    return false;
-  }
-  return true;
+  return !/\.(test|spec)\./i.test(normalised) &&
+    !/\.(tmp|temp)\.js$/i.test(normalised) &&
+    !/~\.js$/i.test(normalised);
 }
 
 /**

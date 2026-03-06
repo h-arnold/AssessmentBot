@@ -54,13 +54,13 @@ class ABClassController {
       if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
         try {
           teacherInstance = Teacher.fromJSON(teacherObj) || teacherObj;
-        } catch (err) {
+        } catch (error) {
           logger.error('_applyTeachers: failed to deserialize teacher payload', {
             courseId,
             teacherId: teacherObj?.userId,
-            err,
+            err: error,
           });
-          throw err;
+          throw error;
         }
       }
 
@@ -94,8 +94,8 @@ class ABClassController {
   _getCollectionMetadata(collection) {
     try {
       return collection.getMetadata();
-    } catch (err) {
-      ABLogger.getInstance().warn('Failed to read collection metadata', { err });
+    } catch (error) {
+      ABLogger.getInstance().warn('Failed to read collection metadata', { err: error });
       return null;
     }
   }
@@ -107,8 +107,8 @@ class ABClassController {
     return {
       className: abClass?.className ?? null,
       classOwner: abClass?.classOwner ?? null,
-      teachers: Array.isArray(abClass?.teachers) ? abClass.teachers.slice() : [],
-      students: Array.isArray(abClass?.students) ? abClass.students.slice() : [],
+      teachers: Array.isArray(abClass?.teachers) ? [...abClass.teachers] : [],
+      students: Array.isArray(abClass?.students) ? [...abClass.students] : [],
     };
   }
 
@@ -173,12 +173,12 @@ class ABClassController {
         classId: abClass.classId,
         filter,
       });
-    } catch (err) {
+    } catch (error) {
       logger.error('Failed to persist refreshed roster', {
         classId: abClass.classId,
-        err,
+        err: error,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -273,13 +273,13 @@ class ABClassController {
         courseId: assignment.courseId,
         assignmentId: assignment.assignmentId,
       });
-    } catch (err) {
+    } catch (error) {
       logger.error('persistAssignmentRun failed', {
         courseId: assignment.courseId,
         assignmentId: assignment.assignmentId,
-        err,
+        err: error,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -309,13 +309,13 @@ class ABClassController {
       this._replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment);
 
       return hydratedAssignment;
-    } catch (err) {
+    } catch (error) {
       logger.error('rehydrateAssignment failed', {
         courseId,
         assignmentId,
-        err,
+        err: error,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -483,8 +483,7 @@ class ABClassController {
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
       logger.info('loadClass: no collection found - initialising new class', { classId });
-      const newClass = this.initialise(classId);
-      return newClass;
+      return this.initialise(classId);
     }
 
     // Collection exists - read the single stored document (if any)
@@ -548,13 +547,13 @@ class ABClassController {
         // No existing document — insert a new one.
         collection.insertOne(abClass);
       }
-    } catch (err) {
+    } catch (error) {
       // Use the project's logging contract directly and fail fast.
       ABLogger.getInstance().warn('saveClass: collection operation failed', {
         classId: abClass.classId,
-        err,
+        err: error,
       });
-      throw err;
+      throw error;
     }
 
     // Persist changes

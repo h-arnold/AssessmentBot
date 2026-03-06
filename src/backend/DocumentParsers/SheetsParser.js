@@ -1,5 +1,6 @@
 const WRAPPED_FORMULA_MIN_LENGTH = 2;
 const BOUNDING_BOX_EMPTY_INDEX = -1;
+const STRIP_TRAILING_QUOTE_SLICE_INDEX = -1;
 
 /**
  * SheetsParser Class
@@ -146,48 +147,61 @@ class SheetsParser extends DocumentParser {
   _normaliseFormulaCase(formula) {
     if (!formula) return formula;
 
-    // Remove surrounding quotes if they exist (as returned by getFormulas in GAS)
-    if (
-      formula.length >= WRAPPED_FORMULA_MIN_LENGTH &&
-      formula.startsWith('"') &&
-      formula.endsWith('"')
-    ) {
-      // Extract the content between quotes, handling escape sequences
-      try {
-        // Use a safe way to remove the surrounding quotes
-        formula = formula.substring(1, formula.length - 1);
-        // Un-escape any doubled quotes within the formula (literal replace of all occurrences)
-        // Use replaceAll for clarity and to avoid regex pitfalls — safe because we're replacing a literal string.
-        formula = formula.replaceAll('""', '"');
-      } catch (error) {
-        this.progressTracker.captureError(error, 'Error preprocessing formula');
-      }
-    }
-
-    // Now process the formula normally
+    const preparedFormula = this._unwrapWrappedFormula(formula);
     let result = '';
     let inQuotes = false;
-    for (let i = 0; i < formula.length; i++) {
-      const char = formula.charAt(i);
+    let index = 0;
+
+    while (index < preparedFormula.length) {
+      const char = preparedFormula.charAt(index);
+
       if (char === '"') {
-        // Handle escaped quotes inside string literals
-        if (inQuotes && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
+        if (inQuotes && preparedFormula.charAt(index + 1) === '"') {
           result += '""';
-          i++; // Skip next char
-        } else {
-          inQuotes = !inQuotes;
-          result += char;
+          index += WRAPPED_FORMULA_MIN_LENGTH;
+          continue;
         }
-      } else if (inQuotes) {
+        inQuotes = !inQuotes;
         result += char;
-      } else {
-        // Trim spaces when not in quotes
-        if (char !== ' ') {
-          result += char.toUpperCase();
-        }
+        index++;
+        continue;
       }
+
+      if (inQuotes) {
+        result += char;
+      } else if (char !== ' ') {
+        result += char.toUpperCase();
+      }
+
+      index++;
     }
+
     return result;
+  }
+
+  /**
+   * Removes wrapped formula quotes returned by GAS and unescapes doubled quotes.
+   * @param {string} formula
+   * @return {string}
+   * @private
+   */
+  _unwrapWrappedFormula(formula) {
+    const isWrappedFormula =
+      formula.length >= WRAPPED_FORMULA_MIN_LENGTH &&
+      formula.startsWith('"') &&
+      formula.endsWith('"');
+
+    if (!isWrappedFormula) {
+      return formula;
+    }
+
+    try {
+      const withoutWrapper = formula.slice(1, STRIP_TRAILING_QUOTE_SLICE_INDEX);
+      return withoutWrapper.replaceAll('""', '"');
+    } catch (error) {
+      this.progressTracker.captureError(error, 'Error preprocessing formula');
+      return formula;
+    }
   }
 
   /**
@@ -203,13 +217,13 @@ class SheetsParser extends DocumentParser {
     const referenceFormulaeArray = [];
 
     // Use reference array dimensions as the bounds for comparison
-    for (let row = 0; row < referenceArray.length; row++) {
-      const refRow = referenceArray[row] || [];
+    for (const [row, element] of referenceArray.entries()) {
+      const refRow = element || [];
       // Template row might not exist if template has fewer rows
       const tempRow = row < templateArray.length ? templateArray[row] : [];
 
-      for (let col = 0; col < refRow.length; col++) {
-        const refFormula = refRow[col] || '';
+      for (const [col, element] of refRow.entries()) {
+        const refFormula = element || '';
         // Template cell might not exist if template row is shorter
         const tempFormula = tempRow[col] || '';
 
@@ -323,9 +337,9 @@ class SheetsParser extends DocumentParser {
       const bbox = sheetData.boundingBox;
       let grid = [];
       if (bbox) {
-        for (let r = 0; r < bbox.numRows; r++) {
-          grid[r] = new Array(bbox.numColumns).fill(null);
-        }
+        grid = Array.from({ length: bbox.numRows }, () =>
+          Array.from({ length: bbox.numColumns }).fill(null)
+        );
         sheetData.formulas.forEach((f) => {
           const [absR, absC] = f.location;
           const relR = absR - (bbox.startRow - 1);
@@ -380,8 +394,8 @@ class SheetsParser extends DocumentParser {
       let rangeFormulas = [];
       try {
         rangeFormulas = taskSheet.getRange(bbox, 'formulas');
-      } catch (e) {
-        this.progressTracker?.logError('Failed to read formulas for sheet ' + def.taskTitle, e);
+      } catch (error) {
+        this.progressTracker?.logError('Failed to read formulas for sheet ' + def.taskTitle, error);
         return;
       }
       // Reconstruct sparse grid like reference for hashing consistency

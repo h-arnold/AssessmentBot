@@ -3,13 +3,12 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import jsdoc from 'eslint-plugin-jsdoc';
 import tseslint from '@typescript-eslint/eslint-plugin';
-import sonarjs from 'eslint-plugin-sonarjs';
 import tsParser from '@typescript-eslint/parser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
-const { tsBaseRules } = require('../../config/eslint/ts-base-rules.cjs');
+const { tsBaseRules, sonarjs: sonarjsPlugin } = require('../../config/eslint/ts-base-rules.cjs');
 
 export default [
   {
@@ -26,7 +25,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       jsdoc,
-      sonarjs,
+      sonarjs: sonarjsPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,

@@ -302,10 +302,10 @@ class LLMRequestManager extends BaseRequestManager {
 
       this._assignAndCacheAssessment(uid, assessmentData);
       this.retryAttempts[uid] = 0;
-    } catch (e) {
+    } catch (error) {
       this.progressTracker.logError(
-        'Error parsing retry response for UID: ' + uid + ' - ' + e.message,
-        e
+        'Error parsing retry response for UID: ' + uid + ' - ' + error.message,
+        error
       );
       this.handleValidationFailure(uid, request, assignment);
     }
@@ -392,8 +392,11 @@ class LLMRequestManager extends BaseRequestManager {
         } else {
           this.handleValidationFailure(uid, request, assignment);
         }
-      } catch (e) {
-        this.progressTracker.logError(`Error parsing response for UID: ${uid} - ${e.message}`, e);
+      } catch (error) {
+        this.progressTracker.logError(
+          `Error parsing response for UID: ${uid} - ${error.message}`,
+          error
+        );
         this.handleValidationFailure(uid, request, assignment);
       }
     } else {

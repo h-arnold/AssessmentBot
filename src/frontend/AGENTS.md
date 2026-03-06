@@ -17,6 +17,24 @@ Applies when editing `src/frontend/**`.
 
 Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 
+### 2.1 App Composition Boundary (Mandatory)
+
+- Keep `src/frontend/src/App.tsx` thin: composition root and layout shell only.
+- Compose feature entry components in `App.tsx`; do not place feature state machines in `App.tsx`.
+- Do not call service modules from `App.tsx`; invoke services from feature hooks/components.
+
+### 2.2 Hooks, Services, and Side Effects
+
+- Place async orchestration and side effects in feature hooks (for example `useXyz...`).
+- Keep service modules focused on external/runtime API boundaries and transport details.
+- Keep presentational feature components declarative; delegate data loading/state transitions to hooks.
+
+### 2.3 Testability Guidance
+
+- Structure features so behaviour tests assert rendered outcomes rather than hook internals.
+- Keep side-effect logic in hooks to allow deterministic test setup via runtime/service mocks.
+- Preserve existing user-visible copy and states unless the task explicitly changes them.
+
 ## 3. Framework and UI Baseline
 
 - Current scaffold uses React + Ant Design.
@@ -35,7 +53,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 ## 5. Error Handling and Quality
 
 - Fail loudly in development; do not hide failures behind broad catch-and-ignore logic.
-- Never implement or fall back to defaults unless explicitly instucted to do so.
+- Never implement or fall back to defaults unless explicitly instructed to do so.
 - Keep component state and side effects predictable and testable.
 
 ## 6. Builder Compatibility Notes

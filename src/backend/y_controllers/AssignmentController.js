@@ -2,6 +2,7 @@
 
 const TOAST_DURATION_SECONDS = 5;
 const PROCESS_LOCK_TIMEOUT_MS = 5000;
+const ASSESSMENT_RUN_SUCCESS_MESSAGE = 'Assessment run completed successfully.';
 
 /**
  * AssignmentController Class
@@ -199,15 +200,11 @@ class AssignmentController {
       // collection and stores partial summary in ABClass
       abClassController.persistAssignmentRun(abClass, assignment);
 
-      this.progressTracker.updateProgress('Assessment run completed successfully.', false);
+      this.progressTracker.updateProgress(ASSESSMENT_RUN_SUCCESS_MESSAGE, false);
       this.progressTracker.complete();
 
-      this.utils.toastMessage(
-        'Assessment run completed successfully.',
-        'Success',
-        TOAST_DURATION_SECONDS
-      );
-      ABLogger.getInstance().info('Assessment run completed successfully.');
+      this.utils.toastMessage(ASSESSMENT_RUN_SUCCESS_MESSAGE, 'Success', TOAST_DURATION_SECONDS);
+      ABLogger.getInstance().info(ASSESSMENT_RUN_SUCCESS_MESSAGE);
     } catch (error) {
       this.progressTracker.logAndThrowError(error.message, error);
     } finally {
@@ -527,12 +524,12 @@ class AssignmentController {
 
       // Return full definition payload including tasks
       return definition.toJSON();
-    } catch (err) {
+    } catch (error) {
       ABLogger.getInstance().error(
         'Error in AssignmentController.createDefinitionFromWizardInputs:',
-        err?.message ?? err
+        error?.message ?? error
       );
-      throw err;
+      throw error;
     }
   }
 

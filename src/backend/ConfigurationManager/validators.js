@@ -3,8 +3,8 @@
  * Delegates to shared utils where available to keep behaviour consistent.
  */
 
-const API_KEY_PATTERN = /^(?!-)([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$/;
-const DRIVE_ID_PATTERN = /^[A-Za-z0-9-_]{10,}$/;
+const API_KEY_PATTERN = /^(?!-)([\dA-Za-z]+(?:-[\dA-Za-z]+)*)$/;
+const DRIVE_ID_PATTERN = /^[\w-]{10,}$/;
 const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
 
 /**
@@ -76,7 +76,7 @@ function validateClassInfo(label, value) {
   let parsed;
   try {
     parsed = JSON.parse(value);
-  } catch (err) {
+  } catch {
     throw new TypeError(`${keyLabel} must be valid JSON.`);
   }
 
@@ -95,7 +95,7 @@ function validateClassInfo(label, value) {
   }
 
   // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
-  const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+  const courseIdPattern = /^[\w-]+$/;
   if (!courseIdPattern.test(parsed.CourseId)) {
     throw new TypeError(`${keyLabel} CourseId must be alphanumeric (with hyphens/underscores).`);
   }

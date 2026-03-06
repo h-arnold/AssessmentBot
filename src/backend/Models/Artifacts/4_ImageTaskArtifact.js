@@ -3,6 +3,9 @@ if (typeof module !== 'undefined') {
   BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
+/**
+ *
+ */
 class ImageTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
@@ -38,15 +41,15 @@ class ImageTaskArtifact extends BaseTaskArtifact {
       let base64;
       if (typeof Utilities !== 'undefined' && Utilities.base64Encode) {
         base64 = Utilities.base64Encode(bytes);
-      } else if (typeof Buffer !== 'undefined') {
-        base64 = Buffer.from(bytes).toString('base64');
-      } else {
+      } else if (typeof Buffer === 'undefined') {
         return;
+      } else {
+        base64 = Buffer.from(bytes).toString('base64');
       }
       const pngPrefix = 'data:image/png;base64,';
       this.content = pngPrefix + base64;
       this.ensureHash();
-    } catch (e) {
+    } catch {
       // swallow errors
     }
   }

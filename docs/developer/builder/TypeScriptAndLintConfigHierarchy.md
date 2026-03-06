@@ -58,7 +58,9 @@ This project uses a shared configuration tree so TypeScript and linting standard
 
 - `src/frontend/eslint.config.js`
   - Imports shared TS base rules.
+  - Applies `unicorn.configs.all` as the frontend baseline.
   - Adds frontend-only rules/plugins (React hooks, Vite React refresh, browser globals).
+  - Uses targeted `unicorn/*` overrides only where current frontend conventions intentionally differ.
 - `scripts/builder/eslint.config.js`
   - Imports shared TS base rules.
   - Adds builder-only parser/project context for Node-side TypeScript files.
@@ -101,8 +103,9 @@ When updating TypeScript or lint standards:
 1. Update root shared base first (`tsconfig.base.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
-   - `npm run builder:build`
+   - `npm run build`
    - `npm run builder:lint`
+   - `npm exec tsc -- -b src/frontend/tsconfig.json`
    - `npm run frontend:build`
    - `npm run frontend:lint`
 

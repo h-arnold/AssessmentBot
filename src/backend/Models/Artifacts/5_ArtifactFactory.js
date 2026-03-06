@@ -1,51 +1,59 @@
-class ArtifactFactory {
+/**
+ *
+ */
+const ArtifactFactory = {
   /**
    * Create an artifact instance based on the provided params.type.
    * Falls back to BaseTaskArtifact for unknown types.
    * @param {Object} params - constructor parameters including optional `type`.
    * @returns {BaseTaskArtifact}
    */
-  static create(params) {
+  create(params) {
     const rawType = (params.type || '').toString();
     const type = rawType.toUpperCase();
     switch (type) {
-      case 'TEXT':
+      case 'TEXT': {
         return new TextTaskArtifact(params);
-      case 'TABLE':
+      }
+      case 'TABLE': {
         return new TableTaskArtifact(params);
-      case 'SPREADSHEET':
+      }
+      case 'SPREADSHEET': {
         return new SpreadsheetTaskArtifact(params);
-      case 'IMAGE':
+      }
+      case 'IMAGE': {
         return new ImageTaskArtifact(params);
-      default:
+      }
+      default: {
         return new BaseTaskArtifact(params);
+      }
     }
-  }
+  },
   /**
    * Alias for create when given a JSON-like object.
    * @param {Object} json
    * @returns {BaseTaskArtifact}
    */
-  static fromJSON(json) {
+  fromJSON(json) {
     return this.create(json);
-  }
+  },
   /** Create a text artifact. */
-  static text(params) {
+  text(params) {
     return this.create({ ...params, type: 'TEXT' });
-  }
+  },
   /** Create a table artifact. */
-  static table(params) {
+  table(params) {
     return this.create({ ...params, type: 'TABLE' });
-  }
+  },
   /** Create a spreadsheet artifact. */
-  static spreadsheet(params) {
+  spreadsheet(params) {
     return this.create({ ...params, type: 'SPREADSHEET' });
-  }
+  },
   /** Create an image artifact. */
-  static image(params) {
+  image(params) {
     return this.create({ ...params, type: 'IMAGE' });
-  }
-}
+  },
+};
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ArtifactFactory;

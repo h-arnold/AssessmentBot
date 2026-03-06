@@ -1,13 +1,13 @@
-import { BookOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { Button, Card, Layout, Space, Statistic, Typography } from 'antd';
+import { BookOutlined } from '@ant-design/icons';
+import { Layout, Space } from 'antd';
+import { AuthStatusCard } from './features/auth/AuthStatusCard';
 
 const { Header, Content } = Layout;
-const { Title, Paragraph } = Typography;
 
 /**
- * Renders the main frontend scaffold view.
+ * Renders the application shell with the header and authentication status card.
  *
- * @returns {JSX.Element} Frontend application shell.
+ * @returns The composed layout for the frontend.
  */
 function App() {
   return (
@@ -19,19 +19,7 @@ function App() {
         </Space>
       </Header>
       <Content className="app-content">
-        <Card>
-          <Space orientation="vertical" size="large">
-            <Title level={2}>React + Vite + Ant Design baseline</Title>
-            <Paragraph>
-              This frontend scaffold runs in strict TypeScript mode and is ready for the new
-              AssessmentBot interface.
-            </Paragraph>
-            <Space size="large">
-              <Statistic title="Frontend status" prefix={<CheckCircleOutlined />} value="Ready" />
-              <Button type="primary">Start integration</Button>
-            </Space>
-          </Space>
-        </Card>
+        <AuthStatusCard />
       </Content>
     </Layout>
   );

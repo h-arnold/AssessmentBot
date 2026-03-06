@@ -7,9 +7,9 @@ For implementation details, always load component-specific instructions first.
 
 Before editing code, read the instruction file(s) for every component you touch:
 
-- Backend (`src/backend/**`): `docs/developer/backend/AGENT_BACKEND.md`
-- Frontend (`src/frontend/**`): `docs/developer/frontend/AGENT_FRONTEND.md`
-- Builder (`scripts/builder/**`, `build/**` pipeline behaviour): `docs/developer/builder/AGENT_BUILDER.md`
+- Backend (`src/backend/**`): `src/backend/AGENTS.md`
+- Frontend (`src/frontend/**`): `src/frontend/AGENTS.md`
+- Builder (`scripts/builder/**`, `build/**` pipeline behaviour): `scripts/builder/AGENTS.md`
 
 If a task spans multiple components, read and apply all relevant instruction files.
 If rules conflict, prefer the stricter rule and preserve runtime compatibility.
@@ -31,6 +31,7 @@ If rules conflict, prefer the stricter rule and preserve runtime compatibility.
 7. Never set defaults unless explicitly instructed to do so.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
+10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
 
 ### 4. Delegation Protocol
 
@@ -80,6 +81,7 @@ For non-trivial code changes (multi-file logic changes, behavioural changes, ref
 3. If review returns findings, send those findings back to `Implementation` to apply fixes.
 4. Re-submit updated changes to `Code Reviewer`.
 5. Repeat steps 3-4 until review returns clean (no outstanding issues).
+6. Pass the changes to the `Docs` (`.github/agents/docs.agent.md`) agent to update relevant documentation, if applicable.
 
 Rules:
 

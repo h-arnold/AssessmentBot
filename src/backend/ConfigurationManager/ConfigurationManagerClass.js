@@ -18,6 +18,23 @@
 /**
  *
  */
+function safeGetPropertyKeys(store) {
+  if (!store) return [];
+  try {
+    return store.getKeys ? store.getKeys() : [];
+  } catch (error) {
+    if (globalThis.__TRACE_SINGLETON__)
+      ABLogger.getInstance().debug(
+        '[TRACE_SINGLETON][ConfigurationManager.safeGetPropertyKeys] safeGetPropertyKeys error:',
+        error?.message ?? error
+      );
+    return [];
+  }
+}
+
+/**
+ *
+ */
 class ConfigurationManager extends BaseSingleton {
   /**
    * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
@@ -48,21 +65,21 @@ class ConfigurationManager extends BaseSingleton {
   /** Shared patterns (extracted for DRY). */
   static get API_KEY_PATTERN() {
     // Alphanumeric segments separated by single hyphens; no leading/trailing/consecutive hyphens
-    return API_KEY_PATTERN;
+    return ConfigurationManager._API_KEY_PATTERN || API_KEY_PATTERN;
   }
   /**
    *
    */
   static get DRIVE_ID_PATTERN() {
     // Basic Google drive file/folder id heuristic
-    return DRIVE_ID_PATTERN;
+    return ConfigurationManager._DRIVE_ID_PATTERN || DRIVE_ID_PATTERN;
   }
 
   /**
    *
    */
   static get JSON_DB_LOG_LEVELS() {
-    return JSON_DB_LOG_LEVELS;
+    return ConfigurationManager._JSON_DB_LOG_LEVELS || JSON_DB_LOG_LEVELS;
   }
 
   /**
@@ -98,13 +115,13 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   static get CONFIG_KEYS() {
-    return ConfigurationManager._CONFIG_KEYS;
+    return ConfigurationManager._CONFIG_KEYS || CONFIG_KEYS;
   }
   /**
    *
    */
   static get CONFIG_SCHEMA() {
-    return ConfigurationManager._CONFIG_SCHEMA;
+    return ConfigurationManager._CONFIG_SCHEMA || CONFIG_SCHEMA;
   }
 
   /**
@@ -115,23 +132,9 @@ class ConfigurationManager extends BaseSingleton {
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
   maybeDeserializeProperties() {
-    const safeGetKeys = (store) => {
-      if (!store) return [];
-      try {
-        return store.getKeys ? store.getKeys() : [];
-      } catch (e) {
-        if (globalThis.__TRACE_SINGLETON__)
-          ABLogger.getInstance().debug(
-            '[TRACE_SINGLETON][ConfigurationManager.safeGetKeys] safeGetKeys error:',
-            e?.message ?? e
-          );
-        return [];
-      }
-    };
-
     try {
-      const hasScript = safeGetKeys(this.scriptProperties).length > 0;
-      const hasDoc = safeGetKeys(this.documentProperties).length > 0;
+      const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
+      const hasDoc = safeGetPropertyKeys(this.documentProperties).length > 0;
       if (hasScript || hasDoc) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
@@ -141,9 +144,12 @@ class ConfigurationManager extends BaseSingleton {
       } else {
         ABLogger.getInstance().log('No propertiesStore sheet found');
       }
-    } catch (err) {
+    } catch (error) {
       // Log error via ABLogger
-      ABLogger.getInstance().error('ConfigurationManager.maybeDeserializeProperties failed.', err);
+      ABLogger.getInstance().error(
+        'ConfigurationManager.maybeDeserializeProperties failed.',
+        error
+      );
     }
   }
 
@@ -179,8 +185,9 @@ class ConfigurationManager extends BaseSingleton {
         const v = this.documentProperties.getProperty(key);
         return v == null ? false : v;
       }
-      default:
+      default: {
         return this.configCache[key] || '';
+      }
     }
   }
 
@@ -270,8 +277,8 @@ class ConfigurationManager extends BaseSingleton {
       }
 
       return folderId || null;
-    } catch (err) {
-      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, err);
+    } catch (error) {
+      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, error);
       return null;
     }
   }
@@ -342,7 +349,7 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   static get DEFAULTS() {
-    return DEFAULTS;
+    return ConfigurationManager._DEFAULTS || DEFAULTS;
   }
 
   /**
@@ -492,8 +499,8 @@ class ConfigurationManager extends BaseSingleton {
     if (jsonString) {
       try {
         return JSON.parse(jsonString);
-      } catch (e) {
-        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', e);
+      } catch (error) {
+        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', error);
         return null;
       }
     }
@@ -526,7 +533,7 @@ class ConfigurationManager extends BaseSingleton {
     );
 
     const courseIdAsString = String(classInfo.CourseId);
-    const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+    const courseIdPattern = /^[\w-]+$/;
     if (!courseIdPattern.test(courseIdAsString)) {
       throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
     }
@@ -599,8 +606,8 @@ class ConfigurationManager extends BaseSingleton {
         if (course?.name) {
           className = course.name;
         }
-      } catch (e) {
-        ABLogger.getInstance().warn('Could not fetch course details during migration', e);
+      } catch (error) {
+        ABLogger.getInstance().warn('Could not fetch course details during migration', error);
       }
 
       if (!className) {
@@ -626,9 +633,6 @@ class ConfigurationManager extends BaseSingleton {
       );
       return classInfo;
     }
-
-    // No legacy course id present
-    return undefined;
   }
 
   /**
@@ -825,13 +829,15 @@ class ConfigurationManager extends BaseSingleton {
    * Helper: normalize truthy/falsey to strict boolean.
    */
   static toBoolean(value) {
-    return toBoolean(value);
+    const toBooleanFn = ConfigurationManager._toBoolean || toBoolean;
+    return toBooleanFn(value);
   }
   /**
    *
    */
   static toBooleanString(value) {
-    return toBooleanString(value);
+    const toBooleanStringFn = ConfigurationManager._toBooleanString || toBooleanString;
+    return toBooleanStringFn(value);
   }
 
   /** Generic integer accessor with validation and fallback */
@@ -856,18 +862,19 @@ if (typeof module !== 'undefined' && module.exports) {
   const { DEFAULTS: _DEF } = require('./defaults');
   const validators = require('./validators');
 
-  CONFIG_KEYS = _CK;
-  CONFIG_SCHEMA = _CS;
-  DEFAULTS = _DEF;
-  API_KEY_PATTERN = validators.API_KEY_PATTERN;
-  DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
-  JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
-  toBoolean = validators.toBoolean;
-  toBooleanString = validators.toBooleanString;
+  ConfigurationManager._CONFIG_KEYS = _CK;
+  ConfigurationManager._CONFIG_SCHEMA = _CS;
+  ConfigurationManager._DEFAULTS = _DEF;
+  ConfigurationManager._API_KEY_PATTERN = validators.API_KEY_PATTERN;
+  ConfigurationManager._DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
+  ConfigurationManager._JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
+  ConfigurationManager._toBoolean = validators.toBoolean;
+  ConfigurationManager._toBooleanString = validators.toBooleanString;
 }
 
-ConfigurationManager._CONFIG_KEYS = CONFIG_KEYS;
-ConfigurationManager._CONFIG_SCHEMA = CONFIG_SCHEMA;
+ConfigurationManager._CONFIG_KEYS = ConfigurationManager._CONFIG_KEYS || CONFIG_KEYS;
+ConfigurationManager._CONFIG_SCHEMA = ConfigurationManager._CONFIG_SCHEMA || CONFIG_SCHEMA;
+ConfigurationManager._DEFAULTS = ConfigurationManager._DEFAULTS || DEFAULTS;
 
 if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
   globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;

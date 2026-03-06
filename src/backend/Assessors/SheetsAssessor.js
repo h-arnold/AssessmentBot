@@ -167,8 +167,7 @@ class SheetsAssessor {
     const cellReferenceFeedback = new CellReferenceFeedback();
     let incorrectFormulae = [];
 
-    for (let i = 0; i < referenceArray.length; i++) {
-      const ref = referenceArray[i];
+    for (const [i, ref] of referenceArray.entries()) {
       const student = studentArray[i] || {};
       const refFormula = ref.referenceFormula || ref.formula || '';
       const studentFormula = student.formula || '';

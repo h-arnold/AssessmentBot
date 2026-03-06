@@ -69,17 +69,18 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern =
-    /<script\s+([^>]*\btype\s*=\s*(?:"module"|'module'|module)(?=\s|>|$)[^>]*)><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptPattern, async (_, attributes: string) => {
-    const src = readAttributeValue(attributes, 'src');
-    if (!src) {
-      return `<script ${attributes}>` + '</script>';
+  const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
+  html = await replaceAsync(html, moduleScriptPattern, async (match: string, attributes: string) => {
+    const type = readAttributeValue(attributes, 'type');
+    if (!type || type.toLowerCase() !== 'module') {
+      return match;
     }
 
-    if (/^(https?:)?\/\//i.test(src)) {
-      return `<script ${attributes}>` + '</script>';
+    const src = readAttributeValue(attributes, 'src');
+    if (!src) {
+      return match;
     }
+
     const scriptPath = resolveBuiltAssetPath(paths, src);
     let script: string;
     try {
@@ -148,91 +149,84 @@ async function replaceAsync(
   );
 
   let replacementIndex = 0;
-  return input.replace(pattern, () => replacements[replacementIndex++] ?? '');
+  return input.replace(pattern, () => replacements[replacementIndex++] as string);
 }
 
 /**
- * Reads an attribute value from an HTML tag attributes string.
+ * Reads an attribute value from a raw HTML attribute segment.
  *
- * @param {string} attributes - Tag attributes text.
- * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to read.
- * @return {string | null} Parsed attribute value, or null when absent.
+ * @param {string} attributes - Raw HTML attribute segment.
+ * @param {string} name - Attribute name to read.
+ * @return {string | undefined} Attribute value when present.
  */
-function readAttributeValue(
-  attributes: string,
-  name: 'src' | 'href' | 'type' | 'rel',
-): string | null {
+function readAttributeValue(attributes: string, name: string): string | undefined {
   const pattern = new RegExp(
-    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\\`]+))`,
+    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
     'i',
   );
   const match = pattern.exec(attributes);
   if (!match) {
-    return null;
+    return undefined;
   }
-  return match[1] ?? match[2] ?? match[3] ?? null;
+  return match[1] ?? match[2] ?? match[3];
 }
 
 /**
- * Detects unresolved local `assets/` references in src/href attributes.
+ * Removes a named HTML attribute from an attribute string.
  *
- * @param {string} html - HTML to scan.
- * @return {boolean} True when unresolved asset references are present.
+ * @param {string} attributes - Raw HTML attribute segment.
+ * @param {string} name - Attribute name to remove.
+ * @return {string} Normalised attribute segment without the named attribute.
+ */
+function removeAttribute(attributes: string, name: string): string {
+  const trimmed = attributes
+    .replace(
+      new RegExp(`\\s*\\b${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'>]+)`, 'gi'),
+      '',
+    )
+    .trim();
+  return trimmed.replace(/\s+/g, ' ');
+}
+
+/**
+ * Detects unresolved local asset references in `src` or `href` attributes.
+ *
+ * @param {string} html - HTML content to scan.
+ * @return {boolean} `true` when local `assets/` references remain.
  */
 function hasUnresolvedAssetAttributeReference(html: string): boolean {
-  const attributePattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gim;
-  let match: RegExpExecArray | null = attributePattern.exec(html);
-  while (match !== null) {
-    const value = match[1] ?? match[2] ?? match[3] ?? '';
-    if (value.includes('assets/')) {
+  const pattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^"\s'>]+))/gi;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const value = match[1] ?? match[2] ?? match[3];
+    if (!value) {
+      continue;
+    }
+    if (/^(?:\.\.\/|\.\/|\/)?assets\//i.test(value)) {
       return true;
     }
-    match = attributePattern.exec(html);
   }
   return false;
 }
 
 /**
- * Detects `<script ... type=module ... src=...></script>` tags that remain unresolved.
+ * Detects unresolved external module script references in transformed HTML.
  *
- * @param {string} html - HTML to scan.
- * @return {boolean} True when unresolved external module scripts are present.
+ * @param {string} html - HTML content to scan.
+ * @return {boolean} `true` when a module script still has a `src` attribute.
  */
 function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
-  const scriptTagPattern = /<script\b([^>]*)><\/script>/gim;
-  let match: RegExpExecArray | null = scriptTagPattern.exec(html);
-  while (match !== null) {
-    const attributes = match[1] ?? '';
-    const typeValue = readAttributeValue(attributes, 'type');
-    const srcValue = readAttributeValue(attributes, 'src');
-    if (typeValue?.toLowerCase() === 'module' && srcValue) {
+  const pattern = /<script\b([^>]*)><\/script>/gim;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const attributes = match[1];
+    const type = readAttributeValue(attributes, 'type');
+    if (!type || type.toLowerCase() !== 'module') {
+      continue;
+    }
+    if (readAttributeValue(attributes, 'src')) {
       return true;
     }
-    match = scriptTagPattern.exec(html);
   }
   return false;
-}
-
-/**
- * Removes one attribute name from a tag attributes string.
- *
- * @param {string} attributes - Tag attributes text.
- * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to remove.
- * @return {string} Attributes without the named attribute.
- */
-function removeAttribute(
-  attributes: string,
-  name: 'src' | 'href' | 'type' | 'rel',
-): string {
-  const attributePattern = /([^\s=/>]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gim;
-  const keptAttributes: string[] = [];
-  let match: RegExpExecArray | null = attributePattern.exec(attributes);
-  while (match !== null) {
-    const attributeName = (match[1] ?? '').toLowerCase();
-    if (attributeName !== name) {
-      keptAttributes.push(match[0] ?? '');
-    }
-    match = attributePattern.exec(attributes);
-  }
-  return keptAttributes.join(' ').trim();
 }

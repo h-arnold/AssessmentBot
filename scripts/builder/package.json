@@ -1,3 +1,6 @@
 {
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "eslint-plugin-sonarjs": "latest"
+  }
 }

@@ -193,8 +193,8 @@ class ProgressTracker extends BaseSingleton {
         // For other objects, try to stringify them
         try {
           console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
-        } catch (err) {
-          console.error('Developer details: [Object could not be stringified]', err);
+        } catch (error) {
+          console.error('Developer details: [Object could not be stringified]', error);
         }
       }
     } else {

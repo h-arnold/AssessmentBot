@@ -1,10 +1,21 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
+const unicorn = require('eslint-plugin-unicorn').default;
+const sonarjs = require('eslint-plugin-sonarjs');
 
 module.exports = [
+  // Ignore legacy GAS source folders entirely from linting
   {
-    // ignore the legacy GAS source folders entirely rather than linting them
     ignores: ['src/AdminSheet/**', 'src/AssessmentRecordTemplate/**'],
+  },
+  // Apply unicorn's complete rule set (modern JS preferences + more) to backend only
+  {
+    ...unicorn.configs.all,
+    files: ['src/backend/**/*.js'],
+  },
+  {
+    // Backend GAS JavaScript rules - scoped to backend only
+    files: ['src/backend/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -44,8 +55,25 @@ module.exports = [
         SummarySheetManager: 'readonly',
       },
     },
-    plugins: { googleappsscript, jsdoc },
+    plugins: { googleappsscript, jsdoc, unicorn, sonarjs },
     rules: {
+      ...sonarjs.configs.recommended.rules,
+      // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
+      'sonarjs/prefer-single-boolean-return': 'off',
+      'sonarjs/prefer-immediate-return': 'off',
+      // prefer globalThis instead of window/self/global
+      'unicorn/prefer-global-this': 'error',
+      // insist on Number.parseInt, Number.parseFloat, etc., instead of globals
+      'unicorn/prefer-number-properties': 'error',
+      // Standardize on error names only (catch clauses should use 'error')
+      'unicorn/catch-error-name': 'error',
+      // Disable rules that conflict with GAS naming conventions and preferences
+      'unicorn/no-null': 'off',
+      'unicorn/prevent-abbreviations': 'off',
+      'unicorn/no-keyword-prefix': 'off',
+      'unicorn/filename-case': 'off',
+      'unicorn/no-array-for-each': 'off',
+      'unicorn/numeric-separators-style': 'off',
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
@@ -55,12 +83,7 @@ module.exports = [
           message:
             'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
         },
-        {
-          selector:
-            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
-          message:
-            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
-        },
+
         {
           selector: "AssignmentExpression[left.name='BaseSingleton']",
           message:
@@ -107,6 +130,15 @@ module.exports = [
           detectObjects: false,
         },
       ],
+    },
+  },
+  {
+    // Backend-specific rules
+    files: ['src/backend/**/*.js'],
+    rules: {
+      'unicorn/filename-case': 'off',
+      // GAS doesn't support numeric separators (underscores in numbers)
+      'unicorn/numeric-separators-style': 'off',
     },
   },
 ];

@@ -29,16 +29,18 @@ class Teacher {
    * Set the teacher's name.
    * @param {string} name
    */
-  setTeacherName(name) {
-    const val = name || null;
-    if (val === null) {
+  setTeacherName(name = null) {
+    if (!name) {
       this.teacherName = null;
       return;
     }
-    if (this._Validate && typeof this._Validate.isString === 'function') {
-      if (!this._Validate.isString(val)) throw new TypeError('Invalid teacherName');
-    }
-    this.teacherName = val;
+    if (
+      this._Validate &&
+      typeof this._Validate.isString === 'function' &&
+      !this._Validate.isString(name)
+    )
+      throw new TypeError('Invalid teacherName');
+    this.teacherName = name;
   }
 
   /**
@@ -53,16 +55,18 @@ class Teacher {
    * Set the teacher's email address.
    * @param {string} email
    */
-  setEmail(email) {
-    const val = email || null;
-    if (val === null) {
+  setEmail(email = null) {
+    if (!email) {
       this.email = null;
       return;
     }
-    if (this._Validate && typeof this._Validate.isEmail === 'function') {
-      if (!this._Validate.isEmail(val)) throw new TypeError('Invalid email');
-    }
-    this.email = val;
+    if (
+      this._Validate &&
+      typeof this._Validate.isEmail === 'function' &&
+      !this._Validate.isEmail(email)
+    )
+      throw new TypeError('Invalid email');
+    this.email = email;
   }
 
   /**
@@ -77,16 +81,18 @@ class Teacher {
    * Set the teacher's Google userId.
    * @param {string} userId
    */
-  setUserId(userId) {
-    const val = userId || null;
-    if (val === null) {
+  setUserId(userId = null) {
+    if (!userId) {
       this.userId = null;
       return;
     }
-    if (this._Validate && typeof this._Validate.isGoogleUserId === 'function') {
-      if (!this._Validate.isGoogleUserId(val)) throw new TypeError('Invalid userId');
-    }
-    this.userId = val;
+    if (
+      this._Validate &&
+      typeof this._Validate.isGoogleUserId === 'function' &&
+      !this._Validate.isGoogleUserId(userId)
+    )
+      throw new TypeError('Invalid userId');
+    this.userId = userId;
   }
 
   /**
@@ -107,8 +113,8 @@ class Teacher {
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
-    const { email, userId } = json;
-    if ('teacherName' in json) return new Teacher(email || null, userId || null, json.teacherName);
+    const { email, userId, teacherName } = json;
+    if ('teacherName' in json) return new Teacher(email || null, userId || null, teacherName);
     return new Teacher(email || null, userId || null);
   }
 }

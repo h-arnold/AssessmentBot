@@ -4,7 +4,7 @@ const RETRY_BACKOFF_MULTIPLIER = 2;
 /**
  * Handles Drive-related operations.
  */
-class DriveManager {
+const DriveManager = {
   /**
    * Moves one or more files into a destination folder, optionally appending a string
    * to each file name before the move. Uses the Advanced Drive API so that moves
@@ -17,7 +17,7 @@ class DriveManager {
    * Overall status for the move operation and per-file result details.
    * @throws {Error} If `destinationFolderId` is not provided or the destination folder cannot be accessed.
    */
-  static moveFiles(destinationFolderId, fileIds, appendString = '') {
+  moveFiles(destinationFolderId, fileIds, appendString = '') {
     Validate.requireParams({ destinationFolderId }, 'moveFiles');
 
     const details = [];
@@ -36,7 +36,7 @@ class DriveManager {
     }
 
     // Validate the destination folder exists (fail fast).
-    DriveManager._validateFolderExists(destinationFolderId);
+    this._validateFolderExists(destinationFolderId);
 
     // Use the Advanced Drive API for moving so this works on Shared Drives as well.
     // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
@@ -47,7 +47,7 @@ class DriveManager {
           fields: 'name,parents',
         });
 
-        const currentName = file?.name ? file.name : '';
+        const currentName = file?.name || '';
 
         // Optionally append a string to the file name.
         if (appendString) {
@@ -108,11 +108,11 @@ class DriveManager {
       message: overallMsg,
       details,
     };
-  }
+  },
   /**
    *
    */
-  static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
+  copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
     Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
 
     try {
@@ -129,7 +129,7 @@ class DriveManager {
       Validate.requireParams({ destinationFolderId }, 'copyTemplateSheet');
 
       // Validate the destination folder exists (fail fast).
-      DriveManager._validateFolderExists(destinationFolderId);
+      this._validateFolderExists(destinationFolderId);
 
       const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
       const query =
@@ -182,7 +182,7 @@ class DriveManager {
       });
       throw error;
     }
-  }
+  },
 
   /**
    * Validates that a folder exists and is accessible.
@@ -190,7 +190,7 @@ class DriveManager {
    * @throws {Error} If folder cannot be accessed.
    * @private
    */
-  static _validateFolderExists(folderId) {
+  _validateFolderExists(folderId) {
     try {
       Drive.Files.get(folderId, { supportsAllDrives: true, fields: 'id' });
     } catch (error) {
@@ -200,7 +200,7 @@ class DriveManager {
       err.cause = error;
       throw err;
     }
-  }
+  },
 
   /**
    * Shares a folder with a list of email addresses, capturing the result for each email.
@@ -222,7 +222,7 @@ class DriveManager {
    *   - 'partial': Some emails succeeded, some failed.
    *   - 'none': No emails were processed (e.g., if the set is empty).
    */
-  static shareFolder(destinationFolderId, emails) {
+  shareFolder(destinationFolderId, emails) {
     Validate.requireParams({ destinationFolderId }, 'shareFolder');
 
     const details = [];
@@ -240,7 +240,7 @@ class DriveManager {
     }
 
     // Validate the folder exists (fail fast).
-    DriveManager._validateFolderExists(destinationFolderId);
+    this._validateFolderExists(destinationFolderId);
 
     try {
       const destinationFolder = DriveApp.getFolderById(destinationFolderId);
@@ -282,7 +282,7 @@ class DriveManager {
       message: overallMsg,
       details,
     };
-  }
+  },
 
   /**
    * Retrieves the first parent folder ID of a given file.
@@ -290,21 +290,21 @@ class DriveManager {
    * @returns {string | null} The parent folder ID, or null if none is found.
    * @throws {Error} If fileId is not provided.
    */
-  static getParentFolderId(fileId) {
+  getParentFolderId(fileId) {
     Validate.requireParams({ fileId }, 'getParentFolderId');
 
-    const driveAppParent = DriveManager._getParentViaDriveApp(fileId);
+    const driveAppParent = this._getParentViaDriveApp(fileId);
     if (driveAppParent) {
       return driveAppParent;
     }
 
-    return DriveManager._getParentViaDriveApi(fileId);
-  }
+    return this._getParentViaDriveApi(fileId);
+  },
 
   /**
    *
    */
-  static _getParentViaDriveApp(fileId) {
+  _getParentViaDriveApp(fileId) {
     const retries = 3;
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
@@ -336,12 +336,12 @@ class DriveManager {
     }
 
     return null;
-  }
+  },
 
   /**
    *
    */
-  static _getParentViaDriveApi(fileId) {
+  _getParentViaDriveApi(fileId) {
     const fields = 'parents,driveId';
     try {
       const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
@@ -379,7 +379,7 @@ class DriveManager {
         throw apiError;
       }
     }
-  }
+  },
 
   /**
    * Creates a folder inside a parent folder if it doesn't already exist.
@@ -390,11 +390,11 @@ class DriveManager {
    *          An object containing the parent folder ID and the folder ID (existing or newly created).
    * @throws {Error} If parentFolderId or folderName is not provided.
    */
-  static createFolder(parentFolderId, folderName) {
+  createFolder(parentFolderId, folderName) {
     Validate.requireParams({ parentFolderId, folderName }, 'createFolder');
 
     // Validate the parent folder exists (fail fast).
-    DriveManager._validateFolderExists(parentFolderId);
+    this._validateFolderExists(parentFolderId);
 
     try {
       const parentFolder = DriveApp.getFolderById(parentFolderId);
@@ -473,19 +473,19 @@ class DriveManager {
         throw apiError;
       }
     }
-  }
+  },
 
   /**
    * Validates if a string is a valid Google Drive File ID (format check only).
    * @param {string} fileId - The File ID to validate.
    * @return {boolean} - True if the format is valid, false otherwise.
    */
-  static isValidGoogleDriveFileId(fileId) {
+  isValidGoogleDriveFileId(fileId) {
     // Define the regex for a valid google drive file id.
-    const fileIdRegex = /^[a-zA-Z0-9_-]{33,44}$/;
+    const fileIdRegex = /^[\w-]{33,44}$/;
     // Test if the passed string matches the regex and return the result.
     return fileIdRegex.test(fileId);
-  }
+  },
 
   /**
    * Normalises a Google Drive URL or file ID to a file ID.
@@ -505,31 +505,31 @@ class DriveManager {
    * @return {string} The extracted or validated file ID.
    * @throws {Error} If the input is not a valid URL or file ID.
    */
-  static normaliseToFileId(urlOrId) {
+  normaliseToFileId(urlOrId) {
     Validate.requireParams({ urlOrId }, 'normaliseToFileId');
 
     const input = String(urlOrId).trim();
 
     // Fast path: if it's already a valid file ID, return it unchanged.
-    if (DriveManager.isValidGoogleDriveFileId(input)) {
+    if (this.isValidGoogleDriveFileId(input)) {
       return input;
     }
 
     // Attempt to extract ID from URL patterns.
     // Pattern 1: /d/{id}/ or /d/{id}/edit or /d/{id}/view etc.
-    const pathMatch = input.match(/\/d\/([a-zA-Z0-9_-]{33,44})/);
+    const pathMatch = input.match(/\/d\/([\w-]{33,44})/);
     if (pathMatch && pathMatch[1]) {
       const extractedId = pathMatch[1];
-      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+      if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
       }
     }
 
     // Pattern 2: ?id={id} or open?id={id}
-    const queryMatch = input.match(/[?&]id=([a-zA-Z0-9_-]{33,44})/);
+    const queryMatch = input.match(/[&?]id=([\w-]{33,44})/);
     if (queryMatch && queryMatch[1]) {
       const extractedId = queryMatch[1];
-      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+      if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
       }
     }
@@ -541,7 +541,7 @@ class DriveManager {
     throw new Error(
       `Invalid Google Drive URL or file ID: "${urlOrId}". Please provide a valid URL or file ID.`
     );
-  }
+  },
 
   /**
    * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
@@ -549,7 +549,7 @@ class DriveManager {
    * @return {string} ISO 8601 timestamp of the file's last modified time.
    * @throws {Error} If fileId is not provided or file cannot be accessed.
    */
-  static getFileModifiedTime(fileId) {
+  getFileModifiedTime(fileId) {
     const progressTracker = ProgressTracker.getInstance();
 
     Validate.requireParams({ fileId }, 'getFileModifiedTime');
@@ -558,11 +558,11 @@ class DriveManager {
     const retries = 3;
 
     try {
-      return DriveManager._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
+      return this._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
     } catch (appError) {
       ABLogger.getInstance().debug('DriveApp failed, trying Drive API', appError);
       try {
-        return DriveManager._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
+        return this._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
       } catch (apiError) {
         progressTracker.logError('Failed to fetch file modified time', {
           fileId,
@@ -571,12 +571,12 @@ class DriveManager {
         throw apiError;
       }
     }
-  }
+  },
 
   /**
    *
    */
-  static _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
+  _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const file = DriveApp.getFileById(fileId);
@@ -595,12 +595,12 @@ class DriveManager {
       }
     }
     throw new Error('Unable to fetch modified time via DriveApp');
-  }
+  },
 
   /**
    *
    */
-  static _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
+  _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields: 'modifiedTime' });
@@ -622,8 +622,8 @@ class DriveManager {
       }
     }
     throw new Error('Unable to fetch modified time via Drive API');
-  }
-}
+  },
+};
 
 // Export for Node tests / CommonJS environments
 if (typeof module !== 'undefined') {
