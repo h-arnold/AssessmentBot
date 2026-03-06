@@ -49,6 +49,10 @@ function loadStore() {
   }
 
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    ABLogger.getInstance().warn(
+      'User request store contained unexpected value type — resetting to empty.',
+      parsed
+    );
     return {};
   }
 

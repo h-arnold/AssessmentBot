@@ -141,7 +141,35 @@ describe('Api/requestStore', () => {
     });
   });
 
-  // ── compactStore ──────────────────────────────────────────────────────────
+  // ── validation guards ─────────────────────────────────────────────────────
+
+  describe('validation guards', () => {
+    it.each([
+      [
+        'createStartedRecord — missing requestId',
+        () => loadRequestStoreModule().createStartedRecord(null, 'someMethod'),
+      ],
+      [
+        'createStartedRecord — missing method',
+        () => loadRequestStoreModule().createStartedRecord('req-v-1', null),
+      ],
+      ['saveStore — missing store', () => loadRequestStoreModule().saveStore(null)],
+      ['markSuccess — missing store', () => loadRequestStoreModule().markSuccess(null, 'req-v-1')],
+      ['markSuccess — missing requestId', () => loadRequestStoreModule().markSuccess({}, null)],
+      [
+        'markError — missing store',
+        () => loadRequestStoreModule().markError(null, 'req-v-1', 'msg'),
+      ],
+      ['markError — missing requestId', () => loadRequestStoreModule().markError({}, null, 'msg')],
+      [
+        'markError — missing errorMessage',
+        () => loadRequestStoreModule().markError({}, 'req-v-1', null),
+      ],
+      ['compactStore — missing store', () => loadRequestStoreModule().compactStore(null)],
+    ])('throws when required parameter is absent: %s', (_label, fn) => {
+      expect(fn).toThrow();
+    });
+  });
 
   describe('compactStore', () => {
     it('removes oldest completed (success/error) entries first when count exceeds MAX_TRACKED_REQUESTS', () => {
