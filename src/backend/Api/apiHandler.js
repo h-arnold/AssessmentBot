@@ -1,14 +1,32 @@
 // apiHandler.js
 
-/* global BaseSingleton, Utilities */
+/* global BaseSingleton, Utilities, LockService */
 
 let apiAllowlist;
+let lockTimeoutMs;
+let activeLimit;
+let requestStoreFns;
 
 if (typeof module !== 'undefined' && module.exports) {
-  ({ API_ALLOWLIST: apiAllowlist } = require('./apiConstants.js'));
+  ({
+    API_ALLOWLIST: apiAllowlist,
+    LOCK_TIMEOUT_MS: lockTimeoutMs,
+    ACTIVE_LIMIT: activeLimit,
+  } = require('./apiConstants.js'));
+  requestStoreFns = require('./requestStore.js');
 } else {
-  // In GAS, API_ALLOWLIST is loaded as a global constant from apiConstants.js.
+  // In GAS, these are loaded as global constants and functions from the bundle.
   apiAllowlist = API_ALLOWLIST;
+  lockTimeoutMs = LOCK_TIMEOUT_MS;
+  activeLimit = ACTIVE_LIMIT;
+  requestStoreFns = {
+    loadStore,
+    saveStore,
+    createStartedRecord,
+    markSuccess,
+    markError,
+    compactStore,
+  };
 }
 
 /**
@@ -35,16 +53,86 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(requestId, 'UNKNOWN_METHOD', 'Unknown API method.', false);
     }
 
+    const admissionResult = this._runAdmissionPhase(requestId, methodName);
+    if (!admissionResult.ok) {
+      return admissionResult;
+    }
+
+    let handlerError;
+    let data;
     try {
-      const data = this._invokeAllowlistedMethod(allowlistedHandler, request.params);
-      return this._success(requestId, data);
+      data = this._invokeAllowlistedMethod(allowlistedHandler, request.params);
     } catch (error) {
+      handlerError = error;
+    }
+
+    this._runCompletionPhase(requestId, handlerError);
+
+    if (handlerError) {
       return this._failure(
         requestId,
         'DISPATCH_ERROR',
-        error?.message ?? 'API dispatch failed.',
+        handlerError?.message ?? 'API dispatch failed.',
         true
       );
+    }
+
+    return this._success(requestId, data);
+  }
+
+  /**
+   * Acquires the user lock, registers a started entry in the request store, and releases the lock.
+   * Returns a failure envelope if the lock cannot be acquired.
+   */
+  _runAdmissionPhase(requestId, method) {
+    const lock = LockService.getUserLock();
+    if (!lock.tryLock(lockTimeoutMs)) {
+      return this._failure(
+        requestId,
+        'RATE_LIMITED',
+        'Could not acquire lock. Please retry.',
+        true
+      );
+    }
+    try {
+      const store = requestStoreFns.loadStore();
+      const activeCount = Object.values(store).filter((r) => r.status === 'started').length;
+      if (activeCount >= activeLimit) {
+        return this._failure(
+          requestId,
+          'RATE_LIMITED',
+          'Active request limit reached. Please retry.',
+          true
+        );
+      }
+      store[requestId] = requestStoreFns.createStartedRecord(requestId, method);
+      requestStoreFns.saveStore(store);
+      return { ok: true };
+    } finally {
+      lock.releaseLock();
+    }
+  }
+
+  /**
+   * Acquires the user lock, marks the request as success or error, compacts the store, and releases the lock.
+   * Logs a warning if the completion lock cannot be acquired.
+   */
+  _runCompletionPhase(requestId, handlerError) {
+    const lock = LockService.getUserLock();
+    if (!lock.tryLock(lockTimeoutMs)) {
+      ABLogger.getInstance().warn('Could not acquire completion lock for request.', { requestId });
+      return;
+    }
+    try {
+      const store = requestStoreFns.loadStore();
+      if (handlerError) {
+        requestStoreFns.markError(store, requestId, handlerError?.message ?? 'Unknown error');
+      } else {
+        requestStoreFns.markSuccess(store, requestId);
+      }
+      requestStoreFns.saveStore(requestStoreFns.compactStore(store));
+    } finally {
+      lock.releaseLock();
     }
   }
 

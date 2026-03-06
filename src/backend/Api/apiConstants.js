@@ -13,6 +13,8 @@ const MAX_TRACKED_REQUESTS = 30;
 const STALE_REQUEST_AGE_MS = 15 * 60 * 1000;
 const USER_REQUEST_STORE_KEY = 'AB_USER_REQUEST_STORE';
 
+const LOCK_TIMEOUT_MS = 1000;
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     API_METHODS,
@@ -21,5 +23,6 @@ if (typeof module !== 'undefined' && module.exports) {
     MAX_TRACKED_REQUESTS,
     STALE_REQUEST_AGE_MS,
     USER_REQUEST_STORE_KEY,
+    LOCK_TIMEOUT_MS,
   };
 }
