@@ -126,6 +126,13 @@ Constraints:
 
 Implementation notes:
 
+- Completed 2026-03-06.
+- Added `src/frontend/src/services/apiService.ts` with local `zod` request/response schemas (`ApiRequestSchema`, success/error envelope schemas, and response union) and a promise-based `callApi<TResponse>(method, params?)` transport wrapper around `google.script.run.apiHandler`.
+- Added `ApiTransportError` to preserve backend `requestId`, `code`, `message`, `retriable`, and `meta` when backend returns a structured failure envelope.
+- Added `src/frontend/src/services/apiService.test.ts` covering all required Section 1 test cases.
+- Review loop note: test typing initially conflicted with existing global `google` declarations, so tests were adjusted to use local helper casting (`setGoogle`/`clearGoogle`) instead of ambient global redeclarations.
+- Deviation note: to satisfy strict response-shape validation, success envelopes now explicitly require a present `data` property via schema refinement.
+
 Commit checkpoint:
 
 - Commit this section after the wrapper and its required tests pass.

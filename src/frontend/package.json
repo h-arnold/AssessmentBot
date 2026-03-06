@@ -18,7 +18,8 @@
     "@ant-design/v5-patch-for-react-19": "latest",
     "antd": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "latest",
@@ -32,16 +33,16 @@
     "@vitejs/plugin-react": "latest",
     "@vitest/coverage-v8": "latest",
     "eslint": "latest",
-    "eslint-plugin-unicorn": "latest",
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
+    "eslint-plugin-sonarjs": "latest",
+    "eslint-plugin-unicorn": "latest",
     "globals": "latest",
     "jsdom": "latest",
     "playwright": "^1.58.2",
     "typescript": "latest",
     "typescript-eslint": "latest",
     "vite": "latest",
-    "vitest": "latest",
-    "eslint-plugin-sonarjs": "latest"
+    "vitest": "latest"
   }
 }
