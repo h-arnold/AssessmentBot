@@ -116,8 +116,6 @@ describe('runFrontendHtmlServiceTransform', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-
-
   it('leaves non-stylesheet links untouched', async () => {
     await writeFrontendIndexHtml(paths, [
       HTML_DOCTYPE,
