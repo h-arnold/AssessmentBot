@@ -175,4 +175,42 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     // The admission lock must have been released (called at least once)
     expect(mockLock.releaseLock).toHaveBeenCalled();
   });
+
+  it('returns RATE_LIMITED when the active request count has reached the configured limit', () => {
+    const {
+      ACTIVE_LIMIT,
+      USER_REQUEST_STORE_KEY,
+    } = require('../../src/backend/Api/apiConstants.js');
+
+    // Seed the store with ACTIVE_LIMIT started entries so the next admission is rejected.
+    const store = {};
+    for (let i = 0; i < ACTIVE_LIMIT; i++) {
+      const id = `seed-req-${i}`;
+      store[id] = {
+        requestId: id,
+        method: 'getAuthorisationStatus',
+        status: 'started',
+        startedAtMs: Date.now(),
+      };
+    }
+    globalThis.PropertiesService.getUserProperties().setProperty(
+      USER_REQUEST_STORE_KEY,
+      JSON.stringify(store)
+    );
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const result = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-over-limit',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'RATE_LIMITED', retriable: true },
+    });
+    // Handler must not have been called.
+    expect(globalThis.getAuthorisationStatus).not.toHaveBeenCalled();
+  });
 });

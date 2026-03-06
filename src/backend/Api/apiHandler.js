@@ -1,6 +1,6 @@
 // apiHandler.js
 
-/* global BaseSingleton, Utilities, LockService */
+/* global BaseSingleton, Utilities, LockService, ABLogger */
 
 let apiAllowlist;
 let lockTimeoutMs;

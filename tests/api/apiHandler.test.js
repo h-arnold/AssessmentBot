@@ -31,6 +31,56 @@ function loadApiHandlerInVmContext({ globals = {} } = {}) {
   };
 }
 
+function makeVmGlobals(overrides = {}) {
+  const store = {};
+  return {
+    BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
+    LOCK_TIMEOUT_MS: 1000,
+    ACTIVE_LIMIT: 25,
+    LockService: {
+      getUserLock() {
+        return { tryLock: () => true, releaseLock: () => {} };
+      },
+    },
+    PropertiesService: {
+      getUserProperties() {
+        return {
+          getProperty: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+          setProperty: (k, v) => {
+            store[k] = v;
+          },
+        };
+      },
+    },
+    ABLogger: { getInstance: () => ({ warn: () => {}, info: () => {} }) },
+    Utilities: { getUuid: () => 'uuid-vm-default' },
+    Validate:
+      require('../../src/backend/Utils/Validate.js').Validate ||
+      require('../../src/backend/Utils/Validate.js'),
+    loadStore: () => ({}),
+    saveStore: () => {},
+    createStartedRecord: (id, method) => ({
+      requestId: id,
+      method,
+      status: 'started',
+      startedAtMs: Date.now(),
+    }),
+    markSuccess: (s, id) => {
+      if (s[id]) s[id].status = 'success';
+      return s;
+    },
+    markError: (s, id, msg) => {
+      if (s[id]) {
+        s[id].status = 'error';
+        s[id].errorMessage = msg;
+      }
+      return s;
+    },
+    compactStore: (s) => s,
+    ...overrides,
+  };
+}
+
 describe('Api/apiConstants', () => {
   it('defines getAuthorisationStatus in the API allowlist', () => {
     const { API_METHODS } = loadApiConstantsModule();
@@ -44,11 +94,13 @@ describe('Api/apiHandler dispatcher', () => {
   let originalGetAuthorisationStatus;
 
   beforeEach(() => {
+    globalThis.PropertiesService._resetUserProperties();
     originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
     globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
   });
 
   afterEach(() => {
+    globalThis.PropertiesService._resetUserProperties();
     if (originalGetAuthorisationStatus === undefined) {
       delete globalThis.getAuthorisationStatus;
     } else {
@@ -214,8 +266,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
-      globals: {
-        BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
+      globals: makeVmGlobals({
         API_ALLOWLIST: {
           getAuthorisationStatus: 'getAuthorisationStatus',
         },
@@ -223,7 +274,7 @@ describe('Api/apiHandler dispatcher', () => {
         Utilities: {
           getUuid: () => 'uuid-vm-singleton',
         },
-      },
+      }),
     });
 
     const first = ApiDispatcher.getInstance();
@@ -239,15 +290,14 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('uses global API_ALLOWLIST in vm context and returns DISPATCH_ERROR for unknown mapped handler', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
-      globals: {
-        BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
+      globals: makeVmGlobals({
         API_ALLOWLIST: {
           getAuthorisationStatus: 'notImplementedHandler',
         },
         Utilities: {
           getUuid: () => 'uuid-vm-dispatch-error',
         },
-      },
+      }),
     });
     const dispatcher = ApiDispatcher.getInstance();
 

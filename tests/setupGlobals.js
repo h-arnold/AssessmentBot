@@ -149,6 +149,18 @@ g.toBoolean = validators.toBoolean;
 g.toBooleanString = validators.toBooleanString;
 g.toReadableKey = validators.toReadableKey;
 
+// Default LockService mock — always acquires the lock successfully.
+// Individual tests that need to control lock behaviour should override
+// globalThis.LockService in their own beforeEach/afterEach.
+g.LockService = {
+  getUserLock() {
+    return {
+      tryLock: () => true,
+      releaseLock: () => {},
+    };
+  },
+};
+
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
 g.ClassroomManager = {
