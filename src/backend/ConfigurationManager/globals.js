@@ -148,104 +148,54 @@ function saveConfiguration(config) {
     }
   }
 
-  // Delegate configuration saving to ConfigurationManager using safeSet
-  if (config.backendAssessorBatchSize !== undefined) {
-    safeSet(
-      () =>
-        ConfigurationManager.getInstance().setBackendAssessorBatchSize(
-          config.backendAssessorBatchSize
-        ),
-      'backendAssessorBatchSize'
-    );
-  }
-  if (config.slidesFetchBatchSize !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setSlidesFetchBatchSize(config.slidesFetchBatchSize),
-      'slidesFetchBatchSize'
-    );
-  }
-  if (config.apiKey !== undefined) {
-    safeSet(() => ConfigurationManager.getInstance().setApiKey(config.apiKey), 'apiKey');
-  }
-  if (config.backendUrl !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setBackendUrl(config.backendUrl),
-      'backendUrl'
-    );
-  }
+  const setters = [
+    [
+      'backendAssessorBatchSize',
+      (value) => ConfigurationManager.getInstance().setBackendAssessorBatchSize(value),
+    ],
+    [
+      'slidesFetchBatchSize',
+      (value) => ConfigurationManager.getInstance().setSlidesFetchBatchSize(value),
+    ],
+    ['apiKey', (value) => ConfigurationManager.getInstance().setApiKey(value)],
+    ['backendUrl', (value) => ConfigurationManager.getInstance().setBackendUrl(value)],
+    [
+      'assessmentRecordTemplateId',
+      (value) => ConfigurationManager.getInstance().setAssessmentRecordTemplateId(value),
+    ],
+    [
+      'assessmentRecordDestinationFolder',
+      (value) => ConfigurationManager.getInstance().setAssessmentRecordDestinationFolder(value),
+    ],
+    ['updateDetailsUrl', (value) => ConfigurationManager.getInstance().setUpdateDetailsUrl(value)],
+    [
+      'daysUntilAuthRevoke',
+      (value) => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(value),
+    ],
+    [
+      'jsonDbMasterIndexKey',
+      (value) => ConfigurationManager.getInstance().setJsonDbMasterIndexKey(value),
+    ],
+    [
+      'jsonDbLockTimeoutMs',
+      (value) => ConfigurationManager.getInstance().setJsonDbLockTimeoutMs(value),
+    ],
+    ['jsonDbLogLevel', (value) => ConfigurationManager.getInstance().setJsonDbLogLevel(value)],
+    [
+      'jsonDbBackupOnInitialise',
+      (value) => ConfigurationManager.getInstance().setJsonDbBackupOnInitialise(value),
+    ],
+    [
+      'jsonDbRootFolderId',
+      (value) => ConfigurationManager.getInstance().setJsonDbRootFolderId(value),
+    ],
+  ];
 
-  // Handle Assessment Record values
-  if (config.assessmentRecordTemplateId !== undefined) {
-    safeSet(
-      () =>
-        ConfigurationManager.getInstance().setAssessmentRecordTemplateId(
-          config.assessmentRecordTemplateId
-        ),
-      'assessmentRecordTemplateId'
-    );
-  }
-  if (config.assessmentRecordDestinationFolder !== undefined) {
-    safeSet(
-      () =>
-        ConfigurationManager.getInstance().setAssessmentRecordDestinationFolder(
-          config.assessmentRecordDestinationFolder
-        ),
-      'assessmentRecordDestinationFolder'
-    );
-  }
-
-  // Handle updateDetailsUrl parameter
-  if (config.updateDetailsUrl !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setUpdateDetailsUrl(config.updateDetailsUrl),
-      'updateDetailsUrl'
-    );
-  }
-
-  // Handle daysUntilAuthRevoke parameter
-  if (config.daysUntilAuthRevoke !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(config.daysUntilAuthRevoke),
-      'daysUntilAuthRevoke'
-    );
-  }
-
-  if (config.jsonDbMasterIndexKey !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setJsonDbMasterIndexKey(config.jsonDbMasterIndexKey),
-      'jsonDbMasterIndexKey'
-    );
-  }
-
-  if (config.jsonDbLockTimeoutMs !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setJsonDbLockTimeoutMs(config.jsonDbLockTimeoutMs),
-      'jsonDbLockTimeoutMs'
-    );
-  }
-
-  if (config.jsonDbLogLevel !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setJsonDbLogLevel(config.jsonDbLogLevel),
-      'jsonDbLogLevel'
-    );
-  }
-
-  if (config.jsonDbBackupOnInitialise !== undefined) {
-    safeSet(
-      () =>
-        ConfigurationManager.getInstance().setJsonDbBackupOnInitialise(
-          config.jsonDbBackupOnInitialise
-        ),
-      'jsonDbBackupOnInitialise'
-    );
-  }
-
-  if (config.jsonDbRootFolderId !== undefined) {
-    safeSet(
-      () => ConfigurationManager.getInstance().setJsonDbRootFolderId(config.jsonDbRootFolderId),
-      'jsonDbRootFolderId'
-    );
+  for (const [name, applySetting] of setters) {
+    if (config[name] === undefined) {
+      continue;
+    }
+    safeSet(() => applySetting(config[name]), name);
   }
 
   if (errors.length > 0) {

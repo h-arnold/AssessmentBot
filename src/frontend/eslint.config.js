@@ -1,7 +1,6 @@
 import js from '@eslint/js';
 import { createRequire } from 'node:module';
 import jsdoc from 'eslint-plugin-jsdoc';
-import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -10,7 +9,7 @@ import unicorn from 'eslint-plugin-unicorn';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 const require = createRequire(import.meta.url);
-const { tsBaseRules } = require('../../config/eslint/ts-base-rules.cjs');
+const { tsBaseRules, sonarjs: sonarjsPlugin } = require('../../config/eslint/ts-base-rules.cjs');
 
 export default defineConfig([
   globalIgnores(['dist', 'playwright-report']),
@@ -26,7 +25,7 @@ export default defineConfig([
     ],
     plugins: {
       jsdoc,
-      sonarjs,
+      sonarjs: sonarjsPlugin,
     },
     languageOptions: {
       ecmaVersion: 2024,

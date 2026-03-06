@@ -1,6 +1,7 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
 const unicorn = require('eslint-plugin-unicorn').default;
+const sonarjs = require('eslint-plugin-sonarjs');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -54,8 +55,9 @@ module.exports = [
         SummarySheetManager: 'readonly',
       },
     },
-    plugins: { googleappsscript, jsdoc, unicorn },
+    plugins: { googleappsscript, jsdoc, unicorn, sonarjs },
     rules: {
+      ...sonarjs.configs.recommended.rules,
       // prefer globalThis instead of window/self/global
       'unicorn/prefer-global-this': 'error',
       // insist on Number.parseInt, Number.parseFloat, etc., instead of globals
@@ -68,6 +70,7 @@ module.exports = [
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
       'unicorn/no-array-for-each': 'off',
+      'unicorn/numeric-separators-style': 'off',
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
@@ -131,6 +134,8 @@ module.exports = [
     files: ['src/backend/**/*.js'],
     rules: {
       'unicorn/filename-case': 'off',
+      // GAS doesn't support numeric separators (underscores in numbers)
+      'unicorn/numeric-separators-style': 'off',
     },
   },
 ];

@@ -9,3 +9,4 @@
 /scripts/builder/dist/
 /scripts/builder/node_modules/
 build
+coverage
