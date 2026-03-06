@@ -16,7 +16,10 @@ if (typeof module !== 'undefined' && module.exports) {
  */
 class ApiDispatcher extends BaseSingleton {
   /**
-   * Validates, resolves, and dispatches the request, returning a structured response.
+   * Validates, resolves, and dispatches the request, returning a structured response envelope.
+   * As the API boundary entry point this method always returns an envelope and never throws;
+   * Validate.requireParams is therefore intentionally omitted in favour of the structured
+   * INVALID_REQUEST path.
    */
   handle(request) {
     const requestId = this._resolveRequestId(request);
