@@ -32,7 +32,7 @@ Introduce a single, typed frontend API wrapper and a backend API dispatcher that
 
 1. The concurrency guard is intended to be per user session context (aligned with `UserProperties`).
 2. The immediate target is user-level throttling only (not global throttling), aligned to GAS per-user request constraints.
-3. A conservative per-user threshold lower than hard limits is acceptable (for example 20 active calls rather than 30).
+3. A conservative per-user threshold lower than hard limits is acceptable (use `ACTIVE_LIMIT = 25` active calls rather than the hard limit of 30, leaving some headroom for other script activity).
 4. Lock critical sections are expected to be short enough for a 1 second acquisition timeout when scoped to state updates only.
 
 ## Design Principles Applied
@@ -51,6 +51,12 @@ Create a reusable promise-based helper with this logical contract:
 
 - `callApi<TResponse>(method: string, params?: unknown): Promise<TResponse>`
 
+Contract definition approach:
+
+- Define frontend request/response schemas with `zod` in the service layer.
+- Use `z.infer` to derive TypeScript types from those schemas so validation and typing stay aligned.
+- Keep these schemas local to the frontend API boundary rather than coupling frontend types to backend runtime files.
+
 Responsibilities:
 
 - Validate `google.script.run` availability.
@@ -64,7 +70,16 @@ Recommended response envelope shape:
 - Success: `{ ok: true, requestId, data, meta }`
 - Failure: `{ ok: false, requestId, error: { code, message, retriable }, meta }`
 
-Use this wrapper from feature-specific services (for example `authService`) so feature code remains simple.
+Suggested frontend schema set:
+
+- `ApiRequestSchema`
+- `ApiSuccessResponseSchema`
+- `ApiErrorResponseSchema`
+- `ApiResponseSchema` (union)
+
+Use this wrapper from feature-specific services (for example `authService`) so feature code remains simple. `authService` should remain a thin module and only change its transport path from direct `google.script.run.<method>` calls to `google.script.run.apiHandler(request)`.
+
+`apiService` should stay transport-focused only. It does not need to fetch or cache auth state internally.
 
 ## 2) Backend dispatcher (`src/backend/Api/apiHandler.js`)
 
@@ -96,10 +111,23 @@ Rationale for singleton use:
 - Preserves existing project singleton conventions (`BaseSingleton` + `getInstance`).
 - Avoids replacing GAS global function entry points required by `google.script.run`.
 
-Allowlist example approach:
+Allowlist storage:
+
+- Store API method names and execution limits in a dedicated constants file next to the dispatcher, for example `src/backend/Api/apiConstants.js`.
+- Keep the allowlist as the single source of truth for methods exposed through `apiHandler`.
+
+Initial allowlist approach:
 
 - `getAuthorisationStatus -> getAuthorisationStatus`
 - Additional methods added incrementally as frontend migration proceeds.
+
+Suggested constants in `apiConstants.js`:
+
+- `API_METHODS`
+- `ACTIVE_LIMIT = 25`
+- `MAX_TRACKED_REQUESTS = 30`
+- `STALE_REQUEST_AGE_MS = 15 * 60 * 1000`
+- `USER_REQUEST_STORE_KEY`
 
 ## 3) Execution tracking store (backend utility in API layer)
 
@@ -116,7 +144,9 @@ Each invocation record should include:
 
 Storage strategy:
 
-- Keep one key in user properties which stores a POJO with all of the user's invocations, keyed by `requestId`. This minimises retrieval time as there's only one value to retrieve and there should never be more than 30 entries at a time.
+- Keep one key in user properties which stores a POJO with all of the user's invocations, keyed by `requestId`. This minimises retrieval time as there's only one value to retrieve.
+- Cap retained entries with `MAX_TRACKED_REQUESTS = 30`, matching the per-user concurrent GAS request ceiling.
+- When compaction is needed, prefer dropping the oldest completed entries first and always preserve currently active entries.
 
 ## 4) Atomicity and race-condition prevention
 
@@ -127,6 +157,7 @@ Lock policy:
 - Use `tryLock(1000)` (1 second timeout) for lock acquisition.
 - Lock only for short state transitions; never hold lock while running business logic.
 - If lock acquisition fails, return a structured rate-limit style response (`RATE_LIMITED`, `retriable: true`) so frontend retry policy can handle temporary contention.
+- Keep the implementation lightweight: no extra fallback path is required for oversized histories because the store is capped to a small number of entries.
 
 Critical sections:
 
@@ -148,12 +179,13 @@ Execution sequence:
 Before counting active executions:
 
 - remove entries with `startedAtMs` older than 15 minutes,
-- treat unresolved `started` entries older than threshold as abandoned.
+- treat unresolved `started` entries older than threshold as abandoned,
+- delete abandoned entries immediately and log the pruning event via `ABLogger`.
 
 Admission decision:
 
 - if `activeCount >= ACTIVE_LIMIT`, return rate-limit envelope immediately,
-- include `retriable: true` and `retryAfterMs` hint.
+- include `retriable: true`.
 
 ## 6) Error model and frontend retry policy
 
@@ -175,7 +207,7 @@ New API-layer error types needed (`src/backend/Utils/ErrorTypes/`):
 
 1. **`ApiRateLimitError`** (extends Error)
    - Used when: user's active execution count reaches `ACTIVE_LIMIT` during admission control.
-   - Fields: `requestId`, `method`, `activeCount`, `limit`, `retryAfterMs`.
+   - Fields: `requestId`, `method`, `activeCount`, `limit`.
    - Maps to response code: `RATE_LIMITED`.
    - Frontend behaviour: retriable with exponential backoff.
 
@@ -197,11 +229,22 @@ New API-layer error types needed (`src/backend/Utils/ErrorTypes/`):
    - Frontend behaviour: not retriable; surfaced to user as unrecoverable.
    - Keep original error details in `cause` chain for dev logging via `ABLogger`.
 
+Custom error compatibility note:
+
+- Do not rely on the runtime automatically wiring `Error.cause`.
+- For custom API-layer errors, accept an optional `cause` argument and assign `this.cause = cause || null` explicitly in the constructor so behaviour is consistent in GAS and tests.
+
 Dispatcher boundary (error mapping):
 
 - Wrap all error creation using a centralised error-to-envelope mapper in `ApiDispatcher.handle()`.
 - This ensures consistent error code → serialised response mapping in one place.
 - The mapper translates caught errors to structured response envelopes without exposing internal error objects to frontend.
+
+Keep serialisation lightweight:
+
+- Error envelopes should expose only the fields the frontend needs: `code`, `message`, and `retriable`.
+- Do not serialise stack traces or nested error objects across the frontend boundary.
+- Keep richer diagnostics in backend logging only.
 
 Example mapper logic:
 
@@ -239,6 +282,7 @@ Logging behaviour:
 - Use `ABLogger.getInstance().info(...)` for normal lock timing diagnostics.
 - Use `ABLogger.getInstance().warn(...)` when lock wait exceeds an operational threshold (for example 300ms).
 - Keep logs concise and metadata-focused (no sensitive payload data).
+- Implement timing with simple timestamp capture around the lock acquisition and state update code paths; no logger API expansion is required.
 
 Operational purpose:
 
@@ -251,8 +295,8 @@ Operational purpose:
 
 Deliverables:
 
-- Define request/response envelope types in frontend service layer.
-- Implement backend `apiHandler` wrapper plus singleton dispatcher with allowlist and structured responses.
+- Define request/response envelope schemas and inferred types in the frontend service layer using `zod` and `z.infer`.
+- Implement backend `apiHandler` wrapper plus singleton dispatcher with allowlist/constants stored in `src/backend/Api/apiConstants.js` and structured responses.
 - Add tracking utility with UUID + timestamps.
 - Define API-layer error type mapping strategy based on `Utils/ErrorTypes`.
 
@@ -282,12 +326,12 @@ Deliverables:
 
 - Add retry/backoff logic in frontend wrapper.
 - Migrate `getAuthorisationStatus` to use `apiHandler` path.
-- Keep feature-facing service API stable.
+- Keep `authService` as a thin module; only change the transport call so the feature-facing API remains stable.
 
 Validation:
 
 - Frontend tests for retry success and retry exhaustion.
-- Existing auth feature tests still passing.
+- Existing auth feature tests still passing after updating their runtime mocks from direct `getAuthorisationStatus` calls to `apiHandler` request handling.
 
 ## Phase 4 — Incremental endpoint migration
 
@@ -308,6 +352,13 @@ Follow existing project test standards:
 - Backend: Vitest tests for API-layer wrappers and error propagation.
 - Frontend: Vitest + Testing Library for service behaviour and feature integration.
 
+Test setup changes required:
+
+- Extend shared test mocks to include `Utilities.getUuid()`.
+- Extend shared test mocks to include `PropertiesService.getUserProperties()`.
+- Extend shared test mocks to include `LockService.getUserLock()`.
+- Update frontend `google.script.run` mocks so `authService` tests exercise `apiHandler(request)` rather than direct backend method calls.
+
 Suggested command sequence from repo root:
 
 1. `npm test`
@@ -327,15 +378,16 @@ If builder files are touched in implementation, also run:
 - Keep error messages useful but concise.
 - Keep lock timeout at 1 second initially and tune using observed lock timing logs.
 - Keep this implementation strictly per-user throttling for now; defer any global admission control to a separate decision.
+- Keep error serialisation intentionally minimal across the frontend boundary.
 
 ## Risks and Mitigations
 
 1. Race conditions in counters
    - Mitigation: user lock for all tracking mutations.
 2. Property bloat over time
-   - Mitigation: prune stale and completed records regularly; cap retained history.
+   - Mitigation: prune stale and completed records regularly; cap retained history at `MAX_TRACKED_REQUESTS = 30`.
 3. Method drift between frontend and allowlist
-   - Mitigation: central method constants and tests for unknown methods.
+   - Mitigation: central allowlist/constants file in `src/backend/Api/apiConstants.js` and tests for unknown methods.
 4. Over-retrying under sustained load
    - Mitigation: bounded attempts + jitter + clear UI error on exhaustion.
 
