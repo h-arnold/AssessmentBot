@@ -13,7 +13,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setupControllerTestMocks, cleanupControllerTestMocks } from '../helpers/mockFactories.js';
 import { createTaskDefinition } from '../helpers/modelFactories.js';
 
-let AssignmentController, AssignmentDefinition, DriveManager, ABLogger, ProgressTracker, Validate;
+let AssignmentController,
+  AssignmentDefinition,
+  DriveManager,
+  ABLogger,
+  ProgressTracker,
+  Validate,
+  ABClassController;
 let mockABLogger, mockProgressTracker;
 
 describe('AssignmentController.createDefinitionFromWizardInputs', () => {

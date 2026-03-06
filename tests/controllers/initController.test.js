@@ -9,7 +9,9 @@ const mockScriptAppManager = {
   checkAuthMode: vi.fn(),
 };
 
-globalThis.ScriptAppManager = vi.fn(() => mockScriptAppManager);
+globalThis.ScriptAppManager = vi.fn(function () {
+  return mockScriptAppManager;
+});
 
 // Mock ConfigurationManager
 const mockConfigManager = {
@@ -36,19 +38,19 @@ globalThis.UIManager = {
 };
 
 // Mock TriggerController
-globalThis.TriggerController = vi.fn(() => ({
-  createTimeBasedTrigger: vi.fn(),
-}));
+globalThis.TriggerController = vi.fn(function () {
+  return { createTimeBasedTrigger: vi.fn() };
+});
 
 // Mock UpdateManager
-globalThis.UpdateManager = vi.fn(() => ({
-  runAssessmentRecordUpdateWizard: vi.fn(),
-}));
+globalThis.UpdateManager = vi.fn(function () {
+  return { runAssessmentRecordUpdateWizard: vi.fn() };
+});
 
 // Mock BaseUpdateAndInit
-globalThis.BaseUpdateAndInit = vi.fn(() => ({
-  getLatestAssessmentRecordTemplateId: vi.fn().mockReturnValue('template-id-123'),
-}));
+globalThis.BaseUpdateAndInit = vi.fn(function () {
+  return { getLatestAssessmentRecordTemplateId: vi.fn().mockReturnValue('template-id-123') };
+});
 
 // Import InitController after mocks
 const InitController = require('../../src/AdminSheet/y_controllers/InitController.js');
