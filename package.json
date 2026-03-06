@@ -42,6 +42,8 @@
     "eslint": "^9.39.2",
     "eslint-plugin-googleappsscript": "^1.0.5",
     "eslint-plugin-jsdoc": "^62.5.0",
+    "eslint-plugin-sonarjs": "latest",
+    "eslint-plugin-unicorn": "latest",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "prettier": "^3.8.1",

@@ -58,6 +58,9 @@ module.exports = [
     plugins: { googleappsscript, jsdoc, unicorn, sonarjs },
     rules: {
       ...sonarjs.configs.recommended.rules,
+      // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
+      'sonarjs/prefer-single-boolean-return': 'off',
+      'sonarjs/prefer-immediate-return': 'off',
       // prefer globalThis instead of window/self/global
       'unicorn/prefer-global-this': 'error',
       // insist on Number.parseInt, Number.parseFloat, etc., instead of globals

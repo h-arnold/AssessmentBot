@@ -32,6 +32,7 @@
     "@vitejs/plugin-react": "latest",
     "@vitest/coverage-v8": "latest",
     "eslint": "latest",
+    "eslint-plugin-unicorn": "latest",
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
@@ -40,6 +41,7 @@
     "typescript": "latest",
     "typescript-eslint": "latest",
     "vite": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "eslint-plugin-sonarjs": "latest"
   }
 }

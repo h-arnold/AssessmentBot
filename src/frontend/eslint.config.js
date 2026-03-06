@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 const { tsBaseRules, sonarjs: sonarjsPlugin } = require('../../config/eslint/ts-base-rules.cjs');
 
 export default defineConfig([
-  globalIgnores(['dist', 'playwright-report']),
+  globalIgnores(['dist', 'playwright-report', 'coverage']),
   // Apply unicorn's complete rule set (modern JS preferences + more)
   unicorn.configs.all,
   {
@@ -26,6 +26,7 @@ export default defineConfig([
     ],
     plugins: {
       jsdoc,
+      sonarjs: sonarjsPlugin,
     },
     languageOptions: {
       ecmaVersion: 2024,

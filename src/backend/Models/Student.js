@@ -37,8 +37,7 @@ class Student {
    */
   static fromJSON(json) {
     const { name, email, id } = json;
-    const student = new Student(name, email, id);
-    return student;
+    return new Student(name, email, id);
   }
 }
 

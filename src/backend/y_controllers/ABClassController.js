@@ -483,8 +483,7 @@ class ABClassController {
     // If no collection is returned, create a new class object and save it.
     if (!collection) {
       logger.info('loadClass: no collection found - initialising new class', { classId });
-      const newClass = this.initialise(classId);
-      return newClass;
+      return this.initialise(classId);
     }
 
     // Collection exists - read the single stored document (if any)

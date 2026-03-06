@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
+const checkingAuthorisationStatusText = 'Checking authorisation status...';
+
 describe('App', () => {
   afterEach(() => {
     delete globalThis.google;
@@ -29,7 +31,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
   });
 
@@ -55,7 +57,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
   });
 
@@ -82,7 +84,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
   });
@@ -110,7 +112,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(await screen.findByText('Backend call failed with a string.')).toBeInTheDocument();
   });
@@ -118,7 +120,7 @@ describe('App', () => {
   it('shows runtime failure message when google.script.run is unavailable', async () => {
     render(<App />);
 
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(
       await screen.findByText('google.script.run is unavailable in this runtime.')

@@ -4,7 +4,12 @@ import { AuthStatusCard } from './features/auth/AuthStatusCard';
 
 const { Header, Content } = Layout;
 
-function App() {
+/**
+ * Renders the application shell with the header and authentication status card.
+ *
+ * @returns The composed layout for the frontend.
+ */
+function App(): JSX.Element {
   return (
     <Layout>
       <Header className="app-header">

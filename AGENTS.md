@@ -31,6 +31,7 @@ If rules conflict, prefer the stricter rule and preserve runtime compatibility.
 7. Never set defaults unless explicitly instructed to do so.
 8. Do not add production code purely to satisfy tests.
 9. Keep changes minimal, localised, and consistent with existing patterns.
+10. Never disable lint rules without express permission from the user; if a rule triggers cascading failures, stop and ask before turning it off.
 
 ### 4. Delegation Protocol
 
@@ -80,6 +81,7 @@ For non-trivial code changes (multi-file logic changes, behavioural changes, ref
 3. If review returns findings, send those findings back to `Implementation` to apply fixes.
 4. Re-submit updated changes to `Code Reviewer`.
 5. Repeat steps 3-4 until review returns clean (no outstanding issues).
+6. Pass the changes to the `Docs` (`.github/agents/docs.agent.md`) agent to update relevant documentation, if applicable.
 
 Rules:
 
