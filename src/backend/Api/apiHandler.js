@@ -4,18 +4,19 @@
 
 let apiAllowlist;
 
-if (typeof require === 'function') {
+if (typeof module !== 'undefined' && module.exports) {
   ({ API_ALLOWLIST: apiAllowlist } = require('./apiConstants.js'));
-} else if (typeof API_ALLOWLIST !== 'undefined') {
+} else {
+  // In GAS, API_ALLOWLIST is loaded as a global constant from apiConstants.js.
   apiAllowlist = API_ALLOWLIST;
 }
 
 /**
- *
+ * Dispatches an incoming API request to the appropriate allowlisted handler.
  */
 class ApiDispatcher extends BaseSingleton {
   /**
-   *
+   * Validates, resolves, and dispatches the request, returning a structured response.
    */
   handle(request) {
     const requestId = this._resolveRequestId(request);
@@ -25,7 +26,7 @@ class ApiDispatcher extends BaseSingleton {
     }
 
     const methodName = request.method.trim();
-    const allowlistedHandler = apiAllowlist?.[methodName];
+    const allowlistedHandler = apiAllowlist[methodName];
 
     if (!allowlistedHandler) {
       return this._failure(requestId, 'UNKNOWN_METHOD', 'Unknown API method.', false);
@@ -38,14 +39,14 @@ class ApiDispatcher extends BaseSingleton {
       return this._failure(
         requestId,
         'DISPATCH_ERROR',
-        error && error.message ? error.message : 'API dispatch failed.',
+        error?.message ?? 'API dispatch failed.',
         true
       );
     }
   }
 
   /**
-   *
+   * Returns true if the request is a non-array object with a non-empty method string.
    */
   _isValidRequest(request) {
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -56,7 +57,7 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   *
+   * Returns the request's requestId if valid, otherwise generates a new UUID.
    */
   _resolveRequestId(request) {
     if (
@@ -73,7 +74,7 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   *
+   * Invokes the named allowlisted handler function with the given params.
    */
   _invokeAllowlistedMethod(handlerName, params) {
     if (handlerName === 'getAuthorisationStatus') {
@@ -83,7 +84,7 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   *
+   * Builds a successful response envelope with the given requestId and data.
    */
   _success(requestId, data) {
     return {
@@ -94,7 +95,7 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   *
+   * Builds a failure response envelope with the given requestId, error code, message, and retriable flag.
    */
   _failure(requestId, code, message, retriable) {
     return {
@@ -110,7 +111,7 @@ class ApiDispatcher extends BaseSingleton {
 }
 
 /**
- *
+ * Entry point that delegates the request to the ApiDispatcher singleton.
  */
 function apiHandler(request) {
   return ApiDispatcher.getInstance().handle(request);
