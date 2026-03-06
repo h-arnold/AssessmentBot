@@ -80,7 +80,7 @@ TypeScript compile checks:
 
 ```bash
 npm exec tsc -- -b src/frontend/tsconfig.json
-npm run builder:build
+npm run build
 ```
 
 ---

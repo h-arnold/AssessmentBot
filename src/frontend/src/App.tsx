@@ -9,7 +9,7 @@ const { Header, Content } = Layout;
  *
  * @returns The composed layout for the frontend.
  */
-function App(): JSX.Element {
+function App() {
   return (
     <Layout>
       <Header className="app-header">

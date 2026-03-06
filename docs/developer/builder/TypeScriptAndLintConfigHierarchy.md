@@ -103,7 +103,7 @@ When updating TypeScript or lint standards:
 1. Update root shared base first (`tsconfig.base.json` or `config/eslint/ts-base-rules.cjs`) when the rule is intended to apply across components.
 2. Update leaf config only for runtime- or component-specific behaviour.
 3. Run affected validation commands:
-   - `npm run builder:build`
+   - `npm run build`
    - `npm run builder:lint`
    - `npm exec tsc -- -b src/frontend/tsconfig.json`
    - `npm run frontend:build`

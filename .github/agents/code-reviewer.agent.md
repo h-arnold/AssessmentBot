@@ -102,7 +102,7 @@ npm exec tsc -- -b src/frontend/tsconfig.json
 **Builder**:
 ```bash
 npm run builder:lint
-npm run builder:build
+npm run build
 ```
 
 Use `read/problems` to surface any IDE-detected errors. Use `sonarqube_analyzeFile` on changed files. Do not ignore warnings; explain them.
