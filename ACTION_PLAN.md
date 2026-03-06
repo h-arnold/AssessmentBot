@@ -51,6 +51,47 @@ Introduce a single, typed frontend API wrapper and a backend API dispatcher that
 - Record any implementation deviations, compromises, or follow-up work in the section's implementation notes area.
 - Commit the completed changes for each section before starting the next section.
 
+## Pause Handover (2026-03-06)
+
+Current branch and commit state:
+
+- Branch: `codex/create-api-handler-wrapper-for-frontend-calls`
+- Latest commit: `d801cf9` (`feat(frontend): add typed apiService wrapper contract`)
+- Last pushed remote commit before local work: `3586a9e`
+
+Confirmed completed and committed:
+
+- Section 1 is implemented and committed in `d801cf9`.
+- Frontend wrapper tests pass: `npm run frontend:test -- src/services/apiService.test.ts`.
+
+Work currently in progress but not committed:
+
+- `src/backend/Api/apiConstants.js` (new, untracked)
+- `src/backend/Api/apiHandler.js` (new, untracked)
+- `tests/api/apiHandler.test.js` (new, untracked)
+
+Current verification snapshot for in-progress backend work:
+
+- Targeted backend test file passes functionally: `npm test -- tests/api/apiHandler.test.js` (19 tests passed).
+- Caveat: running only this one backend test file fails global coverage gates, so this command currently exits non-zero due to coverage thresholds.
+
+Important resume note:
+
+- Section 2 implementation currently returns `DISPATCH_ERROR` for thrown handler errors.
+- Action plan Section 6 requires standardised error codes and mapping (`INTERNAL_ERROR`, `RATE_LIMITED`, `INVALID_REQUEST`, `UNKNOWN_METHOD`) plus custom API error classes.
+- When resuming, either:
+
+1. Keep Section 2 as a thin interim slice and explicitly record the temporary `DISPATCH_ERROR` code as a planned replacement in Section 6.
+2. Or refactor Section 2 now to align with the Section 6 error model before committing.
+
+Recommended first steps on next session:
+
+1. Run `git status --short` and confirm only the three untracked Section 2 files are pending.
+2. Run the mandated sub-agent loop for Section 2 (tests -> implementation -> review/fix).
+3. Decide and document the Section 2 vs Section 6 error-code alignment approach before committing.
+4. Commit Section 2 once reviewer is clean and notes are updated.
+5. Continue with Section 3 (tracking store) immediately after Section 2 commit.
+
 ## Target Architecture
 
 ## 1) Frontend wrapper (`src/frontend/src/services/apiService.ts`)
@@ -221,6 +262,33 @@ Constraints:
 - Do not add new behaviour in deprecated source trees.
 
 Implementation notes:
+
+- Status: in progress (2026-03-06), not yet committed.
+- Added dispatcher scaffolding in `src/backend/Api/apiHandler.js`:
+
+1. GAS-global `apiHandler(request)` wrapper delegating to `ApiDispatcher.getInstance().handle(request)`.
+2. Request validation for object payload and non-empty `method` string.
+3. Explicit allowlist resolution via `API_ALLOWLIST`.
+4. `requestId` preservation and generation (`Utilities.getUuid()` with fallback).
+5. Structured success/error envelopes.
+
+- Added constants file `src/backend/Api/apiConstants.js` with initial allowlist for `getAuthorisationStatus`.
+- Added tests `tests/api/apiHandler.test.js` covering all Section 2 required dispatcher tests plus VM-context singleton/allowlist loading behaviour.
+- Verification run:
+
+1. `npm test -- tests/api/apiHandler.test.js` reports 19/19 tests passing.
+2. Command still fails overall because repository-wide coverage thresholds are enforced for this narrow run.
+
+- Deviation to resolve later:
+
+1. Current thrown-handler mapping uses `DISPATCH_ERROR`.
+2. Section 6 requires standardised error mapping and custom error classes; this mapping will need to be replaced.
+
+- Pending before Section 2 commit:
+
+1. Complete required sub-agent review/fix loop to clean report.
+2. Confirm no conflicts with existing backend singleton/API conventions.
+3. Stage and commit these three new files.
 
 Commit checkpoint:
 
@@ -630,6 +698,13 @@ Constraints:
 
 Implementation notes:
 
+- Status at pause:
+
+1. Section 1 complete and committed (`d801cf9`).
+2. Section 2 coded with tests, but still uncommitted pending full review-loop closure and error-model alignment decision.
+
+- Phase 1 cannot be marked fully complete until Section 2 is committed.
+
 Commit checkpoint:
 
 - Commit Phase 1 once the initial contract and infrastructure slice is stable.
@@ -817,6 +892,16 @@ Constraints:
 
 Implementation notes:
 
+- Commands executed at pause:
+
+1. `npm run frontend:test -- src/services/apiService.test.ts` -> passed (7/7 tests).
+2. `npm test -- tests/api/apiHandler.test.js` -> tests passed (19/19) but command failed exit due to global coverage thresholds on targeted run.
+
+- Resume guidance:
+
+1. Continue using targeted test runs during section development.
+2. Before marking any phase complete, run the broader command sequence and resolve any coverage/lint failures in full-context runs.
+
 Commit checkpoint:
 
 - Commit test harness updates with the section they enable, not as an isolated unrelated change.
@@ -916,6 +1001,15 @@ Final acceptance checklist:
 5. Any deviations from this plan are captured in the relevant implementation notes sections.
 
 Implementation notes:
+
+- Checklist status at pause:
+
+1. Frontend wrapper contract implemented: yes (Section 1).
+2. Backend dispatcher lifecycle tracking with `UserProperties`: not started.
+3. Admission control with stale pruning: not started.
+4. Structured rate-limit + frontend retry policy end-to-end: not started.
+5. `getAuthorisationStatus` migrated through wrapper path in feature service: not started.
+6. Full required test/lint suite green for final scope: not yet run for full scope.
 
 Commit checkpoint:
 
