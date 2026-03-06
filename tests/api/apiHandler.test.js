@@ -153,7 +153,7 @@ describe('Api/apiHandler dispatcher', () => {
     expect(response.requestId.length).toBeGreaterThan(0);
   });
 
-  it('uses Utilities.getUuid to generate requestId when available', () => {
+  it('calls Utilities.getUuid to generate requestId when none is provided', () => {
     const originalUtilities = globalThis.Utilities;
     globalThis.Utilities = {
       getUuid: vi.fn(() => 'uuid-fixed-001'),
@@ -203,9 +203,19 @@ describe('Api/apiHandler dispatcher', () => {
     });
   });
 
-  it('uses fallback singleton base in vm context when BaseSingleton is absent', () => {
+  it('throws when an unrecognised handler name is passed to _invokeAllowlistedMethod', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    expect(() => dispatcher._invokeAllowlistedMethod('unknownHandler', {})).toThrow(
+      'Allowlisted handler is not implemented.'
+    );
+  });
+
+  it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: {
+        BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
         API_ALLOWLIST: {
           getAuthorisationStatus: 'getAuthorisationStatus',
         },
@@ -230,6 +240,7 @@ describe('Api/apiHandler dispatcher', () => {
   it('uses global API_ALLOWLIST in vm context and returns DISPATCH_ERROR for unknown mapped handler', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: {
+        BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
         API_ALLOWLIST: {
           getAuthorisationStatus: 'notImplementedHandler',
         },

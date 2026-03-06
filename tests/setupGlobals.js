@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+
 // Global shims for GAS-like environment in unit tests.
 
 // Ensure canonical BaseSingleton is loaded first so tests use the real implementation
@@ -41,6 +43,7 @@ g.Utils = {
 };
 
 g.Utilities = {
+  getUuid: randomUUID,
   base64Encode(bytes) {
     if (Array.isArray(bytes)) return Buffer.from(Uint8Array.from(bytes)).toString('base64');
     if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8').toString('base64');

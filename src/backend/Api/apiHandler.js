@@ -11,23 +11,9 @@ if (typeof require === 'function') {
 }
 
 /**
- * Fallback singleton base constructor used when {@link BaseSingleton} is unavailable (e.g. VM or Node contexts).
- */
-function DefaultBaseSingleton() {}
-DefaultBaseSingleton.getInstance = function getInstance() {
-  if (!this._instance) {
-    this._instance = new this();
-  }
-  return this._instance;
-};
-
-const DispatcherBaseSingleton =
-  typeof BaseSingleton === 'undefined' ? DefaultBaseSingleton : BaseSingleton;
-
-/**
  *
  */
-class ApiDispatcher extends DispatcherBaseSingleton {
+class ApiDispatcher extends BaseSingleton {
   /**
    *
    */
@@ -83,11 +69,7 @@ class ApiDispatcher extends DispatcherBaseSingleton {
       return request.requestId;
     }
 
-    if (typeof Utilities !== 'undefined' && Utilities && typeof Utilities.getUuid === 'function') {
-      return Utilities.getUuid();
-    }
-
-    return `req-${Date.now()}`;
+    return Utilities.getUuid();
   }
 
   /**
