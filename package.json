@@ -32,7 +32,7 @@
     "builder:test": "vitest run --config scripts/builder/vitest.config.ts",
     "builder:test:coverage": "vitest run --config scripts/builder/vitest.config.ts --coverage",
     "builder:lint": "eslint --config scripts/builder/eslint.config.js scripts/builder/src/**/*.ts",
-    "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build && npm run builder:run",
+    "builder:ci": "npm run builder:lint && npm run builder:test && npm run builder:build",
     "coverage:check": "npm run test:coverage && npm run frontend:test:coverage && npm run builder:test:coverage"
   },
   "keywords": [],

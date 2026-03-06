@@ -28,12 +28,9 @@ Make sure these inputs exist:
 
 ### Commands
 
-Use the builder commands from the root `package.json`:
+Use the builder commands from the root `package.json` (the normal entrypoint is `builder:build`, which compiles and then runs in one step):
 
 ```bash
-# Compile builder TypeScript into scripts/builder/dist
-npm run builder:compile
-
 # Compile and execute the pipeline in production mode (default; minified frontend output)
 npm run builder:build
 # Equivalent explicit production command
@@ -55,15 +52,11 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Full builder CI sequence: lint -> test -> build -> run
+# Full builder CI sequence: lint -> test -> build
 npm run builder:ci
 ```
 
 ````
-
-### Coverage requirement
-
-Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
 
 ### Coverage requirement
 
