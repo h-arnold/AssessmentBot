@@ -116,6 +116,79 @@ describe('runFrontendHtmlServiceTransform', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
+
+
+  it('leaves non-stylesheet links untouched', async () => {
+    await writeFrontendIndexHtml(paths, [
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      '  <head>',
+      '    <link rel="icon" href="./favicon.ico">',
+      '  </head>',
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
+    ]);
+
+    const { result, output } = await runTransformAndReadOutput(paths);
+
+    expect(result.inlinedStyleCount).toBe(0);
+    expect(output).toContain('<link rel="icon" href="./favicon.ico">');
+  });
+
+  it('leaves module scripts without src untouched', async () => {
+    await writeFrontendIndexHtml(paths, [
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      '    <script type="module"></script>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
+    ]);
+
+    const { result, output } = await runTransformAndReadOutput(paths);
+
+    expect(result.inlinedScriptCount).toBe(0);
+    expect(output).toContain('<script type="module"></script>');
+  });
+
+  it('fails when module script src points to an external URL', async () => {
+    await writeFrontendIndexHtml(paths, [
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      '    <script type="module" src="https://cdn.example.com/runtime.js"></script>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
+    ]);
+
+    await expect(runFrontendHtmlServiceTransform(paths)).rejects.toThrow(
+      'Unable to read script asset',
+    );
+  });
+
+  it('does not treat blank src attributes as unresolved asset references', async () => {
+    await writeFrontendIndexHtml(paths, [
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      '    <img src="">',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
+    ]);
+
+    const { output } = await runTransformAndReadOutput(paths);
+
+    expect(output).toContain('<img src="">');
+  });
+
   it('inlines module script content and preserves module script attributes', async () => {
     await writeFrontendIndexHtml(paths, [
       HTML_DOCTYPE,
