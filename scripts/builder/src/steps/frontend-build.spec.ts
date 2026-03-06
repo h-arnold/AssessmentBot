@@ -23,6 +23,8 @@ import { runFrontendBuild, runFrontendBuildWithMode } from './frontend-build.js'
 
 const runCommandMock = vi.mocked(runCommand);
 const pathExistsMock = vi.mocked(pathExists);
+const BUILD_STDOUT = 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js';
+const FRONTEND_BUILD_STAGE = 'frontend-build';
 
 /**
  * Builds a representative `BuilderPaths` fixture for step tests.
@@ -59,7 +61,7 @@ describe('runFrontendBuild', () => {
 
   it('invokes frontend build command with expected working directory and options', async () => {
     runCommandMock.mockResolvedValue({
-      stdout: 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js',
+      stdout: BUILD_STDOUT,
       stderr: '',
     });
     pathExistsMock.mockResolvedValue(true);
@@ -88,7 +90,7 @@ describe('runFrontendBuild', () => {
 
   it('passes development build flags when mode is dev', async () => {
     runCommandMock.mockResolvedValue({
-      stdout: 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js',
+      stdout: BUILD_STDOUT,
       stderr: '',
     });
     pathExistsMock.mockResolvedValue(true);
@@ -121,14 +123,14 @@ describe('runFrontendBuild', () => {
 
   it('returns build metadata including entry HTML path and generated chunks', async () => {
     runCommandMock.mockResolvedValue({
-      stdout: 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js',
+      stdout: BUILD_STDOUT,
       stderr: 'warning: size exceeds recommendation',
     });
     pathExistsMock.mockResolvedValue(true);
 
     const result = await runFrontendBuild(paths);
 
-    expect(result.stage).toBe('frontend-build');
+    expect(result.stage).toBe(FRONTEND_BUILD_STAGE);
     expect(result.entryHtmlPath).toBe(path.join(paths.buildFrontendDir, 'index.html'));
     expect(result.generatedChunks).toEqual([
       'build/frontend/index.html',
@@ -153,7 +155,7 @@ describe('runFrontendBuild', () => {
     const result = runFrontendBuild(paths);
     await expect(result).rejects.toMatchObject({
       name: 'BuildStageError',
-      stage: 'frontend-build',
+      stage: FRONTEND_BUILD_STAGE,
     });
     await expect(result).rejects.toBeInstanceOf(BuildStageError);
     await expect(result).rejects.toThrow('Diagnostics:');
@@ -166,7 +168,7 @@ describe('runFrontendBuild', () => {
 
     await expect(runFrontendBuild(paths)).rejects.toMatchObject({
       name: 'BuildStageError',
-      stage: 'frontend-build',
+      stage: FRONTEND_BUILD_STAGE,
     });
     await expect(runFrontendBuild(paths)).rejects.toThrow('chunk info');
     await expect(runFrontendBuild(paths)).rejects.toThrow('warning: test warning');

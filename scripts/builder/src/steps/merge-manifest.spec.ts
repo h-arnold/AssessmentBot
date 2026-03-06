@@ -7,6 +7,8 @@ import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
 import { mergeScopes, mergeServices, runMergeManifest, sortKeysDeep } from './merge-manifest.js';
 
+const APPS_SCRIPT_JSON = 'appsscript.json';
+
 /**
  * Creates a unique temporary directory for a test case.
  *
@@ -40,9 +42,9 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
     buildWorkDir: path.join(buildDir, 'work'),
     buildGasDir,
     buildGasUiDir: path.join(buildGasDir, 'UI'),
-    backendManifestPath: path.join(backendDir, 'appsscript.json'),
+    backendManifestPath: path.join(backendDir, APPS_SCRIPT_JSON),
     jsonDbAppPinnedSnapshotDir,
-    jsonDbAppManifestPath: path.join(jsonDbAppPinnedSnapshotDir, 'appsscript.json'),
+    jsonDbAppManifestPath: path.join(jsonDbAppPinnedSnapshotDir, APPS_SCRIPT_JSON),
     jsonDbAppSourceFiles: ['src/01-core.js'],
     jsonDbAppPublicExports: ['loadDatabase'],
   };
@@ -154,7 +156,7 @@ describe('runMergeManifest', () => {
     };
 
     expect(result.stage).toBe('merge-manifest');
-    expect(result.outputPath).toBe(path.join(paths.buildGasDir, 'appsscript.json'));
+    expect(result.outputPath).toBe(path.join(paths.buildGasDir, APPS_SCRIPT_JSON));
     expect(parsed.oauthScopes).toEqual(['scope.a', 'scope.b', 'scope.c']);
     expect(parsed.dependencies.enabledAdvancedServices).toEqual([
       { userSymbol: 'Drive', serviceId: 'drive', version: 'v3' },

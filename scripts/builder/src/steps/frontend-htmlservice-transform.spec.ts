@@ -7,6 +7,16 @@ import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
 import { runFrontendHtmlServiceTransform } from './frontend-htmlservice-transform.js';
 
+const HTML_DOCTYPE = '<!doctype html>';
+const HTML_OPEN = '<html>';
+const HTML_HEAD_EMPTY = '  <head></head>';
+const HTML_BODY_OPEN = '  <body>';
+const HTML_ROOT_DIV = '    <div id="root"></div>';
+const HTML_BODY_CLOSE = '  </body>';
+const HTML_CLOSE = '</html>';
+const SCRIPT_ASSET_PATH = './assets/index-abc.js';
+const SCRIPT_ASSET_FILE = 'index-abc.js';
+
 /**
  * Creates a unique temporary directory for a test case.
  *
@@ -108,16 +118,16 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('inlines module script content and preserves module script attributes', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
-      '    <script type="module" crossorigin src="./assets/index-abc.js"></script>',
-      '  </body>',
-      '</html>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      `    <script type="module" crossorigin src="${SCRIPT_ASSET_PATH}"></script>`,
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
-    await writeFrontendAsset(paths, 'index-abc.js', 'window.__testReactBoot = true;');
+    await writeFrontendAsset(paths, SCRIPT_ASSET_FILE, 'window.__testReactBoot = true;');
 
     const { result, output } = await runTransformAndReadOutput(paths);
 
@@ -129,37 +139,37 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('inlines module scripts when src attribute appears before type', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
-      '    <script src="./assets/index-abc.js" type="module"></script>',
-      '  </body>',
-      '</html>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      `    <script src="${SCRIPT_ASSET_PATH}" type="module"></script>`,
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
-    await writeFrontendAsset(paths, 'index-abc.js', 'window.__srcBeforeType = true;');
+    await writeFrontendAsset(paths, SCRIPT_ASSET_FILE, 'window.__srcBeforeType = true;');
 
     const { result, output } = await runTransformAndReadOutput(paths);
 
     expect(result.inlinedScriptCount).toBe(1);
     expect(output).toContain('<script type="module">');
     expect(output).toContain('window.__srcBeforeType = true;');
-    expect(output).not.toContain('src="./assets/index-abc.js"');
+    expect(output).not.toContain(`src="${SCRIPT_ASSET_PATH}"`);
   });
 
   it('inlines module scripts with unquoted local src and type attributes', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
       '    <script src=./assets/index-abc.js type=module></script>',
-      '  </body>',
-      '</html>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
-    await writeFrontendAsset(paths, 'index-abc.js', 'window.__unquotedModuleAttrs = true;');
+    await writeFrontendAsset(paths, SCRIPT_ASSET_FILE, 'window.__unquotedModuleAttrs = true;');
 
     const { result, output } = await runTransformAndReadOutput(paths);
 
@@ -171,15 +181,15 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('replaces stylesheet links with inline style blocks', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
       '  <head>',
       '    <link rel="stylesheet" href="./assets/index-abc.css">',
       '  </head>',
-      '  <body>',
-      '    <div id="root"></div>',
-      '  </body>',
-      '</html>',
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
     await writeFrontendAsset(paths, 'index-abc.css', 'body { color: rgb(1, 2, 3); }');
 
@@ -193,39 +203,39 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('produces output with module declaration and no /assets references', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
       '  <head>',
       '    <meta charset="UTF-8">',
       '    <link rel="stylesheet" href="./assets/index-abc.css">',
       '  </head>',
-      '  <body>',
-      '    <div id="root"></div>',
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
       '    <script type="module" src="./assets/index-abc.js"></script>',
-      '  </body>',
-      '</html>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
     await writeFrontendAsset(paths, 'index-abc.css', ':root { --accent: #123456; }');
-    await writeFrontendAsset(paths, 'index-abc.js', 'document.getElementById("root");');
+    await writeFrontendAsset(paths, SCRIPT_ASSET_FILE, 'document.getElementById("root");');
 
     const { output } = await runTransformAndReadOutput(paths);
 
     expect(output).toContain('<meta charset="UTF-8">');
-    expect(output).toContain('<div id="root"></div>');
+    expect(output).toContain(HTML_ROOT_DIV.trim());
     expect(output).toContain('type="module"');
     expect(output).not.toContain('/assets/');
   });
 
   it('fails when asset references resolve outside the frontend build directory', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
       '    <script type="module" src="../secrets.js"></script>',
-      '  </body>',
-      '</html>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
@@ -234,14 +244,14 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('fails when unresolved /assets references remain in transformed output', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
       '    <img src="/assets/logo.svg">',
-      '  </body>',
-      '</html>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);
@@ -252,14 +262,14 @@ describe('runFrontendHtmlServiceTransform', () => {
 
   it('fails when unresolved relative assets references remain in transformed output', async () => {
     await writeFrontendIndexHtml(paths, [
-      '<!doctype html>',
-      '<html>',
-      '  <head></head>',
-      '  <body>',
-      '    <div id="root"></div>',
+      HTML_DOCTYPE,
+      HTML_OPEN,
+      HTML_HEAD_EMPTY,
+      HTML_BODY_OPEN,
+      HTML_ROOT_DIV,
       '    <img src="./assets/logo.svg">',
-      '  </body>',
-      '</html>',
+      HTML_BODY_CLOSE,
+      HTML_CLOSE,
     ]);
 
     await expect(runFrontendHtmlServiceTransform(paths)).rejects.toBeInstanceOf(BuildStageError);

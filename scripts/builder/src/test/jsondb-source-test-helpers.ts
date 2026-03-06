@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import type { BuilderPaths } from '../types.js';
 
 const execFileAsync = promisify(execFile);
+const APPS_SCRIPT_JSON = 'appsscript.json';
 
 /**
  * Builds a complete `BuilderPaths` object rooted at a temporary directory.
@@ -25,9 +26,9 @@ export function createBuilderPaths(rootDir: string): BuilderPaths {
     buildWorkDir: path.join(rootDir, 'build', 'work'),
     buildGasDir: path.join(rootDir, 'build', 'gas'),
     buildGasUiDir: path.join(rootDir, 'build', 'gas', 'UI'),
-    backendManifestPath: path.join(rootDir, 'src', 'backend', 'appsscript.json'),
+    backendManifestPath: path.join(rootDir, 'src', 'backend', APPS_SCRIPT_JSON),
     jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', 'appsscript.json'),
+    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', APPS_SCRIPT_JSON),
     jsonDbAppSourceFiles: [],
     jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
   };
@@ -62,7 +63,7 @@ export async function createReleaseArchive(
  * @return {Promise<void>} Resolves once the manifest is written.
  */
 export async function writeReleaseManifest(releaseFixtureRoot: string): Promise<void> {
-  await fs.writeFile(path.join(releaseFixtureRoot, 'appsscript.json'), '{"oauthScopes":[]}', 'utf-8');
+  await fs.writeFile(path.join(releaseFixtureRoot, APPS_SCRIPT_JSON), '{"oauthScopes":[]}', 'utf-8');
 }
 
 /**

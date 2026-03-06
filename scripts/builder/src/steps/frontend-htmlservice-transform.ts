@@ -69,9 +69,18 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern =
-    /<script\s+[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptPattern, async (_, src: string) => {
+  const moduleScriptPattern = /<script\s+([^>]*)><\/script>/gim;
+  html = await replaceAsync(html, moduleScriptPattern, async (match: string, attributes: string) => {
+    const type = readAttributeValue(attributes, 'type');
+    if (!type || type.toLowerCase() !== 'module') {
+      return match;
+    }
+
+    const src = readAttributeValue(attributes, 'src');
+    if (!src) {
+      return match;
+    }
+
     const scriptPath = resolveBuiltAssetPath(paths, src);
     let script: string;
     try {
@@ -141,4 +150,83 @@ async function replaceAsync(
 
   let replacementIndex = 0;
   return input.replace(pattern, () => replacements[replacementIndex++] as string);
+}
+
+/**
+ * Reads an attribute value from a raw HTML attribute segment.
+ *
+ * @param {string} attributes - Raw HTML attribute segment.
+ * @param {string} name - Attribute name to read.
+ * @return {string | undefined} Attribute value when present.
+ */
+function readAttributeValue(attributes: string, name: string): string | undefined {
+  const pattern = new RegExp(
+    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
+    'i',
+  );
+  const match = pattern.exec(attributes);
+  if (!match) {
+    return undefined;
+  }
+  return match[1] ?? match[2] ?? match[3];
+}
+
+/**
+ * Removes a named HTML attribute from an attribute string.
+ *
+ * @param {string} attributes - Raw HTML attribute segment.
+ * @param {string} name - Attribute name to remove.
+ * @return {string} Normalised attribute segment without the named attribute.
+ */
+function removeAttribute(attributes: string, name: string): string {
+  const trimmed = attributes
+    .replace(
+      new RegExp(`\\s*\\b${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'>]+)`, 'gi'),
+      '',
+    )
+    .trim();
+  return trimmed.replace(/\s+/g, ' ');
+}
+
+/**
+ * Detects unresolved local asset references in `src` or `href` attributes.
+ *
+ * @param {string} html - HTML content to scan.
+ * @return {boolean} `true` when local `assets/` references remain.
+ */
+function hasUnresolvedAssetAttributeReference(html: string): boolean {
+  const pattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^"\s'>]+))/gi;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const value = match[1] ?? match[2] ?? match[3];
+    if (!value) {
+      continue;
+    }
+    if (/^(?:\.\.\/|\.\/|\/)?assets\//i.test(value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Detects unresolved external module script references in transformed HTML.
+ *
+ * @param {string} html - HTML content to scan.
+ * @return {boolean} `true` when a module script still has a `src` attribute.
+ */
+function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
+  const pattern = /<script\b([^>]*)><\/script>/gim;
+  let match;
+  while ((match = pattern.exec(html))) {
+    const attributes = match[1];
+    const type = readAttributeValue(attributes, 'type');
+    if (!type || type.toLowerCase() !== 'module') {
+      continue;
+    }
+    if (readAttributeValue(attributes, 'src')) {
+      return true;
+    }
+  }
+  return false;
 }

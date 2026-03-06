@@ -13,6 +13,11 @@ import {
   validateManifestSanity,
 } from './validate-output.js';
 
+const APPS_SCRIPT_JSON = 'appsscript.json';
+const JSONDB_INLINED = 'JsonDbApp.inlined.js';
+const REACT_APP_HTML = 'UI/ReactApp.html';
+const VALIDATE_OUTPUT_STAGE = 'validate-output';
+
 /**
  * Creates a unique temporary root for tests.
  *
@@ -43,9 +48,9 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
     buildWorkDir: path.join(buildDir, 'work'),
     buildGasDir,
     buildGasUiDir: path.join(buildGasDir, 'UI'),
-    backendManifestPath: path.join(rootDir, 'src', 'backend', 'appsscript.json'),
+    backendManifestPath: path.join(rootDir, 'src', 'backend', APPS_SCRIPT_JSON),
     jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', 'appsscript.json'),
+    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', APPS_SCRIPT_JSON),
     jsonDbAppSourceFiles: ['src/01-core.js'],
     jsonDbAppPublicExports: ['loadDatabase'],
   };
@@ -60,7 +65,7 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
 async function writeValidGasArtefacts(paths: BuilderPaths): Promise<void> {
   await fs.mkdir(paths.buildGasUiDir, { recursive: true });
   await fs.writeFile(
-    path.join(paths.buildGasDir, 'appsscript.json'),
+    path.join(paths.buildGasDir, APPS_SCRIPT_JSON),
     JSON.stringify({
       oauthScopes: ['https://www.googleapis.com/auth/script.scriptapp'],
       dependencies: {
@@ -69,8 +74,8 @@ async function writeValidGasArtefacts(paths: BuilderPaths): Promise<void> {
     }),
     'utf-8',
   );
-  await fs.writeFile(path.join(paths.buildGasDir, 'JsonDbApp.inlined.js'), 'const JsonDbApp = {};', 'utf-8');
-  await fs.writeFile(path.join(paths.buildGasUiDir, 'ReactApp.html'), '<div id="root"></div>', 'utf-8');
+  await fs.writeFile(path.join(paths.buildGasDir, JSONDB_INLINED), 'const JsonDbApp = {};', 'utf-8');
+  await fs.writeFile(path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)), '<div id="root"></div>', 'utf-8');
   await fs.writeFile(path.join(paths.buildGasDir, 'Utils', 'Validate.js'), 'class Validate {}', 'utf-8');
 }
 
@@ -196,24 +201,24 @@ describe('runValidateOutput', () => {
     const expectedRequiredFileCount = 3;
     const expectedGasFileCount = 4;
 
-    expect(result.stage).toBe('validate-output');
+    expect(result.stage).toBe(VALIDATE_OUTPUT_STAGE);
     expect(result.outputPath).toBe(paths.buildGasDir);
     expect(result.requiredFileCount).toBe(expectedRequiredFileCount);
     expect(result.gasFileCount).toBe(expectedGasFileCount);
     expect(result.duplicateProtectedGlobalCount).toBe(0);
     expect(Object.keys(result.artefactSizes)).toEqual([
-      'appsscript.json',
-      'JsonDbApp.inlined.js',
-      'UI/ReactApp.html',
+      APPS_SCRIPT_JSON,
+      JSONDB_INLINED,
+      REACT_APP_HTML,
     ]);
     expect(Object.keys(result.artefactChecksums)).toEqual([
-      'appsscript.json',
-      'JsonDbApp.inlined.js',
-      'UI/ReactApp.html',
+      APPS_SCRIPT_JSON,
+      JSONDB_INLINED,
+      REACT_APP_HTML,
     ]);
-    expect(result.artefactChecksums['appsscript.json']).toMatch(/^[a-f0-9]{64}$/);
-    expect(result.artefactChecksums['JsonDbApp.inlined.js']).toMatch(/^[a-f0-9]{64}$/);
-    expect(result.artefactChecksums['UI/ReactApp.html']).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artefactChecksums[APPS_SCRIPT_JSON]).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artefactChecksums[JSONDB_INLINED]).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artefactChecksums[REACT_APP_HTML]).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it('returns stable checksums for unchanged outputs across runs', async () => {
@@ -231,7 +236,7 @@ describe('runValidateOutput', () => {
 
     await expect(runValidateOutput(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runValidateOutput(paths)).rejects.toMatchObject({
-      stage: 'validate-output',
+      stage: VALIDATE_OUTPUT_STAGE,
     });
   });
 
@@ -240,19 +245,19 @@ describe('runValidateOutput', () => {
 
     await expect(runValidateOutput(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runValidateOutput(paths)).rejects.toMatchObject({
-      stage: 'validate-output',
+      stage: VALIDATE_OUTPUT_STAGE,
     });
   });
 
   it('wraps unreadable file failures with validate-output stage context', async () => {
     await writeValidGasArtefacts(paths);
-    const manifestPath = path.join(paths.buildGasDir, 'appsscript.json');
+    const manifestPath = path.join(paths.buildGasDir, APPS_SCRIPT_JSON);
     await fs.rm(manifestPath);
     await fs.mkdir(manifestPath);
 
     await expect(runValidateOutput(paths)).rejects.toBeInstanceOf(BuildStageError);
     await expect(runValidateOutput(paths)).rejects.toMatchObject({
-      stage: 'validate-output',
+      stage: VALIDATE_OUTPUT_STAGE,
     });
   });
 });

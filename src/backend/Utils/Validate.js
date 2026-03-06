@@ -226,6 +226,20 @@ const Validate = {
   },
 
   /**
+   * Attempts to parse a lowercase boolean string value.
+   * @param {string|undefined} value
+   * @returns {boolean|undefined}
+   */
+  _coerceBooleanString(value) {
+    if (value === 'true') {
+      return true;
+    }
+    if (value === 'false') {
+      return false;
+    }
+  },
+
+  /**
    * Validates and coerces a value to a boolean.
    * Accepts boolean values, or string representations ('true'/'false').
    * @param {string} label - Human-readable label for error messaging.
@@ -234,15 +248,16 @@ const Validate = {
    * @throws {Error} If value cannot be interpreted as a boolean.
    */
   validateBoolean(label, value) {
-    if (Validate.isBoolean(value)) {
-      return value;
+    const lowerCaseValue = typeof value === 'string' ? value.toLowerCase() : undefined;
+    const booleanValue = Validate.isBoolean(value)
+      ? value
+      : Validate._coerceBooleanString(lowerCaseValue);
+
+    if (booleanValue === undefined) {
+      throw new Error(`${label} must be a boolean (true/false).`);
     }
-    if (typeof value === 'string') {
-      const lower = value.toLowerCase();
-      if (lower === 'true') return true;
-      if (lower === 'false') return false;
-    }
-    throw new Error(`${label} must be a boolean (true/false).`);
+
+    return booleanValue;
   },
 };
 

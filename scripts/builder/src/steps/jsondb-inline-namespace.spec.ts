@@ -11,6 +11,8 @@ import {
   scanTopLevelDeclarations,
 } from './jsondb-inline-namespace.js';
 
+const LOAD_DATABASE_EXPORT = 'loadDatabase,';
+
 /**
  * Creates a unique temporary directory for a test case.
  *
@@ -56,7 +58,7 @@ describe('generateJsonDbNamespaceWrapper', () => {
 
     expect(output).toContain('const JsonDbApp = (function () {');
     expect(output).toContain('return {');
-    expect(output).toContain('loadDatabase,');
+    expect(output).toContain(LOAD_DATABASE_EXPORT);
   });
 
   it('exports only configured public names', () => {
@@ -65,7 +67,7 @@ describe('generateJsonDbNamespaceWrapper', () => {
       ['loadDatabase'],
     );
 
-    expect(output).toContain('loadDatabase,');
+    expect(output).toContain(LOAD_DATABASE_EXPORT);
     expect(output).not.toContain('hiddenInternal,');
   });
 });

@@ -8,6 +8,7 @@ import { BuildStageError, asError, isBuildStageError } from './errors.js';
 import { ensureDirs, pathExists, removeDir, requireDirectory, requireFile } from './fs.js';
 
 let tempRoot = '';
+const PREFLIGHT_STAGE = 'preflight-clean';
 
 beforeEach(async () => {
   tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'builder-fs-spec-'));
@@ -37,8 +38,8 @@ describe('requireDirectory and requireFile', () => {
     await fs.mkdir(folder, { recursive: true });
     await fs.writeFile(file, 'ok');
 
-    await expect(requireDirectory(folder, 'Folder', 'preflight-clean')).resolves.toBeUndefined();
-    await expect(requireFile(file, 'File', 'preflight-clean')).resolves.toBeUndefined();
+    await expect(requireDirectory(folder, 'Folder', PREFLIGHT_STAGE)).resolves.toBeUndefined();
+    await expect(requireFile(file, 'File', PREFLIGHT_STAGE)).resolves.toBeUndefined();
   });
 
   it('throws stage errors for invalid directory and file path types', async () => {
@@ -47,20 +48,20 @@ describe('requireDirectory and requireFile', () => {
     await fs.writeFile(file, 'ok');
     await fs.mkdir(folder, { recursive: true });
 
-    await expect(requireDirectory(file, 'Folder', 'preflight-clean')).rejects.toBeInstanceOf(
+    await expect(requireDirectory(file, 'Folder', PREFLIGHT_STAGE)).rejects.toBeInstanceOf(
       BuildStageError,
     );
-    await expect(requireFile(folder, 'File', 'preflight-clean')).rejects.toBeInstanceOf(
+    await expect(requireFile(folder, 'File', PREFLIGHT_STAGE)).rejects.toBeInstanceOf(
       BuildStageError,
     );
   });
 
   it('throws stage errors when required paths are missing', async () => {
     await expect(
-      requireDirectory(path.join(tempRoot, 'none'), 'Folder', 'preflight-clean'),
+      requireDirectory(path.join(tempRoot, 'none'), 'Folder', PREFLIGHT_STAGE),
     ).rejects.toBeInstanceOf(BuildStageError);
     await expect(
-      requireFile(path.join(tempRoot, 'none.txt'), 'File', 'preflight-clean'),
+      requireFile(path.join(tempRoot, 'none.txt'), 'File', PREFLIGHT_STAGE),
     ).rejects.toBeInstanceOf(BuildStageError);
   });
 });
