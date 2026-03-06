@@ -36,7 +36,7 @@ const DriveManager = {
     }
 
     // Validate the destination folder exists (fail fast).
-    DriveManager._validateFolderExists(destinationFolderId);
+    this._validateFolderExists(destinationFolderId);
 
     // Use the Advanced Drive API for moving so this works on Shared Drives as well.
     // DriveApp parent manipulation (removeFile/addFile) is unreliable for Shared Drives.
@@ -129,7 +129,7 @@ const DriveManager = {
       Validate.requireParams({ destinationFolderId }, 'copyTemplateSheet');
 
       // Validate the destination folder exists (fail fast).
-      DriveManager._validateFolderExists(destinationFolderId);
+      this._validateFolderExists(destinationFolderId);
 
       const escapedName = String(newSheetName).replaceAll("'", String.raw`\\'`);
       const query =
@@ -240,7 +240,7 @@ const DriveManager = {
     }
 
     // Validate the folder exists (fail fast).
-    DriveManager._validateFolderExists(destinationFolderId);
+    this._validateFolderExists(destinationFolderId);
 
     try {
       const destinationFolder = DriveApp.getFolderById(destinationFolderId);
@@ -293,12 +293,12 @@ const DriveManager = {
   getParentFolderId(fileId) {
     Validate.requireParams({ fileId }, 'getParentFolderId');
 
-    const driveAppParent = DriveManager._getParentViaDriveApp(fileId);
+    const driveAppParent = this._getParentViaDriveApp(fileId);
     if (driveAppParent) {
       return driveAppParent;
     }
 
-    return DriveManager._getParentViaDriveApi(fileId);
+    return this._getParentViaDriveApi(fileId);
   },
 
   /**
@@ -394,7 +394,7 @@ const DriveManager = {
     Validate.requireParams({ parentFolderId, folderName }, 'createFolder');
 
     // Validate the parent folder exists (fail fast).
-    DriveManager._validateFolderExists(parentFolderId);
+    this._validateFolderExists(parentFolderId);
 
     try {
       const parentFolder = DriveApp.getFolderById(parentFolderId);
@@ -511,7 +511,7 @@ const DriveManager = {
     const input = String(urlOrId).trim();
 
     // Fast path: if it's already a valid file ID, return it unchanged.
-    if (DriveManager.isValidGoogleDriveFileId(input)) {
+    if (this.isValidGoogleDriveFileId(input)) {
       return input;
     }
 
@@ -520,7 +520,7 @@ const DriveManager = {
     const pathMatch = input.match(/\/d\/([\w-]{33,44})/);
     if (pathMatch && pathMatch[1]) {
       const extractedId = pathMatch[1];
-      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+      if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
       }
     }
@@ -529,7 +529,7 @@ const DriveManager = {
     const queryMatch = input.match(/[&?]id=([\w-]{33,44})/);
     if (queryMatch && queryMatch[1]) {
       const extractedId = queryMatch[1];
-      if (DriveManager.isValidGoogleDriveFileId(extractedId)) {
+      if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
       }
     }
@@ -558,11 +558,11 @@ const DriveManager = {
     const retries = 3;
 
     try {
-      return DriveManager._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
+      return this._fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs);
     } catch (appError) {
       ABLogger.getInstance().debug('DriveApp failed, trying Drive API', appError);
       try {
-        return DriveManager._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
+        return this._fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs);
       } catch (apiError) {
         progressTracker.logError('Failed to fetch file modified time', {
           fileId,

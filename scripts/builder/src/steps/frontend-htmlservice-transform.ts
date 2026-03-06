@@ -69,7 +69,7 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern = /<script\s+([^>]*)><\/script>/gim;
+  const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
   html = await replaceAsync(html, moduleScriptPattern, async (match: string, attributes: string) => {
     const type = readAttributeValue(attributes, 'type');
     if (!type || type.toLowerCase() !== 'module') {
