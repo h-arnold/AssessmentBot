@@ -9,6 +9,7 @@ const legacyUiTestPatterns = ['tests/ui/**', 'tests/singletons/uiLazyProbe.test.
 module.exports = {
   test: {
     coverage: {
+      enabled: true,
       provider: 'v8',
       include: ['src/backend/Api/**/*.js'],
       reporter: ['text', 'html'],
