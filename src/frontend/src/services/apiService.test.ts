@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type ApiSuccessEnvelope<TData> = {
     ok: true;
@@ -279,6 +279,193 @@ describe('apiService.callApi', () => {
                 retryAfterMs: 1500,
                 activeRequests: 25,
             },
+        });
+    });
+});
+
+// ── Helpers for retry policy tests ───────────────────────────────────────────
+
+/**
+ * Creates a `google.script.run` harness that returns responses in sequence.
+ * Each call to `apiHandler` consumes the next response; the last response is
+ * repeated if the sequence is exhausted.
+ */
+function createSequentialHarness(responses: RunnerHarnessResponse[]): {
+    runner: GoogleScriptRunWithApiHandler;
+    apiHandlerSpy: ReturnType<typeof vi.fn>;
+} {
+    let callCount = 0;
+    let successHandler: ((value: unknown) => void) | undefined;
+    let failureHandler: ((error: unknown) => void) | undefined;
+
+    const apiHandlerSpy = vi.fn((_request: unknown) => {
+        const response = responses[Math.min(callCount, responses.length - 1)];
+        callCount++;
+
+        queueMicrotask(() => {
+            if (response.kind === 'success') {
+                successHandler?.(response.payload);
+                return;
+            }
+            failureHandler?.(response.payload);
+        });
+    });
+
+    const runner: GoogleScriptRunWithApiHandler = {
+        withSuccessHandler(handler: (responseValue: unknown) => void) {
+            successHandler = handler;
+            return runner;
+        },
+        withFailureHandler(handler: (error: unknown) => void) {
+            failureHandler = handler;
+            return runner;
+        },
+        apiHandler(request: unknown) {
+            apiHandlerSpy(request);
+        },
+    };
+
+    return { runner, apiHandlerSpy };
+}
+
+// ── Retry policy ──────────────────────────────────────────────────────────────
+
+describe('retry policy', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.resetModules();
+        vi.useRealTimers();
+        clearGoogle();
+    });
+
+    it('retries on RATE_LIMITED with retriable: true and resolves on second attempt', async () => {
+        const callApi = await loadCallApi();
+
+        const rateLimitedEnvelope: ApiErrorEnvelope = {
+            ok: false,
+            requestId: 'req-retry-rl-1',
+            error: { code: 'RATE_LIMITED', message: 'Rate limited.', retriable: true },
+        };
+        const successEnvelope: ApiSuccessEnvelope<{ done: boolean }> = {
+            ok: true,
+            requestId: 'req-retry-ok-1',
+            data: { done: true },
+        };
+
+        const { runner, apiHandlerSpy } = createSequentialHarness([
+            { kind: 'success', payload: rateLimitedEnvelope },
+            { kind: 'success', payload: successEnvelope },
+        ]);
+
+        setGoogle({ script: { run: runner } });
+
+        const resultPromise = callApi<{ done: boolean }>('someMethod');
+
+        await vi.runAllTimersAsync();
+
+        await expect(resultPromise).resolves.toEqual({ done: true });
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops retrying after max 4 attempts and rejects', async () => {
+        const callApi = await loadCallApi();
+
+        const rateLimitedEnvelope: ApiErrorEnvelope = {
+            ok: false,
+            requestId: 'req-retry-max-1',
+            error: { code: 'RATE_LIMITED', message: 'Still rate limited.', retriable: true },
+        };
+
+        const { runner, apiHandlerSpy } = createSequentialHarness(
+            Array(4).fill({ kind: 'success', payload: rateLimitedEnvelope })
+        );
+
+        setGoogle({ script: { run: runner } });
+
+        const resultPromise = callApi('someMethod');
+
+        await vi.runAllTimersAsync();
+
+        await expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(4);
+    });
+
+    it('does not retry when retriable is false', async () => {
+        const callApi = await loadCallApi();
+
+        const notRetriableEnvelope: ApiErrorEnvelope = {
+            ok: false,
+            requestId: 'req-no-retry-retriable-false',
+            error: { code: 'RATE_LIMITED', message: 'Rate limited but not retriable.', retriable: false },
+        };
+
+        const { runner, apiHandlerSpy } = createSequentialHarness([
+            { kind: 'success', payload: notRetriableEnvelope },
+        ]);
+
+        setGoogle({ script: { run: runner } });
+
+        const resultPromise = callApi('someMethod');
+
+        await vi.runAllTimersAsync();
+
+        await expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not retry when error code is not RATE_LIMITED', async () => {
+        const callApi = await loadCallApi();
+
+        const invalidRequestEnvelope: ApiErrorEnvelope = {
+            ok: false,
+            requestId: 'req-no-retry-code',
+            error: { code: 'INVALID_REQUEST', message: 'Bad request.', retriable: true },
+        };
+
+        const { runner, apiHandlerSpy } = createSequentialHarness([
+            { kind: 'success', payload: invalidRequestEnvelope },
+        ]);
+
+        setGoogle({ script: { run: runner } });
+
+        const resultPromise = callApi('someMethod');
+
+        await vi.runAllTimersAsync();
+
+        await expect(resultPromise).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('final rejection after exhaustion carries the error from the last attempt', async () => {
+        const callApi = await loadCallApi();
+
+        const makeEnvelope = (requestId: string): ApiErrorEnvelope => ({
+            ok: false,
+            requestId,
+            error: { code: 'RATE_LIMITED', message: `Attempt ${requestId} failed.`, retriable: true },
+        });
+
+        const { runner } = createSequentialHarness([
+            { kind: 'success', payload: makeEnvelope('req-exhaust-1') },
+            { kind: 'success', payload: makeEnvelope('req-exhaust-2') },
+            { kind: 'success', payload: makeEnvelope('req-exhaust-3') },
+            { kind: 'success', payload: makeEnvelope('req-exhaust-4') },
+        ]);
+
+        setGoogle({ script: { run: runner } });
+
+        const resultPromise = callApi('someMethod');
+
+        await vi.runAllTimersAsync();
+
+        await expect(resultPromise).rejects.toMatchObject({
+            code: 'RATE_LIMITED',
+            requestId: 'req-exhaust-4',
+            message: 'Attempt req-exhaust-4 failed.',
         });
     });
 });
