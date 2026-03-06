@@ -31,7 +31,9 @@ Introduce a single, typed frontend API wrapper and a backend API dispatcher that
 ## Assumptions
 
 1. The concurrency guard is intended to be per user session context (aligned with `UserProperties`).
-2. A conservative app-level threshold lower than GAS hard limits is acceptable (for example 20 active calls rather than 30).
+2. The immediate target is user-level throttling only (not global throttling), aligned to GAS per-user request constraints.
+3. A conservative per-user threshold lower than hard limits is acceptable (for example 20 active calls rather than 30).
+4. Lock critical sections are expected to be short enough for a 1 second acquisition timeout when scoped to state updates only.
 
 ## Design Principles Applied
 
@@ -70,6 +72,12 @@ Add a new GAS-global function:
 
 - `apiHandler(request)`
 
+Implementation shape:
+
+- Keep `apiHandler` as a thin GAS global wrapper.
+- Delegate to a singleton dispatcher class (for example `ApiDispatcher extends BaseSingleton`).
+- Use `ApiDispatcher.getInstance().handle(request)` from the wrapper.
+
 Request shape:
 
 - `{ method: string, params?: object, requestId?: string }`
@@ -81,6 +89,12 @@ Responsibilities:
 - Perform admission control before dispatch.
 - Track lifecycle in `UserProperties` using UUID and timestamps.
 - Return structured success/failure envelope.
+
+Rationale for singleton use:
+
+- Keeps API dispatch state and helpers encapsulated in one runtime-local instance.
+- Preserves existing project singleton conventions (`BaseSingleton` + `getInstance`).
+- Avoids replacing GAS global function entry points required by `google.script.run`.
 
 Allowlist example approach:
 
@@ -102,12 +116,17 @@ Each invocation record should include:
 
 Storage strategy:
 
-- Keep one index key (for example list of active/recent IDs) plus per-request keys, or a single JSON blob if size remains safe.
-- Keep payload minimal to avoid property size pressure.
+- Keep one key in user properties which stores a POJO with all of the user's invocations, keyed by `requestId`. This minimises retrieval time as there's only one value to retrieve and there should never be more than 30 entries at a time.
 
 ## 4) Atomicity and race-condition prevention
 
 Wrap read-modify-write tracking operations with `LockService.getUserLock()`.
+
+Lock policy:
+
+- Use `tryLock(1000)` (1 second timeout) for lock acquisition.
+- Lock only for short state transitions; never hold lock while running business logic.
+- If lock acquisition fails, return a structured rate-limit style response (`RATE_LIMITED`, `retriable: true`) so frontend retry policy can handle temporary contention.
 
 Critical sections:
 
@@ -117,6 +136,12 @@ Critical sections:
 - mark completion/failure.
 
 Always release locks in `finally` blocks.
+
+Execution sequence:
+
+1. Acquire user lock, prune + count + register `started`, then release.
+2. Execute requested allowlisted method with no lock held.
+3. Re-acquire user lock, mark `success`/`error`, prune compactly, then release.
 
 ## 5) Stale-entry pruning and admission control
 
@@ -139,12 +164,86 @@ Backend should emit clear error codes, e.g.:
 - `INVALID_REQUEST`
 - `INTERNAL_ERROR`
 
+Error type analysis and design:
+
+Existing error types in `src/backend/Utils/ErrorTypes`:
+
+- `AbortRequestError` (HTTP-specific) — statusCode, url, responseText. **Not reusable**: too specific to HTTP failure scenarios.
+- `PersistError` (persistence-specific) — message, cause, key. **Not reusable**: specific to property-write failures.
+
+New API-layer error types needed (`src/backend/Utils/ErrorTypes/`):
+
+1. **`ApiRateLimitError`** (extends Error)
+   - Used when: user's active execution count reaches `ACTIVE_LIMIT` during admission control.
+   - Fields: `requestId`, `method`, `activeCount`, `limit`, `retryAfterMs`.
+   - Maps to response code: `RATE_LIMITED`.
+   - Frontend behaviour: retriable with exponential backoff.
+
+2. **`ApiValidationError`** (extends Error)
+   - Used when: request payload fails schema validation (missing required fields, invalid types).
+   - Fields: `requestId`, `method`, `fieldName` (optional), `details`.
+   - Maps to response code: `INVALID_REQUEST`.
+   - Frontend behaviour: not retriable (fix request payload and retry manually).
+
+3. **`ApiDisabledError`** (extends Error)
+   - Used when: method name is not in the allowlist.
+   - Fields: `requestId`, `method` (the invalid method name).
+   - Maps to response code: `UNKNOWN_METHOD`.
+   - Frontend behaviour: not retriable (method is not available).
+
+4. **Standard `Error`** for catch-all internal failures
+   - Used when: method execution throws an unexpected error.
+   - Maps to response code: `INTERNAL_ERROR`.
+   - Frontend behaviour: not retriable; surfaced to user as unrecoverable.
+   - Keep original error details in `cause` chain for dev logging via `ABLogger`.
+
+Dispatcher boundary (error mapping):
+
+- Wrap all error creation using a centralised error-to-envelope mapper in `ApiDispatcher.handle()`.
+- This ensures consistent error code → serialised response mapping in one place.
+- The mapper translates caught errors to structured response envelopes without exposing internal error objects to frontend.
+
+Example mapper logic:
+
+```javascript
+const errorCodeMap = {
+  ApiRateLimitError: 'RATE_LIMITED',
+  ApiValidationError: 'INVALID_REQUEST',
+  ApiDisabledError: 'UNKNOWN_METHOD',
+  Error: 'INTERNAL_ERROR', // catch-all for unexpected errors
+};
+```
+
 Frontend retry policy:
 
 - retry only when `error.code === 'RATE_LIMITED'` and `retriable === true`,
 - exponential backoff with jitter,
 - fixed max attempts (for example 4-6),
 - fail with final surfaced error after exhaustion.
+
+## 7) Lock timing observability and logging
+
+Use existing `ABLogger` infrastructure for lightweight instrumentation rather than introducing a new logging framework.
+
+Track and log for each lock-protected phase:
+
+- `phase` (`admission` | `completion`)
+- `requestId`
+- `method`
+- `lockWaitMs` (time spent waiting for lock acquisition)
+- `stateUpdateMs` (time spent inside critical section)
+- `totalPhaseMs`
+
+Logging behaviour:
+
+- Use `ABLogger.getInstance().info(...)` for normal lock timing diagnostics.
+- Use `ABLogger.getInstance().warn(...)` when lock wait exceeds an operational threshold (for example 300ms).
+- Keep logs concise and metadata-focused (no sensitive payload data).
+
+Operational purpose:
+
+- Validate whether 1 second lock timeout remains appropriate over time.
+- Detect contention hotspots early before user-visible failures increase.
 
 ## Phased Delivery Plan
 
@@ -153,8 +252,9 @@ Frontend retry policy:
 Deliverables:
 
 - Define request/response envelope types in frontend service layer.
-- Implement backend `apiHandler` with allowlist and structured responses.
+- Implement backend `apiHandler` wrapper plus singleton dispatcher with allowlist and structured responses.
 - Add tracking utility with UUID + timestamps.
+- Define API-layer error type mapping strategy based on `Utils/ErrorTypes`.
 
 Validation:
 
@@ -168,11 +268,13 @@ Deliverables:
 - Add lock-protected tracking updates.
 - Add stale-entry pruning (>15 minutes).
 - Add admission control and rate-limit response metadata.
+- Add lock timing instrumentation via `ABLogger` (`lockWaitMs`, `stateUpdateMs`, `totalPhaseMs`).
 
 Validation:
 
 - Backend tests covering active-count calculation and pruning behaviour.
 - Backend tests for rate-limit responses and error propagation.
+- Backend tests for lock timeout handling and error code mapping.
 
 ## Phase 3 — Frontend retries and first migration
 
@@ -223,6 +325,8 @@ If builder files are touched in implementation, also run:
 - Generate UUIDs with GAS utilities (`Utilities.getUuid()`).
 - Avoid storing sensitive payload data in properties; store metadata only.
 - Keep error messages useful but concise.
+- Keep lock timeout at 1 second initially and tune using observed lock timing logs.
+- Keep this implementation strictly per-user throttling for now; defer any global admission control to a separate decision.
 
 ## Risks and Mitigations
 
