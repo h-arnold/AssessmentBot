@@ -35,7 +35,7 @@ describe('App', () => {
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
   });
 
-  it('shows unauthroised status when backend returns false', async () => {
+  it('shows unauthorised status when backend returns false', async () => {
     const runMock = {
       withSuccessHandler(handler: (result: boolean) => void) {
         queueMicrotask(() => {

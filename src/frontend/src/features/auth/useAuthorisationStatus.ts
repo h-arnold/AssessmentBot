@@ -6,7 +6,7 @@ export type AuthViewState = 'loading' | 'authorised' | 'unauthorised';
 /**
  * Resolves authorisation state for the auth status feature.
  *
- * Returns loading state immediately, then either authorised or unauthroised.
+ * Returns loading state immediately, then either authorised or unauthorised.
  * If the backend call fails, the hook returns the failure message.
  */
 export function useAuthorisationStatus() {
