@@ -10,17 +10,19 @@ if (typeof require === 'function') {
   apiAllowlist = API_ALLOWLIST;
 }
 
+/**
+ * Fallback singleton base constructor used when {@link BaseSingleton} is unavailable (e.g. VM or Node contexts).
+ */
+function DefaultBaseSingleton() {}
+DefaultBaseSingleton.getInstance = function getInstance() {
+  if (!this._instance) {
+    this._instance = new this();
+  }
+  return this._instance;
+};
+
 const DispatcherBaseSingleton =
-  typeof BaseSingleton === 'undefined'
-    ? {
-        getInstance() {
-          if (!this.instance) {
-            this.instance = new this();
-          }
-          return this.instance;
-        },
-      }
-    : BaseSingleton;
+  typeof BaseSingleton === 'undefined' ? DefaultBaseSingleton : BaseSingleton;
 
 /**
  *
@@ -85,21 +87,17 @@ class ApiDispatcher extends DispatcherBaseSingleton {
       return Utilities.getUuid();
     }
 
-    return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return `req-${Date.now()}`;
   }
 
   /**
    *
    */
   _invokeAllowlistedMethod(handlerName, params) {
-    switch (handlerName) {
-      case 'getAuthorisationStatus': {
-        return getAuthorisationStatus(params);
-      }
-      default: {
-        throw new Error('Allowlisted handler is not implemented.');
-      }
+    if (handlerName === 'getAuthorisationStatus') {
+      return getAuthorisationStatus(params);
     }
+    throw new Error('Allowlisted handler is not implemented.');
   }
 
   /**
