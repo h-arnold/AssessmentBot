@@ -91,6 +91,27 @@ function markError(store, requestId, errorMessage) {
 }
 
 /**
+ * Removes stale started entries from the store.
+ * An entry is considered stale when its status is 'started' and its startedAtMs is
+ * older than the given staleness threshold.  Completed entries (success or error)
+ * are never removed.
+ * Mutates and returns the store.
+ * @param {Object} store - The request store object.
+ * @param {number} stalenessThresholdMs - Age in milliseconds beyond which a started entry is stale.
+ * @returns {Object} The mutated store.
+ */
+function pruneStaleEntries(store, stalenessThresholdMs) {
+  Validate.requireParams({ store, stalenessThresholdMs }, 'pruneStaleEntries');
+  const cutoffMs = Date.now() - stalenessThresholdMs;
+  for (const [id, entry] of Object.entries(store)) {
+    if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
+      delete store[id];
+    }
+  }
+  return store;
+}
+
+/**
  * Removes the oldest completed entries when the store exceeds MAX_TRACKED_REQUESTS.
  * Active (started) entries are always preserved.
  * Returns the compacted store.
@@ -138,5 +159,6 @@ if (typeof module !== 'undefined' && module.exports) {
     markSuccess,
     markError,
     compactStore,
+    pruneStaleEntries,
   };
 }

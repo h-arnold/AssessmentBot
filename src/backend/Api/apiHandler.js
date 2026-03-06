@@ -5,6 +5,7 @@
 let apiAllowlist;
 let lockTimeoutMs;
 let activeLimit;
+let staleRequestAgeMs;
 let requestStoreFns;
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -12,6 +13,7 @@ if (typeof module !== 'undefined' && module.exports) {
     API_ALLOWLIST: apiAllowlist,
     LOCK_TIMEOUT_MS: lockTimeoutMs,
     ACTIVE_LIMIT: activeLimit,
+    STALE_REQUEST_AGE_MS: staleRequestAgeMs,
   } = require('./apiConstants.js'));
   requestStoreFns = require('./requestStore.js');
 } else {
@@ -19,6 +21,7 @@ if (typeof module !== 'undefined' && module.exports) {
   apiAllowlist = API_ALLOWLIST;
   lockTimeoutMs = LOCK_TIMEOUT_MS;
   activeLimit = ACTIVE_LIMIT;
+  staleRequestAgeMs = STALE_REQUEST_AGE_MS;
   requestStoreFns = {
     loadStore,
     saveStore,
@@ -26,6 +29,7 @@ if (typeof module !== 'undefined' && module.exports) {
     markSuccess,
     markError,
     compactStore,
+    pruneStaleEntries,
   };
 }
 
@@ -96,6 +100,19 @@ class ApiDispatcher extends BaseSingleton {
     }
     try {
       const store = requestStoreFns.loadStore();
+
+      const keysBefore = Object.keys(store);
+      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs);
+      const keysAfterSet = new Set(Object.keys(store));
+      for (const candidateId of keysBefore) {
+        if (!keysAfterSet.has(candidateId)) {
+          ABLogger.getInstance().warn('Pruned stale request entry during admission.', {
+            requestId,
+            prunedId: candidateId,
+          });
+        }
+      }
+
       const activeCount = Object.values(store).filter((r) => r.status === 'started').length;
       if (activeCount >= activeLimit) {
         return this._failure(

@@ -77,6 +77,8 @@ function makeVmGlobals(overrides = {}) {
       return s;
     },
     compactStore: (s) => s,
+    STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
+    pruneStaleEntries: (s) => s,
     ...overrides,
   };
 }
