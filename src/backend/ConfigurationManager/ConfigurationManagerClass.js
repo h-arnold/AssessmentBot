@@ -18,6 +18,23 @@
 /**
  *
  */
+function safeGetPropertyKeys(store) {
+  if (!store) return [];
+  try {
+    return store.getKeys ? store.getKeys() : [];
+  } catch (error) {
+    if (globalThis.__TRACE_SINGLETON__)
+      ABLogger.getInstance().debug(
+        '[TRACE_SINGLETON][ConfigurationManager.safeGetPropertyKeys] safeGetPropertyKeys error:',
+        error?.message ?? error
+      );
+    return [];
+  }
+}
+
+/**
+ *
+ */
 class ConfigurationManager extends BaseSingleton {
   /**
    * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
@@ -115,23 +132,9 @@ class ConfigurationManager extends BaseSingleton {
    * logs an appropriate message. Any errors during the process are caught and logged.
    */
   maybeDeserializeProperties() {
-    const safeGetKeys = (store) => {
-      if (!store) return [];
-      try {
-        return store.getKeys ? store.getKeys() : [];
-      } catch (e) {
-        if (globalThis.__TRACE_SINGLETON__)
-          ABLogger.getInstance().debug(
-            '[TRACE_SINGLETON][ConfigurationManager.safeGetKeys] safeGetKeys error:',
-            e?.message ?? e
-          );
-        return [];
-      }
-    };
-
     try {
-      const hasScript = safeGetKeys(this.scriptProperties).length > 0;
-      const hasDoc = safeGetKeys(this.documentProperties).length > 0;
+      const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
+      const hasDoc = safeGetPropertyKeys(this.documentProperties).length > 0;
       if (hasScript || hasDoc) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
@@ -141,9 +144,12 @@ class ConfigurationManager extends BaseSingleton {
       } else {
         ABLogger.getInstance().log('No propertiesStore sheet found');
       }
-    } catch (err) {
+    } catch (error) {
       // Log error via ABLogger
-      ABLogger.getInstance().error('ConfigurationManager.maybeDeserializeProperties failed.', err);
+      ABLogger.getInstance().error(
+        'ConfigurationManager.maybeDeserializeProperties failed.',
+        error
+      );
     }
   }
 
@@ -179,8 +185,9 @@ class ConfigurationManager extends BaseSingleton {
         const v = this.documentProperties.getProperty(key);
         return v == null ? false : v;
       }
-      default:
+      default: {
         return this.configCache[key] || '';
+      }
     }
   }
 
@@ -270,8 +277,8 @@ class ConfigurationManager extends BaseSingleton {
       }
 
       return folderId || null;
-    } catch (err) {
-      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, err);
+    } catch (error) {
+      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, error);
       return null;
     }
   }
@@ -424,7 +431,7 @@ class ConfigurationManager extends BaseSingleton {
     return this.getIntConfig(
       ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
       ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS,
-      { min: 1000, max: 600000 }
+      { min: 1000, max: 600_000 }
     );
   }
 
@@ -492,8 +499,8 @@ class ConfigurationManager extends BaseSingleton {
     if (jsonString) {
       try {
         return JSON.parse(jsonString);
-      } catch (e) {
-        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', e);
+      } catch (error) {
+        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', error);
         return null;
       }
     }
@@ -526,7 +533,7 @@ class ConfigurationManager extends BaseSingleton {
     );
 
     const courseIdAsString = String(classInfo.CourseId);
-    const courseIdPattern = /^[A-Za-z0-9_-]+$/;
+    const courseIdPattern = /^[\w-]+$/;
     if (!courseIdPattern.test(courseIdAsString)) {
       throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
     }
@@ -599,8 +606,8 @@ class ConfigurationManager extends BaseSingleton {
         if (course?.name) {
           className = course.name;
         }
-      } catch (e) {
-        ABLogger.getInstance().warn('Could not fetch course details during migration', e);
+      } catch (error) {
+        ABLogger.getInstance().warn('Could not fetch course details during migration', error);
       }
 
       if (!className) {
@@ -628,7 +635,7 @@ class ConfigurationManager extends BaseSingleton {
     }
 
     // No legacy course id present
-    return undefined;
+    return;
   }
 
   /**

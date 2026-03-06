@@ -35,7 +35,9 @@ class StudentSubmissionItem {
     const hasPrimaryUid = Validate.isNonEmptyString(primaryUid);
     const resolvedUid = hasPrimaryUid ? primaryUid : (this.artifact.contentHash ?? '');
     const base = `${this.taskId}::${resolvedUid}`;
-    return 'ssi_' + Utils.generateHash(base).substring(0, STUDENT_SUBMISSION_ITEM_HASH_LENGTH);
+    return (
+      'ssi_' + Utils.generateHash(base).slice(0, Math.max(0, STUDENT_SUBMISSION_ITEM_HASH_LENGTH))
+    );
   }
 
   /**
@@ -67,11 +69,7 @@ class StudentSubmissionItem {
   addFeedback(type, feedbackObj) {
     if (!type) throw new Error('addFeedback requires a feedback type identifier');
     if (!feedbackObj) return;
-    if (feedbackObj.toJSON) {
-      this.feedback[type] = feedbackObj.toJSON();
-    } else {
-      this.feedback[type] = feedbackObj;
-    }
+    this.feedback[type] = feedbackObj.toJSON ? feedbackObj.toJSON() : feedbackObj;
   }
 
   /**
@@ -212,9 +210,14 @@ class StudentSubmission {
     let item = this.items[taskId];
     let mutated = false;
 
-    const { pageId = null, content = null, documentId: extractionDocumentId = null } = extraction;
+    const {
+      pageId = null,
+      content = null,
+      metadata: extractionMetadata,
+      documentId: extractionDocumentId = null,
+    } = extraction;
     const hasMetadata = Object.hasOwn(extraction, 'metadata');
-    const metadataPayload = hasMetadata ? extraction.metadata : undefined;
+    const metadataPayload = hasMetadata ? extractionMetadata : undefined;
 
     if (item) {
       if (content !== undefined) {

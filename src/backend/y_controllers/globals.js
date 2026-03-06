@@ -11,11 +11,11 @@ function getAllPartialDefinitions() {
   try {
     const defs = controller.getAllPartialDefinitions();
     return defs.map((d) => d.toPartialJSON());
-  } catch (err) {
+  } catch (error) {
     const progressTracker = ProgressTracker.getInstance();
     progressTracker.logAndThrowError(
       'Failed to get assignment definitions. Please try again.',
-      err
+      error
     );
   }
 }

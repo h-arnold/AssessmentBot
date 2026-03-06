@@ -12,20 +12,15 @@ const DEFAULT_TOAST_TIMEOUT_SECONDS = 3;
 /**
  * Utility methods used across the backend.
  */
-class Utils {
+const Utils = {
   /**
    * Generates a SHA-256 hash for a given input.
    *
    * @param {string|Uint8Array} input - The string or byte array to be hashed.
    * @return {string} - The SHA-256 hash of the input.
    */
-  static generateHash(input) {
-    let inputBytes;
-    if (Validate.isString(input)) {
-      inputBytes = Utilities.newBlob(input).getBytes();
-    } else {
-      inputBytes = input; // Assume input is a byte array
-    }
+  generateHash(input) {
+    const inputBytes = Validate.isString(input) ? Utilities.newBlob(input).getBytes() : input;
 
     const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, inputBytes);
     const hash = rawHash
@@ -41,14 +36,14 @@ class Utils {
     } else {
       return hash;
     }
-  }
+  },
   /**
    * Converts a column index to its corresponding letter.
    *
    * @param {number} columnIndex - The column index to convert (0-based).
    * @return {string} - The corresponding column letter.
    */
-  static getColumnLetter(columnIndex) {
+  getColumnLetter(columnIndex) {
     let temp;
     let letter = '';
     while (columnIndex >= 0) {
@@ -57,7 +52,7 @@ class Utils {
       columnIndex = Math.floor((columnIndex - temp) / ALPHABET_LENGTH) - 1;
     }
     return letter;
-  }
+  },
 
   /**
    * Compares two arrays for equality.
@@ -66,13 +61,13 @@ class Utils {
    * @param {Array} arr2 - The second array.
    * @return {boolean} - True if arrays are equal, false otherwise.
    */
-  static arraysEqual(arr1, arr2) {
+  arraysEqual(arr1, arr2) {
     if (arr1.length !== arr2.length) return false;
-    for (let i = 0; i < arr1.length; i++) {
-      if (arr1[i] !== arr2[i]) return false;
+    for (const [i, element] of arr1.entries()) {
+      if (element !== arr2[i]) return false;
     }
     return true;
-  }
+  },
 
   /**
    * Normalises all keys in an object to lowercase. Sometimes the LLM will capitalize the keys of objects which causes problems elsewhere.
@@ -80,13 +75,13 @@ class Utils {
    * @param {Object} obj - The object whose keys are to be normalised.
    * @return {Object} - A new object with all keys in lowercase.
    */
-  static normaliseKeysToLowerCase(obj) {
+  normaliseKeysToLowerCase(obj) {
     const normalisedObj = {};
     for (const [key, value] of Object.entries(obj)) {
       normalisedObj[key.toLowerCase()] = value;
     }
     return normalisedObj;
-  }
+  },
 
   // -------------------
   // UI Methods
@@ -99,7 +94,7 @@ class Utils {
    * @param {string} [title=''] - Optional title for the toast.
    * @param {number} [timeoutSeconds=3] - Duration for which the toast is visible.
    */
-  static toastMessage(message, title = '', timeoutSeconds = DEFAULT_TOAST_TIMEOUT_SECONDS) {
+  toastMessage(message, title = '', timeoutSeconds = DEFAULT_TOAST_TIMEOUT_SECONDS) {
     try {
       const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       if (activeSpreadsheet) {
@@ -115,33 +110,33 @@ class Utils {
       const progressTracker = ProgressTracker.getInstance();
       progressTracker.captureError(error, 'Error displaying toast message');
     }
-  }
+  },
 
   /**
    *
    */
-  static clearDocumentProperties() {
+  clearDocumentProperties() {
     const docProperties = PropertiesService.getDocumentProperties();
     docProperties.deleteAllProperties();
-  }
+  },
 
   /**
    * Gets the date in DD/MM/YYYY format for appending to various file names
    */
-  static getDate() {
+  getDate() {
     const dateObj = new Date();
     const timeZone = Session.getScriptTimeZone();
 
     // "dd/MM/yyyy" produces strings like "29/01/2025"
     return Utilities.formatDate(dateObj, timeZone, 'dd/MM/yyyy');
-  }
+  },
 
   /**
    * Validates if current sheet is admin sheet
    * @param {boolean} throwError - Whether to throw error or just log warning
    * @returns {boolean} True if admin sheet
    */
-  static validateIsAdminSheet(throwError = true) {
+  validateIsAdminSheet(throwError = true) {
     const isAdmin = ConfigurationManager.getInstance().getIsAdminSheet();
     if (!isAdmin) {
       const message = 'This operation can only be performed from the admin sheet.';
@@ -154,7 +149,7 @@ class Utils {
       return false;
     }
     return true;
-  }
+  },
 
   /**
    * Converts a number of days into a future date.
@@ -162,7 +157,7 @@ class Utils {
    * @param {number} days - The number of days into the future.
    * @returns {Date} - A Date object representing the future date.
    */
-  static getFutureDate(days) {
+  getFutureDate(days) {
     if (typeof days !== 'number' || days < 0) {
       const progressTracker = ProgressTracker.getInstance();
       progressTracker.logAndThrowError('Days must be a non-negative number.');
@@ -171,7 +166,7 @@ class Utils {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
     return futureDate;
-  }
+  },
 
   /**
    * Determines if an assignment definition needs to be refreshed based on tasks and modification timestamps.
@@ -180,7 +175,7 @@ class Utils {
    * @param {string|Date} templateModified - Last modified timestamp of template document.
    * @return {boolean} True if refresh is needed.
    */
-  static definitionNeedsRefresh(definition, referenceModified, templateModified) {
+  definitionNeedsRefresh(definition, referenceModified, templateModified) {
     if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
       return true;
     }
@@ -190,7 +185,7 @@ class Utils {
     const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
     const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
     return refFresh || tplFresh;
-  }
+  },
 
   /**
    * Checks if a candidate timestamp is newer than a baseline timestamp.
@@ -198,14 +193,14 @@ class Utils {
    * @param {string|Date} baseline - The baseline timestamp.
    * @return {boolean} True if candidate is newer than baseline.
    */
-  static isNewer(candidate, baseline) {
+  isNewer(candidate, baseline) {
     if (!candidate || !baseline) return false;
     const c = new Date(candidate);
     const b = new Date(baseline);
     if (Number.isNaN(c.getTime()) || Number.isNaN(b.getTime())) return false;
     return c.getTime() > b.getTime();
-  }
-}
+  },
+};
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined' && module.exports) {

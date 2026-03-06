@@ -4,7 +4,7 @@
  * Provides utility methods for executing batch update requests for Google Sheets.
  * Can be used by any class that needs to perform batch updates.
  */
-class BatchUpdateUtility {
+const BatchUpdateUtility = {
   /**
    * Executes batch update requests for a spreadsheet.
    * @param {Object[]} requests - Array of batch update request objects.
@@ -12,7 +12,7 @@ class BatchUpdateUtility {
    * @returns {Object} The response from the batch update operation.
    * @throws {Error} If the batch update fails.
    */
-  static executeBatchUpdate(requests, spreadsheetId) {
+  executeBatchUpdate(requests, spreadsheetId) {
     if (!requests || requests.length === 0) {
       const progressTracker = ProgressTracker.getInstance();
       progressTracker.logError('No batch requests to execute.');
@@ -29,10 +29,10 @@ class BatchUpdateUtility {
       const response = Sheets.Spreadsheets.batchUpdate({ requests }, spreadsheetId);
       console.log('Batch update executed successfully.');
       return response;
-    } catch (e) {
-      progressTracker.logAndThrowError(`Error applying batch update.`, e);
+    } catch (error) {
+      progressTracker.logAndThrowError(`Error applying batch update.`, error);
     }
-  }
+  },
 
   /**
    * Executes multiple batch update requests for different spreadsheets.
@@ -40,7 +40,7 @@ class BatchUpdateUtility {
    * @return {Object[]} Array of responses from each batch update operation.
    * @throws {Error} If any batch update fails.
    */
-  static executeMultipleBatchUpdates(batchUpdates) {
+  executeMultipleBatchUpdates(batchUpdates) {
     const progressTracker = ProgressTracker.getInstance();
 
     if (!Array.isArray(batchUpdates) || batchUpdates.length === 0) {
@@ -48,13 +48,13 @@ class BatchUpdateUtility {
     }
 
     const responses = [];
-    for (let i = 0; i < batchUpdates.length; i++) {
-      const { requests, spreadsheetId } = batchUpdates[i];
+    for (const [i, batchUpdate] of batchUpdates.entries()) {
+      const { requests, spreadsheetId } = batchUpdate;
       try {
         if (!requests || requests.length === 0) {
           // Skip empty requests, but log for user-facing tracking
           progressTracker.logError(`No batch requests to execute for index ${i}.`, {
-            batchUpdate: batchUpdates[i],
+            batchUpdate: batchUpdate,
           });
           continue;
         }
@@ -67,13 +67,13 @@ class BatchUpdateUtility {
 
         const response = Sheets.Spreadsheets.batchUpdate({ requests }, spreadsheetId);
         responses.push(response);
-      } catch (e) {
+      } catch (error) {
         progressTracker.logAndThrowError(`Error applying batch update at index ${i}.`, {
-          error: e,
-          batchUpdate: batchUpdates[i],
+          error: error,
+          batchUpdate: batchUpdate,
         });
       }
     }
     return responses;
-  }
-}
+  },
+};

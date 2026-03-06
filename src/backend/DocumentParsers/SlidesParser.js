@@ -47,11 +47,11 @@ class SlidesParser extends DocumentParser {
     };
 
     this.processSlidesForDefinitions(referenceSlides, 'reference', context);
-    if (templateSlides.length) {
+    if (templateSlides.length > 0) {
       this.processSlidesForDefinitions(templateSlides, 'template', context);
     }
 
-    return Array.from(definitionMap.values());
+    return [...definitionMap.values()];
   }
 
   /**
@@ -69,20 +69,24 @@ class SlidesParser extends DocumentParser {
         const description = pageElement.getDescription();
         if (!description?.length) return;
         const tag = description.charAt(0);
-        const tagText = description.substring(1).trim();
+        const tagText = description.slice(1).trim();
         switch (tag) {
-          case '#':
+          case '#': {
             this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
             break;
-          case '^':
+          }
+          case '^': {
             this.appendNotesToDefinitions(pageElement, pageId, context.definitionMap);
             break;
+          }
           case '~':
-          case '|':
+          case '|': {
             this.handleImageArtifactElement(tagText, pageId, role, context);
             break;
-          default:
+          }
+          default: {
             break;
+          }
         }
       });
     });
@@ -292,7 +296,7 @@ class SlidesParser extends DocumentParser {
       const desc = pageElement.getDescription();
       if (!desc) continue;
       const tag = desc.charAt(0);
-      const key = desc.substring(1).trim();
+      const key = desc.slice(1).trim();
       if (tag !== '#' && tag !== '~') continue;
       if (key !== definition.taskTitle) continue;
       const contentDetails = this.extractDefinitionContent(pageElement);
@@ -369,8 +373,8 @@ class SlidesParser extends DocumentParser {
         rows.push(row);
       }
       return rows;
-    } catch (e) {
-      ABLogger.getInstance().error('extractTableCells failed', e);
+    } catch (error) {
+      ABLogger.getInstance().error('extractTableCells failed', error);
       return [];
     }
   }
@@ -404,15 +408,20 @@ class SlidesParser extends DocumentParser {
   extractTextFromPageElement(pageElement) {
     const type = pageElement.getPageElementType();
 
-    if (type === SlidesApp.PageElementType.SHAPE) {
-      return this.extractTextFromShape(pageElement.asShape());
-    } else if (type === SlidesApp.PageElementType.TABLE) {
-      return this.extractTextFromTable(pageElement.asTable());
-    } else if (type === SlidesApp.PageElementType.IMAGE) {
-      return this.extractImageDescription(pageElement.asImage());
-    } else {
-      ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
-      return '';
+    switch (type) {
+      case SlidesApp.PageElementType.SHAPE: {
+        return this.extractTextFromShape(pageElement.asShape());
+      }
+      case SlidesApp.PageElementType.TABLE: {
+        return this.extractTextFromTable(pageElement.asTable());
+      }
+      case SlidesApp.PageElementType.IMAGE: {
+        return this.extractImageDescription(pageElement.asImage());
+      }
+      default: {
+        ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
+        return '';
+      }
     }
   }
 

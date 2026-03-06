@@ -5,6 +5,9 @@
  * normalizeContent(content).
  */
 
+/**
+ *
+ */
 class BaseTaskArtifact {
   /**
    * Construct a BaseTaskArtifact.
@@ -83,7 +86,7 @@ class BaseTaskArtifact {
     if (
       this.content == null ||
       this.content === '' ||
-      (Array.isArray(this.content) && !this.content.length)
+      (Array.isArray(this.content) && this.content.length === 0)
     ) {
       return { status: 'empty', errors: ['No content'] };
     }

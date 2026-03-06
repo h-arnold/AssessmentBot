@@ -44,12 +44,14 @@ class ABLogger extends BaseSingleton {
       if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
         console.log(`[DEBUG_UI] ${msg}`);
       }
-    } catch (e) {
+    } catch (error) {
       // Use a recursion guard to avoid re-entrant logging loops and surface via ProgressTracker
       try {
         if (!ABLogger._inLoggingFailure) {
           ABLogger._inLoggingFailure = true;
-          ProgressTracker.getInstance().logError('ABLogger.debugUi logging failure', { err: e });
+          ProgressTracker.getInstance().logError('ABLogger.debugUi logging failure', {
+            err: error,
+          });
         }
       } finally {
         ABLogger._inLoggingFailure = false;
@@ -80,8 +82,6 @@ class ABLogger extends BaseSingleton {
   serialiseArg(arg) {
     if (!arg) return arg;
 
-    const isErrorLike = (v) => v instanceof Error || (v?.name && v?.message && v?.stack);
-
     // If it's an Error, serialise
     if (isErrorLike(arg)) return this.serialiseError(arg);
 
@@ -99,15 +99,15 @@ class ABLogger extends BaseSingleton {
    */
   shallowSerialiseObject(obj, isErrorLike) {
     try {
-      const copy = Array.isArray(obj) ? obj.slice() : { ...obj };
+      const copy = Array.isArray(obj) ? [...obj] : { ...obj };
       for (const k in copy) {
         if (!Object.hasOwn(copy, k)) continue;
         const v = copy[k];
         if (isErrorLike(v)) copy[k] = this.serialiseError(v);
       }
       return copy;
-    } catch (err) {
-      this.error('ABLogger.shallowSerialiseObject logging failure', err);
+    } catch (error) {
+      this.error('ABLogger.shallowSerialiseObject logging failure', error);
       return obj;
     }
   }
@@ -144,6 +144,13 @@ class ABLogger extends BaseSingleton {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit
     console.log('[DEBUG]', ...args.map((a) => this.serialiseArg(a)));
   }
+}
+
+/**
+ *
+ */
+function isErrorLike(value) {
+  return value instanceof Error || (value?.name && value?.message && value?.stack);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

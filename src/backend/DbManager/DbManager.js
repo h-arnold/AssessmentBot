@@ -113,8 +113,8 @@ class DbManager extends BaseSingleton {
     let collections = [];
     try {
       collections = db.listCollections ? db.listCollections() : [];
-    } catch (e) {
-      console.warn('DbManager: listCollections failed; continuing.', e);
+    } catch (error) {
+      console.warn('DbManager: listCollections failed; continuing.', error);
       collections = [];
     }
     const result = {
@@ -128,9 +128,9 @@ class DbManager extends BaseSingleton {
       if (typeof this.constructor._maybeFreeze === 'function') {
         this.constructor._maybeFreeze(this);
       }
-    } catch (freezeErr) {
+    } catch (error) {
       // Don't prevent normal operation if freezing fails in some environments
-      console.warn('DbManager: _maybeFreeze failed or is unsupported.', freezeErr);
+      console.warn('DbManager: _maybeFreeze failed or is unsupported.', error);
     }
 
     return result;

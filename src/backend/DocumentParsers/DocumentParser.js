@@ -46,7 +46,7 @@ class DocumentParser {
    * @return {string} - The Markdown-formatted table.
    */
   convertToMarkdownTable(tableData) {
-    if (!tableData || !tableData.length || !tableData[0].length) {
+    if (!tableData || tableData.length === 0 || tableData[0].length === 0) {
       console.log('The provided data is empty or invalid.');
       return '';
     }
@@ -63,7 +63,9 @@ class DocumentParser {
     for (let i = 1; i < tableData.length; i++) {
       // Escape pipe characters in Markdown
       const escapedRow = tableData[i].map((cell) =>
-        String(cell).replace(/\\/g, '\\\\').replace(/\|/g, '\\|')
+        String(cell)
+          .replaceAll('\\', '\\\\')
+          .replaceAll('|', String.raw`\|`)
       );
       markdownTable += '| ' + escapedRow.join(' | ') + ' |\n';
     }

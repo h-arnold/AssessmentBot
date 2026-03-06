@@ -10,63 +10,63 @@ const IPV4_OCTET_MAX_VALUE = 255;
  *
  * Provides simple validation helpers used across the Admin Sheet codebase.
  */
-class Validate {
+const Validate = {
   /**
    * Determines whether a value is a string.
    * @param {*} value
    * @returns {boolean}
    */
-  static isString(value) {
+  isString(value) {
     return typeof value === 'string';
-  }
+  },
 
   /**
    * Determines whether a value is a non-empty string (after trimming whitespace).
    * @param {*} value
    * @returns {boolean}
    */
-  static isNonEmptyString(value) {
+  isNonEmptyString(value) {
     return Validate.isString(value) && value.trim().length > 0;
-  }
+  },
 
   /**
    * Determines whether a value is a finite number.
    * @param {*} value
    * @returns {boolean}
    */
-  static isNumber(value) {
+  isNumber(value) {
     return typeof value === 'number' && Number.isFinite(value);
-  }
+  },
 
   /**
    * Determines whether a value is a boolean.
    * @param {*} value
    * @returns {boolean}
    */
-  static isBoolean(value) {
+  isBoolean(value) {
     return typeof value === 'boolean';
-  }
+  },
 
   /**
    * Validates an email address using a permissive but practical regex.
    * @param {string} email
    * @return {boolean}
    */
-  static isEmail(email) {
+  isEmail(email) {
     if (typeof email !== 'string') return false;
     // Basic RFC 5322-ish regex adapted for practicality (no catastrophic backtracking)
-    const emailPattern = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+    const emailPattern = /^[\w!#$%&'*+./=?^`{|}~-]+@[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*$/;
     const result = emailPattern.test(email.trim());
     if (!result) {
       try {
         ProgressTracker.getInstance().logError(`Invalid teacher email: ${email}`);
-      } catch (e) {
+      } catch (error) {
         // ProgressTracker may not be available in some test environments so log a dev warning
-        ABLogger.getInstance().warn('Invalid teacher email', e);
+        ABLogger.getInstance().warn('Invalid teacher email', error);
       }
     }
     return result;
-  }
+  },
 
   /**
    * Validates a Google userId as returned by Classroom APIs.
@@ -75,26 +75,26 @@ class Validate {
    * @param {string} userId
    * @return {boolean}
    */
-  static isGoogleUserId(userId) {
+  isGoogleUserId(userId) {
     if (typeof userId !== 'string' && typeof userId !== 'number') return false;
     const str = String(userId).trim();
 
     // Common Google userId pattern: all digits (e.g., '12345678901234567890')
     const digitsOnly = /^\d{6,}$/; // at least 6 digits
     // Fallback: alphanumeric identifiers (allow -, _ and .) with reasonable length
-    const alnum = /^[A-Za-z0-9_.-]{6,64}$/;
+    const alnum = /^[\w.-]{6,64}$/;
 
     const result = digitsOnly.test(str) || alnum.test(str);
     if (!result) {
       try {
         ProgressTracker.getInstance().logError(`Invalid Google userId: ${userId}`);
-      } catch (e) {
+      } catch (error) {
         // ProgressTracker may not be available in some test environments so log a dev warning
-        ABLogger.getInstance().warn('Invalid Google userId', e);
+        ABLogger.getInstance().warn('Invalid Google userId', error);
       }
     }
     return result;
-  }
+  },
 
   /**
    * Validates an HTTPS URL string.
@@ -107,19 +107,19 @@ class Validate {
    * @param {string} url
    * @return {boolean}
    */
-  static isValidUrl(url) {
+  isValidUrl(url) {
     if (typeof url !== 'string') return false;
 
     const trimmed = url.trim();
     if (trimmed.length === 0) return false;
     if (/\s/.test(trimmed)) return false;
 
-    const match = /^https:\/\/([A-Za-z0-9.-]+)(?:[/?#]|$)/.exec(trimmed);
+    const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/.exec(trimmed);
     if (!match) {
       try {
         ProgressTracker.getInstance().logError(`Invalid URL found: ${trimmed}`, { url: trimmed });
-      } catch (e) {
-        ABLogger.getInstance().warn('Invalid URL', e);
+      } catch (error) {
+        ABLogger.getInstance().warn('Invalid URL', error);
       }
       return false;
     }
@@ -138,21 +138,21 @@ class Validate {
     if (labels.some((label) => label.length === 0 || label.length > HOSTNAME_LABEL_MAX_LENGTH))
       return false;
     if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
-    if (labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
+    if (labels.some((label) => !/^[\da-z-]+$/.test(label))) return false;
 
     return true;
-  }
+  },
 
   /**
    *
    */
-  static _isIPv4(hostname) {
+  _isIPv4(hostname) {
     const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
     if (!ipv4Exec) return false;
     const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
     if (octets.some((o) => Number.isNaN(o) || o < 0 || o > IPV4_OCTET_MAX_VALUE)) return false;
     return true;
-  }
+  },
 
   /**
    * Validates that required parameters are present (not null/undefined).
@@ -167,7 +167,7 @@ class Validate {
    * @example
    * Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
    */
-  static requireParams(params, context = '') {
+  requireParams(params, context = '') {
     if (!params || typeof params !== 'object' || Array.isArray(params))
       throw new Error('params must be an object');
 
@@ -177,7 +177,7 @@ class Validate {
       if (value === null || value === undefined)
         throw new Error(`${paramName} is required${contextStr}`);
     }
-  }
+  },
 
   /**
    * Validates that a value is an integer within a specified range.
@@ -188,13 +188,13 @@ class Validate {
    * @returns {number} The validated integer value.
    * @throws {Error} If value is not an integer or is outside the specified range.
    */
-  static validateIntegerInRange(label, value, min, max) {
+  validateIntegerInRange(label, value, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
       throw new Error(`${label} must be an integer between ${min} and ${max}.`);
     }
     return parsed;
-  }
+  },
 
   /**
    * Validates that a value is a non-empty string.
@@ -203,12 +203,12 @@ class Validate {
    * @returns {string} The validated string value.
    * @throws {Error} If value is not a non-empty string.
    */
-  static validateNonEmptyString(label, value) {
+  validateNonEmptyString(label, value) {
     if (!Validate.isNonEmptyString(value)) {
       throw new Error(`${label} must be a non-empty string.`);
     }
     return value;
-  }
+  },
 
   /**
    * Validates that a value is a valid URL string.
@@ -217,13 +217,13 @@ class Validate {
    * @returns {string} The validated URL string.
    * @throws {Error} If value is not a valid URL string.
    */
-  static validateUrl(label, value) {
+  validateUrl(label, value) {
     const isValid = typeof value === 'string' && Validate.isValidUrl(value);
     if (!isValid) {
       throw new Error(`${label} must be a valid URL string.`);
     }
     return value;
-  }
+  },
 
   /**
    * Validates and coerces a value to a boolean.
@@ -233,7 +233,7 @@ class Validate {
    * @returns {boolean} The validated/coerced boolean value.
    * @throws {Error} If value cannot be interpreted as a boolean.
    */
-  static validateBoolean(label, value) {
+  validateBoolean(label, value) {
     if (Validate.isBoolean(value)) {
       return value;
     }
@@ -243,8 +243,8 @@ class Validate {
       if (lower === 'false') return false;
     }
     throw new Error(`${label} must be a boolean (true/false).`);
-  }
-}
+  },
+};
 
 if (typeof module !== 'undefined') {
   module.exports = { Validate };

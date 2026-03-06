@@ -59,10 +59,10 @@ class AssignmentDefinition {
     this._validate(tasks);
 
     // Only hydrate tasks if not null (partial definitions have tasks: null)
-    if (tasks !== null) {
-      this._hydrateTasks(tasks);
-    } else {
+    if (tasks === null) {
       this.tasks = null;
+    } else {
+      this._hydrateTasks(tasks);
     }
 
     if (!this.definitionKey) {

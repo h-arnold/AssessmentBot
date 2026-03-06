@@ -8,6 +8,16 @@ const DEFAULT_DAYS_UNTIL_AUTH_REVOKE = 60;
 const DEFAULT_SLIDES_FETCH_BATCH_SIZE = 20;
 
 /**
+ *
+ */
+function maskApiKey(key) {
+  if (!key) return '';
+  const asString = String(key);
+  if (asString.length <= API_KEY_MASK_VISIBLE_SUFFIX_LENGTH) return API_KEY_MASK_PREFIX;
+  return API_KEY_MASK_PREFIX + asString.slice(-API_KEY_MASK_VISIBLE_SUFFIX_LENGTH);
+}
+
+/**
  * Retrieves the current configuration settings from the ConfigurationManager.
  * @returns {object} An object containing the current configuration values.
  */
@@ -20,24 +30,14 @@ function getConfiguration() {
   function safeGet(getter, name, fallback = '') {
     try {
       return getter();
-    } catch (err) {
+    } catch (error) {
       // Avoid logging full error objects which may contain sensitive details.
       // Log a concise error identifier only. Use optional chaining to avoid
       // referencing properties on possibly undefined/null error objects.
-      console.error(`Error retrieving configuration value for ${name}: ${err?.name ?? 'Error'}`);
-      errors.push(`${name}: ${err?.message ?? 'REDACTED'}`);
+      console.error(`Error retrieving configuration value for ${name}: ${error?.name ?? 'Error'}`);
+      errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
       return fallback;
     }
-  }
-
-  /**
-   *
-   */
-  function maskApiKey(key) {
-    if (!key) return '';
-    const s = String(key);
-    if (s.length <= API_KEY_MASK_VISIBLE_SUFFIX_LENGTH) return API_KEY_MASK_PREFIX;
-    return API_KEY_MASK_PREFIX + s.slice(-API_KEY_MASK_VISIBLE_SUFFIX_LENGTH);
   }
 
   const cfg = ConfigurationManager.getInstance();
@@ -127,10 +127,10 @@ function saveConfiguration(config) {
     try {
       action();
       return true;
-    } catch (err) {
+    } catch (error) {
       // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
       // Log only a concise identifier using optional chaining to be safe.
-      console.error(`Error saving configuration value for ${name}: ${err?.name ?? 'Error'}`);
+      console.error(`Error saving configuration value for ${name}: ${error?.name ?? 'Error'}`);
       errors.push(`${name}: REDACTED`);
       return false;
     }
@@ -141,10 +141,10 @@ function saveConfiguration(config) {
     try {
       this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
       delete config.classroom; // Remove classroom data before saving other configs
-    } catch (err) {
+    } catch (error) {
       // Keep the logged output concise to avoid exposing sensitive details.
-      console.error('Error saving classroom configuration:', err?.name ?? 'Error');
-      errors.push(`classroom: ${err?.message ?? 'REDACTED'}`);
+      console.error('Error saving classroom configuration:', error?.name ?? 'Error');
+      errors.push(`classroom: ${error?.message ?? 'REDACTED'}`);
     }
   }
 

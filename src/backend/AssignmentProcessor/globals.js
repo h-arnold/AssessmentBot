@@ -21,9 +21,12 @@ function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
   const controller = new AssignmentController();
   try {
     return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
-  } catch (err) {
-    ABLogger.getInstance().error('Error in globals.saveStartAndShowProgress:', err?.message ?? err);
-    throw err;
+  } catch (error) {
+    ABLogger.getInstance().error(
+      'Error in globals.saveStartAndShowProgress:',
+      error?.message ?? error
+    );
+    throw error;
   }
 }
 
@@ -68,12 +71,12 @@ function createDefinitionFromWizardInputs({
       templateDocumentId,
       yearGroup,
     });
-  } catch (err) {
+  } catch (error) {
     ABLogger.getInstance().error(
       'Error in globals.createDefinitionFromWizardInputs:',
-      err?.message ?? err
+      error?.message ?? error
     );
-    throw err;
+    throw error;
   }
 }
 

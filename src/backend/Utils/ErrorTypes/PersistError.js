@@ -25,6 +25,9 @@ class PersistError extends Error {
     }
   }
 
+  /**
+   *
+   */
   toJSON() {
     return {
       name: this.name,

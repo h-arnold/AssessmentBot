@@ -1,6 +1,29 @@
 const ITEM_NOT_FOUND_INDEX = -1;
 
 /**
+ *
+ */
+function findIndexWithPredicate(items, predicate) {
+  return items.findIndex((item, index, collection) => predicate(item, index, collection));
+}
+
+/**
+ *
+ */
+function findWithPredicate(items, predicate) {
+  return items.find((item, index, collection) => predicate(item, index, collection)) || null;
+}
+
+/**
+ *
+ */
+function serialiseArray(items) {
+  return (items || []).map((item) =>
+    item && typeof item.toJSON === 'function' ? item.toJSON() : item
+  );
+}
+
+/**
  * ABClass
  *
  * Root model that encapsulates all data about a given class (Google Classroom course).
@@ -60,9 +83,9 @@ class ABClass {
       : ABClass._parseNullableInt(yearGroup, null);
 
     // Arrays of domain objects; consumers may push instances or plain objects.
-    this.teachers = Array.isArray(teachers) ? teachers.slice() : [];
-    this.students = Array.isArray(students) ? students.slice() : [];
-    this.assignments = Array.isArray(assignments) ? assignments.slice() : [];
+    this.teachers = Array.isArray(teachers) ? [...teachers] : [];
+    this.students = Array.isArray(students) ? [...students] : [];
+    this.assignments = Array.isArray(assignments) ? [...assignments] : [];
   }
 
   // Owner helpers
@@ -83,11 +106,14 @@ class ABClass {
     // calls. Coerce plain objects via Teacher.fromJSON when available to
     // preserve fields like email and teacherName.
     let ownerInstance = owner;
-    if (!(owner instanceof Teacher)) {
-      if (owner && typeof owner === 'object' && typeof Teacher.fromJSON === 'function') {
-        // Prefer fail-fast: allow Teacher.fromJSON to throw if coercion fails
-        ownerInstance = Teacher.fromJSON(owner) || owner;
-      }
+    if (
+      !(owner instanceof Teacher) &&
+      owner &&
+      typeof owner === 'object' &&
+      typeof Teacher.fromJSON === 'function'
+    ) {
+      // Prefer fail-fast: allow Teacher.fromJSON to throw if coercion fails
+      ownerInstance = Teacher.fromJSON(owner) || owner;
     }
 
     if (!(ownerInstance instanceof Teacher)) {
@@ -179,7 +205,7 @@ class ABClass {
    *
    */
   removeTeacher(predicate) {
-    const idx = this.teachers.findIndex(predicate);
+    const idx = findIndexWithPredicate(this.teachers, predicate);
     if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.teachers.splice(idx, 1)[0];
   }
@@ -188,7 +214,7 @@ class ABClass {
    *
    */
   findTeacher(predicate) {
-    return this.teachers.find(predicate) || null;
+    return findWithPredicate(this.teachers, predicate);
   }
 
   // Student management
@@ -205,7 +231,7 @@ class ABClass {
    *
    */
   removeStudent(predicate) {
-    const idx = this.students.findIndex(predicate);
+    const idx = findIndexWithPredicate(this.students, predicate);
     if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.students.splice(idx, 1)[0];
   }
@@ -214,7 +240,7 @@ class ABClass {
    *
    */
   findStudent(predicate) {
-    return this.students.find(predicate) || null;
+    return findWithPredicate(this.students, predicate);
   }
 
   // Assignment management
@@ -231,7 +257,7 @@ class ABClass {
    *
    */
   removeAssignment(predicate) {
-    const idx = this.assignments.findIndex(predicate);
+    const idx = findIndexWithPredicate(this.assignments, predicate);
     if (idx === ITEM_NOT_FOUND_INDEX) return null;
     return this.assignments.splice(idx, 1)[0];
   }
@@ -240,7 +266,7 @@ class ABClass {
    *
    */
   findAssignment(predicate) {
-    return this.assignments.find(predicate) || null;
+    return findWithPredicate(this.assignments, predicate);
   }
 
   /**
@@ -250,7 +276,7 @@ class ABClass {
    * @return {number} Index of the matching assignment, or -1 if not found
    */
   findAssignmentIndex(predicate) {
-    return this.assignments.findIndex(predicate);
+    return findIndexWithPredicate(this.assignments, predicate);
   }
 
   // toJSON serializes contained objects by calling toJSON if available.
@@ -258,18 +284,15 @@ class ABClass {
    *
    */
   toJSON() {
-    const serializeArray = (arr) =>
-      (arr || []).map((it) => (it && typeof it.toJSON === 'function' ? it.toJSON() : it));
-
     return {
       classId: this.classId,
       className: this.className,
       cohort: this.cohort,
       courseLength: this.courseLength,
       yearGroup: this.yearGroup,
-      teachers: serializeArray(this.teachers),
-      students: serializeArray(this.students),
-      assignments: serializeArray(this.assignments),
+      teachers: serialiseArray(this.teachers),
+      students: serialiseArray(this.students),
+      assignments: serialiseArray(this.assignments),
     };
   }
 
@@ -292,24 +315,19 @@ class ABClass {
 
     // Restore explicit owner (attempt Teacher.fromJSON when available)
     try {
-      if (
-        json.classOwner &&
-        typeof Teacher === 'function' &&
-        typeof Teacher.fromJSON === 'function'
-      ) {
-        inst.classOwner = Teacher.fromJSON(json.classOwner) || json.classOwner;
-      } else {
-        inst.classOwner = json.classOwner || null;
-      }
-    } catch (e) {
+      inst.classOwner =
+        json.classOwner && typeof Teacher === 'function' && typeof Teacher.fromJSON === 'function'
+          ? Teacher.fromJSON(json.classOwner) || json.classOwner
+          : json.classOwner || null;
+    } catch (error) {
       inst.classOwner = json.classOwner || null;
       if (globalThis.__TRACE_SINGLETON__)
-        ABLogger.getInstance().debug('ABClass.fromJSON classOwner coercion failed:', e);
+        ABLogger.getInstance().debug('ABClass.fromJSON classOwner coercion failed:', error);
     }
 
     // Restore arrays - callers may want to map to Student/Teacher/Assignment via their own fromJSON
-    inst.teachers = Array.isArray(json.teachers) ? json.teachers.slice() : [];
-    inst.students = Array.isArray(json.students) ? json.students.slice() : [];
+    inst.teachers = Array.isArray(json.teachers) ? [...json.teachers] : [];
+    inst.students = Array.isArray(json.students) ? [...json.students] : [];
 
     // Reconstruct assignments as typed instances via Assignment.fromJSON
     inst.assignments = [];

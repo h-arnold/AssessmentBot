@@ -41,7 +41,7 @@ class SlidesAssignment extends Assignment {
     try {
       const imageManager = new ImageManager();
       const entries = imageManager.collectAllImageArtifacts(this);
-      if (!entries.length) {
+      if (entries.length === 0) {
         console.log('No image artifacts to process.');
         return;
       }
@@ -58,10 +58,10 @@ class SlidesAssignment extends Assignment {
       );
       imageManager.writeBackBlobs(this, blobs);
       console.log(`Hydrated ${blobs.length} image artifacts.`);
-    } catch (e) {
-      console.error('SlidesAssignment.processImages failed', e);
+    } catch (error) {
+      console.error('SlidesAssignment.processImages failed', error);
       if (this.progressTracker && typeof this.progressTracker.logError === 'function') {
-        this.progressTracker.logError('Image processing failed: ' + e.message, e);
+        this.progressTracker.logError('Image processing failed: ' + error.message, error);
       }
     }
   }

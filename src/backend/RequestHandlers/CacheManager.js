@@ -53,12 +53,12 @@ class CacheManager {
       if (!cached) return null;
       try {
         return JSON.parse(cached);
-      } catch (e) {
-        console.error('Error parsing cached assessment data:', e);
+      } catch (error) {
+        console.error('Error parsing cached assessment data:', error);
         return null;
       }
-    } catch (e) {
-      console.error('Error retrieving cached assessment:', e);
+    } catch (error) {
+      console.error('Error retrieving cached assessment:', error);
       return null;
     }
   }
@@ -77,8 +77,8 @@ class CacheManager {
     const cacheExpirationInSeconds = CACHE_EXPIRY_HOURS * MINUTES_PER_HOUR * SECONDS_PER_MINUTE;
     try {
       this.cache.put(cacheKey, serialized, cacheExpirationInSeconds);
-    } catch (e) {
-      console.error('Error storing cached assessment data:', e);
+    } catch (error) {
+      console.error('Error storing cached assessment data:', error);
       // Don't throw — caching should be best-effort.
     }
   }

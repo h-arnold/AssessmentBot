@@ -3,6 +3,9 @@ if (typeof module !== 'undefined') {
   BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
 }
 
+/**
+ *
+ */
 class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
@@ -26,7 +29,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
       Array.isArray(row) ? row.map((cell) => this._normCell(cell)) : []
     );
     const trimmed = this._trimEmpty(rows);
-    if (!trimmed.length) return null;
+    if (trimmed.length === 0) return null;
     for (const row of trimmed) {
       for (let c = 0; c < row.length; c++) {
         const cell = row[c];
@@ -56,8 +59,8 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * @returns {Array<Array<any>>}
    */
   _trimEmpty(rows) {
-    while (rows.length && this._rowEmpty(rows[rows.length - 1])) rows.pop();
-    if (rows.length) {
+    while (rows.length > 0 && this._rowEmpty(rows.at(-1))) rows.pop();
+    if (rows.length > 0) {
       let colCount = Math.max(...rows.map((r) => r.length));
       for (let c = colCount - 1; c >= 0; c--) {
         let allEmpty = true;

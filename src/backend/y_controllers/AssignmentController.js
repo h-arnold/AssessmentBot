@@ -527,12 +527,12 @@ class AssignmentController {
 
       // Return full definition payload including tasks
       return definition.toJSON();
-    } catch (err) {
+    } catch (error) {
       ABLogger.getInstance().error(
         'Error in AssignmentController.createDefinitionFromWizardInputs:',
-        err?.message ?? err
+        error?.message ?? error
       );
-      throw err;
+      throw error;
     }
   }
 

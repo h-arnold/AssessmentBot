@@ -126,8 +126,8 @@ class TableTaskArtifact extends BaseTaskArtifact {
 
     const normalisedRows = [];
     let widestRow = 0;
-    for (let r = 0; r < content.length; r++) {
-      const rawRow = Array.isArray(content[r]) ? content[r] : [];
+    for (const [r, element] of content.entries()) {
+      const rawRow = Array.isArray(element) ? element : [];
       const normalisedRow = rawRow.map((cell) => this._normCell(cell));
       if (normalisedRow.length > TABLE_MAX_COLUMNS) {
         const err = new Error(
@@ -146,13 +146,13 @@ class TableTaskArtifact extends BaseTaskArtifact {
     }
 
     const targetWidth = Math.max(1, widestRow);
-    if (!normalisedRows.length) {
+    if (normalisedRows.length === 0) {
       normalisedRows.push(new Array(targetWidth).fill(''));
     }
 
     const paddedRows = normalisedRows.map((row) => {
       if (row.length === targetWidth) return row;
-      const padded = row.slice();
+      const padded = [...row];
       while (padded.length < targetWidth) padded.push('');
       return padded;
     });
@@ -165,7 +165,7 @@ class TableTaskArtifact extends BaseTaskArtifact {
    * @returns {Array<Array<string|number>>}
    */
   getRows() {
-    if (this._rows && Array.isArray(this._rows)) return this._rows.map((r) => r.slice());
+    if (this._rows && Array.isArray(this._rows)) return this._rows.map((r) => [...r]);
     return [];
   }
   /**
@@ -186,15 +186,15 @@ class TableTaskArtifact extends BaseTaskArtifact {
    */
   toMarkdown(rowsOverride) {
     const candidate =
-      rowsOverride !== undefined
-        ? rowsOverride
-        : this._rows && this._rows.length
+      rowsOverride === undefined
+        ? this._rows && this._rows.length > 0
           ? this._rows
-          : this.content;
+          : this.content
+        : rowsOverride;
     let src = candidate;
     if (!src) return '';
     if (Validate.isString(src)) return src.trim();
-    if (!Array.isArray(src) || !src.length) return '';
+    if (!Array.isArray(src) || src.length === 0) return '';
     const header = src[0] || [];
     if (!Array.isArray(header)) return '';
     const lines = [];

@@ -47,7 +47,7 @@ class TaskDefinition {
    */
   _deriveId(taskTitle, pageId) {
     const base = `${taskTitle || ''}::${pageId || ''}`;
-    return 't_' + Utils.generateHash(base).substring(0, TASK_DEFINITION_HASH_LENGTH); // shorter stable prefix
+    return 't_' + Utils.generateHash(base).slice(0, Math.max(0, TASK_DEFINITION_HASH_LENGTH)); // shorter stable prefix
   }
 
   /**
@@ -100,13 +100,13 @@ class TaskDefinition {
    *
    */
   getPrimaryReference() {
-    return this.artifacts.reference.length ? this.artifacts.reference[0] : null;
+    return this.artifacts.reference.length > 0 ? this.artifacts.reference[0] : null;
   }
   /**
    *
    */
   getPrimaryTemplate() {
-    return this.artifacts.template.length ? this.artifacts.template[0] : null;
+    return this.artifacts.template.length > 0 ? this.artifacts.template[0] : null;
   }
 
   /**
@@ -114,8 +114,10 @@ class TaskDefinition {
    */
   validate() {
     const errors = [];
-    if (!this.artifacts.reference.length) errors.push('TaskDefinition missing reference artifact');
-    if (!this.artifacts.template.length) errors.push('TaskDefinition missing template artifact');
+    if (this.artifacts.reference.length === 0)
+      errors.push('TaskDefinition missing reference artifact');
+    if (this.artifacts.template.length === 0)
+      errors.push('TaskDefinition missing template artifact');
     return { ok: errors.length === 0, errors };
   }
 

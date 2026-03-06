@@ -38,11 +38,13 @@ class Feedback {
    */
   static fromJSON(json) {
     switch (json.type) {
-      case 'cellReference':
+      case 'cellReference': {
         return CellReferenceFeedback.fromJSON(json);
+      }
       // Add cases for future feedback types
-      default:
+      default: {
         throw new Error(`Unknown feedback type: ${json.type}`);
+      }
     }
   }
 }
