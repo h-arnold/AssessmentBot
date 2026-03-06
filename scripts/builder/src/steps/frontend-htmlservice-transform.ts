@@ -69,17 +69,9 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
-  html = await replaceAsync(html, moduleScriptPattern, async (_, attributes: string) => {
-    const typeValue = readAttributeValue(attributes, 'type');
-    const src = readAttributeValue(attributes, 'src');
-    if (typeValue?.toLowerCase() !== 'module' || !src) {
-      return `<script ${attributes}>` + '</script>';
-    }
-
-    if (/^(https?:)?\/\//i.test(src)) {
-      return `<script ${attributes}>` + '</script>';
-    }
+  const moduleScriptPattern =
+    /<script\s+[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*><\/script>/gim;
+  html = await replaceAsync(html, moduleScriptPattern, async (_, src: string) => {
     const scriptPath = resolveBuiltAssetPath(paths, src);
     let script: string;
     try {
@@ -148,86 +140,5 @@ async function replaceAsync(
   );
 
   let replacementIndex = 0;
-  return input.replace(pattern, () => replacements[replacementIndex++] ?? '');
-}
-
-/**
- * Reads an attribute value from an HTML tag attributes string.
- *
- * @param {string} attributes - Tag attributes text.
- * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to read.
- * @return {string | null} Parsed attribute value, or null when absent.
- */
-function readAttributeValue(
-  attributes: string,
-  name: 'src' | 'href' | 'type' | 'rel',
-): string | null {
-  const pattern = new RegExp(
-    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\\`]+))`,
-    'i',
-  );
-  const match = pattern.exec(attributes);
-  if (!match) {
-    return null;
-  }
-  return match[1] ?? match[2] ?? match[3] ?? null;
-}
-
-/**
- * Detects unresolved local `assets/` references in src/href attributes.
- *
- * @param {string} html - HTML to scan.
- * @return {boolean} True when unresolved asset references are present.
- */
-function hasUnresolvedAssetAttributeReference(html: string): boolean {
-  const attributePattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gim;
-  let match: RegExpExecArray | null = attributePattern.exec(html);
-  while (match !== null) {
-    const value = match[1] ?? match[2] ?? match[3] ?? '';
-    if (value.includes('assets/')) {
-      return true;
-    }
-    match = attributePattern.exec(html);
-  }
-  return false;
-}
-
-/**
- * Detects `<script ... type=module ... src=...></script>` tags that remain unresolved.
- *
- * @param {string} html - HTML to scan.
- * @return {boolean} True when unresolved external module scripts are present.
- */
-function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
-  const scriptTagPattern = /<script\b([^>]*)><\/script>/gim;
-  let match: RegExpExecArray | null = scriptTagPattern.exec(html);
-  while (match !== null) {
-    const attributes = match[1] ?? '';
-    const typeValue = readAttributeValue(attributes, 'type');
-    const srcValue = readAttributeValue(attributes, 'src');
-    if (typeValue?.toLowerCase() === 'module' && srcValue) {
-      return true;
-    }
-    match = scriptTagPattern.exec(html);
-  }
-  return false;
-}
-
-/**
- * Removes one attribute name from a tag attributes string.
- *
- * @param {string} attributes - Tag attributes text.
- * @param {'src' | 'href' | 'type' | 'rel'} name - Attribute name to remove.
- * @return {string} Attributes without the named attribute.
- */
-function removeAttribute(
-  attributes: string,
-  name: 'src' | 'href' | 'type' | 'rel',
-): string {
-  const attributePattern = new RegExp(
-    `(^|\\s+)${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'=<>\\\`]+)`,
-    'i',
-  );
-  const updated = attributes.replace(attributePattern, (_, leading = '') => leading);
-  return updated.trim();
+  return input.replace(pattern, () => replacements[replacementIndex++] as string);
 }

@@ -4,9 +4,6 @@ import { AuthStatusCard } from './features/auth/AuthStatusCard';
 
 const { Header, Content } = Layout;
 
-/**
- * Renders the frontend composition shell and auth status feature.
- */
 function App() {
   return (
     <Layout>

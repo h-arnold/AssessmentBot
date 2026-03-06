@@ -12,7 +12,6 @@ const JSON_DB_RELEASE_TAG = 'v0.1.0';
 const JSON_DB_RELEASE_TARBALL_URL =
   'https://github.com/h-arnold/JsonDbApp/archive/refs/tags/v0.1.0.tar.gz';
 const execFileAsync = promisify(execFile);
-const TAR_VERBOSE_NAME_COLUMN_INDEX = 5;
 
 /**
  * Downloads a URL to disk using fetch with curl fallback.
@@ -99,7 +98,7 @@ async function validateArchiveContents(archivePath: string): Promise<void> {
     }
 
     // The entry path is the name field; for symlinks it is before ' -> target'.
-    const nameWithMaybeTarget = columns.slice(TAR_VERBOSE_NAME_COLUMN_INDEX).join(' ');
+    const nameWithMaybeTarget = columns.slice(5).join(' ');
     const [entryPath] = nameWithMaybeTarget.split(' -> ');
 
     if (path.isAbsolute(entryPath)) {

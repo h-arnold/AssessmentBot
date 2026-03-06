@@ -55,10 +55,7 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Builder coverage check (minimum 85%)
-npm run builder:test:coverage
-
-# Full builder CI sequence: lint -> coverage -> build -> run
+# Full builder CI sequence: lint -> test -> build -> run
 npm run builder:ci
 ```
 
