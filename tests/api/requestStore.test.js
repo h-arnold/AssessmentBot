@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const requestStorePath = '../../src/backend/Api/requestStore.js';
 
-// Known constants — will be defined in apiConstants.js during implementation.
-const USER_REQUEST_STORE_KEY = 'AB_USER_REQUEST_STORE';
-const MAX_TRACKED_REQUESTS = 30;
+const {
+  USER_REQUEST_STORE_KEY,
+  MAX_TRACKED_REQUESTS,
+} = require('../../src/backend/Api/apiConstants.js');
 
 function loadRequestStoreModule() {
   delete require.cache[require.resolve(requestStorePath)];

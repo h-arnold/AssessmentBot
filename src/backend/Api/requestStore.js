@@ -1,6 +1,6 @@
 // requestStore.js
 
-/* global PropertiesService */
+/* global PropertiesService, ABLogger, Validate */
 
 let maxTrackedRequests;
 let userRequestStoreKey;
@@ -20,6 +20,7 @@ if (typeof module !== 'undefined' && module.exports) {
  * Returns a new started-request record. Pure factory — does not read or write properties.
  */
 function createStartedRecord(requestId, method) {
+  Validate.requireParams({ requestId, method }, 'createStartedRecord');
   return {
     requestId,
     method,
@@ -42,7 +43,8 @@ function loadStore() {
   let parsed;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    ABLogger.getInstance().warn('Failed to parse user request store — resetting to empty.', error);
     return {};
   }
 
@@ -57,6 +59,7 @@ function loadStore() {
  * Persists the request store to user properties.
  */
 function saveStore(store) {
+  Validate.requireParams({ store }, 'saveStore');
   PropertiesService.getUserProperties().setProperty(userRequestStoreKey, JSON.stringify(store));
 }
 
@@ -65,6 +68,7 @@ function saveStore(store) {
  * Mutates and returns the store.
  */
 function markSuccess(store, requestId) {
+  Validate.requireParams({ store, requestId }, 'markSuccess');
   store[requestId].status = 'success';
   store[requestId].finishedAtMs = Date.now();
   return store;
@@ -75,6 +79,7 @@ function markSuccess(store, requestId) {
  * Mutates and returns the store.
  */
 function markError(store, requestId, errorMessage) {
+  Validate.requireParams({ store, requestId, errorMessage }, 'markError');
   store[requestId].status = 'error';
   store[requestId].finishedAtMs = Date.now();
   store[requestId].errorMessage = errorMessage;
@@ -87,6 +92,7 @@ function markError(store, requestId, errorMessage) {
  * Returns the compacted store.
  */
 function compactStore(store) {
+  Validate.requireParams({ store }, 'compactStore');
   if (Object.keys(store).length <= maxTrackedRequests) {
     return store;
   }
