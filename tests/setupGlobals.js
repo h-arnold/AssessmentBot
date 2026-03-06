@@ -54,6 +54,30 @@ g.Utilities = {
 g.Logger = {
   log: (...a) => console.log('[LOG]', ...a),
 };
+
+// In-memory backing store for the PropertiesService.getUserProperties() mock.
+// Call PropertiesService._resetUserProperties() in beforeEach to isolate tests.
+const _userPropertiesData = {};
+
+g.PropertiesService = {
+  _resetUserProperties() {
+    for (const key of Object.keys(_userPropertiesData)) {
+      delete _userPropertiesData[key];
+    }
+  },
+  getUserProperties() {
+    return {
+      getProperty(key) {
+        return Object.prototype.hasOwnProperty.call(_userPropertiesData, key)
+          ? _userPropertiesData[key]
+          : null;
+      },
+      setProperty(key, value) {
+        _userPropertiesData[key] = value;
+      },
+    };
+  },
+};
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
 
