@@ -51,7 +51,6 @@ npm run builder:test
 npm run builder:ci
 ```
 
-
 ### Coverage requirement
 
 Builder unit tests must meet a minimum coverage threshold of **85%** for lines, functions, statements, and branches. The threshold is enforced in `scripts/builder/vitest.config.ts` and checked via `npm run builder:test:coverage`.
@@ -89,7 +88,7 @@ Builder configuration lives in `scripts/builder/builder.config.json`.
     "publicExports": ["loadDatabase", "createAndInitialiseDatabase", "DatabaseConfig"]
   }
 }
-````
+```
 
 Notes:
 
