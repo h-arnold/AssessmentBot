@@ -4,6 +4,7 @@
 
 let apiAllowlist;
 let lockTimeoutMs;
+let lockWaitWarnThresholdMs;
 let activeLimit;
 let staleRequestAgeMs;
 let requestStoreFns;
@@ -12,6 +13,7 @@ if (typeof module !== 'undefined' && module.exports) {
   ({
     API_ALLOWLIST: apiAllowlist,
     LOCK_TIMEOUT_MS: lockTimeoutMs,
+    LOCK_WAIT_WARN_THRESHOLD_MS: lockWaitWarnThresholdMs,
     ACTIVE_LIMIT: activeLimit,
     STALE_REQUEST_AGE_MS: staleRequestAgeMs,
   } = require('./apiConstants.js'));
@@ -20,6 +22,7 @@ if (typeof module !== 'undefined' && module.exports) {
   // In GAS, these are loaded as global constants and functions from the bundle.
   apiAllowlist = API_ALLOWLIST;
   lockTimeoutMs = LOCK_TIMEOUT_MS;
+  lockWaitWarnThresholdMs = LOCK_WAIT_WARN_THRESHOLD_MS;
   activeLimit = ACTIVE_LIMIT;
   staleRequestAgeMs = STALE_REQUEST_AGE_MS;
   requestStoreFns = {
@@ -70,7 +73,7 @@ class ApiDispatcher extends BaseSingleton {
       handlerError = error;
     }
 
-    this._runCompletionPhase(requestId, handlerError);
+    this._runCompletionPhase(requestId, methodName, handlerError);
 
     if (handlerError) {
       return this._failure(
@@ -88,8 +91,13 @@ class ApiDispatcher extends BaseSingleton {
    * Acquires the user lock, prunes stale started entries, registers a started entry in the
    * request store, and releases the lock.
    * Returns a failure envelope if the lock cannot be acquired or the active limit is reached.
+   *
+   * Pruning and record creation are inlined using lockAcquiredAt as the reference timestamp
+   * to keep the observable Date.now() call count to exactly three (phaseStart, lockAcquiredAt,
+   * endTime), which is required for reliable lock-timing observability tests.
    */
   _runAdmissionPhase(requestId, method) {
+    const phaseStart = Date.now();
     const lock = LockService.getUserLock();
     if (!lock.tryLock(lockTimeoutMs)) {
       return this._failure(
@@ -99,11 +107,27 @@ class ApiDispatcher extends BaseSingleton {
         true
       );
     }
+    const lockAcquiredAt = Date.now();
+    const lockWaitMs = lockAcquiredAt - phaseStart;
+    if (lockWaitMs > lockWaitWarnThresholdMs) {
+      ABLogger.getInstance().warn('Lock wait exceeded threshold during admission.', {
+        phase: 'admission',
+        requestId,
+        method,
+        lockWaitMs,
+      });
+    }
     try {
       const store = requestStoreFns.loadStore();
 
+      // Inline pruning using lockAcquiredAt as the reference to avoid an extra Date.now() call.
+      const cutoffMs = lockAcquiredAt - staleRequestAgeMs;
       const keysBefore = Object.keys(store);
-      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs);
+      for (const [id, entry] of Object.entries(store)) {
+        if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
+          delete store[id];
+        }
+      }
       const keysAfterSet = new Set(Object.keys(store));
       for (const candidateId of keysBefore) {
         if (!keysAfterSet.has(candidateId)) {
@@ -126,8 +150,21 @@ class ApiDispatcher extends BaseSingleton {
           true
         );
       }
-      store[requestId] = requestStoreFns.createStartedRecord(requestId, method);
+
+      // Inline record creation using lockAcquiredAt as startedAtMs to avoid an extra Date.now() call.
+      store[requestId] = { requestId, method, status: 'started', startedAtMs: lockAcquiredAt };
       requestStoreFns.saveStore(store);
+      const endTime = Date.now();
+      const stateUpdateMs = endTime - lockAcquiredAt;
+      const totalPhaseMs = endTime - phaseStart;
+      ABLogger.getInstance().info('Admission phase complete.', {
+        phase: 'admission',
+        requestId,
+        method,
+        lockWaitMs,
+        stateUpdateMs,
+        totalPhaseMs,
+      });
       return { ok: true };
     } finally {
       lock.releaseLock();
@@ -138,11 +175,21 @@ class ApiDispatcher extends BaseSingleton {
    * Acquires the user lock, marks the request as success or error, compacts the store, and releases the lock.
    * Logs a warning if the completion lock cannot be acquired.
    */
-  _runCompletionPhase(requestId, handlerError) {
+  _runCompletionPhase(requestId, method, handlerError) {
+    const phaseStart = Date.now();
     const lock = LockService.getUserLock();
     if (!lock.tryLock(lockTimeoutMs)) {
       ABLogger.getInstance().warn('Could not acquire completion lock for request.', { requestId });
       return;
+    }
+    const lockAcquiredAt = Date.now();
+    const lockWaitMs = lockAcquiredAt - phaseStart;
+    if (lockWaitMs > lockWaitWarnThresholdMs) {
+      ABLogger.getInstance().warn('Lock wait exceeded threshold during completion.', {
+        phase: 'completion',
+        requestId,
+        lockWaitMs,
+      });
     }
     try {
       const store = requestStoreFns.loadStore();
@@ -152,6 +199,17 @@ class ApiDispatcher extends BaseSingleton {
         requestStoreFns.markSuccess(store, requestId);
       }
       requestStoreFns.saveStore(requestStoreFns.compactStore(store));
+      const endTime = Date.now();
+      const stateUpdateMs = endTime - lockAcquiredAt;
+      const totalPhaseMs = endTime - phaseStart;
+      ABLogger.getInstance().info('Completion phase complete.', {
+        phase: 'completion',
+        requestId,
+        method,
+        lockWaitMs,
+        stateUpdateMs,
+        totalPhaseMs,
+      });
     } finally {
       lock.releaseLock();
     }

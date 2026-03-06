@@ -14,6 +14,7 @@ const STALE_REQUEST_AGE_MS = 15 * 60 * 1000;
 const USER_REQUEST_STORE_KEY = 'AB_USER_REQUEST_STORE';
 
 const LOCK_TIMEOUT_MS = 1000;
+const LOCK_WAIT_WARN_THRESHOLD_MS = 300;
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -24,5 +25,6 @@ if (typeof module !== 'undefined' && module.exports) {
     STALE_REQUEST_AGE_MS,
     USER_REQUEST_STORE_KEY,
     LOCK_TIMEOUT_MS,
+    LOCK_WAIT_WARN_THRESHOLD_MS,
   };
 }

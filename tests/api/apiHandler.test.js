@@ -36,6 +36,7 @@ function makeVmGlobals(overrides = {}) {
   return {
     BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
     LOCK_TIMEOUT_MS: 1000,
+    LOCK_WAIT_WARN_THRESHOLD_MS: 300,
     ACTIVE_LIMIT: 25,
     LockService: {
       getUserLock() {
