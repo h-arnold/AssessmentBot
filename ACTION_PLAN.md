@@ -51,46 +51,38 @@ Introduce a single, typed frontend API wrapper and a backend API dispatcher that
 - Record any implementation deviations, compromises, or follow-up work in the section's implementation notes area.
 - Commit the completed changes for each section before starting the next section.
 
-## Pause Handover (2026-03-06)
+## Progress Handover (2026-03-06)
 
 Current branch and commit state:
 
-- Branch: `codex/create-api-handler-wrapper-for-frontend-calls`
-- Latest commit: `d801cf9` (`feat(frontend): add typed apiService wrapper contract`)
-- Last pushed remote commit before local work: `3586a9e`
+- Branch: `copilot/update-action-plan-and-implement`
+- All Sections 1–7 implemented, tested, and reviewed.
 
-Confirmed completed and committed:
+### Completed sections
 
-- Section 1 is implemented and committed in `d801cf9`.
-- Frontend wrapper tests pass: `npm run frontend:test -- src/services/apiService.test.ts`.
+| Section | Description                                  | Tests    |
+| ------- | -------------------------------------------- | -------- |
+| 1       | Frontend wrapper (`apiService.ts`)           | 12 tests |
+| 2       | Backend dispatcher (`apiHandler.js`)         | 20 tests |
+| 3       | Execution tracking store (`requestStore.js`) | 28 tests |
+| 4       | Atomicity / lock-protected phases            | 8 tests  |
+| 5       | Stale-entry pruning (`pruneStaleEntries`)    | 12 tests |
+| 6       | Error types + frontend retry policy          | 14 tests |
+| 7       | Lock timing observability and logging        | 7 tests  |
 
-Work currently in progress but not committed:
+Full test suite: **535 tests, 0 failures**, branch coverage ≥ 92%, `npm run lint` → 0 errors.
 
-- `src/backend/Api/apiConstants.js` (new, untracked)
-- `src/backend/Api/apiHandler.js` (new, untracked)
-- `tests/api/apiHandler.test.js` (new, untracked)
+### Key implementation notes
 
-Current verification snapshot for in-progress backend work:
+- `DISPATCH_ERROR` is still the catch-all internal error code used in the `handle()` dispatcher; the error-type classes added in Section 6 (`ApiRateLimitError`, `ApiValidationError`, `ApiDisabledError`) are available for callers but not yet wired into `_failure` mapping. Update `apiHandler.js` line 79 if a stricter `INTERNAL_ERROR` code is required.
+- `LOCK_WAIT_WARN_THRESHOLD_MS = 300` is defined in `apiConstants.js` and consumed in both lock-protected phases.
+- `_runCompletionPhase` was extended to accept a `method` parameter so timing logs are fully self-describing.
+- Frontend retry uses `crypto.getRandomValues` for cryptographically-safe jitter (not `Math.random`).
 
-- Targeted backend test file passes functionally: `npm test -- tests/api/apiHandler.test.js` (19 tests passed).
-- Caveat: running only this one backend test file fails global coverage gates, so this command currently exits non-zero due to coverage thresholds.
+### Remaining work
 
-Important resume note:
-
-- Section 2 implementation currently returns `DISPATCH_ERROR` for thrown handler errors.
-- Action plan Section 6 requires standardised error codes and mapping (`INTERNAL_ERROR`, `RATE_LIMITED`, `INVALID_REQUEST`, `UNKNOWN_METHOD`) plus custom API error classes.
-- When resuming, either:
-
-1. Keep Section 2 as a thin interim slice and explicitly record the temporary `DISPATCH_ERROR` code as a planned replacement in Section 6.
-2. Or refactor Section 2 now to align with the Section 6 error model before committing.
-
-Recommended first steps on next session:
-
-1. Run `git status --short` and confirm only the three untracked Section 2 files are pending.
-2. Run the mandated sub-agent loop for Section 2 (tests -> implementation -> review/fix).
-3. Decide and document the Section 2 vs Section 6 error-code alignment approach before committing.
-4. Commit Section 2 once reviewer is clean and notes are updated.
-5. Continue with Section 3 (tracking store) immediately after Section 2 commit.
+- Phase 4 (incremental endpoint migration): migrate existing `google.script.run` call sites to use `callApi`.
+- Extend `_invokeAllowlistedMethod` as new backend endpoints are added.
 
 ## Target Architecture
 
@@ -263,7 +255,7 @@ Constraints:
 
 Implementation notes:
 
-- Status: in progress (2026-03-06), not yet committed.
+- Completed 2026-03-06.
 - Added dispatcher scaffolding in `src/backend/Api/apiHandler.js`:
 
 1. GAS-global `apiHandler(request)` wrapper delegating to `ApiDispatcher.getInstance().handle(request)`.
@@ -349,11 +341,14 @@ Constraints:
 
 Implementation notes:
 
+- Completed 2026-03-06.
+- `createStartedRecord`, `loadStore`, `saveStore`, `markSuccess`, `markError`, `compactStore` added to `src/backend/Api/requestStore.js`.
+- `Validate.requireParams` enforced on all public functions.
+- `MAX_TRACKED_REQUESTS` (30) used as the compaction ceiling.
+
 Commit checkpoint:
 
 - Commit this section after lifecycle persistence and compaction tests pass.
-
-## 4) Atomicity and race-condition prevention
 
 Wrap read-modify-write tracking operations with `LockService.getUserLock()`.
 
@@ -416,6 +411,12 @@ Constraints:
 
 Implementation notes:
 
+- Completed 2026-03-06.
+- `_runAdmissionPhase` and `_runCompletionPhase` added to `ApiDispatcher`.
+- Both phases acquire the lock, mutate state, and release in `finally`.
+- Handler logic executes outside the lock between the two phases.
+- `LockService` mock added to `tests/setupGlobals.js` (always-succeeds default).
+
 Commit checkpoint:
 
 - Commit this section after lock lifecycle, release, and timeout tests pass.
@@ -468,6 +469,11 @@ Constraints:
 - Do not invoke the allowlisted method when admission has already failed.
 
 Implementation notes:
+
+- Completed 2026-03-06.
+- `pruneStaleEntries(store, stalenessThresholdMs)` added to `requestStore.js`.
+- Wired into `_runAdmissionPhase`; pruned store is persisted immediately (before active-count check) to prevent stale-entry log noise on rate-limited requests.
+- One `ABLogger.warn` emitted per pruned entry.
 
 Commit checkpoint:
 
@@ -589,6 +595,13 @@ Constraints:
 
 Implementation notes:
 
+- Completed 2026-03-06.
+- `ApiRateLimitError`, `ApiValidationError`, `ApiDisabledError` added to `src/backend/Utils/ErrorTypes/` following the `PersistError.js` pattern.
+- Each class explicitly assigns `this.cause = cause || null` for GAS compatibility.
+- Frontend `callApi` updated with bounded exponential backoff retry (max 4 attempts, `BASE_DELAY_MS = 1000`, `JITTER_MS = 500`).
+- `crypto.getRandomValues` used for safe jitter (replaces `Math.random`).
+- Complexity reduced by extracting `shouldRetry` and `dispatchAttempt` helpers.
+
 Commit checkpoint:
 
 - Commit this section after backend error-mapping and frontend retry-policy tests pass.
@@ -652,6 +665,14 @@ Constraints:
 - Keep the warn threshold configurable in code if introduced, but do not over-engineer observability in this phase.
 
 Implementation notes:
+
+- Completed 2026-03-06.
+- `LOCK_WAIT_WARN_THRESHOLD_MS = 300` added to `apiConstants.js`.
+- `_runAdmissionPhase` and `_runCompletionPhase` each capture three timestamps: `phaseStart`, `lockAcquiredAt`, and `endTime`.
+- `info` emitted with `{ phase, requestId, method, lockWaitMs, stateUpdateMs, totalPhaseMs }` on successful lock acquisition and state update.
+- `warn` emitted when `lockWaitMs > LOCK_WAIT_WARN_THRESHOLD_MS` with the same metadata set.
+- `info` is NOT emitted when `tryLock` fails (RATE_LIMITED path exits before `try` block).
+- `_runCompletionPhase` extended with `method` parameter for symmetric log payloads.
 
 Commit checkpoint:
 

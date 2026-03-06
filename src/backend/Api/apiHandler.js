@@ -188,6 +188,7 @@ class ApiDispatcher extends BaseSingleton {
       ABLogger.getInstance().warn('Lock wait exceeded threshold during completion.', {
         phase: 'completion',
         requestId,
+        method,
         lockWaitMs,
       });
     }
