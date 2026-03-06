@@ -47,7 +47,7 @@ npm run builder:lint
 # Builder unit tests
 npm run builder:test
 
-# Full builder CI sequence: lint -> test -> build
+# Full builder CI sequence: lint -> test -> compile -> run
 npm run builder:ci
 ```
 
