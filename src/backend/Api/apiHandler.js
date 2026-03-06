@@ -85,8 +85,9 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, registers a started entry in the request store, and releases the lock.
-   * Returns a failure envelope if the lock cannot be acquired.
+   * Acquires the user lock, prunes stale started entries, registers a started entry in the
+   * request store, and releases the lock.
+   * Returns a failure envelope if the lock cannot be acquired or the active limit is reached.
    */
   _runAdmissionPhase(requestId, method) {
     const lock = LockService.getUserLock();
@@ -112,6 +113,9 @@ class ApiDispatcher extends BaseSingleton {
           });
         }
       }
+
+      // Persist pruned state immediately so stale entries don't accumulate on rate-limited paths.
+      requestStoreFns.saveStore(store);
 
       const activeCount = Object.values(store).filter((r) => r.status === 'started').length;
       if (activeCount >= activeLimit) {
