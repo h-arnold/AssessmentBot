@@ -31,6 +31,59 @@ function loadApiHandlerInVmContext({ globals = {} } = {}) {
   };
 }
 
+function makeVmGlobals(overrides = {}) {
+  const store = {};
+  return {
+    BaseSingleton: require('../../src/backend/00_BaseSingleton.js'),
+    LOCK_TIMEOUT_MS: 1000,
+    LOCK_WAIT_WARN_THRESHOLD_MS: 300,
+    ACTIVE_LIMIT: 25,
+    LockService: {
+      getUserLock() {
+        return { tryLock: () => true, releaseLock: () => {} };
+      },
+    },
+    PropertiesService: {
+      getUserProperties() {
+        return {
+          getProperty: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+          setProperty: (k, v) => {
+            store[k] = v;
+          },
+        };
+      },
+    },
+    ABLogger: { getInstance: () => ({ warn: () => {}, info: () => {} }) },
+    Utilities: { getUuid: () => 'uuid-vm-default' },
+    Validate:
+      require('../../src/backend/Utils/Validate.js').Validate ||
+      require('../../src/backend/Utils/Validate.js'),
+    loadStore: () => ({}),
+    saveStore: () => {},
+    createStartedRecord: (id, method) => ({
+      requestId: id,
+      method,
+      status: 'started',
+      startedAtMs: Date.now(),
+    }),
+    markSuccess: (s, id) => {
+      if (s[id]) s[id].status = 'success';
+      return s;
+    },
+    markError: (s, id, msg) => {
+      if (s[id]) {
+        s[id].status = 'error';
+        s[id].errorMessage = msg;
+      }
+      return s;
+    },
+    compactStore: (s) => s,
+    STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
+    pruneStaleEntries: (s) => s,
+    ...overrides,
+  };
+}
+
 describe('Api/apiConstants', () => {
   it('defines getAuthorisationStatus in the API allowlist', () => {
     const { API_METHODS } = loadApiConstantsModule();
@@ -44,11 +97,13 @@ describe('Api/apiHandler dispatcher', () => {
   let originalGetAuthorisationStatus;
 
   beforeEach(() => {
+    globalThis.PropertiesService._resetUserProperties();
     originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
     globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
   });
 
   afterEach(() => {
+    globalThis.PropertiesService._resetUserProperties();
     if (originalGetAuthorisationStatus === undefined) {
       delete globalThis.getAuthorisationStatus;
     } else {
@@ -153,7 +208,7 @@ describe('Api/apiHandler dispatcher', () => {
     expect(response.requestId.length).toBeGreaterThan(0);
   });
 
-  it('uses Utilities.getUuid to generate requestId when available', () => {
+  it('calls Utilities.getUuid to generate requestId when none is provided', () => {
     const originalUtilities = globalThis.Utilities;
     globalThis.Utilities = {
       getUuid: vi.fn(() => 'uuid-fixed-001'),
@@ -203,9 +258,18 @@ describe('Api/apiHandler dispatcher', () => {
     });
   });
 
-  it('uses fallback singleton base in vm context when BaseSingleton is absent', () => {
+  it('throws when an unrecognised handler name is passed to _invokeAllowlistedMethod', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    expect(() => dispatcher._invokeAllowlistedMethod('unknownHandler', {})).toThrow(
+      'Allowlisted handler is not implemented.'
+    );
+  });
+
+  it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
-      globals: {
+      globals: makeVmGlobals({
         API_ALLOWLIST: {
           getAuthorisationStatus: 'getAuthorisationStatus',
         },
@@ -213,7 +277,7 @@ describe('Api/apiHandler dispatcher', () => {
         Utilities: {
           getUuid: () => 'uuid-vm-singleton',
         },
-      },
+      }),
     });
 
     const first = ApiDispatcher.getInstance();
@@ -229,14 +293,14 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('uses global API_ALLOWLIST in vm context and returns DISPATCH_ERROR for unknown mapped handler', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
-      globals: {
+      globals: makeVmGlobals({
         API_ALLOWLIST: {
           getAuthorisationStatus: 'notImplementedHandler',
         },
         Utilities: {
           getUuid: () => 'uuid-vm-dispatch-error',
         },
-      },
+      }),
     });
     const dispatcher = ApiDispatcher.getInstance();
 
