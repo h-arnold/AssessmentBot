@@ -387,10 +387,11 @@ describe('retry policy', () => {
         setGoogle({ script: { run: runner } });
 
         const resultPromise = callApi('someMethod');
+        const assertion = expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
 
         await vi.runAllTimersAsync();
 
-        await expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+        await assertion;
         expect(apiHandlerSpy).toHaveBeenCalledTimes(4);
     });
 
@@ -410,10 +411,11 @@ describe('retry policy', () => {
         setGoogle({ script: { run: runner } });
 
         const resultPromise = callApi('someMethod');
+        const assertion = expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
 
         await vi.runAllTimersAsync();
 
-        await expect(resultPromise).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+        await assertion;
         expect(apiHandlerSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -433,10 +435,11 @@ describe('retry policy', () => {
         setGoogle({ script: { run: runner } });
 
         const resultPromise = callApi('someMethod');
+        const assertion = expect(resultPromise).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
 
         await vi.runAllTimersAsync();
 
-        await expect(resultPromise).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+        await assertion;
         expect(apiHandlerSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -459,13 +462,14 @@ describe('retry policy', () => {
         setGoogle({ script: { run: runner } });
 
         const resultPromise = callApi('someMethod');
-
-        await vi.runAllTimersAsync();
-
-        await expect(resultPromise).rejects.toMatchObject({
+        const assertion = expect(resultPromise).rejects.toMatchObject({
             code: 'RATE_LIMITED',
             requestId: 'req-exhaust-4',
             message: 'Attempt req-exhaust-4 failed.',
         });
+
+        await vi.runAllTimersAsync();
+
+        await assertion;
     });
 });

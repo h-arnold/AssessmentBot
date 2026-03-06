@@ -89,31 +89,37 @@ function getRunner(): GoogleScriptRunApiHandler {
     return runnerCandidate as GoogleScriptRunApiHandler;
 }
 
+const MAX_ATTEMPTS = 4;
+const BASE_DELAY_MS = 1000;
+const JITTER_MS = 500;
+const UINT32_MAX = 4_294_967_295;
+
 /**
- * Calls the backend API handler and returns parsed response data.
+ * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
  */
-export async function callApi<TResponse>(
-    method: string,
-    params?: unknown
+function randomJitterMs(): number {
+    const buf = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(buf);
+    return (buf[0] / UINT32_MAX) * JITTER_MS;
+}
+
+/**
+ * Dispatches a single API attempt and returns the parsed response data,
+ * or throws ApiTransportError if the backend returns a failure envelope.
+ */
+async function dispatchAttempt<TResponse>(
+    runner: GoogleScriptRunApiHandler,
+    requestPayload: unknown
 ): Promise<TResponse> {
-    const requestPayload = ApiRequestSchema.parse({
-        method,
-        params,
-    });
-
-    const runner = getRunner();
-
-    return await new Promise<TResponse>((resolve, reject) => {
+    return new Promise<TResponse>((resolve, reject) => {
         runner
             .withSuccessHandler((response: unknown) => {
                 try {
                     const parsedResponse = ApiResponseSchema.parse(response);
-
                     if (parsedResponse.ok) {
                         resolve(parsedResponse.data as TResponse);
                         return;
                     }
-
                     reject(new ApiTransportError(parsedResponse));
                 } catch (error: unknown) {
                     reject(error);
@@ -124,4 +130,52 @@ export async function callApi<TResponse>(
             })
             .apiHandler(requestPayload);
     });
+}
+
+/**
+ * Returns true when the given error should trigger a retry attempt.
+ */
+function shouldRetry(error: unknown, attempt: number): boolean {
+    return (
+        error instanceof ApiTransportError &&
+        error.code === 'RATE_LIMITED' &&
+        error.retriable === true &&
+        attempt < MAX_ATTEMPTS - 1
+    );
+}
+
+/**
+ * Calls the backend API handler and returns parsed response data.
+ *
+ * Automatically retries up to MAX_ATTEMPTS total attempts when the backend
+ * responds with a RATE_LIMITED error that is marked as retriable.
+ * Each retry waits for a bounded exponential backoff with jitter.
+ */
+export async function callApi<TResponse>(
+    method: string,
+    params?: unknown
+): Promise<TResponse> {
+    const requestPayload = ApiRequestSchema.parse({ method, params });
+    const runner = getRunner();
+
+    let lastError: ApiTransportError | undefined;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (attempt > 0) {
+            const delay = BASE_DELAY_MS * 2 ** (attempt - 1) + randomJitterMs();
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        try {
+            return await dispatchAttempt<TResponse>(runner, requestPayload);
+        } catch (error: unknown) {
+            if (shouldRetry(error, attempt)) {
+                lastError = error as ApiTransportError;
+                continue;
+            }
+            throw error;
+        }
+    }
+
+    throw lastError!;
 }
