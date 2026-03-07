@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@ant-design/icons": "latest",
-    "@ant-design/v5-patch-for-react-19": "latest",
     "antd": "latest",
     "react": "latest",
     "react-dom": "latest",
