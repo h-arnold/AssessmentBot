@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { ApiTransportError, type ApiErrorEnvelope } from '../errors/apiTransportError';
+import { logFrontendError, logFrontendEvent } from '../logging/frontendLogger';
 
 const ApiRequestSchema = z.object({
     method: z.string().min(1),
@@ -36,7 +38,6 @@ const ApiResponseSchema = z.discriminatedUnion('ok', [
     ApiErrorResponseSchema,
 ]);
 
-type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 type GoogleScriptRunApiHandler = {
     withSuccessHandler: (
         handler: (response: unknown) => void
@@ -44,28 +45,6 @@ type GoogleScriptRunApiHandler = {
     withFailureHandler: (handler: (error: unknown) => void) => GoogleScriptRunApiHandler;
     apiHandler: (request: unknown) => void;
 };
-
-/**
- * Transport error carrying details from an API error envelope.
- */
-class ApiTransportError extends Error {
-    public readonly requestId: string;
-    public readonly code: string;
-    public readonly retriable: boolean | undefined;
-    public readonly meta: Record<string, unknown> | undefined;
-
-    /**
-     * Builds a transport error from an API error envelope.
-     */
-    public constructor(response: ApiErrorResponse) {
-        super(response.error.message);
-        this.name = 'ApiTransportError';
-        this.requestId = response.requestId;
-        this.code = response.error.code;
-        this.retriable = response.error.retriable;
-        this.meta = response.meta;
-    }
-}
 
 /**
  * Returns the typed `google.script.run` runner for API calls.
@@ -118,7 +97,7 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
                         resolve(parsedResponse.data as TResponse);
                         return;
                     }
-                    reject(new ApiTransportError(parsedResponse));
+                    reject(new ApiTransportError(parsedResponse as ApiErrorEnvelope));
                 } catch (error: unknown) {
                     reject(error);
                 }
@@ -168,8 +147,18 @@ export async function callApi<TResponse>(
         } catch (error: unknown) {
             if (shouldRetry(error, attempt)) {
                 lastError = error as ApiTransportError;
+                logFrontendEvent('warn', {
+                    context: 'services/apiService.callApi',
+                    errorMessage: lastError.message,
+                    requestId: lastError.requestId,
+                    errorCode: lastError.code,
+                    stack: lastError.stack,
+                    metadata: { attempt },
+                });
                 continue;
             }
+
+            logFrontendError('services/apiService.callApi', error, { attempt });
             throw error;
         }
     }

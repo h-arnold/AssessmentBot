@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAuthorisationStatus } from '../../services/authService';
+import { toUserFacingErrorMessage } from '../../errors/normaliseUnknownError';
+import { logFrontendError } from '../../logging/frontendLogger';
 
 export type AuthViewState = 'loading' | 'authorised' | 'unauthorised';
 
@@ -29,7 +31,8 @@ export function useAuthorisationStatus() {
           return;
         }
 
-        setAuthError(error instanceof Error ? error.message : String(error));
+        logFrontendError('features/auth/useAuthorisationStatus', error);
+        setAuthError(toUserFacingErrorMessage(error));
         setAuthViewState('unauthorised');
       });
 
