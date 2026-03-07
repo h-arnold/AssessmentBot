@@ -27,8 +27,8 @@ Choose test strategy by component.
 - GAS policy: Never invoke real GAS services, network calls, or live timers. Use mocks/helpers under `tests/__mocks__` and `tests/helpers`.
 
 ### Frontend (`src/frontend`)
-- Unit/component tests: Vitest + Testing Library (`npm run frontend:test`).
-- Browser E2E tests: Playwright (`npm run frontend:test:e2e`).
+- Unit/component tests: Vitest + Testing Library (`npm run frontend:test`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
+- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 

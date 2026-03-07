@@ -101,7 +101,7 @@ When backend behaviour requires new scopes/services:
 - Keep scope/service additions minimal and justified.
 - Remember builder manifest merge uses backend manifest as base.
 
-## 7. Testing Notes
+## 7. Testing Delegation
 
-- Backend logic tests are Vitest-based and must not depend on live GAS services.
-- Delegate test implementation to `Testing Specialist`.
+- Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
+- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/backend/backend-testing.md` before changing tests.

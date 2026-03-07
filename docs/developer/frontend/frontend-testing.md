@@ -52,12 +52,12 @@ npm run frontend:test:e2e -- --headed --debug
 Run a single mocked scenario by test name:
 
 ```bash
-npm run frontend:test:e2e -- --headed --debug src/frontend/tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
+npm run frontend:test:e2e -- --headed --debug src/frontend/e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 ```
 
 ### How this maps to existing mocks
 
-- `src/frontend/tests/auth-status.spec.ts` already installs `google.script.run` mocks before the app loads.
+- `src/frontend/e2e-tests/auth-status.spec.ts` already installs `google.script.run` mocks before the app loads.
 - Each test scenario then navigates to `/` and asserts user-visible state.
 - In `--ui` or `--headed --debug` mode, those same scenarios double as a manual preview harness.
 
@@ -84,7 +84,7 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Test setup: `src/frontend/src/test/setup.ts`
-- E2E tests: `src/frontend/tests/**/*.spec.ts`
+- E2E tests: `src/frontend/e2e-tests/**/*.spec.ts`
 - Playwright config: `src/frontend/playwright.config.ts`
 
 ## Current Approach
