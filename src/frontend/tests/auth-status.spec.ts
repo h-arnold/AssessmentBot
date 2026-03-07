@@ -7,7 +7,12 @@ type AuthServiceMockScenario =
       delayMs?: number;
     }
   | {
-      kind: 'failure';
+      kind: 'apiFailure';
+      message: string;
+      delayMs?: number;
+    }
+  | {
+      kind: 'transportFailure';
       message: string;
       delayMs?: number;
     };
@@ -20,9 +25,9 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
     const delayMs = mockScenario.delayMs ?? 0;
 
     const run = {
-      successHandler: undefined as ((result: boolean) => void) | undefined,
+      successHandler: undefined as ((response: unknown) => void) | undefined,
       failureHandler: undefined as ((error: unknown) => void) | undefined,
-      withSuccessHandler(handler: (result: boolean) => void) {
+      withSuccessHandler(handler: (response: unknown) => void) {
         this.successHandler = handler;
         return this;
       },
@@ -30,10 +35,26 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
         this.failureHandler = handler;
         return this;
       },
-      getAuthorisationStatus() {
+      apiHandler() {
         setTimeout(() => {
           if (mockScenario.kind === 'success') {
-            this.successHandler?.(mockScenario.result);
+            this.successHandler?.({
+              ok: true,
+              requestId: 'req-e2e-success',
+              data: mockScenario.result,
+            });
+            return;
+          }
+
+          if (mockScenario.kind === 'apiFailure') {
+            this.successHandler?.({
+              ok: false,
+              requestId: 'req-e2e-failure',
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: mockScenario.message,
+              },
+            });
             return;
           }
 
@@ -86,9 +107,9 @@ test.describe('auth status flow', () => {
     await expect(page.getByText('Unauthorised')).toBeVisible();
   });
 
-  test('shows backend error subtitle when backend call fails', async ({ page }) => {
+  test('shows backend error subtitle when backend returns a failure envelope', async ({ page }) => {
     await mockGoogleScriptRun(page, {
-      kind: 'failure',
+      kind: 'apiFailure',
       message: 'Backend authorisation check failed.',
     });
 

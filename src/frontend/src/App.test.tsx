@@ -3,30 +3,68 @@ import App from './App';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
 
+type ApiResponseEnvelope =
+  | {
+      ok: true;
+      requestId: string;
+      data: boolean;
+    }
+  | {
+      ok: false;
+      requestId: string;
+      error: {
+        code: string;
+        message: string;
+        retriable?: boolean;
+      };
+    };
+
+/**
+ * Installs a `google.script.run.apiHandler` mock for app-level tests.
+ */
+function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailure: unknown }) {
+  let successHandler: ((payload: unknown) => void) | undefined;
+  let failureHandler: ((error: unknown) => void) | undefined;
+
+  const runMock = {
+    withSuccessHandler(handler: (payload: unknown) => void) {
+      successHandler = handler;
+      return runMock;
+    },
+    withFailureHandler(handler: (error: unknown) => void) {
+      failureHandler = handler;
+      return runMock;
+    },
+    apiHandler() {
+      queueMicrotask(() => {
+        if ('transportFailure' in response) {
+          failureHandler?.(response.transportFailure);
+          return;
+        }
+
+        successHandler?.(response);
+      });
+    },
+  };
+
+  globalThis.google = {
+    script: {
+      run: runMock,
+    },
+  };
+}
+
 describe('App', () => {
   afterEach(() => {
     delete globalThis.google;
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
-    const runMock = {
-      withSuccessHandler(handler: (result: boolean) => void) {
-        queueMicrotask(() => {
-          handler(true);
-        });
-        return runMock;
-      },
-      withFailureHandler() {
-        return runMock;
-      },
-      getAuthorisationStatus() {},
-    };
-
-    globalThis.google = {
-      script: {
-        run: runMock,
-      },
-    };
+    installApiHandlerMock({
+      ok: true,
+      requestId: 'req-1',
+      data: true,
+    });
 
     render(<App />);
 
@@ -36,24 +74,11 @@ describe('App', () => {
   });
 
   it('shows unauthorised status when backend returns false', async () => {
-    const runMock = {
-      withSuccessHandler(handler: (result: boolean) => void) {
-        queueMicrotask(() => {
-          handler(false);
-        });
-        return runMock;
-      },
-      withFailureHandler() {
-        return runMock;
-      },
-      getAuthorisationStatus() {},
-    };
-
-    globalThis.google = {
-      script: {
-        run: runMock,
-      },
-    };
+    installApiHandlerMock({
+      ok: true,
+      requestId: 'req-2',
+      data: false,
+    });
 
     render(<App />);
 
@@ -61,26 +86,15 @@ describe('App', () => {
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
   });
 
-  it('shows backend failure message when backend call fails', async () => {
-    const backendFailure = new Error('Backend authorisation check failed.');
-    const runMock = {
-      withSuccessHandler() {
-        return runMock;
+  it('shows backend failure message when backend returns a failure envelope', async () => {
+    installApiHandlerMock({
+      ok: false,
+      requestId: 'req-3',
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Backend authorisation check failed.',
       },
-      withFailureHandler(handler: (error: unknown) => void) {
-        queueMicrotask(() => {
-          handler(backendFailure);
-        });
-        return runMock;
-      },
-      getAuthorisationStatus() {},
-    };
-
-    globalThis.google = {
-      script: {
-        run: runMock,
-      },
-    };
+    });
 
     render(<App />);
 
@@ -89,26 +103,10 @@ describe('App', () => {
     expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
   });
 
-
-  it('shows string failure message when backend call fails with non-Error values', async () => {
-    const runMock = {
-      withSuccessHandler() {
-        return runMock;
-      },
-      withFailureHandler(handler: (error: unknown) => void) {
-        queueMicrotask(() => {
-          handler('Backend call failed with a string.');
-        });
-        return runMock;
-      },
-      getAuthorisationStatus() {},
-    };
-
-    globalThis.google = {
-      script: {
-        run: runMock,
-      },
-    };
+  it('shows string failure message when transport fails with a non-Error value', async () => {
+    installApiHandlerMock({
+      transportFailure: 'Backend call failed with a string.',
+    });
 
     render(<App />);
 
