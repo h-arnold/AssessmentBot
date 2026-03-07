@@ -7,7 +7,12 @@ type AuthServiceMockScenario =
       delayMs?: number;
     }
   | {
-      kind: 'failure';
+      kind: 'apiFailure';
+      message: string;
+      delayMs?: number;
+    }
+  | {
+      kind: 'transportFailure';
       message: string;
       delayMs?: number;
     };
@@ -19,10 +24,44 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
   await page.addInitScript((mockScenario: AuthServiceMockScenario) => {
     const delayMs = mockScenario.delayMs ?? 0;
 
+    /**
+     * Dispatches a mocked apiHandler response based on the selected scenario.
+     */
+    function dispatchScenarioResponse(
+      run: {
+        successHandler: ((response: unknown) => void) | undefined;
+        failureHandler: ((error: unknown) => void) | undefined;
+      },
+      scenario: AuthServiceMockScenario
+    ) {
+      if (scenario.kind === 'success') {
+        run.successHandler?.({
+          ok: true,
+          requestId: 'req-e2e-success',
+          data: scenario.result,
+        });
+        return;
+      }
+
+      if (scenario.kind === 'apiFailure') {
+        run.successHandler?.({
+          ok: false,
+          requestId: 'req-e2e-failure',
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: scenario.message,
+          },
+        });
+        return;
+      }
+
+      run.failureHandler?.(new Error(scenario.message));
+    }
+
     const run = {
-      successHandler: undefined as ((result: boolean) => void) | undefined,
+      successHandler: undefined as ((response: unknown) => void) | undefined,
       failureHandler: undefined as ((error: unknown) => void) | undefined,
-      withSuccessHandler(handler: (result: boolean) => void) {
+      withSuccessHandler(handler: (response: unknown) => void) {
         this.successHandler = handler;
         return this;
       },
@@ -30,14 +69,14 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
         this.failureHandler = handler;
         return this;
       },
-      getAuthorisationStatus() {
+      apiHandler(request: unknown) {
         setTimeout(() => {
-          if (mockScenario.kind === 'success') {
-            this.successHandler?.(mockScenario.result);
+          if (typeof (request as { method?: unknown })?.method !== 'string') {
+            this.failureHandler?.(new Error('Invalid transport request payload.'));
             return;
           }
 
-          this.failureHandler?.(new Error(mockScenario.message));
+          dispatchScenarioResponse(this, mockScenario);
         }, delayMs);
       },
     };
@@ -86,9 +125,9 @@ test.describe('auth status flow', () => {
     await expect(page.getByText('Unauthorised')).toBeVisible();
   });
 
-  test('shows backend error subtitle when backend call fails', async ({ page }) => {
+  test('shows backend error subtitle when backend returns a failure envelope', async ({ page }) => {
     await mockGoogleScriptRun(page, {
-      kind: 'failure',
+      kind: 'apiFailure',
       message: 'Backend authorisation check failed.',
     });
 

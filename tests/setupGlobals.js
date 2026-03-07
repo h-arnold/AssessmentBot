@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+
 // Global shims for GAS-like environment in unit tests.
 
 // Ensure canonical BaseSingleton is loaded first so tests use the real implementation
@@ -41,6 +43,7 @@ g.Utils = {
 };
 
 g.Utilities = {
+  getUuid: randomUUID,
   base64Encode(bytes) {
     if (Array.isArray(bytes)) return Buffer.from(Uint8Array.from(bytes)).toString('base64');
     if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8').toString('base64');
@@ -50,6 +53,30 @@ g.Utilities = {
 
 g.Logger = {
   log: (...a) => console.log('[LOG]', ...a),
+};
+
+// In-memory backing store for the PropertiesService.getUserProperties() mock.
+// Call PropertiesService._resetUserProperties() in beforeEach to isolate tests.
+const _userPropertiesData = {};
+
+g.PropertiesService = {
+  _resetUserProperties() {
+    for (const key of Object.keys(_userPropertiesData)) {
+      delete _userPropertiesData[key];
+    }
+  },
+  getUserProperties() {
+    return {
+      getProperty(key) {
+        return Object.prototype.hasOwnProperty.call(_userPropertiesData, key)
+          ? _userPropertiesData[key]
+          : null;
+      },
+      setProperty(key, value) {
+        _userPropertiesData[key] = value;
+      },
+    };
+  },
 };
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
@@ -121,6 +148,18 @@ g.validateClassInfo = validators.validateClassInfo;
 g.toBoolean = validators.toBoolean;
 g.toBooleanString = validators.toBooleanString;
 g.toReadableKey = validators.toReadableKey;
+
+// Default LockService mock — always acquires the lock successfully.
+// Individual tests that need to control lock behaviour should override
+// globalThis.LockService in their own beforeEach/afterEach.
+g.LockService = {
+  getUserLock() {
+    return {
+      tryLock: () => true,
+      releaseLock: () => {},
+    };
+  },
+};
 
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
