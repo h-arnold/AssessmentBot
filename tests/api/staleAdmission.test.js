@@ -4,7 +4,8 @@ const { ACTIVE_LIMIT, STALE_REQUEST_AGE_MS } = require('../../src/backend/Api/ap
 
 const {
   buildStartedStore,
-  loadApiHandlerModule,
+  callAuthorisationStatus,
+  getApiDispatcherInstance,
   persistUserRequestStore,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
@@ -36,12 +37,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     );
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
@@ -60,12 +58,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     );
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({
       ok: false,
@@ -80,12 +75,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     const store = buildStartedStore(staleCount, 'stale-warn', staleTime, 'getAuthorisationStatus');
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    callAuthorisationStatus(dispatcher);
 
     expect(warnSpy).toHaveBeenCalledTimes(staleCount);
   });
@@ -116,12 +108,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({
       ok: false,
@@ -158,12 +147,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({
       ok: false,
@@ -187,12 +173,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     }
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
-    });
+    const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);

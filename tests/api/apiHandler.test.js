@@ -6,6 +6,8 @@ const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
 const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
 
 const {
+  callAuthorisationStatus,
+  getApiDispatcherInstance,
   loadApiHandlerModule,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
@@ -391,6 +393,30 @@ describe('Api/apiHandler dispatcher', () => {
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
     });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+  });
+
+  it.each([
+    ['ApiRateLimitError', '../../src/backend/Utils/ErrorTypes/ApiRateLimitError.js'],
+    ['ApiValidationError', '../../src/backend/Utils/ErrorTypes/ApiValidationError.js'],
+    ['ApiDisabledError', '../../src/backend/Utils/ErrorTypes/ApiDisabledError.js'],
+  ])('maps %s with a blank message to INTERNAL_ERROR', (_errorName, errorModulePath) => {
+    const ApiErrorType = require(errorModulePath);
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw new ApiErrorType('   ', { requestId: 'req-blank-message' });
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const response = callAuthorisationStatus(dispatcher);
 
     expect(response).toMatchObject({
       ok: false,

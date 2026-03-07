@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   buildStartedStore,
-  installLockServiceMock,
-  loadApiHandlerModule,
+  callAuthorisationStatus,
+  getApiDispatcherInstance,
   persistUserRequestStore,
+  readPersistedUserRequestStore,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
@@ -23,8 +24,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('acquires and releases the lock atomically around the admission store-write', () => {
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
     const callOrder = [];
     mockLock.tryLock.mockImplementation(() => {
@@ -39,7 +39,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       return { authorised: true };
     });
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-lock-1' });
+    callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-1' });
 
     // tryLock must be called before the handler (admission lock acquired first)
     const firstTryLock = callOrder.indexOf('tryLock');
@@ -49,10 +49,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('acquires and releases a second lock atomically around the completion store-write', () => {
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-lock-2' });
+    callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-2' });
 
     // Lock must be acquired at least twice (admission + completion)
     expect(mockLock.tryLock.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -61,8 +60,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('calls the handler AFTER the admission lock has been released', () => {
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
     const callOrder = [];
     let releaseCount = 0;
@@ -75,7 +73,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       return { authorised: true };
     });
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-lock-3' });
+    callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-3' });
 
     // The admission releaseLock (first release) must come before the handler
     const firstRelease = callOrder.indexOf('releaseLock-1');
@@ -85,11 +83,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('releases the lock after successful handler execution', () => {
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+    const result = callAuthorisationStatus(dispatcher, {
       params: {},
       requestId: 'req-lock-4',
     });
@@ -103,11 +99,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       throw new Error('handler failure');
     });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+    const result = callAuthorisationStatus(dispatcher, {
       params: {},
       requestId: 'req-lock-5',
     });
@@ -121,11 +115,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   it('returns RATE_LIMITED when admission-phase tryLock returns false', () => {
     mockLock.tryLock.mockReturnValue(false);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+    const result = callAuthorisationStatus(dispatcher, {
       params: {},
       requestId: 'req-lock-6',
     });
@@ -138,6 +130,41 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     expect(globalThis.getAuthorisationStatus).not.toHaveBeenCalled();
   });
 
+  it('logs a warning and leaves the request in started state when completion-phase lock acquisition fails', () => {
+    const warnSpy = vi.fn();
+    globalThis.ABLogger = {
+      getInstance: () => ({
+        debug: () => {},
+        debugUi: () => {},
+        info: () => {},
+        warn: warnSpy,
+        error: () => {},
+        log: () => {},
+      }),
+    };
+
+    let callCount = 0;
+    mockLock.tryLock.mockImplementation(() => {
+      callCount++;
+      return callCount === 1;
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const result = callAuthorisationStatus(dispatcher, { requestId: 'req-completion-lock-fail' });
+
+    expect(result.ok).toBe(true);
+    expect(warnSpy).toHaveBeenCalledWith('Could not acquire completion lock for request.', {
+      requestId: result.requestId,
+    });
+
+    const store = readPersistedUserRequestStore();
+    expect(store[result.requestId]).toMatchObject({
+      status: 'started',
+      method: 'getAuthorisationStatus',
+    });
+  });
+
   it('does not leave the admission lock held when completion-phase lock acquisition fails', () => {
     let callCount = 0;
     mockLock.tryLock.mockImplementation(() => {
@@ -146,10 +173,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       return callCount === 1;
     });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-lock-7' });
+    callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-7' });
 
     // The admission lock must have been released (called at least once)
     expect(mockLock.releaseLock).toHaveBeenCalled();
@@ -162,11 +188,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     const store = buildStartedStore(ACTIVE_LIMIT, 'seed-req', Date.now(), 'getAuthorisationStatus');
     persistUserRequestStore(store);
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const dispatcher = getApiDispatcherInstance();
 
-    const result = dispatcher.handle({
-      method: 'getAuthorisationStatus',
+    const result = callAuthorisationStatus(dispatcher, {
       requestId: 'req-over-limit',
     });
 

@@ -6,6 +6,18 @@ function loadApiHandlerModule() {
   return require(apiHandlerPath);
 }
 
+function getApiDispatcherInstance() {
+  const { ApiDispatcher } = loadApiHandlerModule();
+  return ApiDispatcher.getInstance();
+}
+
+function callAuthorisationStatus(dispatcher, request = {}) {
+  return dispatcher.handle({
+    method: 'getAuthorisationStatus',
+    ...request,
+  });
+}
+
 function resetUserProperties() {
   globalThis.PropertiesService._resetUserProperties();
 }
@@ -114,6 +126,12 @@ function buildStartedStore(count, prefix, startedAtMs, method = 'getAuthorisatio
 /**
  * Persists the user request store used by apiHandler admission/completion flow.
  */
+
+function readPersistedUserRequestStore() {
+  const raw = globalThis.PropertiesService.getUserProperties().getProperty(USER_REQUEST_STORE_KEY);
+  return raw ? JSON.parse(raw) : {};
+}
+
 function persistUserRequestStore(store) {
   globalThis.PropertiesService.getUserProperties().setProperty(
     USER_REQUEST_STORE_KEY,
@@ -123,6 +141,8 @@ function persistUserRequestStore(store) {
 
 module.exports = {
   loadApiHandlerModule,
+  getApiDispatcherInstance,
+  callAuthorisationStatus,
   resetUserProperties,
   setAuthorisationStatusHandler,
   restoreGlobal,
@@ -132,4 +152,5 @@ module.exports = {
   teardownApiHandlerTestContext,
   buildStartedStore,
   persistUserRequestStore,
+  readPersistedUserRequestStore,
 };
