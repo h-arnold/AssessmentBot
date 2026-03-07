@@ -20,9 +20,10 @@ type FrontendLogSink = (entry: FrontendLogEntry) => void;
 
 type FrontendLogOptions = {
   includeStack?: boolean;
+  isDevelopmentRuntime?: boolean;
 };
 
-const SENSITIVE_FIELD_NAMES = new Set(['token', 'secret', 'password', 'authorisation', 'email']);
+const SENSITIVE_FIELD_NAMES = new Set(['token', 'secret', 'password', 'authorisation', 'authorization', 'email']);
 const REDACTED_VALUE = '[REDACTED]';
 const MAX_SERIALISED_METADATA_LENGTH = 2000;
 
@@ -145,6 +146,20 @@ function shouldIncludeStack(options: FrontendLogOptions | undefined): boolean {
   return import.meta.env.DEV;
 }
 
+
+/**
+ * Returns true when a log level is enabled in the current runtime mode.
+ */
+function isLevelEnabled(level: FrontendLogLevel, options: FrontendLogOptions | undefined): boolean {
+  const isDevelopmentRuntime = options?.isDevelopmentRuntime ?? import.meta.env.DEV;
+
+  if (isDevelopmentRuntime) {
+    return true;
+  }
+
+  return level === 'warn' || level === 'error';
+}
+
 /**
  * Writes a structured frontend log event to the active sink.
  */
@@ -153,6 +168,10 @@ export function logFrontendEvent(
   payload: FrontendLogPayload,
   options?: FrontendLogOptions
 ): void {
+  if (!isLevelEnabled(level, options)) {
+    return;
+  }
+
   const stack = shouldIncludeStack(options) ? payload.stack : undefined;
 
   logSink({

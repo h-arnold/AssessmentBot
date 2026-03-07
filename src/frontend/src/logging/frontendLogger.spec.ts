@@ -64,6 +64,34 @@ describe('frontendLogger', () => {
     );
   });
 
+
+
+  it('drops debug and info logs when running in production mode', () => {
+    clearFrontendLogBuffer();
+    resetFrontendLogSink();
+
+    logFrontendEvent(
+      'debug',
+      { context: 'test/debug', errorMessage: 'Hidden' },
+      { includeStack: false, isDevelopmentRuntime: false }
+    );
+    logFrontendEvent(
+      'info',
+      { context: 'test/info', errorMessage: 'Hidden' },
+      { includeStack: false, isDevelopmentRuntime: false }
+    );
+    logFrontendEvent(
+      'warn',
+      { context: 'test/warn', errorMessage: 'Shown' },
+      { includeStack: false, isDevelopmentRuntime: false }
+    );
+
+    const bufferedEntries = getFrontendLogBuffer();
+    expect(bufferedEntries).toHaveLength(1);
+    expect(bufferedEntries[0]?.context).toBe('test/warn');
+  });
+
+
   it('suppresses stack traces when includeStack is false', () => {
     const sink = vi.fn<(entry: FrontendLogEntry) => void>();
     setFrontendLogSink(sink);

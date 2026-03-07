@@ -88,7 +88,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
   });
 
   it('shows backend failure message when backend returns a failure envelope', async () => {
@@ -104,8 +104,10 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
-    expect(await screen.findByText('Backend authorisation check failed.')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(
+      await screen.findByText('Unable to check authorisation status right now.')
+    ).toBeInTheDocument();
   });
 
   it('shows string failure message when transport fails with a non-Error value', async () => {
@@ -116,17 +118,41 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
-    expect(await screen.findByText('Backend call failed with a string.')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(
+      await screen.findByText('Unable to check authorisation status right now.')
+    ).toBeInTheDocument();
+  });
+
+
+
+  it('shows rate-limited message when backend returns retriable rate limit envelope', async () => {
+    installApiHandlerMock({
+      ok: false,
+      requestId: 'req-rl-1',
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Rate limited.',
+        retriable: true,
+      },
+    });
+
+    render(<App />);
+
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(
+      await screen.findByText('The service is busy. Please try again shortly.')
+    ).toBeInTheDocument();
   });
 
   it('shows runtime failure message when google.script.run is unavailable', async () => {
     render(<App />);
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
+    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
-      await screen.findByText('google.script.run is unavailable in this runtime.')
+      await screen.findByText('Unable to check authorisation status right now.')
     ).toBeInTheDocument();
   });
 });

@@ -82,7 +82,7 @@ To keep logs both useful and safe, apply these baseline rules in all environment
 
 - always include correlation identifiers when available (`requestId`, operation or task ids)
 - treat all metadata as untrusted and redact sensitive keys before logging
-- maintain a deny-list for obvious secrets and personal data fields (`token`, `secret`, `password`, `authorisation`, `email`)
+- maintain a deny-list for obvious secrets and personal data fields (`token`, `secret`, `password`, `authorisation`, `authorization`, `email`)
 - cap or truncate oversized metadata payloads so logs stay readable and deterministic
 
 Keep redaction and normalisation in shared logger utilities (for example `src/frontend/src/logging/`) rather than duplicating checks in each feature.
@@ -119,6 +119,8 @@ Suggested mapping baseline:
 - `UNKNOWN_METHOD`, `INTERNAL_ERROR`, malformed responses, runtime failures: generic failure copy with a recovery action.
 
 Keep raw technical details in logs only.
+
+Current auth status UI behaviour follows this by mapping failures to user-safe copy rather than displaying raw transport error messages.
 
 ## 6. Location and shape of custom frontend error types
 

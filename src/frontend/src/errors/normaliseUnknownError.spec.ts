@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normaliseUnknownError, toUserFacingErrorMessage } from './normaliseUnknownError';
+import { normaliseUnknownError } from './normaliseUnknownError';
 
 describe('normaliseUnknownError', () => {
   it('returns message and stack for Error instances', () => {
@@ -19,12 +19,3 @@ describe('normaliseUnknownError', () => {
   });
 });
 
-describe('toUserFacingErrorMessage', () => {
-  it('returns Error.message for Error instances', () => {
-    expect(toUserFacingErrorMessage(new Error('User-facing message'))).toBe('User-facing message');
-  });
-
-  it('returns stringified fallback for unknown thrown values', () => {
-    expect(toUserFacingErrorMessage({ detail: 42 })).toBe('[object Object]');
-  });
-});
