@@ -61,3 +61,9 @@ Key outputs:
 
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate test implementation work to `Testing Specialist`.
+
+## 8. Validation and Type Definition Standard
+
+- Use **Zod** as the validation framework for all new and updated builder validation logic.
+- Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
+- Store validation schemas in a dedicated adjacent schema file (for example `*.zod.ts` or `zodSchemas.ts`) near the code consuming them.
