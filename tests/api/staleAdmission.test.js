@@ -1,58 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  ACTIVE_LIMIT,
-  STALE_REQUEST_AGE_MS,
-  USER_REQUEST_STORE_KEY,
-} = require('../../src/backend/Api/apiConstants.js');
+const { ACTIVE_LIMIT, STALE_REQUEST_AGE_MS } = require('../../src/backend/Api/apiConstants.js');
 
 const {
-  installAbLoggerSpies,
+  buildStartedStore,
   loadApiHandlerModule,
-  resetUserProperties,
-  restoreGlobal,
-  setAuthorisationStatusHandler,
+  persistUserRequestStore,
+  setupApiHandlerTestContext,
+  teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
 
-function buildStartedStore(count, prefix, startedAtMs, method) {
-  const store = {};
-  for (let index = 0; index < count; index++) {
-    const id = `${prefix}-${index}`;
-    store[id] = {
-      requestId: id,
-      method,
-      status: 'started',
-      startedAtMs,
-    };
-  }
-  return store;
-}
-
-function persistStore(store) {
-  globalThis.PropertiesService.getUserProperties().setProperty(
-    USER_REQUEST_STORE_KEY,
-    JSON.stringify(store)
-  );
-}
-
 describe('Api/apiHandler – stale-entry pruning during admission', () => {
+  let context;
   let warnSpy;
-  let originalABLogger;
-  let originalGetAuthorisationStatus;
 
   beforeEach(() => {
-    resetUserProperties();
-
-    ({ originalABLogger, warnSpy } = installAbLoggerSpies(vi));
-    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
+    context = setupApiHandlerTestContext(vi, { installLogger: true });
+    warnSpy = context.warnSpy;
   });
 
   afterEach(() => {
-    resetUserProperties();
-    restoreGlobal('ABLogger', originalABLogger);
-    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
-
-    vi.restoreAllMocks();
+    teardownApiHandlerTestContext(vi, context);
   });
 
   it('stale started entries older than STALE_REQUEST_AGE_MS are pruned before active-count check and do not block new requests', () => {
@@ -60,18 +28,22 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // the staleness threshold.  After pruning they should no longer count, so
     // the new request should be admitted (not rate-limited).
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'stale-seed', staleTime, 'getAuthorisationStatus');
-    persistStore(store);
+    const store = buildStartedStore(
+      ACTIVE_LIMIT,
+      'stale-seed',
+      staleTime,
+      'getAuthorisationStatus'
+    );
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-after-stale',
     });
 
-    expect(result).toMatchObject({ ok: true, requestId: 'req-after-stale' });
+    expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
   });
 
@@ -80,15 +52,19 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // staleness window.  None should be pruned, so the new request must be
     // rate-limited.
     const recentTime = Date.now() - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'recent-seed', recentTime, 'getAuthorisationStatus');
-    persistStore(store);
+    const store = buildStartedStore(
+      ACTIVE_LIMIT,
+      'recent-seed',
+      recentTime,
+      'getAuthorisationStatus'
+    );
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-over-recent-limit',
     });
 
     expect(result).toMatchObject({
@@ -102,14 +78,13 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const staleCount = 3;
     const store = buildStartedStore(staleCount, 'stale-warn', staleTime, 'getAuthorisationStatus');
-    persistStore(store);
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-warn-check',
     });
 
     expect(warnSpy).toHaveBeenCalledTimes(staleCount);
@@ -139,14 +114,13 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       };
     }
 
-    persistStore(store);
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-at-limit',
     });
 
     expect(result).toMatchObject({
@@ -182,14 +156,13 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       };
     }
 
-    persistStore(store);
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-over-limit',
     });
 
     expect(result).toMatchObject({
@@ -212,17 +185,16 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
         startedAtMs: staleTime,
       };
     }
-    persistStore(store);
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-stale-only',
     });
 
-    expect(result).toMatchObject({ ok: true, requestId: 'req-stale-only' });
+    expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
   });
 });

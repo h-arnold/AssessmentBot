@@ -9,6 +9,14 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 - Keep API functions thin and delegate to controller classes unless delegation would add unnecessary verbosity.
 - Existing backend `globals.js` files are migration references and should be removed once equivalent `Api` functions exist.
 
+### 0.1 Required `apiHandler` migration pattern
+
+- Treat `src/backend/Api/apiHandler.js` as the single frontend transport entrypoint.
+- Register new frontend-callable methods in `src/backend/Api/apiConstants.js` (`API_METHODS` and `API_ALLOWLIST`).
+- Implement allowlisted dispatch in `ApiDispatcher._invokeAllowlistedMethod(...)` and keep the handler path thin.
+- Return plain response data from allowlisted methods; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.
+- Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all allowlisted methods.
+
 ## 1. Runtime Model (GAS V8 Script)
 
 - Target runtime is Google Apps Script V8 (`src/backend/appsscript.json`).
