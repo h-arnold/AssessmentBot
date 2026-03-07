@@ -1,19 +1,23 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
 
 vi.mock('./apiService', () => ({
-    callApi: callApiMock,
+  callApi: callApiMock,
 }));
 
 describe('authService.getAuthorisationStatus', () => {
-    it('calls callApi with getAuthorisationStatus and returns the backend value', async () => {
-        callApiMock.mockResolvedValueOnce(true);
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
 
-        const { getAuthorisationStatus } = await import('./authService');
+  it('calls callApi with getAuthorisationStatus and returns the backend value', async () => {
+    callApiMock.mockResolvedValueOnce(true);
 
-        await expect(getAuthorisationStatus()).resolves.toBe(true);
-        expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
-        expect(callApiMock).toHaveBeenCalledTimes(1);
-    });
+    const { getAuthorisationStatus } = await import('./authService');
+
+    await expect(getAuthorisationStatus()).resolves.toBe(true);
+    expect(callApiMock).toHaveBeenCalledWith('getAuthorisationStatus');
+    expect(callApiMock).toHaveBeenCalledTimes(1);
+  });
 });

@@ -123,12 +123,10 @@ describe('Api/apiHandler dispatcher', () => {
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
       params: {},
-      requestId: 'req-valid-1',
     });
 
     expect(response).toMatchObject({
       ok: true,
-      requestId: 'req-valid-1',
       data: { authorised: true },
     });
   });
@@ -174,28 +172,27 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'deleteEverything',
-      requestId: 'req-unknown-method',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-unknown-method',
       error: {
         code: 'UNKNOWN_METHOD',
       },
     });
   });
 
-  it('preserves caller-supplied requestId', () => {
+  it('always generates backend-owned requestIds even when caller sends one', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-preserved-123',
+      requestId: 'req-client-supplied',
     });
 
-    expect(response.requestId).toBe('req-preserved-123');
+    expect(response.requestId).toEqual(expect.any(String));
+    expect(response.requestId).not.toBe('req-client-supplied');
   });
 
   it('generates a new requestId when omitted', () => {
@@ -247,12 +244,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-dispatch-error-1',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-dispatch-error-1',
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Internal API error.',
@@ -333,12 +328,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-map-rl',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-map-rl',
       error: {
         code: 'RATE_LIMITED',
         message: 'Rate limit exceeded',
@@ -358,12 +351,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-map-val',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-map-val',
       error: {
         code: 'INVALID_REQUEST',
         message: 'Validation failed',
@@ -383,12 +374,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-map-dis',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-map-dis',
       error: {
         code: 'UNKNOWN_METHOD',
         message: 'Method is disabled',
@@ -409,12 +398,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-map-fallback-message',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-map-fallback-message',
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Internal API error.',
@@ -433,12 +420,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-map-null-throw',
     });
 
     expect(response).toMatchObject({
       ok: false,
-      requestId: 'req-map-null-throw',
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Internal API error.',
@@ -452,11 +437,10 @@ describe('Api/apiHandler dispatcher', () => {
 
     const request = {
       method: 'getAuthorisationStatus',
-      requestId: 'req-wrapper-1',
     };
     const handle = vi.fn(() => ({
       ok: true,
-      requestId: request.requestId,
+      requestId: 'req-wrapper-generated',
       data: { delegated: true },
     }));
     const getInstance = vi.spyOn(ApiDispatcher, 'getInstance').mockReturnValue({ handle });
@@ -467,7 +451,7 @@ describe('Api/apiHandler dispatcher', () => {
     expect(handle).toHaveBeenCalledWith(request);
     expect(response).toEqual({
       ok: true,
-      requestId: request.requestId,
+      requestId: 'req-wrapper-generated',
       data: { delegated: true },
     });
   });

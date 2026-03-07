@@ -35,8 +35,13 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
       failureHandler = handler;
       return runMock;
     },
-    apiHandler() {
+    apiHandler(request: unknown) {
       queueMicrotask(() => {
+        if (typeof (request as { method?: unknown })?.method !== 'string') {
+          failureHandler?.(new Error('Invalid transport request payload.'));
+          return;
+        }
+
         if ('transportFailure' in response) {
           failureHandler?.(response.transportFailure);
           return;
@@ -47,7 +52,7 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
     },
   };
 
-  globalThis.google = {
+  (globalThis as { google?: unknown }).google = {
     script: {
       run: runMock,
     },
@@ -56,7 +61,7 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
 
 describe('App', () => {
   afterEach(() => {
-    delete globalThis.google;
+    delete (globalThis as { google?: unknown }).google;
   });
 
   it('shows loading then authorised status when backend returns true', async () => {

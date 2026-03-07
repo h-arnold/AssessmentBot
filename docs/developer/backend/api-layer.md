@@ -49,7 +49,6 @@ Migration rule:
 
 - `method` (string, required): allowlisted method name from `API_METHODS`
 - `params` (optional): method-specific payload
-- `requestId` (optional): caller-provided correlation ID; if omitted, backend generates one
 
 If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope and does not throw.
 

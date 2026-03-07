@@ -51,7 +51,10 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-timing-1' });
+    dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      params: {},
+    });
 
     const admissionInfoCall = infoSpy.mock.calls.find(
       (args) => args[1] && args[1].phase === 'admission'
@@ -60,7 +63,6 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const meta = admissionInfoCall[1];
     expect(meta).toMatchObject({
       phase: 'admission',
-      requestId: 'req-timing-1',
       method: 'getAuthorisationStatus',
       lockWaitMs: 100,
       stateUpdateMs: 150,
@@ -78,7 +80,10 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-timing-2' });
+    dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      params: {},
+    });
 
     const completionInfoCall = infoSpy.mock.calls.find(
       (args) => args[1] && args[1].phase === 'completion'
@@ -87,7 +92,6 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const meta = completionInfoCall[1];
     expect(meta).toMatchObject({
       phase: 'completion',
-      requestId: 'req-timing-2',
       method: 'getAuthorisationStatus',
       lockWaitMs: 80,
       stateUpdateMs: 220,
@@ -107,7 +111,10 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-timing-3' });
+    dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      params: {},
+    });
 
     // info should still be called for the admission phase
     const admissionInfoCall = infoSpy.mock.calls.find(
@@ -135,7 +142,10 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-timing-4' });
+    dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      params: {},
+    });
 
     const completionInfoCall = infoSpy.mock.calls.find(
       (args) => args[1] && args[1].phase === 'completion'
@@ -159,7 +169,10 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
 
-    dispatcher.handle({ method: 'getAuthorisationStatus', params: {}, requestId: 'req-timing-5' });
+    dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      params: {},
+    });
 
     const admissionInfoCall = infoSpy.mock.calls.find(
       (args) => args[1] && args[1].phase === 'admission'
@@ -182,7 +195,6 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
       params: {},
-      requestId: 'req-timing-6',
     });
 
     expect(result.ok).toBe(false);
@@ -200,7 +212,6 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     dispatcher.handle({
       method: 'getAuthorisationStatus',
       params: { sensitiveData: 'should-not-appear' },
-      requestId: 'req-timing-7',
     });
 
     for (const call of infoSpy.mock.calls) {

@@ -60,7 +60,12 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // the staleness threshold.  After pruning they should no longer count, so
     // the new request should be admitted (not rate-limited).
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'stale-seed', staleTime, 'getAuthorisationStatus');
+    const store = buildStartedStore(
+      ACTIVE_LIMIT,
+      'stale-seed',
+      staleTime,
+      'getAuthorisationStatus'
+    );
     persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
@@ -68,10 +73,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-after-stale',
     });
 
-    expect(result).toMatchObject({ ok: true, requestId: 'req-after-stale' });
+    expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
   });
 
@@ -80,7 +84,12 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // staleness window.  None should be pruned, so the new request must be
     // rate-limited.
     const recentTime = Date.now() - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'recent-seed', recentTime, 'getAuthorisationStatus');
+    const store = buildStartedStore(
+      ACTIVE_LIMIT,
+      'recent-seed',
+      recentTime,
+      'getAuthorisationStatus'
+    );
     persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
@@ -88,7 +97,6 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-over-recent-limit',
     });
 
     expect(result).toMatchObject({
@@ -109,7 +117,6 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-warn-check',
     });
 
     expect(warnSpy).toHaveBeenCalledTimes(staleCount);
@@ -146,7 +153,6 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-at-limit',
     });
 
     expect(result).toMatchObject({
@@ -189,7 +195,6 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-over-limit',
     });
 
     expect(result).toMatchObject({
@@ -219,10 +224,9 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
 
     const result = dispatcher.handle({
       method: 'getAuthorisationStatus',
-      requestId: 'req-stale-only',
     });
 
-    expect(result).toMatchObject({ ok: true, requestId: 'req-stale-only' });
+    expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
     expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
   });
 });

@@ -24,6 +24,40 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
   await page.addInitScript((mockScenario: AuthServiceMockScenario) => {
     const delayMs = mockScenario.delayMs ?? 0;
 
+    /**
+     * Dispatches a mocked apiHandler response based on the selected scenario.
+     */
+    function dispatchScenarioResponse(
+      run: {
+        successHandler: ((response: unknown) => void) | undefined;
+        failureHandler: ((error: unknown) => void) | undefined;
+      },
+      scenario: AuthServiceMockScenario
+    ) {
+      if (scenario.kind === 'success') {
+        run.successHandler?.({
+          ok: true,
+          requestId: 'req-e2e-success',
+          data: scenario.result,
+        });
+        return;
+      }
+
+      if (scenario.kind === 'apiFailure') {
+        run.successHandler?.({
+          ok: false,
+          requestId: 'req-e2e-failure',
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: scenario.message,
+          },
+        });
+        return;
+      }
+
+      run.failureHandler?.(new Error(scenario.message));
+    }
+
     const run = {
       successHandler: undefined as ((response: unknown) => void) | undefined,
       failureHandler: undefined as ((error: unknown) => void) | undefined,
@@ -35,30 +69,14 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
         this.failureHandler = handler;
         return this;
       },
-      apiHandler() {
+      apiHandler(request: unknown) {
         setTimeout(() => {
-          if (mockScenario.kind === 'success') {
-            this.successHandler?.({
-              ok: true,
-              requestId: 'req-e2e-success',
-              data: mockScenario.result,
-            });
+          if (typeof (request as { method?: unknown })?.method !== 'string') {
+            this.failureHandler?.(new Error('Invalid transport request payload.'));
             return;
           }
 
-          if (mockScenario.kind === 'apiFailure') {
-            this.successHandler?.({
-              ok: false,
-              requestId: 'req-e2e-failure',
-              error: {
-                code: 'INTERNAL_ERROR',
-                message: mockScenario.message,
-              },
-            });
-            return;
-          }
-
-          this.failureHandler?.(new Error(mockScenario.message));
+          dispatchScenarioResponse(this, mockScenario);
         }, delayMs);
       },
     };

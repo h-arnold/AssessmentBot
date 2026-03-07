@@ -62,7 +62,7 @@ class ApiDispatcher extends BaseSingleton {
    * INVALID_REQUEST path.
    */
   handle(request) {
-    const requestId = this._resolveRequestId(request);
+    const requestId = this._resolveRequestId();
 
     if (!this._isValidRequest(request)) {
       return this._failure(requestId, 'INVALID_REQUEST', 'Invalid API request payload.', false);
@@ -240,19 +240,9 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Returns the request's requestId if valid, otherwise generates a new UUID.
+   * Generates a backend-owned requestId for transport and tracking.
    */
-  _resolveRequestId(request) {
-    if (
-      request &&
-      typeof request === 'object' &&
-      !Array.isArray(request) &&
-      typeof request.requestId === 'string' &&
-      request.requestId.trim().length > 0
-    ) {
-      return request.requestId;
-    }
-
+  _resolveRequestId() {
     return Utilities.getUuid();
   }
 
