@@ -3,42 +3,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
 
 const {
-  installAbLoggerSpies,
-  installLockServiceMock,
   loadApiHandlerModule,
-  resetUserProperties,
-  restoreGlobal,
-  setAuthorisationStatusHandler,
+  setupApiHandlerTestContext,
+  teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler – lock timing observability and logging', () => {
+  let context;
   let mockLock;
   let infoSpy;
   let warnSpy;
-  let originalABLogger;
-  let originalLockService;
-  let originalGetAuthorisationStatus;
 
   beforeEach(() => {
-    resetUserProperties();
-
     vi.useFakeTimers();
-
-    ({ originalABLogger, infoSpy, warnSpy } = installAbLoggerSpies(vi));
-    ({ originalLockService, mockLock } = installLockServiceMock(vi));
-    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
+    context = setupApiHandlerTestContext(vi, { installLogger: true, installLock: true });
+    mockLock = context.mockLock;
+    infoSpy = context.infoSpy;
+    warnSpy = context.warnSpy;
   });
 
   afterEach(() => {
-    resetUserProperties();
-
     vi.useRealTimers();
-
-    restoreGlobal('ABLogger', originalABLogger);
-    restoreGlobal('LockService', originalLockService);
-    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
-
-    vi.restoreAllMocks();
+    teardownApiHandlerTestContext(vi, context);
   });
 
   it('logs info with admission phase timing metadata after a successful request', () => {

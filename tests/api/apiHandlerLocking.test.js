@@ -1,33 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
+  buildStartedStore,
   installLockServiceMock,
   loadApiHandlerModule,
-  resetUserProperties,
-  restoreGlobal,
-  setAuthorisationStatusHandler,
+  persistUserRequestStore,
+  setupApiHandlerTestContext,
+  teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
+  let context;
   let mockLock;
-  let originalGetAuthorisationStatus;
-  let originalLockService;
 
   beforeEach(() => {
-    resetUserProperties();
-
-    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
-
-    ({ originalLockService, mockLock } = installLockServiceMock(vi));
+    context = setupApiHandlerTestContext(vi, { installLock: true });
+    mockLock = context.mockLock;
   });
 
   afterEach(() => {
-    resetUserProperties();
-
-    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
-    restoreGlobal('LockService', originalLockService);
-
-    vi.restoreAllMocks();
+    teardownApiHandlerTestContext(vi, context);
   });
 
   it('acquires and releases the lock atomically around the admission store-write', () => {
@@ -164,26 +156,11 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('returns RATE_LIMITED when the active request count has reached the configured limit', () => {
-    const {
-      ACTIVE_LIMIT,
-      USER_REQUEST_STORE_KEY,
-    } = require('../../src/backend/Api/apiConstants.js');
+    const { ACTIVE_LIMIT } = require('../../src/backend/Api/apiConstants.js');
 
     // Seed the store with ACTIVE_LIMIT started entries so the next admission is rejected.
-    const store = {};
-    for (let i = 0; i < ACTIVE_LIMIT; i++) {
-      const id = `seed-req-${i}`;
-      store[id] = {
-        requestId: id,
-        method: 'getAuthorisationStatus',
-        status: 'started',
-        startedAtMs: Date.now(),
-      };
-    }
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    const store = buildStartedStore(ACTIVE_LIMIT, 'seed-req', Date.now(), 'getAuthorisationStatus');
+    persistUserRequestStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();

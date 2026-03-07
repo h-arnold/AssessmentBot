@@ -1,4 +1,5 @@
 const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
+const { USER_REQUEST_STORE_KEY } = require('../../src/backend/Api/apiConstants.js');
 
 function loadApiHandlerModule() {
   delete require.cache[require.resolve(apiHandlerPath)];
@@ -50,6 +51,76 @@ function installAbLoggerSpies(vi) {
   return { originalABLogger, infoSpy, warnSpy };
 }
 
+/**
+ * Sets up the common API handler test context and returns restoration handles.
+ */
+function setupApiHandlerTestContext(
+  vi,
+  { installLogger = false, installLock = false, handler = () => ({ authorised: true }) } = {}
+) {
+  resetUserProperties();
+
+  const context = {
+    originalGetAuthorisationStatus: setAuthorisationStatusHandler(vi, handler),
+  };
+
+  if (installLogger) {
+    Object.assign(context, installAbLoggerSpies(vi));
+  }
+
+  if (installLock) {
+    Object.assign(context, installLockServiceMock(vi));
+  }
+
+  return context;
+}
+
+/**
+ * Restores globals and mock state created by setupApiHandlerTestContext.
+ */
+function teardownApiHandlerTestContext(vi, context) {
+  resetUserProperties();
+
+  restoreGlobal('getAuthorisationStatus', context.originalGetAuthorisationStatus);
+
+  if ('originalABLogger' in context) {
+    restoreGlobal('ABLogger', context.originalABLogger);
+  }
+
+  if ('originalLockService' in context) {
+    restoreGlobal('LockService', context.originalLockService);
+  }
+
+  vi.restoreAllMocks();
+}
+
+/**
+ * Builds a request-store object containing started entries.
+ */
+function buildStartedStore(count, prefix, startedAtMs, method = 'getAuthorisationStatus') {
+  const store = {};
+  for (let index = 0; index < count; index++) {
+    const id = `${prefix}-${index}`;
+    store[id] = {
+      requestId: id,
+      method,
+      status: 'started',
+      startedAtMs,
+    };
+  }
+  return store;
+}
+
+/**
+ * Persists the user request store used by apiHandler admission/completion flow.
+ */
+function persistUserRequestStore(store) {
+  globalThis.PropertiesService.getUserProperties().setProperty(
+    USER_REQUEST_STORE_KEY,
+    JSON.stringify(store)
+  );
+}
+
 module.exports = {
   loadApiHandlerModule,
   resetUserProperties,
@@ -57,4 +128,8 @@ module.exports = {
   restoreGlobal,
   installLockServiceMock,
   installAbLoggerSpies,
+  setupApiHandlerTestContext,
+  teardownApiHandlerTestContext,
+  buildStartedStore,
+  persistUserRequestStore,
 };

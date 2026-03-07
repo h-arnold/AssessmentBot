@@ -5,10 +5,11 @@ import vm from 'node:vm';
 const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
 const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
 
-function loadApiHandlerModule() {
-  delete require.cache[require.resolve(apiHandlerPath)];
-  return require(apiHandlerPath);
-}
+const {
+  loadApiHandlerModule,
+  setupApiHandlerTestContext,
+  teardownApiHandlerTestContext,
+} = require('../helpers/apiHandlerTestUtils.js');
 
 function loadApiConstantsModule() {
   delete require.cache[require.resolve(apiConstantsPath)];
@@ -97,23 +98,14 @@ describe('Api/apiConstants', () => {
 });
 
 describe('Api/apiHandler dispatcher', () => {
-  let originalGetAuthorisationStatus;
+  let context;
 
   beforeEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
-    originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
-    globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
+    context = setupApiHandlerTestContext(vi);
   });
 
   afterEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
-    if (originalGetAuthorisationStatus === undefined) {
-      delete globalThis.getAuthorisationStatus;
-    } else {
-      globalThis.getAuthorisationStatus = originalGetAuthorisationStatus;
-    }
-
-    vi.restoreAllMocks();
+    teardownApiHandlerTestContext(vi, context);
   });
 
   it('accepts a valid request and returns a success envelope for an allowlisted method', () => {
