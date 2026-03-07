@@ -30,8 +30,8 @@ Do not combine these concerns in a single string.
 
 Use the backend API envelope as the frontend transport contract:
 
-- Success: `{ ok: true, requestId, data }`
-- Error: `{ ok: false, requestId, error: { code, message, retriable } }`
+- Success: `{ ok: true, requestId, data, meta? }`
+- Error: `{ ok: false, requestId, error: { code, message, retriable? }, meta? }`
 
 `callApi` is the only transport boundary for frontend feature code. Keep backend method wiring and envelope parsing there.
 
@@ -44,7 +44,7 @@ Recommended flow:
 
 ## 3. Logging policy by environment
 
-Use one logger abstraction in frontend code. Avoid direct `console.*` calls in feature hooks/components/services.
+Use one logger abstraction for all frontend code. Direct `console.*` calls are not permitted anywhere in frontend source.
 
 ### Development logging (local + dev builder mode)
 
@@ -85,7 +85,7 @@ To keep logs both useful and safe, apply these baseline rules in all environment
 - maintain a deny-list for obvious secrets and personal data fields (`token`, `secret`, `password`, `authorisation`, `email`)
 - cap or truncate oversized metadata payloads so logs stay readable and deterministic
 
-Keep redaction and normalisation in shared logger utilities rather than duplicating checks in each feature.
+Keep redaction and normalisation in shared logger utilities (for example `src/frontend/src/logging/`) rather than duplicating checks in each feature.
 
 ## 4. User feedback policy (Ant Design)
 
@@ -126,8 +126,6 @@ For consistency, keep custom frontend error types in a dedicated error module tr
 - feature-specific mappings or wrappers: `src/frontend/src/features/<feature>/errors/`
 
 Recommended file split:
-
-- logger implementation and redaction helpers: `src/frontend/src/logging/`
 
 1. `src/frontend/src/errors/error-codes.ts` for shared frontend/domain error code unions.
 2. `src/frontend/src/errors/app-error.ts` for a small base error type (if needed).
