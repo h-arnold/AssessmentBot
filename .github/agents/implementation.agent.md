@@ -12,3 +12,9 @@ Constraints:
 - Keep changes minimal and coherent.
 - Run relevant lint/tests for touched code when feasible.
 - Summarise files changed, commands run, and remaining risks.
+
+
+Additional routing reminder:
+
+- For frontend logging/error handling tasks, read `docs/developer/frontend/frontend-logging-and-error-handling.md` before implementation.
+- For builder diagnostic/logging mode tasks, read `docs/developer/builder/builder-script.md` and keep behaviour consistent with the frontend logging policy boundaries.
