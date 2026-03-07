@@ -74,7 +74,7 @@ Full test suite: **535 tests, 0 failures**, branch coverage ≥ 92%, `npm run li
 
 ### Key implementation notes
 
-- `DISPATCH_ERROR` is still the catch-all internal error code used in the `handle()` dispatcher; the error-type classes added in Section 6 (`ApiRateLimitError`, `ApiValidationError`, `ApiDisabledError`) are available for callers but not yet wired into `_failure` mapping. Update `apiHandler.js` line 79 if a stricter `INTERNAL_ERROR` code is required.
+- Dispatcher failures now map through the Section 6 error model (`ApiRateLimitError` → `RATE_LIMITED`, `ApiValidationError` → `INVALID_REQUEST`, `ApiDisabledError` → `UNKNOWN_METHOD`, and unexpected errors → `INTERNAL_ERROR`).
 - `LOCK_WAIT_WARN_THRESHOLD_MS = 300` is defined in `apiConstants.js` and consumed in both lock-protected phases.
 - `_runCompletionPhase` was extended to accept a `method` parameter so timing logs are fully self-describing.
 - Frontend retry uses `crypto.getRandomValues` for cryptographically-safe jitter (not `Math.random`).
@@ -273,8 +273,7 @@ Implementation notes:
 
 - Deviation to resolve later:
 
-1. Current thrown-handler mapping uses `DISPATCH_ERROR`.
-2. Section 6 requires standardised error mapping and custom error classes; this mapping will need to be replaced.
+1. Section 6 standardised error mapping is now implemented in the dispatcher error mapper.
 
 - Pending before Section 2 commit:
 
@@ -442,7 +441,7 @@ Actionable steps:
 4. Calculate `activeCount` from the remaining unresolved `started` entries.
 5. Reject new execution when `activeCount >= ACTIVE_LIMIT`.
 6. Return a structured failure envelope that marks the response as retriable when admission is denied.
-7. Ensure pruning runs during admission and again during completion compaction so the store stays small.
+7. Ensure pruning runs during admission so active-count checks remain accurate and the store stays small.
 
 Required test cases:
 

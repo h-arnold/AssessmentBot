@@ -63,6 +63,20 @@ type RunnerHarnessResponse =
     | { kind: 'success'; payload: unknown }
     | { kind: 'failure'; payload: unknown };
 
+const SECOND_ATTEMPT_CALL_COUNT = 2;
+const MAX_ATTEMPTS = 4;
+
+/**
+ * Builds a retriable RATE_LIMITED envelope for retry-path tests.
+ */
+function makeRateLimitedEnvelope(requestId: string): ApiErrorEnvelope {
+    return {
+        ok: false,
+        requestId,
+        error: { code: 'RATE_LIMITED', message: `Attempt ${requestId} failed.`, retriable: true },
+    };
+}
+
 /**
  * Creates a controllable `google.script.run` harness for unit tests.
  */
@@ -108,7 +122,6 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
             apiHandlerSpy(request);
         },
     };
-
     return {
         runner,
         apiHandlerSpy,
@@ -298,7 +311,7 @@ function createSequentialHarness(responses: RunnerHarnessResponse[]): {
     let successHandler: ((value: unknown) => void) | undefined;
     let failureHandler: ((error: unknown) => void) | undefined;
 
-    const apiHandlerSpy = vi.fn((_request: unknown) => {
+    const apiHandlerSpy = vi.fn(() => {
         const response = responses[Math.min(callCount, responses.length - 1)];
         callCount++;
 
@@ -368,7 +381,7 @@ describe('retry policy', () => {
         await vi.runAllTimersAsync();
 
         await expect(resultPromise).resolves.toEqual({ done: true });
-        expect(apiHandlerSpy).toHaveBeenCalledTimes(2);
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(SECOND_ATTEMPT_CALL_COUNT);
     });
 
     it('stops retrying after max 4 attempts and rejects', async () => {
@@ -381,7 +394,10 @@ describe('retry policy', () => {
         };
 
         const { runner, apiHandlerSpy } = createSequentialHarness(
-            Array(4).fill({ kind: 'success', payload: rateLimitedEnvelope })
+            Array.from({ length: MAX_ATTEMPTS }, () => ({
+                kind: 'success' as const,
+                payload: rateLimitedEnvelope,
+            }))
         );
 
         setGoogle({ script: { run: runner } });
@@ -392,7 +408,7 @@ describe('retry policy', () => {
         await vi.runAllTimersAsync();
 
         await assertion;
-        expect(apiHandlerSpy).toHaveBeenCalledTimes(4);
+        expect(apiHandlerSpy).toHaveBeenCalledTimes(MAX_ATTEMPTS);
     });
 
     it('does not retry when retriable is false', async () => {
@@ -446,17 +462,11 @@ describe('retry policy', () => {
     it('final rejection after exhaustion carries the error from the last attempt', async () => {
         const callApi = await loadCallApi();
 
-        const makeEnvelope = (requestId: string): ApiErrorEnvelope => ({
-            ok: false,
-            requestId,
-            error: { code: 'RATE_LIMITED', message: `Attempt ${requestId} failed.`, retriable: true },
-        });
-
         const { runner } = createSequentialHarness([
-            { kind: 'success', payload: makeEnvelope('req-exhaust-1') },
-            { kind: 'success', payload: makeEnvelope('req-exhaust-2') },
-            { kind: 'success', payload: makeEnvelope('req-exhaust-3') },
-            { kind: 'success', payload: makeEnvelope('req-exhaust-4') },
+            { kind: 'success', payload: makeRateLimitedEnvelope('req-exhaust-1') },
+            { kind: 'success', payload: makeRateLimitedEnvelope('req-exhaust-2') },
+            { kind: 'success', payload: makeRateLimitedEnvelope('req-exhaust-3') },
+            { kind: 'success', payload: makeRateLimitedEnvelope('req-exhaust-4') },
         ]);
 
         setGoogle({ script: { run: runner } });

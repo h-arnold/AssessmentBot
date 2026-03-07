@@ -80,6 +80,9 @@ function makeVmGlobals(overrides = {}) {
     compactStore: (s) => s,
     STALE_REQUEST_AGE_MS: 15 * 60 * 1000,
     pruneStaleEntries: (s) => s,
+    ApiRateLimitError: function ApiRateLimitError() {},
+    ApiValidationError: function ApiValidationError() {},
+    ApiDisabledError: function ApiDisabledError() {},
     ...overrides,
   };
 }
@@ -234,7 +237,7 @@ describe('Api/apiHandler dispatcher', () => {
     }
   });
 
-  it('returns DISPATCH_ERROR when an allowlisted handler throws', () => {
+  it('returns INTERNAL_ERROR when an allowlisted handler throws an unexpected error', () => {
     globalThis.getAuthorisationStatus = vi.fn(() => {
       throw new Error('dispatch exploded');
     });
@@ -251,9 +254,9 @@ describe('Api/apiHandler dispatcher', () => {
       ok: false,
       requestId: 'req-dispatch-error-1',
       error: {
-        code: 'DISPATCH_ERROR',
-        message: 'dispatch exploded',
-        retriable: true,
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
       },
     });
   });
@@ -291,7 +294,7 @@ describe('Api/apiHandler dispatcher', () => {
     ).toMatchObject({ ok: true, requestId: 'uuid-vm-singleton' });
   });
 
-  it('uses global API_ALLOWLIST in vm context and returns DISPATCH_ERROR for unknown mapped handler', () => {
+  it('uses global API_ALLOWLIST in vm context and returns INTERNAL_ERROR for unknown mapped handler', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: makeVmGlobals({
         API_ALLOWLIST: {
@@ -312,9 +315,134 @@ describe('Api/apiHandler dispatcher', () => {
       ok: false,
       requestId: 'uuid-vm-dispatch-error',
       error: {
-        code: 'DISPATCH_ERROR',
-        message: 'Allowlisted handler is not implemented.',
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps ApiRateLimitError to RATE_LIMITED with retriable true', () => {
+    const ApiRateLimitError = require('../../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw new ApiRateLimitError('Rate limit exceeded', { requestId: 'req-map-rl' });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-map-rl',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      requestId: 'req-map-rl',
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Rate limit exceeded',
         retriable: true,
+      },
+    });
+  });
+
+  it('maps ApiValidationError to INVALID_REQUEST with retriable false', () => {
+    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw new ApiValidationError('Validation failed', { requestId: 'req-map-val' });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-map-val',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      requestId: 'req-map-val',
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Validation failed',
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps ApiDisabledError to UNKNOWN_METHOD with retriable false', () => {
+    const ApiDisabledError = require('../../src/backend/Utils/ErrorTypes/ApiDisabledError.js');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw new ApiDisabledError('Method is disabled', { requestId: 'req-map-dis' });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-map-dis',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      requestId: 'req-map-dis',
+      error: {
+        code: 'UNKNOWN_METHOD',
+        message: 'Method is disabled',
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps known custom error names with missing message to INTERNAL_ERROR', () => {
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw {
+        name: 'ApiValidationError',
+      };
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-map-fallback-message',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      requestId: 'req-map-fallback-message',
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps null thrown values to INTERNAL_ERROR', () => {
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw null;
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getAuthorisationStatus',
+      requestId: 'req-map-null-throw',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      requestId: 'req-map-null-throw',
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
       },
     });
   });

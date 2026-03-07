@@ -93,6 +93,7 @@ const MAX_ATTEMPTS = 4;
 const BASE_DELAY_MS = 1000;
 const JITTER_MS = 500;
 const UINT32_MAX = 4_294_967_295;
+const EXPONENTIAL_BACKOFF_BASE = 2;
 
 /**
  * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
@@ -107,12 +108,9 @@ function randomJitterMs(): number {
  * Dispatches a single API attempt and returns the parsed response data,
  * or throws ApiTransportError if the backend returns a failure envelope.
  */
-async function dispatchAttempt<TResponse>(
-    runner: GoogleScriptRunApiHandler,
-    requestPayload: unknown
-): Promise<TResponse> {
+async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TResponse> {
     return new Promise<TResponse>((resolve, reject) => {
-        runner
+        getRunner()
             .withSuccessHandler((response: unknown) => {
                 try {
                     const parsedResponse = ApiResponseSchema.parse(response);
@@ -156,18 +154,17 @@ export async function callApi<TResponse>(
     params?: unknown
 ): Promise<TResponse> {
     const requestPayload = ApiRequestSchema.parse({ method, params });
-    const runner = getRunner();
-
     let lastError: ApiTransportError | undefined;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         if (attempt > 0) {
-            const delay = BASE_DELAY_MS * 2 ** (attempt - 1) + randomJitterMs();
+            const delay =
+                BASE_DELAY_MS * EXPONENTIAL_BACKOFF_BASE ** (attempt - 1) + randomJitterMs();
             await new Promise((resolve) => setTimeout(resolve, delay));
         }
 
         try {
-            return await dispatchAttempt<TResponse>(runner, requestPayload);
+            return await dispatchAttempt<TResponse>(requestPayload);
         } catch (error: unknown) {
             if (shouldRetry(error, attempt)) {
                 lastError = error as ApiTransportError;
