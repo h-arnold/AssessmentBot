@@ -124,14 +124,17 @@ function buildStartedStore(count, prefix, startedAtMs, method = 'getAuthorisatio
 }
 
 /**
- * Persists the user request store used by apiHandler admission/completion flow.
+ * Reads the persisted user request store used by apiHandler admission/completion flow.
+ * Returns the parsed store object, or an empty object if nothing has been persisted.
  */
-
 function readPersistedUserRequestStore() {
   const raw = globalThis.PropertiesService.getUserProperties().getProperty(USER_REQUEST_STORE_KEY);
   return raw ? JSON.parse(raw) : {};
 }
 
+/**
+ * Persists the user request store used by apiHandler admission/completion flow.
+ */
 function persistUserRequestStore(store) {
   globalThis.PropertiesService.getUserProperties().setProperty(
     USER_REQUEST_STORE_KEY,

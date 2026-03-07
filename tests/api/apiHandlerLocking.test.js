@@ -13,10 +13,12 @@ const {
 describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   let context;
   let mockLock;
+  let warnSpy;
 
   beforeEach(() => {
-    context = setupApiHandlerTestContext(vi, { installLock: true });
+    context = setupApiHandlerTestContext(vi, { installLock: true, installLogger: true });
     mockLock = context.mockLock;
+    warnSpy = context.warnSpy;
   });
 
   afterEach(() => {
@@ -131,18 +133,6 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('logs a warning and leaves the request in started state when completion-phase lock acquisition fails', () => {
-    const warnSpy = vi.fn();
-    globalThis.ABLogger = {
-      getInstance: () => ({
-        debug: () => {},
-        debugUi: () => {},
-        info: () => {},
-        warn: warnSpy,
-        error: () => {},
-        log: () => {},
-      }),
-    };
-
     let callCount = 0;
     mockLock.tryLock.mockImplementation(() => {
       callCount++;
