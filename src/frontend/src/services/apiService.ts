@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ApiTransportError, type ApiErrorEnvelope } from '../errors/apiTransportError';
+import { ApiTransportError } from '../errors/apiTransportError';
 import { logFrontendError, logFrontendEvent } from '../logging/frontendLogger';
 
 const ApiRequestSchema = z.object({
@@ -97,7 +97,7 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
                         resolve(parsedResponse.data as TResponse);
                         return;
                     }
-                    reject(new ApiTransportError(parsedResponse as ApiErrorEnvelope));
+                    reject(new ApiTransportError(parsedResponse));
                 } catch (error: unknown) {
                     reject(error);
                 }

@@ -10,6 +10,8 @@ import {
 describe('frontendLogger', () => {
   afterEach(() => {
     resetFrontendLogSink();
+    const host = globalThis as { __ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__?: unknown[] };
+    delete host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__;
   });
 
   it('redacts sensitive metadata fields before writing to the sink', () => {
@@ -35,6 +37,32 @@ describe('frontendLogger', () => {
         [nestedSensitiveKey]: '[REDACTED]',
       },
     });
+  });
+
+
+  it('buffers log entries in the default global sink', () => {
+    resetFrontendLogSink();
+
+    logFrontendEvent(
+      'warn',
+      {
+        context: 'test/default-sink',
+        errorMessage: 'Buffered warning',
+      },
+      { includeStack: false }
+    );
+
+    const host = globalThis as {
+      __ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__?: Array<{ context?: string; errorMessage?: string }>;
+    };
+
+    expect(host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__).toBeDefined();
+    expect(host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__).toContainEqual(
+      expect.objectContaining({
+        context: 'test/default-sink',
+        errorMessage: 'Buffered warning',
+      })
+    );
   });
 
   it('suppresses stack traces when includeStack is false', () => {

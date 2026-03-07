@@ -26,9 +26,27 @@ const SENSITIVE_FIELD_NAMES = new Set(['token', 'secret', 'password', 'authorisa
 const REDACTED_VALUE = '[REDACTED]';
 const MAX_SERIALISED_METADATA_LENGTH = 2000;
 
-let logSink: FrontendLogSink = () => {
-  // Intentionally empty. Consumers can register a sink for development tooling.
+const LOG_BUFFER_GLOBAL_KEY = '__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__';
+const MAX_BUFFERED_LOG_ENTRIES = 200;
+
+type FrontendLogBufferHost = {
+  [LOG_BUFFER_GLOBAL_KEY]?: FrontendLogEntry[];
 };
+
+/**
+ * Writes frontend logs to an in-memory global buffer for diagnostics.
+ */
+function writeToGlobalLogBuffer(entry: FrontendLogEntry): void {
+  const host = globalThis as FrontendLogBufferHost;
+  const existingBuffer = host[LOG_BUFFER_GLOBAL_KEY] ?? [];
+  existingBuffer.push(entry);
+  if (existingBuffer.length > MAX_BUFFERED_LOG_ENTRIES) {
+    existingBuffer.splice(0, existingBuffer.length - MAX_BUFFERED_LOG_ENTRIES);
+  }
+  host[LOG_BUFFER_GLOBAL_KEY] = existingBuffer;
+}
+
+let logSink: FrontendLogSink = writeToGlobalLogBuffer;
 
 /**
  * Registers a sink for structured frontend log entries.
@@ -38,12 +56,10 @@ export function setFrontendLogSink(sink: FrontendLogSink): void {
 }
 
 /**
- * Restores the default no-op sink.
+ * Restores the default in-memory sink.
  */
 export function resetFrontendLogSink(): void {
-  logSink = () => {
-    // Intentionally empty.
-  };
+  logSink = writeToGlobalLogBuffer;
 }
 
 /**
