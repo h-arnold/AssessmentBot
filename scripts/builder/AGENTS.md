@@ -57,10 +57,11 @@ Key outputs:
 - Output validation must continue to reject unresolved asset references.
 - Preserve duplicate protected global checks (`Validate`, `JsonDbAppNS`).
 
-## 7. Config and Test Rules
+## 7. Config, Lint, and Testing Delegation
 
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
-- Delegate test implementation work to `Testing Specialist`.
+- Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
+- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/builder/builder-script.md` before changing tests.
 
 ## 8. Validation and Type Definition Standard
 

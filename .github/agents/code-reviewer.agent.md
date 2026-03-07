@@ -32,7 +32,7 @@ AssessmentBot has three distinct active modules with different runtimes and stan
 
 **Deprecated** (read-only reference; do not add features): `src/AdminSheet/`, `src/AssessmentRecordTemplate/`
 
-Backend tests live under `tests/` at the repo root. Frontend unit tests live under `src/frontend/src/**/*.test.tsx`; E2E tests under `src/frontend/tests/`.
+Test location and naming conventions are defined in the module testing docs and `.github/agents/Testing.agent.md`; do not infer or override them during review.
 
 ## 2. Universal Principles (All Modules)
 
@@ -123,7 +123,7 @@ Use `npm run test:all` to include legacy UI tests when reviewing changes that co
 npm run frontend:test
 npm run frontend:test:coverage
 ```
-Frontend E2E tests (Playwright, under `src/frontend/tests/`) should be run when reviewing integration-level changes:
+Frontend E2E tests (Playwright) should be run when reviewing integration-level changes:
 ```bash
 npm run frontend:test:e2e
 ```

@@ -11,8 +11,6 @@ Applies when editing `src/frontend/**`.
 ## 2. Frontend Structure
 
 - App code: `src/frontend/src/**`
-- Unit tests: `src/frontend/src/**/*.test.tsx`
-- Browser E2E tests: `src/frontend/tests/**`
 - Frontend package/tooling is self-contained under `src/frontend/package.json`.
 
 Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
@@ -28,12 +26,6 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Place async orchestration and side effects in feature hooks (for example `useXyz...`).
 - Keep service modules focused on external/runtime API boundaries and transport details.
 - Keep presentational feature components declarative; delegate data loading/state transitions to hooks.
-
-### 2.3 Testability Guidance
-
-- Structure features so behaviour tests assert rendered outcomes rather than hook internals.
-- Keep side-effect logic in hooks to allow deterministic test setup via runtime/service mocks.
-- Preserve existing user-visible copy and states unless the task explicitly changes them.
 
 ## 3. Framework and UI Baseline
 
@@ -70,10 +62,11 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Avoid introducing runtime assumptions that require external CDN assets at execution time.
 - Keep `index.html`-driven asset wiring compatible with builder inlining to HtmlService output.
 
-## 7. Config and Test Rules
+## 7. Config, Lint, and Testing Delegation
 
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
-- Delegate test implementation work to `Testing Specialist`.
+- Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
+- If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` before changing tests.
 
 ## 8. Validation and Type Definition Standard
 

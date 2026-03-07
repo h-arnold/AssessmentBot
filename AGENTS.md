@@ -105,3 +105,12 @@ When validating lint output, use the runtime-specific commands defined in the co
 - All lint checks in sequence: `npm run lint && npm run frontend:lint && npm run builder:lint`
 
 Do not run frontend or builder files through the root backend ESLint command directly; use their leaf configs via the commands above.
+
+### 9. Testing Delegation Policy
+
+- Do not define or duplicate module-specific test file naming/location conventions in `AGENTS.md` files.
+- Always delegate test implementation/debugging tasks to `Testing Specialist` when your environment supports sub-agent delegation.
+- If delegation is unavailable, read `.github/agents/Testing.agent.md` plus the relevant module testing docs before changing tests:
+  - `docs/developer/backend/backend-testing.md`
+  - `docs/developer/frontend/frontend-testing.md`
+  - `docs/developer/builder/builder-script.md`
