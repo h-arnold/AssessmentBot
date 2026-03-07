@@ -14,13 +14,13 @@ const {
   setAuthorisationStatusHandler,
 } = require('../helpers/apiHandlerTestUtils.js');
 
-function buildStartedStore(count, prefix, startedAtMs) {
+function buildStartedStore(count, prefix, startedAtMs, method) {
   const store = {};
   for (let index = 0; index < count; index++) {
     const id = `${prefix}-${index}`;
     store[id] = {
       requestId: id,
-      method: 'getAuthorisationStatus',
+      method,
       status: 'started',
       startedAtMs,
     };
@@ -60,7 +60,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // the staleness threshold.  After pruning they should no longer count, so
     // the new request should be admitted (not rate-limited).
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'stale-seed', staleTime);
+    const store = buildStartedStore(ACTIVE_LIMIT, 'stale-seed', staleTime, 'getAuthorisationStatus');
     persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
@@ -80,7 +80,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // staleness window.  None should be pruned, so the new request must be
     // rate-limited.
     const recentTime = Date.now() - 1000;
-    const store = buildStartedStore(ACTIVE_LIMIT, 'recent-seed', recentTime);
+    const store = buildStartedStore(ACTIVE_LIMIT, 'recent-seed', recentTime, 'getAuthorisationStatus');
     persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
@@ -101,7 +101,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
   it('calls ABLogger.warn once for each stale entry that is pruned', () => {
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const staleCount = 3;
-    const store = buildStartedStore(staleCount, 'stale-warn', staleTime);
+    const store = buildStartedStore(staleCount, 'stale-warn', staleTime, 'getAuthorisationStatus');
     persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();

@@ -87,17 +87,7 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
     let successHandler: ((value: unknown) => void) | undefined;
     let failureHandler: ((error: unknown) => void) | undefined;
 
-    const apiHandlerSpy = vi.fn(() => {
-
-        queueMicrotask(() => {
-            if (response.kind === 'success') {
-                successHandler?.(response.payload);
-                return;
-            }
-
-            failureHandler?.(response.payload);
-        });
-    });
+    const apiHandlerSpy = vi.fn();
 
     const runner: GoogleScriptRunWithApiHandler = {
         /**
@@ -117,8 +107,17 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
         /**
          * Dispatches the request into the harness spy.
          */
-        apiHandler() {
-            apiHandlerSpy();
+        apiHandler(request: unknown) {
+            apiHandlerSpy(request);
+
+            queueMicrotask(() => {
+                if (response.kind === 'success') {
+                    successHandler?.(response.payload);
+                    return;
+                }
+
+                failureHandler?.(response.payload);
+            });
         },
     };
     return {
@@ -310,18 +309,7 @@ function createSequentialHarness(responses: RunnerHarnessResponse[]): {
     let successHandler: ((value: unknown) => void) | undefined;
     let failureHandler: ((error: unknown) => void) | undefined;
 
-    const apiHandlerSpy = vi.fn(() => {
-        const response = responses[Math.min(callCount, responses.length - 1)];
-        callCount++;
-
-        queueMicrotask(() => {
-            if (response.kind === 'success') {
-                successHandler?.(response.payload);
-                return;
-            }
-            failureHandler?.(response.payload);
-        });
-    });
+    const apiHandlerSpy = vi.fn();
 
     const runner: GoogleScriptRunWithApiHandler = {
         withSuccessHandler(handler: (responseValue: unknown) => void) {
@@ -332,8 +320,19 @@ function createSequentialHarness(responses: RunnerHarnessResponse[]): {
             failureHandler = handler;
             return runner;
         },
-        apiHandler() {
-            apiHandlerSpy();
+        apiHandler(request: unknown) {
+            apiHandlerSpy(request);
+
+            const response = responses[Math.min(callCount, responses.length - 1)];
+            callCount++;
+
+            queueMicrotask(() => {
+                if (response.kind === 'success') {
+                    successHandler?.(response.payload);
+                    return;
+                }
+                failureHandler?.(response.payload);
+            });
         },
     };
 
