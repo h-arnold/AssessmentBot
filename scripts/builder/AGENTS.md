@@ -39,6 +39,7 @@ Key outputs:
 ## 4. Stage and Error Model
 
 - Preserve the stage-based pipeline contract in `BuildStageId`.
+- When changing build-mode diagnostics or logging boundaries, read `docs/developer/builder/builder-script.md` and `docs/developer/frontend/frontend-logging-and-error-handling.md` first.
 - Failures should surface as `BuildStageError` with accurate stage context.
 - Maintain actionable failure messages and deterministic diagnostics.
 

@@ -13,6 +13,7 @@ Before proceeding with any task, you must:
 2. **Read testing docs**:
    - Backend: [docs/developer/backend/backend-testing.md](../../docs/developer/backend/backend-testing.md)
    - Frontend: [docs/developer/frontend/frontend-testing.md](../../docs/developer/frontend/frontend-testing.md)
+   - Frontend logging/error policy (when tests touch error or logging flows): [docs/developer/frontend/frontend-logging-and-error-handling.md](../../docs/developer/frontend/frontend-logging-and-error-handling.md)
    - Builder pipeline context: [docs/developer/builder/builder-script.md](../../docs/developer/builder/builder-script.md)
 3. **Read standards**: Read [AGENTS.md](../../AGENTS.md).
 
