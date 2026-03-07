@@ -207,7 +207,7 @@ class ApiDispatcher extends BaseSingleton {
     try {
       const store = requestStoreFns.loadStore();
       if (handlerFailed) {
-        requestStoreFns.markError(store, requestId, String(handlerError?.message));
+        requestStoreFns.markError(store, requestId, String(handlerError));
       } else {
         requestStoreFns.markSuccess(store, requestId);
       }
