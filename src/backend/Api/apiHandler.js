@@ -8,6 +8,15 @@ let lockWaitWarnThresholdMs;
 let activeLimit;
 let staleRequestAgeMs;
 let requestStoreFns;
+let apiRateLimitErrorName;
+let apiValidationErrorName;
+let apiDisabledErrorName;
+
+const API_ERROR_CODE_MAP = {
+  RATE_LIMITED: 'RATE_LIMITED',
+  INVALID_REQUEST: 'INVALID_REQUEST',
+  UNKNOWN_METHOD: 'UNKNOWN_METHOD',
+};
 
 if (typeof module !== 'undefined' && module.exports) {
   ({
@@ -18,6 +27,9 @@ if (typeof module !== 'undefined' && module.exports) {
     STALE_REQUEST_AGE_MS: staleRequestAgeMs,
   } = require('./apiConstants.js'));
   requestStoreFns = require('./requestStore.js');
+  apiRateLimitErrorName = require('../Utils/ErrorTypes/ApiRateLimitError.js').name;
+  apiValidationErrorName = require('../Utils/ErrorTypes/ApiValidationError.js').name;
+  apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
   apiAllowlist = API_ALLOWLIST;
@@ -34,6 +46,9 @@ if (typeof module !== 'undefined' && module.exports) {
     compactStore,
     pruneStaleEntries,
   };
+  apiRateLimitErrorName = ApiRateLimitError.name;
+  apiValidationErrorName = ApiValidationError.name;
+  apiDisabledErrorName = ApiDisabledError.name;
 }
 
 /**
@@ -66,22 +81,19 @@ class ApiDispatcher extends BaseSingleton {
     }
 
     let handlerError;
+    let handlerFailed = false;
     let data;
     try {
       data = this._invokeAllowlistedMethod(allowlistedHandler, request.params);
     } catch (error) {
+      handlerFailed = true;
       handlerError = error;
     }
 
-    this._runCompletionPhase(requestId, methodName, handlerError);
+    this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
 
-    if (handlerError) {
-      return this._failure(
-        requestId,
-        'DISPATCH_ERROR',
-        handlerError?.message ?? 'API dispatch failed.',
-        true
-      );
+    if (handlerFailed) {
+      return this._mapErrorToFailureEnvelope(requestId, handlerError);
     }
 
     return this._success(requestId, data);
@@ -175,7 +187,7 @@ class ApiDispatcher extends BaseSingleton {
    * Acquires the user lock, marks the request as success or error, compacts the store, and releases the lock.
    * Logs a warning if the completion lock cannot be acquired.
    */
-  _runCompletionPhase(requestId, method, handlerError) {
+  _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
     const phaseStart = Date.now();
     const lock = LockService.getUserLock();
     if (!lock.tryLock(lockTimeoutMs)) {
@@ -194,8 +206,8 @@ class ApiDispatcher extends BaseSingleton {
     }
     try {
       const store = requestStoreFns.loadStore();
-      if (handlerError) {
-        requestStoreFns.markError(store, requestId, handlerError?.message ?? 'Unknown error');
+      if (handlerFailed) {
+        requestStoreFns.markError(store, requestId, String(handlerError));
       } else {
         requestStoreFns.markSuccess(store, requestId);
       }
@@ -278,6 +290,37 @@ class ApiDispatcher extends BaseSingleton {
         retriable,
       },
     };
+  }
+
+  /**
+   * Maps runtime errors to API failure envelopes.
+   */
+  _mapErrorToFailureEnvelope(requestId, error) {
+    const errorName = error?.name;
+    let candidateCode;
+    switch (errorName) {
+      case apiRateLimitErrorName: {
+        candidateCode = API_ERROR_CODE_MAP.RATE_LIMITED;
+        break;
+      }
+      case apiValidationErrorName: {
+        candidateCode = API_ERROR_CODE_MAP.INVALID_REQUEST;
+        break;
+      }
+      case apiDisabledErrorName: {
+        candidateCode = API_ERROR_CODE_MAP.UNKNOWN_METHOD;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+    const hasMessage = typeof error?.message === 'string' && error.message.trim().length > 0;
+    const mappedCode = candidateCode && hasMessage ? candidateCode : 'INTERNAL_ERROR';
+    const mappedMessage = mappedCode === 'INTERNAL_ERROR' ? 'Internal API error.' : error.message;
+    const retriable = mappedCode === 'RATE_LIMITED';
+
+    return this._failure(requestId, mappedCode, mappedMessage, retriable);
   }
 }
 
