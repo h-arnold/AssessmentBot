@@ -30,7 +30,7 @@ npm run frontend:test:coverage
 Target a specific unit test pattern:
 
 ```bash
-npm run frontend:test -- src/App.test.tsx
+npm run frontend:test -- src/App.spec.tsx
 ```
 
 ## Previewing mocked frontend pages locally
@@ -82,7 +82,7 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 ## Current Structure
 
-- Unit/component tests: `src/frontend/src/**/*.test.tsx`
+- Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Test setup: `src/frontend/src/test/setup.ts`
 - E2E tests: `src/frontend/tests/**/*.spec.ts`
 - Playwright config: `src/frontend/playwright.config.ts`

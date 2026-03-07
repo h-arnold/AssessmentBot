@@ -78,7 +78,7 @@ Report enough detail to be actionable without noise.
 
 - Good:
   - "Updated `tests/controllers/AssignmentController.test.js`; fixed mock state leakage in `afterEach`; targeted and full backend suite pass."
-  - "Added `src/frontend/src/App.test.tsx` coverage for new state flow; frontend unit tests pass."
+  - "Added `src/frontend/src/App.spec.tsx` coverage for new state flow; frontend unit tests pass."
 - Too little:
   - "Finished tests."
 - Too much:

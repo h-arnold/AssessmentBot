@@ -32,7 +32,7 @@ AssessmentBot has three distinct active modules with different runtimes and stan
 
 **Deprecated** (read-only reference; do not add features): `src/AdminSheet/`, `src/AssessmentRecordTemplate/`
 
-Backend tests live under `tests/` at the repo root. Frontend unit tests live under `src/frontend/src/**/*.test.tsx`; E2E tests under `src/frontend/tests/`.
+Backend tests live under `tests/` at the repo root. Frontend unit tests live under `src/frontend/src/**/*.spec.{ts,tsx}`; E2E tests under `src/frontend/tests/**/*.spec.ts`.
 
 ## 2. Universal Principles (All Modules)
 

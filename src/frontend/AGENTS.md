@@ -11,7 +11,7 @@ Applies when editing `src/frontend/**`.
 ## 2. Frontend Structure
 
 - App code: `src/frontend/src/**`
-- Unit tests: `src/frontend/src/**/*.test.tsx`
+- Unit tests: `src/frontend/src/**/*.spec.{ts,tsx}`
 - Browser E2E tests: `src/frontend/tests/**`
 - Frontend package/tooling is self-contained under `src/frontend/package.json`.
 
