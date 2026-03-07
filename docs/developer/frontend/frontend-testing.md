@@ -83,6 +83,8 @@ Frontend unit/component tests must meet a minimum coverage threshold of **85%** 
 
 Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.
 
+**Important:** for frontend logging assertions, use logger helper APIs rather than reading magic globals directly. Prefer `getFrontendLogBuffer()` and `clearFrontendLogBuffer()` from `src/frontend/src/logging/frontendLogger.ts` in tests, so logging tests stay resilient if buffer internals change.
+
 - Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
 - Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
 

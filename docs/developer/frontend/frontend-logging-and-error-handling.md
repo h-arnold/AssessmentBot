@@ -87,6 +87,8 @@ To keep logs both useful and safe, apply these baseline rules in all environment
 
 Keep redaction and normalisation in shared logger utilities (for example `src/frontend/src/logging/`) rather than duplicating checks in each feature.
 
+For test code, prefer exported logger helpers (`getFrontendLogBuffer()`, `clearFrontendLogBuffer()`) instead of directly reading internal global buffer keys.
+
 ## 4. User feedback policy (Ant Design)
 
 Ant Design guidance referenced for this section:

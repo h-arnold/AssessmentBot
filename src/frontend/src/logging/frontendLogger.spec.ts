@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   logFrontendError,
   logFrontendEvent,
+  clearFrontendLogBuffer,
+  getFrontendLogBuffer,
   resetFrontendLogSink,
   setFrontendLogSink,
   type FrontendLogEntry,
@@ -10,8 +12,7 @@ import {
 describe('frontendLogger', () => {
   afterEach(() => {
     resetFrontendLogSink();
-    const host = globalThis as { __ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__?: unknown[] };
-    delete host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__;
+    clearFrontendLogBuffer();
   });
 
   it('redacts sensitive metadata fields before writing to the sink', () => {
@@ -52,12 +53,10 @@ describe('frontendLogger', () => {
       { includeStack: false }
     );
 
-    const host = globalThis as {
-      __ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__?: Array<{ context?: string; errorMessage?: string }>;
-    };
+    const bufferedEntries = getFrontendLogBuffer();
 
-    expect(host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__).toBeDefined();
-    expect(host.__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__).toContainEqual(
+    expect(bufferedEntries).toBeDefined();
+    expect(bufferedEntries).toContainEqual(
       expect.objectContaining({
         context: 'test/default-sink',
         errorMessage: 'Buffered warning',

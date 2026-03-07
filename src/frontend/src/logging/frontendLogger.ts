@@ -63,6 +63,22 @@ export function resetFrontendLogSink(): void {
 }
 
 /**
+ * Returns a snapshot of buffered frontend log entries from the default sink.
+ */
+export function getFrontendLogBuffer(): FrontendLogEntry[] {
+  const host = globalThis as FrontendLogBufferHost;
+  return [...(host[LOG_BUFFER_GLOBAL_KEY] ?? [])];
+}
+
+/**
+ * Clears buffered frontend log entries from the default sink.
+ */
+export function clearFrontendLogBuffer(): void {
+  const host = globalThis as FrontendLogBufferHost;
+  delete host[LOG_BUFFER_GLOBAL_KEY];
+}
+
+/**
  * Returns true when a metadata key should be redacted.
  */
 function isSensitiveKey(key: string): boolean {
