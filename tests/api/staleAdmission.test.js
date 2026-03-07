@@ -1,51 +1,56 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
-
 const {
   ACTIVE_LIMIT,
   STALE_REQUEST_AGE_MS,
   USER_REQUEST_STORE_KEY,
 } = require('../../src/backend/Api/apiConstants.js');
 
-function loadApiHandlerModule() {
-  delete require.cache[require.resolve(apiHandlerPath)];
-  return require(apiHandlerPath);
+const {
+  installAbLoggerSpies,
+  loadApiHandlerModule,
+  resetUserProperties,
+  restoreGlobal,
+  setAuthorisationStatusHandler,
+} = require('../helpers/apiHandlerTestUtils.js');
+
+function buildStartedStore(count, prefix, startedAtMs) {
+  const store = {};
+  for (let index = 0; index < count; index++) {
+    const id = `${prefix}-${index}`;
+    store[id] = {
+      requestId: id,
+      method: 'getAuthorisationStatus',
+      status: 'started',
+      startedAtMs,
+    };
+  }
+  return store;
+}
+
+function persistStore(store) {
+  globalThis.PropertiesService.getUserProperties().setProperty(
+    USER_REQUEST_STORE_KEY,
+    JSON.stringify(store)
+  );
 }
 
 describe('Api/apiHandler – stale-entry pruning during admission', () => {
   let warnSpy;
-  let mockLoggerInstance;
   let originalABLogger;
+  let originalGetAuthorisationStatus;
 
   beforeEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
+    resetUserProperties();
 
-    // Replace the global ABLogger with a spy so tests can assert on warn calls.
-    originalABLogger = globalThis.ABLogger;
-    warnSpy = vi.fn();
-    mockLoggerInstance = {
-      debug: () => {},
-      debugUi: () => {},
-      info: () => {},
-      warn: warnSpy,
-      error: () => {},
-      log: () => {},
-    };
-    globalThis.ABLogger = {
-      getInstance: () => mockLoggerInstance,
-    };
-
-    globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
+    ({ originalABLogger, warnSpy } = installAbLoggerSpies(vi));
+    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
   });
 
   afterEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
-    globalThis.ABLogger = originalABLogger;
-
-    if (globalThis.getAuthorisationStatus !== undefined) {
-      delete globalThis.getAuthorisationStatus;
-    }
+    resetUserProperties();
+    restoreGlobal('ABLogger', originalABLogger);
+    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
 
     vi.restoreAllMocks();
   });
@@ -55,20 +60,8 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // the staleness threshold.  After pruning they should no longer count, so
     // the new request should be admitted (not rate-limited).
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
-    const store = {};
-    for (let i = 0; i < ACTIVE_LIMIT; i++) {
-      const id = `stale-seed-${i}`;
-      store[id] = {
-        requestId: id,
-        method: 'getAuthorisationStatus',
-        status: 'started',
-        startedAtMs: staleTime,
-      };
-    }
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    const store = buildStartedStore(ACTIVE_LIMIT, 'stale-seed', staleTime);
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -87,20 +80,8 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     // staleness window.  None should be pruned, so the new request must be
     // rate-limited.
     const recentTime = Date.now() - 1000;
-    const store = {};
-    for (let i = 0; i < ACTIVE_LIMIT; i++) {
-      const id = `recent-seed-${i}`;
-      store[id] = {
-        requestId: id,
-        method: 'getAuthorisationStatus',
-        status: 'started',
-        startedAtMs: recentTime,
-      };
-    }
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    const store = buildStartedStore(ACTIVE_LIMIT, 'recent-seed', recentTime);
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -120,20 +101,8 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
   it('calls ABLogger.warn once for each stale entry that is pruned', () => {
     const staleTime = Date.now() - STALE_REQUEST_AGE_MS - 1000;
     const staleCount = 3;
-    const store = {};
-    for (let i = 0; i < staleCount; i++) {
-      const id = `stale-warn-${i}`;
-      store[id] = {
-        requestId: id,
-        method: 'getAuthorisationStatus',
-        status: 'started',
-        startedAtMs: staleTime,
-      };
-    }
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    const store = buildStartedStore(staleCount, 'stale-warn', staleTime);
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -170,10 +139,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       };
     }
 
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -216,10 +182,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       };
     }
 
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -249,10 +212,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
         startedAtMs: staleTime,
       };
     }
-    globalThis.PropertiesService.getUserProperties().setProperty(
-      USER_REQUEST_STORE_KEY,
-      JSON.stringify(store)
-    );
+    persistStore(store);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();

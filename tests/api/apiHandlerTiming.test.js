@@ -1,16 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
 const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
 
-function loadApiHandlerModule() {
-  delete require.cache[require.resolve(apiHandlerPath)];
-  return require(apiHandlerPath);
-}
+const {
+  installAbLoggerSpies,
+  installLockServiceMock,
+  loadApiHandlerModule,
+  resetUserProperties,
+  restoreGlobal,
+  setAuthorisationStatusHandler,
+} = require('../helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler – lock timing observability and logging', () => {
   let mockLock;
-  let mockLoggerInstance;
   let infoSpy;
   let warnSpy;
   let originalABLogger;
@@ -18,53 +20,23 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
   let originalGetAuthorisationStatus;
 
   beforeEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
+    resetUserProperties();
 
     vi.useFakeTimers();
 
-    originalABLogger = globalThis.ABLogger;
-    infoSpy = vi.fn();
-    warnSpy = vi.fn();
-    mockLoggerInstance = {
-      debug: () => {},
-      debugUi: () => {},
-      info: infoSpy,
-      warn: warnSpy,
-      error: () => {},
-      log: () => {},
-    };
-    globalThis.ABLogger = {
-      getInstance: () => mockLoggerInstance,
-    };
-
-    originalLockService = globalThis.LockService;
-    mockLock = { tryLock: vi.fn(() => true), releaseLock: vi.fn() };
-    globalThis.LockService = {
-      getUserLock: vi.fn(() => mockLock),
-    };
-
-    originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
-    globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
+    ({ originalABLogger, infoSpy, warnSpy } = installAbLoggerSpies(vi));
+    ({ originalLockService, mockLock } = installLockServiceMock(vi));
+    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
   });
 
   afterEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
+    resetUserProperties();
 
     vi.useRealTimers();
 
-    globalThis.ABLogger = originalABLogger;
-
-    if (originalLockService === undefined) {
-      delete globalThis.LockService;
-    } else {
-      globalThis.LockService = originalLockService;
-    }
-
-    if (originalGetAuthorisationStatus === undefined) {
-      delete globalThis.getAuthorisationStatus;
-    } else {
-      globalThis.getAuthorisationStatus = originalGetAuthorisationStatus;
-    }
+    restoreGlobal('ABLogger', originalABLogger);
+    restoreGlobal('LockService', originalLockService);
+    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
 
     vi.restoreAllMocks();
   });

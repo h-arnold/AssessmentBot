@@ -87,8 +87,7 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
     let successHandler: ((value: unknown) => void) | undefined;
     let failureHandler: ((error: unknown) => void) | undefined;
 
-    const apiHandlerSpy = vi.fn((request: unknown) => {
-        Object.is(request, request);
+    const apiHandlerSpy = vi.fn(() => {
 
         queueMicrotask(() => {
             if (response.kind === 'success') {
@@ -118,8 +117,8 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
         /**
          * Dispatches the request into the harness spy.
          */
-        apiHandler(request: unknown) {
-            apiHandlerSpy(request);
+        apiHandler() {
+            apiHandlerSpy();
         },
     };
     return {
@@ -333,8 +332,8 @@ function createSequentialHarness(responses: RunnerHarnessResponse[]): {
             failureHandler = handler;
             return runner;
         },
-        apiHandler(request: unknown) {
-            apiHandlerSpy(request);
+        apiHandler() {
+            apiHandlerSpy();
         },
     };
 

@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
-
-function loadApiHandlerModule() {
-  delete require.cache[require.resolve(apiHandlerPath)];
-  return require(apiHandlerPath);
-}
+const {
+  installLockServiceMock,
+  loadApiHandlerModule,
+  resetUserProperties,
+  restoreGlobal,
+  setAuthorisationStatusHandler,
+} = require('../helpers/apiHandlerTestUtils.js');
 
 describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   let mockLock;
@@ -13,32 +14,18 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   let originalLockService;
 
   beforeEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
+    resetUserProperties();
 
-    originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
-    globalThis.getAuthorisationStatus = vi.fn(() => ({ authorised: true }));
+    originalGetAuthorisationStatus = setAuthorisationStatusHandler(vi);
 
-    originalLockService = globalThis.LockService;
-    mockLock = { tryLock: vi.fn(() => true), releaseLock: vi.fn() };
-    globalThis.LockService = {
-      getUserLock: vi.fn(() => mockLock),
-    };
+    ({ originalLockService, mockLock } = installLockServiceMock(vi));
   });
 
   afterEach(() => {
-    globalThis.PropertiesService._resetUserProperties();
+    resetUserProperties();
 
-    if (originalGetAuthorisationStatus === undefined) {
-      delete globalThis.getAuthorisationStatus;
-    } else {
-      globalThis.getAuthorisationStatus = originalGetAuthorisationStatus;
-    }
-
-    if (originalLockService === undefined) {
-      delete globalThis.LockService;
-    } else {
-      globalThis.LockService = originalLockService;
-    }
+    restoreGlobal('getAuthorisationStatus', originalGetAuthorisationStatus);
+    restoreGlobal('LockService', originalLockService);
 
     vi.restoreAllMocks();
   });
