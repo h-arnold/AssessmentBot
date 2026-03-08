@@ -146,9 +146,9 @@ Create a typed navigation configuration for Dashboard, Classes, Assignments, and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ RED-phase tests are now in place for a public navigation contract, menu rendering, single-selection behaviour, and browser-level menu interactions. Section 2 implementation has not yet started.
+- _Any deviations from plan:_ The navigation config contract is being driven through a dedicated public module spec (`src/frontend/src/navigation/appNavigation.spec.tsx`) so later sections can share the same metadata without forcing private `AppShell` exports.
+- _Follow-up considerations affecting later stages:_ Section 2 implementation should introduce the shared navigation metadata in one place so sections 3 and 5 can reuse it for breadcrumbs and page rendering without duplicating labels.
 
 ---
 
