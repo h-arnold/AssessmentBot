@@ -5,10 +5,12 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
-import { Space, Typography } from 'antd';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
-
-const { Paragraph, Title } = Typography;
+import { AssignmentsPage } from '../pages/AssignmentsPage';
+import { ClassesPage } from '../pages/ClassesPage';
+import { DashboardPage } from '../pages/DashboardPage';
+import { SettingsPage } from '../pages/SettingsPage';
+import { pageContent } from '../pages/pageContent';
 
 export type AppNavigationKey = 'dashboard' | 'classes' | 'assignments' | 'settings';
 
@@ -29,7 +31,6 @@ type AppNavigationDefinition = {
   key: AppNavigationKey;
   label: string;
   icon: ReactElement;
-  description: string;
 };
 
 type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
@@ -46,51 +47,26 @@ function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) 
   );
 }
 
-/**
- * Renders a minimal page section for the active navigation entry.
- */
-function renderPageSection(
-  label: string,
-  description: string,
-  contentSlot?: ReactNode
-) {
-  return (
-    <section className="app-page" aria-label={`${label} page`}>
-      <Space orientation="vertical" size="middle" className="app-page-content">
-        <div>
-          <Title level={2}>{label}</Title>
-          <Paragraph>{description}</Paragraph>
-        </div>
-        {contentSlot}
-      </Space>
-    </section>
-  );
-}
-
 const navigationDefinitions: readonly AppNavigationDefinition[] = [
   {
     key: 'dashboard',
-    label: 'Dashboard',
+    label: pageContent.dashboard.heading,
     icon: renderNavigationIcon(HomeOutlined),
-    description: 'View the current assessment overview.',
   },
   {
     key: 'classes',
-    label: 'Classes',
+    label: pageContent.classes.heading,
     icon: renderNavigationIcon(BookOutlined),
-    description: 'Review class-level assessment work.',
   },
   {
     key: 'assignments',
-    label: 'Assignments',
+    label: pageContent.assignments.heading,
     icon: renderNavigationIcon(AppstoreOutlined),
-    description: 'Browse assignment activity and progress.',
   },
   {
     key: 'settings',
-    label: 'Settings',
+    label: pageContent.settings.heading,
     icon: renderNavigationIcon(SettingOutlined),
-    description: 'Manage application-level preferences.',
   },
 ] as const;
 
@@ -109,22 +85,30 @@ export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
   })
 );
 
-export const defaultNavigationKey: AppNavigationKey = navigationItems[0].key;
+export const defaultNavigationKey: AppNavigationKey = 'dashboard';
 
-const pageRendererEntries = navigationDefinitions.map(
-  ({ description, key, label }) =>
-    [
-      key,
-      (contentSlot?: ReactNode) =>
-        renderPageSection(
-          label,
-          description,
-          key === defaultNavigationKey ? contentSlot : undefined
-        ),
-    ] as const
-);
+function buildUnknownPageKeyError(key: string) {
+  return new TypeError(`Unknown page key: ${key}`);
+}
 
-export const pageRenderers = Object.fromEntries(pageRendererEntries) as Record<
+const pageRendererMap: Record<AppNavigationKey, AppNavigationPageRenderer> = {
+  dashboard: (contentSlot) => <DashboardPage contentSlot={contentSlot} />,
+  classes: () => <ClassesPage />,
+  assignments: () => <AssignmentsPage />,
+  settings: () => <SettingsPage />,
+};
+
+export const pageRenderers = new Proxy(pageRendererMap, {
+  get(target, property, receiver) {
+    if (typeof property === 'string' && !isAppNavigationKey(property)) {
+      return () => {
+        throw buildUnknownPageKeyError(property);
+      };
+    }
+
+    return Reflect.get(target, property, receiver);
+  },
+}) as Record<
   AppNavigationKey,
   AppNavigationPageRenderer
 >;

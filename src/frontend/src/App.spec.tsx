@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { vi } from 'vitest';
 import App from './App';
 import appStyles from './index.css?raw';
+import { dashboardPageSummaryText } from './test/pageExpectations';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -272,6 +273,17 @@ describe('App', () => {
     expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
+  });
+
+  it('Dashboard default selection renders expected default page content', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const mainRegion = screen.getByRole('main');
+
+    expect(within(mainRegion).getByRole('heading', { level: 2, name: 'Dashboard' })).toBeInTheDocument();
+    expect(within(mainRegion).getByText(dashboardPageSummaryText)).toBeInTheDocument();
   });
 
   it('renders shell landmarks', async () => {

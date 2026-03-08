@@ -1,13 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import {
-  appBreadcrumbBaseLabel,
-  defaultNavigationKey,
-  getNavigationLabel,
-  navigationItems,
-} from '../src/navigation/appNavigation';
+import { pageExpectations } from '../src/test/pageExpectations';
 
+const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
 const breadcrumbNavigationName = 'Breadcrumb';
-const expectedNavigationItemCount = navigationItems.length;
+const defaultNavigationLabel = 'Dashboard';
+const expectedNavigationItemCount = pageExpectations.length;
 const assignmentsNavigationItemIndex = 2;
 const collapseExpandCycles = 2;
 const themeSwitchLabel = 'Dark mode';
@@ -74,16 +71,11 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    await expectBreadcrumbLabels(page, [
-      appBreadcrumbBaseLabel,
-      getNavigationLabel(defaultNavigationKey),
-    ]);
+    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, defaultNavigationLabel]);
 
-    for (const { key } of navigationItems) {
-      const label = getNavigationLabel(key);
-
-      await page.getByRole('menuitem', { name: label }).click();
-      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, label]);
+    for (const { heading } of pageExpectations) {
+      await page.getByRole('menuitem', { name: heading }).click();
+      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
     }
   });
 
@@ -91,11 +83,9 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    for (const key of ['classes', 'assignments', 'settings'] as const) {
-      const label = getNavigationLabel(key);
-
-      await page.getByRole('menuitem', { name: label }).click();
-      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, label]);
+    for (const heading of ['Classes', 'Assignments', 'Settings']) {
+      await page.getByRole('menuitem', { name: heading }).click();
+      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
     }
   });
 
@@ -108,10 +98,8 @@ test.describe('app shell', () => {
     await page.getByRole('button', { name: 'Collapse navigation' }).click();
     await page.getByRole('button', { name: 'Expand navigation' }).click();
 
-    const settingsLabel = getNavigationLabel('settings');
-
-    await page.getByRole('menuitem', { name: settingsLabel }).click();
-    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
+    await page.getByRole('menuitem', { name: 'Settings' }).click();
+    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, 'Settings']);
   });
 
   test('user can navigate to Dashboard, Classes, Assignments, and Settings via menu clicks', async ({
@@ -280,10 +268,8 @@ test.describe('app shell', () => {
     await themeModeSwitch.click();
     await expect(themeModeSwitch).toBeChecked();
 
-    for (const { key } of navigationItems) {
-      const label = getNavigationLabel(key);
-
-      await page.getByRole('menuitem', { name: label }).click();
+    for (const { heading } of pageExpectations) {
+      await page.getByRole('menuitem', { name: heading }).click();
       await expect(themeModeSwitch).toBeChecked();
     }
   });
@@ -305,5 +291,54 @@ test.describe('app shell', () => {
     await expect
       .poll(async () => getHeaderBackgroundColour(page))
       .not.toBe(initialHeaderBackground);
+  });
+
+  test('navigating to each menu item shows matching page heading in browser', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    for (const { heading, summary } of pageExpectations) {
+      await page.getByRole('menuitem', { name: heading }).click();
+      await expect(page.getByRole('heading', { level: 2, name: heading })).toBeVisible();
+      await expect(page.getByText(summary)).toBeVisible();
+    }
+  });
+
+  test('placeholder text for each page is visible and unique', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    for (const { heading, summary } of pageExpectations) {
+      await page.getByRole('menuitem', { name: heading }).click();
+      await expect(page.getByText(summary)).toBeVisible();
+
+      for (const otherPage of pageExpectations) {
+        if (otherPage.heading !== heading) {
+          await expect(page.getByText(otherPage.summary)).toHaveCount(0);
+        }
+      }
+    }
+  });
+
+  test('rapid navigation does not leave stale page content onscreen', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    for (const { heading } of pageExpectations) {
+      await page.getByRole('menuitem', { name: heading }).click();
+    }
+
+    const finalPage = pageExpectations.at(-1);
+
+    if (finalPage === undefined) {
+      throw new Error('Expected at least one page expectation.');
+    }
+
+    await expect(page.getByRole('heading', { level: 2, name: finalPage.heading })).toBeVisible();
+    await expect(page.getByText(finalPage.summary)).toBeVisible();
+
+    for (const pageExpectation of pageExpectations.slice(0, -1)) {
+      await expect(page.getByText(pageExpectation.summary)).toHaveCount(0);
+    }
   });
 });

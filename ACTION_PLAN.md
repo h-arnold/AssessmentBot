@@ -286,9 +286,9 @@ Each page contains a heading and concise placeholder copy aligned to intended pu
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added dedicated page components under `src/frontend/src/pages/` for Dashboard, Classes, Assignments, and Settings, with shared placeholder copy and shell layout preserved through the existing navigation map. Dashboard remains the explicit default page and still hosts the auth status card content slot.
+- _Any deviations from plan:_ A small shared `PageSection` scaffold and `pageContent` constant were introduced to keep the new page components consistent without duplicating shell-facing page markup and copy across four files.
+- _Follow-up considerations affecting later stages:_ Future page work should evolve these components in place so menu labels, placeholder copy, and page headings stay aligned with the shared page-content source.
 
 ---
 
