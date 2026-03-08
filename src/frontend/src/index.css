@@ -1,29 +1,89 @@
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --app-header-height: 64px;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f5f7fa;
 }
 
 #root {
   min-height: 100vh;
 }
 
+.app-shell {
+  min-height: 100vh;
+}
+
 .app-header {
-  color: #fff;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  padding-inline: 1rem;
+}
+
+.app-header-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app-header-toggle {
+  color: inherit;
+}
+
+.app-header .app-header-toggle:hover,
+.app-header .app-header-toggle:focus-visible {
+  color: inherit;
+}
+
+.app-shell .app-sider {
+  min-height: calc(100vh - var(--app-header-height));
+  transition: width var(--app-motion-duration-mid, 0.2s) var(--app-motion-ease-in-out, ease);
+}
+
+.app-shell .app-sider .ant-layout-sider-children {
+  transition: opacity var(--app-motion-duration-mid, 0.2s) var(--app-motion-ease-in-out, ease);
+}
+
+.app-navigation-menu {
+  height: 100%;
+  border-inline-end: 0;
+}
+
+.app-header-theme-label {
+  font-weight: 500;
+}
+
+.app-header-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .app-content {
-  max-width: 720px;
-  margin: 4rem auto;
-  padding: 0 1rem;
+  padding: 2rem 1rem;
+}
+
+.app-breadcrumb {
+  margin-bottom: 1.5rem;
+}
+
+.app-page {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.app-page-content {
+  width: min(100%, 720px);
 }
 
 .auth-card {
+  width: min(100%, 720px);
   text-align: center;
 }
 
@@ -31,4 +91,12 @@ body {
   width: 100%;
   align-items: center;
   justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .app-sider,
+  .app-shell .app-sider .ant-layout-sider-children {
+    transition-duration: 0ms;
+    transition-delay: 0ms;
+  }
 }

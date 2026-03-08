@@ -1,7 +1,21 @@
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { vi } from 'vitest';
 import App from './App';
+import appStyles from './index.css?raw';
+import { dashboardPageSummaryText } from './test/pageExpectations';
+import {
+  appBreadcrumbBaseLabel,
+  defaultNavigationKey,
+  getNavigationLabel,
+  navigationItems,
+  type AppNavigationKey,
+} from './navigation/appNavigation';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
+const applicationTitleText = appBreadcrumbBaseLabel;
+const navigationLabels = navigationItems.map(({ label }) => label);
+const noBreadcrumbLabelPosition = -1;
 
 type ApiResponseEnvelope =
   | {
@@ -59,9 +73,392 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
   };
 }
 
+/**
+ * Installs a `google.script.run.apiHandler` mock that leaves auth status pending.
+ */
+function installPendingApiHandlerMock() {
+  const runMock = {
+    withSuccessHandler() {
+      return runMock;
+    },
+    withFailureHandler() {
+      return runMock;
+    },
+    apiHandler() {},
+  };
+
+  (globalThis as { google?: unknown }).google = {
+    script: {
+      run: runMock,
+    },
+  };
+}
+
+/**
+ * Renders the app while keeping the pending auth state stable for layout-only assertions.
+ */
+async function renderPendingApp() {
+  await act(async () => {
+    render(<App />);
+  });
+}
+
+const breadcrumbNavigationName = 'Breadcrumb';
+
+/**
+ * Returns the rendered breadcrumb landmark.
+ */
+function getBreadcrumbElement() {
+  return screen.getByRole('navigation', { name: breadcrumbNavigationName });
+}
+
+/**
+ * Asserts breadcrumb labels while keeping expectations scoped to the breadcrumb itself.
+ */
+function expectBreadcrumbLabels(labels: string[]) {
+  const breadcrumb = getBreadcrumbElement();
+  const breadcrumbText = breadcrumb.textContent?.replaceAll(/\s+/g, ' ').trim() ?? '';
+
+  for (const label of labels) {
+    expect(breadcrumb).toHaveTextContent(label);
+  }
+
+  let previousPosition = noBreadcrumbLabelPosition;
+
+  for (const label of labels) {
+    const labelPosition = breadcrumbText.indexOf(label);
+
+    expect(labelPosition).toBeGreaterThan(previousPosition);
+    previousPosition = labelPosition;
+  }
+}
+
+/**
+ * Returns the theme mode switch once it is rendered.
+ */
+function getThemeModeSwitch() {
+  return screen.getByRole('switch', { name: 'Dark mode' });
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
+    document.querySelector('#root')?.remove();
+    vi.resetModules();
+    vi.doUnmock('antd');
+    vi.doUnmock('react-dom/client');
+  });
+
+  it('menu renders all four entries in expanded mode with expected labels', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    for (const label of navigationLabels) {
+      expect(within(navigation).getByRole('menuitem', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('menu renders icon-only affordance in collapsed mode', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+    });
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const menuItems = within(navigation).getAllByRole('menuitem');
+
+    expect(menuItems).toHaveLength(navigationLabels.length);
+
+    for (const item of menuItems) {
+      expect(item.querySelector('.app-navigation-icon')).not.toBeNull();
+    }
+  });
+
+  it('clicking each menu item updates selected key in component state', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    let previousLabel: string | undefined;
+
+    for (const label of navigationLabels) {
+      const menuItem = within(navigation).getByRole('menuitem', { name: label });
+
+      act(() => {
+        fireEvent.click(menuItem);
+      });
+
+      expect(menuItem).toHaveClass('ant-menu-item-selected');
+
+      if (previousLabel !== undefined) {
+        expect(within(navigation).getByRole('menuitem', { name: previousLabel })).not.toHaveClass(
+          'ant-menu-item-selected'
+        );
+      }
+
+      expect(navigation.querySelectorAll('.ant-menu-item-selected')).toHaveLength(1);
+      previousLabel = label;
+    }
+  });
+
+  it('breadcrumb renders the active page crumb on default load', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel(defaultNavigationKey)]);
+  });
+
+  it('changing selected page updates breadcrumb text immediately', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const classesLabel = getNavigationLabel('classes');
+
+    act(() => {
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: classesLabel }));
+    });
+
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, classesLabel]);
+  });
+
+  it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    for (const { key } of navigationItems) {
+      const label = getNavigationLabel(key);
+
+      act(() => {
+        fireEvent.click(within(navigation).getByRole('menuitem', { name: label }));
+      });
+
+      expectBreadcrumbLabels([appBreadcrumbBaseLabel, label]);
+    }
+  });
+
+  it('no stale breadcrumb state after rapid page switching', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const rapidSelectionKeys: AppNavigationKey[] = ['classes', 'assignments', 'settings'];
+
+    act(() => {
+      for (const key of rapidSelectionKeys) {
+        const menuItem = within(navigation).getByRole('menuitem', {
+          name: getNavigationLabel(key),
+        });
+
+        fireEvent.click(menuItem);
+      }
+    });
+
+    const breadcrumb = getBreadcrumbElement();
+
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
+    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
+    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
+  });
+
+  it('Dashboard default selection renders expected default page content', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const mainRegion = screen.getByRole('main');
+
+    expect(within(mainRegion).getByRole('heading', { level: 2, name: 'Dashboard' })).toBeInTheDocument();
+    expect(within(mainRegion).getByText(dashboardPageSummaryText)).toBeInTheDocument();
+  });
+
+  it('renders shell landmarks', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
+    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('toggles collapsed state via hamburger', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+
+    act(() => {
+      fireEvent.click(toggleButton);
+    });
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
+    });
+    expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
+  });
+
+  it('updates accessible control label and state when toggled', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+
+    act(() => {
+      fireEvent.click(toggleButton);
+    });
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('does not regress existing auth card mounting path', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const mainRegion = screen.getByRole('main');
+
+    expect(within(mainRegion).getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+  });
+
+  it('toggle control renders with accessible label', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    expect(getThemeModeSwitch()).toBeInTheDocument();
+  });
+
+  it('toggle callback flips theme state between light and dark', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const themeModeSwitch = getThemeModeSwitch();
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('ConfigProvider receives expected algorithm when state changes', async () => {
+    // Keep the auth hook pending so the entrypoint render stays focused on theme wiring.
+    installPendingApiHandlerMock();
+
+    const rootElement = document.createElement('div');
+    rootElement.id = 'root';
+    document.body.append(rootElement);
+
+    let renderedTree: ReactNode | undefined;
+
+    vi.doMock('react-dom/client', () => ({
+      createRoot: () => ({
+        render(node: ReactNode) {
+          renderedTree = node;
+        },
+      }),
+    }));
+
+    vi.doMock('antd', async () => {
+      const actual = await vi.importActual('antd');
+      const actualTheme = (actual as { theme: { darkAlgorithm: unknown } }).theme;
+
+      return {
+        ...(actual as Record<string, unknown>),
+        ConfigProvider({
+          children,
+          theme: themeConfig,
+        }: {
+          children: ReactNode;
+          theme?: {
+            algorithm?: unknown;
+          };
+        }) {
+          return (
+            <div
+              data-testid="config-provider"
+              data-algorithm={
+                themeConfig?.algorithm === actualTheme.darkAlgorithm ? 'dark' : 'light'
+              }
+            >
+              {children}
+            </div>
+          );
+        },
+      };
+    });
+
+    await import('./main');
+
+    if (renderedTree === undefined) {
+      throw new Error('Expected main.tsx to render the application tree.');
+    }
+
+    render(<>{renderedTree}</>);
+
+    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'light');
+
+    act(() => {
+      fireEvent.click(getThemeModeSwitch());
+    });
+
+    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'dark');
+  });
+
+  it('theme toggle state persists during in-app page navigation', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const themeModeSwitch = getThemeModeSwitch();
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
+      );
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('theme-compatible styles are applied', () => {
+    expect(appStyles).not.toMatch(/body\s*{[^}]*background:\s*#[\da-f]{3,8}/i);
+    expect(appStyles).not.toMatch(/\.app-header\s*{[^}]*color:\s*#[\da-f]{3,8}/i);
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
@@ -73,7 +470,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
   });
@@ -123,8 +520,6 @@ describe('App', () => {
       await screen.findByText('Unable to check authorisation status right now.')
     ).toBeInTheDocument();
   });
-
-
 
   it('shows rate-limited message when backend returns retriable rate limit envelope', async () => {
     installApiHandlerMock({

@@ -30,8 +30,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 ## 3. Framework and UI Baseline
 
 - Current scaffold uses React + Ant Design.
-- Preserve required runtime patch import in entrypoint:
-  - `@ant-design/v5-patch-for-react-19`
+- Ant Design v6 does not require `@ant-design/v5-patch-for-react-19`; do not add that patch.
 - Keep UI work within frontend boundaries; do not add new UI behaviour in deprecated `src/AdminSheet/UI` unless explicitly requested.
 
 **Important**: When adding, using or modifying UI components, ALWAYS check the [Ant Design documentation](https://ant.design/llms.txt) and browse the relevant docs for the component or components you are working with. Ant Design has a lot of built-in functionality and options, and it's likely that the behaviour you want to implement is already supported by the library. Familiarise yourself with the documentation to ensure you're using the components effectively and following best practices.
@@ -75,3 +74,9 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Use **Zod** as the validation framework for all new and updated frontend validation logic.
 - Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
 - Store validation schemas in a dedicated adjacent schema file (for example `*.zod.ts` or `zodSchemas.ts`) near the code consuming them.
+
+## 9. Shell Navigation and Motion Standards
+
+For shell navigation and motion conventions (menu metadata, decorative icon semantics, and reduced-motion defaults), use:
+
+- `docs/developer/frontend/frontend-shell-navigation-and-motion.md`

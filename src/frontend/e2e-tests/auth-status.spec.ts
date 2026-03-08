@@ -134,13 +134,13 @@ test.describe('auth status flow', () => {
     await page.goto('/');
 
     await expect(page.getByText('Unauthorised')).toBeVisible();
-    await expect(page.getByText('Backend authorisation check failed.')).toBeVisible();
+    await expect(page.getByText('Unable to check authorisation status right now.')).toBeVisible();
   });
 
   test('shows runtime error when google.script.run is unavailable', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByText('Unauthorised')).toBeVisible();
-    await expect(page.getByText('google.script.run is unavailable in this runtime.')).toBeVisible();
+    await expect(page.getByText('Unable to check authorisation status right now.')).toBeVisible();
   });
 });

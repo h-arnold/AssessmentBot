@@ -100,9 +100,9 @@ Refactor `App.tsx` from simple header/content into a shell composed of `Layout`,
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added `AppShell` to keep `App.tsx` thin while introducing the section 1 header, collapsible left rail, and main content region. The existing auth status card remains mounted in the main content path.
+- _Any deviations from plan:_ None.
+- _Follow-up considerations affecting later stages:_ The temporary rail marker should be replaced by the typed menu model in section 2 without moving state orchestration back into `App.tsx`.
 
 ---
 
@@ -146,9 +146,9 @@ Create a typed navigation configuration for Dashboard, Classes, Assignments, and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added a shared public navigation module that defines the four typed entries, drives the `Menu` items, and maps selected keys to the active content region. `App.tsx` remains thin by passing the existing auth card through the dashboard content slot.
+- _Any deviations from plan:_ To avoid duplicating labels before section 5, non-dashboard pages currently render minimal placeholder sections from the shared navigation metadata rather than dedicated page components.
+- _Follow-up considerations affecting later stages:_ Sections 3 and 5 should reuse the shared navigation metadata when adding breadcrumbs and dedicated page components so the labels stay in one source of truth.
 
 ---
 
@@ -189,9 +189,9 @@ Add `Breadcrumb` in the top bar (or directly beneath it), driven by current page
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added a minimal breadcrumb trail in the content area that is generated from shared navigation metadata and updates with the selected page. The breadcrumb currently shows a base crumb plus the active page label.
+- _Any deviations from plan:_ The base breadcrumb label is shared through the existing navigation module so the header title and breadcrumb root remain aligned without introducing a second label source.
+- _Follow-up considerations affecting later stages:_ Section 5 page components should keep using the shared navigation labels so breadcrumb text, menu labels, and page headings do not drift.
 
 ---
 
@@ -236,9 +236,9 @@ Introduce theme state and switch `ConfigProvider` algorithm between `theme.defau
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added a top-right dark mode toggle owned by `AppThemeShell`, with `ConfigProvider` switching between the default and dark algorithms while keeping `App.tsx` thin. Section 4 coverage now exercises the accessible toggle, entrypoint theme wiring, in-app theme persistence, and token-compatible shell styling.
+- _Any deviations from plan:_ The unit coverage still probes the entrypoint theme wiring through `main.tsx`, which keeps the implementation aligned with the thin composition boundary for `App.tsx`.
+- _Follow-up considerations affecting later stages:_ Later page work should continue using Ant Design tokens and shared shell styling so new surfaces inherit the active light/dark theme without reintroducing fixed colours.
 
 ---
 
@@ -286,9 +286,9 @@ Each page contains a heading and concise placeholder copy aligned to intended pu
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added dedicated page components under `src/frontend/src/pages/` for Dashboard, Classes, Assignments, and Settings, with shared placeholder copy and shell layout preserved through the existing navigation map. Dashboard remains the explicit default page and still hosts the auth status card content slot.
+- _Any deviations from plan:_ A small shared `PageSection` scaffold and `pageContent` constant were introduced to keep the new page components consistent without duplicating shell-facing page markup and copy across four files.
+- _Follow-up considerations affecting later stages:_ Future page work should evolve these components in place so menu labels, placeholder copy, and page headings stay aligned with the shared page-content source.
 
 ---
 
@@ -333,9 +333,9 @@ Complete full verification using section-level tests plus full frontend lint and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Full frontend validation completed successfully: `npm run frontend:test`, `npm run frontend:test:coverage`, `npm run frontend:test:e2e`, and `npm run frontend:lint` all passed. Frontend coverage finished above the required 85% threshold across statements, branches, functions, and lines.
+- _Any deviations from plan:_ A small frontend tooling fix was required so the documented lint command could run in a fresh checkout: `eslint-plugin-jsdoc` is now declared in `src/frontend/package.json` because the frontend ESLint config imports it directly. The full e2e pass also required updating two stale auth-status browser assertions to the current generic unauthorised fallback copy already covered by the unit tests.
+- _Follow-up considerations affecting later stages:_ If shared frontend/backend lint rules continue to be sourced from root config files, fresh checkouts still need both root and frontend dependencies installed before running the frontend lint command locally.
 
 ---
 
@@ -363,6 +363,6 @@ Complete full verification using section-level tests plus full frontend lint and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Sections 1-6 are complete and the stage exit criteria have been satisfied with passing frontend unit tests, coverage, e2e coverage, and lint validation.
+- _Any deviations from plan:_ None beyond the section-level notes above.
+- _Follow-up considerations affecting later stages:_ Future frontend shell work should continue extending the shared navigation and page-content sources rather than introducing duplicate labels, headings, or placeholder copy.

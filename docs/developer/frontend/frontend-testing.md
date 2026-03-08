@@ -105,12 +105,14 @@ Vitest + Testing Library may still assert user-visible component outcomes; use P
   - user can click nav items and sees page headings update
   - user sees sidenav collapse/expand after activating hamburger control
   - user sees light/dark mode switch reflected in the rendered UI
+  - user sees motion disabled or minimal when reduced-motion preference is active
 
 ## Related standards
 
 For frontend logging, error mapping, and environment-specific diagnostics policy, use:
 
 - `docs/developer/frontend/frontend-logging-and-error-handling.md`
+- `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
 When tests cover logging/error pathways, keep expectations aligned with that document (for example stack-trace gating by environment and redaction behaviour). Treat that logging/error document as canonical and avoid duplicating policy text here.
 

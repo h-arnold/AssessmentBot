@@ -1,6 +1,5 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ConfigProvider, theme } from 'antd';
 import App from './App';
 import './index.css';
 
@@ -11,15 +10,6 @@ if (!(rootElement instanceof HTMLElement)) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ConfigProvider
-      theme={{
-        algorithm: theme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#1677ff',
-        },
-      }}
-    >
-      <App />
-    </ConfigProvider>
+    <App />
   </StrictMode>,
 );
