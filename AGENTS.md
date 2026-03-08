@@ -72,6 +72,15 @@ Before changing any TypeScript or ESLint configuration, read:
 
 Keep shared standards in shared/root config and runtime-specific behaviour in leaf configs.
 
+### 5.1 Policy source-of-truth signposts
+
+To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
+
+- Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
+- Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
+
+If guidance appears in multiple places, update the canonical doc first, then keep AGENTS references brief and consistent.
+
 ### 6. Agentic Workflow for Non-Trivial Changes
 
 For non-trivial code changes (multi-file logic changes, behavioural changes, refactors, or risky fixes), follow this mandatory loop:

@@ -1,24 +1,28 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import {
   logFrontendError,
   logFrontendEvent,
-  clearFrontendLogBuffer,
-  getFrontendLogBuffer,
-  resetFrontendLogSink,
-  setFrontendLogSink,
-  type FrontendLogEntry,
 } from './frontendLogger';
 
 describe('frontendLogger', () => {
-  afterEach(() => {
-    resetFrontendLogSink();
-    clearFrontendLogBuffer();
+  let debugSpy: MockInstance;
+  let infoSpy: MockInstance;
+  let warnSpy: MockInstance;
+  let errorSpy: MockInstance;
+
+  beforeEach(() => {
+    debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  it('redacts sensitive metadata fields before writing to the sink', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('redacts sensitive metadata fields before writing to the console endpoint', () => {
     const nestedSensitiveKey = 'secret';
-    const sink = vi.fn<(entry: FrontendLogEntry) => void>();
-    setFrontendLogSink(sink);
 
     logFrontendEvent('info', {
       context: 'test/logger',
@@ -30,8 +34,8 @@ describe('frontendLogger', () => {
       },
     });
 
-    expect(sink).toHaveBeenCalledTimes(1);
-    const [entry] = sink.mock.calls[0];
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    const [, entry] = infoSpy.mock.calls[0];
     expect(entry.metadata).toEqual({
       token: '[REDACTED]',
       nested: {
@@ -40,10 +44,7 @@ describe('frontendLogger', () => {
     });
   });
 
-
-  it('buffers log entries in the default global sink', () => {
-    resetFrontendLogSink();
-
+  it('writes warning events to the console warning endpoint', () => {
     logFrontendEvent(
       'warn',
       {
@@ -53,23 +54,18 @@ describe('frontendLogger', () => {
       { includeStack: false }
     );
 
-    const bufferedEntries = getFrontendLogBuffer();
-
-    expect(bufferedEntries).toBeDefined();
-    expect(bufferedEntries).toContainEqual(
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const [, entry] = warnSpy.mock.calls[0];
+    expect(entry).toEqual(
       expect.objectContaining({
         context: 'test/default-sink',
         errorMessage: 'Buffered warning',
+        level: 'warn',
       })
     );
   });
 
-
-
   it('drops debug and info logs when running in production mode', () => {
-    clearFrontendLogBuffer();
-    resetFrontendLogSink();
-
     logFrontendEvent(
       'debug',
       { context: 'test/debug', errorMessage: 'Hidden' },
@@ -86,20 +82,19 @@ describe('frontendLogger', () => {
       { includeStack: false, isDevelopmentRuntime: false }
     );
 
-    const bufferedEntries = getFrontendLogBuffer();
-    expect(bufferedEntries).toHaveLength(1);
-    expect(bufferedEntries[0]?.context).toBe('test/warn');
+    expect(debugSpy).not.toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const [, entry] = warnSpy.mock.calls[0];
+    expect(entry.context).toBe('test/warn');
   });
 
-
   it('suppresses stack traces when includeStack is false', () => {
-    const sink = vi.fn<(entry: FrontendLogEntry) => void>();
-    setFrontendLogSink(sink);
-
     const error = new Error('Operation failed.');
     logFrontendError('test/logger', error, undefined, { includeStack: false });
 
-    const [entry] = sink.mock.calls[0];
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const [, entry] = errorSpy.mock.calls[0];
     expect(entry.stack).toBeUndefined();
     expect(entry.errorMessage).toBe('Operation failed.');
   });

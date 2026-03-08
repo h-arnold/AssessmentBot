@@ -16,8 +16,6 @@ export type FrontendLogEntry = FrontendLogPayload & {
   timestamp: string;
 };
 
-type FrontendLogSink = (entry: FrontendLogEntry) => void;
-
 type FrontendLogOptions = {
   includeStack?: boolean;
   isDevelopmentRuntime?: boolean;
@@ -26,58 +24,6 @@ type FrontendLogOptions = {
 const SENSITIVE_FIELD_NAMES = new Set(['token', 'secret', 'password', 'authorisation', 'authorization', 'email']);
 const REDACTED_VALUE = '[REDACTED]';
 const MAX_SERIALISED_METADATA_LENGTH = 2000;
-
-const LOG_BUFFER_GLOBAL_KEY = '__ASSESSMENT_BOT_FRONTEND_LOG_BUFFER__';
-const MAX_BUFFERED_LOG_ENTRIES = 200;
-
-type FrontendLogBufferHost = {
-  [LOG_BUFFER_GLOBAL_KEY]?: FrontendLogEntry[];
-};
-
-/**
- * Writes frontend logs to an in-memory global buffer for diagnostics.
- */
-function writeToGlobalLogBuffer(entry: FrontendLogEntry): void {
-  const host = globalThis as FrontendLogBufferHost;
-  const existingBuffer = host[LOG_BUFFER_GLOBAL_KEY] ?? [];
-  existingBuffer.push(entry);
-  if (existingBuffer.length > MAX_BUFFERED_LOG_ENTRIES) {
-    existingBuffer.splice(0, existingBuffer.length - MAX_BUFFERED_LOG_ENTRIES);
-  }
-  host[LOG_BUFFER_GLOBAL_KEY] = existingBuffer;
-}
-
-let logSink: FrontendLogSink = writeToGlobalLogBuffer;
-
-/**
- * Registers a sink for structured frontend log entries.
- */
-export function setFrontendLogSink(sink: FrontendLogSink): void {
-  logSink = sink;
-}
-
-/**
- * Restores the default in-memory sink.
- */
-export function resetFrontendLogSink(): void {
-  logSink = writeToGlobalLogBuffer;
-}
-
-/**
- * Returns a snapshot of buffered frontend log entries from the default sink.
- */
-export function getFrontendLogBuffer(): FrontendLogEntry[] {
-  const host = globalThis as FrontendLogBufferHost;
-  return [...(host[LOG_BUFFER_GLOBAL_KEY] ?? [])];
-}
-
-/**
- * Clears buffered frontend log entries from the default sink.
- */
-export function clearFrontendLogBuffer(): void {
-  const host = globalThis as FrontendLogBufferHost;
-  delete host[LOG_BUFFER_GLOBAL_KEY];
-}
 
 /**
  * Returns true when a metadata key should be redacted.
@@ -125,7 +71,7 @@ function redactValue(value: unknown): unknown {
 }
 
 /**
- * Sanitises metadata before emitting to the active sink.
+ * Sanitises metadata before emitting to the console endpoint.
  */
 function sanitiseMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
   if (!metadata) {
@@ -160,8 +106,22 @@ function isLevelEnabled(level: FrontendLogLevel, options: FrontendLogOptions | u
   return level === 'warn' || level === 'error';
 }
 
+const consoleMethodByLevel: Record<FrontendLogLevel, (message?: unknown, ...optionalParams: unknown[]) => void> = {
+  debug: (...args) => globalThis.console.debug(...args),
+  info: (...args) => globalThis.console.info(...args),
+  warn: (...args) => globalThis.console.warn(...args),
+  error: (...args) => globalThis.console.error(...args),
+};
+
 /**
- * Writes a structured frontend log event to the active sink.
+ * Emits a log entry to the browser console using a level-matched endpoint.
+ */
+function writeToConsole(entry: FrontendLogEntry): void {
+  consoleMethodByLevel[entry.level](entry.context, entry);
+}
+
+/**
+ * Writes a structured frontend log event to the console endpoint.
  */
 export function logFrontendEvent(
   level: FrontendLogLevel,
@@ -173,14 +133,15 @@ export function logFrontendEvent(
   }
 
   const stack = shouldIncludeStack(options) ? payload.stack : undefined;
-
-  logSink({
+  const entry: FrontendLogEntry = {
     ...payload,
     stack,
     metadata: sanitiseMetadata(payload.metadata),
     level,
     timestamp: new Date().toISOString(),
-  });
+  };
+
+  writeToConsole(entry);
 }
 
 /**

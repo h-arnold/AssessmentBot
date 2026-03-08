@@ -41,6 +41,22 @@ export default defineConfig([
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
+      'no-console': 'error',
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'globalThis',
+          property: 'console',
+          message: 'Use the frontend logger module as the only browser console emission boundary.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/logging/frontendLogger.ts'],
+    rules: {
+      'no-console': 'off',
+      'no-restricted-properties': 'off',
     },
   },
   {

@@ -52,7 +52,8 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 ## 5. Error Handling and Quality
 
 - Fail loudly in development; do not hide failures behind broad catch-and-ignore logic.
-- When implementing or refactoring frontend logging/error handling, read `docs/developer/frontend/frontend-logging-and-error-handling.md` first and treat it as the canonical policy source.
+- When implementing or refactoring frontend logging/error handling, read `docs/developer/frontend/frontend-logging-and-error-handling.md` first and treat it as the single source of truth.
+- Keep this AGENTS file as a signpost only; do not duplicate detailed logging policy here.
 - Never implement or fall back to defaults unless explicitly instructed to do so.
 - Keep component state and side effects predictable and testable.
 

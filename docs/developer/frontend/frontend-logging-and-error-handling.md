@@ -2,6 +2,8 @@
 
 This document defines practical standards for frontend debugging, production logging, and user-facing error handling in `src/frontend`.
 
+This is the canonical policy document for frontend logging and frontend error handling. AGENTS files should point here rather than restating policy details.
+
 Use this guide alongside:
 
 - `src/frontend/AGENTS.md`
@@ -44,7 +46,7 @@ Recommended flow:
 
 ## 3. Logging policy by environment
 
-Use one logger abstraction for all frontend code. Direct `console.*` calls are not permitted anywhere in frontend source.
+Use one logger abstraction for all frontend code. Direct `console.*` calls are not permitted in feature/service/component code; confine browser console emission to the logger module. Frontend ESLint configuration enforces this boundary by disallowing `console` usage outside `src/frontend/src/logging/frontendLogger.ts`.
 
 ### Development logging (local + dev builder mode)
 
@@ -87,7 +89,7 @@ To keep logs both useful and safe, apply these baseline rules in all environment
 
 Keep redaction and normalisation in shared logger utilities (for example `src/frontend/src/logging/`) rather than duplicating checks in each feature.
 
-For test code, prefer exported logger helpers (`getFrontendLogBuffer()`, `clearFrontendLogBuffer()`) instead of directly reading internal global buffer keys.
+For test code, prefer `vi.spyOn(console, '<level>')` assertions over implementation-specific internals.
 
 ## 4. User feedback policy (Ant Design)
 
