@@ -28,6 +28,7 @@ Technical documentation for developers contributing to the AssessmentBot codebas
 
 - [**Backend Testing Structure**](./developer/backend/backend-testing.md) – Comprehensive guide to backend testing patterns and practices
 - [**Frontend Testing Guidelines**](./developer/frontend/frontend-testing.md) – Lightweight guide to frontend unit and E2E testing
+- [**Frontend Logging and Error Handling**](./developer/frontend/frontend-logging-and-error-handling.md) – Canonical standards for frontend diagnostics, error mapping, and user-facing feedback
 - [**Builder Script**](./developer/builder/builder-script.md) – How to use the build pipeline and how each stage works internally
 - [**Singleton Pattern**](./developer/backend/singletons.md) – How to work with singletons in the codebase
 - [**Data Shapes**](./developer/backend/DATA_SHAPES.md) – Documentation of data structures and serialisation formats

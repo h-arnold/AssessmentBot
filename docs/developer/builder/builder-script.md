@@ -219,3 +219,42 @@ const JsonDbAppNS = (function () {
   - `appsscript.json`
   - `JsonDbApp.inlined.js`
   - `UI/ReactApp.html`
+
+## 3. Builder mode and logging boundaries
+
+The builder already exposes two workflows:
+
+- `npm run build` (production-oriented)
+- `npm run build:dev` (fast developer feedback loop)
+
+Treat these modes as diagnostics controls, not separate runtime contracts.
+
+### What should differ by mode
+
+- **Developer mode (`build:dev`)**
+  - Higher diagnostic verbosity is acceptable.
+  - Frontend debug logs can be enabled for local troubleshooting.
+  - Builder step summaries should still stay deterministic and structured.
+
+- **Production mode (`build`)**
+  - Keep logs concise and operationally useful.
+  - Avoid noisy debug-level browser logs by default.
+  - Keep stack-trace-heavy client diagnostics disabled by default.
+  - Preserve the same user-facing error behaviour and copy as dev mode.
+
+### What must not differ by mode
+
+- API envelope contracts (`ok`, `requestId`, `error.code`, `error.message`, `retriable`).
+- Error-mapping semantics from transport failures to user-facing UI states.
+- Build failure signalling (non-zero exit code and stage-aware failure output).
+
+### Practical boundary guidance
+
+1. Keep builder logs focused on pipeline stages, artefact outputs, and deterministic checksums.
+2. Keep stage failures explicit and actionable, including stage identity and cause details.
+3. Keep frontend developer diagnostics in frontend logger abstractions, not mixed into builder pipeline messages.
+4. Keep user-facing message copy stable across build modes.
+5. Never log sensitive values (tokens, secrets, personal data) in either mode.
+6. Preserve stream discipline: routine build progress to stdout, failure diagnostics to stderr.
+
+For frontend implementation details, see `docs/developer/frontend/frontend-logging-and-error-handling.md`.

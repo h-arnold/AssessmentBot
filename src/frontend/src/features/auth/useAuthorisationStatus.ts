@@ -1,7 +1,23 @@
 import { useEffect, useState } from 'react';
 import { getAuthorisationStatus } from '../../services/authService';
+import { ApiTransportError } from '../../errors/apiTransportError';
+import { logFrontendError } from '../../logging/frontendLogger';
 
 export type AuthViewState = 'loading' | 'authorised' | 'unauthorised';
+
+const genericAuthErrorMessage = 'Unable to check authorisation status right now.';
+const rateLimitedAuthErrorMessage = 'The service is busy. Please try again shortly.';
+
+/**
+ * Maps auth feature errors to user-safe copy.
+ */
+function mapAuthorisationErrorToUserMessage(error: unknown): string {
+  if (error instanceof ApiTransportError && error.code === 'RATE_LIMITED') {
+    return rateLimitedAuthErrorMessage;
+  }
+
+  return genericAuthErrorMessage;
+}
 
 /**
  * Resolves authorisation state for the auth status feature.
@@ -29,7 +45,8 @@ export function useAuthorisationStatus() {
           return;
         }
 
-        setAuthError(error instanceof Error ? error.message : String(error));
+        logFrontendError('features/auth/useAuthorisationStatus', error);
+        setAuthError(mapAuthorisationErrorToUserMessage(error));
         setAuthViewState('unauthorised');
       });
 

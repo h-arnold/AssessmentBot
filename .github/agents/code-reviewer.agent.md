@@ -19,6 +19,7 @@ Before providing any feedback, you must:
    - Cross-component rules: [AGENTS.md](AGENTS.md)
 3. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
 4. **Analyse**: Use `read/problems` and `sonarqube_analyzeFile` to get an objective assessment before forming your own opinion.
+5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read `docs/developer/frontend/frontend-logging-and-error-handling.md` and `docs/developer/builder/builder-script.md` and treat them as canonical policy references.
 
 ## 1. Codebase Overview
 
