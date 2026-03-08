@@ -41,7 +41,7 @@ type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
  */
 function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) {
   return (
-    <span role="img" className="app-navigation-icon">
+    <span aria-hidden className="app-navigation-icon">
       <Icon aria-hidden />
     </span>
   );
@@ -84,6 +84,8 @@ export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
     children: [],
   })
 );
+
+const appNavigationKeys = new Set<AppNavigationKey>(navigationItems.map(({ key }) => key));
 
 export const defaultNavigationKey: AppNavigationKey = 'dashboard';
 
@@ -143,5 +145,5 @@ export function getBreadcrumbItems(
  * Guards menu click keys before they are applied to app state.
  */
 export function isAppNavigationKey(value: string): value is AppNavigationKey {
-  return navigationItems.some(({ key }) => key === value);
+  return appNavigationKeys.has(value as AppNavigationKey);
 }

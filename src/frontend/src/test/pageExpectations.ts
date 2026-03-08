@@ -27,4 +27,5 @@ export const pageExpectations = [
   summary: string;
 }>;
 
-export const dashboardPageSummaryText = pageExpectations[0].summary;
+export const dashboardPageSummaryText =
+  pageExpectations.find((page) => page.key === 'dashboard')!.summary;

@@ -172,7 +172,7 @@ test.describe('app shell', () => {
 
     await expect(expandButton).toBeVisible();
     await expect(expandButton).toHaveAttribute('aria-expanded', 'false');
-    await expect(expandButton.getByRole('img')).toBeVisible();
+    await expect(expandButton.getByLabel('menu-unfold')).toBeVisible();
 
     const collapsedBox = await navigation.boundingBox();
 

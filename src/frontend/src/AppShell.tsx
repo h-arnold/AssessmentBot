@@ -2,7 +2,7 @@ import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/
 import { Breadcrumb, Button, Layout, Menu, Space, Switch, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ReactNode } from 'react';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -55,6 +55,7 @@ export function AppShell({
   ) : (
     <MenuFoldOutlined />
   );
+  const navigationMenuItems = useMemo(() => toMenuItems(navigationItems), []);
 
   return (
     <Layout className="app-shell" style={{ backgroundColor: token.colorBgLayout }}>
@@ -116,7 +117,7 @@ export function AppShell({
             mode="inline"
             inlineCollapsed={isNavigationCollapsed}
             selectedKeys={[selectedNavigationKey]}
-            items={toMenuItems(navigationItems)}
+            items={navigationMenuItems}
             className="app-navigation-menu"
             theme={isDarkMode ? 'dark' : 'light'}
             onClick={({ key }) => {

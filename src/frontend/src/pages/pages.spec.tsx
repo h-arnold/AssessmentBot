@@ -2,7 +2,9 @@ import { render, screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { pageExpectations } from '../test/pageExpectations';
 
-const pageComponentLoaders: Record<string, () => Promise<ComponentType>> = {
+type AppNavigationKey = (typeof pageExpectations)[number]['key'];
+
+const pageComponentLoaders: Record<AppNavigationKey, () => Promise<ComponentType>> = {
   dashboard: async () => {
     const module = await import('./DashboardPage');
     return module.DashboardPage;
