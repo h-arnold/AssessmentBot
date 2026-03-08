@@ -48,7 +48,7 @@ describe('ClassroomManager', () => {
     globalThis.Student = Student;
 
     // Load the ClassroomApiClient class (merged implementation)
-    const ClassroomApiClientExport = require('../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js');
+    const ClassroomApiClientExport = require('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
     ClassroomManager = ClassroomApiClientExport.ClassroomApiClient || ClassroomApiClientExport;
   });
 

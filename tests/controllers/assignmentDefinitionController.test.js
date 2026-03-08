@@ -3,14 +3,14 @@ import AssignmentDefinitionController from '../../src/backend/y_controllers/Assi
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
-import ClassroomApiClient from '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
+import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
 import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
 import { createMockCollection } from '../helpers/mockFactories.js';
 
 // Mocks
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
-vi.mock('../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js');
+vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
 vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
   return {
     default: class {

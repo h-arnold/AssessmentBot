@@ -44,6 +44,9 @@ class DummyBaseRequestManager {
   }
 }
 
+DummyBaseRequestManager.HTTP_STATUS_OK = 200;
+DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
+
 globalThis.BaseRequestManager = DummyBaseRequestManager;
 
 // Import artifacts & ImageManager

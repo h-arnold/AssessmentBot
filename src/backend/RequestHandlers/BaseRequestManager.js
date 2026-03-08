@@ -8,6 +8,8 @@
 const DEFAULT_MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY_MS = 5000;
 const RETRY_DELAY_MULTIPLIER = 1.5;
+const HTTP_STATUS_OK = 200;
+const HTTP_STATUS_CREATED = 201;
 
 /**
  * Base request manager.
@@ -68,7 +70,10 @@ class BaseRequestManager {
         const responseCode = response.getResponseCode();
 
         // Success responses - return immediately
-        if (responseCode === 200 || responseCode === 201) {
+        if (
+          responseCode === BaseRequestManager.HTTP_STATUS_OK ||
+          responseCode === BaseRequestManager.HTTP_STATUS_CREATED
+        ) {
           return response;
         }
 
@@ -183,7 +188,10 @@ class BaseRequestManager {
       // Handle each response with retries if necessary
       responses.forEach((response, idx) => {
         const originalRequest = batch[idx];
-        if (response.getResponseCode() !== 200 && response.getResponseCode() !== 201) {
+        if (
+          response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_OK &&
+          response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_CREATED
+        ) {
           console.warn(
             `Batch ${index + 1}, Request ${
               idx + 1
@@ -204,6 +212,9 @@ class BaseRequestManager {
     return allResponses;
   }
 }
+
+BaseRequestManager.HTTP_STATUS_OK = HTTP_STATUS_OK;
+BaseRequestManager.HTTP_STATUS_CREATED = HTTP_STATUS_CREATED;
 
 // Export for Node/Vitest environment
 if (typeof module !== 'undefined' && module.exports) {

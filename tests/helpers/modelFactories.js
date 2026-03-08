@@ -241,6 +241,9 @@ class DummyBaseRequestManager {
   }
 }
 
+DummyBaseRequestManager.HTTP_STATUS_OK = 200;
+DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
+
 /**
  * Create a dummy CacheManager for testing
  * @returns {Object} Dummy CacheManager instance with in-memory store
