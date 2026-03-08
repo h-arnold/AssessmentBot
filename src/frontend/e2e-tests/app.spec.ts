@@ -1,4 +1,46 @@
 import { expect, test, type Page } from '@playwright/test';
+import {
+  defaultNavigationKey,
+  navigationItems,
+  type AppNavigationKey,
+} from '../src/navigation/appNavigation';
+
+const breadcrumbNavigationName = 'Breadcrumb';
+
+/**
+ * Looks up the shared label for a navigation key.
+ */
+function getNavigationLabel(key: AppNavigationKey) {
+  const navigationItem = navigationItems.find(
+    ({ key: navigationKey }) => navigationKey === key
+  );
+
+  if (navigationItem === undefined) {
+    throw new TypeError(`Unknown navigation key: ${key}`);
+  }
+
+  return navigationItem.label;
+}
+
+/**
+ * Returns the rendered breadcrumb locator.
+ */
+function getBreadcrumb(page: Page) {
+  return page.getByRole('navigation', { name: breadcrumbNavigationName });
+}
+
+/**
+ * Asserts the visible breadcrumb labels.
+ */
+async function expectBreadcrumbLabels(page: Page, labels: string[]) {
+  const breadcrumb = getBreadcrumb(page);
+
+  await expect(breadcrumb).toBeVisible();
+
+  for (const label of labels) {
+    await expect(breadcrumb).toContainText(label);
+  }
+}
 
 /**
  * Installs a deterministic `google.script.run` mock that keeps auth status pending.
@@ -24,6 +66,49 @@ async function mockPendingGoogleScriptRun(page: Page) {
 }
 
 test.describe('app shell', () => {
+  test('breadcrumb visible and readable on each page', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    await expectBreadcrumbLabels(page, [
+      getNavigationLabel(defaultNavigationKey),
+    ]);
+
+    for (const { key } of navigationItems) {
+      const label = getNavigationLabel(key);
+
+      await page.getByRole('menuitem', { name: label }).click();
+      await expectBreadcrumbLabels(page, [label]);
+    }
+  });
+
+  test('breadcrumb updates after menu navigation in real browser', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    for (const key of ['classes', 'assignments', 'settings'] as const) {
+      const label = getNavigationLabel(key);
+
+      await page.getByRole('menuitem', { name: label }).click();
+      await expectBreadcrumbLabels(page, [label]);
+    }
+  });
+
+  test('breadcrumb remains correct after collapse and expand and then navigation', async ({
+    page,
+  }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    await page.getByRole('button', { name: 'Collapse navigation' }).click();
+    await page.getByRole('button', { name: 'Expand navigation' }).click();
+
+    const settingsLabel = getNavigationLabel('settings');
+
+    await page.getByRole('menuitem', { name: settingsLabel }).click();
+    await expectBreadcrumbLabels(page, [settingsLabel]);
+  });
+
   test('user can navigate to Dashboard, Classes, Assignments, and Settings via menu clicks', async ({
     page,
   }) => {

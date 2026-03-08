@@ -1,8 +1,13 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App';
-import { navigationItems } from './navigation/appNavigation';
+import {
+  defaultNavigationKey,
+  navigationItems,
+  type AppNavigationKey,
+} from './navigation/appNavigation';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
+const applicationTitleText = 'AssessmentBot Frontend';
 const navigationLabels = navigationItems.map(({ label }) => label);
 
 type ApiResponseEnvelope =
@@ -91,6 +96,51 @@ async function renderPendingApp() {
   });
 }
 
+/**
+ * Looks up the shared label for a navigation key.
+ */
+function getNavigationLabel(key: AppNavigationKey) {
+  const navigationItem = navigationItems.find(
+    ({ key: navigationKey }) => navigationKey === key
+  );
+
+  if (navigationItem === undefined) {
+    throw new TypeError(`Unknown navigation key: ${key}`);
+  }
+
+  return navigationItem.label;
+}
+
+const breadcrumbNavigationName = 'Breadcrumb';
+
+/**
+ * Returns the rendered breadcrumb landmark.
+ */
+function getBreadcrumbElement() {
+  return screen.getByRole('navigation', { name: breadcrumbNavigationName });
+}
+
+/**
+ * Asserts breadcrumb labels while keeping expectations scoped to the breadcrumb itself.
+ */
+function expectBreadcrumbLabels(labels: string[]) {
+  const breadcrumb = getBreadcrumbElement();
+  const breadcrumbText = breadcrumb.textContent?.replaceAll(/\s+/g, ' ').trim() ?? '';
+
+  for (const label of labels) {
+    expect(breadcrumb).toHaveTextContent(label);
+  }
+
+  let previousPosition = -1;
+
+  for (const label of labels) {
+    const labelPosition = breadcrumbText.indexOf(label);
+
+    expect(labelPosition).toBeGreaterThan(previousPosition);
+    previousPosition = labelPosition;
+  }
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
@@ -113,7 +163,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
     });
 
@@ -139,7 +189,7 @@ describe('App', () => {
     for (const label of navigationLabels) {
       const menuItem = within(navigation).getByRole('menuitem', { name: label });
 
-      await act(async () => {
+      act(() => {
         fireEvent.click(menuItem);
       });
 
@@ -156,12 +206,78 @@ describe('App', () => {
     }
   });
 
+  it('breadcrumb renders the active page crumb on default load', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    expectBreadcrumbLabels([getNavigationLabel(defaultNavigationKey)]);
+  });
+
+  it('changing selected page updates breadcrumb text immediately', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const classesLabel = getNavigationLabel('classes');
+
+    act(() => {
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: classesLabel }));
+    });
+
+    expectBreadcrumbLabels([classesLabel]);
+  });
+
+  it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    for (const { key } of navigationItems) {
+      const label = getNavigationLabel(key);
+
+      act(() => {
+        fireEvent.click(within(navigation).getByRole('menuitem', { name: label }));
+      });
+
+      expectBreadcrumbLabels([label]);
+    }
+  });
+
+  it('no stale breadcrumb state after rapid page switching', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const rapidSelectionKeys: AppNavigationKey[] = ['classes', 'assignments', 'settings'];
+
+    act(() => {
+      for (const key of rapidSelectionKeys) {
+        const menuItem = within(navigation).getByRole('menuitem', {
+          name: getNavigationLabel(key),
+        });
+
+        fireEvent.click(menuItem);
+      }
+    });
+
+    const breadcrumb = getBreadcrumbElement();
+
+    expectBreadcrumbLabels([getNavigationLabel('settings')]);
+    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
+    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
+  });
+
   it('renders shell landmarks', async () => {
     installPendingApiHandlerMock();
 
     await renderPendingApp();
 
-    expect(screen.getByRole('banner')).toHaveTextContent('AssessmentBot Frontend');
+    expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
@@ -173,12 +289,12 @@ describe('App', () => {
 
     const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(toggleButton);
     });
     expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
     });
     expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
@@ -193,7 +309,7 @@ describe('App', () => {
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(toggleButton);
     });
     expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
