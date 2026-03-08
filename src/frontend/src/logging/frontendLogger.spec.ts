@@ -1,20 +1,24 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import {
   logFrontendError,
   logFrontendEvent,
 } from './frontendLogger';
 
 describe('frontendLogger', () => {
-  const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
-  const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let debugSpy: MockInstance;
+  let infoSpy: MockInstance;
+  let warnSpy: MockInstance;
+  let errorSpy: MockInstance;
+
+  beforeEach(() => {
+    debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
 
   afterEach(() => {
-    debugSpy.mockClear();
-    infoSpy.mockClear();
-    warnSpy.mockClear();
-    errorSpy.mockClear();
+    vi.restoreAllMocks();
   });
 
   it('redacts sensitive metadata fields before writing to the console endpoint', () => {

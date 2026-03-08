@@ -46,7 +46,7 @@ Recommended flow:
 
 ## 3. Logging policy by environment
 
-Use one logger abstraction for all frontend code. Direct `console.*` calls are not permitted in feature/service/component code; confine browser console emission to the logger module.
+Use one logger abstraction for all frontend code. Direct `console.*` calls are not permitted in feature/service/component code; confine browser console emission to the logger module. Frontend ESLint configuration enforces this boundary by disallowing `console` usage outside `src/frontend/src/logging/frontendLogger.ts`.
 
 ### Development logging (local + dev builder mode)
 
