@@ -100,9 +100,9 @@ Refactor `App.tsx` from simple header/content into a shell composed of `Layout`,
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added `AppShell` to keep `App.tsx` thin while introducing the section 1 header, collapsible left rail, and main content region. The existing auth status card remains mounted in the main content path.
+- _Any deviations from plan:_ None.
+- _Follow-up considerations affecting later stages:_ The temporary rail marker should be replaced by the typed menu model in section 2 without moving state orchestration back into `App.tsx`.
 
 ---
 
