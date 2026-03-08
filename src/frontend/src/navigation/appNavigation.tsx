@@ -36,12 +36,12 @@ type AppNavigationDefinition = {
 type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
 
 /**
- * Wraps Ant Design icons so menu items keep an icon role in collapsed mode without polluting
- * the menu item's accessible name.
+ * Wraps Ant Design icons so menu items keep a visual icon in collapsed mode while
+ * hiding decorative icon wrappers from assistive technology.
  */
 function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) {
   return (
-    <span role="img" className="app-navigation-icon">
+    <span aria-hidden className="app-navigation-icon">
       <Icon aria-hidden />
     </span>
   );
@@ -84,6 +84,8 @@ export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
     children: [],
   })
 );
+
+const appNavigationKeys = new Set<AppNavigationKey>(navigationItems.map(({ key }) => key));
 
 export const defaultNavigationKey: AppNavigationKey = 'dashboard';
 
@@ -143,5 +145,5 @@ export function getBreadcrumbItems(
  * Guards menu click keys before they are applied to app state.
  */
 export function isAppNavigationKey(value: string): value is AppNavigationKey {
-  return navigationItems.some(({ key }) => key === value);
+  return appNavigationKeys.has(value as AppNavigationKey);
 }

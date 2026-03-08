@@ -176,7 +176,7 @@ describe('App', () => {
     expect(menuItems).toHaveLength(navigationLabels.length);
 
     for (const item of menuItems) {
-      expect(within(item).getByRole('img')).toBeInTheDocument();
+      expect(item.querySelector('.app-navigation-icon')).not.toBeNull();
     }
   });
 
