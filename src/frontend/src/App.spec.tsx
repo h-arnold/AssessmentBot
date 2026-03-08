@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
@@ -59,9 +59,80 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
   };
 }
 
+/**
+ * Installs a `google.script.run.apiHandler` mock that leaves auth status pending.
+ */
+function installPendingApiHandlerMock() {
+  const runMock = {
+    withSuccessHandler() {
+      return runMock;
+    },
+    withFailureHandler() {
+      return runMock;
+    },
+    apiHandler() {},
+  };
+
+  (globalThis as { google?: unknown }).google = {
+    script: {
+      run: runMock,
+    },
+  };
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
+  });
+
+  it('renders shell landmarks', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    expect(screen.getByRole('banner')).toHaveTextContent('AssessmentBot Frontend');
+    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
+  });
+
+  it('toggles collapsed state via hamburger', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+
+    fireEvent.click(toggleButton);
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
+    expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
+  });
+
+  it('updates accessible control label and state when toggled', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(toggleButton);
+    expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('does not regress existing auth card mounting path', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    const mainRegion = screen.getByRole('main');
+
+    expect(within(mainRegion).getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
