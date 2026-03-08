@@ -1,3 +1,4 @@
+import type { AppNavigationKey } from './appNavigation';
 import { navigationItems, pageRenderers } from './appNavigation';
 
 describe('app navigation config', () => {
@@ -17,14 +18,16 @@ describe('app navigation config', () => {
   });
 
   it('selected key drives active page renderer mapping deterministically', () => {
-    expect(Object.keys(pageRenderers).sort()).toEqual([
+    expect(Object.keys(pageRenderers).toSorted()).toEqual([
       'assignments',
       'classes',
       'dashboard',
       'settings',
     ]);
 
-    for (const key of ['dashboard', 'classes', 'assignments', 'settings']) {
+    const keys: AppNavigationKey[] = ['dashboard', 'classes', 'assignments', 'settings'];
+
+    for (const key of keys) {
       expect(typeof pageRenderers[key]).toBe('function');
       expect(pageRenderers[key]()).toBeTruthy();
     }

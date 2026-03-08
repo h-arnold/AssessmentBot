@@ -146,9 +146,9 @@ Create a typed navigation configuration for Dashboard, Classes, Assignments, and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_ RED-phase tests are now in place for a public navigation contract, menu rendering, single-selection behaviour, and browser-level menu interactions. Section 2 implementation has not yet started.
-- _Any deviations from plan:_ The navigation config contract is being driven through a dedicated public module spec (`src/frontend/src/navigation/appNavigation.spec.tsx`) so later sections can share the same metadata without forcing private `AppShell` exports.
-- _Follow-up considerations affecting later stages:_ Section 2 implementation should introduce the shared navigation metadata in one place so sections 3 and 5 can reuse it for breadcrumbs and page rendering without duplicating labels.
+- _Agent notes:_ Added a shared public navigation module that defines the four typed entries, drives the `Menu` items, and maps selected keys to the active content region. `App.tsx` remains thin by passing the existing auth card through the dashboard content slot.
+- _Any deviations from plan:_ To avoid duplicating labels before section 5, non-dashboard pages currently render minimal placeholder sections from the shared navigation metadata rather than dedicated page components.
+- _Follow-up considerations affecting later stages:_ Sections 3 and 5 should reuse the shared navigation metadata when adding breadcrumbs and dedicated page components so the labels stay in one source of truth.
 
 ---
 

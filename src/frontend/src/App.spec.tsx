@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App';
+import { navigationItems } from './navigation/appNavigation';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
+const navigationLabels = navigationItems.map(({ label }) => label);
 
 type ApiResponseEnvelope =
   | {
@@ -80,53 +82,66 @@ function installPendingApiHandlerMock() {
   };
 }
 
+/**
+ * Renders the app while keeping the pending auth state stable for layout-only assertions.
+ */
+async function renderPendingApp() {
+  await act(async () => {
+    render(<App />);
+  });
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
   });
 
-  it('menu renders all four entries in expanded mode with expected labels', () => {
+  it('menu renders all four entries in expanded mode with expected labels', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
 
-    for (const label of ['Dashboard', 'Classes', 'Assignments', 'Settings']) {
+    for (const label of navigationLabels) {
       expect(within(navigation).getByRole('menuitem', { name: label })).toBeInTheDocument();
     }
   });
 
-  it('menu renders icon-only affordance in collapsed mode', () => {
+  it('menu renders icon-only affordance in collapsed mode', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+    });
 
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
     const menuItems = within(navigation).getAllByRole('menuitem');
 
-    expect(menuItems).toHaveLength(4);
+    expect(menuItems).toHaveLength(navigationLabels.length);
 
     for (const item of menuItems) {
       expect(within(item).getByRole('img')).toBeInTheDocument();
     }
   });
 
-  it('clicking each menu item updates selected key in component state', () => {
+  it('clicking each menu item updates selected key in component state', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
 
     let previousLabel: string | undefined;
 
-    for (const label of ['Dashboard', 'Classes', 'Assignments', 'Settings']) {
+    for (const label of navigationLabels) {
       const menuItem = within(navigation).getByRole('menuitem', { name: label });
 
-      fireEvent.click(menuItem);
+      await act(async () => {
+        fireEvent.click(menuItem);
+      });
 
       expect(menuItem).toHaveClass('ant-menu-item-selected');
 
@@ -141,50 +156,56 @@ describe('App', () => {
     }
   });
 
-  it('renders shell landmarks', () => {
+  it('renders shell landmarks', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     expect(screen.getByRole('banner')).toHaveTextContent('AssessmentBot Frontend');
     expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
-  it('toggles collapsed state via hamburger', () => {
+  it('toggles collapsed state via hamburger', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
 
-    fireEvent.click(toggleButton);
+    await act(async () => {
+      fireEvent.click(toggleButton);
+    });
     expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
+    });
     expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
   });
 
-  it('updates accessible control label and state when toggled', () => {
+  it('updates accessible control label and state when toggled', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
 
-    fireEvent.click(toggleButton);
+    await act(async () => {
+      fireEvent.click(toggleButton);
+    });
     expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
       'aria-expanded',
       'false'
     );
   });
 
-  it('does not regress existing auth card mounting path', () => {
+  it('does not regress existing auth card mounting path', async () => {
     installPendingApiHandlerMock();
 
-    render(<App />);
+    await renderPendingApp();
 
     const mainRegion = screen.getByRole('main');
 

@@ -1,15 +1,38 @@
 import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import { Button, Layout, Space, Typography } from 'antd';
-import { type PropsWithChildren, useId, useState } from 'react';
+import { Button, Layout, Menu, Space } from 'antd';
+import type { MenuProps } from 'antd';
+import type { ReactNode } from 'react';
+import { useId, useState } from 'react';
+import {
+  defaultNavigationKey,
+  isAppNavigationKey,
+  navigationItems,
+  pageRenderers,
+  type AppNavigationItem,
+  type AppNavigationKey,
+} from './navigation/appNavigation';
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
+
+/**
+ * Converts typed navigation metadata into Ant Design menu items.
+ */
+function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
+  return items.map(({ children, icon, key, label }) => ({
+    key,
+    icon,
+    label,
+    children: children.length > 0 ? toMenuItems(children) : undefined,
+  }));
+}
 
 /**
  * Renders the shared application shell with a collapsible navigation rail.
  */
-export function AppShell({ children }: PropsWithChildren) {
+export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode }) {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
+  const [selectedNavigationKey, setSelectedNavigationKey] =
+    useState<AppNavigationKey>(defaultNavigationKey);
   const navigationId = useId();
   const navigationButtonLabel = isNavigationCollapsed
     ? 'Expand navigation'
@@ -55,14 +78,28 @@ export function AppShell({ children }: PropsWithChildren) {
           aria-label="Primary navigation"
           className="app-sider"
         >
-          <div className="app-navigation">
-            <div className="app-navigation-marker" aria-hidden="true">
-              <BookOutlined />
-            </div>
-            {isNavigationCollapsed ? null : <Text strong>Navigation</Text>}
-          </div>
+          <Menu
+            mode="inline"
+            inlineCollapsed={isNavigationCollapsed}
+            selectedKeys={[selectedNavigationKey]}
+            items={toMenuItems(navigationItems)}
+            className="app-navigation-menu"
+            onClick={({ key }) => {
+              if (!isAppNavigationKey(key)) {
+                throw new TypeError(
+                  `Unexpected navigation key: ${String(key)}. Valid keys are: '${navigationItems
+                    .map(({ key: navigationKey }) => navigationKey)
+                    .join("', '")}'`
+                );
+              }
+
+              setSelectedNavigationKey(key);
+            }}
+          />
         </Sider>
-        <Content className="app-content">{children}</Content>
+        <Content className="app-content">
+          {pageRenderers[selectedNavigationKey](dashboardContent)}
+        </Content>
       </Layout>
     </Layout>
   );
