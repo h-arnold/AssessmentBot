@@ -74,3 +74,9 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Use **Zod** as the validation framework for all new and updated frontend validation logic.
 - Define the Zod schema first, then derive TypeScript types from that schema using `z.infer<typeof ...>` to avoid duplicated type declarations.
 - Store validation schemas in a dedicated adjacent schema file (for example `*.zod.ts` or `zodSchemas.ts`) near the code consuming them.
+
+## 9. Shell Navigation and Motion Standards
+
+For shell navigation and motion conventions (menu metadata, decorative icon semantics, and reduced-motion defaults), use:
+
+- `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
