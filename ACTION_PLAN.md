@@ -1,368 +1,415 @@
-# Frontend Skeleton Implementation Action Plan (TDD-first)
+# ABClassPartials Delivery Plan (TDD-First)
 
 ## Scope and assumptions
 
+### Scope
+
+Deliver a lightweight, server-synchronised class partial index that supports fast class-list retrieval while preserving existing full `ABClass` persistence behaviour.
+
+In scope:
+
+- backend model updates (`ABClass` and `ABClassPartials` shape responsibilities)
+- controller-managed partial sync on class write paths
+- API allowlist + dispatcher support for `getABClassPartials`
+- frontend service wrapper for `callApi('getABClassPartials')`
+- backend/frontend automated tests aligned with repository testing policy
+
+Out of scope for this phase:
+
+- frontend CRUD UI for class partials
+- admin rebuild tooling for the partial index
+- non-essential refactors outside touched modules
+- broad migration of legacy `src/AdminSheet`-targeted tests (tracked separately in another branch)
+
 ### Assumptions
 
-1. This plan covers the **frontend shell skeleton only** (layout, navigation, breadcrumb, theme toggle, and blank pages).
-2. No backend feature logic is introduced for the new pages at this stage.
-3. `App.tsx` remains a thin composition shell, aligned with frontend architecture guidance.
-
-### Applicable standards and constraints
-
-- Keep implementation in active areas only (`src/frontend/**`).
-- Keep changes minimal and localised.
-- Use British English in user-facing copy, comments, and docs.
-- Follow frontend testing and lint command hierarchy from project docs.
-- Keep tests aligned with the existing frontend stack:
-  - Vitest + Testing Library for unit/component behaviour.
-  - Playwright for browser-level user journeys and runtime integration.
+1. A class partial includes all class-level fields needed for list rendering, excluding `students` and `assignments`.
+2. Class partial persistence is **one document per class** in `abclass_partials`, keyed by `classId`.
+3. `active` is an explicit persisted boolean property on `ABClass` and must be returned via partial payloads.
 
 ---
 
-## Ant Design component map (with documentation links)
+## Global constraints and quality gates
 
-- **Layout / Sider / Header / Content**: app shell and collapsible left panel.  
-  https://ant.design/components/layout
-- **Menu**: icon-only collapsed mode, icon+label expanded mode, nested items support for future tree navigation.  
-  https://ant.design/components/menu
-- **Breadcrumb**: top breadcrumb trail reflecting current page context.  
-  https://ant.design/components/breadcrumb
-- **Switch**: top-right light/dark mode toggle.  
-  https://ant.design/components/switch
-- **ConfigProvider + theme algorithms** (`defaultAlgorithm`, `darkAlgorithm`): app-wide theme switching.  
-  https://ant.design/components/config-provider
-- **Typography**: blank page headings and placeholder content.  
-  https://ant.design/components/typography
-- **Button + Ant Design icons**: hamburger control and navigation icons.  
-  https://ant.design/components/button  
-  https://ant.design/components/icon
+### Engineering constraints
 
----
+- Keep API entry points thin; delegate behaviour to controllers/services.
+- Fail fast on invalid inputs and persistence failures.
+- Do not hide internal wiring issues behind defensive guards.
+- Keep changes minimal, localised, and consistent with existing backend/frontend patterns.
+- Use British English in all comments/docs/user-facing text.
 
-## TDD process to apply in every section
+### TDD workflow (mandatory per section)
 
-For each section below, use the same cycle:
+For each section below:
 
-1. **Red**: write failing tests first (Vitest and/or Playwright).
-2. **Green**: implement the smallest change to make tests pass.
-3. **Refactor**: tidy without altering behaviour, keeping tests green.
-4. Re-run section-level tests and then run full frontend checks.
+1. **Red**: write failing tests for the section’s acceptance criteria.
+2. **Green**: implement the smallest change needed to pass.
+3. **Refactor**: tidy implementation with all tests still green.
+4. Run section-level verification commands.
 
-### Standard validation commands
+### Validation commands hierarchy
 
-- `npm run frontend:test -- <target-spec>` for focused Vitest checks.  
-  `<target-spec>` must be relative to `src/frontend/` (no leading `src/frontend/`).  
-  Example: `npm run frontend:test -- src/App.spec.tsx`
-- `npm run frontend:test:e2e -- <target-e2e-spec>` for focused Playwright checks.  
-  `<target-e2e-spec>` must be relative to `src/frontend/` (no leading `src/frontend/`).  
-  Example: `npm run frontend:test:e2e -- e2e-tests/auth-status.spec.ts`
-- `npm run frontend:test` for full frontend unit/component suite (runs via `npm --prefix src/frontend`).
-- `npm run frontend:test:e2e` for full frontend e2e suite (runs via `npm --prefix src/frontend`).
-- `npm run frontend:lint` for lint validation.
+- Backend lint: `npm run lint`
+- Frontend lint: `npm run frontend:lint`
+- Builder lint (only if touched): `npm run builder:lint`
+- Backend tests: `npm test -- <target>` (or broader `npm test`)
+- Frontend unit tests: `npm run frontend:test -- <target>`
+- Frontend e2e (only if visible UX changes): `npm run frontend:test:e2e -- <target>`
 
 ---
 
-## 1) Create Ant Design app shell with collapsible Sider and top header
+## Section 1 — Define and lock class-partial data contract
 
-### Task descriptor
+### Objective
 
-Refactor `App.tsx` from simple header/content into a shell composed of `Layout`, `Sider`, `Header`, and `Content`. Add a top-left hamburger toggle for collapsing and expanding the side panel.
+Define a single authoritative partial shape for class listing and assert it in tests before persistence and API wiring.
 
 ### Constraints
 
-- Keep `App.tsx` thin and compositional.
-- Do not add service orchestration or backend calls to `App.tsx`.
-- Keep implementation simple and deterministic.
+- Partial payload must exclude heavy nested arrays (`students`, `assignments`).
+- Partial payload must include `active`.
+- Keep serialisation deterministic.
 
 ### Acceptance criteria
 
-- App renders with top header, left collapsible navigation rail, and content region.
-- Hamburger button toggles collapsed state reliably.
-- No direct service modules are introduced into `App.tsx`.
+- `ABClass` serialisation includes `active` in full JSON.
+- `ABClass` serialisation/hydration symmetry is corrected for `classOwner` so owner data is not dropped on round-trip.
+- Partial generation helper produces stable shape containing expected class-level fields only.
+- Partial payload never includes `students`/`assignments`.
 
-### Required TDD tests
+### Required test cases (Red first)
 
-#### Vitest (component/invisible state + structure)
+Backend model tests:
 
-- `renders shell landmarks`: header, sidenav, and content regions are present.
-- `toggles collapsed state via hamburger`: first click collapses, second click re-expands.
-- `updates accessible control label/state when toggled`: button label/aria state reflects collapse status.
-- `does not regress existing auth card mounting path`: dashboard default still renders expected placeholder/legacy content if retained.
+1. `ABClass.toJSON()` includes `active` when explicitly set.
+2. `ABClass.fromJSON()` restores `active` correctly.
+3. `ABClass.toJSON()` includes `classOwner` and `ABClass.fromJSON()` restores it.
+4. Partial generation returns expected keys (`classId`, `className`, `cohort`, `courseLength`, `yearGroup`, `classOwner`, `teachers`, `active`).
+5. Partial generation omits `students` and `assignments`.
+6. Partial generation is stable when optional class fields are null.
 
-#### Playwright (user-visible browser behaviour)
+### Section checks
 
-- `shows shell on initial load`: header + left rail visible in browser.
-- `hamburger collapses and expands nav rail visually`: width/state changes and icons remain visible.
-- `keyboard activation of hamburger works`: Enter/Space triggers toggle in browser.
+- `npm test -- tests/models/<abclass-related-spec>.js`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Added `AppShell` to keep `App.tsx` thin while introducing the section 1 header, collapsible left rail, and main content region. The existing auth status card remains mounted in the main content path.
-- _Any deviations from plan:_ None.
-- _Follow-up considerations affecting later stages:_ The temporary rail marker should be replaced by the typed menu model in section 2 without moving state orchestration back into `App.tsx`.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## 2) Add navigation model and left panel menu for four pages
+## Section 2 — Persist class partials as document-per-class registry
 
-### Task descriptor
+### Objective
 
-Create a typed navigation configuration for Dashboard, Classes, Assignments, and Settings. Render it via Ant Design `Menu` in the `Sider` and wire page selection state.
+Implement controller-owned upsert logic that writes one class partial document per `classId` in `abclass_partials`.
 
 ### Constraints
 
-- Use a data-driven items model so nested `children` can be added later.
-- Avoid duplicated labels across menu/page/breadcrumb data sources.
-- No speculative extra pages or navigation behaviour.
+- Upsert must be idempotent by `classId`.
+- Persistence must be controller-driven (no client-side sync responsibility).
+- Keep `DbManager` usage aligned with existing collection patterns.
+
+### DRY persistence approach (single write-through path)
+
+To keep persistence in one place, introduce a single controller-owned write-through method (for example `_persistClassAndPartial(abClass, options)`) that always:
+
+1. writes the full class document
+2. upserts the class partial document by `classId`
+3. saves both collections
+
+All class-mutating flows (`saveClass`, roster refresh persistence helpers, and any future class metadata update methods) should call this method rather than writing collections directly.
+
 
 ### Acceptance criteria
 
-- Collapsed nav displays icons only.
-- Expanded nav displays icon + label.
-- Selecting an item updates highlighted menu state and active page state.
-- Structure is tree-ready for future nested entries.
+- Saving a class uses a single write-through persistence method for both full and partial records.
+- Saving a class upserts the corresponding partial document in `abclass_partials`.
+- Existing partial document is replaced for the same `classId`.
+- New partial document is inserted when no existing document matches.
+- Persistence errors surface loudly.
 
-### Required TDD tests
+### Required test cases (Red first)
 
-#### Vitest
+Backend controller tests:
 
-- `nav config contains exact four page entries with stable keys`.
-- `menu renders all four entries in expanded mode with expected labels`.
-- `menu renders icon-only affordance in collapsed mode`.
-- `clicking each menu item updates selected key in component state`.
-- `selected key drives active page renderer mapping deterministically`.
+1. `saveClass()` inserts partial doc when missing.
+2. `saveClass()` replaces partial doc when existing `classId` is found.
+3. Upsert filter is `classId` (not index/order dependent).
+4. Partial registry write failure throws and is logged per contract.
+5. Full class save still persists successfully when partial upsert succeeds.
+6. `saveClass()` and other class write paths call the same internal write-through helper (no duplicated persistence logic).
 
-#### Playwright
+### Section checks
 
-- `user can navigate to Dashboard/Classes/Assignments/Settings via menu clicks`.
-- `active menu item styling changes when selecting a new page`.
-- `collapsed mode still allows navigation by icon click`.
-- `menu remains functional after repeated collapse/expand cycles`.
+- `npm test -- tests/controllers/<abclass-controller-partials-spec>.js`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Added a shared public navigation module that defines the four typed entries, drives the `Menu` items, and maps selected keys to the active content region. `App.tsx` remains thin by passing the existing auth card through the dashboard content slot.
-- _Any deviations from plan:_ To avoid duplicating labels before section 5, non-dashboard pages currently render minimal placeholder sections from the shared navigation metadata rather than dedicated page components.
-- _Follow-up considerations affecting later stages:_ Sections 3 and 5 should reuse the shared navigation metadata when adding breadcrumbs and dedicated page components so the labels stay in one source of truth.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## 3) Implement breadcrumb trail in the top bar
+## Section 3 — Synchronise all relevant class write paths
 
-### Task descriptor
+### Objective
 
-Add `Breadcrumb` in the top bar (or directly beneath it), driven by current page metadata shared with the navigation config.
+Guarantee partial-index consistency by invoking partial upsert from every class mutation path that persists class data.
 
 ### Constraints
 
-- Keep breadcrumb generation data-driven.
-- Avoid duplicated hard-coded strings.
-- Keep current implementation minimal (base level + active page) but extensible.
+- Cover both explicit class saves and roster/metadata persistence helpers.
+- Avoid duplicate sync logic by centralising helper calls.
+- Reuse the same write-through helper introduced in Section 2.
+- No silent skip paths.
 
 ### Acceptance criteria
 
-- Breadcrumb reflects the active page.
-- Breadcrumb updates when page selection changes.
-- No routing library dependency is required for this stage.
+- All class persistence paths that alter class-level list data keep `abclass_partials` in sync.
+- No stale partials after roster refresh persistence.
+- Behaviour remains deterministic under repeated writes.
 
-### Required TDD tests
+### Required test cases (Red first)
 
-#### Vitest
+Backend controller tests:
 
-- `breadcrumb renders base crumb and active page crumb on default load`.
-- `changing selected page updates breadcrumb text immediately`.
-- `breadcrumb labels are sourced from shared metadata (single source of truth)`.
-- `no stale breadcrumb state after rapid page switching`.
+1. Roster persistence helper triggers partial upsert.
+2. Repeated saves do not create duplicate partial docs for same `classId`.
+3. Partial reflects changed class metadata after refresh/save cycle.
+4. If roster persistence fails, method throws and does not report success.
 
-#### Playwright
+### Section checks
 
-- `breadcrumb visible and readable on each page`.
-- `breadcrumb updates after menu navigation in real browser`.
-- `breadcrumb remains correct after collapse/expand and then navigation`.
+- `npm test -- tests/controllers/<abclass-roster-sync-spec>.js`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Added a minimal breadcrumb trail in the content area that is generated from shared navigation metadata and updates with the selected page. The breadcrumb currently shows a base crumb plus the active page label.
-- _Any deviations from plan:_ The base breadcrumb label is shared through the existing navigation module so the header title and breadcrumb root remain aligned without introducing a second label source.
-- _Follow-up considerations affecting later stages:_ Section 5 page components should keep using the shared navigation labels so breadcrumb text, menu labels, and page headings do not drift.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## 4) Add top-right light/dark mode toggle with ConfigProvider algorithm switching
+## Section 4 — Implement read path for all class partials
 
-### Task descriptor
+### Objective
 
-Introduce theme state and switch `ConfigProvider` algorithm between `theme.defaultAlgorithm` and `theme.darkAlgorithm`. Expose a top-right `Switch` to toggle modes.
+Expose a controller read method that returns all partial documents for API use.
 
 ### Constraints
 
-- Preserve existing theme token customisations unless explicitly changed.
-- Avoid hard-coded CSS backgrounds that conflict with token-driven themes.
-- Include explicit CSS cleanup tasks needed for theme compatibility (for example replacing hard-coded background/foreground colours with token-aligned styles).
-- Keep state management simple and transparent.
+- Read path should return serialisable plain objects suitable for transport.
+- Empty registry returns an empty array (not null/undefined).
+- Preserve stable ordering only if explicitly required by existing consumers; otherwise keep minimal behaviour.
 
 ### Acceptance criteria
 
-- Toggle visibly switches between light and dark themes.
-- Shell and page surfaces respond consistently to theme changes.
-- Theme-relevant CSS has no conflicting hard-coded colours that break light/dark rendering.
-- Toggle is accessible and clearly positioned in top-right header area.
+- `getAllClassPartials()` reads from `abclass_partials` and returns all docs.
+- Empty collection returns `[]`.
+- Read errors propagate clearly.
 
-### Required TDD tests
+### Required test cases (Red first)
 
-#### Vitest
+Backend controller tests:
 
-- `toggle control renders with accessible label`.
-- `toggle callback flips theme state between light and dark`.
-- `ConfigProvider receives expected algorithm when state changes`.
-- `theme toggle state persists during in-app page navigation` (single-session state).
-- `theme-compatible styles are applied`: key shell containers do not rely on hard-coded colours that conflict with algorithm switching.
+1. Returns all stored partial docs.
+2. Returns empty array when registry has no docs.
+3. Throws on collection read failure.
 
-#### Playwright
+### Section checks
 
-- `user can toggle to dark mode and observe visual change`.
-- `user can toggle back to light mode and observe visual reversion`.
-- `theme toggle works after navigating across all four pages`.
-- `theme toggle remains operable after collapsing/expanding nav`.
+- `npm test -- tests/controllers/<abclass-partials-read-spec>.js`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Added a top-right dark mode toggle owned by `AppThemeShell`, with `ConfigProvider` switching between the default and dark algorithms while keeping `App.tsx` thin. Section 4 coverage now exercises the accessible toggle, entrypoint theme wiring, in-app theme persistence, and token-compatible shell styling.
-- _Any deviations from plan:_ The unit coverage still probes the entrypoint theme wiring through `main.tsx`, which keeps the implementation aligned with the thin composition boundary for `App.tsx`.
-- _Follow-up considerations affecting later stages:_ Later page work should continue using Ant Design tokens and shared shell styling so new surfaces inherit the active light/dark theme without reintroducing fixed colours.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## 5) Create blank page components for Dashboard, Classes, Assignments, and Settings
+## Section 5 — API allowlist and dispatcher wiring
 
-### Task descriptor
+### Objective
 
-Create page components under `src/frontend/src/pages/`:
-
-- `DashboardPage.tsx`
-- `ClassesPage.tsx`
-- `AssignmentsPage.tsx`
-- `SettingsPage.tsx`
-
-Each page contains a heading and concise placeholder copy aligned to intended purpose.
+Expose `getABClassPartials` via `apiHandler` using allowlist and thin dispatch rules.
 
 ### Constraints
 
-- Keep placeholders intentionally minimal.
-- Do not implement CRUD/data workflows yet.
-- Keep component structure clean and composable.
+- Add method to `API_METHODS` and `API_ALLOWLIST`.
+- Keep `apiHandler` envelope contract unchanged.
+- Dispatcher branch should delegate only; no business logic in handler.
 
 ### Acceptance criteria
 
-- Each page renders distinct heading and placeholder text.
-- Menu selection swaps page content correctly.
-- Skeleton clearly reflects the four requested functional areas.
+- `API_METHODS` and `API_ALLOWLIST` contain `getABClassPartials`.
+- `apiHandler` accepts `method: 'getABClassPartials'` and returns success envelope with partial data.
+- Unknown methods remain rejected.
+- Controller/API errors are mapped by existing transport error rules.
 
-### Required TDD tests
+### Required test cases (Red first)
 
-#### Vitest
+API-layer tests:
 
-- `each page component renders expected heading and summary text`.
-- `page switch map resolves keys to correct component`.
-- `invalid key handling fails fast in development`: invalid page keys throw a clear error and are recorded in section notes if encountered.
-- `Dashboard default selection renders expected default page content`.
+1. `API_METHODS` exposes `getABClassPartials`.
+2. `API_ALLOWLIST` maps `getABClassPartials` correctly.
+3. Allowlisted method dispatches to `getABClassPartials` handler.
+4. Success envelope contains returned data.
+5. Unknown method still returns `UNKNOWN_METHOD`.
+6. Controller-thrown error maps to expected failure envelope.
 
-#### Playwright
+### Section checks
 
-- `navigating to each menu item shows matching page heading in browser`.
-- `placeholder text for each page is visible and unique`.
-- `rapid navigation does not leave stale page content onscreen`.
+- `npm test -- tests/requestHandlers/<api-handler-spec>.js`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Added dedicated page components under `src/frontend/src/pages/` for Dashboard, Classes, Assignments, and Settings, with shared placeholder copy and shell layout preserved through the existing navigation map. Dashboard remains the explicit default page and still hosts the auth status card content slot.
-- _Any deviations from plan:_ A small shared `PageSection` scaffold and `pageContent` constant were introduced to keep the new page components consistent without duplicating shell-facing page markup and copy across four files.
-- _Follow-up considerations affecting later stages:_ Future page work should evolve these components in place so menu labels, placeholder copy, and page headings stay aligned with the shared page-content source.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## 6) Validate with focused frontend tests and lint checks
+## Section 6 — Frontend service integration
 
-### Task descriptor
+### Objective
 
-Complete full verification using section-level tests plus full frontend lint and test runs.
+Provide a typed frontend service wrapper for retrieving class partials through `callApi`.
 
 ### Constraints
 
-- Prefer user-visible behaviour assertions over implementation detail checks.
-- Use documented frontend commands.
-- Keep tests deterministic and scoped to this change.
+- Frontend must call transport through `callApi`, not direct `google.script.run` usage.
+- Keep service thin and deterministic.
+- No UI behavioural changes unless explicitly required.
 
 ### Acceptance criteria
 
-- Vitest coverage remains compliant with frontend threshold policy.
-- New and existing Playwright smoke journeys pass for shell navigation/theme flows.
-- Frontend lint passes.
+- Service calls `callApi('getABClassPartials')` with expected method name.
+- Service returns typed payload.
+- API errors propagate to caller without suppression.
 
-### Required TDD tests and verification gates
+### Required test cases (Red first)
 
-#### Vitest gates
+Frontend unit tests:
 
-- Run focused section specs while implementing each section.
-- Run full suite: `npm run frontend:test`.
-- Run coverage gate: `npm run frontend:test:coverage` (target ≥85% lines/functions/statements/branches).
+1. Service delegates to `callApi` with `getABClassPartials`.
+2. Service resolves with backend payload.
+3. Service rejects when `callApi` rejects.
 
-#### Playwright gates
+### Section checks
 
-- Run focused e2e specs while implementing each section.
-- Run full suite: `npm run frontend:test:e2e`.
-- Optionally run `--headed --debug` for manual visual validation before final sign-off.
+- `npm run frontend:test -- src/services/<class-partials-service-spec>.ts`
 
-#### Final quality gates
+### Implementation notes / deviations / follow-up
 
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+
+---
+
+## Deferred work (separate branch)
+
+- Migrate/add broader backend tests away from `src/AdminSheet/**` references to `src/backend/**` for full coverage parity.
+- This is intentionally excluded from this branch to keep ABClassPartials delivery scope focused.
+
+---
+
+## Section 7 — Regression and contract hardening
+
+### Objective
+
+Run targeted regressions across touched backend and frontend areas and ensure no contract drift.
+
+### Constraints
+
+- Prefer focused test runs first, then broaden where needed.
+- Keep assertions at behaviour level (contract/inputs/outputs).
+
+### Acceptance criteria
+
+- Touched model/controller/API/frontend tests pass.
+- No regressions in existing ABClass assignment hydration flows.
+- Lint passes for touched runtimes.
+
+### Required test cases/checks
+
+1. Run touched backend model/controller/API suites.
+2. Run touched frontend service suite.
+3. Run backend lint + frontend lint.
+4. If any visible frontend change occurred, run targeted e2e.
+
+### Section checks
+
+- `npm run lint`
 - `npm run frontend:lint`
-- Re-run any flaky/failing tests once with trace output for diagnosis.
+- `npm test -- tests/models/`
+- `npm test -- tests/controllers/`
+- `npm test -- tests/requestHandlers/`
+- `npm run frontend:test -- src/services/`
 
-**Commit reminder:** After completing this section and local validation, create a focused commit before moving to the next section.
+### Implementation notes / deviations / follow-up
 
-### Notes (implementation/deviations)
-
-- _Agent notes:_ Full frontend validation completed successfully: `npm run frontend:test`, `npm run frontend:test:coverage`, `npm run frontend:test:e2e`, and `npm run frontend:lint` all passed. Frontend coverage finished above the required 85% threshold across statements, branches, functions, and lines.
-- _Any deviations from plan:_ A small frontend tooling fix was required so the documented lint command could run in a fresh checkout: `eslint-plugin-jsdoc` is now declared in `src/frontend/package.json` because the frontend ESLint config imports it directly. The full e2e pass also required updating two stale auth-status browser assertions to the current generic unauthorised fallback copy already covered by the unit tests.
-- _Follow-up considerations affecting later stages:_ If shared frontend/backend lint rules continue to be sourced from root config files, fresh checkouts still need both root and frontend dependencies installed before running the frontend lint command locally.
-
----
-
-## Stage exit criteria (must all pass)
-
-- All section-level Vitest and Playwright tests introduced in this stage are implemented and passing.
-- Full frontend unit/component suite passes: `npm run frontend:test`.
-- Full frontend e2e suite passes: `npm run frontend:test:e2e`.
-- Coverage gate passes at or above 85% for lines/functions/statements/branches: `npm run frontend:test:coverage`.
-- Frontend lint passes: `npm run frontend:lint`.
-- Any deviations from plan are recorded in the section notes with rationale and follow-up actions.
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
 
 ---
 
-## Suggested delivery order
+## Section 8 — Final documentation and rollout readiness
 
-1. Shell layout refactor.
-2. Navigation model and menu wiring.
-3. Breadcrumb integration.
-4. Theme toggle and algorithm switching (including CSS cleanup for theme compatibility).
-5. Blank pages and content switching.
-6. Tests and lint validation.
+### Objective
 
-**Commit reminder:** After completing all sections and final verification, create a summary commit (or tidy incremental commits) and prepare PR notes.
+Ensure developer-facing documentation accurately reflects the implemented persistence and API behaviour.
 
-### Notes (implementation/deviations)
+### Constraints
 
-- _Agent notes:_ Sections 1-6 are complete and the stage exit criteria have been satisfied with passing frontend unit tests, coverage, e2e coverage, and lint validation.
-- _Any deviations from plan:_ None beyond the section-level notes above.
-- _Follow-up considerations affecting later stages:_ Future frontend shell work should continue extending the shared navigation and page-content sources rather than introducing duplicate labels, headings, or placeholder copy.
+- Update only relevant docs.
+- Keep docs concise and aligned with source-of-truth backend/frontend guidance.
+
+### Acceptance criteria
+
+- Data-shape and API docs reflect class-partial contract and `active` behaviour.
+- Any implementation deviations are captured in this file’s section notes.
+- Rollout caveats and maintenance hooks are documented if needed.
+
+### Required checks
+
+1. Verify docs reference the document-per-class registry strategy.
+2. Verify docs reference `getABClassPartials` transport pattern.
+3. Confirm notes/deviations fields are completed during implementation.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:**
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+
+---
+
+## Stage exit criteria (all must pass)
+
+- Class partial contract implemented and tested.
+- Partial registry persisted as one doc per `classId` and synchronised on class write paths.
+- API allowlist + dispatcher path for `getABClassPartials` implemented and tested.
+- Frontend service wrapper implemented and tested.
+- Relevant lint and tests pass.
+- Section notes populated with decisions/deviations to support future work.
+
+---
+
+## Suggested implementation order
+
+1. Section 1 (data contract)
+2. Section 2 (persistence upsert)
+3. Section 3 (sync all write paths)
+4. Section 4 (read path)
+5. Section 5 (API transport)
+6. Section 6 (frontend service)
+7. Section 7 (regression gates)
+8. Section 8 (docs and rollout notes)
