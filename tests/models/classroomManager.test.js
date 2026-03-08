@@ -43,7 +43,7 @@ describe('ClassroomManager', () => {
     };
 
     // Load the Student class first
-    const StudentExport = require('../../src/AdminSheet/Models/Student.js');
+    const StudentExport = require('../../src/backend/Models/Student.js');
     Student = StudentExport.Student || StudentExport;
     globalThis.Student = Student;
 

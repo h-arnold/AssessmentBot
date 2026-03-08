@@ -4,14 +4,14 @@ const { randomUUID } = require('node:crypto');
 
 // Ensure canonical BaseSingleton is loaded first so tests use the real implementation
 // (prevents singleton fallbacks in individual files from being used).
-require('../src/AdminSheet/00_BaseSingleton.js');
+require('../src/backend/00_BaseSingleton.js');
 
 // Load Assignment classes so they're available globally for polymorphic factory pattern
 const g = globalThis;
-g.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
-g.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
-g.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
-const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
+g.Assignment = require('../src/backend/AssignmentProcessor/Assignment.js');
+g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
+g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
+const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
 g.StudentSubmission = StudentSubmission;
 
 g.Utils = {
@@ -118,16 +118,16 @@ g.ScriptAppManager = class ScriptAppManager {
   }
 };
 
-g.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
+g.Validate = require('../src/backend/Utils/Validate.js').Validate;
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
-const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
+const { ArtifactFactory } = require('../src/backend/Models/Artifacts/index.js');
 g.ArtifactFactory = ArtifactFactory;
 
 // Expose model classes expected as globals in production runtime
-const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
+const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
 g.TaskDefinition = TaskDefinition;
-const { AssignmentDefinition } = require('../src/AdminSheet/Models/AssignmentDefinition.js');
+const { AssignmentDefinition } = require('../src/backend/Models/AssignmentDefinition.js');
 g.AssignmentDefinition = AssignmentDefinition;
 
 // Load and expose ConfigurationManager validators as globals so modules that
@@ -135,7 +135,7 @@ g.AssignmentDefinition = AssignmentDefinition;
 // avoids duplicate declaration errors when the same functions are present in
 // both tests and the GAS runtime. Tests should ensure these are present before
 // requiring ConfigurationManager modules.
-const validators = require('../src/AdminSheet/ConfigurationManager/validators.js');
+const validators = require('../src/backend/ConfigurationManager/validators.js');
 // Attach individual functions/values to the global scope (globalThis) so
 // source files can reference them without importing. Use the same names
 // exported by the validators module.
@@ -176,7 +176,7 @@ g.ClassroomManager = {
       const list = Array.isArray(resp.students) ? resp.students : [];
 
       // Try to use the Student model when available so consumers get instances
-      const StudentExport = require('../src/AdminSheet/Models/Student.js');
+      const StudentExport = require('../src/backend/Models/Student.js');
       const StudentModel = StudentExport.Student || StudentExport;
 
       return list.map((s) => {

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import AssignmentDefinitionController from '../../src/AdminSheet/y_controllers/AssignmentDefinitionController.js';
-import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
-import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
-import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
+import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
+import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import DbManager from '../../src/backend/DbManager/DbManager.js';
+import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
-import SlidesParser from '../../src/AdminSheet/DocumentParsers/SlidesParser.js';
+import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
 import { setupDualCollectionGetFunction } from '../helpers/mockFactories.js';
 
-vi.mock('../../src/AdminSheet/DbManager/DbManager.js');
-vi.mock('../../src/AdminSheet/GoogleDriveManager/DriveManager.js');
+vi.mock('../../src/backend/DbManager/DbManager.js');
+vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
 vi.mock('../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js');
-vi.mock('../../src/AdminSheet/DocumentParsers/SlidesParser.js', () => {
+vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
   return {
     default: class {
       extractTaskDefinitions() {

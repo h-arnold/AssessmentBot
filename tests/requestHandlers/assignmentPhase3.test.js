@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import model classes from source (CommonJS exports)
-const { TaskDefinition } = require('../../src/AdminSheet/Models/TaskDefinition.js');
-const { StudentSubmission } = require('../../src/AdminSheet/Models/StudentSubmission.js');
+const { TaskDefinition } = require('../../src/backend/Models/TaskDefinition.js');
+const { StudentSubmission } = require('../../src/backend/Models/StudentSubmission.js');
 
 // Import shared test helpers
 const { simpleHash } = require('../helpers/testUtils.js');
@@ -55,7 +55,7 @@ globalThis.MimeType = {
 globalThis.StudentSubmission = StudentSubmission;
 
 // Now that globals exist, require runtime-dependent classes
-const LLMRequestManagerFresh = require('../../src/AdminSheet/RequestHandlers/LLMRequestManager.js');
+const LLMRequestManagerFresh = require('../../src/backend/RequestHandlers/LLMRequestManager.js');
 
 describe('Phase 3 LLMRequestManager integration (new model)', () => {
   let assignment, manager;

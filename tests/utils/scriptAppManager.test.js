@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import ScriptAppManager from '../../src/AdminSheet/Utils/ScriptAppManager.js';
-import ABLogger from '../../src/AdminSheet/Utils/ABLogger.js';
+import ScriptAppManager from '../../src/backend/Utils/ScriptAppManager.js';
+import ABLogger from '../../src/backend/Utils/ABLogger.js';
 
 // Mock ScriptApp APIs
 const mockGetAuthorizationInfo = vi.fn();

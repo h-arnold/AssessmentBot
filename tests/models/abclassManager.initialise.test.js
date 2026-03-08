@@ -1,8 +1,8 @@
-const ABClassExport = require('../../src/AdminSheet/Models/ABClass.js');
+const ABClassExport = require('../../src/backend/Models/ABClass.js');
 const ABClass = ABClassExport.ABClass || ABClassExport;
-const StudentExport = require('../../src/AdminSheet/Models/Student.js');
+const StudentExport = require('../../src/backend/Models/Student.js');
 const Student = StudentExport.Student || StudentExport;
-const TeacherExport = require('../../src/AdminSheet/Models/Teacher.js');
+const TeacherExport = require('../../src/backend/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
 const { createMockClassroomApiClient } = require('../helpers/mockFactories.js');
 
@@ -41,10 +41,8 @@ describe('ABClassController.initialise', () => {
     globalThis.ClassroomApiClient = createMockClassroomApiClient();
 
     // Require ABClassController after supplying global DbManager mock so module init uses mock
-    delete require.cache[
-      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
-    ];
-    ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+    ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
   });
 
   afterEach(() => {
@@ -57,9 +55,7 @@ describe('ABClassController.initialise', () => {
     delete globalThis.DbManager;
     delete globalThis.ABLogger;
     // Clear ABClassController module to avoid stale singleton state between tests
-    delete require.cache[
-      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
-    ];
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
   });
 
   it('populates className, classOwner, teachers and students from Classroom API', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ArtifactFactory } from '../../src/AdminSheet/Models/Artifacts/index.js';
+import { ArtifactFactory } from '../../src/backend/Models/Artifacts/index.js';
 
 describe('Artifacts', () => {
   it('normalises text content and hashes immediately for reference/template', () => {

@@ -1,12 +1,12 @@
 import { describe, test, expect, beforeAll } from 'vitest';
-import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
+import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
 
 if (!globalThis.Utils || !globalThis.Utilities) {
   throw new Error('Global Utils/Utilities expected from setupGlobals.js');
 }
 
 describe('Phase 2 – Parser Interface Updates (Interface-Level / Stubs)', () => {
-  const basePath = '../../src/AdminSheet/DocumentParsers/DocumentParser.js';
+  const basePath = '../../src/backend/DocumentParsers/DocumentParser.js';
   let ParserExport;
   let ParserClass;
   beforeAll(() => {

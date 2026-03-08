@@ -30,10 +30,10 @@ const {
   TableTaskArtifact,
   SpreadsheetTaskArtifact,
   ImageTaskArtifact,
-} = require('../src/AdminSheet/Models/Artifacts/index.js');
+} = require('../src/backend/Models/Artifacts/index.js');
 globalThis.ArtifactFactory = ArtifactFactory; // so TaskDefinition can reference it when loaded
-const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
-const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
+const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
+const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
 
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);

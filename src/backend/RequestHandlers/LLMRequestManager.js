@@ -7,6 +7,8 @@
  */
 const VALIDATION_RETRY_LIMIT = 3;
 const LLM_TOAST_DURATION_SECONDS = 5;
+const HTTP_STATUS_OK = 200;
+const HTTP_STATUS_CREATED = 201;
 
 /**
  * LLM request manager.
