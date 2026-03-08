@@ -52,8 +52,10 @@ npm run frontend:test:e2e -- --headed --debug
 Run a single mocked scenario by test name:
 
 ```bash
-npm run frontend:test:e2e -- --headed --debug src/frontend/e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
+npm run frontend:test:e2e -- --headed --debug e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 ```
+
+`src/frontend` is already the working directory for these scripts (via `npm --prefix src/frontend`), so pass test paths relative to `src/frontend/` (for example `e2e-tests/...`), not `src/frontend/e2e-tests/...`.
 
 ### How this maps to existing mocks
 

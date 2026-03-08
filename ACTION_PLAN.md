@@ -51,10 +51,14 @@ For each section below, use the same cycle:
 
 ### Standard validation commands
 
-- `npm run frontend:test -- <target-spec>` for focused Vitest checks.
-- `npm run frontend:test:e2e -- <target-e2e-spec>` for focused Playwright checks.
-- `npm run frontend:test` for full frontend unit/component suite.
-- `npm run frontend:test:e2e` for full frontend e2e suite.
+- `npm run frontend:test -- <target-spec>` for focused Vitest checks.  
+  `<target-spec>` must be relative to `src/frontend/` (no leading `src/frontend/`).  
+  Example: `npm run frontend:test -- src/App.spec.tsx`
+- `npm run frontend:test:e2e -- <target-e2e-spec>` for focused Playwright checks.  
+  `<target-e2e-spec>` must be relative to `src/frontend/` (no leading `src/frontend/`).  
+  Example: `npm run frontend:test:e2e -- e2e-tests/auth-status.spec.ts`
+- `npm run frontend:test` for full frontend unit/component suite (runs via `npm --prefix src/frontend`).
+- `npm run frontend:test:e2e` for full frontend e2e suite (runs via `npm --prefix src/frontend`).
 - `npm run frontend:lint` for lint validation.
 
 ---
@@ -201,12 +205,14 @@ Introduce theme state and switch `ConfigProvider` algorithm between `theme.defau
 
 - Preserve existing theme token customisations unless explicitly changed.
 - Avoid hard-coded CSS backgrounds that conflict with token-driven themes.
+- Include explicit CSS cleanup tasks needed for theme compatibility (for example replacing hard-coded background/foreground colours with token-aligned styles).
 - Keep state management simple and transparent.
 
 ### Acceptance criteria
 
 - Toggle visibly switches between light and dark themes.
 - Shell and page surfaces respond consistently to theme changes.
+- Theme-relevant CSS has no conflicting hard-coded colours that break light/dark rendering.
 - Toggle is accessible and clearly positioned in top-right header area.
 
 ### Required TDD tests
@@ -217,6 +223,7 @@ Introduce theme state and switch `ConfigProvider` algorithm between `theme.defau
 - `toggle callback flips theme state between light and dark`.
 - `ConfigProvider receives expected algorithm when state changes`.
 - `theme toggle state persists during in-app page navigation` (single-session state).
+- `theme-compatible styles are applied`: key shell containers do not rely on hard-coded colours that conflict with algorithm switching.
 
 #### Playwright
 
@@ -347,11 +354,10 @@ Complete full verification using section-level tests plus full frontend lint and
 
 1. Shell layout refactor.
 2. Navigation model and menu wiring.
-3. Blank pages and content switching.
-4. Breadcrumb integration.
-5. Theme toggle and algorithm switching.
-6. CSS cleanup for theme compatibility.
-7. Tests and lint validation.
+3. Breadcrumb integration.
+4. Theme toggle and algorithm switching (including CSS cleanup for theme compatibility).
+5. Blank pages and content switching.
+6. Tests and lint validation.
 
 **Commit reminder:** After completing all sections and final verification, create a summary commit (or tidy incremental commits) and prepare PR notes.
 
