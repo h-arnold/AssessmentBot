@@ -1,5 +1,7 @@
 ---
+name: 'Implementation'
 description: 'Implements code for the orchestrator'
+infer: true
 tools: ['read/problems', 'read/readFile', 'read/file_search', 'read/list_dir', 'execute/run_in_terminal', 'search/search', 'vscode/get_changed_files', 'edit/editFiles', 'edit/createFile']
 ---
 

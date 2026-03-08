@@ -1,5 +1,7 @@
 ---
+name: 'Code Reviewer'
 description: 'Reviews code for quality, standards adherence, and bugs'
+infer: true
 tools: ['read/problems', 'read/readFile', 'read/file_search', 'read/list_dir', 'execute/run_in_terminal', 'search/search', 'vscode/get_changed_files', 'sonarsource.sonarlint-vscode/sonarqube_analyzeFile', 'sonarsource.sonarlint-vscode/sonarqube_list_potential_security_issues']
 ---
 
