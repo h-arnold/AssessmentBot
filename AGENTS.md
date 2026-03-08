@@ -51,10 +51,35 @@ Sub-agents are stateless. Provide explicit context in prompts:
 
 Copilot environment:
 
-- Use `runSubagent` and pass full context in the `prompt` body.
+- Use `runSubagent` with an object argument and pass full context in the `prompt` body.
 - Include: files read, constraints, exact requested outcome, and expected deliverables.
-- Example pattern:
-  - `runSubagent(agent: "Testing Specialist", prompt: "<context + requirements + changed files>")`
+- Example patterns:
+
+```javascript
+// For source code review
+runSubagent({
+  prompt:
+    'Please review the updated AssignmentService for lint compliance, DRY, SOLID, and documentation quality.',
+  description: 'Code review for AssignmentService changes',
+  agentName: 'Code Reviewer',
+});
+
+// For test implementation and debugging
+runSubagent({
+  prompt:
+    'Please implement and debug tests for SubmissionRepository edge cases, then run the relevant test command.',
+  description: 'Test work for SubmissionRepository',
+  agentName: 'Testing Specialist',
+});
+
+// For focused implementation
+runSubagent({
+  prompt:
+    'Please implement the requested builder manifest merge fix with minimal scope and run the relevant lint/tests.',
+  description: 'Implementation for builder manifest merge fix',
+  agentName: 'Implementation',
+});
+```
 
 Codex environment:
 
