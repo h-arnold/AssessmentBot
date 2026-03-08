@@ -2,7 +2,7 @@
  * @file Tests for Utils.isValidUrl.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Validate } from '../../src/AdminSheet/Utils/Validate.js';
+import { Validate } from '../../src/backend/Utils/Validate.js';
 
 const SLIDE_EXPORT_URL =
   'https://docs.google.com/presentation/d/10BRsRpIFj1_jIx3ZibYbLSrR_eBVMJcVmoV5UVD3BOY/export/png?id=10BRsRpIFj1_jIx3ZibYbLSrR_eBVMJcVmoV5UVD3BOY&pageid=g18a58a7aa3d_0_42';

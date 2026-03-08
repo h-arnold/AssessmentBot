@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockABLogger, createMockPropertiesService } from '../helpers/mockFactories.js';
 
 // Setup global mocks
-globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
+globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
 
 // Mock PropertiesService
 const mockPropertiesService = createMockPropertiesService(vi);
@@ -23,9 +23,9 @@ globalThis.Classroom = {
 };
 
 // Import classes after mocks
-const AssignmentController = require('../../src/AdminSheet/y_controllers/AssignmentController.js');
+const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
 
-const { AssignmentDefinition } = require('../../src/AdminSheet/Models/AssignmentDefinition.js');
+const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
 
 describe('AssignmentController - Definition Hydration', () => {
   let mockProperties;

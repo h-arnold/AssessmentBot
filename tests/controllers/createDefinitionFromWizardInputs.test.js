@@ -41,11 +41,11 @@ describe('AssignmentController.createDefinitionFromWizardInputs', () => {
       validateModule,
       abClassControllerModule,
     ] = await Promise.all([
-      import('../../src/AdminSheet/y_controllers/AssignmentController.js'),
-      import('../../src/AdminSheet/Models/AssignmentDefinition.js'),
-      import('../../src/AdminSheet/GoogleDriveManager/DriveManager.js'),
-      import('../../src/AdminSheet/Utils/Validate.js'),
-      import('../../src/AdminSheet/y_controllers/ABClassController.js'),
+      import('../../src/backend/y_controllers/AssignmentController.js'),
+      import('../../src/backend/Models/AssignmentDefinition.js'),
+      import('../../src/backend/GoogleDriveManager/DriveManager.js'),
+      import('../../src/backend/Utils/Validate.js'),
+      import('../../src/backend/y_controllers/ABClassController.js'),
     ]);
 
     AssignmentController = controllerModule.default || controllerModule;

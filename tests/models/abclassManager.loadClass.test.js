@@ -1,8 +1,8 @@
-const ABClassExport = require('../../src/AdminSheet/Models/ABClass.js');
+const ABClassExport = require('../../src/backend/Models/ABClass.js');
 const ABClass = ABClassExport.ABClass || ABClassExport;
-const StudentExport = require('../../src/AdminSheet/Models/Student.js');
+const StudentExport = require('../../src/backend/Models/Student.js');
 const Student = StudentExport.Student || StudentExport;
-const TeacherExport = require('../../src/AdminSheet/Models/Teacher.js');
+const TeacherExport = require('../../src/backend/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
 
 describe('ABClassController.loadClass', () => {
@@ -45,10 +45,8 @@ describe('ABClassController.loadClass', () => {
       fetchAllStudents: vi.fn(),
     };
 
-    delete require.cache[
-      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
-    ];
-    ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+    ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
     controller = new ABClassController();
   });
 
@@ -59,9 +57,7 @@ describe('ABClassController.loadClass', () => {
     delete globalThis.ABLogger;
     delete globalThis.DbManager;
     delete globalThis.ClassroomApiClient;
-    delete require.cache[
-      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
-    ];
+    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
   });
 
   it('refreshes roster when course update time is newer than collection metadata', () => {

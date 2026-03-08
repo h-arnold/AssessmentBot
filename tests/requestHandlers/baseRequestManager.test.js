@@ -81,7 +81,7 @@ describe('BaseRequestManager Error Handling', () => {
     globalThis.ABLogger = mockABLogger;
 
     // Load AbortRequestError
-    const AbortRequestError = require('../../src/AdminSheet/Utils/ErrorTypes/AbortRequestError.js');
+    const AbortRequestError = require('../../src/backend/Utils/ErrorTypes/AbortRequestError.js');
     globalThis.AbortRequestError = AbortRequestError;
 
     // Mock console methods to avoid noise in test output
@@ -93,9 +93,9 @@ describe('BaseRequestManager Error Handling', () => {
 
     // Clear module cache and reload BaseRequestManager
     delete require.cache[
-      require.resolve('../../src/AdminSheet/RequestHandlers/BaseRequestManager.js')
+      require.resolve('../../src/backend/RequestHandlers/BaseRequestManager.js')
     ];
-    const module = require('../../src/AdminSheet/RequestHandlers/BaseRequestManager.js');
+    const module = require('../../src/backend/RequestHandlers/BaseRequestManager.js');
     BaseRequestManager = module.BaseRequestManager || module;
   });
 

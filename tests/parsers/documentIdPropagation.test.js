@@ -25,17 +25,14 @@ describe('Document ID propagation across parsers', () => {
     });
 
     beforeAll(async () => {
-      const documentParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
-      );
-      const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
+      const documentParserModule =
+        await import('../../src/backend/DocumentParsers/DocumentParser.js');
+      const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
 
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const slidesParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/SlidesParser.js'
-      );
+      const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser.js');
       SlidesParser = slidesParserModule.SlidesParser;
     });
 
@@ -110,17 +107,14 @@ describe('Document ID propagation across parsers', () => {
     let SheetsParser;
 
     beforeAll(async () => {
-      const documentParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
-      );
-      const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
+      const documentParserModule =
+        await import('../../src/backend/DocumentParsers/DocumentParser.js');
+      const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
 
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const sheetsParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/SheetsParser.js'
-      );
+      const sheetsParserModule = await import('../../src/backend/DocumentParsers/SheetsParser.js');
       SheetsParser = sheetsParserModule.SheetsParser;
     });
 

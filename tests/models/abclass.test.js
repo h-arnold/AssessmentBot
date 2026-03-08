@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ABClass } from '../../src/AdminSheet/Models/ABClass.js';
+import { ABClass } from '../../src/backend/Models/ABClass.js';
 
 describe('ABClass model', () => {
   let origConfigMgr;

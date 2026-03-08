@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
-import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
+import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
+import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import {
   createSlidesAssignment,
   createSheetsAssignment,
@@ -58,8 +58,8 @@ function assertAssignmentProperties(assignment, docType, courseId) {
   expect(assignment.assignmentDefinition.templateDocumentId).toBe(courseId.replace('c', 'tpl'));
 }
 
-const SlidesAssignment = require('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
-require('../../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+const SlidesAssignment = require('../../src/backend/AssignmentProcessor/SlidesAssignment.js');
+require('../../src/backend/AssignmentProcessor/SheetsAssignment.js');
 
 let originalLoggerGetInstance;
 

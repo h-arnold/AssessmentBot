@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Setup global mocks before imports
-globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
+globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
 
 // Mock ScriptAppManager
 const mockScriptAppManager = {

@@ -4,7 +4,7 @@ if (!globalThis.ProgressTracker) {
   throw new Error('ProgressTracker mock expected from setupGlobals.js');
 }
 
-const modulePath = '../../src/AdminSheet/GoogleClassroom/ClassroomApiClient.js';
+const modulePath = '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
 
 describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   let ClassroomApiClient;
