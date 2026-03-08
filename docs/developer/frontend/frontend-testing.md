@@ -52,8 +52,10 @@ npm run frontend:test:e2e -- --headed --debug
 Run a single mocked scenario by test name:
 
 ```bash
-npm run frontend:test:e2e -- --headed --debug src/frontend/e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
+npm run frontend:test:e2e -- --headed --debug e2e-tests/auth-status.spec.ts -g "shows Authorised when backend returns true"
 ```
+
+`src/frontend` is already the working directory for these scripts (via `npm --prefix src/frontend`), so pass test paths relative to `src/frontend/` (for example `e2e-tests/...`), not `src/frontend/e2e-tests/...`.
 
 ### How this maps to existing mocks
 
@@ -66,6 +68,43 @@ npm run frontend:test:e2e -- --headed --debug src/frontend/e2e-tests/auth-status
 - Install and use the Playwright Test extension.
 - Run or debug individual tests from the Testing panel.
 - Keep a dedicated preview-style spec for key UI states (for example authorised, unauthorised, backend error, delayed loading) so you can quickly verify usability during development.
+
+## Behaviour split: Vitest vs Playwright (authoritative)
+
+Use a strict behaviour split when writing frontend tests:
+
+- **Vitest + Testing Library**: verify **invisible behaviour** and fast component logic checks.
+  - state transitions
+  - callback wiring
+  - conditional rendering decisions
+  - data mapping and error mapping outcomes
+  - accessibility attributes and semantic structure
+- **Playwright**: verify **visible behaviour** in a real browser.
+  - what users can see and do end-to-end
+  - interactive flows across multiple components/pages
+  - keyboard and pointer interaction in runtime context
+  - visual state transitions (for example collapsed/expanded navigation, light/dark mode switching)
+
+When both are possible, default to Vitest first for fast feedback, then add Playwright coverage for the highest-value user journeys.
+Vitest + Testing Library may still assert user-visible component outcomes; use Playwright when the confidence target is full browser/runtime behaviour across integration boundaries.
+
+### Quick decision matrix
+
+- Is the assertion mostly about internal state or non-visual wiring? → **Vitest**.
+- Is the assertion about what a user sees or does in a browser? → **Playwright**.
+- Is it a cross-page or runtime integration flow? → **Playwright**.
+- Is it pure mapping/derivation logic? → **Vitest**.
+
+### Example split for shell/navigation work
+
+- **Vitest examples (invisible behaviour):**
+  - selected menu key updates when a nav item is triggered
+  - breadcrumb model derives labels from shared nav metadata
+  - theme toggle flips algorithm state in `ConfigProvider`
+- **Playwright examples (visible behaviour):**
+  - user can click nav items and sees page headings update
+  - user sees sidenav collapse/expand after activating hamburger control
+  - user sees light/dark mode switch reflected in the rendered UI
 
 ## Related standards
 
@@ -99,10 +138,10 @@ When adding test scenarios, prefer extending an existing helper before copying s
 
 ## Current Approach
 
-- Prefer user-visible behaviour assertions with Testing Library.
+- Use Vitest for invisible behaviour and fast deterministic checks.
+- Use Playwright for visible, user-observable behaviour in a real browser.
 - Keep tests decoupled from implementation details.
-- Keep unit tests fast and deterministic.
-- Use Playwright for top-level smoke and integration journeys.
+- Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
 
 ## Notes
 
