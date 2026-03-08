@@ -1,9 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { vi } from 'vitest';
 import App from './App';
+import appStyles from './index.css?raw';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -16,7 +15,6 @@ const checkingAuthorisationStatusText = 'Checking authorisation status...';
 const applicationTitleText = appBreadcrumbBaseLabel;
 const navigationLabels = navigationItems.map(({ label }) => label);
 const noBreadcrumbLabelPosition = -1;
-const appStyles = readFileSync(resolve(process.cwd(), 'src', 'index.css'), 'utf8');
 
 type ApiResponseEnvelope =
   | {
@@ -363,6 +361,9 @@ describe('App', () => {
   });
 
   it('ConfigProvider receives expected algorithm when state changes', async () => {
+    // Keep the auth hook pending so the entrypoint render stays focused on theme wiring.
+    installPendingApiHandlerMock();
+
     const rootElement = document.createElement('div');
     rootElement.id = 'root';
     document.body.append(rootElement);
@@ -378,10 +379,11 @@ describe('App', () => {
     }));
 
     vi.doMock('antd', async () => {
-      const actual = await vi.importActual<typeof import('antd')>('antd');
+      const actual = await vi.importActual('antd');
+      const actualTheme = (actual as { theme: { darkAlgorithm: unknown } }).theme;
 
       return {
-        ...actual,
+        ...(actual as Record<string, unknown>),
         ConfigProvider({
           children,
           theme: themeConfig,
@@ -395,7 +397,7 @@ describe('App', () => {
             <div
               data-testid="config-provider"
               data-algorithm={
-                themeConfig?.algorithm === actual.theme.darkAlgorithm ? 'dark' : 'light'
+                themeConfig?.algorithm === actualTheme.darkAlgorithm ? 'dark' : 'light'
               }
             >
               {children}
@@ -443,8 +445,8 @@ describe('App', () => {
   });
 
   it('theme-compatible styles are applied', () => {
-    expect(appStyles).not.toMatch(/body\s*\{[^}]*background:\s*#[\da-f]{3,8}/i);
-    expect(appStyles).not.toMatch(/\.app-header\s*\{[^}]*color:\s*#[\da-f]{3,8}/i);
+    expect(appStyles).not.toMatch(/body\s*{[^}]*background:\s*#[\da-f]{3,8}/i);
+    expect(appStyles).not.toMatch(/\.app-header\s*{[^}]*color:\s*#[\da-f]{3,8}/i);
   });
 
   it('shows loading then authorised status when backend returns true', async () => {

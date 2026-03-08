@@ -1,5 +1,5 @@
 import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import { Breadcrumb, Button, Layout, Menu, Space } from 'antd';
+import { Breadcrumb, Button, Layout, Menu, Space, Switch, theme } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
@@ -16,6 +16,8 @@ import {
 
 const { Header, Sider, Content } = Layout;
 
+const darkModeLabel = 'Dark mode';
+
 /**
  * Converts typed navigation metadata into Ant Design menu items.
  */
@@ -31,10 +33,19 @@ function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
 /**
  * Renders the shared application shell with a collapsible navigation rail.
  */
-export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode }) {
+export function AppShell({
+  dashboardContent,
+  isDarkMode,
+  onThemeModeChange,
+}: {
+  dashboardContent?: ReactNode;
+  isDarkMode: boolean;
+  onThemeModeChange: (checked: boolean) => void;
+}) {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [selectedNavigationKey, setSelectedNavigationKey] =
     useState<AppNavigationKey>(defaultNavigationKey);
+  const { token } = theme.useToken();
   const navigationId = useId();
   const navigationButtonLabel = isNavigationCollapsed
     ? 'Expand navigation'
@@ -46,27 +57,44 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
   );
 
   return (
-    <Layout className="app-shell">
-      <Header className="app-header">
-        <Space size="middle">
-          <Button
-            type="text"
-            size="large"
-            className="app-header-toggle"
-            icon={navigationToggleIcon}
-            aria-controls={navigationId}
-            aria-expanded={!isNavigationCollapsed}
-            aria-label={navigationButtonLabel}
-            title={navigationButtonLabel}
-            onClick={() => {
-              setIsNavigationCollapsed((currentState) => !currentState);
-            }}
-          />
-          <Space>
-            <BookOutlined aria-hidden="true" />
-            <span>{appBreadcrumbBaseLabel}</span>
+    <Layout className="app-shell" style={{ backgroundColor: token.colorBgLayout }}>
+      <Header
+        className="app-header"
+        style={{
+          backgroundColor: token.colorBgContainer,
+          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          color: token.colorTextHeading,
+        }}
+      >
+        <div className="app-header-bar">
+          <Space size="middle">
+            <Button
+              type="text"
+              size="large"
+              className="app-header-toggle"
+              icon={navigationToggleIcon}
+              aria-controls={navigationId}
+              aria-expanded={!isNavigationCollapsed}
+              aria-label={navigationButtonLabel}
+              title={navigationButtonLabel}
+              onClick={() => {
+                setIsNavigationCollapsed((currentState) => !currentState);
+              }}
+            />
+            <Space>
+              <BookOutlined aria-hidden="true" />
+              <span>{appBreadcrumbBaseLabel}</span>
+            </Space>
           </Space>
-        </Space>
+          <label className="app-header-theme-toggle">
+            <span className="app-header-theme-label">{darkModeLabel}</span>
+            <Switch
+              aria-label={darkModeLabel}
+              checked={isDarkMode}
+              onChange={onThemeModeChange}
+            />
+          </label>
+        </div>
       </Header>
       <Layout>
         <Sider
@@ -79,6 +107,10 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
           role="navigation"
           aria-label="Primary navigation"
           className="app-sider"
+          style={{
+            backgroundColor: token.colorBgContainer,
+            borderInlineEnd: `1px solid ${token.colorBorderSecondary}`,
+          }}
         >
           <Menu
             mode="inline"
@@ -86,6 +118,7 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
             selectedKeys={[selectedNavigationKey]}
             items={toMenuItems(navigationItems)}
             className="app-navigation-menu"
+            theme={isDarkMode ? 'dark' : 'light'}
             onClick={({ key }) => {
               if (!isAppNavigationKey(key)) {
                 throw new TypeError(
@@ -99,7 +132,7 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
             }}
           />
         </Sider>
-        <Content className="app-content">
+        <Content className="app-content" style={{ backgroundColor: token.colorBgLayout }}>
           <Breadcrumb
             items={getBreadcrumbItems(selectedNavigationKey)}
             aria-label="Breadcrumb"

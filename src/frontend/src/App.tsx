@@ -1,11 +1,11 @@
-import { AppShell } from './AppShell';
+import { AppThemeShell } from './AppThemeShell';
 import { AuthStatusCard } from './features/auth/AuthStatusCard';
 
 /**
  * Renders the application shell with the authentication status card.
  */
 function App() {
-  return <AppShell dashboardContent={<AuthStatusCard />} />;
+  return <AppThemeShell dashboardContent={<AuthStatusCard />} />;
 }
 
 export default App;

@@ -236,9 +236,9 @@ Introduce theme state and switch `ConfigProvider` algorithm between `theme.defau
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added a top-right dark mode toggle owned by `AppThemeShell`, with `ConfigProvider` switching between the default and dark algorithms while keeping `App.tsx` thin. Section 4 coverage now exercises the accessible toggle, entrypoint theme wiring, in-app theme persistence, and token-compatible shell styling.
+- _Any deviations from plan:_ The unit coverage still probes the entrypoint theme wiring through `main.tsx`, which keeps the implementation aligned with the thin composition boundary for `App.tsx`.
+- _Follow-up considerations affecting later stages:_ Later page work should continue using Ant Design tokens and shared shell styling so new surfaces inherit the active light/dark theme without reintroducing fixed colours.
 
 ---
 

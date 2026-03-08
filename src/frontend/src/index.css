@@ -6,7 +6,6 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f5f7fa;
 }
 
 #root {
@@ -18,11 +17,18 @@ body {
 }
 
 .app-header {
-  color: #fff;
   font-weight: 600;
   display: flex;
   align-items: center;
   padding-inline: 1rem;
+}
+
+.app-header-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .app-header-toggle {
@@ -46,6 +52,16 @@ body {
 .app-navigation-menu {
   height: 100%;
   border-inline-end: 0;
+}
+
+.app-header-theme-label {
+  font-weight: 500;
+}
+
+.app-header-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .app-content {
