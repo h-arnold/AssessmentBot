@@ -1,4 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { vi } from 'vitest';
 import App from './App';
 import {
   appBreadcrumbBaseLabel,
@@ -12,6 +16,7 @@ const checkingAuthorisationStatusText = 'Checking authorisation status...';
 const applicationTitleText = appBreadcrumbBaseLabel;
 const navigationLabels = navigationItems.map(({ label }) => label);
 const noBreadcrumbLabelPosition = -1;
+const appStyles = readFileSync(resolve(process.cwd(), 'src', 'index.css'), 'utf8');
 
 type ApiResponseEnvelope =
   | {
@@ -129,9 +134,20 @@ function expectBreadcrumbLabels(labels: string[]) {
   }
 }
 
+/**
+ * Returns the theme mode switch once it is rendered.
+ */
+function getThemeModeSwitch() {
+  return screen.getByRole('switch', { name: 'Dark mode' });
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
+    document.querySelector('#root')?.remove();
+    vi.resetModules();
+    vi.doUnmock('antd');
+    vi.doUnmock('react-dom/client');
   });
 
   it('menu renders all four entries in expanded mode with expected labels', async () => {
@@ -314,6 +330,121 @@ describe('App', () => {
     const mainRegion = screen.getByRole('main');
 
     expect(within(mainRegion).getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+  });
+
+  it('toggle control renders with accessible label', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    expect(getThemeModeSwitch()).toBeInTheDocument();
+  });
+
+  it('toggle callback flips theme state between light and dark', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const themeModeSwitch = getThemeModeSwitch();
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('ConfigProvider receives expected algorithm when state changes', async () => {
+    const rootElement = document.createElement('div');
+    rootElement.id = 'root';
+    document.body.append(rootElement);
+
+    let renderedTree: ReactNode | undefined;
+
+    vi.doMock('react-dom/client', () => ({
+      createRoot: () => ({
+        render(node: ReactNode) {
+          renderedTree = node;
+        },
+      }),
+    }));
+
+    vi.doMock('antd', async () => {
+      const actual = await vi.importActual<typeof import('antd')>('antd');
+
+      return {
+        ...actual,
+        ConfigProvider({
+          children,
+          theme: themeConfig,
+        }: {
+          children: ReactNode;
+          theme?: {
+            algorithm?: unknown;
+          };
+        }) {
+          return (
+            <div
+              data-testid="config-provider"
+              data-algorithm={
+                themeConfig?.algorithm === actual.theme.darkAlgorithm ? 'dark' : 'light'
+              }
+            >
+              {children}
+            </div>
+          );
+        },
+      };
+    });
+
+    await import('./main');
+
+    if (renderedTree === undefined) {
+      throw new Error('Expected main.tsx to render the application tree.');
+    }
+
+    render(<>{renderedTree}</>);
+
+    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'light');
+
+    act(() => {
+      fireEvent.click(getThemeModeSwitch());
+    });
+
+    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'dark');
+  });
+
+  it('theme toggle state persists during in-app page navigation', async () => {
+    installPendingApiHandlerMock();
+
+    await renderPendingApp();
+
+    const themeModeSwitch = getThemeModeSwitch();
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    act(() => {
+      fireEvent.click(themeModeSwitch);
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
+      );
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
+    });
+
+    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('theme-compatible styles are applied', () => {
+    expect(appStyles).not.toMatch(/body\s*\{[^}]*background:\s*#[\da-f]{3,8}/i);
+    expect(appStyles).not.toMatch(/\.app-header\s*\{[^}]*color:\s*#[\da-f]{3,8}/i);
   });
 
   it('shows loading then authorised status when backend returns true', async () => {

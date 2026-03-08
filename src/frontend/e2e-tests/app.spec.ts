@@ -10,6 +10,7 @@ const breadcrumbNavigationName = 'Breadcrumb';
 const expectedNavigationItemCount = navigationItems.length;
 const assignmentsNavigationItemIndex = 2;
 const collapseExpandCycles = 2;
+const themeSwitchLabel = 'Dark mode';
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -29,6 +30,20 @@ async function expectBreadcrumbLabels(page: Page, labels: string[]) {
   for (const label of labels) {
     await expect(breadcrumb).toContainText(label);
   }
+}
+
+/**
+ * Returns the rendered theme mode switch.
+ */
+function getThemeModeSwitch(page: Page) {
+  return page.getByRole('switch', { name: themeSwitchLabel });
+}
+
+/**
+ * Returns the computed header background colour.
+ */
+async function getHeaderBackgroundColour(page: Page) {
+  return page.getByRole('banner').evaluate((element) => getComputedStyle(element).backgroundColor);
 }
 
 /**
@@ -224,5 +239,71 @@ test.describe('app shell', () => {
 
     await expect(classesItem).toHaveClass(/ant-menu-item-selected/);
     await expect(dashboardItem).not.toHaveClass(/ant-menu-item-selected/);
+  });
+
+  test('user can toggle to dark mode and observe visual change', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    const initialHeaderBackground = await getHeaderBackgroundColour(page);
+
+    await getThemeModeSwitch(page).click();
+
+    await expect(getThemeModeSwitch(page)).toBeChecked();
+    await expect
+      .poll(async () => getHeaderBackgroundColour(page))
+      .not.toBe(initialHeaderBackground);
+  });
+
+  test('user can toggle back to light mode and observe visual reversion', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    const initialHeaderBackground = await getHeaderBackgroundColour(page);
+    const themeModeSwitch = getThemeModeSwitch(page);
+
+    await themeModeSwitch.click();
+    await expect(themeModeSwitch).toBeChecked();
+
+    await themeModeSwitch.click();
+
+    await expect(themeModeSwitch).not.toBeChecked();
+    await expect.poll(async () => getHeaderBackgroundColour(page)).toBe(initialHeaderBackground);
+  });
+
+  test('theme toggle works after navigating across all four pages', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    const themeModeSwitch = getThemeModeSwitch(page);
+
+    await themeModeSwitch.click();
+    await expect(themeModeSwitch).toBeChecked();
+
+    for (const { key } of navigationItems) {
+      const label = getNavigationLabel(key);
+
+      await page.getByRole('menuitem', { name: label }).click();
+      await expect(themeModeSwitch).toBeChecked();
+    }
+  });
+
+  test('theme toggle remains operable after collapsing and expanding nav', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    const initialHeaderBackground = await getHeaderBackgroundColour(page);
+
+    await page.getByRole('button', { name: 'Collapse navigation' }).click();
+    await page.getByRole('button', { name: 'Expand navigation' }).click();
+
+    const themeModeSwitch = getThemeModeSwitch(page);
+
+    await themeModeSwitch.click();
+
+    await expect(themeModeSwitch).toBeChecked();
+    await expect
+      .poll(async () => getHeaderBackgroundColour(page))
+      .not.toBe(initialHeaderBackground);
   });
 });
