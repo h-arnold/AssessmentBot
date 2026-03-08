@@ -73,7 +73,7 @@ For frontend logging, error mapping, and environment-specific diagnostics policy
 
 - `docs/developer/frontend/frontend-logging-and-error-handling.md`
 
-When tests cover logging/error pathways, keep expectations aligned with that document (for example stack-trace gating by environment and redaction behaviour).
+When tests cover logging/error pathways, keep expectations aligned with that document (for example stack-trace gating by environment and redaction behaviour). Treat that logging/error document as canonical and avoid duplicating policy text here.
 
 ## Coverage requirement
 
@@ -83,7 +83,7 @@ Frontend unit/component tests must meet a minimum coverage threshold of **85%** 
 
 Use shared helpers to keep fixtures and mocks consistent and avoid duplicate test setup code.
 
-**Important:** for frontend logging assertions, use logger helper APIs rather than reading magic globals directly. Prefer `getFrontendLogBuffer()` and `clearFrontendLogBuffer()` from `src/frontend/src/logging/frontendLogger.ts` in tests, so logging tests stay resilient if buffer internals change.
+**Important:** for frontend logging assertions, spy on browser console endpoints (`console.debug/info/warn/error`) rather than reading implementation-specific globals.
 
 - Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
 - Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
