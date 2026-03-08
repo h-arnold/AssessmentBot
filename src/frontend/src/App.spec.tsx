@@ -85,6 +85,62 @@ describe('App', () => {
     delete (globalThis as { google?: unknown }).google;
   });
 
+  it('menu renders all four entries in expanded mode with expected labels', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    for (const label of ['Dashboard', 'Classes', 'Assignments', 'Settings']) {
+      expect(within(navigation).getByRole('menuitem', { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it('menu renders icon-only affordance in collapsed mode', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const menuItems = within(navigation).getAllByRole('menuitem');
+
+    expect(menuItems).toHaveLength(4);
+
+    for (const item of menuItems) {
+      expect(within(item).getByRole('img')).toBeInTheDocument();
+    }
+  });
+
+  it('clicking each menu item updates selected key in component state', () => {
+    installPendingApiHandlerMock();
+
+    render(<App />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+
+    let previousLabel: string | undefined;
+
+    for (const label of ['Dashboard', 'Classes', 'Assignments', 'Settings']) {
+      const menuItem = within(navigation).getByRole('menuitem', { name: label });
+
+      fireEvent.click(menuItem);
+
+      expect(menuItem).toHaveClass('ant-menu-item-selected');
+
+      if (previousLabel !== undefined) {
+        expect(within(navigation).getByRole('menuitem', { name: previousLabel })).not.toHaveClass(
+          'ant-menu-item-selected'
+        );
+      }
+
+      expect(navigation.querySelectorAll('.ant-menu-item-selected')).toHaveLength(1);
+      previousLabel = label;
+    }
+  });
+
   it('renders shell landmarks', () => {
     installPendingApiHandlerMock();
 
@@ -194,8 +250,6 @@ describe('App', () => {
       await screen.findByText('Unable to check authorisation status right now.')
     ).toBeInTheDocument();
   });
-
-
 
   it('shows rate-limited message when backend returns retriable rate limit envelope', async () => {
     installApiHandlerMock({
