@@ -1,3 +1,7 @@
+/**
+ * Single source of truth for the shell page headings and placeholder summaries.
+ * Navigation labels and page components should stay aligned with these values.
+ */
 export const pageContent = {
   dashboard: {
     heading: 'Dashboard',

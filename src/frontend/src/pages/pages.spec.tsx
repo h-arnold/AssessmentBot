@@ -3,10 +3,22 @@ import type { ComponentType } from 'react';
 import { pageExpectations } from '../test/pageExpectations';
 
 const pageComponentLoaders: Record<string, () => Promise<ComponentType>> = {
-  dashboard: async () => (await import('./DashboardPage')).DashboardPage,
-  classes: async () => (await import('./ClassesPage')).ClassesPage,
-  assignments: async () => (await import('./AssignmentsPage')).AssignmentsPage,
-  settings: async () => (await import('./SettingsPage')).SettingsPage,
+  dashboard: async () => {
+    const module = await import('./DashboardPage');
+    return module.DashboardPage;
+  },
+  classes: async () => {
+    const module = await import('./ClassesPage');
+    return module.ClassesPage;
+  },
+  assignments: async () => {
+    const module = await import('./AssignmentsPage');
+    return module.AssignmentsPage;
+  },
+  settings: async () => {
+    const module = await import('./SettingsPage');
+    return module.SettingsPage;
+  },
 };
 
 describe('section 5 page components', () => {

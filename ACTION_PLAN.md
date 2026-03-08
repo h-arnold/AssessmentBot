@@ -333,9 +333,9 @@ Complete full verification using section-level tests plus full frontend lint and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Full frontend validation completed successfully: `npm run frontend:test`, `npm run frontend:test:coverage`, `npm run frontend:test:e2e`, and `npm run frontend:lint` all passed. Frontend coverage finished above the required 85% threshold across statements, branches, functions, and lines.
+- _Any deviations from plan:_ A small frontend tooling fix was required so the documented lint command could run in a fresh checkout: `eslint-plugin-jsdoc` is now declared in `src/frontend/package.json` because the frontend ESLint config imports it directly. The full e2e pass also required updating two stale auth-status browser assertions to the current generic unauthorised fallback copy already covered by the unit tests.
+- _Follow-up considerations affecting later stages:_ If shared frontend/backend lint rules continue to be sourced from root config files, fresh checkouts still need both root and frontend dependencies installed before running the frontend lint command locally.
 
 ---
 
@@ -363,6 +363,6 @@ Complete full verification using section-level tests plus full frontend lint and
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Sections 1-6 are complete and the stage exit criteria have been satisfied with passing frontend unit tests, coverage, e2e coverage, and lint validation.
+- _Any deviations from plan:_ None beyond the section-level notes above.
+- _Follow-up considerations affecting later stages:_ Future frontend shell work should continue extending the shared navigation and page-content sources rather than introducing duplicate labels, headings, or placeholder copy.

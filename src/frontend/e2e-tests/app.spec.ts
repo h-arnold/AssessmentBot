@@ -8,6 +8,7 @@ const expectedNavigationItemCount = pageExpectations.length;
 const assignmentsNavigationItemIndex = 2;
 const collapseExpandCycles = 2;
 const themeSwitchLabel = 'Dark mode';
+const lastPageExpectationOffset = -1;
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -328,7 +329,7 @@ test.describe('app shell', () => {
       await page.getByRole('menuitem', { name: heading }).click();
     }
 
-    const finalPage = pageExpectations.at(-1);
+    const finalPage = pageExpectations.at(lastPageExpectationOffset);
 
     if (finalPage === undefined) {
       throw new Error('Expected at least one page expectation.');
@@ -337,7 +338,7 @@ test.describe('app shell', () => {
     await expect(page.getByRole('heading', { level: 2, name: finalPage.heading })).toBeVisible();
     await expect(page.getByText(finalPage.summary)).toBeVisible();
 
-    for (const pageExpectation of pageExpectations.slice(0, -1)) {
+    for (const pageExpectation of pageExpectations.slice(0, lastPageExpectationOffset)) {
       await expect(page.getByText(pageExpectation.summary)).toHaveCount(0);
     }
   });

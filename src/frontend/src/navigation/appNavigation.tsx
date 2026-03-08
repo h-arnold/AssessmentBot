@@ -87,6 +87,9 @@ export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
 
 export const defaultNavigationKey: AppNavigationKey = 'dashboard';
 
+/**
+ * Builds a consistent fail-fast error for unexpected page-renderer access.
+ */
 function buildUnknownPageKeyError(key: string) {
   return new TypeError(`Unknown page key: ${key}`);
 }
@@ -101,9 +104,7 @@ const pageRendererMap: Record<AppNavigationKey, AppNavigationPageRenderer> = {
 export const pageRenderers = new Proxy(pageRendererMap, {
   get(target, property, receiver) {
     if (typeof property === 'string' && !isAppNavigationKey(property)) {
-      return () => {
-        throw buildUnknownPageKeyError(property);
-      };
+      throw buildUnknownPageKeyError(property);
     }
 
     return Reflect.get(target, property, receiver);
