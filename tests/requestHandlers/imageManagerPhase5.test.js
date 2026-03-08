@@ -44,11 +44,14 @@ class DummyBaseRequestManager {
   }
 }
 
+DummyBaseRequestManager.HTTP_STATUS_OK = 200;
+DummyBaseRequestManager.HTTP_STATUS_CREATED = 201;
+
 globalThis.BaseRequestManager = DummyBaseRequestManager;
 
 // Import artifacts & ImageManager
-const { ArtifactFactory } = require('../../src/AdminSheet/Models/Artifacts/index.js');
-const ImageManager = require('../../src/AdminSheet/RequestHandlers/ImageManager.js');
+const { ArtifactFactory } = require('../../src/backend/Models/Artifacts/index.js');
+const ImageManager = require('../../src/backend/RequestHandlers/ImageManager.js');
 
 function buildImageManager() {
   const mgr = new ImageManager();

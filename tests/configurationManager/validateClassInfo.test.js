@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-const { validateClassInfo } = require('../../src/AdminSheet/ConfigurationManager/validators.js');
+const { validateClassInfo } = require('../../src/backend/ConfigurationManager/validators.js');
 
 describe('validateClassInfo', () => {
   const label = 'Class Info';

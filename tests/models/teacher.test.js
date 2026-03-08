@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { Teacher } from '../../src/AdminSheet/Models/Teacher.js';
-import { Validate } from '../../src/AdminSheet/Utils/Validate.js';
+import { Teacher } from '../../src/backend/Models/Teacher.js';
+import { Validate } from '../../src/backend/Utils/Validate.js';
 
 // Ensure model validation hooks are present for tests that assert validation behavior
 Teacher.prototype._Validate = Validate;

@@ -237,7 +237,9 @@ class LLMRequestManager extends BaseRequestManager {
   _isSuccessfulResponse(response) {
     if (!response) return false;
     const code = response.getResponseCode();
-    return code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED;
+    return (
+      code === BaseRequestManager.HTTP_STATUS_OK || code === BaseRequestManager.HTTP_STATUS_CREATED
+    );
   }
 
   /**
@@ -381,7 +383,10 @@ class LLMRequestManager extends BaseRequestManager {
   _processSingleResponse(response, request, assignment) {
     const uid = request.uid;
     const code = response ? response.getResponseCode() : null;
-    if (code === HTTP_STATUS_OK || code === HTTP_STATUS_CREATED) {
+    if (
+      code === BaseRequestManager.HTTP_STATUS_OK ||
+      code === BaseRequestManager.HTTP_STATUS_CREATED
+    ) {
       // Successful response
       this.componentBuildErrorCount = 0;
       try {

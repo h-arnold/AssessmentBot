@@ -24,10 +24,9 @@ describe('SlidesParser - Merged Cell Handling', () => {
   let mockLogger;
 
   beforeAll(async () => {
-    const documentParserModule = await import(
-      '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
-    );
-    const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
+    const documentParserModule =
+      await import('../../src/backend/DocumentParsers/DocumentParser.js');
+    const taskDefinitionModule = await import('../../src/backend/Models/TaskDefinition.js');
 
     const documentParser =
       documentParserModule.DocumentParser || documentParserModule.default?.DocumentParser;
@@ -41,7 +40,7 @@ describe('SlidesParser - Merged Cell Handling', () => {
     globalThis.DocumentParser = documentParser;
     globalThis.TaskDefinition = taskDefinition;
 
-    const slidesParserModule = await import('../../src/AdminSheet/DocumentParsers/SlidesParser.js');
+    const slidesParserModule = await import('../../src/backend/DocumentParsers/SlidesParser.js');
     SlidesParser = slidesParserModule.SlidesParser || slidesParserModule.default?.SlidesParser;
 
     if (!SlidesParser) {
