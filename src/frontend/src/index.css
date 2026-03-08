@@ -42,11 +42,11 @@ body {
 
 .app-shell .app-sider {
   min-height: calc(100vh - var(--app-header-height));
-  transition: width 0.2s ease;
+  transition: width var(--app-motion-duration-mid, 0.2s) var(--app-motion-ease-in-out, ease);
 }
 
 .app-shell .app-sider .ant-layout-sider-children {
-  transition: opacity 0.2s ease;
+  transition: opacity var(--app-motion-duration-mid, 0.2s) var(--app-motion-ease-in-out, ease);
 }
 
 .app-navigation-menu {
@@ -91,4 +91,12 @@ body {
   width: 100%;
   align-items: center;
   justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .app-sider,
+  .app-shell .app-sider .ant-layout-sider-children {
+    transition-duration: 0ms;
+    transition-delay: 0ms;
+  }
 }

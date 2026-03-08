@@ -1,7 +1,7 @@
 import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { Breadcrumb, Button, Layout, Menu, Space, Switch, theme } from 'antd';
 import type { MenuProps } from 'antd';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useId, useMemo, useState } from 'react';
 import {
   appBreadcrumbBaseLabel,
@@ -56,9 +56,14 @@ export function AppShell({
     <MenuFoldOutlined />
   );
   const navigationMenuItems = useMemo(() => toMenuItems(navigationItems), []);
+  const shellStyle: CSSProperties = {
+    backgroundColor: token.colorBgLayout,
+    '--app-motion-duration-mid': token.motionDurationMid,
+    '--app-motion-ease-in-out': token.motionEaseInOut,
+  } as CSSProperties;
 
   return (
-    <Layout className="app-shell" style={{ backgroundColor: token.colorBgLayout }}>
+    <Layout className="app-shell" style={shellStyle}>
       <Header
         className="app-header"
         style={{

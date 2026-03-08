@@ -36,8 +36,8 @@ type AppNavigationDefinition = {
 type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
 
 /**
- * Wraps Ant Design icons so menu items keep an icon role in collapsed mode without polluting
- * the menu item's accessible name.
+ * Wraps Ant Design icons so menu items keep a visual icon in collapsed mode while
+ * hiding decorative icon wrappers from assistive technology.
  */
 function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) {
   return (

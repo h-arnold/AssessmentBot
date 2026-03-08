@@ -27,5 +27,12 @@ export const pageExpectations = [
   summary: string;
 }>;
 
-export const dashboardPageSummaryText =
-  pageExpectations.find((page) => page.key === 'dashboard')!.summary;
+export const dashboardPageSummaryText = (() => {
+  const dashboardPage = pageExpectations.find((page) => page.key === 'dashboard');
+
+  if (dashboardPage === undefined) {
+    throw new Error('The "dashboard" page expectation was not found and is required by tests.');
+  }
+
+  return dashboardPage.summary;
+})();
