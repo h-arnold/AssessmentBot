@@ -1,10 +1,12 @@
 import { BookOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
-import { Button, Layout, Menu, Space } from 'antd';
+import { Breadcrumb, Button, Layout, Menu, Space } from 'antd';
 import type { MenuProps } from 'antd';
 import type { ReactNode } from 'react';
 import { useId, useState } from 'react';
 import {
+  appBreadcrumbBaseLabel,
   defaultNavigationKey,
+  getBreadcrumbItems,
   isAppNavigationKey,
   navigationItems,
   pageRenderers,
@@ -62,7 +64,7 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
           />
           <Space>
             <BookOutlined aria-hidden="true" />
-            <span>AssessmentBot Frontend</span>
+            <span>{appBreadcrumbBaseLabel}</span>
           </Space>
         </Space>
       </Header>
@@ -98,6 +100,11 @@ export function AppShell({ dashboardContent }: { dashboardContent?: ReactNode })
           />
         </Sider>
         <Content className="app-content">
+          <Breadcrumb
+            items={getBreadcrumbItems(selectedNavigationKey)}
+            aria-label="Breadcrumb"
+            className="app-breadcrumb"
+          />
           {pageRenderers[selectedNavigationKey](dashboardContent)}
         </Content>
       </Layout>

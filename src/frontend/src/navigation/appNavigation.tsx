@@ -4,6 +4,7 @@ import {
   HomeOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
+import type { BreadcrumbProps } from 'antd';
 import { Space, Typography } from 'antd';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 
@@ -30,6 +31,8 @@ type AppNavigationDefinition = {
   icon: ReactElement;
   description: string;
 };
+
+type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
 
 /**
  * Wraps Ant Design icons so menu items keep an icon role in collapsed mode without polluting
@@ -91,6 +94,12 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
   },
 ] as const;
 
+export const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
+
+const navigationDefinitionByKey = new Map(
+  navigationDefinitions.map((definition) => [definition.key, definition] as const)
+);
+
 export const navigationItems: AppNavigationItem[] = navigationDefinitions.map(
   ({ key, label, icon }) => ({
     key,
@@ -119,6 +128,31 @@ export const pageRenderers = Object.fromEntries(pageRendererEntries) as Record<
   AppNavigationKey,
   AppNavigationPageRenderer
 >;
+
+/**
+ * Returns the shared label for a navigation key.
+ */
+export function getNavigationLabel(key: AppNavigationKey) {
+  const navigationDefinition = navigationDefinitionByKey.get(key);
+
+  if (navigationDefinition === undefined) {
+    throw new TypeError(`Unknown navigation key: ${key}`);
+  }
+
+  return navigationDefinition.label;
+}
+
+/**
+ * Builds the minimal breadcrumb trail for the active navigation entry.
+ */
+export function getBreadcrumbItems(
+  key: AppNavigationKey
+): NonNullable<BreadcrumbProps['items']> {
+  return [
+    { title: appBreadcrumbBaseLabel } satisfies AppBreadcrumbDefinition,
+    { title: getNavigationLabel(key) } satisfies AppBreadcrumbDefinition,
+  ];
+}
 
 /**
  * Guards menu click keys before they are applied to app state.

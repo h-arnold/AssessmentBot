@@ -25,7 +25,7 @@ describe('app navigation config', () => {
       'settings',
     ]);
 
-    const keys: AppNavigationKey[] = ['dashboard', 'classes', 'assignments', 'settings'];
+    const keys: AppNavigationKey[] = navigationItems.map(({ key }) => key);
 
     for (const key of keys) {
       expect(typeof pageRenderers[key]).toBe('function');

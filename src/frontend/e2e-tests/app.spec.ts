@@ -1,26 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  appBreadcrumbBaseLabel,
   defaultNavigationKey,
+  getNavigationLabel,
   navigationItems,
-  type AppNavigationKey,
 } from '../src/navigation/appNavigation';
 
 const breadcrumbNavigationName = 'Breadcrumb';
-
-/**
- * Looks up the shared label for a navigation key.
- */
-function getNavigationLabel(key: AppNavigationKey) {
-  const navigationItem = navigationItems.find(
-    ({ key: navigationKey }) => navigationKey === key
-  );
-
-  if (navigationItem === undefined) {
-    throw new TypeError(`Unknown navigation key: ${key}`);
-  }
-
-  return navigationItem.label;
-}
+const expectedNavigationItemCount = navigationItems.length;
+const assignmentsNavigationItemIndex = 2;
+const collapseExpandCycles = 2;
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -71,6 +60,7 @@ test.describe('app shell', () => {
     await page.goto('/');
 
     await expectBreadcrumbLabels(page, [
+      appBreadcrumbBaseLabel,
       getNavigationLabel(defaultNavigationKey),
     ]);
 
@@ -78,7 +68,7 @@ test.describe('app shell', () => {
       const label = getNavigationLabel(key);
 
       await page.getByRole('menuitem', { name: label }).click();
-      await expectBreadcrumbLabels(page, [label]);
+      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, label]);
     }
   });
 
@@ -90,7 +80,7 @@ test.describe('app shell', () => {
       const label = getNavigationLabel(key);
 
       await page.getByRole('menuitem', { name: label }).click();
-      await expectBreadcrumbLabels(page, [label]);
+      await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, label]);
     }
   });
 
@@ -106,7 +96,7 @@ test.describe('app shell', () => {
     const settingsLabel = getNavigationLabel('settings');
 
     await page.getByRole('menuitem', { name: settingsLabel }).click();
-    await expectBreadcrumbLabels(page, [settingsLabel]);
+    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
   });
 
   test('user can navigate to Dashboard, Classes, Assignments, and Settings via menu clicks', async ({
@@ -129,16 +119,18 @@ test.describe('app shell', () => {
 
     const menuItems = page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('menuitem');
 
-    await expect(menuItems).toHaveCount(4);
-    await menuItems.nth(2).click();
-    await expect(menuItems.nth(2)).toHaveClass(/ant-menu-item-selected/);
+    await expect(menuItems).toHaveCount(expectedNavigationItemCount);
+    await menuItems.nth(assignmentsNavigationItemIndex).click();
+    await expect(menuItems.nth(assignmentsNavigationItemIndex)).toHaveClass(
+      /ant-menu-item-selected/
+    );
   });
 
   test('menu remains functional after repeated collapse and expand cycles', async ({ page }) => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    for (let cycle = 0; cycle < 2; cycle += 1) {
+    for (let cycle = 0; cycle < collapseExpandCycles; cycle += 1) {
       await page.getByRole('button', { name: 'Collapse navigation' }).click();
       await page.getByRole('button', { name: 'Expand navigation' }).click();
     }

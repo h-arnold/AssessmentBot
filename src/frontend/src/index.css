@@ -52,6 +52,10 @@ body {
   padding: 2rem 1rem;
 }
 
+.app-breadcrumb {
+  margin-bottom: 1.5rem;
+}
+
 .app-page {
   width: 100%;
   display: flex;

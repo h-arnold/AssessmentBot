@@ -1,14 +1,17 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import App from './App';
 import {
+  appBreadcrumbBaseLabel,
   defaultNavigationKey,
+  getNavigationLabel,
   navigationItems,
   type AppNavigationKey,
 } from './navigation/appNavigation';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
-const applicationTitleText = 'AssessmentBot Frontend';
+const applicationTitleText = appBreadcrumbBaseLabel;
 const navigationLabels = navigationItems.map(({ label }) => label);
+const noBreadcrumbLabelPosition = -1;
 
 type ApiResponseEnvelope =
   | {
@@ -96,21 +99,6 @@ async function renderPendingApp() {
   });
 }
 
-/**
- * Looks up the shared label for a navigation key.
- */
-function getNavigationLabel(key: AppNavigationKey) {
-  const navigationItem = navigationItems.find(
-    ({ key: navigationKey }) => navigationKey === key
-  );
-
-  if (navigationItem === undefined) {
-    throw new TypeError(`Unknown navigation key: ${key}`);
-  }
-
-  return navigationItem.label;
-}
-
 const breadcrumbNavigationName = 'Breadcrumb';
 
 /**
@@ -131,7 +119,7 @@ function expectBreadcrumbLabels(labels: string[]) {
     expect(breadcrumb).toHaveTextContent(label);
   }
 
-  let previousPosition = -1;
+  let previousPosition = noBreadcrumbLabelPosition;
 
   for (const label of labels) {
     const labelPosition = breadcrumbText.indexOf(label);
@@ -211,7 +199,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    expectBreadcrumbLabels([getNavigationLabel(defaultNavigationKey)]);
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel(defaultNavigationKey)]);
   });
 
   it('changing selected page updates breadcrumb text immediately', async () => {
@@ -226,7 +214,7 @@ describe('App', () => {
       fireEvent.click(within(navigation).getByRole('menuitem', { name: classesLabel }));
     });
 
-    expectBreadcrumbLabels([classesLabel]);
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, classesLabel]);
   });
 
   it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
@@ -243,7 +231,7 @@ describe('App', () => {
         fireEvent.click(within(navigation).getByRole('menuitem', { name: label }));
       });
 
-      expectBreadcrumbLabels([label]);
+      expectBreadcrumbLabels([appBreadcrumbBaseLabel, label]);
     }
   });
 
@@ -267,7 +255,7 @@ describe('App', () => {
 
     const breadcrumb = getBreadcrumbElement();
 
-    expectBreadcrumbLabels([getNavigationLabel('settings')]);
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
   });
@@ -337,7 +325,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('AssessmentBot Frontend')).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
   });

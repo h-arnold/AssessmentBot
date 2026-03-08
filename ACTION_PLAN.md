@@ -189,9 +189,9 @@ Add `Breadcrumb` in the top bar (or directly beneath it), driven by current page
 
 ### Notes (implementation/deviations)
 
-- _Agent notes:_
-- _Any deviations from plan:_
-- _Follow-up considerations affecting later stages:_
+- _Agent notes:_ Added a minimal breadcrumb trail in the content area that is generated from shared navigation metadata and updates with the selected page. The breadcrumb currently shows a base crumb plus the active page label.
+- _Any deviations from plan:_ The base breadcrumb label is shared through the existing navigation module so the header title and breadcrumb root remain aligned without introducing a second label source.
+- _Follow-up considerations affecting later stages:_ Section 5 page components should keep using the shared navigation labels so breadcrumb text, menu labels, and page headings do not drift.
 
 ---
 
