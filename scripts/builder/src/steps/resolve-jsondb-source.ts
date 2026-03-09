@@ -67,7 +67,7 @@ async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): P
     }
 
     if (entry.isFile() && entry.name.endsWith('.js')) {
-      files.push(path.relative(baseDir, entryPath).replace(/\\/g, '/'));
+      files.push(path.relative(baseDir, entryPath).replaceAll('\\\\', '/'));
     }
   }
 
