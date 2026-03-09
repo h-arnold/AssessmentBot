@@ -540,7 +540,7 @@ class ABClassController {
         collection.insertOne(abClass);
       }
     } catch (error) {
-      ABLogger.getInstance().warn('_persistClassAndPartial: class collection write failed', {
+      logger.warn('_persistClassAndPartial: class collection write failed', {
         classId: abClass.classId,
         err: error,
       });
