@@ -1,5 +1,5 @@
-import js from '@eslint/js';
 import { createRequire } from 'node:module';
+import js from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
@@ -27,10 +27,14 @@ export default defineConfig([
     plugins: {
       jsdoc,
       sonarjs: sonarjsPlugin,
+      unicorn,
     },
     languageOptions: {
       ecmaVersion: 2024,
       globals: globals.browser,
+      parserOptions: {
+        project: ['./tsconfig.app.json', './tsconfig.node.json', './tsconfig.e2e.json'],
+      },
     },
     rules: {
       ...tsBaseRules,

@@ -1,5 +1,6 @@
 const sonarjs = require('eslint-plugin-sonarjs');
-const unicorn = require('eslint-plugin-unicorn');
+const unicornModule = require('eslint-plugin-unicorn');
+const unicorn = unicornModule?.__esModule ? unicornModule.default : unicornModule;
 
 const tsBaseRules = {
   ...sonarjs.configs.recommended.rules,

@@ -9,6 +9,12 @@ const assignmentsNavigationItemIndex = 2;
 const collapseExpandCycles = 2;
 const themeSwitchLabel = 'Dark mode';
 const lastPageExpectationOffset = -1;
+const ariaExpandedAttribute = 'aria-expanded';
+const primaryNavigationLabel = 'Primary navigation';
+const collapseNavigationButtonLabel = 'Collapse navigation';
+const expandNavigationButtonLabel = 'Expand navigation';
+const settingsLabel = 'Settings';
+const navigationMenuLabels = ['Dashboard', 'Classes', 'Assignments', settingsLabel];
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -84,7 +90,7 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    for (const heading of ['Classes', 'Assignments', 'Settings']) {
+    for (const heading of ['Classes', 'Assignments', settingsLabel]) {
       await page.getByRole('menuitem', { name: heading }).click();
       await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
     }
@@ -96,11 +102,11 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Collapse navigation' }).click();
-    await page.getByRole('button', { name: 'Expand navigation' }).click();
+    await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
+    await page.getByRole('button', { name: expandNavigationButtonLabel }).click();
 
-    await page.getByRole('menuitem', { name: 'Settings' }).click();
-    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, 'Settings']);
+    await page.getByRole('menuitem', { name: settingsLabel }).click();
+    await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
   });
 
   test('user can navigate to Dashboard, Classes, Assignments, and Settings via menu clicks', async ({
@@ -109,7 +115,7 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    for (const label of ['Dashboard', 'Classes', 'Assignments', 'Settings']) {
+    for (const label of navigationMenuLabels) {
       await page.getByRole('menuitem', { name: label }).click();
       await expect(page.getByRole('menuitem', { name: label })).toHaveClass(/ant-menu-item-selected/);
     }
@@ -119,9 +125,9 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    await page.getByRole('button', { name: 'Collapse navigation' }).click();
+    await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
 
-    const menuItems = page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('menuitem');
+    const menuItems = page.getByRole('navigation', { name: primaryNavigationLabel }).getByRole('menuitem');
 
     await expect(menuItems).toHaveCount(expectedNavigationItemCount);
     await menuItems.nth(assignmentsNavigationItemIndex).click();
@@ -135,11 +141,11 @@ test.describe('app shell', () => {
     await page.goto('/');
 
     for (let cycle = 0; cycle < collapseExpandCycles; cycle += 1) {
-      await page.getByRole('button', { name: 'Collapse navigation' }).click();
-      await page.getByRole('button', { name: 'Expand navigation' }).click();
+      await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
+      await page.getByRole('button', { name: expandNavigationButtonLabel }).click();
     }
 
-    const settingsItem = page.getByRole('menuitem', { name: 'Settings' });
+    const settingsItem = page.getByRole('menuitem', { name: settingsLabel });
 
     await settingsItem.click();
     await expect(settingsItem).toHaveClass(/ant-menu-item-selected/);
@@ -150,17 +156,17 @@ test.describe('app shell', () => {
     await page.goto('/');
 
     await expect(page.getByRole('banner')).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: primaryNavigationLabel })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+    await expect(page.getByRole('button', { name: collapseNavigationButtonLabel })).toBeVisible();
   });
 
   test('hamburger collapses and expands nav rail visually', async ({ page }) => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    const collapseButton = page.getByRole('button', { name: 'Collapse navigation' });
-    const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
+    const collapseButton = page.getByRole('button', { name: collapseNavigationButtonLabel });
+    const navigation = page.getByRole('navigation', { name: primaryNavigationLabel });
     const expandedBox = await navigation.boundingBox();
 
     expect(expandedBox).not.toBeNull();
@@ -168,10 +174,10 @@ test.describe('app shell', () => {
     await collapseButton.click();
 
     // Re-acquire by the new accessible name after the toggle changes the button label.
-    const expandButton = page.getByRole('button', { name: 'Expand navigation' });
+    const expandButton = page.getByRole('button', { name: expandNavigationButtonLabel });
 
     await expect(expandButton).toBeVisible();
-    await expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+    await expect(expandButton).toHaveAttribute(ariaExpandedAttribute, 'false');
     await expect(expandButton.getByLabel('menu-unfold')).toBeVisible();
 
     const collapsedBox = await navigation.boundingBox();
@@ -181,10 +187,10 @@ test.describe('app shell', () => {
 
     await expandButton.click();
 
-    const reexpandedButton = page.getByRole('button', { name: 'Collapse navigation' });
+    const reexpandedButton = page.getByRole('button', { name: collapseNavigationButtonLabel });
 
     await expect(reexpandedButton).toBeVisible();
-    await expect(reexpandedButton).toHaveAttribute('aria-expanded', 'true');
+    await expect(reexpandedButton).toHaveAttribute(ariaExpandedAttribute, 'true');
 
     const reexpandedBox = await navigation.boundingBox();
 
@@ -197,21 +203,21 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    const collapseButton = page.getByRole('button', { name: 'Collapse navigation' });
+    const collapseButton = page.getByRole('button', { name: collapseNavigationButtonLabel });
 
     await collapseButton.focus();
     await page.keyboard.press('Enter');
 
     // Re-acquire by the new accessible name after the toggle changes the button label.
-    const expandButton = page.getByRole('button', { name: 'Expand navigation' });
+    const expandButton = page.getByRole('button', { name: expandNavigationButtonLabel });
 
-    await expect(expandButton).toHaveAttribute('aria-expanded', 'false');
+    await expect(expandButton).toHaveAttribute(ariaExpandedAttribute, 'false');
 
     await page.keyboard.press(' ');
 
-    const reexpandedButton = page.getByRole('button', { name: 'Collapse navigation' });
+    const reexpandedButton = page.getByRole('button', { name: collapseNavigationButtonLabel });
 
-    await expect(reexpandedButton).toHaveAttribute('aria-expanded', 'true');
+    await expect(reexpandedButton).toHaveAttribute(ariaExpandedAttribute, 'true');
   });
 
   test('active menu item styling changes when selecting a new page', async ({ page }) => {
@@ -281,8 +287,8 @@ test.describe('app shell', () => {
 
     const initialHeaderBackground = await getHeaderBackgroundColour(page);
 
-    await page.getByRole('button', { name: 'Collapse navigation' }).click();
-    await page.getByRole('button', { name: 'Expand navigation' }).click();
+    await page.getByRole('button', { name: collapseNavigationButtonLabel }).click();
+    await page.getByRole('button', { name: expandNavigationButtonLabel }).click();
 
     const themeModeSwitch = getThemeModeSwitch(page);
 
