@@ -8,8 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:all": "INCLUDE_LEGACY_UI_TESTS=true vitest run",
-    "test:legacy-ui": "INCLUDE_LEGACY_UI_TESTS=true vitest run tests/ui/**/*.test.js tests/singletons/uiLazyProbe.test.js",
+    "test:all": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --config eslint.config.js src/backend/**/*.js",

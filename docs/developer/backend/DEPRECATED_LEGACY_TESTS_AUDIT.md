@@ -1,6 +1,6 @@
 # Deprecated Tests Audit for React WebApp Migration
 
-Date: 2 March 2026
+Date: 9 March 2026
 
 ## Scope
 
@@ -8,18 +8,19 @@ This audit marks tests coupled to the deprecated legacy Sheets UI/update flow id
 
 ## Summary
 
-Yes, it is possible to keep these tests in the repo and skip them by default.
+These deprecated AdminSheet legacy UI tests have now been removed from the repo.
 
 Implemented in this change:
 
-- `vitest.config.js` now skips legacy UI-linked tests unless `INCLUDE_LEGACY_UI_TESTS=true`.
+- `tests/ui/**` has been deleted.
+- `tests/singletons/uiLazyProbe.test.js` has been deleted.
+- Legacy wizard/UI helper files used only by those suites have been deleted.
 - `tests/controllers/initController.test.js` is permanently excluded from all runs.
 - `tests/controllers/createDefinitionFromWizardInputs.test.js` is permanently excluded from all runs.
-- `package.json` adds:
-  - `npm run test:all` to run all tests including legacy UI tests.
-  - `npm run test:legacy-ui` to run only legacy UI tests.
+- `vitest.config.js` excludes the removed legacy test paths to prevent accidental reintroduction into the default suite.
+- `package.json` keeps `npm test` and `npm run test:all` aligned on the active backend suite.
 
-## Deprecated test files (skip by default)
+## Removed deprecated test files
 
 ### 1) Legacy UI modal/template tests
 
@@ -57,25 +58,21 @@ Status: Permanently skipped and excluded from all suites.
 
 Reason: This asserts behaviour of `UIManager` UI probing in the legacy spreadsheet UI layer.
 
-## Related helper files to treat as legacy test support
-
-These are not skipped directly, but primarily support deprecated tests:
+## Removed helper files
 
 - `tests/helpers/assessmentWizardTestUtils.js`
 - `tests/helpers/htmlTemplateRenderer.js`
-- `tests/helpers/singletonTestSetup.js` (partially shared)
 
-## What still runs by default
+## What still runs
 
-`npm test` now runs non-legacy logic tests by default (models, request handlers, parsers, assignment pipeline, configuration logic, etc.).
+`npm test` and `npm run test:all` now run the active backend logic tests (models, request handlers, parsers, assignment pipeline, configuration logic, etc.).
 
 ## Commands
 
-- Default non-legacy suite: `npm test`
-- Legacy UI tests only: `npm run test:legacy-ui`
-- Full suite including legacy UI tests: `npm run test:all`
+- Active backend suite: `npm test`
+- Active backend suite alias: `npm run test:all`
 
 Notes:
 
-- `npm run test:all` still excludes `tests/controllers/initController.test.js` by design.
-- `npm run test:all` also excludes `tests/controllers/createDefinitionFromWizardInputs.test.js` by design.
+- `npm test` still excludes `tests/controllers/initController.test.js` by design.
+- `npm test` also excludes `tests/controllers/createDefinitionFromWizardInputs.test.js` by design.
