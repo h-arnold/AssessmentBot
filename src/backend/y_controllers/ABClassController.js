@@ -147,7 +147,8 @@ class ABClassController {
 
   /**
    * Upserts the class partial document to the abclass_partials collection.
-   * @param {ABClass} abClass - The class instance with toPartialJSON() support
+   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
+   *   a `classId` property and a `toPartialJSON()` method.
    * @throws {Error} Rethrows any persistence error.
    * @private
    */
@@ -225,7 +226,8 @@ class ABClassController {
   /**
    * Persist an assignment run by writing full payload to dedicated collection
    * and updating the ABClass with a partial summary.
-   * @param {ABClass} abClass - The ABClass instance containing the assignment
+   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
+   *   a `classId` property and a `toPartialJSON()` method.
    * @param {Assignment} assignment - The assignment to persist
    * @return {void}
    */
@@ -238,6 +240,27 @@ class ABClassController {
 
     if (!assignment.courseId || !assignment.assignmentId) {
       throw new TypeError('Assignment must have courseId and assignmentId');
+    }
+
+    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+      throw new TypeError(
+        'persistAssignmentRun: expected abClass.classId to be a non-empty string'
+      );
+    }
+
+    if (typeof assignment.courseId !== 'string' || assignment.courseId.trim().length === 0) {
+      throw new TypeError(
+        'persistAssignmentRun: expected assignment.courseId to be a non-empty string'
+      );
+    }
+
+    if (
+      typeof assignment.assignmentId !== 'string' ||
+      assignment.assignmentId.trim().length === 0
+    ) {
+      throw new TypeError(
+        'persistAssignmentRun: expected assignment.assignmentId to be a non-empty string'
+      );
     }
 
     try {
@@ -315,7 +338,8 @@ class ABClassController {
 
   /**
    * Rehydrate an assignment by loading the full version from its dedicated collection.
-   * @param {ABClass} abClass - The ABClass instance
+   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
+   *   a `classId` property and a `toPartialJSON()` method.
    * @param {string} assignmentId - The assignment ID to rehydrate
    * @return {Assignment} The fully hydrated assignment instance
    */
@@ -324,6 +348,14 @@ class ABClassController {
 
     if (!abClass || !assignmentId) {
       throw new TypeError('rehydrateAssignment requires abClass and assignmentId');
+    }
+
+    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+      throw new TypeError('rehydrateAssignment: expected abClass.classId to be a non-empty string');
+    }
+
+    if (typeof assignmentId !== 'string' || assignmentId.trim().length === 0) {
+      throw new TypeError('rehydrateAssignment: expected assignmentId to be a non-empty string');
     }
 
     const courseId = abClass.classId;
@@ -428,7 +460,8 @@ class ABClassController {
 
   /**
    * Replace assignment in ABClass assignments array.
-   * @param {ABClass} abClass
+   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
+   *   a `classId` property and a `toPartialJSON()` method.
    * @param {string} assignmentId
    * @param {Assignment} hydratedAssignment
    * @private
@@ -585,14 +618,40 @@ class ABClassController {
   }
 
   /**
-   * Save an ABClass instance to its collection named by classId.
+   * Save a class representation to its collection named by classId.
    * Delegates to _persistClassAndPartial for write-through persistence.
    * Returns true on success.
    *
-   * @param {ABClass} abClass
+   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
+   *   a `classId` property and a `toPartialJSON()` method.
    * @returns {boolean}
+   * @throws {TypeError} If abClass is missing required properties or methods.
    */
   saveClass(abClass) {
+    if (!abClass || typeof abClass !== 'object') {
+      throw new TypeError(
+        'saveClass: expected an ABClass instance or plain object with classId and toPartialJSON()'
+      );
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(abClass, 'classId')) {
+      throw new TypeError('saveClass: missing required classId property on abClass argument');
+    }
+
+    if (typeof abClass.classId !== 'string' || abClass.classId.trim().length === 0) {
+      throw new TypeError('saveClass: expected abClass.classId to be a non-empty string');
+    }
+
+    if (abClass.classId.includes('..') || abClass.classId.includes('/')) {
+      throw new TypeError('saveClass: invalid classId format');
+    }
+
+    if (typeof abClass.toPartialJSON !== 'function') {
+      throw new TypeError(
+        'saveClass: expected abClass.toPartialJSON() to be a function for partial persistence'
+      );
+    }
+
     this._persistClassAndPartial(abClass);
     return true;
   }

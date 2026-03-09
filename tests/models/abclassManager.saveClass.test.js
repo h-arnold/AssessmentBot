@@ -61,4 +61,34 @@ describe('ABClassController.saveClass', () => {
     expect(collectionMock.save).toHaveBeenCalled();
     expect(result).toBe(true);
   });
+
+  test('throws when input is not an object', () => {
+    expect(() => manager.saveClass(null)).toThrow(
+      'saveClass: expected an ABClass instance or plain object with classId and toPartialJSON()'
+    );
+  });
+
+  test('throws when classId is missing', () => {
+    expect(() => manager.saveClass({ toPartialJSON: vi.fn() })).toThrow(
+      'saveClass: missing required classId property on abClass argument'
+    );
+  });
+
+  test('throws when classId is blank', () => {
+    expect(() => manager.saveClass({ classId: '   ', toPartialJSON: vi.fn() })).toThrow(
+      'saveClass: expected abClass.classId to be a non-empty string'
+    );
+  });
+
+  test('throws when classId contains traversal segments', () => {
+    expect(() => manager.saveClass({ classId: '../class-1', toPartialJSON: vi.fn() })).toThrow(
+      'saveClass: invalid classId format'
+    );
+  });
+
+  test('throws when toPartialJSON is missing', () => {
+    expect(() => manager.saveClass({ classId: 'class-1' })).toThrow(
+      'saveClass: expected abClass.toPartialJSON() to be a function for partial persistence'
+    );
+  });
 });
