@@ -346,13 +346,9 @@ Run targeted regressions across touched backend and frontend areas and ensure no
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 8 — Final documentation and rollout readiness
+- **Implementation notes:** All verification commands executed and passed. Backend: 284 tests across models (78), controllers (86), API (95), and requestHandlers (25). Frontend: 55 tests (9 test files). Backend lint and frontend lint both clean.
+- **Deviations from plan:** No regressions found.
+- **Follow-up implications for later sections:** Proceed to Section 8 docs.
 
 ### Objective
 
@@ -377,13 +373,9 @@ Ensure developer-facing documentation accurately reflects the implemented persis
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Stage exit criteria (all must pass)
+- **Implementation notes:** Added `ABClassPartials — class list index` section to `docs/developer/backend/DATA_SHAPES.md` (persistence strategy, shape, key notes). Updated `docs/developer/backend/api-layer.md` to list `getABClassPartials` alongside `getAuthorisationStatus` as a migrated endpoint with source and frontend wrapper references.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** All sections complete. Stage exit criteria met. (all must pass)
 
 - Class partial contract implemented and tested.
 - Partial registry persisted as one doc per `classId` and synchronised on class write paths.
