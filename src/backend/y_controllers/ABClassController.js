@@ -596,6 +596,23 @@ class ABClassController {
     this._persistClassAndPartial(abClass);
     return true;
   }
+
+  /**
+   * Returns all class partial documents from the abclass_partials collection.
+   * @returns {Array<object>} Array of partial class documents; empty array if none exist.
+   * @throws {Error} Rethrows any collection read error.
+   */
+  getAllClassPartials() {
+    const logger = ABLogger.getInstance();
+    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    try {
+      const docs = partialsCollection.find({});
+      return Array.isArray(docs) ? docs : [];
+    } catch (error) {
+      logger.error('getAllClassPartials: failed to read abclass_partials', { err: error });
+      throw error;
+    }
+  }
 }
 
 // Export for Node tests
