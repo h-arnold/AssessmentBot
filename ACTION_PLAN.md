@@ -99,6 +99,10 @@ Backend model tests:
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** `toPartialJSON()` is now the canonical source for partial data shape consumed by Sections 2–4.
 
+---
+
+## Section 2 — Persist class partials as document-per-class registry
+
 ### Objective
 
 Implement controller-owned upsert logic that writes one class partial document per `classId` in `abclass_partials`.
@@ -188,6 +192,10 @@ Backend controller tests:
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** `_upsertClassPartial()` is now the single shared partial upsert utility for both write paths.
 
+---
+
+## Section 4 — Implement read path for all class partials
+
 ### Objective
 
 Expose a controller read method that returns all partial documents for API use.
@@ -221,6 +229,10 @@ Backend controller tests:
 - **Implementation notes:** Added `getAllClassPartials()` to `ABClassController` — reads all docs from `abclass_partials` collection, returns array, throws on failure. Tests in `tests/controllers/abclass-partials-read.test.js` (4 cases, all green).
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 5 will wire this method into the API dispatcher.
+
+---
+
+## Section 5 — API allowlist and dispatcher wiring
 
 ### Objective
 
@@ -256,13 +268,9 @@ API-layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 6 — Frontend service integration
+- **Implementation notes:** `API_METHODS` and `API_ALLOWLIST` updated with `getABClassPartials`; `_invokeAllowlistedMethod` dispatch branch added; thin handler `getABClassPartials()` created in `src/backend/Api/abclassPartials.js` (delegates to `ABClassController.getAllClassPartials()`). Tests in `tests/api/abclassPartials.test.js` (6 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 6 will add the frontend service wrapper.
 
 ### Objective
 
