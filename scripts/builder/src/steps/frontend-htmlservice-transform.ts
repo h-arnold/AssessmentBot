@@ -149,7 +149,7 @@ async function replaceAsync(
   );
 
   let replacementIndex = 0;
-  return input.replace(pattern, () => replacements[replacementIndex++] as string);
+  return input.replace(pattern, () => replacements[replacementIndex++]);
 }
 
 /**
@@ -161,7 +161,7 @@ async function replaceAsync(
  */
 function readAttributeValue(attributes: string, name: string): string | undefined {
   const pattern = new RegExp(
-    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
+    String.raw`\b${name}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`,
     'i',
   );
   const match = pattern.exec(attributes);
@@ -181,7 +181,7 @@ function readAttributeValue(attributes: string, name: string): string | undefine
 function removeAttribute(attributes: string, name: string): string {
   const trimmed = attributes
     .replaceAll(
-      new RegExp(`\\s*\\b${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'>]+)`, 'gi'),
+      new RegExp(String.raw`\s*\b${name}\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)'>]+)`, 'gi'),
       '',
     )
     .trim();
