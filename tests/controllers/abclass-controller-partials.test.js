@@ -14,33 +14,26 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { cleanupControllerTestMocks } from '../helpers/mockFactories.js';
+import {
+  cleanupControllerTestMocks,
+  createMockCollection,
+  setupControllerTestMocks,
+} from '../helpers/mockFactories.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Minimal collection mock — each test gets fresh instances. */
-const makeCollection = () => ({
-  findOne: vi.fn(() => null),
-  replaceOne: vi.fn(),
-  insertOne: vi.fn(),
-  updateOne: vi.fn(),
-  save: vi.fn(),
-});
-
 /**
- * Setup globalThis with DbManager and ABLogger mocks that route getCollection()
- * to one of two per-test collection stubs: classCollection (keyed by classId)
- * or partialsCollection (keyed by 'abclass_partials').
+ * Override globalThis.DbManager with a dual-collection router after
+ * setupControllerTestMocks() has already set up ABLogger, ProgressTracker,
+ * ConfigurationManager, and AssignmentDefinitionController.
  *
- * @param {object} vi - Vitest vi object
  * @param {object} classCollection - mock for the class-named collection
  * @param {object} partialsCollection - mock for the 'abclass_partials' collection
- * @param {object} mockABLogger - logger mock
  * @returns {{ mockDbManager }}
  */
-function setupMocks(vi, classCollection, partialsCollection, mockABLogger) {
+function setupMocks(classCollection, partialsCollection) {
   const mockDbManager = {
     getCollection: vi.fn((name) => {
       if (name === 'abclass_partials') return partialsCollection;
@@ -49,24 +42,6 @@ function setupMocks(vi, classCollection, partialsCollection, mockABLogger) {
   };
 
   globalThis.DbManager = { getInstance: () => mockDbManager };
-  globalThis.ABLogger = { getInstance: () => mockABLogger };
-
-  // ProgressTracker stub (required by ABClass / Assignment constructors)
-  const mockProgressTracker = {
-    updateProgress: vi.fn(),
-    logError: vi.fn(),
-    logAndThrowError: vi.fn((msg) => {
-      throw new Error(msg);
-    }),
-  };
-  globalThis.ProgressTracker = { getInstance: () => mockProgressTracker };
-
-  // ConfigurationManager stub (required by ABClass constructor)
-  globalThis.ConfigurationManager = {
-    getInstance: () => ({
-      getAssessmentRecordCourseId: vi.fn().mockReturnValue('test-course'),
-    }),
-  };
 
   return { mockDbManager };
 }
@@ -79,17 +54,13 @@ let ABClassController, ABClass;
 let classCollection, partialsCollection, mockABLogger;
 
 beforeEach(async () => {
-  classCollection = makeCollection();
-  partialsCollection = makeCollection();
-  mockABLogger = {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-    debugUi: vi.fn(),
-  };
+  classCollection = createMockCollection(vi);
+  partialsCollection = createMockCollection(vi);
 
-  setupMocks(vi, classCollection, partialsCollection, mockABLogger);
+  const mocks = setupControllerTestMocks(vi);
+  mockABLogger = mocks.mockABLogger;
+
+  setupMocks(classCollection, partialsCollection);
 
   // Dynamic require after globals are set (CommonJS modules read globals at call time)
   const abClassModule = await import('../../src/backend/Models/ABClass.js');
