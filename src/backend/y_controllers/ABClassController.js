@@ -518,47 +518,70 @@ class ABClassController {
   }
 
   /**
-   * Save an ABClass instance (or plain object) to its collection named by classId.
-   * Replaces all documents in the collection with a single serialized object.
-   * Returns true on success.
+   * Write-through persistence: saves the full class document to its own
+   * collection and upserts a partial summary document to 'abclass_partials'.
    *
    * @param {ABClass|Object} abClass
-   * @returns {boolean}
+   * @returns {void}
+   * @private
    */
-  saveClass(abClass) {
+  _persistClassAndPartial(abClass) {
+    const logger = ABLogger.getInstance();
     const collectionName = String(abClass.classId);
-
     const collection = this.dbManager.getCollection(collectionName);
 
-    // Normalize to an insert/update path. If the collection already contains
-    // a document for this classId, use replaceOne to update it. Otherwise
-    // insert a new document.
+    // 1. Write full class document to its own collection
     try {
-      // Try to find an existing document for this classId. JsonDbApp's
-      // collections typically store a single document per class, keyed by
-      // classId. Use a field-based query to detect existence.
       const existing = collection.findOne({ classId: abClass.classId });
 
       if (existing) {
-        // Replace the existing document entirely. Do not include update
-        // operators in the replacement object.
         collection.replaceOne({ classId: abClass.classId }, abClass);
       } else {
-        // No existing document — insert a new one.
         collection.insertOne(abClass);
       }
     } catch (error) {
-      // Use the project's logging contract directly and fail fast.
-      ABLogger.getInstance().warn('saveClass: collection operation failed', {
+      ABLogger.getInstance().warn('_persistClassAndPartial: class collection write failed', {
         classId: abClass.classId,
         err: error,
       });
       throw error;
     }
 
-    // Persist changes
     collection.save();
 
+    // 2. Upsert partial document to shared partials registry
+    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    const partialData = abClass.toPartialJSON();
+
+    try {
+      const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
+
+      if (existingPartial) {
+        partialsCollection.replaceOne({ classId: abClass.classId }, partialData);
+      } else {
+        partialsCollection.insertOne(partialData);
+      }
+    } catch (error) {
+      logger.error('_persistClassAndPartial: partials collection write failed', {
+        classId: abClass.classId,
+        err: error,
+      });
+      throw error;
+    }
+
+    partialsCollection.save();
+  }
+
+  /**
+   * Save an ABClass instance (or plain object) to its collection named by classId.
+   * Delegates to _persistClassAndPartial for write-through persistence.
+   * Returns true on success.
+   *
+   * @param {ABClass|Object} abClass
+   * @returns {boolean}
+   */
+  saveClass(abClass) {
+    this._persistClassAndPartial(abClass);
     return true;
   }
 }
