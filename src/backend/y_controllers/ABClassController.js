@@ -523,6 +523,7 @@ class ABClassController {
    *
    * @param {ABClass|Object} abClass
    * @returns {void}
+   * @throws {Error} Rethrows any persistence error from either collection.
    * @private
    */
   _persistClassAndPartial(abClass) {
@@ -539,15 +540,15 @@ class ABClassController {
       } else {
         collection.insertOne(abClass);
       }
+
+      collection.save();
     } catch (error) {
-      logger.warn('_persistClassAndPartial: class collection write failed', {
+      logger.error('_persistClassAndPartial: class collection write failed', {
         classId: abClass.classId,
         err: error,
       });
       throw error;
     }
-
-    collection.save();
 
     // 2. Upsert partial document to shared partials registry
     const partialsCollection = this.dbManager.getCollection('abclass_partials');
@@ -561,6 +562,8 @@ class ABClassController {
       } else {
         partialsCollection.insertOne(partialData);
       }
+
+      partialsCollection.save();
     } catch (error) {
       logger.error('_persistClassAndPartial: partials collection write failed', {
         classId: abClass.classId,
@@ -568,8 +571,6 @@ class ABClassController {
       });
       throw error;
     }
-
-    partialsCollection.save();
   }
 
   /**

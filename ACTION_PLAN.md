@@ -144,9 +144,9 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Added `_persistClassAndPartial(abClass)` to `ABClassController` — writes full class doc and upserts partial to `abclass_partials` collection. `saveClass()` now delegates to this write-through helper. Tests in `tests/controllers/abclass-controller-partials.test.js` (6 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 3 will verify that `_persistRoster` and other class write paths also go through this helper.
 
 ---
 
