@@ -8,7 +8,6 @@ const removedDeprecatedLegacyTests = ['tests/ui/**', 'tests/singletons/uiLazyPro
 module.exports = {
   test: {
     coverage: {
-      enabled: true,
       provider: 'v8',
       include: ['src/backend/Api/**/*.js'],
       reporter: ['text', 'html'],
