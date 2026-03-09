@@ -184,13 +184,9 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 4 — Implement read path for all class partials
+- **Implementation notes:** Extracted `_upsertClassPartial(abClass)` helper from `_persistClassAndPartial()`; updated `_persistRoster()` to call `_upsertClassPartial()` after successful roster persist. Updated `abclassManager.saveClass.test.js` and `abclassManager.loadClass.test.js` to provide `toPartialJSON` mock and isolate `abclass_partials` collection mock. Tests in `tests/controllers/abclass-roster-sync.test.js` (4 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** `_upsertClassPartial()` is now the single shared partial upsert utility for both write paths.
 
 ### Objective
 
