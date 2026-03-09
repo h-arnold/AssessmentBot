@@ -388,5 +388,21 @@ describe('ABClassController Persist Assignment', () => {
       expect(abClass.assignments).toHaveLength(1);
       expect(abClass.assignments[0].assignmentId).toBe('assign-new');
     });
+
+    it('throws when abClass.classId is not a non-empty string', () => {
+      const controller = new ABClassController();
+      const { assignment } = createTestFixture({
+        ABClass,
+        courseId: 'course-invalid-class-id',
+        assignmentId: 'assign-invalid-class-id',
+      });
+
+      expect(() => {
+        controller.persistAssignmentRun(
+          { classId: '   ', assignments: [], findAssignmentIndex: () => -1 },
+          assignment
+        );
+      }).toThrow('persistAssignmentRun: expected abClass.classId to be a non-empty string');
+    });
   });
 });
