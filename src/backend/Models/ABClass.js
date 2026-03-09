@@ -24,6 +24,16 @@ function serialiseArray(items) {
 }
 
 /**
+ * Serialises an owner object, calling toJSON() if available.
+ * Returns null when owner is absent.
+ */
+function serialiseOwner(owner) {
+  if (!owner) return null;
+  if (typeof owner.toJSON === 'function') return owner.toJSON();
+  return owner;
+}
+
+/**
  * ABClass
  *
  * Root model that encapsulates all data about a given class (Google Classroom course).
@@ -41,6 +51,7 @@ class ABClass {
    * @param {Array} teachers - Array of teacher objects (raw or Teacher instances)
    * @param {Array} students - Array of student objects (raw or Student instances)
    * @param {Array} assignments - Array of assignment objects (raw or Assignment instances)
+   * @param {boolean|null} active - Whether the class is active (null if unknown)
    */
   constructor(
     classId,
@@ -51,7 +62,8 @@ class ABClass {
     classOwner = null,
     teachers = [],
     students = [],
-    assignments = []
+    assignments = [],
+    active = null
   ) {
     // If classId not provided, attempt to read from ConfigurationManager (Assessment Record Course Id)
     if (!classId) {
@@ -86,6 +98,8 @@ class ABClass {
     this.teachers = Array.isArray(teachers) ? [...teachers] : [];
     this.students = Array.isArray(students) ? [...students] : [];
     this.assignments = Array.isArray(assignments) ? [...assignments] : [];
+
+    this.active = active;
   }
 
   // Owner helpers
@@ -290,9 +304,28 @@ class ABClass {
       cohort: this.cohort,
       courseLength: this.courseLength,
       yearGroup: this.yearGroup,
+      classOwner: serialiseOwner(this.classOwner),
       teachers: serialiseArray(this.teachers),
       students: serialiseArray(this.students),
       assignments: serialiseArray(this.assignments),
+      active: this.active,
+    };
+  }
+
+  /**
+   * Returns a lightweight partial representation of the class, omitting
+   * students and assignments. Suitable for list views and class-selector UIs.
+   */
+  toPartialJSON() {
+    return {
+      classId: this.classId,
+      className: this.className,
+      cohort: this.cohort,
+      courseLength: this.courseLength,
+      yearGroup: this.yearGroup,
+      classOwner: serialiseOwner(this.classOwner),
+      teachers: serialiseArray(this.teachers),
+      active: this.active,
     };
   }
 
@@ -338,6 +371,8 @@ class ABClass {
         inst.assignments.push(assignmentInstance);
       });
     }
+
+    inst.active = json.active ?? null;
 
     return inst;
   }

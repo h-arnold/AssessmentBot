@@ -91,7 +91,7 @@ Backend model tests:
 
 ### Section checks
 
-- `npm test -- tests/models/<abclass-related-spec>.js`
+- `npm test -- tests/models/<abclass-related>.test.js`
 
 ### Implementation notes / deviations / follow-up
 
@@ -123,7 +123,6 @@ To keep persistence in one place, introduce a single controller-owned write-thro
 
 All class-mutating flows (`saveClass`, roster refresh persistence helpers, and any future class metadata update methods) should call this method rather than writing collections directly.
 
-
 ### Acceptance criteria
 
 - Saving a class uses a single write-through persistence method for both full and partial records.
@@ -145,7 +144,7 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-controller-partials-spec>.js`
+- `npm test -- tests/controllers/abclass-controller-partials.test.js`
 
 ### Implementation notes / deviations / follow-up
 
@@ -185,7 +184,7 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-roster-sync-spec>.js`
+- `npm test -- tests/controllers/abclass-roster-sync.test.js`
 
 ### Implementation notes / deviations / follow-up
 
@@ -223,7 +222,7 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-partials-read-spec>.js`
+- `npm test -- tests/controllers/abclass-partials-read.test.js`
 
 ### Implementation notes / deviations / follow-up
 
@@ -265,7 +264,7 @@ API-layer tests:
 
 ### Section checks
 
-- `npm test -- tests/requestHandlers/<api-handler-spec>.js`
+- `npm test -- tests/requestHandlers/<api-handler>.test.js`
 
 ### Implementation notes / deviations / follow-up
 
@@ -303,7 +302,7 @@ Frontend unit tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/<class-partials-service-spec>.ts`
+- `npm run frontend:test -- src/services/<class-partials-service>.spec.ts`
 
 ### Implementation notes / deviations / follow-up
 
