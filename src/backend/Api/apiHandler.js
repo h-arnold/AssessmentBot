@@ -253,6 +253,9 @@ class ApiDispatcher extends BaseSingleton {
     if (handlerName === 'getAuthorisationStatus') {
       return getAuthorisationStatus(params);
     }
+    if (handlerName === 'getABClassPartials') {
+      return getABClassPartials(params);
+    }
     throw new Error('Allowlisted handler is not implemented.');
   }
 

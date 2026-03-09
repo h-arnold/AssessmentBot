@@ -91,13 +91,13 @@ Backend model tests:
 
 ### Section checks
 
-- `npm test -- tests/models/<abclass-related-spec>.js`
+- `npm test -- tests/models/<abclass-related>.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Added `active = null` as last constructor param; added `serialiseOwner()` helper for DRY classOwner serialisation; `toJSON()` now includes `classOwner` and `active`; `fromJSON()` restores `active` via `?? null`; new `toPartialJSON()` excludes `students` and `assignments`. Tests in `tests/models/abclass.partial.test.js` (12 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** `toPartialJSON()` is now the canonical source for partial data shape consumed by Sections 2–4.
 
 ---
 
@@ -123,7 +123,6 @@ To keep persistence in one place, introduce a single controller-owned write-thro
 
 All class-mutating flows (`saveClass`, roster refresh persistence helpers, and any future class metadata update methods) should call this method rather than writing collections directly.
 
-
 ### Acceptance criteria
 
 - Saving a class uses a single write-through persistence method for both full and partial records.
@@ -145,13 +144,13 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-controller-partials-spec>.js`
+- `npm test -- tests/controllers/abclass-controller-partials.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Added `_persistClassAndPartial(abClass)` to `ABClassController` — writes full class doc and upserts partial to `abclass_partials` collection. `saveClass()` now delegates to this write-through helper. Tests in `tests/controllers/abclass-controller-partials.test.js` (6 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 3 will verify that `_persistRoster` and other class write paths also go through this helper.
 
 ---
 
@@ -185,13 +184,13 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-roster-sync-spec>.js`
+- `npm test -- tests/controllers/abclass-roster-sync.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Extracted `_upsertClassPartial(abClass)` helper from `_persistClassAndPartial()`; updated `_persistRoster()` to call `_upsertClassPartial()` after successful roster persist. Updated `abclassManager.saveClass.test.js` and `abclassManager.loadClass.test.js` to provide `toPartialJSON` mock and isolate `abclass_partials` collection mock. Tests in `tests/controllers/abclass-roster-sync.test.js` (4 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** `_upsertClassPartial()` is now the single shared partial upsert utility for both write paths.
 
 ---
 
@@ -223,13 +222,13 @@ Backend controller tests:
 
 ### Section checks
 
-- `npm test -- tests/controllers/<abclass-partials-read-spec>.js`
+- `npm test -- tests/controllers/abclass-partials-read.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Added `getAllClassPartials()` to `ABClassController` — reads all docs from `abclass_partials` collection, returns array, throws on failure. Tests in `tests/controllers/abclass-partials-read.test.js` (4 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 5 will wire this method into the API dispatcher.
 
 ---
 
@@ -265,17 +264,13 @@ API-layer tests:
 
 ### Section checks
 
-- `npm test -- tests/requestHandlers/<api-handler-spec>.js`
+- `npm test -- tests/requestHandlers/<api-handler>.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 6 — Frontend service integration
+- **Implementation notes:** `API_METHODS` and `API_ALLOWLIST` updated with `getABClassPartials`; `_invokeAllowlistedMethod` dispatch branch added; thin handler `getABClassPartials()` created in `src/backend/Api/abclassPartials.js` (delegates to `ABClassController.getAllClassPartials()`). Tests in `tests/api/abclassPartials.test.js` (6 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 6 will add the frontend service wrapper.
 
 ### Objective
 
@@ -303,17 +298,13 @@ Frontend unit tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/<class-partials-service-spec>.ts`
+- `npm run frontend:test -- src/services/<class-partials-service>.spec.ts`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Deferred work (separate branch)
+- **Implementation notes:** Created `src/frontend/src/services/classPartialsService.ts` with `getABClassPartials()` — thin wrapper that calls `callApi<ClassPartial[]>('getABClassPartials')`. Exported `ClassPartial` interface defines the partial shape. Tests in `src/frontend/src/services/classPartialsService.spec.ts` (3 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 7 will run the full regression pass.
 
 - Migrate/add broader backend tests away from `src/AdminSheet/**` references to `src/backend/**` for full coverage parity.
 - This is intentionally excluded from this branch to keep ABClassPartials delivery scope focused.
@@ -355,13 +346,9 @@ Run targeted regressions across touched backend and frontend areas and ensure no
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 8 — Final documentation and rollout readiness
+- **Implementation notes:** All verification commands executed and passed. Backend: 284 tests across models (78), controllers (86), API (95), and requestHandlers (25). Frontend: 55 tests (9 test files). Backend lint and frontend lint both clean.
+- **Deviations from plan:** No regressions found.
+- **Follow-up implications for later sections:** Proceed to Section 8 docs.
 
 ### Objective
 
@@ -386,13 +373,9 @@ Ensure developer-facing documentation accurately reflects the implemented persis
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Stage exit criteria (all must pass)
+- **Implementation notes:** Added `ABClassPartials — class list index` section to `docs/developer/backend/DATA_SHAPES.md` (persistence strategy, shape, key notes). Updated `docs/developer/backend/api-layer.md` to list `getABClassPartials` alongside `getAuthorisationStatus` as a migrated endpoint with source and frontend wrapper references.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** All sections complete. Stage exit criteria met. (all must pass)
 
 - Class partial contract implemented and tested.
 - Partial registry persisted as one doc per `classId` and synchronised on class write paths.
