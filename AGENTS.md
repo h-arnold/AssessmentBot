@@ -1,4 +1,4 @@
-## AssessmentBot – Core Agent Contract
+# AssessmentBot – Core Agent Contract
 
 This file defines cross-component rules only.
 For implementation details, always load component-specific instructions first.

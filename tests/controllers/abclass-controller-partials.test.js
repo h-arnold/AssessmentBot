@@ -8,6 +8,7 @@
  * - _persistClassAndPartial() is the single internal write-through path
  * - Upsert filter uses classId
  * - Errors from the partials collection surface loudly
+ * - Full class writes happen before partial upserts
  *
  * These tests MUST FAIL until _persistClassAndPartial() is implemented and saveClass()
  * is updated to call it.
@@ -156,10 +157,10 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
       throw new Error('abclass_partials write failure');
     });
 
-    // RED: saveClass does not interact with partialsCollection yet,
-    // so neither the throw-propagation nor the error log will occur
     expect(() => controller.saveClass(abClass)).toThrow();
 
+    expect(classCollection.insertOne).toHaveBeenCalledTimes(1);
+    expect(classCollection.save).toHaveBeenCalledTimes(1);
     expect(mockABLogger.error).toHaveBeenCalled();
 
     const [, loggedContext] = mockABLogger.error.mock.calls[0];
@@ -179,11 +180,9 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
 
     controller.saveClass(abClass);
 
-    // Full class write assertions — these should already pass with current implementation
     expect(classCollection.insertOne).toHaveBeenCalledTimes(1);
     expect(classCollection.save).toHaveBeenCalledTimes(1);
 
-    // Partial write assertions — RED: not implemented yet
     expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
     expect(partialsCollection.save).toHaveBeenCalledTimes(1);
 
@@ -198,7 +197,6 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
     const controller = new ABClassController();
     const abClass = new ABClass('class-005', 'Test Class Epsilon');
 
-    // RED: _persistClassAndPartial does not exist yet — this will throw or fail
     expect(typeof controller._persistClassAndPartial).toBe('function');
 
     const spy = vi.spyOn(controller, '_persistClassAndPartial');
@@ -207,5 +205,23 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
 
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenCalledWith(abClass);
+  });
+
+  it('does not write a partial when the full class write fails', () => {
+    const controller = new ABClassController();
+    const abClass = new ABClass('class-006', 'Broken Full Write');
+
+    classCollection.findOne.mockReturnValue(null);
+    classCollection.insertOne.mockImplementation(() => {
+      throw new Error('class collection write failure');
+    });
+
+    expect(() => controller.saveClass(abClass)).toThrow('class collection write failure');
+
+    expect(partialsCollection.findOne).not.toHaveBeenCalled();
+    expect(partialsCollection.insertOne).not.toHaveBeenCalled();
+    expect(partialsCollection.replaceOne).not.toHaveBeenCalled();
+    expect(partialsCollection.save).not.toHaveBeenCalled();
+    expect(mockABLogger.error).toHaveBeenCalled();
   });
 });

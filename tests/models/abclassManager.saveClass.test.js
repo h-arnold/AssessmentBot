@@ -4,6 +4,7 @@ describe('ABClassController.saveClass', () => {
   let manager;
   let dbManagerMock;
   let collectionMock;
+  let partialsCollectionMock;
 
   beforeEach(() => {
     collectionMock = {
@@ -13,8 +14,17 @@ describe('ABClassController.saveClass', () => {
       save: vi.fn(),
     };
 
+    partialsCollectionMock = {
+      findOne: vi.fn().mockReturnValue(null),
+      replaceOne: vi.fn(),
+      insertOne: vi.fn(),
+      save: vi.fn(),
+    };
+
     dbManagerMock = {
-      getCollection: vi.fn().mockReturnValue(collectionMock),
+      getCollection: vi.fn((name) =>
+        name === 'abclass_partials' ? partialsCollectionMock : collectionMock
+      ),
     };
 
     // Inject mock DbManager instance
@@ -42,6 +52,7 @@ describe('ABClassController.saveClass', () => {
     expect(collectionMock.replaceOne).toHaveBeenCalledWith({ classId: 'class-1' }, abClass);
     expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalled();
+    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({ classId: 'class-1' });
     expect(result).toBe(true);
   });
 
@@ -59,6 +70,7 @@ describe('ABClassController.saveClass', () => {
     expect(collectionMock.insertOne).toHaveBeenCalledWith(abClass);
     expect(collectionMock.replaceOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalled();
+    expect(partialsCollectionMock.insertOne).toHaveBeenCalledWith({ classId: 'class-2' });
     expect(result).toBe(true);
   });
 

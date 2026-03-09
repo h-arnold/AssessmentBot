@@ -572,10 +572,8 @@ class ABClassController {
         classId,
       });
       this._refreshRoster(abClass, classId);
-      // Reuse the shared write-through path to keep behaviour consistent
-      // with other class write operations.
-      this.saveClass(abClass);
-      logger.info('loadClass: refresh completed and persisted', { classId });
+      this._persistRoster(collection, doc, abClass);
+      logger.info('loadClass: refresh completed and roster persisted', { classId });
     } else {
       logger.info('loadClass: loaded class from collection without refresh', { classId });
     }
@@ -596,11 +594,8 @@ class ABClassController {
     const collectionName = String(abClass.classId);
     const collection = this.dbManager.getCollection(collectionName);
 
-    // 1. Upsert partial first to avoid divergence when the partial write fails.
-    //    If this throws, nothing is written to the full class collection.
-    this._upsertClassPartial(abClass);
-
-    // 2. Write full class document to its own collection
+    // Write the full class document first so partials are never visible
+    // without a corresponding authoritative class record.
     try {
       const existing = collection.findOne({ classId: abClass.classId });
 
@@ -616,11 +611,10 @@ class ABClassController {
         classId: abClass.classId,
         err: error,
       });
-      // Note: we intentionally let this error surface; partial has already
-      // been written successfully. Without transactional storage we prefer
-      // loud failure over silent divergence.
       throw error;
     }
+
+    this._upsertClassPartial(abClass);
   }
 
   /**
