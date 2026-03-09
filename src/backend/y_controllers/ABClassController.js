@@ -154,8 +154,8 @@ class ABClassController {
   _upsertClassPartial(abClass) {
     const logger = ABLogger.getInstance();
     const partialsCollection = this.dbManager.getCollection('abclass_partials');
-    const partialData = abClass.toPartialJSON();
     try {
+      const partialData = abClass.toPartialJSON();
       const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
       if (existingPartial) {
         partialsCollection.replaceOne({ classId: abClass.classId }, partialData);
@@ -204,7 +204,7 @@ class ABClassController {
 
       this._upsertClassPartial(abClass);
     } catch (error) {
-      logger.error('Failed to persist refreshed roster', {
+      logger.error('_persistRoster: write or partial upsert failed', {
         classId: abClass.classId,
         err: error,
       });

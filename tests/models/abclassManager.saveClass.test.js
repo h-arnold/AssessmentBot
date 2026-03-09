@@ -29,7 +29,11 @@ describe('ABClassController.saveClass', () => {
   });
 
   test('calls replaceOne when a document exists', () => {
-    const abClass = { classId: 'class-1', name: 'Test' };
+    const abClass = {
+      classId: 'class-1',
+      name: 'Test',
+      toPartialJSON: vi.fn().mockReturnValue({ classId: 'class-1' }),
+    };
     collectionMock.findOne.mockReturnValue({ classId: 'class-1' });
 
     const result = manager.saveClass(abClass);
@@ -42,7 +46,11 @@ describe('ABClassController.saveClass', () => {
   });
 
   test('calls insertOne when no document exists', () => {
-    const abClass = { classId: 'class-2', name: 'Test 2' };
+    const abClass = {
+      classId: 'class-2',
+      name: 'Test 2',
+      toPartialJSON: vi.fn().mockReturnValue({ classId: 'class-2' }),
+    };
     collectionMock.findOne.mockReturnValue(null);
 
     const result = manager.saveClass(abClass);

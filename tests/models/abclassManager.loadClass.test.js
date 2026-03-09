@@ -32,8 +32,17 @@ describe('ABClassController.loadClass', () => {
       save: vi.fn(),
     };
 
+    const partialsCollectionMock = {
+      findOne: vi.fn().mockReturnValue(null),
+      replaceOne: vi.fn(),
+      insertOne: vi.fn(),
+      save: vi.fn(),
+    };
+
     dbManagerMock = {
-      getCollection: vi.fn().mockReturnValue(collectionMock),
+      getCollection: vi.fn((name) =>
+        name === 'abclass_partials' ? partialsCollectionMock : collectionMock
+      ),
     };
 
     globalThis.DbManager = { getInstance: () => dbManagerMock };
