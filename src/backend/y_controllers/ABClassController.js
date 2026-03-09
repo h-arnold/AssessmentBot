@@ -112,6 +112,35 @@ class ABClassController {
     };
   }
 
+  /**
+   * Normalises a stored partial document to the documented transport shape.
+   * This prevents storage-only metadata from leaking to API consumers.
+   *
+   * @param {object} partialDoc - Raw partial document read from storage.
+   * @returns {object} Normalised class partial payload.
+   * @private
+   */
+  _normaliseClassPartial(partialDoc) {
+    if (!partialDoc || typeof partialDoc !== 'object') {
+      throw new TypeError('getAllClassPartials: expected each partial document to be an object');
+    }
+
+    if (!Array.isArray(partialDoc.teachers)) {
+      throw new TypeError('getAllClassPartials: expected partial document teachers to be an array');
+    }
+
+    return {
+      classId: partialDoc.classId,
+      className: partialDoc.className,
+      cohort: partialDoc.cohort,
+      courseLength: partialDoc.courseLength,
+      yearGroup: partialDoc.yearGroup,
+      classOwner: partialDoc.classOwner,
+      teachers: [...partialDoc.teachers],
+      active: partialDoc.active,
+    };
+  }
+
   // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
   // keep the helper for future use once the issue is resolved.
   /**
@@ -669,7 +698,7 @@ class ABClassController {
       if (!Array.isArray(docs)) {
         throw new TypeError('getAllClassPartials: unexpected non-array result from find()');
       }
-      return docs;
+      return docs.map((doc) => this._normaliseClassPartial(doc));
     } catch (error) {
       logger.error('getAllClassPartials: failed to read abclass_partials', { err: error });
       throw error;

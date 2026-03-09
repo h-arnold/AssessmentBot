@@ -346,8 +346,8 @@ Run targeted regressions across touched backend and frontend areas and ensure no
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Targeted verification executed for touched areas. Backend: controller and API tests for ABClassPartials pass (including new direct delegation unit). Backend lint passes. Frontend lint currently reports unrelated issues in `src/frontend` (see repository CI); ABClassPartials work does not modify frontend sources.
-- **Deviations from plan:** No regressions found in backend. Frontend lint is not fully clean at this point on main; this action plan no longer claims full frontend lint passes.
+- **Implementation notes:** Targeted verification executed for touched areas. Backend controller/API tests for ABClassPartials pass, including partial-shape normalisation so storage-only metadata does not reach API consumers. Backend lint passes. Frontend service tests, frontend lint, and frontend TypeScript compile checks pass for the current workspace state after the `classPartialsService` typing update.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Proceed to Section 8 docs.
 
 ### Objective

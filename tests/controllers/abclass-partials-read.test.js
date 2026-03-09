@@ -78,8 +78,31 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
   // -------------------------------------------------------------------------
   it('getAllClassPartials() returns all documents from abclass_partials', () => {
     const docs = [
-      { classId: 'class-001', className: 'Alpha' },
-      { classId: 'class-002', className: 'Beta' },
+      {
+        _id: 'doc-1',
+        classId: 'class-001',
+        className: 'Alpha',
+        cohort: '2025',
+        courseLength: 2,
+        yearGroup: 10,
+        classOwner: { userId: 'owner-1' },
+        teachers: [{ userId: 'teacher-1' }],
+        students: [{ userId: 'student-1' }],
+        assignments: [{ assignmentId: 'assignment-1' }],
+        active: true,
+        metadataVersion: 3,
+      },
+      {
+        _id: 'doc-2',
+        classId: 'class-002',
+        className: 'Beta',
+        cohort: '2024',
+        courseLength: 1,
+        yearGroup: 9,
+        classOwner: null,
+        teachers: [],
+        active: false,
+      },
     ];
     partialsCollection.find.mockReturnValue(docs);
 
@@ -89,7 +112,32 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
     const result = controller.getAllClassPartials();
 
     expect(partialsCollection.find).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(docs);
+    expect(result).toEqual([
+      {
+        classId: 'class-001',
+        className: 'Alpha',
+        cohort: '2025',
+        courseLength: 2,
+        yearGroup: 10,
+        classOwner: { userId: 'owner-1' },
+        teachers: [{ userId: 'teacher-1' }],
+        active: true,
+      },
+      {
+        classId: 'class-002',
+        className: 'Beta',
+        cohort: '2024',
+        courseLength: 1,
+        yearGroup: 9,
+        classOwner: null,
+        teachers: [],
+        active: false,
+      },
+    ]);
+    expect(result[0]).not.toHaveProperty('_id');
+    expect(result[0]).not.toHaveProperty('students');
+    expect(result[0]).not.toHaveProperty('assignments');
+    expect(result[0]).not.toHaveProperty('metadataVersion');
   });
 
   // -------------------------------------------------------------------------
@@ -129,7 +177,18 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
   // Test 4: return value is a plain array (suitable for transport)
   // -------------------------------------------------------------------------
   it('getAllClassPartials() return value is an Array', () => {
-    const docs = [{ classId: 'class-003', className: 'Gamma' }];
+    const docs = [
+      {
+        classId: 'class-003',
+        className: 'Gamma',
+        cohort: '2023',
+        courseLength: 1,
+        yearGroup: 8,
+        classOwner: null,
+        teachers: [],
+        active: true,
+      },
+    ];
     partialsCollection.find.mockReturnValue(docs);
 
     const controller = new ABClassController();

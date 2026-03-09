@@ -1,5 +1,11 @@
 import { callApi } from './apiService';
 
+export interface TeacherSummary {
+    userId: string | null;
+    email: string | null;
+    teacherName: string | null;
+}
+
 /** Shape of a class partial document returned by the backend registry. */
 export interface ClassPartial {
     classId: string;
@@ -7,8 +13,8 @@ export interface ClassPartial {
     cohort: string | null;
     courseLength: number;
     yearGroup: number | null;
-    classOwner: Record<string, unknown> | null;
-    teachers: unknown[];
+    classOwner: TeacherSummary | null;
+    teachers: TeacherSummary[];
     active: boolean | null;
 }
 
