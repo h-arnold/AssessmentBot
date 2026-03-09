@@ -1,0 +1,47 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const callApiMock = vi.fn();
+
+vi.mock('./apiService', () => ({
+    callApi: callApiMock,
+}));
+
+describe('classPartialsService.getABClassPartials', () => {
+    afterEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('delegates to callApi with the getABClassPartials method name', async () => {
+        callApiMock.mockResolvedValueOnce([]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await getABClassPartials();
+
+        expect(callApiMock).toHaveBeenCalledWith('getABClassPartials');
+        expect(callApiMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves with the array of class partials returned by the backend', async () => {
+        const partials = [
+            { classId: 'c1', className: 'Class A', active: true },
+            { classId: 'c2', className: 'Class B', active: false },
+        ];
+        callApiMock.mockResolvedValueOnce(partials);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        const result = await getABClassPartials();
+
+        expect(result).toEqual(partials);
+    });
+
+    it('propagates rejection when callApi rejects', async () => {
+        const apiError = new Error('Transport failure');
+        callApiMock.mockRejectedValueOnce(apiError);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).rejects.toThrow('Transport failure');
+    });
+});

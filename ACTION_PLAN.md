@@ -302,13 +302,9 @@ Frontend unit tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Deferred work (separate branch)
+- **Implementation notes:** Created `src/frontend/src/services/classPartialsService.ts` with `getABClassPartials()` — thin wrapper that calls `callApi<ClassPartial[]>('getABClassPartials')`. Exported `ClassPartial` interface defines the partial shape. Tests in `src/frontend/src/services/classPartialsService.spec.ts` (3 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 7 will run the full regression pass.
 
 - Migrate/add broader backend tests away from `src/AdminSheet/**` references to `src/backend/**` for full coverage parity.
 - This is intentionally excluded from this branch to keep ABClassPartials delivery scope focused.
