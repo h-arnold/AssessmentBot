@@ -146,6 +146,34 @@ class ABClassController {
   }
 
   /**
+   * Upserts the class partial document to the abclass_partials collection.
+   * @param {ABClass} abClass - The class instance with toPartialJSON() support
+   * @throws {Error} Rethrows any persistence error.
+   * @private
+   */
+  _upsertClassPartial(abClass) {
+    const logger = ABLogger.getInstance();
+    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    const partialData = abClass.toPartialJSON();
+    try {
+      const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
+      if (existingPartial) {
+        partialsCollection.replaceOne({ classId: abClass.classId }, partialData);
+      } else {
+        partialsCollection.insertOne(partialData);
+      }
+      partialsCollection.save();
+      logger.info('_upsertClassPartial: partial persisted', { classId: abClass.classId });
+    } catch (error) {
+      logger.error('_upsertClassPartial: partials collection write failed', {
+        classId: abClass.classId,
+        err: error,
+      });
+      throw error;
+    }
+  }
+
+  /**
    *
    */
   _persistRoster(collection, existingDoc, abClass) {
@@ -173,6 +201,8 @@ class ABClassController {
         classId: abClass.classId,
         filter,
       });
+
+      this._upsertClassPartial(abClass);
     } catch (error) {
       logger.error('Failed to persist refreshed roster', {
         classId: abClass.classId,
@@ -551,34 +581,15 @@ class ABClassController {
     }
 
     // 2. Upsert partial document to shared partials registry
-    const partialsCollection = this.dbManager.getCollection('abclass_partials');
-    const partialData = abClass.toPartialJSON();
-
-    try {
-      const existingPartial = partialsCollection.findOne({ classId: abClass.classId });
-
-      if (existingPartial) {
-        partialsCollection.replaceOne({ classId: abClass.classId }, partialData);
-      } else {
-        partialsCollection.insertOne(partialData);
-      }
-
-      partialsCollection.save();
-    } catch (error) {
-      logger.error('_persistClassAndPartial: partials collection write failed', {
-        classId: abClass.classId,
-        err: error,
-      });
-      throw error;
-    }
+    this._upsertClassPartial(abClass);
   }
 
   /**
-   * Save an ABClass instance (or plain object) to its collection named by classId.
+   * Save an ABClass instance to its collection named by classId.
    * Delegates to _persistClassAndPartial for write-through persistence.
    * Returns true on success.
    *
-   * @param {ABClass|Object} abClass
+   * @param {ABClass} abClass
    * @returns {boolean}
    */
   saveClass(abClass) {
