@@ -1,4 +1,5 @@
 const sonarjs = require('eslint-plugin-sonarjs');
+const unicorn = require('eslint-plugin-unicorn');
 
 const tsBaseRules = {
   ...sonarjs.configs.recommended.rules,
@@ -25,9 +26,12 @@ const tsBaseRules = {
     },
   ],
   '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+  '@typescript-eslint/prefer-optional-chain': 'error',
+  'unicorn/prefer-string-replace-all': 'error',
 };
 
 module.exports = {
   tsBaseRules,
   sonarjs,
+  unicorn,
 };
