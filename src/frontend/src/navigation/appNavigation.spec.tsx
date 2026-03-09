@@ -20,7 +20,7 @@ describe('app navigation config', () => {
   });
 
   it('selected key drives active page renderer mapping deterministically', () => {
-    expect(Object.keys(pageRenderers).toSorted()).toEqual([
+    expect(Object.keys(pageRenderers).toSorted((a, b) => a.localeCompare(b))).toEqual([
       'assignments',
       'classes',
       'dashboard',

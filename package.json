@@ -14,7 +14,7 @@
     "lint": "eslint --config eslint.config.js src/backend/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/backend/**/*.js",
     "vendor:beercss": "node scripts/vendor-beercss.js",
-    "prepare": "husky install",
+    "prepare": "husky",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\"",
     "frontend:dev": "npm --prefix src/frontend run dev",
     "frontend:build": "npm --prefix src/frontend run build",

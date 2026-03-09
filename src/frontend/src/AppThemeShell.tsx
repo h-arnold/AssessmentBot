@@ -48,7 +48,15 @@ function usePrefersReducedMotion() {
 /**
  * Owns shell theme state outside `App.tsx` and applies the matching Ant Design algorithm.
  */
-export function AppThemeShell({ dashboardContent }: { dashboardContent?: ReactNode }) {
+/**
+ * Owns shell theme state outside `App.tsx` and applies the matching Ant Design algorithm.
+ */
+type AppThemeShellProps = Readonly<{ dashboardContent?: ReactNode }>;
+
+/**
+ * Theme-owning wrapper that configures Ant Design tokens and algorithms.
+ */
+export function AppThemeShell({ dashboardContent }: AppThemeShellProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
 

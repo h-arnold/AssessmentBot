@@ -346,8 +346,8 @@ Run targeted regressions across touched backend and frontend areas and ensure no
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** All verification commands executed and passed. Backend: 284 tests across models (78), controllers (86), API (95), and requestHandlers (25). Frontend: 55 tests (9 test files). Backend lint and frontend lint both clean.
-- **Deviations from plan:** No regressions found.
+- **Implementation notes:** Targeted verification executed for touched areas. Backend: controller and API tests for ABClassPartials pass (including new direct delegation unit). Backend lint passes. Frontend lint currently reports unrelated issues in `src/frontend` (see repository CI); ABClassPartials work does not modify frontend sources.
+- **Deviations from plan:** No regressions found in backend. Frontend lint is not fully clean at this point on main; this action plan no longer claims full frontend lint passes.
 - **Follow-up implications for later sections:** Proceed to Section 8 docs.
 
 ### Objective

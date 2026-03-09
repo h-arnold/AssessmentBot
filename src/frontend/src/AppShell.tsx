@@ -33,15 +33,23 @@ function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
 /**
  * Renders the shared application shell with a collapsible navigation rail.
  */
+/**
+ * Renders the shared application shell with a collapsible navigation rail.
+ */
+type AppShellProps = Readonly<{
+  dashboardContent?: ReactNode;
+  isDarkMode: boolean;
+  onThemeModeChange: (checked: boolean) => void;
+}>;
+
+/**
+ * Application shell layout with header, navigation, and content.
+ */
 export function AppShell({
   dashboardContent,
   isDarkMode,
   onThemeModeChange,
-}: {
-  dashboardContent?: ReactNode;
-  isDarkMode: boolean;
-  onThemeModeChange: (checked: boolean) => void;
-}) {
+}: AppShellProps) {
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [selectedNavigationKey, setSelectedNavigationKey] =
     useState<AppNavigationKey>(defaultNavigationKey);
