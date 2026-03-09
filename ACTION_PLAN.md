@@ -218,13 +218,9 @@ Backend controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 5 — API allowlist and dispatcher wiring
+- **Implementation notes:** Added `getAllClassPartials()` to `ABClassController` — reads all docs from `abclass_partials` collection, returns array, throws on failure. Tests in `tests/controllers/abclass-partials-read.test.js` (4 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 5 will wire this method into the API dispatcher.
 
 ### Objective
 

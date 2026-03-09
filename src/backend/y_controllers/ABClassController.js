@@ -604,10 +604,13 @@ class ABClassController {
    */
   getAllClassPartials() {
     const logger = ABLogger.getInstance();
-    const partialsCollection = this.dbManager.getCollection('abclass_partials');
     try {
+      const partialsCollection = this.dbManager.getCollection('abclass_partials');
       const docs = partialsCollection.find({});
-      return Array.isArray(docs) ? docs : [];
+      if (!Array.isArray(docs)) {
+        throw new TypeError('getAllClassPartials: unexpected non-array result from find()');
+      }
+      return docs;
     } catch (error) {
       logger.error('getAllClassPartials: failed to read abclass_partials', { err: error });
       throw error;
