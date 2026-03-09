@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ABClass } from '../../src/backend/Models/ABClass.js';
 
 /**
- * RED tests for Section 1 of ACTION_PLAN.md:
+ * Tests for Section 1 of ACTION_PLAN.md:
  * "Define and lock class-partial data contract"
  *
  * These tests will fail until the following is implemented in ABClass.js:
@@ -10,7 +10,7 @@ import { ABClass } from '../../src/backend/Models/ABClass.js';
  *   - fromJSON() restores `active`
  *   - toPartialJSON() method is added
  */
-describe('ABClass – partial data contract (RED)', () => {
+describe('ABClass – partial data contract', () => {
   /** Minimal plain-object owner stub; avoids Teacher global dependency in tests. */
   const stubOwner = { uid: 'owner-1', teacherName: 'Ms Owner', email: 'owner@school.example' };
 

@@ -95,13 +95,9 @@ Backend model tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
-
----
-
-## Section 2 — Persist class partials as document-per-class registry
+- **Implementation notes:** Added `active = null` as last constructor param; added `serialiseOwner()` helper for DRY classOwner serialisation; `toJSON()` now includes `classOwner` and `active`; `fromJSON()` restores `active` via `?? null`; new `toPartialJSON()` excludes `students` and `assignments`. Tests in `tests/models/abclass.partial.test.js` (12 cases, all green).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** `toPartialJSON()` is now the canonical source for partial data shape consumed by Sections 2–4.
 
 ### Objective
 
