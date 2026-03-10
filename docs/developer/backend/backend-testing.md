@@ -9,9 +9,9 @@ Backend now also includes an API entry layer under `src/backend/Api` for `google
 ## Test Framework
 
 - **Framework**: Vitest v4.0.18 (see `package.json`)
-- **Environment**: Node.js (no browser DOM by default; UI suites spin up JSDOM when required)
+- **Environment**: Node.js
 - **Configuration**: `vitest.config.js` (loads `tests/setupGlobals.js`)
-- **Test Runner (one-off)**: `npm test` (default non-legacy suite)
+- **Test Runner (one-off)**: `npm test`
 - **Watch Mode**: `npm run test:watch`
 - **Module System**: Test files must use ESM `import` syntax for vitest (production code uses CommonJS `require`)
 
@@ -38,7 +38,6 @@ tests/
 ├── singletons/                # Singleton behaviour, lifecycle & performance tests
 │   ├── PerformanceMeasurement.js  # Test-only performance utility (not production code)
 │   └── performanceMeasurement.test.js
-├── ui/                        # UI modal/templated HTML tests (JSDOM-based)
 └── utils/                     # Utility function tests
 ```
 
@@ -48,11 +47,8 @@ tests/
 # Run default non-legacy suite (single run)
 npm test
 
-# Run full suite (legacy UI included, except permanently excluded deprecated tests)
+# Run the backend suite
 npm run test:all
-
-# Run legacy UI-focused tests
-npm run test:legacy-ui
 
 # Run all tests in watch mode
 npm run test:watch
@@ -95,7 +91,6 @@ Verify singleton pattern implementation, lifecycle, and (optionally) performance
 - **idempotency**: `getInstance()` repeatability (same object each call)
 - **forbiddenGlobals**: Ensures no accidental global pollution
 - **progressTrackerLazyInit**: ProgressTracker lazy behaviour
-- **uiLazyProbe**: UIManager lazy instantiation
 - **phase2Behavior**: Broader integration scenario
 - **performanceMeasurement**: Uses `PerformanceMeasurement.js` helper to compare timings (test-only utility)
 
@@ -160,9 +155,8 @@ Test controller logic for managing domain entities and coordinating persistence:
 - **Assignment Rehydration**: Restoring full assignments from partial summaries
 
 Note: `tests/controllers/initController.test.js` and
-`tests/controllers/createDefinitionFromWizardInputs.test.js` are permanently
-excluded as deprecated legacy UI/init coverage. See
-`docs/developer/backend/DEPRECATED_LEGACY_TESTS_AUDIT.md`.
+`tests/controllers/createDefinitionFromWizardInputs.test.js` remain excluded as
+deprecated legacy UI/init coverage.
 
 **Key patterns**:
 
@@ -254,26 +248,6 @@ Test utility functions:
 
 - **ABLogger**: Logging functionality
 - **Validate**: Email and userId validation
-
-### 9. UI Tests (`tests/ui/`)
-
-Exercise client-side logic that lives inside Apps Script HTML templates (e.g. modal dialogs).
-
-- **Environment**: `jsdom` (Vitest default Node runner with per-suite DOM setup).
-- **Execution**: These are legacy UI tests and are excluded from `npm test` by default.
-  Use `npm run test:legacy-ui` to execute them.
-- **Focus**: Validation flows, interactions with `google.script.run`, side-effects such as Materialize toasts, and templated data hydration.
-- **Patterns**:
-  - Read the HTML template from `src/AdminSheet/UI/` and replace templating placeholders (`<?= ... ?>`) with fixture values before instantiating `JSDOM`.
-  - Stub Materialize (`window.M`) and GAS globals (`google.script.run`, `google.script.host`) with chainable mocks so that the modal logic can exercise success/failure callbacks.
-  - Dispatch a synthetic `DOMContentLoaded` event after loading scripts to mirror Apps Script behaviour.
-  - Keep tests focused on behaviour (DOM state, mock invocations) rather than Materialize internals.
-
-BeerCSS notes:
-
-- `tests/ui/beercssJsVendor.test.js` is a smoke suite that verifies the vendored BeerCSS JS partial executes as a classic script (HtmlService-compatible) and exposes `window.ui`.
-- BeerCSS initialises some behaviour lazily; if you are asserting `[data-ui]` click wiring, call `window.ui()` first in the test to force a synchronous setup pass.
-- BeerCSS reads `window.matchMedia` during startup for theme auto-selection; mock `matchMedia` in JSDOM-based tests.
 
 Test utility functions:
 

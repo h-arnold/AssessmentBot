@@ -270,7 +270,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
   try {
     const absoluteFiles = await listFilesRecursive(paths.buildGasDir);
     const relativeFiles = absoluteFiles
-      .map((absolutePath) => path.relative(paths.buildGasDir, absolutePath).replace(/\\/g, '/'))
+      .map((absolutePath) => path.relative(paths.buildGasDir, absolutePath).replaceAll('\\\\', '/'))
       .sort((left, right) => left.localeCompare(right));
     const relativeFileSet = new Set(relativeFiles);
 
@@ -290,7 +290,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
       if (!absolutePath.endsWith('.js')) {
         continue;
       }
-      const relativePath = path.relative(paths.buildGasDir, absolutePath).replace(/\\/g, '/');
+      const relativePath = path.relative(paths.buildGasDir, absolutePath).replaceAll('\\\\', '/');
       jsSourcesByPath[relativePath] = await fs.readFile(absolutePath, 'utf-8');
     }
 

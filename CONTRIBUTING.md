@@ -168,5 +168,5 @@ If a class has no `fromJSON()` method and you need constructor behaviour, mock t
 To reinstall hooks manually:
 
 ```bash
-npx husky install
+npx husky
 ```

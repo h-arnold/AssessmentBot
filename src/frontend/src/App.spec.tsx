@@ -16,6 +16,12 @@ const checkingAuthorisationStatusText = 'Checking authorisation status...';
 const applicationTitleText = appBreadcrumbBaseLabel;
 const navigationLabels = navigationItems.map(({ label }) => label);
 const noBreadcrumbLabelPosition = -1;
+const primaryNavigationLabel = 'Primary navigation';
+const collapseNavigationButtonLabel = 'Collapse navigation';
+const expandNavigationButtonLabel = 'Expand navigation';
+const ariaCheckedAttribute = 'aria-checked';
+const unableToCheckAuthorisationStatusMessage =
+  'Unable to check authorisation status right now.';
 
 type ApiResponseEnvelope =
   | {
@@ -154,7 +160,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
     for (const label of navigationLabels) {
       expect(within(navigation).getByRole('menuitem', { name: label })).toBeInTheDocument();
@@ -167,10 +173,10 @@ describe('App', () => {
     await renderPendingApp();
 
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Collapse navigation' }));
+    fireEvent.click(screen.getByRole('button', { name: collapseNavigationButtonLabel }));
     });
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const menuItems = within(navigation).getAllByRole('menuitem');
 
     expect(menuItems).toHaveLength(navigationLabels.length);
@@ -185,7 +191,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
     let previousLabel: string | undefined;
 
@@ -222,7 +228,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const classesLabel = getNavigationLabel('classes');
 
     act(() => {
@@ -237,7 +243,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
     for (const { key } of navigationItems) {
       const label = getNavigationLabel(key);
@@ -255,7 +261,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
     const rapidSelectionKeys: AppNavigationKey[] = ['classes', 'assignments', 'settings'];
 
     act(() => {
@@ -292,7 +298,7 @@ describe('App', () => {
     await renderPendingApp();
 
     expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
-    expect(screen.getByRole('navigation', { name: 'Primary navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
@@ -301,17 +307,17 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+    const toggleButton = screen.getByRole('button', { name: collapseNavigationButtonLabel });
 
     act(() => {
       fireEvent.click(toggleButton);
     });
-    expect(screen.getByRole('button', { name: 'Expand navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: expandNavigationButtonLabel })).toBeInTheDocument();
 
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Expand navigation' }));
+      fireEvent.click(screen.getByRole('button', { name: expandNavigationButtonLabel }));
     });
-    expect(screen.getByRole('button', { name: 'Collapse navigation' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: collapseNavigationButtonLabel })).toBeInTheDocument();
   });
 
   it('updates accessible control label and state when toggled', async () => {
@@ -319,14 +325,14 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    const toggleButton = screen.getByRole('button', { name: 'Collapse navigation' });
+    const toggleButton = screen.getByRole('button', { name: collapseNavigationButtonLabel });
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
 
     act(() => {
       fireEvent.click(toggleButton);
     });
-    expect(screen.getByRole('button', { name: 'Expand navigation' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: expandNavigationButtonLabel })).toHaveAttribute(
       'aria-expanded',
       'false'
     );
@@ -357,19 +363,19 @@ describe('App', () => {
 
     const themeModeSwitch = getThemeModeSwitch();
 
-    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'false');
 
     act(() => {
       fireEvent.click(themeModeSwitch);
     });
 
-    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'true');
 
     act(() => {
       fireEvent.click(themeModeSwitch);
     });
 
-    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'false');
   });
 
   it('ConfigProvider receives expected algorithm when state changes', async () => {
@@ -442,7 +448,7 @@ describe('App', () => {
     await renderPendingApp();
 
     const themeModeSwitch = getThemeModeSwitch();
-    const navigation = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
     act(() => {
       fireEvent.click(themeModeSwitch);
@@ -453,7 +459,7 @@ describe('App', () => {
       fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
     });
 
-    expect(themeModeSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'true');
   });
 
   it('theme-compatible styles are applied', () => {
@@ -503,7 +509,7 @@ describe('App', () => {
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
-      await screen.findByText('Unable to check authorisation status right now.')
+      await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
   });
 
@@ -517,7 +523,7 @@ describe('App', () => {
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
-      await screen.findByText('Unable to check authorisation status right now.')
+      await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
   });
 
@@ -547,7 +553,7 @@ describe('App', () => {
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
-      await screen.findByText('Unable to check authorisation status right now.')
+      await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
   });
 });

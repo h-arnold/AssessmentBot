@@ -5,7 +5,15 @@ import { pageContent } from './pageContent';
 /**
  * Renders the dashboard landing page.
  */
-export function DashboardPage({ contentSlot }: { contentSlot?: ReactNode }) {
+/**
+ * Renders the dashboard landing page.
+ */
+type DashboardPageProps = Readonly<{ contentSlot?: ReactNode }>;
+
+/**
+ * Dashboard landing page component.
+ */
+export function DashboardPage({ contentSlot }: DashboardPageProps) {
   return (
     <PageSection
       heading={pageContent.dashboard.heading}

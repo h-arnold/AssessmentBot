@@ -5,6 +5,7 @@
 - [Assignment Data Shapes](#assignment-data-shapes)
   - [Persistence Strategy \& Rationale](#persistence-strategy--rationale)
   - [ABClass (root) and JsonDbApp partial hydration](#abclass-root-and-jsondbapp-partial-hydration)
+  - [ABClassPartials — class list index](#abclasspartials--class-list-index)
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
@@ -129,6 +130,47 @@ or a lightweight summary. They are never serialized in either the ABClass record
 or the dedicated `assign_full_*` collections.
 
 The same schema is used for every hydration level. Partial definitions use `tasks: null` as an explicit marker rather than redacted artifacts with null content.
+
+## ABClassPartials — class list index
+
+`abclass_partials` is a flat registry (one document per class) designed for fast class-list retrieval without loading the full `ABClass` records (which include heavy `students` and `assignments` arrays).
+
+### Purpose
+
+- Supports frontend class listing without loading all full `ABClass` records.
+- Maintained in sync on every class write path by `ABClassController._upsertClassPartial()`.
+- Retrieved via the `getABClassPartials` API method.
+- Read responses are normalised by `ABClassController.getAllClassPartials()` before leaving the backend transport boundary.
+
+### Persistence strategy
+
+- **Collection name**: `abclass_partials`
+- **One document per class**, keyed by `classId`.
+- Written by `ABClassController._persistClassAndPartial()` (on `saveClass`) and `ABClassController._persistRoster()` (on roster refresh).
+- Produced by `ABClass.toPartialJSON()` — the canonical source of truth for the partial shape.
+
+### Shape
+
+```json
+{
+  "classId": "C123",
+  "className": "Year 10 English",
+  "cohort": "2025",
+  "courseLength": 1,
+  "yearGroup": 10,
+  "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
+  "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
+  "active": true
+}
+```
+
+Key notes:
+
+- `students` and `assignments` are **intentionally excluded** to keep the document lightweight.
+- `active` is an explicit boolean (or `null` when unknown) persisted on `ABClass` and always included in the partial.
+- `classOwner` is serialised via `ABClass.toJSON()` (includes `toJSON()` delegation for `Teacher` instances).
+- `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only.
+- `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
 ## Assignment Definition
 

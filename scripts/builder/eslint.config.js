@@ -8,7 +8,11 @@ import tsParser from '@typescript-eslint/parser';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
-const { tsBaseRules, sonarjs: sonarjsPlugin } = require('../../config/eslint/ts-base-rules.cjs');
+const {
+  tsBaseRules,
+  sonarjs: sonarjsPlugin,
+  unicorn: unicornPlugin,
+} = require('../../config/eslint/ts-base-rules.cjs');
 
 export default [
   {
@@ -26,6 +30,7 @@ export default [
       '@typescript-eslint': tseslint,
       jsdoc,
       sonarjs: sonarjsPlugin,
+      unicorn: unicornPlugin,
     },
     rules: {
       ...tseslint.configs.recommended.rules,

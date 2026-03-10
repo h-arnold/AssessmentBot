@@ -84,7 +84,7 @@ export async function runMaterialiseOutput(paths: BuilderPaths): Promise<Materia
   }
 
   const relativeFiles = absoluteFiles
-    .map((absolutePath) => path.relative(paths.buildGasDir, absolutePath).replace(/\\/g, '/'))
+    .map((absolutePath) => path.relative(paths.buildGasDir, absolutePath).replaceAll('\\\\', '/'))
     .sort((left, right) => left.localeCompare(right));
 
   validateRequiredLayout(new Set(relativeFiles));
@@ -103,4 +103,3 @@ export async function runMaterialiseOutput(paths: BuilderPaths): Promise<Materia
     totalBytes,
   };
 }
-

@@ -8,14 +8,13 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:all": "INCLUDE_LEGACY_UI_TESTS=true vitest run",
-    "test:legacy-ui": "INCLUDE_LEGACY_UI_TESTS=true vitest run tests/ui/**/*.test.js tests/singletons/uiLazyProbe.test.js",
+    "test:all": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint --config eslint.config.js src/backend/**/*.js",
     "lint:fix": "eslint --config eslint.config.js --fix src/backend/**/*.js",
     "vendor:beercss": "node scripts/vendor-beercss.js",
-    "prepare": "husky install",
+    "prepare": "husky",
     "format": "prettier --write \"src/**/*.{js,json,md}\" \"**/*.{json,md}\"",
     "frontend:dev": "npm --prefix src/frontend run dev",
     "frontend:build": "npm --prefix src/frontend run build",
@@ -45,7 +44,7 @@
     "eslint": "9.39.4",
     "eslint-plugin-googleappsscript": "^1.0.5",
     "eslint-plugin-jsdoc": "62.5.0",
-    "eslint-plugin-sonarjs": "^4.0.0",
+    "eslint-plugin-sonarjs": "^4.0.1",
     "eslint-plugin-unicorn": "^63.0.0",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
@@ -54,7 +53,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@google/clasp": "^3.1.3",
+    "@google/clasp": "^3.2.0",
     "beercss": "^4.0.1"
   }
 }

@@ -32,8 +32,17 @@ describe('ABClassController.loadClass', () => {
       save: vi.fn(),
     };
 
+    const partialsCollectionMock = {
+      findOne: vi.fn().mockReturnValue(null),
+      replaceOne: vi.fn(),
+      insertOne: vi.fn(),
+      save: vi.fn(),
+    };
+
     dbManagerMock = {
-      getCollection: vi.fn().mockReturnValue(collectionMock),
+      getCollection: vi.fn((name) =>
+        name === 'abclass_partials' ? partialsCollectionMock : collectionMock
+      ),
     };
 
     globalThis.DbManager = { getInstance: () => dbManagerMock };
@@ -108,6 +117,8 @@ describe('ABClassController.loadClass', () => {
     expect(abClass.classOwner).toBeTruthy();
     expect(abClass.classOwner.userId || abClass.classOwner.getUserId()).toBe('owner-999');
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
+    expect(collectionMock.replaceOne).not.toHaveBeenCalled();
+    expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
     const [filterArg, updateArg] = collectionMock.updateOne.mock.calls[0];
@@ -157,12 +168,13 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-456');
 
-    // Since loadClass always refreshes the roster we expect the refresh helpers
-    // to have been called, and persisted collection to be updated.
+    // loadClass always refreshes the roster and persists only the roster fields.
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
     expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
+    expect(collectionMock.replaceOne).not.toHaveBeenCalled();
+    expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
     // The refreshed payload uses the empty fetch responses above so the

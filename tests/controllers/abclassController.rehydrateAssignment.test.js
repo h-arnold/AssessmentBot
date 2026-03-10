@@ -336,6 +336,14 @@ describe('ABClassController Rehydrate Assignment', () => {
       }).toThrow();
     });
 
+    it('throws when abClass.classId is not a non-empty string', () => {
+      const controller = new ABClassController();
+
+      expect(() => {
+        controller.rehydrateAssignment({ classId: '   ' }, 'assign-invalid-class-id');
+      }).toThrow('rehydrateAssignment: expected abClass.classId to be a non-empty string');
+    });
+
     it('handles Assignment.fromJSON failure gracefully', () => {
       const controller = new ABClassController();
       const { abClass, assignment } = createTestFixture({

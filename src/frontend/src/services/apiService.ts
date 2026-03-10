@@ -15,7 +15,8 @@ const ApiSuccessResponseSchema = z.object({
 }).superRefine((response, ctx) => {
     if (!Object.prototype.hasOwnProperty.call(response, 'data')) {
         ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            // Use explicit string code to avoid deprecated enum reference
+            code: 'custom',
             message: 'Success response envelope must include a data field.',
             path: ['data'],
         });
@@ -59,10 +60,9 @@ function getRunner(): GoogleScriptRunApiHandler {
 
     if (
         typeof runnerCandidate !== 'object' ||
-        runnerCandidate === null ||
         typeof (runnerCandidate as { apiHandler?: unknown }).apiHandler !== 'function'
     ) {
-        throw new Error('google.script.run.apiHandler is unavailable in this runtime.');
+        throw new TypeError('google.script.run.apiHandler is unavailable in this runtime.');
     }
 
     return runnerCandidate as GoogleScriptRunApiHandler;
@@ -115,7 +115,7 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
 function shouldRetry(error: unknown, attempt: number): boolean {
     return (
         error instanceof ApiTransportError &&
-        error.code === 'RATE_LIMITED' &&
+        String(error.code) === 'RATE_LIMITED' &&
         error.retriable === true &&
         attempt < MAX_ATTEMPTS - 1
     );

@@ -2,10 +2,12 @@
 
 const API_METHODS = Object.freeze({
   getAuthorisationStatus: 'getAuthorisationStatus',
+  getABClassPartials: 'getABClassPartials',
 });
 
 const API_ALLOWLIST = Object.freeze({
   [API_METHODS.getAuthorisationStatus]: API_METHODS.getAuthorisationStatus,
+  [API_METHODS.getABClassPartials]: API_METHODS.getABClassPartials,
 });
 
 const ACTIVE_REQUEST_STALE_MINUTES = 15;

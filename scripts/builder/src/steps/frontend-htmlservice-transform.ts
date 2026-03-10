@@ -72,7 +72,7 @@ export async function runFrontendHtmlServiceTransform(
   const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
   html = await replaceAsync(html, moduleScriptPattern, async (match: string, attributes: string) => {
     const type = readAttributeValue(attributes, 'type');
-    if (!type || type.toLowerCase() !== 'module') {
+    if (type?.toLowerCase() !== 'module') {
       return match;
     }
 
@@ -149,7 +149,7 @@ async function replaceAsync(
   );
 
   let replacementIndex = 0;
-  return input.replace(pattern, () => replacements[replacementIndex++] as string);
+  return input.replace(pattern, () => replacements[replacementIndex++]);
 }
 
 /**
@@ -161,7 +161,7 @@ async function replaceAsync(
  */
 function readAttributeValue(attributes: string, name: string): string | undefined {
   const pattern = new RegExp(
-    `\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'>]+))`,
+    String.raw`\b${name}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`,
     'i',
   );
   const match = pattern.exec(attributes);
@@ -180,12 +180,12 @@ function readAttributeValue(attributes: string, name: string): string | undefine
  */
 function removeAttribute(attributes: string, name: string): string {
   const trimmed = attributes
-    .replace(
-      new RegExp(`\\s*\\b${name}\\s*=\\s*(?:"[^"]*"|'[^']*'|[^\\s"'>]+)`, 'gi'),
+    .replaceAll(
+      new RegExp(String.raw`\s*\b${name}\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)`, 'gi'),
       '',
     )
     .trim();
-  return trimmed.replace(/\s+/g, ' ');
+  return trimmed.replaceAll(/\s+/g, ' ');
 }
 
 /**
@@ -221,7 +221,7 @@ function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
   while ((match = pattern.exec(html))) {
     const attributes = match[1];
     const type = readAttributeValue(attributes, 'type');
-    if (!type || type.toLowerCase() !== 'module') {
+    if (type?.toLowerCase() !== 'module') {
       continue;
     }
     if (readAttributeValue(attributes, 'src')) {

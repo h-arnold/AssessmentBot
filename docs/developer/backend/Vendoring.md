@@ -51,10 +51,10 @@ If BeerCSS ever introduces ESM `import` statements into its CDN build, the vendo
 
 ### After updating
 
-Always run:
+Run the backend test suite after vendoring changes:
 
 ```bash
-npm run test:legacy-ui
+npm test
 ```
 
-…and review the diffs to the vendored assets before committing.
+Also review the diffs to the vendored assets before committing.

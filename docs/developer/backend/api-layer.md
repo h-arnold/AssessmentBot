@@ -96,7 +96,14 @@ Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
 Frontend code should call `callApi` from `src/frontend/src/services/apiService.ts`, not `google.script.run` directly.
 Feature services should expose typed helpers per method and return parsed `data` from `callApi`.
 
-### Current migrated endpoint
+### Current migrated endpoints
 
-- `getAuthorisationStatus` now uses the `callApi` -> `apiHandler` transport path end-to-end.
-- Do not call `google.script.run.getAuthorisationStatus` from frontend feature or service modules.
+- `getAuthorisationStatus` — returns current script authorisation status. Source: `src/backend/Api/auth.js`.
+  Do not call `google.script.run.getAuthorisationStatus` from frontend feature or service modules.
+
+- `getABClassPartials` — returns all class partial documents from the `abclass_partials` registry.
+  Source: `src/backend/Api/abclassPartials.js`. Delegates to `ABClassController.getAllClassPartials()`.
+  Frontend wrapper: `src/frontend/src/services/classPartialsService.ts` (`getABClassPartials()`).
+  The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
+  The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
+  See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
