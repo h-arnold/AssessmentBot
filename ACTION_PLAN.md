@@ -32,7 +32,7 @@
 ## Recovered implementation status
 
 - Current active section: Section 2 — Backend controller and persistence.
-- Current phase: Pre-Red audit complete; Red not yet started.
+- Current phase: Section 2 Red in progress.
 - Verified implemented work:
   - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
   - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
@@ -227,8 +227,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Status:** Not started.
-- **Implementation notes:** No controller or persistence files for cohort/year group CRUD were present during the re-audit on 2026-03-10.
+- **Status:** Red in progress.
+- **Implementation notes:** No controller or persistence files for cohort/year group CRUD were present during the re-audit on 2026-03-10. Section 2 is now in the Red phase and targeted controller tests are being added first.
 - **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** API handlers should depend on controller methods directly and not replicate duplicate checking or sorting logic.
 
