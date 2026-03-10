@@ -299,7 +299,7 @@ Frontend tests:
 - **Status:** Complete.
 - **Implementation notes:** `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` now expose the eight reference-data methods through the allowlisted transport, preserve the existing `apiHandler` admission/completion flow, and delegate thinly to `ReferenceDataController`. The targeted API suites in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js` pass against the implemented routes and handlers.
 - **Deviations from plan:** The reviewer required the delete-path tests to stop asserting an undeclared acknowledgement payload, and stale ESLint suppression comments were removed from the direct API test file before Green started. No production-side deviation remained after review.
-- **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
+- **Follow-up implications for later sections:** Frontend service method names must match these exact API constants. `ApiDispatcher._invokeAllowlistedMethod(...)` should remain thin for now, but the growing sequential branch list is a future refactor candidate once more allowlisted methods accumulate.
 
 ---
 

@@ -23,11 +23,6 @@ const originalCohort = globalThis.Cohort;
 const originalYearGroup = globalThis.YearGroup;
 
 function setGlobalValue(key, originalValue, replacement) {
-  if (originalValue === undefined) {
-    globalThis[key] = replacement;
-    return;
-  }
-
   globalThis[key] = replacement;
 }
 

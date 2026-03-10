@@ -13,7 +13,7 @@ describe('runCommand', () => {
   it('captures stdout and stderr for successful commands', async () => {
     const result = await runCommand(
       process.execPath,
-      ['-e', "process.stdout.write('hello');process.stderr.write('warn');"],
+      ['-e', "require('node:fs').writeSync(1,'hello');require('node:fs').writeSync(2,'warn');"],
       {
         cwd: process.cwd(),
       },

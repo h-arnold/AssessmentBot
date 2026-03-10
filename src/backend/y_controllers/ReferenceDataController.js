@@ -108,7 +108,7 @@ class ReferenceDataController {
 
   /**
    * @param {{collectionName: string, modelClass: Function}} config
-   * @returns {Array<object>}
+   * @returns {Array<object>} Plain record objects with storage metadata stripped and sorted by `name` ascending.
    */
   _listRecords(config) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -255,22 +255,61 @@ class ReferenceDataController {
    * @returns {Array<object>}
    */
   _sortRecordsByName(records) {
-    const sortedRecords = [];
+    const minimumMergeSortPartitionSize = 2;
 
-    records.forEach((record) => {
-      let insertionIndex = sortedRecords.length;
+    if (records.length < minimumMergeSortPartitionSize) {
+      return [...records];
+    }
 
-      for (const [index, sortedRecord] of sortedRecords.entries()) {
-        if (sortedRecord.name.localeCompare(record.name) > 0) {
-          insertionIndex = index;
-          break;
-        }
+    const midpoint = Math.floor(records.length / minimumMergeSortPartitionSize);
+    const leftRecords = [];
+    const rightRecords = [];
+
+    for (const [index, record] of records.entries()) {
+      if (index < midpoint) {
+        leftRecords.push(record);
+      } else {
+        rightRecords.push(record);
       }
+    }
 
-      sortedRecords.splice(insertionIndex, 0, record);
-    });
+    return this._mergeSortedRecords(
+      this._sortRecordsByName(leftRecords),
+      this._sortRecordsByName(rightRecords)
+    );
+  }
 
-    return sortedRecords;
+  /**
+   * @param {Array<object>} leftRecords
+   * @param {Array<object>} rightRecords
+   * @returns {Array<object>}
+   */
+  _mergeSortedRecords(leftRecords, rightRecords) {
+    const mergedRecords = [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+
+    while (leftIndex < leftRecords.length && rightIndex < rightRecords.length) {
+      if (leftRecords[leftIndex].name.localeCompare(rightRecords[rightIndex].name) <= 0) {
+        mergedRecords.push(leftRecords[leftIndex]);
+        leftIndex += 1;
+      } else {
+        mergedRecords.push(rightRecords[rightIndex]);
+        rightIndex += 1;
+      }
+    }
+
+    while (leftIndex < leftRecords.length) {
+      mergedRecords.push(leftRecords[leftIndex]);
+      leftIndex += 1;
+    }
+
+    while (rightIndex < rightRecords.length) {
+      mergedRecords.push(rightRecords[rightIndex]);
+      rightIndex += 1;
+    }
+
+    return mergedRecords;
   }
 }
 
