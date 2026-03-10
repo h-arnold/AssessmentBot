@@ -30,6 +30,23 @@
 
 ---
 
+## Recovered implementation status
+
+- Current active section: Section 5 — Regression and contract hardening.
+- Current phase: Complete.
+- Verified implemented work:
+  - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
+  - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
+  - Section 2 controller and persistence work is implemented in `src/backend/y_controllers/ReferenceDataController.js` with targeted coverage in `tests/controllers/referenceDataController.test.js`.
+  - Section 3 API registration and thin handlers are implemented in `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` with targeted coverage in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js`.
+  - Section 4 frontend schemas and service callers are implemented in `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/referenceDataService.ts` with targeted coverage in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts`.
+- Verified pending work:
+  - Section 5 regression validation and final documentation sync remain outstanding.
+- Repository note:
+  - The current re-audit found no material mismatch between this plan and the branch contents.
+
+---
+
 ## Global constraints and quality gates
 
 ### Engineering constraints
