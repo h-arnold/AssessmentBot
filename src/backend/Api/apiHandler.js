@@ -256,6 +256,30 @@ class ApiDispatcher extends BaseSingleton {
     if (handlerName === 'getABClassPartials') {
       return getABClassPartials(params);
     }
+    if (handlerName === 'getCohorts') {
+      return getCohorts(params);
+    }
+    if (handlerName === 'createCohort') {
+      return createCohort(params);
+    }
+    if (handlerName === 'updateCohort') {
+      return updateCohort(params);
+    }
+    if (handlerName === 'deleteCohort') {
+      return deleteCohort(params);
+    }
+    if (handlerName === 'getYearGroups') {
+      return getYearGroups(params);
+    }
+    if (handlerName === 'createYearGroup') {
+      return createYearGroup(params);
+    }
+    if (handlerName === 'updateYearGroup') {
+      return updateYearGroup(params);
+    }
+    if (handlerName === 'deleteYearGroup') {
+      return deleteYearGroup(params);
+    }
     throw new Error('Allowlisted handler is not implemented.');
   }
 

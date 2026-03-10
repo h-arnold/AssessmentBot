@@ -3,11 +3,27 @@
 const API_METHODS = Object.freeze({
   getAuthorisationStatus: 'getAuthorisationStatus',
   getABClassPartials: 'getABClassPartials',
+  getCohorts: 'getCohorts',
+  createCohort: 'createCohort',
+  updateCohort: 'updateCohort',
+  deleteCohort: 'deleteCohort',
+  getYearGroups: 'getYearGroups',
+  createYearGroup: 'createYearGroup',
+  updateYearGroup: 'updateYearGroup',
+  deleteYearGroup: 'deleteYearGroup',
 });
 
 const API_ALLOWLIST = Object.freeze({
   [API_METHODS.getAuthorisationStatus]: API_METHODS.getAuthorisationStatus,
   [API_METHODS.getABClassPartials]: API_METHODS.getABClassPartials,
+  [API_METHODS.getCohorts]: API_METHODS.getCohorts,
+  [API_METHODS.createCohort]: API_METHODS.createCohort,
+  [API_METHODS.updateCohort]: API_METHODS.updateCohort,
+  [API_METHODS.deleteCohort]: API_METHODS.deleteCohort,
+  [API_METHODS.getYearGroups]: API_METHODS.getYearGroups,
+  [API_METHODS.createYearGroup]: API_METHODS.createYearGroup,
+  [API_METHODS.updateYearGroup]: API_METHODS.updateYearGroup,
+  [API_METHODS.deleteYearGroup]: API_METHODS.deleteYearGroup,
 });
 
 const ACTIVE_REQUEST_STALE_MINUTES = 15;

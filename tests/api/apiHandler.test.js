@@ -9,9 +9,77 @@ const {
   callAuthorisationStatus,
   getApiDispatcherInstance,
   loadApiHandlerModule,
+  REFERENCE_DATA_API_METHOD_NAMES,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
+
+function buildReferenceDataParams(methodName) {
+  switch (methodName) {
+    case 'createCohort': {
+      return { record: { name: 'Cohort 2026', active: true } };
+    }
+    case 'updateCohort': {
+      return {
+        originalName: 'Cohort 2025',
+        record: { name: 'Cohort 2026', active: false },
+      };
+    }
+    case 'deleteCohort': {
+      return { name: 'Cohort 2026' };
+    }
+    case 'createYearGroup': {
+      return { record: { name: 'Year 10' } };
+    }
+    case 'updateYearGroup': {
+      return {
+        originalName: 'Year 9',
+        record: { name: 'Year 10' },
+      };
+    }
+    case 'deleteYearGroup': {
+      return { name: 'Year 10' };
+    }
+    default: {
+      return { traceId: `${methodName}-params` };
+    }
+  }
+}
+
+function buildReferenceDataResult(methodName) {
+  switch (methodName) {
+    case 'getCohorts': {
+      return [{ name: 'Cohort 2026', active: true }];
+    }
+    case 'createCohort': {
+      return { name: 'Cohort 2026', active: true };
+    }
+    case 'updateCohort': {
+      return { name: 'Cohort 2026', active: false };
+    }
+    case 'getYearGroups': {
+      return [{ name: 'Year 10' }];
+    }
+    case 'createYearGroup': {
+      return { name: 'Year 10' };
+    }
+    case 'updateYearGroup': {
+      return { name: 'Year 10' };
+    }
+    default: {
+      return { handledBy: methodName };
+    }
+  }
+}
+
+function buildReferenceDataHandlers() {
+  return Object.fromEntries(
+    REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [
+      methodName,
+      () => buildReferenceDataResult(methodName),
+    ])
+  );
+}
 
 function loadApiConstantsModule() {
   delete require.cache[require.resolve(apiConstantsPath)];
@@ -97,13 +165,39 @@ describe('Api/apiConstants', () => {
     expect(API_METHODS).toBeTypeOf('object');
     expect(API_METHODS.getAuthorisationStatus).toBe('getAuthorisationStatus');
   });
+
+  it('contains all Section 3 reference-data methods in API_METHODS', () => {
+    const { API_METHODS } = loadApiConstantsModule();
+
+    expect(API_METHODS).toEqual(
+      expect.objectContaining(
+        Object.fromEntries(
+          REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
+        )
+      )
+    );
+  });
+
+  it('contains all Section 3 reference-data methods in API_ALLOWLIST', () => {
+    const { API_ALLOWLIST } = loadApiConstantsModule();
+
+    expect(API_ALLOWLIST).toEqual(
+      expect.objectContaining(
+        Object.fromEntries(
+          REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
+        )
+      )
+    );
+  });
 });
 
 describe('Api/apiHandler dispatcher', () => {
   let context;
 
   beforeEach(() => {
-    context = setupApiHandlerTestContext(vi);
+    context = setupApiHandlerTestContext(vi, {
+      additionalHandlers: buildReferenceDataHandlers(),
+    });
   });
 
   afterEach(() => {
@@ -238,6 +332,97 @@ describe('Api/apiHandler dispatcher', () => {
 
     const response = dispatcher.handle({
       method: 'getAuthorisationStatus',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+  });
+
+  it.each(REFERENCE_DATA_API_METHOD_NAMES)(
+    'routes %s to the matching allowlisted handler',
+    (methodName) => {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+      const params = buildReferenceDataParams(methodName);
+      const expectedData =
+        methodName === 'deleteCohort' || methodName === 'deleteYearGroup'
+          ? { transport: 'plain-data', methodName }
+          : buildReferenceDataResult(methodName);
+
+      globalThis[methodName].mockImplementation(() => expectedData);
+
+      const response = dispatcher.handle({
+        method: methodName,
+        params,
+      });
+
+      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
+      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(response.ok).toBe(true);
+      expect(response.data).toEqual(expectedData);
+      expect(response.data?.ok).toBeUndefined();
+      expect(response.data?.error).toBeUndefined();
+    }
+  );
+
+  it('returns plain handler data for successful reference-data requests without re-enveloping it', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+    const expectedData = [{ name: 'Cohort 2026', active: true }];
+
+    globalThis.getCohorts.mockImplementation(() => expectedData);
+
+    const response = dispatcher.handle({
+      method: 'getCohorts',
+    });
+
+    expect(response.ok).toBe(true);
+    expect(response.data).toEqual(expectedData);
+    expect(response.data.ok).toBeUndefined();
+    expect(response.data.error).toBeUndefined();
+  });
+
+  it('maps controller validation failures for reference-data handlers to the existing API failure envelope', () => {
+    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+    globalThis.createCohort.mockImplementation(() => {
+      throw new ApiValidationError('Invalid cohort payload', { requestId: 'req-create-cohort' });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'createCohort',
+      params: buildReferenceDataParams('createCohort'),
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid cohort payload',
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps unexpected controller failures for reference-data handlers to the existing API failure envelope', () => {
+    globalThis.updateYearGroup.mockImplementation(() => {
+      throw new Error('year-group update exploded');
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'updateYearGroup',
+      params: buildReferenceDataParams('updateYearGroup'),
     });
 
     expect(response).toMatchObject({

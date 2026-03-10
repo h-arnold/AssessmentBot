@@ -31,8 +31,8 @@
 
 ## Recovered implementation status
 
-- Current active section: Section 3 — Backend API surface.
-- Current phase: Section 3 Red not yet started.
+- Current active section: Section 4 — Frontend Zod schemas and service callers.
+- Current phase: Section 4 Red not yet started.
 - Verified implemented work:
   - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
   - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
@@ -297,9 +297,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Status:** Not started.
-- **Implementation notes:** `src/backend/Api/apiConstants.js` and `src/backend/Api/apiHandler.js` do not yet contain the planned cohort/year group methods or dispatcher routes as of the re-audit on 2026-03-10.
-- **Deviations from plan:** None recorded yet.
+- **Status:** Complete.
+- **Implementation notes:** `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` now expose the eight reference-data methods through the allowlisted transport, preserve the existing `apiHandler` admission/completion flow, and delegate thinly to `ReferenceDataController`. The targeted API suites in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js` pass against the implemented routes and handlers.
+- **Deviations from plan:** The reviewer required the delete-path tests to stop asserting an undeclared acknowledgement payload, and stale ESLint suppression comments were removed from the direct API test file before Green started. No production-side deviation remained after review.
 - **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
 
 ---
