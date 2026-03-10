@@ -1,16 +1,6 @@
 // YearGroup.js
 
-function getValidate() {
-  if (typeof Validate !== 'undefined') {
-    return Validate;
-  }
-
-  if (typeof require !== 'undefined') {
-    return require('../Utils/Validate.js').Validate;
-  }
-
-  throw new Error('Validate is not available');
-}
+/* global Validate */
 
 /**
  * Represents a year-group reference record.
@@ -20,7 +10,7 @@ class YearGroup {
    * @param {string} name The year-group display name.
    */
   constructor(name) {
-    getValidate().requireParams({ name }, 'YearGroup.constructor');
+    Validate.requireParams({ name }, 'YearGroup.constructor');
     this.name = '';
     this.setName(name);
   }
@@ -36,10 +26,9 @@ class YearGroup {
    * @param {string} name The year-group display name.
    */
   setName(name) {
-    const validate = getValidate();
-    validate.requireParams({ name }, 'YearGroup.setName');
+    Validate.requireParams({ name }, 'YearGroup.setName');
 
-    if (!validate.isNonEmptyString(name)) {
+    if (!Validate.isNonEmptyString(name)) {
       throw new TypeError('name must be a non-empty string.');
     }
 
@@ -60,8 +49,7 @@ class YearGroup {
    * @returns {YearGroup}
    */
   static fromJSON(json) {
-    const validate = getValidate();
-    validate.requireParams({ json }, 'YearGroup.fromJSON');
+    Validate.requireParams({ json }, 'YearGroup.fromJSON');
 
     if (!json || typeof json !== 'object' || Array.isArray(json)) {
       throw new TypeError('json must be an object.');

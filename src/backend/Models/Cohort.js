@@ -1,16 +1,6 @@
 // Cohort.js
 
-function getValidate() {
-  if (typeof Validate !== 'undefined') {
-    return Validate;
-  }
-
-  if (typeof require !== 'undefined') {
-    return require('../Utils/Validate.js').Validate;
-  }
-
-  throw new Error('Validate is not available');
-}
+/* global Validate */
 
 /**
  * Represents a cohort reference record.
@@ -21,7 +11,7 @@ class Cohort {
    * @param {boolean} [active] Whether the cohort is active.
    */
   constructor(name, active) {
-    getValidate().requireParams({ name }, 'Cohort.constructor');
+    Validate.requireParams({ name }, 'Cohort.constructor');
     this.name = '';
     this.active = true;
 
@@ -40,10 +30,9 @@ class Cohort {
    * @param {string} name The cohort display name.
    */
   setName(name) {
-    const validate = getValidate();
-    validate.requireParams({ name }, 'Cohort.setName');
+    Validate.requireParams({ name }, 'Cohort.setName');
 
-    if (!validate.isNonEmptyString(name)) {
+    if (!Validate.isNonEmptyString(name)) {
       throw new TypeError('name must be a non-empty string.');
     }
 
@@ -61,10 +50,9 @@ class Cohort {
    * @param {boolean} active Whether the cohort is active.
    */
   setActive(active) {
-    const validate = getValidate();
-    validate.requireParams({ active }, 'Cohort.setActive');
+    Validate.requireParams({ active }, 'Cohort.setActive');
 
-    if (!validate.isBoolean(active)) {
+    if (!Validate.isBoolean(active)) {
       throw new TypeError('active must be a boolean.');
     }
 
@@ -86,8 +74,7 @@ class Cohort {
    * @returns {Cohort}
    */
   static fromJSON(json) {
-    const validate = getValidate();
-    validate.requireParams({ json }, 'Cohort.fromJSON');
+    Validate.requireParams({ json }, 'Cohort.fromJSON');
 
     if (!json || typeof json !== 'object' || Array.isArray(json)) {
       throw new TypeError('json must be an object.');

@@ -1,4 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { Validate } from '../../src/backend/Utils/Validate.js';
+
+const originalValidate = globalThis.Validate;
+
+beforeAll(() => {
+  globalThis.Validate = Validate;
+});
+
+afterAll(() => {
+  if (originalValidate === undefined) {
+    delete globalThis.Validate;
+    return;
+  }
+
+  globalThis.Validate = originalValidate;
+});
 
 async function loadYearGroup() {
   const module = await import('../../src/backend/Models/YearGroup.js');
