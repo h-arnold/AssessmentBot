@@ -29,6 +29,23 @@
 
 ---
 
+## Recovered implementation status
+
+- Current active section: Section 5 — Regression and contract hardening.
+- Current phase: Complete.
+- Verified implemented work:
+  - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
+  - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
+  - Section 2 controller and persistence work is implemented in `src/backend/y_controllers/ReferenceDataController.js` with targeted coverage in `tests/controllers/referenceDataController.test.js`.
+  - Section 3 API registration and thin handlers are implemented in `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` with targeted coverage in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js`.
+  - Section 4 frontend schemas and service callers are implemented in `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/referenceDataService.ts` with targeted coverage in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts`.
+- Verified pending work:
+  - Section 5 regression validation and final documentation sync remain outstanding.
+- Repository note:
+  - The current re-audit found no material mismatch between this plan and the branch contents.
+
+---
+
 ## Global constraints and quality gates
 
 ### Engineering constraints
@@ -122,8 +139,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Create minimal model files in `src/backend/Models` and follow existing serialisation conventions.
-- **Deviations from plan:** Record any repo-specific naming or export adjustments required by the test harness.
+- **Status:** Complete based on repository inspection.
+- **Implementation notes:** Minimal model files were added in `src/backend/Models` and follow the existing serialisation pattern with guarded Node exports. A re-audit on 2026-03-10 confirmed that the model implementation and tests still match this section.
+- **Deviations from plan:** No material deviation identified from the current files. The combined model test coverage lives in `tests/models/cohortYearGroup.test.js` rather than separate per-model files.
 - **Follow-up implications for later sections:** Later controller and API work should consume model `toJSON()` output rather than re-shaping model fields manually.
 
 ---
@@ -208,8 +226,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Use the existing `DbManager` collection access pattern and keep collection writes explicit.
-- **Deviations from plan:** Record any JsonDbApp behaviour that requires slight filter or replace/upsert adjustments.
+- **Status:** Complete.
+- **Implementation notes:** `src/backend/y_controllers/ReferenceDataController.js` now provides shared CRUD flows for cohorts and year groups using the `cohorts` and `year_groups` collections, exact-name targeting for updates and deletes, duplicate checks on normalised names, transport-safe `_id` stripping, and GAS-compatible name sorting. The reviewed Red-phase suite remains in `tests/controllers/referenceDataController.test.js` and now passes with 30 targeted controller tests.
+- **Deviations from plan:** The reviewer required two Red-phase adjustments before Green: removing lookup-strategy coupling from CRUD tests and adding explicit invalid-payload rejection coverage. During Green review, a GAS-runtime incompatibility caused by `toSorted` was identified and fixed before section completion.
 - **Follow-up implications for later sections:** API handlers should depend on controller methods directly and not replicate duplicate checking or sorting logic.
 
 ---
@@ -277,9 +296,10 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Prefer one API module per resource or one small shared reference-data API module if that keeps the surface clear.
-- **Deviations from plan:** Record any dispatcher branching adjustments needed to match existing test patterns.
-- **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
+- **Status:** Complete.
+- **Implementation notes:** `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` now expose the eight reference-data methods through the allowlisted transport, preserve the existing `apiHandler` admission/completion flow, and delegate thinly to `ReferenceDataController`. The targeted API suites in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js` pass against the implemented routes and handlers.
+- **Deviations from plan:** The reviewer required the delete-path tests to stop asserting an undeclared acknowledgement payload, and stale ESLint suppression comments were removed from the direct API test file before Green started. No production-side deviation remained after review.
+- **Follow-up implications for later sections:** Frontend service method names must match these exact API constants. `ApiDispatcher._invokeAllowlistedMethod(...)` should remain thin for now, but the growing sequential branch list is a future refactor candidate once more allowlisted methods accumulate.
 
 ---
 
@@ -356,8 +376,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Place the Zod schemas adjacent to the service module, following the frontend instruction file.
-- **Deviations from plan:** Record any naming adjustments needed to stay aligned with existing service patterns.
+- **Status:** Complete.
+- **Implementation notes:** `src/frontend/src/services/referenceData.zod.ts` now defines the reviewed runtime schemas and inferred types, and `src/frontend/src/services/referenceDataService.ts` validates create/update/delete inputs locally before transport and parses successful backend payloads before returning them. The targeted frontend suites in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts` pass.
+- **Deviations from plan:** Red-phase review tightened the cohort update input contract to require full replacement payloads, fixed service-test mock leakage, and aligned delete response parsing with the implemented no-payload backend delete behaviour. Green implementation remained minimal and required no further deviation after review.
 - **Follow-up implications for later sections:** Later UI work should import these schemas and inferred types rather than redefining validation.
 
 ---
@@ -400,8 +421,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Summarise final verification coverage and any fixes made during regression.
-- **Deviations from plan:** Note any unrelated failing tests or lint issues discovered.
+- **Status:** Complete.
+- **Implementation notes:** Section-level regression validation is green. Backend model, controller, and API suites pass; frontend schema and service suites pass; `npm run lint`, `npm run frontend:lint`, and `npm exec tsc -- -b src/frontend/tsconfig.json` all pass. Manual parity review confirmed that frontend service method names match the backend `API_METHODS` entries exactly.
+- **Deviations from plan:** Validation revealed one backend lint warning in `src/backend/Models/Cohort.js`; it was resolved in scope by replacing a constructor magic number with a named constant. An unrelated unstaged change remains present in `.github/agents/implementation.agent.md` and was not modified as part of this feature work.
 
 ---
 
@@ -431,7 +453,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Record any documentation updates or confirm that no additional canonical docs were required beyond this action plan.
+- Recovery and progress updates in this action plan now reflect the completed implementation across backend, API, frontend schema, and frontend service layers.
+- Canonical backend API documentation was updated in `docs/developer/backend/api-layer.md` to record the new cohort/year-group CRUD endpoints, payload conventions, frontend wrapper location, and no-payload delete responses.
 
 ---
 

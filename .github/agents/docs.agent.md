@@ -2,7 +2,7 @@
 name: 'Docs'
 description: 'Reviews changed code and updates developer documentation, AGENTS guidance, and JSDoc accuracy'
 user-invocable: true
-tools: ['read/problems', 'read/readFile', 'read/file_search', 'read/list_dir', 'execute/run_in_terminal', 'search/search', 'vscode/get_changed_files', 'edit/editFiles', 'edit/createFile']
+tools: [execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, edit/createFile, edit/editFiles, edit/rename, search, web, vscode.mermaid-chat-features/renderMermaidDiagram, todo]
 ---
 
 # Documentation Agent Instructions
