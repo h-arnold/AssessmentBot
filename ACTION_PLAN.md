@@ -29,6 +29,23 @@
 
 ---
 
+## Recovered implementation status
+
+- Current active section: Section 2 — Backend controller and persistence.
+- Current phase: Red not yet started after recovery from the interrupted session.
+- Verified implemented work:
+  - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
+  - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
+- Verified pending work:
+  - Section 2 controller and persistence layer work has not yet been added.
+  - Section 3 API method registration and thin handlers have not yet been added.
+  - Section 4 frontend Zod schemas and service callers have not yet been added.
+  - Section 5 regression validation is blocked until Sections 2 to 4 exist.
+- Repository note:
+  - An unrelated unstaged change exists in `.github/agents/implementation.agent.md` and has been left untouched.
+
+---
+
 ## Global constraints and quality gates
 
 ### Engineering constraints
@@ -122,8 +139,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Create minimal model files in `src/backend/Models` and follow existing serialisation conventions.
-- **Deviations from plan:** Record any repo-specific naming or export adjustments required by the test harness.
+- **Status:** Complete based on repository inspection.
+- **Implementation notes:** Minimal model files were added in `src/backend/Models` and follow the existing serialisation pattern with guarded Node exports.
+- **Deviations from plan:** No material deviation identified from the current files. The combined model test coverage lives in `tests/models/cohortYearGroup.test.js` rather than separate per-model files.
 - **Follow-up implications for later sections:** Later controller and API work should consume model `toJSON()` output rather than re-shaping model fields manually.
 
 ---
@@ -208,8 +226,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Use the existing `DbManager` collection access pattern and keep collection writes explicit.
-- **Deviations from plan:** Record any JsonDbApp behaviour that requires slight filter or replace/upsert adjustments.
+- **Status:** Not started.
+- **Implementation notes:** No controller or persistence files for cohort/year group CRUD were present during recovery review.
+- **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** API handlers should depend on controller methods directly and not replicate duplicate checking or sorting logic.
 
 ---
@@ -277,8 +296,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Prefer one API module per resource or one small shared reference-data API module if that keeps the surface clear.
-- **Deviations from plan:** Record any dispatcher branching adjustments needed to match existing test patterns.
+- **Status:** Not started.
+- **Implementation notes:** `src/backend/Api/apiConstants.js` and `src/backend/Api/apiHandler.js` do not yet contain the planned cohort/year group methods or dispatcher routes.
+- **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
 
 ---
@@ -356,8 +376,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Place the Zod schemas adjacent to the service module, following the frontend instruction file.
-- **Deviations from plan:** Record any naming adjustments needed to stay aligned with existing service patterns.
+- **Status:** Not started.
+- **Implementation notes:** No cohort/year group frontend schemas or service callers were present during recovery review.
+- **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** Later UI work should import these schemas and inferred types rather than redefining validation.
 
 ---
@@ -400,8 +421,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Summarise final verification coverage and any fixes made during regression.
-- **Deviations from plan:** Note any unrelated failing tests or lint issues discovered.
+- **Status:** Blocked pending Sections 2 to 4.
+- **Implementation notes:** Full regression and contract validation cannot start until controller, API, and frontend contract work exists.
+- **Deviations from plan:** An unrelated unstaged change is present in `.github/agents/implementation.agent.md`; it was not modified as part of this recovery update.
 
 ---
 
@@ -431,7 +453,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Record any documentation updates or confirm that no additional canonical docs were required beyond this action plan.
+- Recovery review update added to this action plan to reflect the implemented backend model work and the remaining scope.
+- No additional canonical documentation changes were required during this recovery pass.
 
 ---
 
