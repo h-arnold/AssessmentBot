@@ -140,6 +140,7 @@ The same schema is used for every hydration level. Partial definitions use `task
 - Supports frontend class listing without loading all full `ABClass` records.
 - Maintained in sync on every class write path by `ABClassController._upsertClassPartial()`.
 - Retrieved via the `getABClassPartials` API method.
+- Read responses are normalised by `ABClassController.getAllClassPartials()` before leaving the backend transport boundary.
 
 ### Persistence strategy
 
@@ -168,6 +169,8 @@ Key notes:
 - `students` and `assignments` are **intentionally excluded** to keep the document lightweight.
 - `active` is an explicit boolean (or `null` when unknown) persisted on `ABClass` and always included in the partial.
 - `classOwner` is serialised via `ABClass.toJSON()` (includes `toJSON()` delegation for `Teacher` instances).
+- `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only.
+- `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
 ## Assignment Definition
 

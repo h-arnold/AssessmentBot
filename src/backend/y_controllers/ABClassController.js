@@ -687,7 +687,10 @@ class ABClassController {
 
   /**
    * Returns all class partial documents from the abclass_partials collection.
-   * @returns {Array<object>} Array of partial class documents; empty array if none exist.
+   * Normalises each stored document to the public transport shape so storage-only
+   * fields such as `_id` do not leak through the API response.
+   *
+   * @returns {Array<object>} Array of plain class partial transport objects; empty array if none exist.
    * @throws {Error} Rethrows any collection read error.
    */
   getAllClassPartials() {
