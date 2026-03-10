@@ -1,27 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const callApiMock = vi.fn();
+const omittedBackendSuccessPayload = new Map<string, never>().get('missing');
+const SECOND_CALL = 2;
+const THIRD_CALL = 3;
 
 vi.mock('./apiService', () => ({
     callApi: callApiMock,
 }));
 
-type ReferenceDataServiceModule = typeof import('./referenceDataService');
-
-async function loadReferenceDataService(): Promise<ReferenceDataServiceModule> {
-    try {
-        return await import('./referenceDataService');
-    } catch (error) {
-        throw new Error(
-            'Expected ./referenceDataService.ts to exist and export cohort/year-group CRUD callers for Section 4.',
-            { cause: error as Error }
-        );
-    }
+/**
+ * Loads the reference-data service module under test.
+ */
+async function loadReferenceDataService() {
+    return import('./referenceDataService');
 }
 
 describe('referenceDataService', () => {
     afterEach(() => {
-        vi.clearAllMocks();
+        callApiMock.mockReset();
+        vi.restoreAllMocks();
     });
 
     it('getCohorts() calls callApi with getCohorts', async () => {
@@ -63,10 +61,10 @@ describe('referenceDataService', () => {
     });
 
     it('deleteCohort() calls callApi with deleteCohort and the parsed payload', async () => {
-        callApiMock.mockResolvedValueOnce(undefined);
+        callApiMock.mockResolvedValueOnce(omittedBackendSuccessPayload);
         const { deleteCohort } = await loadReferenceDataService();
 
-        await deleteCohort({ name: 'Year 7' });
+        await deleteCohort({ name: '  Year 7  ' });
 
         expect(callApiMock).toHaveBeenCalledWith('deleteCohort', { name: 'Year 7' });
         expect(callApiMock).toHaveBeenCalledTimes(1);
@@ -111,65 +109,112 @@ describe('referenceDataService', () => {
     });
 
     it('deleteYearGroup() calls callApi with deleteYearGroup and the parsed payload', async () => {
-        callApiMock.mockResolvedValueOnce(undefined);
+        callApiMock.mockResolvedValueOnce(omittedBackendSuccessPayload);
         const { deleteYearGroup } = await loadReferenceDataService();
 
-        await deleteYearGroup({ name: 'Year 10' });
+        await deleteYearGroup({ name: '  Year 10  ' });
 
         expect(callApiMock).toHaveBeenCalledWith('deleteYearGroup', { name: 'Year 10' });
         expect(callApiMock).toHaveBeenCalledTimes(1);
     });
 
     it('getCohorts() parses the resolved backend payload with the cohort list response schema before returning it', async () => {
-        const cohorts = [{ name: 'Year 7', active: true }];
-        callApiMock.mockResolvedValueOnce(cohorts);
+        callApiMock.mockResolvedValueOnce([{ name: '  Year 7  ', active: true }]);
         const { getCohorts } = await loadReferenceDataService();
 
-        await expect(getCohorts()).resolves.toEqual(cohorts);
+        await expect(getCohorts()).resolves.toEqual([{ name: 'Year 7', active: true }]);
     });
 
     it('createCohort(), updateCohort(), and deleteCohort() parse the resolved backend payload with the appropriate response schema before returning it', async () => {
-        const createdCohort = { name: 'Year 7', active: true };
-        const updatedCohort = { name: 'Year 8', active: false };
         callApiMock
-            .mockResolvedValueOnce(createdCohort)
-            .mockResolvedValueOnce(updatedCohort)
-            .mockResolvedValueOnce(undefined);
+            .mockResolvedValueOnce({ name: '  Year 7  ', active: true })
+            .mockResolvedValueOnce({ name: '  Year 8  ', active: false })
+            .mockResolvedValueOnce(omittedBackendSuccessPayload);
         const { createCohort, updateCohort, deleteCohort } = await loadReferenceDataService();
 
-        await expect(createCohort({ record: { name: 'Year 7' } })).resolves.toEqual(createdCohort);
+        await expect(createCohort({ record: { name: 'Year 7' } })).resolves.toEqual({
+            name: 'Year 7',
+            active: true,
+        });
         await expect(
             updateCohort({
                 originalName: 'Year 7',
                 record: { name: 'Year 8', active: false },
             })
-        ).resolves.toEqual(updatedCohort);
+        ).resolves.toEqual({ name: 'Year 8', active: false });
         await expect(deleteCohort({ name: 'Year 8' })).resolves.toBeUndefined();
     });
 
     it('getYearGroups(), createYearGroup(), updateYearGroup(), and deleteYearGroup() parse the resolved backend payload with the appropriate response schema before returning it', async () => {
-        const yearGroups = [{ name: 'Year 10' }];
-        const createdYearGroup = { name: 'Year 10' };
-        const updatedYearGroup = { name: 'Year 11' };
         callApiMock
-            .mockResolvedValueOnce(yearGroups)
-            .mockResolvedValueOnce(createdYearGroup)
-            .mockResolvedValueOnce(updatedYearGroup)
-            .mockResolvedValueOnce(undefined);
+            .mockResolvedValueOnce([{ name: '  Year 10  ' }])
+            .mockResolvedValueOnce({ name: '  Year 10  ' })
+            .mockResolvedValueOnce({ name: '  Year 11  ' })
+            .mockResolvedValueOnce(omittedBackendSuccessPayload);
         const { getYearGroups, createYearGroup, updateYearGroup, deleteYearGroup } =
             await loadReferenceDataService();
 
-        await expect(getYearGroups()).resolves.toEqual(yearGroups);
-        await expect(createYearGroup({ record: { name: 'Year 10' } })).resolves.toEqual(
-            createdYearGroup
-        );
+        await expect(getYearGroups()).resolves.toEqual([{ name: 'Year 10' }]);
+        await expect(createYearGroup({ record: { name: 'Year 10' } })).resolves.toEqual({
+            name: 'Year 10',
+        });
         await expect(
             updateYearGroup({
                 originalName: 'Year 10',
                 record: { name: 'Year 11' },
             })
-        ).resolves.toEqual(updatedYearGroup);
+        ).resolves.toEqual({ name: 'Year 11' });
         await expect(deleteYearGroup({ name: 'Year 11' })).resolves.toBeUndefined();
+    });
+
+    it('parses valid request payloads locally before calling create/update/delete cohort endpoints', async () => {
+        const createInput = { record: { name: 'Year 7' } };
+        const updateInput = {
+            originalName: 'Year 7',
+            record: { name: 'Year 8', active: false },
+        };
+        const deleteInput = { name: 'Year 8' };
+        callApiMock
+            .mockResolvedValueOnce({ name: 'Year 7', active: true })
+            .mockResolvedValueOnce({ name: 'Year 8', active: false })
+            .mockResolvedValueOnce(omittedBackendSuccessPayload);
+        const { createCohort, updateCohort, deleteCohort } = await loadReferenceDataService();
+
+        await createCohort({ record: { name: '  Year 7  ' } });
+        await updateCohort({
+            originalName: '  Year 7  ',
+            record: { name: '  Year 8  ', active: false },
+        });
+        await deleteCohort({ name: '  Year 8  ' });
+
+        expect(callApiMock).toHaveBeenNthCalledWith(1, 'createCohort', createInput);
+        expect(callApiMock).toHaveBeenNthCalledWith(SECOND_CALL, 'updateCohort', updateInput);
+        expect(callApiMock).toHaveBeenNthCalledWith(THIRD_CALL, 'deleteCohort', deleteInput);
+    });
+
+    it('parses valid request payloads locally before calling create/update/delete year-group endpoints', async () => {
+        const createInput = { record: { name: 'Year 10' } };
+        const updateInput = {
+            originalName: 'Year 10',
+            record: { name: 'Year 11' },
+        };
+        const deleteInput = { name: 'Year 11' };
+        callApiMock
+            .mockResolvedValueOnce({ name: 'Year 10' })
+            .mockResolvedValueOnce({ name: 'Year 11' })
+            .mockResolvedValueOnce(omittedBackendSuccessPayload);
+        const { createYearGroup, updateYearGroup, deleteYearGroup } = await loadReferenceDataService();
+
+        await createYearGroup({ record: { name: '  Year 10  ' } });
+        await updateYearGroup({
+            originalName: '  Year 10  ',
+            record: { name: '  Year 11  ' },
+        });
+        await deleteYearGroup({ name: '  Year 11  ' });
+
+        expect(callApiMock).toHaveBeenNthCalledWith(1, 'createYearGroup', createInput);
+        expect(callApiMock).toHaveBeenNthCalledWith(SECOND_CALL, 'updateYearGroup', updateInput);
+        expect(callApiMock).toHaveBeenNthCalledWith(THIRD_CALL, 'deleteYearGroup', deleteInput);
     });
 
     it.each([
@@ -178,10 +223,12 @@ describe('referenceDataService', () => {
             'updateCohort',
             () =>
                 loadReferenceDataService().then(({ updateCohort }) =>
-                    updateCohort({
-                        originalName: 'Year 7',
-                        record: { name: '', active: true },
-                    })
+                    updateCohort(
+                        {
+                            originalName: 'Year 7',
+                            record: { name: 'Year 8' },
+                        } as unknown as Parameters<typeof updateCohort>[0]
+                    )
                 ),
         ],
         ['deleteCohort', () => loadReferenceDataService().then(({ deleteCohort }) => deleteCohort({ name: '   ' }))],
@@ -295,7 +342,7 @@ describe('referenceDataService', () => {
     });
 
     it.each([
-        ['getCohorts', [{ name: '   ', active: true }], () => loadReferenceDataService().then(({ getCohorts }) => getCohorts())],
+        ['getCohorts', [{ name: 'Year 7' }], () => loadReferenceDataService().then(({ getCohorts }) => getCohorts())],
         [
             'createCohort',
             { name: '   ', active: true },
@@ -312,7 +359,6 @@ describe('referenceDataService', () => {
                     })
                 ),
         ],
-        ['deleteCohort', { deleted: true }, () => loadReferenceDataService().then(({ deleteCohort }) => deleteCohort({ name: 'Year 8' }))],
         ['getYearGroups', [{ name: '   ' }], () => loadReferenceDataService().then(({ getYearGroups }) => getYearGroups())],
         [
             'createYearGroup',
@@ -333,6 +379,7 @@ describe('referenceDataService', () => {
                     })
                 ),
         ],
+        ['deleteCohort', { deleted: true }, () => loadReferenceDataService().then(({ deleteCohort }) => deleteCohort({ name: 'Year 8' }))],
         ['deleteYearGroup', { deleted: true }, () => loadReferenceDataService().then(({ deleteYearGroup }) => deleteYearGroup({ name: 'Year 11' }))],
     ])('%s() rejects malformed success payloads when response parsing fails', async (_methodName, malformedPayload, invoke) => {
         callApiMock.mockResolvedValueOnce(malformedPayload);

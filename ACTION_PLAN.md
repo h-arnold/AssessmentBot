@@ -31,17 +31,16 @@
 
 ## Recovered implementation status
 
-- Current active section: Section 4 — Frontend Zod schemas and service callers.
-- Current phase: Section 4 Red in progress.
+- Current active section: Section 5 — Regression and contract hardening.
+- Current phase: Section 5 validation in progress.
 - Verified implemented work:
   - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
   - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
-  - A branch re-audit on 2026-03-10 confirmed no cohort/year group implementation beyond Section 1.
+  - Section 2 controller and persistence work is implemented in `src/backend/y_controllers/ReferenceDataController.js` with targeted coverage in `tests/controllers/referenceDataController.test.js`.
+  - Section 3 API registration and thin handlers are implemented in `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` with targeted coverage in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js`.
+  - Section 4 frontend schemas and service callers are implemented in `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/referenceDataService.ts` with targeted coverage in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts`.
 - Verified pending work:
-  - Section 2 controller and persistence layer work has not yet been added.
-  - Section 3 API method registration and thin handlers have not yet been added.
-  - Section 4 frontend Zod schemas and service callers have not yet been added.
-  - Section 5 regression validation is blocked until Sections 2 to 4 exist.
+  - Section 5 regression validation and final documentation sync remain outstanding.
 - Repository note:
   - The current re-audit found no material mismatch between this plan and the branch contents.
 
@@ -377,9 +376,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Status:** Red in progress.
-- **Implementation notes:** No cohort/year group frontend schemas or service callers were present during the re-audit on 2026-03-10. Section 4 has now entered the Red phase and frontend schema/service tests are being added first.
-- **Deviations from plan:** None recorded yet.
+- **Status:** Complete.
+- **Implementation notes:** `src/frontend/src/services/referenceData.zod.ts` now defines the reviewed runtime schemas and inferred types, and `src/frontend/src/services/referenceDataService.ts` validates create/update/delete inputs locally before transport and parses successful backend payloads before returning them. The targeted frontend suites in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts` pass.
+- **Deviations from plan:** Red-phase review tightened the cohort update input contract to require full replacement payloads, fixed service-test mock leakage, and aligned delete response parsing with the implemented no-payload backend delete behaviour. Green implementation remained minimal and required no further deviation after review.
 - **Follow-up implications for later sections:** Later UI work should import these schemas and inferred types rather than redefining validation.
 
 ---
@@ -422,9 +421,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Status:** Blocked pending Sections 2 to 4.
-- **Implementation notes:** Full regression and contract validation cannot start until controller, API, and frontend contract work exists.
-- **Deviations from plan:** An unrelated unstaged change is present in `.github/agents/implementation.agent.md`; it was not modified as part of this recovery update.
+- **Status:** In progress.
+- **Implementation notes:** Sections 1 to 4 are now complete, so the remaining work is full regression validation across backend, frontend, and contract parity checks.
+- **Deviations from plan:** An unrelated unstaged change is present in `.github/agents/implementation.agent.md`; it has not been modified as part of this feature work.
 
 ---
 
