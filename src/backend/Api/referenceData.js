@@ -41,7 +41,7 @@ function updateCohort(params) {
 
 /**
  * @param {{name: string}} params
- * @returns {*}
+ * @returns {void}
  */
 function deleteCohort(params) {
   return getController().deleteCohort(params.name);
@@ -72,7 +72,7 @@ function updateYearGroup(params) {
 
 /**
  * @param {{name: string}} params
- * @returns {*}
+ * @returns {void}
  */
 function deleteYearGroup(params) {
   return getController().deleteYearGroup(params.name);

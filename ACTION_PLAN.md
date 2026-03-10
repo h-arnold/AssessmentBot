@@ -32,7 +32,7 @@
 ## Recovered implementation status
 
 - Current active section: Section 5 — Regression and contract hardening.
-- Current phase: Section 5 validation in progress.
+- Current phase: Complete.
 - Verified implemented work:
   - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
   - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
@@ -421,9 +421,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Status:** In progress.
-- **Implementation notes:** Sections 1 to 4 are now complete, so the remaining work is full regression validation across backend, frontend, and contract parity checks.
-- **Deviations from plan:** An unrelated unstaged change is present in `.github/agents/implementation.agent.md`; it has not been modified as part of this feature work.
+- **Status:** Complete.
+- **Implementation notes:** Section-level regression validation is green. Backend model, controller, and API suites pass; frontend schema and service suites pass; `npm run lint`, `npm run frontend:lint`, and `npm exec tsc -- -b src/frontend/tsconfig.json` all pass. Manual parity review confirmed that frontend service method names match the backend `API_METHODS` entries exactly.
+- **Deviations from plan:** Validation revealed one backend lint warning in `src/backend/Models/Cohort.js`; it was resolved in scope by replacing a constructor magic number with a named constant. An unrelated unstaged change remains present in `.github/agents/implementation.agent.md` and was not modified as part of this feature work.
 
 ---
 
@@ -453,8 +453,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Recovery review update added to this action plan to reflect the implemented backend model work and the remaining scope.
-- No additional canonical documentation changes were required during this recovery pass.
+- Recovery and progress updates in this action plan now reflect the completed implementation across backend, API, frontend schema, and frontend service layers.
+- Canonical backend API documentation was updated in `docs/developer/backend/api-layer.md` to record the new cohort/year-group CRUD endpoints, payload conventions, frontend wrapper location, and no-payload delete responses.
 
 ---
 

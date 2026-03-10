@@ -2,6 +2,8 @@
 
 /* global Validate */
 
+const CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE = 2;
+
 /**
  * Represents a cohort reference record.
  */
@@ -16,7 +18,7 @@ class Cohort {
     this.active = true;
 
     this.setName(name);
-    this.setActive(arguments.length < 2 ? true : active);
+    this.setActive(arguments.length < CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE ? true : active);
   }
 
   /**

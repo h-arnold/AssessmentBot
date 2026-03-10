@@ -107,3 +107,15 @@ Feature services should expose typed helpers per method and return parsed `data`
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
+
+- Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.
+  Source: `src/backend/Api/referenceData.js`. Delegates to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.
+  Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getCohorts()`, `createCohort()`, `updateCohort()`, `deleteCohort()`).
+  List, create, and update responses return plain `{ name, active }` objects with storage metadata such as `_id` stripped at the controller boundary. Updates use `{ originalName, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
+  Delete succeeds with no `data` payload.
+
+- Year-group reference data — exposes `getYearGroups`, `createYearGroup`, `updateYearGroup`, and `deleteYearGroup`.
+  Source: `src/backend/Api/referenceData.js`. Delegates to `ReferenceDataController` CRUD helpers backed by the `year_groups` JsonDbApp collection.
+  Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, `deleteYearGroup()`).
+  List, create, and update responses return plain `{ name }` objects with storage metadata removed. Updates use `{ originalName, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
+  Delete succeeds with no `data` payload.
