@@ -4,7 +4,7 @@
 
 ### Scope
 
-- Implement request-scoped tracking for long-running backend operations using `jobTrackingId`.
+- Implement job-scoped tracking for long-running backend operations using `jobTrackingId`.
 - Keep `apiHandler` transport behaviour unchanged, including backend-owned envelope `requestId`.
 - Update long-running backend entry points to accept and propagate `jobTrackingId` end-to-end.
 - Update `ProgressTracker` persistence to support keyed records by `jobTrackingId` in `UserProperties`.
@@ -22,9 +22,10 @@
 
 1. `jobTrackingId` is required for long-running tracked operations and optional/unused for short-running calls.
 2. Frontend may generate `jobTrackingId`, but backend validates it and remains the authority.
-3. Progress data is user-scoped and stored in `UserProperties`, keyed by `jobTrackingId`.
+3. Progress data is job-scoped and stored in user-scoped durable storage (`UserProperties`), keyed by `jobTrackingId`.
 4. Multiple tracked jobs per user are supported and must not overwrite each other.
 5. Legacy AdminSheet progress polling is reference-only and not part of this implementation target.
+6. Progress record lifecycle must be explicit: completed/error records are retained for a bounded period and then removed by deterministic cleanup.
 
 ---
 
@@ -34,6 +35,7 @@
 
 - Keep API and globals wrappers thin; delegate behavioural logic to controller/utility layers.
 - Fail fast for invalid or missing `jobTrackingId` where long-running tracking is required.
+- Treat a valid `jobTrackingId` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
 - Never silently swallow errors; preserve existing structured error propagation.
 - Keep changes localised and consistent with backend/frontend migration patterns.
 - Use British English in comments and documentation.
@@ -76,6 +78,8 @@ For each section below:
 - `getStatus` (or equivalent) reads by `jobTrackingId` and never cross-reads another job’s data.
 - Persistence uses `PropertiesService.getUserProperties()` for keyed progress records.
 - Long-running operations fail fast when `jobTrackingId` is missing/invalid.
+- Progress retention and cleanup are explicit (for example TTL-based pruning for completed/error jobs).
+- `ProgressTracker.complete()` side effects that currently serialise `DocumentProperties` are explicitly reviewed and either removed, adapted, or documented as intentionally retained.
 
 ### Required test cases (Red first)
 
@@ -87,6 +91,8 @@ Backend utility/singleton tests:
 4. `logError()`/`logAndThrowError()` only mutate the keyed record.
 5. Reading `jobTrackingId=A` never returns data from `jobTrackingId=B`.
 6. Missing/invalid ID path throws for tracked flows.
+7. Completed/error records older than configured retention threshold are pruned while active records remain.
+8. Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
 
 API layer tests:
 
@@ -126,6 +132,7 @@ Frontend tests:
 - Invalid `jobTrackingId` produces existing structured invalid-request envelopes.
 - Successful responses keep existing `{ ok, requestId, data }` envelope contract.
 - Non-long-running methods continue to behave unchanged.
+- API validation rules for `jobTrackingId` are documented and shared across backend/frontend tests.
 
 ### Required test cases (Red first)
 
@@ -136,6 +143,7 @@ Backend API tests:
 3. Malformed `jobTrackingId` returns structured invalid request.
 4. Success path preserves transport `requestId` and returns method `data`.
 5. Existing short-running method tests remain green.
+6. Non-UUID values (wrong length/pattern) are rejected consistently.
 
 Backend controller/global tests:
 
@@ -175,6 +183,7 @@ Frontend tests:
 - Trigger-run path loads the same ID and uses it for all progress updates.
 - Cleanup removes only context keys for the completed/failed job.
 - Distinct IDs in overlapping runs remain isolated.
+- Trigger-side cleanup keeps job-scoped progress lifecycle rules intact (no accidental deletion of active unrelated jobs).
 
 ### Required test cases (Red first)
 
@@ -184,6 +193,7 @@ Backend controller tests:
 2. Trigger flow reads `jobTrackingId` and uses it in progress updates.
 3. Cleanup removes scoped context and keeps unrelated contexts intact.
 4. Simulated concurrent runs with different IDs remain isolated.
+5. Trigger completion/error path invokes or schedules lifecycle cleanup according to retention policy.
 
 Backend utility tests:
 
@@ -278,6 +288,7 @@ Backend tests:
 - New/updated frontend service/handler tests pass.
 - Backend and frontend lint pass for touched files (or environment limitations are documented).
 - Existing short-running API method behaviour remains stable.
+- Lifecycle and cleanup semantics are implemented and verified (including retention boundaries).
 
 ### Required test cases/checks
 
