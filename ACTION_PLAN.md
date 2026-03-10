@@ -4,28 +4,27 @@
 
 ### Scope
 
-- Add backend reference-data models for `Cohort` and `YearGroup`.
-- Add backend persistence/controller support for storing, listing, creating, updating, and deleting those records.
-- Add backend API handlers and dispatcher registration so the frontend can call those operations through `apiHandler`.
-- Add frontend Zod schemas for request and response validation.
-- Derive frontend TypeScript types from the Zod schemas using `z.infer<typeof ...>`.
-- Add frontend service callers for all cohort and yearGroup CRUD operations.
-- Add or update targeted automated tests covering model, controller, API, schema, and service behaviour.
+- Introduce request-scoped long-running progress tracking using an optional `jobTrackingId` passed through API params for long-running flows.
+- Keep backend `apiHandler` transport `requestId` behaviour unchanged and separate from long-running progress tracking semantics.
+- Update backend progress persistence from a single global progress key to keyed progress records derived from `jobTrackingId`.
+- Update backend long-running entry points (including assignment trigger setup flow) to accept and propagate `jobTrackingId` consistently.
+- Add frontend service-layer support for passing `jobTrackingId` to long-running API methods and polling progress by `jobTrackingId`.
+- Add targeted backend and frontend tests for validation, routing, persistence keying, trigger handoff, and progress polling contracts.
 
 ### Out of scope
 
-- Any frontend UI, hooks, pages, or forms for managing cohorts or year groups.
-- Any migration of existing `ABClass.cohort` or numeric `yearGroup` fields to the new reference-data collections.
-- Any builder changes unless required solely to keep tests or linting green.
-- Any speculative generic registry framework beyond the minimum shared controller logic needed for these two resources.
+- Building visible frontend UI components for progress display in this delivery.
+- Reworking all short-running API methods to require progress tracking.
+- Replacing existing API admission-control request lifecycle tracking in `requestStore`.
+- Broad refactors of unrelated controller/service flows.
 
 ### Assumptions
 
-1. `YearGroup` is a new string-based reference model and remains separate from existing numeric `yearGroup` usage in class and assignment data.
-2. Duplicate detection for both resources is based on `name.trim().toLowerCase()`.
-3. Submitted display casing is preserved in storage and transport, even though duplicate detection uses a normalised key.
-4. `Cohort.active` defaults to `true` only when omitted during creation or deserialisation.
-5. CRUD is required at the API and frontend service layers now, but no UI management flow is included in this delivery.
+1. `jobTrackingId` applies only to long-running workflows; short operations may omit it.
+2. The frontend may generate `jobTrackingId` (UUID-like), but backend validation remains authoritative.
+3. Progress records are user-scoped in `UserProperties`, not document-scoped in `DocumentProperties`.
+4. A single user may have multiple tracked jobs, so progress persistence must be keyed by `jobTrackingId`.
+5. Legacy AdminSheet modal polling remains deprecated reference behaviour and is not implementation target.
 
 ---
 
@@ -33,15 +32,11 @@
 
 ### Engineering constraints
 
-- Keep API entry points thin and delegate behaviour to a controller.
-- Fail fast on invalid inputs, duplicate conflicts, missing records, and persistence failures.
-- Avoid defensive guards that hide internal wiring issues.
-- Keep changes minimal, localised, and consistent with repository conventions.
+- Keep API entry points thin and delegate behaviour to existing controllers/utilities where possible.
+- Fail fast on invalid or missing `jobTrackingId` when required by long-running methods.
+- Never silently swallow errors; preserve existing logging and error propagation patterns.
+- Keep changes minimal, localised, and aligned with current backend/frontend migration architecture.
 - Use British English in comments and documentation.
-- For new backend public methods, call `Validate.requireParams(...)` at the start unless the method is an existing API transport boundary that intentionally returns structured failure envelopes.
-- Keep new backend runtime files GAS-compatible and preserve guarded Node test exports with `if (typeof module !== 'undefined') { module.exports = ...; }`.
-- On the frontend, define Zod schemas first and derive all related TypeScript types with `z.infer<typeof ...>`.
-- Keep backend runtime code Google Apps Script compatible.
 
 ### TDD workflow (mandatory per section)
 
@@ -63,50 +58,34 @@ For each section below:
 
 ---
 
-## Section 1 — Backend models
+## Section 1 — Backend progress contract and persistence keying
 
 ### Objective
 
-- Add `Cohort` and `YearGroup` backend models with idiomatic getters, setters, serialisation helpers, and field validation.
+- Add backend support for keyed progress persistence by `jobTrackingId` while retaining a singleton `ProgressTracker` façade.
 
 ### Constraints
 
-- Validation must live in setters so constructors and deserialisers share the same rules.
-- `Cohort` must expose `getActive()` and `setActive(active)`.
-- `YearGroup` only requires `name`.
-- Models should validate field shape, not repository-level uniqueness.
+- Do not add a separate persistence class unless implementation is blocked.
+- Maintain existing `ProgressTracker` method semantics where practical.
+- Ensure progress key composition is deterministic and safe for property storage.
 
 ### Acceptance criteria
 
-- `Cohort` and `YearGroup` exist in the backend model layer.
-- `name` is always stored as a trimmed non-empty string.
-- Invalid names throw immediately.
-- `Cohort.active` is always a boolean and defaults to `true`.
-- Invalid `active` values throw immediately.
-- `toJSON()` returns plain transport-safe objects.
-- `fromJSON()` recreates valid instances and applies the same validation.
+- Progress writes and reads are keyed by `jobTrackingId` rather than a single global progress key.
+- `ProgressTracker` supports methods that accept optional/required tracking context for long-running flows.
+- Progress persistence uses `UserProperties` for request-scoped data.
+- Existing behaviour for untracked short flows is explicitly defined and tested (either unsupported or mapped to a clear fallback path).
 
 ### Required test cases (Red first)
 
-Backend model tests:
+Backend utility/singleton tests:
 
-1. `YearGroup` constructs successfully with a valid name and `getName()` returns the stored trimmed value.
-2. `YearGroup.setName()` trims surrounding whitespace before storing the value.
-3. `YearGroup` throws when name is empty, whitespace-only, null, undefined, or non-string.
-4. `YearGroup.toJSON()` returns `{ name }`.
-5. `YearGroup.fromJSON()` returns a valid instance and preserves the name value.
-6. `Cohort` constructs successfully with a valid name and explicit `active` value.
-7. `Cohort` defaults `active` to `true` when omitted.
-8. `Cohort.setName()` trims surrounding whitespace before storing the value.
-9. `Cohort.setActive()` accepts `true` and `false`.
-10. `Cohort` throws when name is empty, whitespace-only, null, undefined, or non-string.
-11. `Cohort` throws when `active` is non-boolean.
-12. `Cohort.toJSON()` returns `{ name, active }`.
-13. `Cohort.fromJSON()` returns a valid instance and applies the default `active: true` when omitted.
-
-Backend controller tests:
-
-1. None in this section.
+1. Progress initialisation with `jobTrackingId` writes to the correct user property key.
+2. Progress update with the same `jobTrackingId` updates the same keyed record.
+3. Progress completion marks only the keyed record as completed.
+4. Progress read for one `jobTrackingId` does not return another job’s record.
+5. Missing/invalid `jobTrackingId` path behaves according to agreed fail-fast rules for long-running methods.
 
 API layer tests:
 
@@ -118,85 +97,49 @@ Frontend tests:
 
 ### Section checks
 
-- `npm test -- <backend model target>`
+- `npm test -- tests/singletons/<progress-tracker-target>`
+- `npm test -- tests/utils/<progress-tracking-target>`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Create minimal model files in `src/backend/Models` and follow existing serialisation conventions.
-- **Deviations from plan:** Record any repo-specific naming or export adjustments required by the test harness.
-- **Follow-up implications for later sections:** Later controller and API work should consume model `toJSON()` output rather than re-shaping model fields manually.
+- **Implementation notes:** Reuse existing progress and logging conventions; keep method surface changes minimal.
+- **Deviations from plan:** Record any unavoidable compatibility shims.
+- **Follow-up implications for later sections:** API handlers and trigger orchestration must supply `jobTrackingId` consistently.
 
 ---
 
-## Section 2 — Backend controller and persistence
+## Section 2 — Backend API method contract for long-running tracking
 
 ### Objective
 
-- Add backend persistence and CRUD operations for cohort and yearGroup reference data using JsonDbApp collections.
+- Extend backend API methods involved in long-running flows to accept and propagate `jobTrackingId` through transport and controller boundaries.
 
 ### Constraints
 
-- Keep shared logic in one small controller rather than duplicating CRUD flows for each resource.
-- Use dedicated collections: `cohorts` and `year_groups`.
-- Enforce duplicate detection using normalised names.
-- Preserve submitted display casing in stored records.
-- Return plain objects only; do not leak storage metadata.
-- Throw on duplicate create, conflicting rename, invalid model payload, or delete/update of missing records.
-- Update payloads must use the shape `{ originalName, record }`, where `record` is the full replacement resource payload (`{ name, active }` for cohort and `{ name }` for year group).
-- `originalName` lookup is by exact stored name after trimming the supplied input; duplicate detection for the replacement `record.name` still uses the normalised key.
-- Renaming to the same normalised name as the target record is allowed, including casing-only changes, provided no other stored record uses that normalised key.
+- Keep `apiHandler` transport `requestId` generation and envelope contract unchanged.
+- Validate `jobTrackingId` at the API boundary for methods that require long-running tracking.
+- Keep dispatcher and allowlist method names aligned across constants, handler routing, and frontend callers.
 
 ### Acceptance criteria
 
-- Controller can list all cohorts and year groups from their respective collections.
-- Controller can create a new cohort or year group when the normalised name is unique.
-- Controller rejects create when another record already exists with the same normalised name.
-- Controller can update a record by original name, including rename operations.
-- Controller rejects update when the target record does not exist.
-- Controller rejects update when the renamed value collides with another record’s normalised name.
-- Controller can delete a record by name.
-- Controller rejects delete when the record does not exist.
-- List operations return records sorted by `name` ascending.
-- Create, update, and list operations return transport-safe plain objects with storage-only fields such as `_id` stripped.
+- Long-running API method(s) accept `params.jobTrackingId` and pass it through to controller/global entry points.
+- `apiHandler` continues returning backend-owned transport `requestId` unchanged.
+- Validation failures for malformed `jobTrackingId` return existing structured error envelopes.
+- API docs/method constants remain consistent with implemented method names.
 
 ### Required test cases (Red first)
 
-Backend model tests:
+Backend API tests:
 
-1. None in this section beyond using real model instances in controller tests where appropriate.
+1. Dispatcher routes long-running method with valid `jobTrackingId` to the correct handler.
+2. Missing `jobTrackingId` for required long-running method returns structured invalid-request failure.
+3. Malformed `jobTrackingId` returns structured invalid-request failure.
+4. Successful call retains normal envelope structure with transport `requestId` and method-specific `data`.
+5. Existing non-long-running methods remain unaffected.
 
-Backend controller tests:
+Backend controller/global tests:
 
-1. Listing an empty `cohorts` collection returns an empty array.
-2. Listing an empty `year_groups` collection returns an empty array.
-3. Creating a cohort persists `{ name, active }` to the `cohorts` collection.
-4. Creating a year group persists `{ name }` to the `year_groups` collection.
-5. Creating a cohort with omitted `active` persists `active: true`.
-6. Creating a duplicate cohort name differing only by case is rejected.
-7. Creating a duplicate cohort name differing only by leading/trailing whitespace is rejected.
-8. Creating a duplicate year group name differing only by case is rejected.
-9. Listing cohorts returns records sorted by `name`.
-10. Listing year groups returns records sorted by `name`.
-11. Updating an existing cohort can change only `active`.
-12. Updating an existing cohort can rename the cohort when the new normalised name is unique.
-13. Updating an existing year group can rename the record when the new normalised name is unique.
-14. Updating a missing cohort is rejected.
-15. Updating a missing year group is rejected.
-16. Renaming a cohort to another existing cohort name is rejected.
-17. Renaming a year group to another existing year group name is rejected.
-18. Deleting an existing cohort removes it from storage.
-19. Deleting an existing year group removes it from storage.
-20. Deleting a missing cohort is rejected.
-21. Deleting a missing year group is rejected.
-22. Controller list responses do not include storage-only fields such as `_id`.
-23. Controller create responses do not include storage-only fields such as `_id`.
-24. Controller update responses do not include storage-only fields such as `_id`.
-25. Updating a cohort using the same normalised name with different display casing succeeds when no conflicting record exists.
-26. Updating a year group using the same normalised name with different display casing succeeds when no conflicting record exists.
-
-API layer tests:
-
-1. None in this section.
+1. Long-running entry point receives `jobTrackingId` from API layer unchanged.
 
 Frontend tests:
 
@@ -204,68 +147,52 @@ Frontend tests:
 
 ### Section checks
 
-- `npm test -- <backend controller target>`
+- `npm test -- tests/api/<long-running-api-target>`
+- `npm test -- tests/backend-api/<long-running-handler-target>`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Use the existing `DbManager` collection access pattern and keep collection writes explicit.
-- **Deviations from plan:** Record any JsonDbApp behaviour that requires slight filter or replace/upsert adjustments.
-- **Follow-up implications for later sections:** API handlers should depend on controller methods directly and not replicate duplicate checking or sorting logic.
+- **Implementation notes:** Keep API wrappers thin; avoid embedding workflow logic in dispatch branches.
+- **Deviations from plan:** Note any method naming adjustments required for consistency.
+- **Follow-up implications for later sections:** Trigger context must include the same `jobTrackingId`.
 
 ---
 
-## Section 3 — Backend API surface
+## Section 3 — Trigger handoff and assignment flow propagation
 
 ### Objective
 
-- Expose cohort and yearGroup CRUD operations to the frontend via the existing allowlisted API transport.
+- Ensure long-running assignment execution paths propagate a single `jobTrackingId` across initial API call, trigger setup, and trigger-run processing.
 
 ### Constraints
 
-- Register every new method in `API_METHODS`, `API_ALLOWLIST`, and `ApiDispatcher._invokeAllowlistedMethod(...)`.
-- Keep API files thin and delegate business logic to the controller.
-- Return plain response data only; leave envelope shaping to `apiHandler`.
-- Preserve existing admission/completion tracking behaviour.
-- Match the existing API test pattern: dispatcher tests stub GAS-global handler functions, while direct API module tests verify each thin handler resolves the controller and delegates correctly.
+- Preserve existing trigger orchestration and lock behaviour unless changes are required for correctness.
+- Avoid document-global context keys that can collide across concurrent tracked jobs.
+- Keep cleanup deterministic and scoped to the tracked job context.
 
 ### Acceptance criteria
 
-- The backend exposes:
-  - `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`
-  - `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`
-- Each method is allowlisted and dispatchable through `apiHandler`.
-- Handler functions delegate to controller methods with the expected payload shape.
-- Successful API responses return plain data compatible with frontend callers.
-- Invalid payloads or controller failures are surfaced through the existing API failure path.
-- API tests cover both dispatcher routing and direct module delegation so Node and GAS-style resolution paths remain intact.
+- `saveStartAndShowProgress` (or equivalent long-running start path) accepts and stores `jobTrackingId` in trigger context.
+- Trigger execution path loads the same `jobTrackingId` and uses it for all progress updates.
+- Trigger cleanup removes only relevant tracking context keys.
+- Concurrent starts with different `jobTrackingId` do not overwrite each other’s progress records.
 
 ### Required test cases (Red first)
 
-Backend model tests:
-
-1. None in this section.
-
 Backend controller tests:
 
-1. None in this section.
+1. Start path persists trigger context containing `jobTrackingId`.
+2. Trigger path reads persisted `jobTrackingId` and passes it to progress updates.
+3. Cleanup path removes the scoped trigger context for completed/failed runs.
+4. Two simulated runs with distinct tracking IDs keep progress isolated.
+
+Backend utility tests:
+
+1. Trigger helper interactions continue functioning with added context payload fields.
 
 API layer tests:
 
-1. `API_METHODS` contains all eight new method names.
-2. `API_ALLOWLIST` contains all eight new method names.
-3. Dispatcher routes `getCohorts` to the correct handler.
-4. Dispatcher routes `createCohort` to the correct handler.
-5. Dispatcher routes `updateCohort` to the correct handler.
-6. Dispatcher routes `deleteCohort` to the correct handler.
-7. Dispatcher routes `getYearGroups` to the correct handler.
-8. Dispatcher routes `createYearGroup` to the correct handler.
-9. Dispatcher routes `updateYearGroup` to the correct handler.
-10. Dispatcher routes `deleteYearGroup` to the correct handler.
-11. Each API handler instantiates or resolves the controller and delegates with the expected params.
-12. Successful handler execution returns plain response data rather than a transport envelope.
-13. Controller-thrown errors propagate back to `apiHandler` so the envelope becomes a failure response.
-14. Direct API module tests verify each handler resolves the controller using the same Node/GAS-compatible pattern as existing API modules.
-15. Shared API test helpers are updated if required so new global handler methods can be installed and restored consistently during dispatcher tests.
+1. None beyond Section 2 unless new API start method is introduced.
 
 Frontend tests:
 
@@ -273,92 +200,65 @@ Frontend tests:
 
 ### Section checks
 
-- `npm test -- <backend api target>`
+- `npm test -- tests/controllers/<assignment-controller-target>`
+- `npm test -- tests/utils/<trigger-controller-target>`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Prefer one API module per resource or one small shared reference-data API module if that keeps the surface clear.
-- **Deviations from plan:** Record any dispatcher branching adjustments needed to match existing test patterns.
-- **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
+- **Implementation notes:** Keep trigger handoff payload explicit and minimal.
+- **Deviations from plan:** Record any constraints due to existing property storage patterns.
+- **Follow-up implications for later sections:** Frontend polling service must query by `jobTrackingId`.
 
 ---
 
-## Section 4 — Frontend Zod schemas and service callers
+## Section 4 — Frontend service and non-visual progress handler contract
 
 ### Objective
 
-- Add frontend validation schemas and typed service callers for all cohort and yearGroup CRUD operations.
+- Add frontend transport/service support for passing `jobTrackingId` and retrieving keyed progress without introducing visible UI assets.
 
 ### Constraints
 
-- Define Zod schemas first.
-- Derive all exported TypeScript types from schemas using `z.infer<typeof ...>`.
-- Keep transport access inside service modules using `callApi`.
-- Validate request payloads in the service layer before transport.
-- Parse backend response payloads in the feature service layer with resource-specific Zod schemas after `callApi` resolves, while leaving envelope parsing and retry behaviour inside `callApi`.
-- Do not add UI state management or direct `google.script.run` calls.
+- Route all backend calls through `callApi`.
+- Keep transport parsing and retry behaviour centralised in `apiService`.
+- Use Zod for any new validation contracts and derive TypeScript types via `z.infer<typeof ...>`.
 
 ### Acceptance criteria
 
-- Frontend has Zod schemas for cohort, yearGroup, and CRUD payloads.
-- Exported types are derived with `z.infer<typeof ...>` rather than handwritten interfaces.
-- Service methods exist for all list/create/update/delete operations for both resources.
-- Each service calls `callApi` with the correct backend method name and payload.
-- Invalid payloads fail locally during schema parsing.
-- Valid responses are parsed and typed consistently for future frontend consumers.
+- Frontend service for long-running start method includes `jobTrackingId` in request params.
+- Frontend service for progress fetch includes `jobTrackingId` in request params.
+- Any non-visual hook/handler maps transport errors to UI-safe states/messages per policy.
+- No direct `google.script.run.<method>` calls are introduced in feature/service code.
 
 ### Required test cases (Red first)
 
-Backend model tests:
+Frontend service tests:
+
+1. Start service calls `callApi` with correct method and params including `jobTrackingId`.
+2. Progress service calls `callApi` with correct method and params including `jobTrackingId`.
+3. Service propagates `callApi` rejections unchanged.
+4. Service rejects malformed payloads via schema parsing when applicable.
+
+Frontend hook/handler tests (if introduced):
+
+1. Handler requests progress for the provided `jobTrackingId`.
+2. Handler stops polling on completed/error states.
+3. Handler maps transport errors to safe consumer-facing state.
+
+Backend tests:
 
 1. None in this section.
-
-Backend controller tests:
-
-1. None in this section.
-
-API layer tests:
-
-1. None in this section.
-
-Frontend tests:
-
-1. Cohort schema accepts `{ name: 'Year 7', active: true }`.
-2. Cohort schema rejects empty or whitespace-only names.
-3. Cohort schema rejects non-boolean `active`.
-4. YearGroup schema accepts `{ name: 'Year 10' }`.
-5. YearGroup schema rejects empty or whitespace-only names.
-6. Create cohort input schema accepts omitted `active`.
-7. Update cohort input schema requires `originalName` and a valid cohort record payload.
-8. Delete cohort input schema rejects empty names.
-9. Equivalent create, update, and delete schemas for yearGroup reject malformed names.
-10. `getCohorts()` calls `callApi` with `getCohorts`.
-11. `createCohort()` calls `callApi` with `createCohort` and the parsed payload.
-12. `updateCohort()` calls `callApi` with `updateCohort` and the parsed payload.
-13. `deleteCohort()` calls `callApi` with `deleteCohort` and the parsed payload.
-14. `getYearGroups()` calls `callApi` with `getYearGroups`.
-15. `createYearGroup()` calls `callApi` with `createYearGroup` and the parsed payload.
-16. `updateYearGroup()` calls `callApi` with `updateYearGroup` and the parsed payload.
-17. `deleteYearGroup()` calls `callApi` with `deleteYearGroup` and the parsed payload.
-18. `getCohorts()` parses the resolved backend payload with the cohort list response schema before returning it.
-19. `createCohort()`, `updateCohort()`, and `deleteCohort()` parse the resolved backend payload with the appropriate response schema before returning it.
-20. `getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, and `deleteYearGroup()` parse the resolved backend payload with the appropriate response schema before returning it.
-21. Each service returns the parsed backend data unchanged on success.
-22. Each service propagates `callApi` rejections unchanged.
-23. Each service rejects malformed success payloads when response parsing fails.
-24. A TypeScript compile check passes with exported types defined via `z.infer<typeof ...>`.
 
 ### Section checks
 
-- `npm run frontend:test -- <frontend service target>`
-- `npm run frontend:test -- <frontend schema target>`
-- `npm exec tsc -- -b src/frontend/tsconfig.json`
+- `npm run frontend:test -- src/frontend/src/services/<progress-service-target>.spec.ts`
+- `npm run frontend:test -- src/frontend/src/features/<progress-handler-target>.spec.ts`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Place the Zod schemas adjacent to the service module, following the frontend instruction file.
-- **Deviations from plan:** Record any naming adjustments needed to stay aligned with existing service patterns.
-- **Follow-up implications for later sections:** Later UI work should import these schemas and inferred types rather than redefining validation.
+- **Implementation notes:** Keep this layer non-visual for now; defer GUI work.
+- **Deviations from plan:** Record if additional shared error-mapping helpers are required.
+- **Follow-up implications for later sections:** Future UI components should consume these typed service contracts directly.
 
 ---
 
@@ -366,33 +266,32 @@ Frontend tests:
 
 ### Objective
 
-- Verify that the new model, persistence, API, and frontend service contracts work together without regressing existing behaviour.
+- Validate that request-scoped progress tracking works end-to-end for long-running tasks without regressing current API transport behaviour.
 
 ### Constraints
 
-- Prefer focused test runs first, then broader lint validation.
-- Do not widen scope into unrelated refactors.
-- If any existing tests fail for unrelated reasons, record them explicitly instead of masking them.
+- Prefer focused tests first, then lint.
+- Avoid broad unrelated refactors during regression fixes.
+- Record unrelated failures explicitly rather than masking them.
 
 ### Acceptance criteria
 
-- All new targeted backend tests pass.
-- All new targeted frontend tests pass.
-- Backend lint passes for touched backend files.
-- Frontend lint passes for touched frontend files.
-- No existing API transport behaviour is broken by the new allowlisted methods.
+- All newly added/updated backend tests for progress keying, API validation, and trigger propagation pass.
+- All newly added/updated frontend service/handler tests pass.
+- Backend lint passes for touched files.
+- Frontend lint passes for touched files.
+- Existing short-running API method behaviour remains stable.
 
 ### Required test cases/checks
 
-1. Run touched backend model suites covering both new models.
-2. Run touched backend controller suites covering both resources.
-3. Run touched backend API/dispatcher suites covering all new method registrations and routes.
-4. Run touched frontend schema and service suites.
+1. Run touched backend singleton/utility tests for keyed progress behaviour.
+2. Run touched backend API tests for long-running method contract validation.
+3. Run touched backend controller tests for trigger context propagation.
+4. Run touched frontend service/hook tests for `jobTrackingId` request wiring and polling semantics.
 5. Run `npm run lint`.
 6. Run `npm run frontend:lint`.
-7. Run `npm exec tsc -- -b src/frontend/tsconfig.json`.
-8. If implementation touches any shared config or builder code unexpectedly, run the relevant builder checks and document why.
-9. Manually review method-name parity between frontend services and backend `API_METHODS`.
+7. Run `npm run builder:lint` only if builder files are touched.
+8. Manually verify method-name parity between frontend service constants and backend `API_METHODS`.
 
 ### Section checks
 
@@ -400,8 +299,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Summarise final verification coverage and any fixes made during regression.
-- **Deviations from plan:** Note any unrelated failing tests or lint issues discovered.
+- **Implementation notes:** Summarise any final fixes made to align API/trigger/frontend contracts.
+- **Deviations from plan:** Note any unrelated test or lint failures discovered.
 
 ---
 
@@ -409,37 +308,37 @@ Frontend tests:
 
 ### Objective
 
-- Keep planning and implementation notes aligned with the delivered feature and any caveats.
+- Keep implementation docs aligned with the new request-scoped long-running progress contract.
 
 ### Constraints
 
-- Only update documents relevant to the touched areas.
-- Keep AGENTS files as routing signposts; do not duplicate canonical policy unnecessarily.
+- Update only relevant canonical docs.
+- Keep AGENTS files as signposts; do not duplicate policy detail there.
 
 ### Acceptance criteria
 
-- This `ACTION_PLAN.md` accurately describes the agreed implementation and validation approach.
-- Any implementation-time deviations from the plan are recorded in the relevant section notes.
-- Any new backend API method names or frontend contract caveats are documented if a canonical doc is touched.
+- Backend API docs clearly distinguish transport `requestId` from long-running `jobTrackingId`.
+- Backend data/persistence notes describe user-scoped keyed progress storage and any retention/cleanup behaviour.
+- Frontend integration notes document required params and error-mapping expectations for non-visual progress handling.
 
 ### Required checks
 
-1. Verify this plan reflects the final collection names, API method names, and duplicate rules.
-2. Verify the frontend contract notes explicitly require Zod schemas plus `z.infer<typeof ...>`.
-3. Confirm every section contains comprehensive required test cases before implementation starts.
-4. If implementation introduces any documentable caveat, add it to the relevant canonical doc and note it here.
+1. Verify `docs/developer/backend/api-layer.md` documents `jobTrackingId` usage for long-running methods.
+2. Verify progress-related backend docs reflect user-scoped persistence and trigger handoff assumptions.
+3. Verify frontend docs remain aligned with `callApi` boundary and error-handling policy.
+4. Confirm this plan remains accurate as implementation progresses.
 
 ### Implementation notes / deviations / follow-up
 
-- Record any documentation updates or confirm that no additional canonical docs were required beyond this action plan.
+- Record documentation updates made during implementation and any deferred doc follow-up.
 
 ---
 
 ## Suggested implementation order
 
-1. Section 1: backend models
-2. Section 2: backend controller and persistence
-3. Section 3: backend API surface
-4. Section 4: frontend Zod schemas and service callers
+1. Section 1: backend progress keying by `jobTrackingId`
+2. Section 2: backend API method contract and validation
+3. Section 3: trigger handoff propagation through assignment flow
+4. Section 4: frontend service/non-visual handler wiring
 5. Section 5: regression and contract hardening
 6. Documentation and rollout notes
