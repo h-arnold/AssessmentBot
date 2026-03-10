@@ -4,11 +4,19 @@
 
 ### Scope
 
+<<<<<<< ours
+
 - Implement job-scoped tracking for long-running backend operations using `jobTrackingId` and `jobMetadata`.
 - Keep `apiHandler` transport behaviour unchanged, including backend-owned envelope `requestId`.
 - Update long-running backend entry points to accept and propagate `jobTrackingId` and `jobMetadata` end-to-end.
 - Update `ProgressTracker` persistence to support keyed records by `jobTrackingId` in `UserProperties`.
-- Add frontend non-visual service support for passing `jobTrackingId` and polling keyed progress.
+- # Add frontend non-visual service support for passing `jobTrackingId` and polling keyed progress.
+- Implement job-scoped tracking for long-running backend operations using a single `job` object.
+- Keep `apiHandler` transport behaviour unchanged, including backend-owned envelope `requestId`.
+- Update long-running backend entry points to accept and propagate the `job` object end-to-end.
+- Update `ProgressTracker` persistence to use the same single-key map pattern as `requestStore` (user-scoped JSON object keyed by `job.id`).
+- Add frontend non-visual service support for passing a `job` object and polling keyed progress by `job.id`.
+  > > > > > > > theirs
 - Add and run targeted backend/frontend tests for validation, propagation, and error handling.
 
 ### Out of scope
@@ -16,9 +24,15 @@
 - Creating visible frontend progress UI components.
 - Refactoring unrelated short-running endpoints to require tracking IDs.
 - Replacing API admission-control request lifecycle tracking in `requestStore`.
+  <<<<<<< ours
+  =======
+- Routing internal progress writes through `apiHandler` transport.
+  > > > > > > > theirs
 - Broad architectural refactors unrelated to long-running progress scoping.
 
 ### Assumptions
+
+<<<<<<< ours
 
 1. `jobTrackingId` is required for long-running tracked operations and optional/unused for short-running calls.
 2. `jobMetadata` is required for long-running tracked operations and must include, at minimum, `name` and `type` fields.
@@ -43,7 +57,16 @@
 - Verified pending work:
   - Section 5 regression validation and final documentation sync remain outstanding.
 - Repository note:
-  - The current re-audit found no material mismatch between this plan and the branch contents.
+  - # The current re-audit found no material mismatch between this plan and the branch contents.
+
+1. A `job` object is required for long-running tracked operations and includes, at minimum, `id`, `name`, `type`, and `startedAt` fields.
+2. Frontend may generate `job.id`, but backend validates it and remains the authority.
+3. `job.startedAt` is an ISO timestamp created when the job is initiated and propagated across trigger handoff unchanged.
+4. Progress data is job-scoped and stored in user-scoped durable storage (`UserProperties`), keyed by `job.id`.
+5. Multiple tracked jobs per user are supported and must not overwrite each other.
+6. Legacy AdminSheet progress polling is reference-only and not part of this implementation target.
+7. Progress record lifecycle must be explicit: completed/error records are retained for a bounded period and then removed by deterministic cleanup.
+   > > > > > > > theirs
 
 ---
 
@@ -52,8 +75,14 @@
 ### Engineering constraints
 
 - Keep API and globals wrappers thin; delegate behavioural logic to controller/utility layers.
+  <<<<<<< ours
 - Fail fast for invalid or missing `jobTrackingId` or required `jobMetadata` fields where long-running tracking is required.
-- Treat a valid `jobTrackingId` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
+- # Treat a valid `jobTrackingId` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
+- Reuse `requestStore` patterns for load/save/prune/compact where they fit progress semantics.
+- Keep `ProgressTracker` writes as direct backend property operations; do not call `apiHandler` for internal progress state updates.
+- Fail fast for invalid or missing `job` fields (`id`, `name`, `type`, `startedAt` where required) where long-running tracking is required.
+- Treat a valid `job.id` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
+  > > > > > > > theirs
 - Never silently swallow errors; preserve existing structured error propagation.
 - Keep changes localised and consistent with backend/frontend migration patterns.
 - Use British English in comments and documentation.
@@ -82,26 +111,45 @@ For each section below:
 
 ### Objective
 
-- Update `ProgressTracker` to persist and read progress records keyed by `jobTrackingId`.
+<<<<<<< ours
+
+- # Update `ProgressTracker` to persist and read progress records keyed by `jobTrackingId`.
+- Update `ProgressTracker` to persist and read progress records keyed by `job.id`.
+  > > > > > > > theirs
 
 ### Constraints
 
 - Retain `ProgressTracker` as the singleton façade.
 - Do not introduce a new persistence abstraction unless blocked.
 - Ensure keying strategy is deterministic and safe for Apps Script property storage.
+  <<<<<<< ours
 
 ### Acceptance criteria
 
 - Progress start/update/complete/error operations target a key derived from `jobTrackingId`.
 - `getStatus` (or equivalent) reads by `jobTrackingId` and never cross-reads another job’s data.
 - Persistence uses `PropertiesService.getUserProperties()` for keyed progress records.
-- Long-running operations fail fast when `jobTrackingId` is missing/invalid.
+- # Long-running operations fail fast when `jobTrackingId` is missing/invalid.
+- Follow the `requestStore` single-key JSON map approach in `UserProperties` for progress entries keyed by `job.id`.
+- Extract shared JSON-store/retention helpers only where it reduces duplication without coupling transport logic.
+
+### Acceptance criteria
+
+- Progress start/update/complete/error operations target a key derived from `job.id`.
+- `getStatus` (or equivalent) reads by `job.id` and never cross-reads another job’s data.
+- Persistence uses `PropertiesService.getUserProperties()` for keyed progress records.
+- Progress persistence shape mirrors `requestStore`: one property containing a keyed object, with explicit prune/compact lifecycle rules.
+- Progress updates are written directly by backend runtime code and never mediated through `apiHandler`.
+- Long-running operations fail fast when the required `job` object or required `job` fields are missing/invalid.
+  > > > > > > > theirs
 - Progress retention and cleanup are explicit (for example TTL-based pruning for completed/error jobs).
 - `ProgressTracker.complete()` side effects that currently serialise `DocumentProperties` are explicitly reviewed and either removed, adapted, or documented as intentionally retained.
 
 ### Required test cases (Red first)
 
 Backend utility/singleton tests:
+
+<<<<<<< ours
 
 1. `startTracking(jobTrackingId)` writes to the expected user property key.
 2. `updateProgress(...)` updates only the matching keyed record.
@@ -110,7 +158,18 @@ Backend utility/singleton tests:
 5. Reading `jobTrackingId=A` never returns data from `jobTrackingId=B`.
 6. Missing/invalid ID path throws for tracked flows.
 7. Completed/error records older than configured retention threshold are pruned while active records remain.
-8. Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
+8. # Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
+9. `startTracking(job)` writes to the expected user property key using `job.id`.
+10. `updateProgress(...)` updates only the matching keyed record.
+11. `complete()` marks only the matching keyed record complete.
+12. `logError()`/`logAndThrowError()` only mutate the keyed record.
+13. Reading `job.id=A` never returns data from `job.id=B`.
+14. Missing/invalid ID path throws for tracked flows.
+15. Completed/error records older than configured retention threshold are pruned while active records remain.
+16. Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
+17. Progress store read/write lifecycle follows the single-key map pattern and preserves unrelated job entries across updates.
+18. No progress update path depends on `apiHandler` invocation.
+    > > > > > > > theirs
 
 API layer tests:
 
@@ -129,7 +188,10 @@ Frontend tests:
 
 - **Implementation notes:** Keep method names and call patterns as close as possible to existing usages.
 - **Deviations from plan:** Record any compatibility shims required for existing callers.
-- **Follow-up implications for later sections:** API/trigger layers must consistently provide `jobTrackingId`.
+  <<<<<<< ours
+- # **Follow-up implications for later sections:** API/trigger layers must consistently provide `jobTrackingId`.
+- **Follow-up implications for later sections:** API/trigger layers must consistently provide the `job` object.
+  > > > > > > > theirs
 
 ---
 
@@ -137,12 +199,17 @@ Frontend tests:
 
 ### Objective
 
-- Extend long-running API methods to accept `params.jobTrackingId` and `params.jobMetadata`, and validate both.
+<<<<<<< ours
+
+- # Extend long-running API methods to accept `params.jobTrackingId` and `params.jobMetadata`, and validate both.
+- Extend long-running API methods to accept `params.job`, and validate it.
+  > > > > > > > theirs
 
 ### Constraints
 
 - Preserve existing `apiHandler` transport envelope and backend-owned `requestId` semantics.
 - Keep dispatcher branches thin and aligned with `API_METHODS` constants.
+  <<<<<<< ours
 
 ### Acceptance criteria
 
@@ -150,11 +217,23 @@ Frontend tests:
 - Invalid `jobTrackingId` produces existing structured invalid-request envelopes.
 - Successful responses keep existing `{ ok, requestId, data }` envelope contract.
 - Non-long-running methods continue to behave unchanged.
-- API validation rules for `jobTrackingId` and `jobMetadata` are documented and shared across backend/frontend tests.
+- # API validation rules for `jobTrackingId` and `jobMetadata` are documented and shared across backend/frontend tests.
+- Keep transport concerns in `apiHandler`; progress persistence helpers must not depend on allowlisted API dispatch.
+
+### Acceptance criteria
+
+- Long-running methods require and validate `params.job`.
+- Invalid `job.id` produces existing structured invalid-request envelopes.
+- Successful responses keep existing `{ ok, requestId, data }` envelope contract.
+- Non-long-running methods continue to behave unchanged.
+- API validation rules for `job.id` and required `job` fields are documented and shared across backend/frontend tests.
+  > > > > > > > theirs
 
 ### Required test cases (Red first)
 
 Backend API tests:
+
+<<<<<<< ours
 
 1. Dispatcher routes long-running method with valid `jobTrackingId`.
 2. Missing `jobTrackingId` returns structured invalid request.
@@ -167,7 +246,20 @@ Backend API tests:
 
 Backend controller/global tests:
 
-1. API layer forwards exact `jobTrackingId` and `jobMetadata` into long-running backend entry points.
+1. # API layer forwards exact `jobTrackingId` and `jobMetadata` into long-running backend entry points.
+1. Dispatcher routes long-running method with valid `job` object.
+1. Missing `job` returns structured invalid request.
+1. Missing required `job` fields (`id`, `name`, `type`, `startedAt`) returns structured invalid request.
+1. Malformed `job.id` returns structured invalid request.
+1. Malformed `job` payload (for example non-string `name`/`type` or invalid `startedAt`) returns structured invalid request.
+1. Success path preserves transport `requestId` and returns method `data`.
+1. Existing short-running method tests remain green.
+1. Non-UUID `job.id` values and invalid `startedAt` timestamps are rejected consistently.
+
+Backend controller/global tests:
+
+1. API layer forwards exact `params.job` into long-running backend entry points.
+   > > > > > > > theirs
 
 Frontend tests:
 
@@ -190,7 +282,11 @@ Frontend tests:
 
 ### Objective
 
-- Propagate one `jobTrackingId` and the associated `jobMetadata` across initial call, trigger setup, and trigger execution.
+<<<<<<< ours
+
+- # Propagate one `jobTrackingId` and the associated `jobMetadata` across initial call, trigger setup, and trigger execution.
+- Propagate one `job` object across initial call, trigger setup, and trigger execution.
+  > > > > > > > theirs
 
 ### Constraints
 
@@ -199,8 +295,13 @@ Frontend tests:
 
 ### Acceptance criteria
 
+<<<<<<< ours
+
 - Start path accepts `jobTrackingId` and `jobMetadata`, and persists both in trigger context.
-- Trigger-run path loads the same ID/metadata bundle and uses the ID for all progress updates.
+- # Trigger-run path loads the same ID/metadata bundle and uses the ID for all progress updates.
+- Start path accepts `job`, and persists it in trigger context.
+- Trigger-run path loads the same `job` object and uses `job.id` for all progress updates.
+  > > > > > > > theirs
 - Cleanup removes only context keys for the completed/failed job.
 - Distinct IDs in overlapping runs remain isolated.
 - Trigger-side cleanup keeps job-scoped progress lifecycle rules intact (no accidental deletion of active unrelated jobs).
@@ -209,11 +310,16 @@ Frontend tests:
 
 Backend controller tests:
 
+<<<<<<< ours
+
 1. Start flow persists trigger context containing `jobTrackingId` and `jobMetadata`.
-2. Trigger flow reads `jobTrackingId` and uses it in progress updates, with `jobMetadata` available for downstream observability/extensions.
-3. Cleanup removes scoped context and keeps unrelated contexts intact.
-4. Simulated concurrent runs with different IDs remain isolated.
-5. Trigger completion/error path invokes or schedules lifecycle cleanup according to retention policy.
+2. # Trigger flow reads `jobTrackingId` and uses it in progress updates, with `jobMetadata` available for downstream observability/extensions.
+3. Start flow persists trigger context containing the full `job` object.
+4. Trigger flow reads `job.id` and uses it in progress updates, with `name`, `type`, and `startedAt` available for downstream observability/extensions.
+   > > > > > > > theirs
+5. Cleanup removes scoped context and keeps unrelated contexts intact.
+6. Simulated concurrent runs with different IDs remain isolated.
+7. Trigger completion/error path invokes or schedules lifecycle cleanup according to retention policy.
 
 Backend utility tests:
 
@@ -236,7 +342,10 @@ Frontend tests:
 
 - **Implementation notes:** Keep trigger payload explicit and minimal.
 - **Deviations from plan:** Record any constraints caused by existing property-key conventions.
-- **Follow-up implications for later sections:** Frontend polling calls must provide `jobTrackingId`.
+  <<<<<<< ours
+- # **Follow-up implications for later sections:** Frontend polling calls must provide `jobTrackingId`.
+- **Follow-up implications for later sections:** Frontend polling calls must provide `job.id` (or full `job` where required by endpoint contract).
+  > > > > > > > theirs
 
 ---
 
@@ -244,7 +353,11 @@ Frontend tests:
 
 ### Objective
 
-- Add frontend service/hook support for passing `jobTrackingId` + `jobMetadata` and fetching keyed progress without GUI assets.
+<<<<<<< ours
+
+- # Add frontend service/hook support for passing `jobTrackingId` + `jobMetadata` and fetching keyed progress without GUI assets.
+- Add frontend service/hook support for passing `job` and fetching keyed progress without GUI assets.
+  > > > > > > > theirs
 
 ### Constraints
 
@@ -254,8 +367,13 @@ Frontend tests:
 
 ### Acceptance criteria
 
+<<<<<<< ours
+
 - Long-running start service passes `jobTrackingId` and `jobMetadata` in request params.
-- Progress fetch service passes `jobTrackingId` in request params.
+- # Progress fetch service passes `jobTrackingId` in request params.
+- Long-running start service passes `job` in request params.
+- Progress fetch service passes `job.id` in request params (or `job` if endpoint standardises on full-object payloads).
+  > > > > > > > theirs
 - Non-visual polling handler/hook stops on completed/error and maps errors to safe states.
 - No direct `google.script.run.<method>` calls are introduced in feature/service modules.
 
@@ -263,16 +381,25 @@ Frontend tests:
 
 Frontend service tests:
 
+<<<<<<< ours
+
 1. Start service calls `callApi` with method + `jobTrackingId` + `jobMetadata` params.
-2. Progress service calls `callApi` with method + `jobTrackingId` params.
-3. Service propagates `callApi` rejection unchanged.
-4. Service rejects malformed payloads where schema parsing is required.
+2. # Progress service calls `callApi` with method + `jobTrackingId` params.
+3. Start service calls `callApi` with method + `job` params.
+4. Progress service calls `callApi` with method + `job.id` params (or `job` if standardised).
+   > > > > > > > theirs
+5. Service propagates `callApi` rejection unchanged.
+6. Service rejects malformed payloads where schema parsing is required.
 
 Frontend hook/handler tests (if introduced):
 
-1. Polling queries by the provided `jobTrackingId`.
-2. Polling stops on completed/error states.
-3. Error mapping returns safe consumer-facing states.
+<<<<<<< ours
+
+1. # Polling queries by the provided `jobTrackingId`.
+1. Polling queries by the provided `job.id`.
+   > > > > > > > theirs
+1. Polling stops on completed/error states.
+1. Error mapping returns safe consumer-facing states.
 
 Backend tests:
 
@@ -295,7 +422,11 @@ Backend tests:
 
 ### Objective
 
-- Validate end-to-end request-scoped progress tracking for long-running flows without transport regressions.
+<<<<<<< ours
+
+- # Validate end-to-end request-scoped progress tracking for long-running flows without transport regressions.
+- Validate end-to-end job-scoped progress tracking for long-running flows without transport regressions.
+  > > > > > > > theirs
 
 ### Constraints
 
@@ -313,13 +444,21 @@ Backend tests:
 ### Required test cases/checks
 
 1. Run touched backend singleton/utility tests for keyed progress behaviour.
-2. Run touched backend API tests for `jobTrackingId` contract behaviour.
-3. Run touched backend controller tests for trigger propagation.
-4. Run touched frontend service/hook tests for request wiring and polling semantics.
-5. Run `npm run lint`.
-6. Run `npm run frontend:lint`.
-7. Run `npm run builder:lint` only if builder files were touched.
-8. Manually verify method-name parity between frontend constants and backend `API_METHODS`.
+   <<<<<<< ours
+2. # Run touched backend API tests for `jobTrackingId` contract behaviour.
+3. Run touched backend API tests for `job` contract behaviour.
+   > > > > > > > theirs
+4. Run touched backend controller tests for trigger propagation.
+5. Run touched frontend service/hook tests for request wiring and polling semantics.
+6. Run `npm run lint`.
+7. Run `npm run frontend:lint`.
+8. Run `npm run builder:lint` only if builder files were touched.
+9. Manually verify method-name parity between frontend constants and backend `API_METHODS`.
+   <<<<<<< ours
+   =======
+10. Verify progress persistence uses the single-key map approach and preserves non-target job entries on update.
+11. Verify no internal progress-write path routes through `apiHandler`.
+    > > > > > > > theirs
 
 ### Section checks
 
@@ -336,7 +475,11 @@ Backend tests:
 
 ### Objective
 
-- Keep canonical docs aligned with request-scoped long-running progress tracking.
+<<<<<<< ours
+
+- # Keep canonical docs aligned with request-scoped long-running progress tracking.
+- Keep canonical docs aligned with job-scoped long-running progress tracking.
+  > > > > > > > theirs
 
 ### Constraints
 
@@ -345,16 +488,28 @@ Backend tests:
 
 ### Acceptance criteria
 
-- Backend docs distinguish transport `requestId` from long-running `jobTrackingId`.
+<<<<<<< ours
+
+- # Backend docs distinguish transport `requestId` from long-running `jobTrackingId`.
+- Backend docs distinguish transport `requestId` from long-running `job.id` within the `job` object.
+  > > > > > > > theirs
 - Backend docs describe user-scoped keyed progress persistence and cleanup expectations.
 - Frontend docs remain aligned with `callApi` boundaries and error-handling policy.
 
 ### Required checks
 
+<<<<<<< ours
+
 1. Verify `docs/developer/backend/api-layer.md` documents `jobTrackingId` for long-running methods.
 2. Verify relevant backend flow docs reflect trigger handoff and user-scoped progress keying.
 3. Verify frontend docs remain aligned with non-visual service-level integration and error mapping.
-4. Confirm this action plan remains accurate as implementation progresses.
+4. # Confirm this action plan remains accurate as implementation progresses.
+5. Verify `docs/developer/backend/api-layer.md` documents the `job` object contract (`id`, `name`, `type`, `startedAt`) for long-running methods.
+6. Verify relevant backend flow docs reflect trigger handoff and user-scoped progress keying.
+7. Verify relevant backend flow docs reflect trigger handoff, user-scoped progress keying, and single-key map storage semantics.
+8. Verify frontend docs remain aligned with non-visual service-level integration and error mapping.
+9. Confirm this action plan remains accurate as implementation progresses.
+   > > > > > > > theirs
 
 ### Implementation notes / deviations / follow-up
 
@@ -364,9 +519,16 @@ Backend tests:
 
 ## Suggested implementation order
 
+<<<<<<< ours
+
 1. Section 1: ProgressTracker keyed persistence in `UserProperties`
 2. Section 2: API contract and validation
 3. Section 3: Trigger handoff propagation
-4. Section 4: Frontend non-visual service/handler wiring
-5. Section 5: Regression and hardening
-6. Documentation and rollout notes
+4. # Section 4: Frontend non-visual service/handler wiring
+5. Section 1: ProgressTracker keyed persistence by `job.id` in `UserProperties`
+6. Section 2: API `job` contract and validation
+7. Section 3: Trigger handoff propagation of `job` object
+8. Section 4: Frontend non-visual service/handler wiring for `job` contract
+   > > > > > > > theirs
+9. Section 5: Regression and hardening
+10. Documentation and rollout notes
