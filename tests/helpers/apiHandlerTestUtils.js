@@ -1,6 +1,17 @@
 const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
 const { USER_REQUEST_STORE_KEY } = require('../../src/backend/Api/apiConstants.js');
 
+const REFERENCE_DATA_API_METHOD_NAMES = Object.freeze([
+  'getCohorts',
+  'createCohort',
+  'updateCohort',
+  'deleteCohort',
+  'getYearGroups',
+  'createYearGroup',
+  'updateYearGroup',
+  'deleteYearGroup',
+]);
+
 function loadApiHandlerModule() {
   delete require.cache[require.resolve(apiHandlerPath)];
   return require(apiHandlerPath);
@@ -15,6 +26,23 @@ function callAuthorisationStatus(dispatcher, request = {}) {
   return dispatcher.handle({
     method: 'getAuthorisationStatus',
     ...request,
+  });
+}
+
+function installApiMethodHandlers(vi, handlers) {
+  const originals = {};
+
+  Object.entries(handlers).forEach(([handlerName, handler]) => {
+    originals[handlerName] = globalThis[handlerName];
+    globalThis[handlerName] = vi.fn(handler);
+  });
+
+  return originals;
+}
+
+function restoreApiMethodHandlers(originals) {
+  Object.entries(originals).forEach(([handlerName, originalValue]) => {
+    restoreGlobal(handlerName, originalValue);
   });
 }
 
@@ -68,12 +96,20 @@ function installAbLoggerSpies(vi) {
  */
 function setupApiHandlerTestContext(
   vi,
-  { installLogger = false, installLock = false, handler = () => ({ authorised: true }) } = {}
+  {
+    installLogger = false,
+    installLock = false,
+    handler = () => ({ authorised: true }),
+    additionalHandlers = {},
+  } = {}
 ) {
   resetUserProperties();
 
   const context = {
-    originalGetAuthorisationStatus: setAuthorisationStatusHandler(vi, handler),
+    originalApiMethodHandlers: installApiMethodHandlers(vi, {
+      getAuthorisationStatus: handler,
+      ...additionalHandlers,
+    }),
   };
 
   if (installLogger) {
@@ -93,7 +129,7 @@ function setupApiHandlerTestContext(
 function teardownApiHandlerTestContext(vi, context) {
   resetUserProperties();
 
-  restoreGlobal('getAuthorisationStatus', context.originalGetAuthorisationStatus);
+  restoreApiMethodHandlers(context.originalApiMethodHandlers);
 
   if ('originalABLogger' in context) {
     restoreGlobal('ABLogger', context.originalABLogger);
@@ -146,6 +182,8 @@ module.exports = {
   loadApiHandlerModule,
   getApiDispatcherInstance,
   callAuthorisationStatus,
+  installApiMethodHandlers,
+  restoreApiMethodHandlers,
   resetUserProperties,
   setAuthorisationStatusHandler,
   restoreGlobal,
@@ -156,4 +194,5 @@ module.exports = {
   buildStartedStore,
   persistUserRequestStore,
   readPersistedUserRequestStore,
+  REFERENCE_DATA_API_METHOD_NAMES,
 };
