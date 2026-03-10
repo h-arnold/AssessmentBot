@@ -32,17 +32,18 @@
 ## Recovered implementation status
 
 - Current active section: Section 2 — Backend controller and persistence.
-- Current phase: Red not yet started after recovery from the interrupted session.
+- Current phase: Pre-Red audit complete; Red not yet started.
 - Verified implemented work:
   - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
   - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
+  - A branch re-audit on 2026-03-10 confirmed no cohort/year group implementation beyond Section 1.
 - Verified pending work:
   - Section 2 controller and persistence layer work has not yet been added.
   - Section 3 API method registration and thin handlers have not yet been added.
   - Section 4 frontend Zod schemas and service callers have not yet been added.
   - Section 5 regression validation is blocked until Sections 2 to 4 exist.
 - Repository note:
-  - An unrelated unstaged change exists in `.github/agents/implementation.agent.md` and has been left untouched.
+  - The current re-audit found no material mismatch between this plan and the branch contents.
 
 ---
 
@@ -140,7 +141,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Status:** Complete based on repository inspection.
-- **Implementation notes:** Minimal model files were added in `src/backend/Models` and follow the existing serialisation pattern with guarded Node exports.
+- **Implementation notes:** Minimal model files were added in `src/backend/Models` and follow the existing serialisation pattern with guarded Node exports. A re-audit on 2026-03-10 confirmed that the model implementation and tests still match this section.
 - **Deviations from plan:** No material deviation identified from the current files. The combined model test coverage lives in `tests/models/cohortYearGroup.test.js` rather than separate per-model files.
 - **Follow-up implications for later sections:** Later controller and API work should consume model `toJSON()` output rather than re-shaping model fields manually.
 
@@ -227,7 +228,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Status:** Not started.
-- **Implementation notes:** No controller or persistence files for cohort/year group CRUD were present during recovery review.
+- **Implementation notes:** No controller or persistence files for cohort/year group CRUD were present during the re-audit on 2026-03-10.
 - **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** API handlers should depend on controller methods directly and not replicate duplicate checking or sorting logic.
 
@@ -297,7 +298,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Status:** Not started.
-- **Implementation notes:** `src/backend/Api/apiConstants.js` and `src/backend/Api/apiHandler.js` do not yet contain the planned cohort/year group methods or dispatcher routes.
+- **Implementation notes:** `src/backend/Api/apiConstants.js` and `src/backend/Api/apiHandler.js` do not yet contain the planned cohort/year group methods or dispatcher routes as of the re-audit on 2026-03-10.
 - **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** Frontend service method names must match these exact API constants.
 
@@ -377,7 +378,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Status:** Not started.
-- **Implementation notes:** No cohort/year group frontend schemas or service callers were present during recovery review.
+- **Implementation notes:** No cohort/year group frontend schemas or service callers were present during the re-audit on 2026-03-10.
 - **Deviations from plan:** None recorded yet.
 - **Follow-up implications for later sections:** Later UI work should import these schemas and inferred types rather than redefining validation.
 
