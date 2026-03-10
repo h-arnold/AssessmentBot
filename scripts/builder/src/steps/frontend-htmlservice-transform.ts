@@ -181,7 +181,7 @@ function readAttributeValue(attributes: string, name: string): string | undefine
 function removeAttribute(attributes: string, name: string): string {
   const trimmed = attributes
     .replaceAll(
-      new RegExp(String.raw`\s*\b${name}\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)'>]+)`, 'gi'),
+      new RegExp(String.raw`\s*\b${name}\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)`, 'gi'),
       '',
     )
     .trim();
