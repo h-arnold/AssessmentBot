@@ -38,6 +38,8 @@
 - Avoid defensive guards that hide internal wiring issues.
 - Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
+- For new backend public methods, call `Validate.requireParams(...)` at the start unless the method is an existing API transport boundary that intentionally returns structured failure envelopes.
+- Keep new backend runtime files GAS-compatible and preserve guarded Node test exports with `if (typeof module !== 'undefined') { module.exports = ...; }`.
 - On the frontend, define Zod schemas first and derive all related TypeScript types with `z.infer<typeof ...>`.
 - Keep backend runtime code Google Apps Script compatible.
 
@@ -140,6 +142,9 @@ Frontend tests:
 - Preserve submitted display casing in stored records.
 - Return plain objects only; do not leak storage metadata.
 - Throw on duplicate create, conflicting rename, invalid model payload, or delete/update of missing records.
+- Update payloads must use the shape `{ originalName, record }`, where `record` is the full replacement resource payload (`{ name, active }` for cohort and `{ name }` for year group).
+- `originalName` lookup is by exact stored name after trimming the supplied input; duplicate detection for the replacement `record.name` still uses the normalised key.
+- Renaming to the same normalised name as the target record is allowed, including casing-only changes, provided no other stored record uses that normalised key.
 
 ### Acceptance criteria
 
@@ -152,6 +157,7 @@ Frontend tests:
 - Controller can delete a record by name.
 - Controller rejects delete when the record does not exist.
 - List operations return records sorted by `name` ascending.
+- Create, update, and list operations return transport-safe plain objects with storage-only fields such as `_id` stripped.
 
 ### Required test cases (Red first)
 
@@ -183,6 +189,10 @@ Backend controller tests:
 20. Deleting a missing cohort is rejected.
 21. Deleting a missing year group is rejected.
 22. Controller list responses do not include storage-only fields such as `_id`.
+23. Controller create responses do not include storage-only fields such as `_id`.
+24. Controller update responses do not include storage-only fields such as `_id`.
+25. Updating a cohort using the same normalised name with different display casing succeeds when no conflicting record exists.
+26. Updating a year group using the same normalised name with different display casing succeeds when no conflicting record exists.
 
 API layer tests:
 
@@ -216,6 +226,7 @@ Frontend tests:
 - Keep API files thin and delegate business logic to the controller.
 - Return plain response data only; leave envelope shaping to `apiHandler`.
 - Preserve existing admission/completion tracking behaviour.
+- Match the existing API test pattern: dispatcher tests stub GAS-global handler functions, while direct API module tests verify each thin handler resolves the controller and delegates correctly.
 
 ### Acceptance criteria
 
@@ -226,6 +237,7 @@ Frontend tests:
 - Handler functions delegate to controller methods with the expected payload shape.
 - Successful API responses return plain data compatible with frontend callers.
 - Invalid payloads or controller failures are surfaced through the existing API failure path.
+- API tests cover both dispatcher routing and direct module delegation so Node and GAS-style resolution paths remain intact.
 
 ### Required test cases (Red first)
 
@@ -252,6 +264,8 @@ API layer tests:
 11. Each API handler instantiates or resolves the controller and delegates with the expected params.
 12. Successful handler execution returns plain response data rather than a transport envelope.
 13. Controller-thrown errors propagate back to `apiHandler` so the envelope becomes a failure response.
+14. Direct API module tests verify each handler resolves the controller using the same Node/GAS-compatible pattern as existing API modules.
+15. Shared API test helpers are updated if required so new global handler methods can be installed and restored consistently during dispatcher tests.
 
 Frontend tests:
 
@@ -281,6 +295,7 @@ Frontend tests:
 - Derive all exported TypeScript types from schemas using `z.infer<typeof ...>`.
 - Keep transport access inside service modules using `callApi`.
 - Validate request payloads in the service layer before transport.
+- Parse backend response payloads in the feature service layer with resource-specific Zod schemas after `callApi` resolves, while leaving envelope parsing and retry behaviour inside `callApi`.
 - Do not add UI state management or direct `google.script.run` calls.
 
 ### Acceptance criteria
@@ -290,7 +305,7 @@ Frontend tests:
 - Service methods exist for all list/create/update/delete operations for both resources.
 - Each service calls `callApi` with the correct backend method name and payload.
 - Invalid payloads fail locally during schema parsing.
-- Valid responses are typed consistently for future frontend consumers.
+- Valid responses are parsed and typed consistently for future frontend consumers.
 
 ### Required test cases (Red first)
 
@@ -325,14 +340,19 @@ Frontend tests:
 15. `createYearGroup()` calls `callApi` with `createYearGroup` and the parsed payload.
 16. `updateYearGroup()` calls `callApi` with `updateYearGroup` and the parsed payload.
 17. `deleteYearGroup()` calls `callApi` with `deleteYearGroup` and the parsed payload.
-18. Each service returns the resolved backend data unchanged on success.
-19. Each service propagates `callApi` rejections unchanged.
-20. A static type-level review confirms exported types are defined via `z.infer<typeof ...>`.
+18. `getCohorts()` parses the resolved backend payload with the cohort list response schema before returning it.
+19. `createCohort()`, `updateCohort()`, and `deleteCohort()` parse the resolved backend payload with the appropriate response schema before returning it.
+20. `getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, and `deleteYearGroup()` parse the resolved backend payload with the appropriate response schema before returning it.
+21. Each service returns the parsed backend data unchanged on success.
+22. Each service propagates `callApi` rejections unchanged.
+23. Each service rejects malformed success payloads when response parsing fails.
+24. A TypeScript compile check passes with exported types defined via `z.infer<typeof ...>`.
 
 ### Section checks
 
 - `npm run frontend:test -- <frontend service target>`
 - `npm run frontend:test -- <frontend schema target>`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
 ### Implementation notes / deviations / follow-up
 
@@ -370,8 +390,9 @@ Frontend tests:
 4. Run touched frontend schema and service suites.
 5. Run `npm run lint`.
 6. Run `npm run frontend:lint`.
-7. If implementation touches any shared config or builder code unexpectedly, run the relevant builder checks and document why.
-8. Manually review method-name parity between frontend services and backend `API_METHODS`.
+7. Run `npm exec tsc -- -b src/frontend/tsconfig.json`.
+8. If implementation touches any shared config or builder code unexpectedly, run the relevant builder checks and document why.
+9. Manually review method-name parity between frontend services and backend `API_METHODS`.
 
 ### Section checks
 
