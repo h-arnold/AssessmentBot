@@ -338,7 +338,7 @@ Backend controller/API tests:
      - Delete full class collection using JsonDbApp `dropCollection(classId)`.
      - Delete matching `abclass_partials` document using `deleteOne({ classId })`.
      - Return delete result summary for frontend state reconciliation.
-   - Response contract (proposed):
+   - Response contract:
      - `{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }`
    - Idempotency:
      - Repeated delete for same `classId` returns success with flags indicating what was deleted in this call.
@@ -420,6 +420,7 @@ Backend controller/API tests:
   - Google-derived fields (`classOwner`, `teachers`, `students`)
   - assignment mutation out-of-scope note for upsert/update endpoints.
 - Delete semantics (`dropCollection` + `deleteOne`) and idempotent response flags are documented.
+- Docs do not claim test outcomes unless those commands were actually executed in the implementation PR.
 
 ### Required checks
 
@@ -464,6 +465,7 @@ Backend controller/API tests:
 - Transport layer tests for request/response envelopes and error mapping pass.
 - Backend lint passes.
 - Documentation checks for new contract terms pass.
+- Reported test/lint outcomes in PR notes match actual command outputs.
 
 ### Required test cases/checks
 
