@@ -858,7 +858,7 @@ class ConfigurationManager extends BaseSingleton {
 // the global scope so we only require them for the test environment to avoid
 // changing runtime behaviour.
 if (typeof module !== 'undefined' && module.exports) {
-  const { CONFIG_KEYS: _CK, CONFIG_SCHEMA: _CS } = require('./1_configKeysAndSchema');
+  const { CONFIG_KEYS: _CK, CONFIG_SCHEMA: _CS } = require('./01_configKeysAndSchema');
   const { DEFAULTS: _DEF } = require('./02_defaults');
   const validators = require('./03_validators');
 

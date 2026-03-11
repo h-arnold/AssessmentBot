@@ -1,5 +1,5 @@
 /**
- * Unit tests for src/backend/Api/referenceData.js
+ * Unit tests for src/backend/z_Api/referenceData.js
  * Verifies that the thin API handlers resolve ReferenceDataController and delegate
  * with the expected payload shapes for cohort and year-group CRUD operations.
  */
@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Api/referenceData - direct unit delegation tests', () => {
-  const modulePath = '../../src/backend/Api/referenceData.js';
+  const modulePath = '../../src/backend/z_Api/referenceData.js';
   let originalController;
   let controllerMethods;
 

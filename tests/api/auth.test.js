@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const { getAuthorisationStatus } = require('../../src/backend/Api/auth.js');
+const { getAuthorisationStatus } = require('../../src/backend/z_Api/auth.js');
 
 describe('Api/auth.getAuthorisationStatus', () => {
   let originalScriptAppManager;
@@ -50,7 +50,7 @@ describe('Api/auth.getAuthorisationStatus', () => {
   });
 
   it('works when module exports are unavailable in the runtime context', () => {
-    const filePath = path.resolve(__dirname, '../../src/backend/Api/auth.js');
+    const filePath = path.resolve(__dirname, '../../src/backend/z_Api/auth.js');
     const source = fs.readFileSync(filePath, 'utf8');
     const isAuthorised = vi.fn().mockReturnValue(true);
     const context = {

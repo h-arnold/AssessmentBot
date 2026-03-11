@@ -135,7 +135,7 @@ g.AssignmentDefinition = AssignmentDefinition;
 // avoids duplicate declaration errors when the same functions are present in
 // both tests and the GAS runtime. Tests should ensure these are present before
 // requiring ConfigurationManager modules.
-const validators = require('../src/backend/ConfigurationManager/validators.js');
+const validators = require('../src/backend/ConfigurationManager/03_validators.js');
 // Attach individual functions/values to the global scope (globalThis) so
 // source files can reference them without importing. Use the same names
 // exported by the validators module.

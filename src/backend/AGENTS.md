@@ -36,6 +36,48 @@ Use GAS-native services where applicable:
 
 Do not replace GAS service calls with Node/browser equivalents that do not execute in Apps Script.
 
+### 1.1 Node test compatibility boundary
+
+- Production backend files run in a concatenated GAS script environment first, not a Node module graph.
+- Do not add `require`, `import`, `export`, `module.exports`, or other Node module wiring to production backend logic just to satisfy tests.
+- The only permitted Node-testing shim in production backend files is a guarded export block at the end of the file, for example:
+
+```javascript
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    myFunction,
+    MyClass,
+  };
+}
+```
+
+- Keep this block at the end of the file.
+- Keep it minimal: export only what tests need from that file.
+- If tests need older paths or aliases, prefer fixing the tests or adding test-only wrappers outside the runtime path instead of adding more Node-specific code to backend runtime files.
+- Exception: a small guarded Node fallback may be acceptable when a file must read a constant/helper during tests and the GAS runtime normally provides it globally. Keep such fallbacks minimal, guarded, and behaviourally identical to GAS.
+
+### 1.2 Concatenation and load-order model
+
+- Backend files are effectively evaluated as one large script in GAS, so definition order matters.
+- Assume later files can see globals created by earlier files; do not assume the reverse.
+- When a file depends on a symbol defined elsewhere, preserve or introduce file ordering that guarantees that symbol already exists by the time the file is evaluated.
+- Numeric prefixes are load-order signposts and must remain stable unless the load order is intentionally being changed.
+
+Current common prefix meanings:
+
+- `00_*`: foundational runtime primitives/constants that must exist very early
+- `01_*`, `02_*`, `03_*`: ordered support files that define constants, defaults, validators, or helper values used by later files
+- `98_*`: primary class/module implementation that depends on earlier support files
+- `99_*`: globals or thin entry helpers that should load after the main implementation
+
+Rules:
+
+- Preserve existing numbering when editing files.
+- If you split a backend concern across multiple files, use numbering to make dependency order obvious.
+- Prefer references via already-defined globals in GAS-facing code rather than introducing module imports.
+- Do not rename numbered files casually; tests, build steps, and runtime ordering may rely on those names.
+- Keep `y_*` and `z_*` directories/files in their established relative order when adding new backend entry surfaces or controllers.
+
 ## 2. Validation Contract (Backend Only)
 
 Use `src/backend/Utils/Validate.js` for generic validation.
@@ -91,7 +133,7 @@ try {
 
 - Singletons: always via `Class.getInstance()`.
 - Preserve existing file/load ordering conventions (including numeric prefixes where present).
-- Keep runtime exports GAS-compatible; Node-only exports must remain guarded (`if (typeof module !== 'undefined' ...)`) for tests.
+- Keep runtime exports GAS-compatible; the guarded `if (typeof module !== 'undefined' && module.exports)` block at the end of the file is the default and preferred test-enablement pattern.
 
 ## 6. Manifest and Service Changes
 

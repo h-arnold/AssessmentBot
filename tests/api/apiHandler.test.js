@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
-const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
+const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
+const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
 
 const {
   callAuthorisationStatus,

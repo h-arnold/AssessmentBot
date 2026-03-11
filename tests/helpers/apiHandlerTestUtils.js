@@ -1,5 +1,5 @@
-const apiHandlerPath = '../../src/backend/Api/apiHandler.js';
-const { USER_REQUEST_STORE_KEY } = require('../../src/backend/Api/apiConstants.js');
+const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
+const { USER_REQUEST_STORE_KEY } = require('../../src/backend/z_Api/apiConstants.js');
 
 const REFERENCE_DATA_API_METHOD_NAMES = Object.freeze([
   'getCohorts',

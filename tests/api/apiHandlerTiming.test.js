@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiConstantsPath = '../../src/backend/Api/apiConstants.js';
+const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
 
 const {
   callAuthorisationStatus,

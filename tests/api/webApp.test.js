@@ -18,8 +18,8 @@ describe('backend API WebApp doGet', () => {
       })),
     };
 
-    delete require.cache[require.resolve('../../src/backend/Api/WebApp.js')];
-    ({ doGet } = require('../../src/backend/Api/WebApp.js'));
+    delete require.cache[require.resolve('../../src/backend/z_Api/WebApp.js')];
+    ({ doGet } = require('../../src/backend/z_Api/WebApp.js'));
   });
 
   afterEach(() => {
@@ -35,7 +35,7 @@ describe('backend API WebApp doGet', () => {
   });
 
   it('works when module exports are unavailable in the runtime context', () => {
-    const filePath = path.resolve(__dirname, '../../src/backend/Api/WebApp.js');
+    const filePath = path.resolve(__dirname, '../../src/backend/z_Api/WebApp.js');
     const source = fs.readFileSync(filePath, 'utf8');
     const evaluateWithoutModule = vi.fn(() => ({ html: true }));
     const context = {

@@ -1,12 +1,12 @@
 /**
- * Unit test for src/backend/Api/abclassPartials.js
+ * Unit test for src/backend/z_Api/abclassPartials.js
  * Verifies that the API handler delegates to ABClassController.getAllClassPartials().
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 describe('Api/abclassPartials – direct unit delegation test', () => {
-  const modulePath = '../../src/backend/Api/abclassPartials.js';
+  const modulePath = '../../src/backend/z_Api/abclassPartials.js';
   let originalController;
 
   beforeEach(() => {

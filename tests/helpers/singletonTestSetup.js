@@ -42,7 +42,7 @@ function loadSingletonsWithMocks(harness, options = {}) {
 
   if (loadConfigurationManager) {
     try {
-      let ConfigurationManager = require('../../src/backend/ConfigurationManager/ConfigurationManagerClass.js');
+      let ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
       if (ConfigurationManager.default) ConfigurationManager = ConfigurationManager.default;
       globalThis.ConfigurationManager = ConfigurationManager;
       singletons.ConfigurationManager = ConfigurationManager;

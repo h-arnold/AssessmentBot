@@ -172,7 +172,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('returns RATE_LIMITED when the active request count has reached the configured limit', () => {
-    const { ACTIVE_LIMIT } = require('../../src/backend/Api/apiConstants.js');
+    const { ACTIVE_LIMIT } = require('../../src/backend/z_Api/apiConstants.js');
 
     // Seed the store with ACTIVE_LIMIT started entries so the next admission is rejected.
     const store = buildStartedStore(ACTIVE_LIMIT, 'seed-req', Date.now(), 'getAuthorisationStatus');
