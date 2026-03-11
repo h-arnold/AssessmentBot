@@ -1,15 +1,39 @@
 /**
  * Thin transport handler for Google Classroom listing.
  *
- * Section 1 defines the API contract only. Behaviour is added later.
- *
- * @param {object} params
- * @returns {void}
+ * @param {object} params Optional reserved params. Currently unused.
+ * @returns {Array<{classId: string, className: string}>}
  */
 function getGoogleClassrooms(params) {
-  throw new Error(
-    'getGoogleClassrooms is a Section 1 contract-only handler and is not implemented yet.'
-  );
+  const classrooms = ClassroomApiClient.fetchAllActiveClassrooms();
+
+  return classrooms.map((classroom) => {
+    if (!classroom || typeof classroom !== 'object' || Array.isArray(classroom)) {
+      throw new ApiValidationError('Google Classroom record must be an object.', {
+        method: 'getGoogleClassrooms',
+        fieldName: 'classroom',
+      });
+    }
+
+    if (!classroom.id) {
+      throw new ApiValidationError('Google Classroom record is missing id.', {
+        method: 'getGoogleClassrooms',
+        fieldName: 'id',
+      });
+    }
+
+    if (!classroom.name) {
+      throw new ApiValidationError('Google Classroom record is missing name.', {
+        method: 'getGoogleClassrooms',
+        fieldName: 'name',
+      });
+    }
+
+    return {
+      classId: classroom.id,
+      className: classroom.name,
+    };
+  });
 }
 
 if (typeof module !== 'undefined' && module.exports) {

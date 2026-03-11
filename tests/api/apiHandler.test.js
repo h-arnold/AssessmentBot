@@ -4,6 +4,8 @@ import vm from 'node:vm';
 
 const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
 const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
+const googleClassroomsHandlerPath = '../../src/backend/z_Api/googleClassrooms.js';
+const originalClassroomApiClient = globalThis.ClassroomApiClient;
 
 const {
   callAuthorisationStatus,
@@ -159,6 +161,16 @@ function loadApiConstantsModule() {
   return require(apiConstantsPath);
 }
 
+function clearGoogleClassroomsHandlerModuleCache() {
+  delete require.cache[require.resolve(googleClassroomsHandlerPath)];
+}
+
+function loadRealGoogleClassroomsHandlerWithGlobals({ classroomApiClient } = {}) {
+  clearGoogleClassroomsHandlerModuleCache();
+  globalThis.ClassroomApiClient = classroomApiClient;
+  return require(googleClassroomsHandlerPath).getGoogleClassrooms;
+}
+
 function loadApiHandlerInVmContext({ globals = {} } = {}) {
   const source = fs.readFileSync(require.resolve(apiHandlerPath), 'utf8');
   const sandbox = { ...globals };
@@ -290,6 +302,12 @@ describe('Api/apiHandler dispatcher', () => {
 
   afterEach(() => {
     teardownApiHandlerTestContext(vi, context);
+    clearGoogleClassroomsHandlerModuleCache();
+    if (originalClassroomApiClient === undefined) {
+      delete globalThis.ClassroomApiClient;
+    } else {
+      globalThis.ClassroomApiClient = originalClassroomApiClient;
+    }
   });
 
   it('accepts a valid request and returns a success envelope for an allowlisted method', () => {
@@ -514,6 +532,128 @@ describe('Api/apiHandler dispatcher', () => {
       expect(response.requestId).toEqual(expect.any(String));
     }
   );
+
+  it('keeps the success envelope unchanged for getGoogleClassrooms when using the real handler', () => {
+    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+      classroomApiClient: {
+        fetchAllActiveClassrooms: vi.fn(() => [
+          {
+            id: 'course-001',
+            name: '10A Computer Science',
+            enrollmentCode: 'ABC123',
+          },
+        ]),
+      },
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getGoogleClassrooms',
+      params: { includeArchived: true },
+    });
+
+    expect(response).toEqual({
+      ok: true,
+      requestId: response.requestId,
+      data: [{ classId: 'course-001', className: '10A Computer Science' }],
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
+  it('maps getGoogleClassrooms validation failures from the real handler to INVALID_REQUEST', () => {
+    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+      classroomApiClient: {
+        fetchAllActiveClassrooms: vi.fn(() => [{ name: '10A Computer Science' }]),
+      },
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getGoogleClassrooms',
+      params: {},
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: expect.any(String),
+      error: {
+        code: 'INVALID_REQUEST',
+        message: expect.any(String),
+        retriable: false,
+      },
+    });
+  });
+
+  it('maps malformed getGoogleClassrooms records from the real handler to INVALID_REQUEST and preserves requestId', () => {
+    const originalUtilities = globalThis.Utilities;
+    globalThis.Utilities = {
+      getUuid: vi.fn(() => 'req-google-classrooms-null-record'),
+    };
+
+    try {
+      globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+        classroomApiClient: {
+          fetchAllActiveClassrooms: vi.fn(() => [null]),
+        },
+      });
+
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getGoogleClassrooms',
+        params: {},
+      });
+
+      expect(response).toEqual({
+        ok: false,
+        requestId: 'req-google-classrooms-null-record',
+        error: {
+          code: 'INVALID_REQUEST',
+          message: expect.any(String),
+          retriable: false,
+        },
+      });
+    } finally {
+      if (originalUtilities === undefined) {
+        delete globalThis.Utilities;
+      } else {
+        globalThis.Utilities = originalUtilities;
+      }
+    }
+  });
+
+  it('maps unexpected getGoogleClassrooms failures through the existing internal-error envelope path', () => {
+    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+      classroomApiClient: {
+        fetchAllActiveClassrooms: vi.fn(() => {
+          throw new Error('Classroom client exploded');
+        }),
+      },
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getGoogleClassrooms',
+      params: {},
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: expect.any(String),
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+  });
 
   it('keeps existing getABClassPartials dispatch behaviour unchanged', () => {
     const expectedData = [{ classId: 'ab-class-001', className: 'Existing transport method' }];

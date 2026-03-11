@@ -58,8 +58,8 @@ For each section below:
 
 ### Delivery status
 
-- Current phase: Commit and push
-- Section status: In progress
+- Current phase: Complete
+- Section status: Complete
 - Checklist:
   - [x] red tests added
   - [x] red review clean
@@ -67,8 +67,8 @@ For each section below:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Objective
 
@@ -179,6 +179,11 @@ Non-functional safety tests:
 - **Verification evidence:**
   - `npm test -- tests/api/apiHandler.test.js tests/api/googleClassrooms.test.js tests/api/abclassMutations.test.js` passed.
   - `npm run lint` passed.
+- **Commit evidence:**
+  - Branch: `feat/ReactFrontend`
+  - Commit: `b4ef53f1002a8ac5e263308937c636125da81ba6`
+  - Message: `feat(api): complete Section 1 transport contract wiring`
+  - Push: successful (`5591e88..b4ef53f  feat/ReactFrontend -> feat/ReactFrontend`)
 - **Follow-up implications for later sections:**
   - Section 2 depends on `getGoogleClassrooms` contract stability.
   - Sections 3-4 depend on `upsertABClass`/`updateABClass`/`deleteABClass` parameter contracts agreed here.
@@ -186,6 +191,20 @@ Non-functional safety tests:
 ---
 
 ## Section 2 — Google Classroom listing endpoint
+
+### Delivery status
+
+- Current phase: Commit and push
+- Section status: In progress
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
 
 ### Objective
 
@@ -251,6 +270,15 @@ Backend API/client tests:
   - This section intentionally supports only class picker population.
   - Rich class data hydration is deferred to Section 3 (`upsertABClass`) to avoid unnecessary API calls during selection.
 - **Deviations from plan:**
+  - Repo test conventions use `tests/api/googleClassrooms.test.js` and targeted assertions in `tests/api/apiHandler.test.js` rather than the placeholder test paths listed above.
+  - Red-phase verification used the repo test command directly because the editor test runner did not resolve these backend Vitest files in this workspace.
+- **Review findings resolved:**
+  - Reworked the red-phase test harness to use `globalThis.ClassroomApiClient`, aligning with the backend GAS runtime model rather than implying CommonJS production wiring.
+  - Strengthened failure-envelope assertions so `requestId` remains covered for `getGoogleClassrooms` failure paths.
+  - Added malformed-record coverage for non-object Classroom rows and hardened the handler so those records fail as `ApiValidationError` instead of surfacing as `INTERNAL_ERROR`.
+- **Verification evidence:**
+  - `npm test -- tests/api/googleClassrooms.test.js tests/api/apiHandler.test.js` passed.
+  - `npm run lint` passed.
 - **Follow-up implications for later sections:**
   - Section 3 input validation should treat `cohort`, `yearGroup`, and `courseLength` as user-supplied values, not values fetched in Section 2.
   - Section 3 should validate `courseLength` as an integer-year value at the transport boundary.
