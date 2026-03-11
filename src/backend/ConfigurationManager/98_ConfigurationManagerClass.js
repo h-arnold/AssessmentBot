@@ -872,10 +872,6 @@ if (typeof module !== 'undefined' && module.exports) {
   ConfigurationManager._toBooleanString = validators.toBooleanString;
 }
 
-ConfigurationManager._CONFIG_KEYS = ConfigurationManager._CONFIG_KEYS || CONFIG_KEYS;
-ConfigurationManager._CONFIG_SCHEMA = ConfigurationManager._CONFIG_SCHEMA || CONFIG_SCHEMA;
-ConfigurationManager._DEFAULTS = ConfigurationManager._DEFAULTS || DEFAULTS;
-
 if (!globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__) {
   globalThis.__CONFIG_MANAGER_STATICS_INITIALISED__ = true;
 }

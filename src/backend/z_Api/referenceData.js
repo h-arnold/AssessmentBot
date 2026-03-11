@@ -1,19 +1,10 @@
 /* global ReferenceDataController */
 
-let ControllerCtor;
-if (typeof globalThis !== 'undefined' && globalThis.ReferenceDataController) {
-  ControllerCtor = globalThis.ReferenceDataController;
-} else if (typeof module !== 'undefined' && module.exports) {
-  ControllerCtor = require('../y_controllers/ReferenceDataController.js');
-} else {
-  ControllerCtor = ReferenceDataController;
-}
-
 /**
  * @returns {ReferenceDataController}
  */
 function getController() {
-  return new ControllerCtor();
+  return new ReferenceDataController();
 }
 
 /**
