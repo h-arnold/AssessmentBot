@@ -1,11 +1,5 @@
 // apiConstants.js
 
-let runtimeConstantsRef = globalThis.RuntimeConstants;
-
-if (typeof module !== 'undefined' && module.exports && !runtimeConstantsRef) {
-  runtimeConstantsRef = require('../00_RuntimeConstants.js').RuntimeConstants;
-}
-
 const API_METHODS = Object.freeze({
   getAuthorisationStatus: 'getAuthorisationStatus',
   getABClassPartials: 'getABClassPartials',
@@ -38,8 +32,8 @@ const ACTIVE_LIMIT = 25;
 const MAX_TRACKED_REQUESTS = 30;
 const STALE_REQUEST_AGE_MS =
   ACTIVE_REQUEST_STALE_MINUTES *
-  runtimeConstantsRef.SECONDS_PER_MINUTE *
-  runtimeConstantsRef.MS_PER_SECOND;
+  RuntimeConstants.SECONDS_PER_MINUTE *
+  RuntimeConstants.MS_PER_SECOND;
 const USER_REQUEST_STORE_KEY = 'AB_USER_REQUEST_STORE';
 
 const LOCK_TIMEOUT_MS = 1000;

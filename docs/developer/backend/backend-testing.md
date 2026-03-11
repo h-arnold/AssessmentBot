@@ -4,7 +4,135 @@
 
 AssessmentBot uses **Vitest** as the testing framework for unit and integration tests. Tests focus on logic, serialisation, state management, and behaviour in an isolated environment that mimics (but never invokes) Google Apps Script (GAS) services. External GAS / network calls are always mocked.
 
-Backend now also includes an API entry layer under `src/backend/Api` for `google.script.run` calls from the frontend. These API functions should be tested as thin wrappers around controller delegation and error propagation.
+Backend production code still runs as concatenated GAS script files, not as a Node module graph. Tests must adapt to that runtime model rather than forcing production files to behave like normal Node modules.
+
+Backend currently exposes API-style entry files under `src/backend/z_Api` while migration guidance still refers to `src/backend/Api` as the target surface. Tests should target the files that actually exist in the current runtime path.
+
+These API functions should be tested as thin wrappers around controller delegation and error propagation.
+
+## Production/Test Boundary
+
+### Core rule
+
+Production backend code should stay GAS-first. The default and preferred Node test-enablement pattern inside production backend files is:
+
+```javascript
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    myFunction,
+    MyClass,
+  };
+}
+```
+
+Use that block only at the end of the file.
+
+### What belongs in tests
+
+Put Node-only compatibility in the test harness, usually in `tests/setupGlobals.js` or a test helper:
+
+- attach globals expected by GAS files
+- load prerequisite files in the same order GAS would see them
+- point tests at the real current file paths
+- create mocks for GAS services and internal singletons
+
+Example:
+
+```javascript
+const g = globalThis;
+
+g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
+g.Validate = require('../src/backend/Utils/Validate.js').Validate;
+```
+
+### What should not go into production files
+
+Avoid adding Node-specific compatibility code to runtime files just to make tests pass.
+
+Anti-pattern:
+
+```javascript
+let runtimeConstantsRef = globalThis.RuntimeConstants;
+
+if (typeof module !== 'undefined' && module.exports && !runtimeConstantsRef) {
+  runtimeConstantsRef = require('../00_RuntimeConstants.js').RuntimeConstants;
+}
+```
+
+Preferred:
+
+```javascript
+const STALE_REQUEST_AGE_MS =
+  ACTIVE_REQUEST_STALE_MINUTES *
+  RuntimeConstants.SECONDS_PER_MINUTE *
+  RuntimeConstants.MS_PER_SECOND;
+```
+
+and provide `RuntimeConstants` from `tests/setupGlobals.js`.
+
+## GAS Load Order and File Naming
+
+Because backend files are concatenated into one GAS script, file order is part of runtime behaviour.
+
+Common ordering conventions in this codebase:
+
+- `00_*`: foundational runtime primitives/constants loaded very early
+- `01_*`, `02_*`, `03_*`: ordered support files used by later files
+- `98_*`: main implementation file for a concern
+- `99_*`: globals or thin entry helpers loaded after the main implementation
+- `y_*`: controller layer
+- `z_*`: API/entry layer that should come after controllers and shared runtime code
+
+Rules:
+
+- Do not rename numbered files casually.
+- Do not change numeric prefixes unless you are intentionally changing load order.
+- In tests, load or expose prerequisites before loading dependent files.
+- When updating test imports, follow the real current file layout instead of stale alias paths.
+
+## Anti-Patterns Seen In This Repository
+
+The following problems caused backend test failures and should be treated as regressions if reintroduced:
+
+### 1. Tests importing stale paths
+
+Anti-patterns:
+
+- `../../src/backend/Api/apiHandler.js` when the current file is under `src/backend/z_Api`
+- `../../src/backend/ConfigurationManager/validators.js` when the current file is [03_validators.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/03_validators.js)
+- `../../src/backend/ConfigurationManager/ConfigurationManagerClass.js` when the current file is [98_ConfigurationManagerClass.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/98_ConfigurationManagerClass.js)
+- `../../src/backend/ConfigurationManager/globals.js` when the current file is [99_globals.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/99_globals.js)
+
+Preferred:
+
+- update the tests to the real current path
+- or add an intentional test-side alias/wrapper if a stable alias is required
+
+### 2. Putting test fallbacks into production runtime code
+
+Anti-pattern:
+
+- adding guarded `require(...)` logic near the top of a GAS runtime file just to backfill globals in Node
+
+Preferred:
+
+- attach the missing global in `tests/setupGlobals.js`
+- keep production files GAS-style except for the guarded end-of-file `module.exports` block
+
+### 3. Breaking numbered-file references
+
+Anti-pattern:
+
+```javascript
+require('./1_configKeysAndSchema');
+```
+
+when the actual file is `01_configKeysAndSchema.js`.
+
+Preferred:
+
+- match the real numbered filename exactly
+- treat numeric prefixes as part of the dependency contract, not cosmetic naming
 
 ## Test Framework
 
@@ -168,7 +296,7 @@ deprecated legacy UI/init coverage.
 - Test edge cases (null inputs, missing data, corrupt data)
 - Verify logging calls for all significant operations
 
-### 6.1 API Layer Tests (`src/backend/Api`)
+### 6.1 API Layer Tests (`src/backend/z_Api`, migrating towards `src/backend/Api`)
 
 Test API-layer functions as boundary wrappers:
 

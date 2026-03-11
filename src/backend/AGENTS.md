@@ -39,8 +39,8 @@ Do not replace GAS service calls with Node/browser equivalents that do not execu
 ### 1.1 Node test compatibility boundary
 
 - Production backend files run in a concatenated GAS script environment first, not a Node module graph.
-- Do not add `require`, `import`, `export`, `module.exports`, or other Node module wiring to production backend logic just to satisfy tests.
-- The only permitted Node-testing shim in production backend files is a guarded export block at the end of the file, for example:
+- Never add `require`, `import`, `export`, `module.exports`, or other Node module wiring to production backend logic just to satisfy tests.
+- The **only** permitted Node-testing shim in production backend files is a guarded export block at the end of the file, for example:
 
 ```javascript
 if (typeof module !== 'undefined' && module.exports) {
@@ -53,8 +53,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
 - Keep this block at the end of the file.
 - Keep it minimal: export only what tests need from that file.
-- If tests need older paths or aliases, prefer fixing the tests or adding test-only wrappers outside the runtime path instead of adding more Node-specific code to backend runtime files.
-- Exception: a small guarded Node fallback may be acceptable when a file must read a constant/helper during tests and the GAS runtime normally provides it globally. Keep such fallbacks minimal, guarded, and behaviourally identical to GAS.
+- If tests need older paths, aliases, or globals, fix the tests first, usually in `tests/setupGlobals.js` or the relevant test helper.
+- Exposing GAS globals in the test harness. **NEVER** add Node fallback code to production files.
+- Do not add top-of-file Node compatibility snippets such as guarded `require(...)` blocks, alias variables for globals, or mixed runtime/module initialisation unless there is no safer alternative and the user explicitly accepts it.
+- Treat any non-export Node-specific production code as an exception case that requires justification, not the default pattern.
 
 ### 1.2 Concatenation and load-order model
 
@@ -75,6 +77,7 @@ Rules:
 - Preserve existing numbering when editing files.
 - If you split a backend concern across multiple files, use numbering to make dependency order obvious.
 - Prefer references via already-defined globals in GAS-facing code rather than introducing module imports.
+- For tests, mirror that order in `tests/setupGlobals.js` by attaching required globals before loading dependent modules.
 - Do not rename numbered files casually; tests, build steps, and runtime ordering may rely on those names.
 - Keep `y_*` and `z_*` directories/files in their established relative order when adding new backend entry surfaces or controllers.
 
@@ -134,6 +137,7 @@ try {
 - Singletons: always via `Class.getInstance()`.
 - Preserve existing file/load ordering conventions (including numeric prefixes where present).
 - Keep runtime exports GAS-compatible; the guarded `if (typeof module !== 'undefined' && module.exports)` block at the end of the file is the default and preferred test-enablement pattern.
+- When tests fail because a GAS global is missing in Node, update the test harness before changing production backend code.
 
 ## 6. Manifest and Service Changes
 

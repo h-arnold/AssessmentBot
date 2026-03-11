@@ -8,6 +8,7 @@ require('../src/backend/00_BaseSingleton.js');
 
 // Load Assignment classes so they're available globally for polymorphic factory pattern
 const g = globalThis;
+g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
 g.Assignment = require('../src/backend/AssignmentProcessor/Assignment.js');
 g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
 g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
