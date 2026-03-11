@@ -146,10 +146,9 @@ class ClassroomApiClient {
 
   /**
    * Fetch teachers for a given course.
-   * Returns the raw teacher objects as provided by the API (so callers can
-   * inspect profile fields).
+   * Maps Classroom API teacher resources to `Teacher` model instances.
    * @param {string} courseId
-   * @returns {Array<Object>} array of teacher resource objects
+   * @returns {Teacher[]} array of Teacher model instances
    */
   static fetchTeachers(courseId) {
     const progressTracker = ProgressTracker.getInstance();
