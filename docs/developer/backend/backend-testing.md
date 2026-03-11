@@ -412,7 +412,7 @@ const mocks = setupGlobalGASMocks(vi, { mockConsole: true });
 - `createMockUtils(vi)` - Utils with hash generation
 - `createMockDriveApp(vi)` - DriveApp for file operations
 - `createMockSpreadsheetApp(vi, options)` - SpreadsheetApp with sheets
-- `createMockClassroomApiClient()` - ClassroomApiClient wrapping Classroom API
+- `createMockClassroomApiClient()` - read-only ClassroomApiClient mock for `fetchCourse`, `fetchTeachers`, and `fetchAllStudents`
 - `createMockMimeType()` - Google MIME type constants
 - `createMockCollection(vi, options)` - Mock database collection with optional overrides
 - `createMockSlidesParser(options)` - Mock SlidesParser class for testing document parsing
