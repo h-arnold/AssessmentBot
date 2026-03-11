@@ -215,8 +215,6 @@ class ClassroomApiClient {
             const studentInstance = new Student(name, email, id);
             studentList.push(studentInstance);
           });
-        } else {
-          ABLogger.getInstance().info('No students found on fetched page.', { courseId });
         }
 
         pageToken = response.nextPageToken;

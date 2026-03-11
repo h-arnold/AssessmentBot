@@ -10,8 +10,19 @@ describe('ClassroomApiClient (read-only methods)', () => {
   let ClassroomApiClient;
   let progressTrackerInstance;
   let abLoggerInstance;
+  let originalProgressTrackerGetInstance;
+  let originalABLogger;
+  let originalClassroom;
+  let originalTeacher;
+  let originalStudent;
 
   beforeEach(() => {
+    originalProgressTrackerGetInstance = globalThis.ProgressTracker.getInstance;
+    originalABLogger = globalThis.ABLogger;
+    originalClassroom = globalThis.Classroom;
+    originalTeacher = globalThis.Teacher;
+    originalStudent = globalThis.Student;
+
     progressTrackerInstance = {
       logAndThrowError: vi.fn((message) => {
         throw new Error(message);
@@ -54,10 +65,11 @@ describe('ClassroomApiClient (read-only methods)', () => {
   });
 
   afterEach(() => {
-    delete globalThis.Classroom;
-    delete globalThis.ABLogger;
-    delete globalThis.Teacher;
-    delete globalThis.Student;
+    globalThis.ProgressTracker.getInstance = originalProgressTrackerGetInstance;
+    globalThis.ABLogger = originalABLogger;
+    globalThis.Classroom = originalClassroom;
+    globalThis.Teacher = originalTeacher;
+    globalThis.Student = originalStudent;
     vi.restoreAllMocks();
   });
 
@@ -92,6 +104,14 @@ describe('ClassroomApiClient (read-only methods)', () => {
 
     const result = ClassroomApiClient.fetchAllActiveClassrooms();
 
+    expect(globalThis.Classroom.Courses.list).toHaveBeenNthCalledWith(1, {
+      pageToken: undefined,
+      courseStates: ['ACTIVE'],
+    });
+    expect(globalThis.Classroom.Courses.list).toHaveBeenNthCalledWith(2, {
+      pageToken: 'next-page',
+      courseStates: ['ACTIVE'],
+    });
     expect(result).toEqual([
       { id: 'course-1', name: 'Maths', enrollmentCode: 'A1' },
       { id: 'course-2', name: 'English', enrollmentCode: 'B2' },
@@ -207,8 +227,13 @@ describe('ClassroomApiClient (read-only methods)', () => {
 describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   let ClassroomApiClient;
   let abLoggerErrorSpy;
+  let originalABLogger;
+  let originalClassroom;
 
   beforeEach(() => {
+    originalABLogger = globalThis.ABLogger;
+    originalClassroom = globalThis.Classroom;
+
     const abLoggerInstance = {
       error: vi.fn(),
     };
@@ -228,8 +253,8 @@ describe('ClassroomApiClient.fetchCourseUpdateTime', () => {
   });
 
   afterEach(() => {
-    delete globalThis.Classroom;
-    delete globalThis.ABLogger;
+    globalThis.Classroom = originalClassroom;
+    globalThis.ABLogger = originalABLogger;
     vi.restoreAllMocks();
   });
 
