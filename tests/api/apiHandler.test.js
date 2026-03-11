@@ -14,6 +14,79 @@ const {
   teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
 
+const SECTION_1_API_METHOD_NAMES = Object.freeze([
+  'getGoogleClassrooms',
+  'upsertABClass',
+  'updateABClass',
+  'deleteABClass',
+]);
+
+const SECTION_1_API_METHOD_ENTRIES = Object.freeze(
+  Object.fromEntries(SECTION_1_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
+);
+
+function buildSection1Params(methodName) {
+  switch (methodName) {
+    case 'getGoogleClassrooms': {
+      return {};
+    }
+    case 'upsertABClass': {
+      return {
+        classId: 'class-upsert-001',
+        cohort: '2026',
+        yearGroup: 10,
+        courseLength: 2,
+      };
+    }
+    case 'updateABClass': {
+      return {
+        classId: 'class-update-001',
+        cohort: '2027',
+        yearGroup: 11,
+        courseLength: 2,
+        active: true,
+      };
+    }
+    case 'deleteABClass': {
+      return {
+        classId: 'class-delete-001',
+      };
+    }
+    default: {
+      return { traceId: `${methodName}-params` };
+    }
+  }
+}
+
+function buildSection1Result(methodName) {
+  switch (methodName) {
+    case 'getGoogleClassrooms': {
+      return [{ classId: 'course-001', className: '10A Computer Science' }];
+    }
+    case 'upsertABClass': {
+      return { classId: 'class-upsert-001', saved: true };
+    }
+    case 'updateABClass': {
+      return { classId: 'class-update-001', updated: true };
+    }
+    case 'deleteABClass': {
+      return { classId: 'class-delete-001', deleted: true };
+    }
+    default: {
+      return { handledBy: methodName };
+    }
+  }
+}
+
+function buildSection1Handlers() {
+  return Object.fromEntries(
+    SECTION_1_API_METHOD_NAMES.map((methodName) => [
+      methodName,
+      () => buildSection1Result(methodName),
+    ])
+  );
+}
+
 function buildReferenceDataParams(methodName) {
   switch (methodName) {
     case 'createCohort': {
@@ -189,6 +262,18 @@ describe('Api/apiConstants', () => {
       )
     );
   });
+
+  it('contains all Section 1 transport methods in API_METHODS', () => {
+    const { API_METHODS } = loadApiConstantsModule();
+
+    expect(API_METHODS).toEqual(expect.objectContaining(SECTION_1_API_METHOD_ENTRIES));
+  });
+
+  it('contains all Section 1 transport methods in API_ALLOWLIST', () => {
+    const { API_ALLOWLIST } = loadApiConstantsModule();
+
+    expect(API_ALLOWLIST).toEqual(expect.objectContaining(SECTION_1_API_METHOD_ENTRIES));
+  });
 });
 
 describe('Api/apiHandler dispatcher', () => {
@@ -196,7 +281,10 @@ describe('Api/apiHandler dispatcher', () => {
 
   beforeEach(() => {
     context = setupApiHandlerTestContext(vi, {
-      additionalHandlers: buildReferenceDataHandlers(),
+      additionalHandlers: {
+        ...buildReferenceDataHandlers(),
+        ...buildSection1Handlers(),
+      },
     });
   });
 
@@ -268,6 +356,36 @@ describe('Api/apiHandler dispatcher', () => {
         code: 'UNKNOWN_METHOD',
       },
     });
+  });
+
+  it('rejects a real global handler when the method is not allowlisted', () => {
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+    const syntheticHandlerName = 'section1SyntheticNonAllowlistedHandler';
+    const originalHandler = globalThis[syntheticHandlerName];
+    globalThis[syntheticHandlerName] = vi.fn(() => ({ accepted: false }));
+
+    try {
+      const response = dispatcher.handle({
+        method: syntheticHandlerName,
+        params: { traceId: 'synthetic-non-allowlisted' },
+      });
+
+      expect(globalThis[syntheticHandlerName]).toEqual(expect.any(Function));
+      expect(globalThis[syntheticHandlerName]).not.toHaveBeenCalled();
+      expect(response).toMatchObject({
+        ok: false,
+        error: {
+          code: 'UNKNOWN_METHOD',
+        },
+      });
+    } finally {
+      if (originalHandler === undefined) {
+        delete globalThis[syntheticHandlerName];
+      } else {
+        globalThis[syntheticHandlerName] = originalHandler;
+      }
+    }
   });
 
   it('always generates backend-owned requestIds even when caller sends one', () => {
@@ -371,6 +489,54 @@ describe('Api/apiHandler dispatcher', () => {
     }
   );
 
+  it.each(SECTION_1_API_METHOD_NAMES)(
+    'routes %s to the matching allowlisted handler',
+    (methodName) => {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+      const params = buildSection1Params(methodName);
+      const expectedData = buildSection1Result(methodName);
+
+      globalThis[methodName].mockImplementation(() => expectedData);
+
+      const response = dispatcher.handle({
+        method: methodName,
+        params,
+      });
+
+      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
+      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: expectedData,
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    }
+  );
+
+  it('keeps existing getABClassPartials dispatch behaviour unchanged', () => {
+    const expectedData = [{ classId: 'ab-class-001', className: 'Existing transport method' }];
+    globalThis.getABClassPartials = vi.fn(() => expectedData);
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'getABClassPartials',
+      params: { pageSize: 10 },
+    });
+
+    expect(globalThis.getABClassPartials).toHaveBeenCalledTimes(1);
+    expect(globalThis.getABClassPartials).toHaveBeenCalledWith({ pageSize: 10 });
+    expect(response).toEqual({
+      ok: true,
+      requestId: response.requestId,
+      data: expectedData,
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
   it('returns plain handler data for successful reference-data requests without re-enveloping it', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -412,6 +578,32 @@ describe('Api/apiHandler dispatcher', () => {
     });
   });
 
+  it('maps ApiValidationError from a new Section 1 handler to INVALID_REQUEST and preserves the failure envelope shape', () => {
+    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+    globalThis.upsertABClass.mockImplementation(() => {
+      throw new ApiValidationError('Invalid ABClass payload', { requestId: 'req-upsert-abclass' });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'upsertABClass',
+      params: buildSection1Params('upsertABClass'),
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid ABClass payload',
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
   it('maps unexpected controller failures for reference-data handlers to the existing API failure envelope', () => {
     globalThis.updateYearGroup.mockImplementation(() => {
       throw new Error('year-group update exploded');
@@ -433,6 +625,31 @@ describe('Api/apiHandler dispatcher', () => {
         retriable: false,
       },
     });
+  });
+
+  it('maps unexpected failures from a new Section 1 handler to INTERNAL_ERROR and preserves the failure envelope shape', () => {
+    globalThis.deleteABClass.mockImplementation(() => {
+      throw new Error('delete exploded');
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'deleteABClass',
+      params: buildSection1Params('deleteABClass'),
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
   });
 
   it('throws when an unrecognised handler name is passed to _invokeAllowlistedMethod', () => {

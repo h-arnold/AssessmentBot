@@ -56,6 +56,20 @@ For each section below:
 
 ## Section 1 — API contract and transport wiring
 
+### Delivery status
+
+- Current phase: Commit and push
+- Section status: In progress
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
+
 ### Objective
 
 - Define and expose new API methods in `apiHandler` transport allowlist/dispatch.
@@ -154,7 +168,17 @@ Non-functional safety tests:
 - **Implementation notes:**
   - Confirm final method names before frontend wiring begins.
   - Keep handler bodies intentionally thin in this section; business behaviour belongs to Sections 2-4.
+  - Contract-only handlers fail explicitly until later sections implement runtime behaviour, avoiding false-success transport responses.
 - **Deviations from plan:**
+  - Repo test conventions use tests/api/_ rather than the placeholder tests/backend/z_Api/_ paths listed above.
+  - Red-phase verification used the repo's Vitest commands directly because the editor test runner did not resolve these backend files in this workspace.
+- **Review findings resolved:**
+  - Removed an overly specific placeholder params fixture for getGoogleClassrooms so Section 1 does not imply filtering behaviour.
+  - Added a durable synthetic non-allowlisted-handler test instead of asserting an intermediate pre-allowlist state for a real Section 1 method.
+  - Replaced silent placeholder success with explicit not-implemented failures and added direct throw assertions for the new contract-only handlers.
+- **Verification evidence:**
+  - `npm test -- tests/api/apiHandler.test.js tests/api/googleClassrooms.test.js tests/api/abclassMutations.test.js` passed.
+  - `npm run lint` passed.
 - **Follow-up implications for later sections:**
   - Section 2 depends on `getGoogleClassrooms` contract stability.
   - Sections 3-4 depend on `upsertABClass`/`updateABClass`/`deleteABClass` parameter contracts agreed here.

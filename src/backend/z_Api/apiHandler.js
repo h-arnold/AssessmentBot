@@ -256,6 +256,18 @@ class ApiDispatcher extends BaseSingleton {
     if (handlerName === 'getABClassPartials') {
       return getABClassPartials(params);
     }
+    if (handlerName === 'getGoogleClassrooms') {
+      return getGoogleClassrooms(params);
+    }
+    if (handlerName === 'upsertABClass') {
+      return upsertABClass(params);
+    }
+    if (handlerName === 'updateABClass') {
+      return updateABClass(params);
+    }
+    if (handlerName === 'deleteABClass') {
+      return deleteABClass(params);
+    }
     if (handlerName === 'getCohorts') {
       return getCohorts(params);
     }

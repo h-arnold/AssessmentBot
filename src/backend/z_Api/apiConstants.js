@@ -3,6 +3,10 @@
 const API_METHODS = Object.freeze({
   getAuthorisationStatus: 'getAuthorisationStatus',
   getABClassPartials: 'getABClassPartials',
+  getGoogleClassrooms: 'getGoogleClassrooms',
+  upsertABClass: 'upsertABClass',
+  updateABClass: 'updateABClass',
+  deleteABClass: 'deleteABClass',
   getCohorts: 'getCohorts',
   createCohort: 'createCohort',
   updateCohort: 'updateCohort',
@@ -16,6 +20,10 @@ const API_METHODS = Object.freeze({
 const API_ALLOWLIST = Object.freeze({
   [API_METHODS.getAuthorisationStatus]: API_METHODS.getAuthorisationStatus,
   [API_METHODS.getABClassPartials]: API_METHODS.getABClassPartials,
+  [API_METHODS.getGoogleClassrooms]: API_METHODS.getGoogleClassrooms,
+  [API_METHODS.upsertABClass]: API_METHODS.upsertABClass,
+  [API_METHODS.updateABClass]: API_METHODS.updateABClass,
+  [API_METHODS.deleteABClass]: API_METHODS.deleteABClass,
   [API_METHODS.getCohorts]: API_METHODS.getCohorts,
   [API_METHODS.createCohort]: API_METHODS.createCohort,
   [API_METHODS.updateCohort]: API_METHODS.updateCohort,
