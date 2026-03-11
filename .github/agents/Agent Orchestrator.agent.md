@@ -26,6 +26,8 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 ## 2. Mandatory Section Loop
 
 Process sections one at a time. Do not overlap sections. Do not skip phases.
+You must not start the next phase until the current phase's required evidence is captured.
+Missing evidence means the section is incomplete.
 
 For each section, run this loop until the section is clean:
 
@@ -100,6 +102,24 @@ If review returns findings:
 
 If review requires refactoring, delegate it to `Implementation`, keep all tests passing, and send the result back through `Code Reviewer` until clean.
 
+### 2.6 Commit and Push
+
+This phase is mandatory. Do not proceed until it is complete.
+
+Required actions:
+1. Update `ACTION_PLAN.md` for the finished section.
+2. Create a commit for the section changes.
+3. Create a separate commit for plan or documentation updates if they are not already included.
+4. Push the current branch.
+
+Required evidence to record before moving on:
+- commit SHA(s)
+- exact commit message(s)
+- branch name
+- confirmation that `git push` succeeded
+
+If commit or push fails, do not continue to the next section. Resolve the failure or ask the user.
+
 ## 3. Section Exit Criteria
 
 Do not leave a section until all of the following are true:
@@ -110,6 +130,7 @@ Do not leave a section until all of the following are true:
 - the action plan is updated
 - the section changes are committed
 - the branch is pushed
+- commit SHA(s), commit message(s), branch name, and push confirmation are recorded
 
 ## 4. Action Plan Updates
 
@@ -121,6 +142,16 @@ Minimum required updates:
 - note any approved deviation or follow-up
 - mark the section complete once review is clean and checks pass
 
+For every section, maintain a visible checklist with these statuses:
+- red tests added
+- red review clean
+- green implementation complete
+- green review clean
+- checks passed
+- action plan updated
+- commit created
+- push completed
+
 At section completion, update the section's implementation notes with:
 - completion status
 - any deviation from plan
@@ -128,13 +159,19 @@ At section completion, update the section's implementation notes with:
 
 ## 5. Commit and Push Rules
 
+Commit and push are mandatory delivery steps, not optional wrap-up.
+
 At the end of each completed section:
 
-1. Commit the section changes.
-2. Commit the action plan update if it is not already included.
-3. Push the branch before moving to the next section.
+1. Stop and verify that the section checklist is fully complete.
+2. Update `ACTION_PLAN.md`.
+3. Commit the section code changes using a clear commit message tied to the section name.
+4. Commit the action plan update if it is not already included.
+5. Push the branch before moving to the next section.
+6. Record the commit SHA(s), commit message(s), branch name, and push confirmation in the tracker.
 
-Use clear commit messages tied to the section name. Do not start the next section until the current section's code, plan updates, and push are complete.
+Do not start the next section until the current section's code, plan updates, commit artefacts, and push are complete.
+Do not treat commit and push as implied. They are incomplete until explicitly recorded.
 
 ## 6. Final Documentation Pass
 
@@ -158,9 +195,11 @@ Prioritise:
 - No speculative scope expansion.
 - One section at a time.
 - Keep red, green, review, and refactor phases separate.
+- Keep commit and push as a separate required phase.
 - Pass full context to sub-agents; do not make them guess.
 - If delegation fails or the state is unclear, stop and ask the user.
 - Do not mark work complete before a clean review pass.
+- Do not mark a section complete before commit SHA(s) and successful push confirmation are recorded.
 
 ## 8. Final Output
 
