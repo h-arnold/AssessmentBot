@@ -4,59 +4,24 @@
 
 ### Scope
 
-- Implement job-scoped tracking for long-running backend operations using `jobTrackingId` and `jobMetadata`.
-- Keep `apiHandler` transport behaviour unchanged, including backend-owned envelope `requestId`.
-- Update long-running backend entry points to accept and propagate `jobTrackingId` and `jobMetadata` end-to-end.
-- Update `ProgressTracker` persistence to support keyed records by `jobTrackingId` in `UserProperties`.
-- # Add frontend non-visual service support for passing `jobTrackingId` and polling keyed progress.
-- Implement job-scoped tracking for long-running backend operations using a single `job` object.
-- Keep `apiHandler` transport behaviour unchanged, including backend-owned envelope `requestId`.
-- Update long-running backend entry points to accept and propagate the `job` object end-to-end.
-- Update `ProgressTracker` persistence to use the same single-key map pattern as `requestStore` (user-scoped JSON object keyed by `job.id`).
-- Add frontend non-visual service support for passing a `job` object and polling keyed progress by `job.id`.
-- Add and run targeted backend/frontend tests for validation, propagation, and error handling.
+- Deliver backend API support for ABClass management needed by upcoming frontend work.
+- Add a Google Classroom listing endpoint so frontend can retrieve classes available to the signed-in user.
+- Add ABClass write endpoints to create/update (upsert) and delete class records.
+- Keep implementation in active backend API/controller areas only (`src/backend/z_Api`, `src/backend/y_controllers`, supporting docs/tests).
 
 ### Out of scope
 
-- Creating visible frontend progress UI components.
-- Refactoring unrelated short-running endpoints to require tracking IDs.
-- Replacing API admission-control request lifecycle tracking in `requestStore`.
-- Broad architectural refactors unrelated to long-running progress scoping.
+- Frontend UI implementation and user flows.
+- Broad refactors of existing ABClass or transport infrastructure unrelated to the requested endpoints.
+- Any changes in deprecated areas (`src/AdminSheet`, `src/AssessmentRecordTemplate`).
 
 ### Assumptions
 
-1. `jobTrackingId` is required for long-running tracked operations and optional/unused for short-running calls.
-2. `jobMetadata` is required for long-running tracked operations and must include, at minimum, `name` and `type` fields.
-3. Frontend may generate `jobTrackingId`, but backend validates it and remains the authority.
-4. Progress data is job-scoped and stored in user-scoped durable storage (`UserProperties`), keyed by `jobTrackingId`.
-5. Multiple tracked jobs per user are supported and must not overwrite each other.
-6. Legacy AdminSheet progress polling is reference-only and not part of this implementation target.
-7. Progress record lifecycle must be explicit: completed/error records are retained for a bounded period and then removed by deterministic cleanup.
-
----
-
-## Recovered implementation status
-
-- Current active section: Section 5 — Regression and contract hardening.
-- Current phase: Complete.
-- Verified implemented work:
-  - Section 1 backend model files exist at `src/backend/Models/Cohort.js` and `src/backend/Models/YearGroup.js`.
-  - Targeted backend model tests exist at `tests/models/cohortYearGroup.test.js` and cover the planned model scenarios.
-  - Section 2 controller and persistence work is implemented in `src/backend/y_controllers/ReferenceDataController.js` with targeted coverage in `tests/controllers/referenceDataController.test.js`.
-  - Section 3 API registration and thin handlers are implemented in `src/backend/Api/apiConstants.js`, `src/backend/Api/apiHandler.js`, and `src/backend/Api/referenceData.js` with targeted coverage in `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js`.
-  - Section 4 frontend schemas and service callers are implemented in `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/referenceDataService.ts` with targeted coverage in `src/frontend/src/services/referenceData.zod.spec.ts` and `src/frontend/src/services/referenceDataService.spec.ts`.
-- Verified pending work:
-  - Section 5 regression validation and final documentation sync remain outstanding.
-- Repository note:
-  - # The current re-audit found no material mismatch between this plan and the branch contents.
-
-1. A `job` object is required for long-running tracked operations and includes, at minimum, `id`, `name`, `type`, and `startedAt` fields.
-2. Frontend may generate `job.id`, but backend validates it and remains the authority.
-3. `job.startedAt` is an ISO timestamp created when the job is initiated and propagated across trigger handoff unchanged.
-4. Progress data is job-scoped and stored in user-scoped durable storage (`UserProperties`), keyed by `job.id`.
-5. Multiple tracked jobs per user are supported and must not overwrite each other.
-6. Legacy AdminSheet progress polling is reference-only and not part of this implementation target.
-7. Progress record lifecycle must be explicit: completed/error records are retained for a bounded period and then removed by deterministic cleanup.
+1. Frontend will call `apiHandler` transport methods rather than direct `google.script.run.<method>` calls.
+2. ABClass persistence should continue to use existing `ABClassController.saveClass()` write-through behaviour for full and partial records.
+3. Deletion should remove both canonical class storage and partial registry entries for the same `classId`.
+4. Endpoint naming will follow existing transport conventions and remain stable once consumed by frontend.
+5. `courseLength` will be provided directly by the frontend user as an integer number of years when calling `upsertABClass`.
 
 ---
 
@@ -64,16 +29,11 @@
 
 ### Engineering constraints
 
-- Keep API and globals wrappers thin; delegate behavioural logic to controller/utility layers.
-- Fail fast for invalid or missing `jobTrackingId` or required `jobMetadata` fields where long-running tracking is required.
-- # Treat a valid `jobTrackingId` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
-- Reuse `requestStore` patterns for load/save/prune/compact where they fit progress semantics.
-- Keep `ProgressTracker` writes as direct backend property operations; do not call `apiHandler` for internal progress state updates.
-- Fail fast for invalid or missing `job` fields (`id`, `name`, `type`, `startedAt` where required) where long-running tracking is required.
-- Treat a valid `job.id` as a canonical UUID string (36 chars, lowercase/uppercase hex plus hyphens in 8-4-4-4-12 format).
-- Never silently swallow errors; preserve existing structured error propagation.
-- Keep changes localised and consistent with backend/frontend migration patterns.
-- Use British English in comments and documentation.
+- Keep API handlers thin and delegate to controller/client logic.
+- Fail fast on invalid request payloads and persistence failures.
+- Reuse existing validators and error patterns.
+- Keep changes minimal, localised, and consistent with GAS runtime constraints.
+- Use British English in code comments and documentation.
 
 ### TDD workflow (mandatory per section)
 
@@ -87,373 +47,468 @@ For each section below:
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint`
-- Frontend lint: `npm run frontend:lint`
+- Frontend lint (if touched): `npm run frontend:lint`
 - Builder lint (if touched): `npm run builder:lint`
 - Backend tests: `npm test -- <target>`
-- Frontend unit tests: `npm run frontend:test -- <target>`
-- Frontend e2e tests (if UX changes): `npm run frontend:test:e2e -- <target>`
+- Frontend unit tests (if touched): `npm run frontend:test -- <target>`
 
 ---
 
-## Section 1 — ProgressTracker keyed persistence in UserProperties
+## Section 1 — API contract and transport wiring
 
 ### Objective
 
-- # Update `ProgressTracker` to persist and read progress records keyed by `jobTrackingId`.
-- Update `ProgressTracker` to persist and read progress records keyed by `job.id`.
+- Define and expose new API methods in `apiHandler` transport allowlist/dispatch.
+- Lock down method names, request parameter contracts, and dispatch ownership before implementing endpoint behaviour.
 
 ### Constraints
 
-- Retain `ProgressTracker` as the singleton façade.
-- Do not introduce a new persistence abstraction unless blocked.
-- Ensure keying strategy is deterministic and safe for Apps Script property storage.
+- Keep dispatch branches thin and explicit.
+- Do not add business logic to `apiHandler`.
+- Preserve current request/response envelope behaviour in `apiHandler`.
+- Keep method names stable once introduced to avoid frontend integration churn.
+
+### Methods introduced in this section (contract only)
+
+1. `getGoogleClassrooms(params)`
+   - **Purpose:** transport entrypoint for classroom listing.
+   - **Expected params (Section 1 placeholder contract):**
+     - `params`: optional object (reserved for future filtering; unused in Section 1).
+2. `upsertABClass(params)`
+   - **Purpose:** transport entrypoint for create/update class persistence.
+   - **Expected params (contract-level shape, behaviour implemented later):**
+     - `params.classId` (string, required)
+     - `params.cohort` (string|number|null, optional)
+     - `params.yearGroup` (number|null, optional)
+     - `params.courseLength` (number, optional)
+3. `updateABClass(params)`
+   - **Purpose:** transport entrypoint for lightweight ABClass field updates.
+   - **Expected params (contract-level shape, behaviour implemented later):**
+     - `params.classId` (string, required)
+     - `params.cohort` (string|number|null, optional)
+     - `params.yearGroup` (number|null, optional)
+     - `params.courseLength` (number, optional; integer years, minimum 1)
+     - `params.active` (boolean|null, optional)
+4. `deleteABClass(params)`
+   - **Purpose:** transport entrypoint for class deletion.
+   - **Expected params (contract-level shape, behaviour implemented later):**
+     - `params.classId` (string, required)
+
+### Files touched in this section
+
+- `src/backend/z_Api/apiConstants.js`
+  - Add constants to `API_METHODS` and `API_ALLOWLIST` for all methods listed above.
+- `src/backend/z_Api/apiHandler.js`
+  - Add dispatch branches in `ApiDispatcher._invokeAllowlistedMethod(...)` for each method.
+- `src/backend/z_Api/googleClassrooms.js` (new)
+  - Add thin exported handler function signature only.
+- `src/backend/z_Api/abclassMutations.js` (new)
+  - Add thin exported handler signatures for upsert, update, and delete only.
 
 ### Acceptance criteria
 
-- Progress start/update/complete/error operations target a key derived from `jobTrackingId`.
-- `getStatus` (or equivalent) reads by `jobTrackingId` and never cross-reads another job’s data.
-- Persistence uses `PropertiesService.getUserProperties()` for keyed progress records.
-- # Long-running operations fail fast when `jobTrackingId` is missing/invalid.
-- Follow the `requestStore` single-key JSON map approach in `UserProperties` for progress entries keyed by `job.id`.
-- Extract shared JSON-store/retention helpers only where it reduces duplication without coupling transport logic.
-
-### Acceptance criteria
-
-- Progress start/update/complete/error operations target a key derived from `job.id`.
-- `getStatus` (or equivalent) reads by `job.id` and never cross-reads another job’s data.
-- Persistence uses `PropertiesService.getUserProperties()` for keyed progress records.
-- Progress persistence shape mirrors `requestStore`: one property containing a keyed object, with explicit prune/compact lifecycle rules.
-- Progress updates are written directly by backend runtime code and never mediated through `apiHandler`.
-- Long-running operations fail fast when the required `job` object or required `job` fields are missing/invalid.
-- Progress retention and cleanup are explicit (for example TTL-based pruning for completed/error jobs).
-- `ProgressTracker.complete()` side effects that currently serialise `DocumentProperties` are explicitly reviewed and either removed, adapted, or documented as intentionally retained.
+- New method constants added to API method registry and allowlist.
+- Dispatcher resolves each new method to a dedicated handler function.
+- Unknown method behaviour remains unchanged.
+- Request validation envelope handling remains unchanged (`INVALID_REQUEST` for malformed transport payloads).
+- No controller logic, Classroom API calls, or persistence writes are added in this section.
 
 ### Required test cases (Red first)
 
-Backend utility/singleton tests:
+Backend API layer tests:
 
-1. `startTracking(jobTrackingId)` writes to the expected user property key.
-2. `updateProgress(...)` updates only the matching keyed record.
-3. `complete()` marks only the matching keyed record complete.
-4. `logError()`/`logAndThrowError()` only mutate the keyed record.
-5. Reading `jobTrackingId=A` never returns data from `jobTrackingId=B`.
-6. Missing/invalid ID path throws for tracked flows.
-7. Completed/error records older than configured retention threshold are pruned while active records remain.
-8. # Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
-9. `startTracking(job)` writes to the expected user property key using `job.id`.
-10. `updateProgress(...)` updates only the matching keyed record.
-11. `complete()` marks only the matching keyed record complete.
-12. `logError()`/`logAndThrowError()` only mutate the keyed record.
-13. Reading `job.id=A` never returns data from `job.id=B`.
-14. Missing/invalid ID path throws for tracked flows.
-15. Completed/error records older than configured retention threshold are pruned while active records remain.
-16. Behaviour of `complete()` document-property serialisation branch is verified against the chosen migration decision.
-17. Progress store read/write lifecycle follows the single-key map pattern and preserves unrelated job entries across updates.
-18. No progress update path depends on `apiHandler` invocation.
+1. `API_METHODS` includes `getGoogleClassrooms`, `upsertABClass`, `updateABClass`, and `deleteABClass` with exact string values.
+2. `API_ALLOWLIST` includes entries for all four new methods and maps each to itself.
+3. `apiHandler` dispatches `getGoogleClassrooms` to `getGoogleClassrooms(params)`.
+4. `apiHandler` dispatches `upsertABClass` to `upsertABClass(params)`.
+5. `apiHandler` dispatches `updateABClass` to `updateABClass(params)`.
+6. `apiHandler` dispatches `deleteABClass` to `deleteABClass(params)`.
+7. Dispatch for existing methods (for example `getABClassPartials`) remains functional and unchanged.
+8. Unknown method names still return `UNKNOWN_METHOD` without invoking any handler.
+9. Malformed request payloads (missing method, empty method, non-object request) still return `INVALID_REQUEST`.
+10. When a new handler throws `ApiValidationError`, response code is still `INVALID_REQUEST`.
+11. When a new handler throws an unmapped error, response code is still `INTERNAL_ERROR`.
+12. `requestId` is still generated for both success and failure envelopes.
+13. Success envelope shape remains `{ ok: true, requestId, data }` for new methods.
+14. Failure envelope shape remains `{ ok: false, requestId, error: { code, message, retriable } }` for new methods.
 
-API layer tests:
+Backend module export tests:
 
-1. None in this section.
+15. `src/backend/z_Api/googleClassrooms.js` exports `getGoogleClassrooms` in Node test runtime.
+16. `src/backend/z_Api/abclassMutations.js` exports `upsertABClass`, `updateABClass`, and `deleteABClass` in Node test runtime.
 
-Frontend tests:
+Non-functional safety tests:
 
-1. None in this section.
+17. No additional `apiHandler` admission-control behaviour changes (lock timing/rate-limit paths remain green).
+18. No new API methods are callable unless allowlisted.
 
 ### Section checks
 
-- `npm test -- tests/singletons/<progress-tracker-target>`
-- `npm test -- tests/utils/<progress-tracker-target>`
+- `npm test -- tests/backend/z_Api/apiConstants.test.js`
+- `npm test -- tests/backend/z_Api/apiHandler.test.js`
+- `npm test -- tests/backend/z_Api/googleClassrooms.test.js`
+- `npm test -- tests/backend/z_Api/abclassMutations.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Keep method names and call patterns as close as possible to existing usages.
-- **Deviations from plan:** Record any compatibility shims required for existing callers.
-- # **Follow-up implications for later sections:** API/trigger layers must consistently provide `jobTrackingId`.
-- **Follow-up implications for later sections:** API/trigger layers must consistently provide the `job` object.
+- **Implementation notes:**
+  - Confirm final method names before frontend wiring begins.
+  - Keep handler bodies intentionally thin in this section; business behaviour belongs to Sections 2-4.
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+  - Section 2 depends on `getGoogleClassrooms` contract stability.
+  - Sections 3-4 depend on `upsertABClass`/`updateABClass`/`deleteABClass` parameter contracts agreed here.
 
 ---
 
-## Section 2 — API contract and validation for long-running tracking
+## Section 2 — Google Classroom listing endpoint
 
 ### Objective
 
-- # Extend long-running API methods to accept `params.jobTrackingId` and `params.jobMetadata`, and validate both.
-- Extend long-running API methods to accept `params.job`, and validate it.
+- Provide a frontend-callable endpoint returning only the classroom fields needed for class selection during ABClass creation.
 
 ### Constraints
 
-- Preserve existing `apiHandler` transport envelope and backend-owned `requestId` semantics.
-- Keep dispatcher branches thin and aligned with `API_METHODS` constants.
+- Reuse `ClassroomApiClient` and existing paging behaviour.
+- Return a stable transport-safe summary shape containing only `classId` and `className`.
+- Do not load or return roster data (`teachers`, `students`) in this endpoint.
+- Do not require `cohort`, `yearGroup`, or `courseLength` in this endpoint; those are supplied by the user later via frontend forms.
+- Keep naming aligned with existing ABClass conventions (`classId`, `className`), even if Google returns `id` and `name`.
+
+### Output contract for this section
+
+- `getGoogleClassrooms(params)` success payload:
+  - `Array<{ classId: string, className: string }>`
+- `params` remains optional and unused in this section.
+
+### Data boundary decisions (agreed)
+
+- **Provided by Section 2 endpoint:**
+  - `classId` (mapped from Classroom course id)
+  - `className` (mapped from Classroom course name)
+- **Provided by frontend/user at upsert time:**
+  - `cohort`
+  - `yearGroup`
+  - `courseLength` (integer years)
+- **Populated during `upsertABClass` (Section 3) using backend calls:**
+  - `teachers`
+  - `students`
+  - `classOwner`
+  - any additional class metadata derived during ABClass initialisation/sync
 
 ### Acceptance criteria
 
-- Long-running methods require and validate `params.jobTrackingId` and `params.jobMetadata`.
-- Invalid `jobTrackingId` produces existing structured invalid-request envelopes.
-- Successful responses keep existing `{ ok, requestId, data }` envelope contract.
-- Non-long-running methods continue to behave unchanged.
-- # API validation rules for `jobTrackingId` and `jobMetadata` are documented and shared across backend/frontend tests.
-- Keep transport concerns in `apiHandler`; progress persistence helpers must not depend on allowlisted API dispatch.
-
-### Acceptance criteria
-
-- Long-running methods require and validate `params.job`.
-- Invalid `job.id` produces existing structured invalid-request envelopes.
-- Successful responses keep existing `{ ok, requestId, data }` envelope contract.
-- Non-long-running methods continue to behave unchanged.
-- API validation rules for `job.id` and required `job` fields are documented and shared across backend/frontend tests.
+- Endpoint returns array of classroom summaries for picker use with exact keys `classId` and `className`.
+- Endpoint never returns `teachers`, `students`, `classOwner`, or `enrollmentCode`.
+- Errors propagate through existing API envelope mapping.
+- No legacy `globals.js` expansion.
 
 ### Required test cases (Red first)
 
-Backend API tests:
+Backend API/client tests:
 
-1. Dispatcher routes long-running method with valid `jobTrackingId`.
-2. Missing `jobTrackingId` returns structured invalid request.
-3. Missing `jobMetadata` (or missing `jobMetadata.name`/`jobMetadata.type`) returns structured invalid request.
-4. Malformed `jobTrackingId` returns structured invalid request.
-5. Malformed `jobMetadata` (for example non-string `name` or `type`) returns structured invalid request.
-6. Success path preserves transport `requestId` and returns method `data`.
-7. Existing short-running method tests remain green.
-8. Non-UUID values (wrong length/pattern) are rejected consistently.
-
-Backend controller/global tests:
-
-1. # API layer forwards exact `jobTrackingId` and `jobMetadata` into long-running backend entry points.
-1. Dispatcher routes long-running method with valid `job` object.
-1. Missing `job` returns structured invalid request.
-1. Missing required `job` fields (`id`, `name`, `type`, `startedAt`) returns structured invalid request.
-1. Malformed `job.id` returns structured invalid request.
-1. Malformed `job` payload (for example non-string `name`/`type` or invalid `startedAt`) returns structured invalid request.
-1. Success path preserves transport `requestId` and returns method `data`.
-1. Existing short-running method tests remain green.
-1. Non-UUID `job.id` values and invalid `startedAt` timestamps are rejected consistently.
-
-Backend controller/global tests:
-
-1. API layer forwards exact `params.job` into long-running backend entry points.
-
-Frontend tests:
-
-1. None in this section.
+1. Handler delegates to classroom client method.
+2. Handler maps Classroom client records (`id`, `name`) to `{ classId, className }`.
+3. Handler ignores non-contract fields from the Classroom client response (for example `enrollmentCode`).
+4. Successful response shape matches documented contract and key names exactly.
+5. Empty classroom list returns `[]` (not `null` or omitted data).
+6. If classroom client returns malformed records (for example missing `id` or `name`), handler fails fast with validation mapping.
+7. Client/handler failure path propagates as API failure envelope.
+8. `apiHandler` success envelope remains unchanged for this method.
 
 ### Section checks
 
-- `npm test -- tests/api/<long-running-api-target>`
-- `npm test -- tests/backend-api/<long-running-handler-target>`
+- `npm test -- tests/backend/z_Api/googleClassrooms.test.js`
+- `npm test -- tests/backend/z_Api/apiHandler.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Keep API wrappers as boundary-only units.
-- **Deviations from plan:** Note any method-name alignment changes.
-- **Follow-up implications for later sections:** Trigger setup must persist the same ID for continuation.
+- **Implementation notes:**
+  - This section intentionally supports only class picker population.
+  - Rich class data hydration is deferred to Section 3 (`upsertABClass`) to avoid unnecessary API calls during selection.
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+  - Section 3 input validation should treat `cohort`, `yearGroup`, and `courseLength` as user-supplied values, not values fetched in Section 2.
+  - Section 3 should validate `courseLength` as an integer-year value at the transport boundary.
 
 ---
 
-## Section 3 — Trigger handoff for cross-call continuity
+## Section 3 — ABClass upsert and update endpoints
 
 ### Objective
 
-- # Propagate one `jobTrackingId` and the associated `jobMetadata` across initial call, trigger setup, and trigger execution.
-- Propagate one `job` object across initial call, trigger setup, and trigger execution.
+- Add endpoint support to create/update persisted ABClass records using selected classroom details plus frontend-provided metadata.
+- Plan both a full `upsertABClass` flow and a targeted `updateABClass` flow for lightweight field updates.
 
 ### Constraints
 
-- Preserve existing locking and trigger orchestration semantics unless correctness requires changes.
-- Avoid global document-context collisions for concurrent jobs.
+- Treat Google Classroom as the source of truth for `classOwner`, `teachers`, and `students`.
+- Explicitly exclude assignment mutation from these endpoints; assignments are updated by assignment-run flows.
+- Use `upsertABClass` for create or refresh operations that require classroom-derived data.
+- Use `updateABClass` for partial updates to supplied fields without loading/rebuilding the full class document.
+- Validate `courseLength` as integer-only with minimum value `1`.
+- Preserve write-through consistency between full class records and `abclass_partials`.
+
+### Contracts introduced in this section
+
+1. `upsertABClass(params)`
+   - Required params: `classId` (string), `cohort`, `yearGroup`, `courseLength`
+   - Behaviour: upsert-on-update (create when missing, update when existing).
+   - Data ownership:
+     - User supplied: `cohort`, `yearGroup`, `courseLength`
+     - Google-derived: `classOwner`, `teachers`, `students`
+2. `updateABClass(params)`
+   - Required params: `classId` (string)
+   - Optional patch params: `cohort`, `yearGroup`, `courseLength`, `active`
+   - Behaviour: upsert-on-update semantics; if class does not yet exist, create it before applying patch.
+   - Explicit exclusions: `classOwner`, `teachers`, `students`, and `assignments` are not patchable through this endpoint.
 
 ### Acceptance criteria
 
-- Start path accepts `jobTrackingId` and `jobMetadata`, and persists both in trigger context.
-- # Trigger-run path loads the same ID/metadata bundle and uses the ID for all progress updates.
-- Start path accepts `job`, and persists it in trigger context.
-- Trigger-run path loads the same `job` object and uses `job.id` for all progress updates.
-- Cleanup removes only context keys for the completed/failed job.
-- Distinct IDs in overlapping runs remain isolated.
-- Trigger-side cleanup keeps job-scoped progress lifecycle rules intact (no accidental deletion of active unrelated jobs).
+- `upsertABClass` accepts payload (`classId`, `cohort`, `yearGroup`, `courseLength`) with explicit validation and error mapping.
+- `upsertABClass` hydrates `classOwner`, `teachers`, and `students` from Google Classroom data on write paths.
+- `updateABClass` applies only supplied patch fields via partial persistence semantics and does not mutate excluded fields.
+- Both endpoints enforce `courseLength` integer and minimum `1` validation.
+- Both endpoints follow upsert-on-update behaviour when the target class does not yet exist.
+- Assignment data is untouched by both endpoints and documented as out-of-scope for this section.
+- Responses return a useful post-write summary payload for frontend state updates.
 
 ### Required test cases (Red first)
 
-Backend controller tests:
+Backend controller/API tests:
 
-1. Start flow persists trigger context containing `jobTrackingId` and `jobMetadata`.
-2. # Trigger flow reads `jobTrackingId` and uses it in progress updates, with `jobMetadata` available for downstream observability/extensions.
-3. Start flow persists trigger context containing the full `job` object.
-4. Trigger flow reads `job.id` and uses it in progress updates, with `name`, `type`, and `startedAt` available for downstream observability/extensions.
-5. Cleanup removes scoped context and keeps unrelated contexts intact.
-6. Simulated concurrent runs with different IDs remain isolated.
-7. Trigger completion/error path invokes or schedules lifecycle cleanup according to retention policy.
-
-Backend utility tests:
-
-1. Trigger helper behaviour remains correct with added context payload.
-
-API layer tests:
-
-1. None beyond Section 2 unless a new start method is introduced.
-
-Frontend tests:
-
-1. None in this section.
+1. `upsertABClass` valid request delegates to controller and persists successfully.
+2. `upsertABClass` creates new class when classId does not exist.
+3. `upsertABClass` updates existing class when classId exists.
+4. `upsertABClass` hydrates `classOwner`, `teachers`, and `students` from Classroom sources.
+5. `updateABClass` updates only supplied patch fields (`cohort`, `yearGroup`, `courseLength`, `active`).
+6. `updateABClass` does not alter `teachers`, `students`, `classOwner`, or `assignments`.
+7. `updateABClass` follows upsert-on-update behaviour when class is missing.
+8. Missing required params fail with validation error mapping.
+9. Non-integer or `< 1` `courseLength` fails with validation error mapping.
+10. Error mapping remains consistent with API handler envelopes for both endpoints.
 
 ### Section checks
 
-- `npm test -- tests/controllers/<assignment-controller-target>`
-- `npm test -- tests/utils/<trigger-controller-target>`
+- `npm test -- tests/backend/z_Api/abclassMutations.test.js`
+- `npm test -- tests/controllers/abclass-upsert-update.test.js`
+- `npm test -- tests/models/abclassManager.initialise.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Keep trigger payload explicit and minimal.
-- **Deviations from plan:** Record any constraints caused by existing property-key conventions.
-- # **Follow-up implications for later sections:** Frontend polling calls must provide `jobTrackingId`.
-- **Follow-up implications for later sections:** Frontend polling calls must provide `job.id` (or full `job` where required by endpoint contract).
+- **Implementation notes:**
+  - Keep endpoint handlers thin and push orchestration to controller methods.
+  - Prefer JsonDbApp `updateOne(..., { $set: ... })` for `updateABClass` partial patch paths.
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+  - Section 4 delete flow must remain compatible with both upsert and partial-update persistence paths.
 
 ---
 
-## Section 4 — Frontend non-visual service and polling contract
+## Section 4 — ABClass delete endpoint
 
 ### Objective
 
-- # Add frontend service/hook support for passing `jobTrackingId` + `jobMetadata` and fetching keyed progress without GUI assets.
-- Add frontend service/hook support for passing `job` and fetching keyed progress without GUI assets.
+- Add endpoint to delete an ABClass record by `classId`.
+- Define delete semantics using JsonDbApp collection-level and document-level delete APIs.
 
 ### Constraints
 
-- Use `callApi` for all backend interactions.
-- Keep transport parsing/retry logic centralised in `apiService`.
-- Use Zod for new validation contracts and derive types via `z.infer<typeof ...>`.
+- Keep deletion semantics explicit and documented.
+- Ensure registry consistency between full class data and class partials.
+- Use JsonDbApp `dropCollection(name)` for full class collection deletion.
+- Use JsonDbApp `deleteOne(filter)` for `abclass_partials` registry removal.
+- Keep endpoint handler thin; orchestration should live in `ABClassController`.
+
+### JsonDbApp methods and usage points
+
+1. `dropCollection(name)`
+   - **Why:** each ABClass full record is stored in its own collection (`collectionName === classId`), so class deletion should remove the whole collection.
+   - **Where used:** in `ABClassController` delete orchestration method (new), via `this.dbManager.getDb().dropCollection(classId)` or equivalent DbManager wrapper.
+2. `deleteOne(filter)`
+   - **Why:** `abclass_partials` is a shared registry collection with one document per class; only the matching partial should be removed.
+   - **Where used:** in `ABClassController` delete orchestration method (new), via `partialsCollection.deleteOne({ classId })` followed by `save()`.
+
+### Contracts introduced in this section
+
+1. `deleteABClass(params)`
+   - Required params: `classId` (string)
+   - Behaviour:
+     - Validate `classId` transport input.
+     - Delete full class collection using JsonDbApp `dropCollection(classId)`.
+     - Delete matching `abclass_partials` document using `deleteOne({ classId })`.
+     - Return delete result summary for frontend state reconciliation.
+   - Response contract:
+     - `{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }`
+   - Idempotency:
+     - Repeated delete for same `classId` returns success with flags indicating what was deleted in this call.
 
 ### Acceptance criteria
 
-- Long-running start service passes `jobTrackingId` and `jobMetadata` in request params.
-- # Progress fetch service passes `jobTrackingId` in request params.
-- Long-running start service passes `job` in request params.
-- Progress fetch service passes `job.id` in request params (or `job` if endpoint standardises on full-object payloads).
-- Non-visual polling handler/hook stops on completed/error and maps errors to safe states.
-- No direct `google.script.run.<method>` calls are introduced in feature/service modules.
+- Endpoint deletes target full class collection via `dropCollection(classId)`.
+- Endpoint deletes related partial record via `deleteOne({ classId })` in `abclass_partials`.
+- Endpoint is idempotent and returns deterministic boolean result flags.
+- Invalid `classId` fails with validation error mapping.
+- API response contract is documented and consistent with `apiHandler` success envelope.
 
 ### Required test cases (Red first)
 
-Frontend service tests:
+Backend controller/API tests:
 
-1. Start service calls `callApi` with method + `jobTrackingId` + `jobMetadata` params.
-2. # Progress service calls `callApi` with method + `jobTrackingId` params.
-3. Start service calls `callApi` with method + `job` params.
-4. Progress service calls `callApi` with method + `job.id` params (or `job` if standardised).
-5. Service propagates `callApi` rejection unchanged.
-6. Service rejects malformed payloads where schema parsing is required.
-
-Frontend hook/handler tests (if introduced):
-
-1. # Polling queries by the provided `jobTrackingId`.
-1. Polling queries by the provided `job.id`.
-1. Polling stops on completed/error states.
-1. Error mapping returns safe consumer-facing states.
-
-Backend tests:
-
-1. None in this section.
+1. `deleteABClass` valid request delegates to controller delete orchestration.
+2. Controller delete orchestration calls `dropCollection(classId)` for the full class collection.
+3. Controller delete orchestration calls `deleteOne({ classId })` on `abclass_partials` and persists collection.
+4. Successful delete returns `{ classId, fullClassDeleted: true, partialDeleted: true }` when both exist.
+5. Idempotent repeat delete returns success with boolean flags reflecting no-op deletions.
+6. When full collection exists but partial is missing, response remains successful with mixed flags.
+7. When partial exists but full collection is already absent, response remains successful with mixed flags.
+8. Invalid `classId` (missing/empty/unsafe format) fails with validation error mapping.
+9. Controller or JsonDbApp failures propagate through existing API error mapping.
+10. `apiHandler` envelope remains stable for delete success/failure responses.
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/services/<progress-service-target>.spec.ts`
-- `npm run frontend:test -- src/frontend/src/features/<progress-handler-target>.spec.ts`
+- `npm test -- tests/backend/z_Api/abclassMutations.test.js`
+- `npm test -- tests/controllers/abclass-delete.test.js`
+- `npm test -- tests/backend/z_Api/apiHandler.test.js`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Keep this delivery non-visual; UI work follows later.
-- **Deviations from plan:** Record any shared error-mapping utility additions.
-- **Follow-up implications for later sections:** Future UI can consume these typed contracts directly.
+- **Implementation notes:**
+  - Add a focused delete method on `ABClassController` (for example `deleteClassById`) to keep API handlers thin.
+  - Consider adding a small `DbManager.dropCollection(name)` wrapper if direct `getDb().dropCollection(...)` access is undesirable.
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+  - Section 5 docs must explicitly describe idempotent delete flags and JsonDbApp method usage (`dropCollection` + `deleteOne`).
 
 ---
 
-## Section 5 — Regression and contract hardening
+## Section 5 — Documentation and contract updates
 
 ### Objective
 
-- # Validate end-to-end request-scoped progress tracking for long-running flows without transport regressions.
-- Validate end-to-end job-scoped progress tracking for long-running flows without transport regressions.
+- Align backend developer docs with newly exposed classroom and ABClass mutation endpoints.
+- Publish stable transport contracts so frontend integration work can proceed without ambiguity.
 
 ### Constraints
 
-- Run focused suites first, then lint.
-- Avoid unrelated refactors during hardening.
+- Update only relevant backend docs.
+- Keep contracts explicit and example-driven where helpful.
+- Keep documentation aligned with implemented method names exactly (`getGoogleClassrooms`, `upsertABClass`, `updateABClass`, `deleteABClass`).
+- Use British English and avoid documenting speculative behaviour not implemented in code.
+
+### Documentation targets in this section
+
+1. `docs/developer/backend/api-layer.md`
+   - Add new endpoint entries and handler source locations.
+   - Document transport usage expectations through `apiHandler`/`callApi`.
+   - Capture request and response summaries for each new method.
+2. `docs/developer/backend/DATA_SHAPES.md`
+   - Add/extend classroom picker shape: `Array<{ classId, className }>`.
+   - Add ABClass mutation payload shapes for `upsertABClass`, `updateABClass`, and `deleteABClass`.
+   - Document delete result shape: `{ classId, fullClassDeleted, partialDeleted }` and idempotent semantics.
+3. `ACTION_PLAN.md`
+   - Keep section notes/acceptance criteria in sync with any implementation deviations discovered during delivery.
 
 ### Acceptance criteria
 
-- New/updated backend tests for keyed progress, API validation, and trigger propagation pass.
-- New/updated frontend service/handler tests pass.
-- Backend and frontend lint pass for touched files (or environment limitations are documented).
-- Existing short-running API method behaviour remains stable.
-- Lifecycle and cleanup semantics are implemented and verified (including retention boundaries).
-
-### Required test cases/checks
-
-1. Run touched backend singleton/utility tests for keyed progress behaviour.
-2. # Run touched backend API tests for `jobTrackingId` contract behaviour.
-3. Run touched backend API tests for `job` contract behaviour.
-4. Run touched backend controller tests for trigger propagation.
-5. Run touched frontend service/hook tests for request wiring and polling semantics.
-6. Run `npm run lint`.
-7. Run `npm run frontend:lint`.
-8. Run `npm run builder:lint` only if builder files were touched.
-9. Manually verify method-name parity between frontend constants and backend `API_METHODS`.
-
-### Section checks
-
-- Run the commands listed above and ensure green results.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Summarise final contract alignment fixes.
-- **Deviations from plan:** Document any unrelated failures discovered.
-
----
-
-## Documentation and rollout notes
-
-### Objective
-
-- # Keep canonical docs aligned with request-scoped long-running progress tracking.
-- Keep canonical docs aligned with job-scoped long-running progress tracking.
-
-### Constraints
-
-- Update only relevant canonical docs.
-- Keep AGENTS files as signposts.
-
-### Acceptance criteria
-
-- # Backend docs distinguish transport `requestId` from long-running `jobTrackingId`.
-- Backend docs distinguish transport `requestId` from long-running `job.id` within the `job` object.
-- Backend docs describe user-scoped keyed progress persistence and cleanup expectations.
-- Frontend docs remain aligned with `callApi` boundaries and error-handling policy.
+- `api-layer.md` lists all new methods and handler locations.
+- `api-layer.md` captures per-method contract summaries (inputs, outputs, and error-envelope behaviour expectations).
+- `DATA_SHAPES.md` includes classroom summary and ABClass mutation request/response payload contracts.
+- `DATA_SHAPES.md` explicitly documents source-of-truth boundaries:
+  - user-managed fields (`cohort`, `yearGroup`, `courseLength`, `active`)
+  - Google-derived fields (`classOwner`, `teachers`, `students`)
+  - assignment mutation out-of-scope note for upsert/update endpoints.
+- Delete semantics (`dropCollection` + `deleteOne`) and idempotent response flags are documented.
+- Docs do not claim test outcomes unless those commands were actually executed in the implementation PR.
 
 ### Required checks
 
-1. Verify `docs/developer/backend/api-layer.md` documents `jobTrackingId` for long-running methods.
-2. Verify relevant backend flow docs reflect trigger handoff and user-scoped progress keying.
-3. Verify frontend docs remain aligned with non-visual service-level integration and error mapping.
-4. # Confirm this action plan remains accurate as implementation progresses.
-5. Verify `docs/developer/backend/api-layer.md` documents the `job` object contract (`id`, `name`, `type`, `startedAt`) for long-running methods.
-6. Verify relevant backend flow docs reflect trigger handoff and user-scoped progress keying.
-7. Verify relevant backend flow docs reflect trigger handoff, user-scoped progress keying, and single-key map storage semantics.
-8. Verify frontend docs remain aligned with non-visual service-level integration and error mapping.
-9. Confirm this action plan remains accurate as implementation progresses.
+1. Verify docs match implemented method names, payloads, and return flags exactly.
+2. Verify examples and shapes match API handler contracts and controller behaviour.
+3. Verify frontend integration notes reference transport usage via `callApi`.
+4. Verify no stale references remain to deprecated/non-existent endpoints or old method names.
+
+### Section checks
+
+- `rg -n "getGoogleClassrooms|upsertABClass|updateABClass|deleteABClass" docs/developer/backend/api-layer.md docs/developer/backend/DATA_SHAPES.md`
+- `rg -n "fullClassDeleted|partialDeleted|classId|className" docs/developer/backend/DATA_SHAPES.md`
+- Manual doc review against implementation diff.
 
 ### Implementation notes / deviations / follow-up
 
-- Record documentation updates completed during implementation and any deferred updates.
+- **Implementation notes:**
+  - Keep documentation updates in the same PR as the corresponding runtime changes where possible.
+  - Ensure contract examples are minimal and reflect production payloads only.
+- **Deviations from plan:**
+- **Follow-up implications for later sections:**
+  - Regression checks must validate docs and code remain in lock-step after final refactors.
+
+---
+
+## Section 6 — Regression and contract hardening
+
+### Objective
+
+- Confirm endpoint wiring, controller behaviour, transport envelopes, and documented contracts remain stable after full implementation.
+
+### Constraints
+
+- Prefer focused suites first, then broader lint/test passes.
+- Keep runtime coverage backend-first; run frontend/builder checks only when those areas are touched.
+- Do not broaden regression scope beyond the new classroom/ABClass API surface unless failures indicate coupling.
+
+### Acceptance criteria
+
+- Targeted backend tests for new API constants/dispatch/handlers pass.
+- Targeted backend controller/model tests for upsert/update/delete behaviour pass.
+- Transport layer tests for request/response envelopes and error mapping pass.
+- Backend lint passes.
+- Documentation checks for new contract terms pass.
+- Reported test/lint outcomes in PR notes match actual command outputs.
+
+### Required test cases/checks
+
+1. Run API constants/dispatch/handler suites:
+   - `tests/backend/z_Api/apiConstants.test.js`
+   - `tests/backend/z_Api/apiHandler.test.js`
+   - `tests/backend/z_Api/googleClassrooms.test.js`
+   - `tests/backend/z_Api/abclassMutations.test.js`
+2. Run ABClass controller/model suites relevant to new behaviours:
+   - `tests/controllers/abclass-upsert-update.test.js`
+   - `tests/controllers/abclass-delete.test.js`
+   - `tests/models/abclassManager.initialise.test.js`
+3. Run backend lint.
+4. Run documentation grep checks for contract terms (Section 5 checks).
+5. Run frontend lint/tests only if frontend files are touched.
+6. Run builder lint only if builder files are touched.
+
+### Section checks
+
+- `npm test -- tests/backend/z_Api/apiConstants.test.js`
+- `npm test -- tests/backend/z_Api/apiHandler.test.js`
+- `npm test -- tests/backend/z_Api/googleClassrooms.test.js`
+- `npm test -- tests/backend/z_Api/abclassMutations.test.js`
+- `npm test -- tests/controllers/abclass-upsert-update.test.js`
+- `npm test -- tests/controllers/abclass-delete.test.js`
+- `npm test -- tests/models/abclassManager.initialise.test.js`
+- `npm run lint`
+- `rg -n "getGoogleClassrooms|upsertABClass|updateABClass|deleteABClass|fullClassDeleted|partialDeleted" docs/developer/backend/api-layer.md docs/developer/backend/DATA_SHAPES.md`
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:**
+  - Record exact failing tests and root causes before applying fixes.
+  - Re-run only affected focused suites after each fix, then finish with full section checks.
+- **Deviations from plan:**
 
 ---
 
 ## Suggested implementation order
 
-1. Section 1: ProgressTracker keyed persistence in `UserProperties`
-2. Section 2: API contract and validation
-3. Section 3: Trigger handoff propagation
-4. # Section 4: Frontend non-visual service/handler wiring
-5. Section 1: ProgressTracker keyed persistence by `job.id` in `UserProperties`
-6. Section 2: API `job` contract and validation
-7. Section 3: Trigger handoff propagation of `job` object
-8. Section 4: Frontend non-visual service/handler wiring for `job` contract
-9. Section 5: Regression and hardening
-10. Documentation and rollout notes
+1. Section 1 — API contract and transport wiring
+2. Section 2 — Google Classroom listing endpoint
+3. Section 3 — ABClass upsert and update endpoints
+4. Section 4 — ABClass delete endpoint
+5. Section 5 — Documentation and contract updates
+6. Section 6 — Regression and contract hardening
