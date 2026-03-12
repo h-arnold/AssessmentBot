@@ -6,6 +6,7 @@
   - [Persistence Strategy \& Rationale](#persistence-strategy--rationale)
   - [ABClass (root) and JsonDbApp partial hydration](#abclass-root-and-jsondbapp-partial-hydration)
   - [ABClassPartials — class list index](#abclasspartials--class-list-index)
+  - [Google Classroom Picker and ABClass Mutation Transport Shapes](#google-classroom-picker-and-abclass-mutation-transport-shapes)
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
@@ -44,7 +45,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 3. **Assignment Definition Registry (`assignment_definitions`)**:
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
-- **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`.
+- **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`; when `yearGroup` is absent the canonical key uses the literal `null` sentinel (for example `${primaryTitle}_${primaryTopic}_null`).
 - **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (titles, topics, yearGroup, weighting), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
 - **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
 
@@ -67,7 +68,7 @@ frequently stored with a "partial" (summary-level) representation so that
 list and overview flows avoid rehydrating heavy artifacts until required.
 
 Example: `ABClass` rehydrated from JsonDbApp where contained `assignments`
-are partially hydrated (note the embedded `assignmentDefinition` has `tasks: null` and omits doc IDs):
+are partially hydrated (note the embedded `assignmentDefinition` has `tasks: null` while retaining doc IDs for reference):
 
 ```json
 {
@@ -172,6 +173,126 @@ Key notes:
 - `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only.
 - `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
+## Google Classroom Picker and ABClass Mutation Transport Shapes
+
+These shapes describe the `data` payload inside the stable `apiHandler` transport envelope:
+
+- Success: `{ ok: true, requestId, data }`
+- Error: `{ ok: false, requestId, error: { code, message, retriable } }`
+
+Frontend callers should use `callApi(...)` with the exact allowlisted backend method names.
+
+### `getGoogleClassrooms` response data
+
+`getGoogleClassrooms` is a picker endpoint backed by `src/backend/z_Api/googleClassrooms.js`. It calls `ClassroomApiClient.fetchAllActiveClassrooms()` and maps each active course row to the narrow transport shape below.
+
+```json
+[
+  {
+    "classId": "1234567890",
+    "className": "Year 10 English"
+  }
+]
+```
+
+Key notes:
+
+- Only `classId` and `className` are returned.
+- `teachers`, `students`, `classOwner`, and `enrollmentCode` are intentionally excluded.
+- If the client returns a malformed row missing `id` or `name`, the handler throws `ApiValidationError` and the transport envelope reports `INVALID_REQUEST`.
+- If the upstream Classroom fetch itself fails, the current Classroom client logs the failure and returns `[]`, so the transport payload remains an empty list rather than an error envelope.
+
+### ABClass write-boundary ownership
+
+The ABClass write endpoints in `src/backend/z_Api/abclassMutations.js` split ownership of fields as follows:
+
+- User-managed inputs: `cohort`, `yearGroup`, `courseLength`, `active`
+- Google-derived write-path fields: `className`, `classOwner`, `teachers`, `students`
+- Out of scope for these endpoints: `assignments` payload mutation
+
+`upsertABClass` refreshes Google-derived roster data on write paths. `updateABClass` does not allow direct patching of Google-derived roster fields or assignments.
+
+### `upsertABClass` request and response data
+
+Request data:
+
+```json
+{
+  "classId": "1234567890",
+  "cohort": "2025",
+  "yearGroup": 10,
+  "courseLength": 2
+}
+```
+
+Response data:
+
+```json
+{
+  "classId": "1234567890",
+  "className": "Year 10 English",
+  "cohort": "2025",
+  "courseLength": 2,
+  "yearGroup": 10,
+  "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
+  "teachers": [{ "userId": "T1", "email": "teacher@school.com", "teacherName": "Ms Smith" }],
+  "active": null
+}
+```
+
+Key notes:
+
+- Required request fields: `classId`, `cohort`, `yearGroup`, `courseLength`.
+- `courseLength` must be an integer greater than or equal to `1`.
+- The controller hydrates `classOwner`, `teachers`, and `students` from Google Classroom before persisting.
+- When the class already exists, the controller preserves existing `assignments` while refreshing roster data.
+- The response is the partial class summary from `ABClass.toPartialJSON()`, so `students` and `assignments` are not returned.
+
+### `updateABClass` request and response data
+
+Request data:
+
+```json
+{
+  "classId": "1234567890",
+  "active": false,
+  "courseLength": 2
+}
+```
+
+Response data uses the same partial class summary shape as `upsertABClass`.
+
+Key notes:
+
+- Required request field: `classId`.
+- Optional patch fields: `cohort`, `yearGroup`, `courseLength`, `active`.
+- Forbidden transport fields: `classOwner`, `teachers`, `students`, `assignments`.
+- For an existing class, only supplied patch fields are updated. Excluded fields remain untouched.
+- If the class is missing, the controller creates it first and then returns the same partial summary shape.
+- On create-on-missing, unspecified fields retain the `ABClass` model defaults: `courseLength` stays `1`, `yearGroup` stays `null`, and `active` stays `null` unless explicitly supplied.
+
+### `deleteABClass` response data
+
+`deleteABClass` removes both persistence layers:
+
+- the full class collection via `dropCollection(classId)`
+- the `abclass_partials` registry row via `deleteOne({ classId })`
+
+Response data:
+
+```json
+{
+  "classId": "1234567890",
+  "fullClassDeleted": true,
+  "partialDeleted": true
+}
+```
+
+Key notes:
+
+- The booleans report what was deleted in that call only.
+- Repeated deletes are idempotent and still succeed with updated flags.
+
 ## Assignment Definition
 
 The `AssignmentDefinition` model encapsulates reusable lesson properties. It is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy.
@@ -190,7 +311,6 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. It is 
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
   "definitionKey": "Essay 1_English_10",
-  "TaskDefinitionsChanged": false,
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -229,7 +349,6 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
   "definitionKey": "Essay 1_English_10",
-  "TaskDefinitionsChanged": false,
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -306,7 +425,6 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
     "templateDocumentId": "DriveTemplate123",
     "assignmentWeighting": null,
     "definitionKey": "Essay 1_English_10",
-    "TaskDefinitionsChanged": false,
     "tasks": null,
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"

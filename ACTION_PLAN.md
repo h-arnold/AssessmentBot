@@ -494,6 +494,18 @@ Backend controller/API tests:
 
 ## Section 5 — Documentation and contract updates
 
+### Delivery status
+
+- Current phase: Commit and push
+- Section status: In progress
+- Checklist:
+  - [x] docs updated
+  - [x] docs review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
+
 ### Objective
 
 - Align backend developer docs with newly exposed classroom and ABClass mutation endpoints.
@@ -550,8 +562,13 @@ Backend controller/API tests:
   - Keep documentation updates in the same PR as the corresponding runtime changes where possible.
   - Ensure contract examples are minimal and reflect production payloads only.
 - **Deviations from plan:**
+  - The shipped `getGoogleClassrooms` runtime only converts malformed returned rows into `INVALID_REQUEST`; upstream Classroom fetch failures currently log inside `ClassroomApiClient.fetchAllActiveClassrooms()` and return `[]`, so the docs now call out that nuance explicitly.
 - **Follow-up implications for later sections:**
   - Regression checks must validate docs and code remain in lock-step after final refactors.
+- **Verification evidence:**
+  - Documentation review passed after aligning API-layer and data-shape docs to the implemented `src/backend/z_Api` transport surface.
+  - `rg -n "getGoogleClassrooms|upsertABClass|updateABClass|deleteABClass" docs/developer/backend/api-layer.md docs/developer/backend/DATA_SHAPES.md` confirmed all four methods are documented.
+  - `rg -n "fullClassDeleted|partialDeleted|classId|className" docs/developer/backend/DATA_SHAPES.md` confirmed the delete-flag and class summary terms are present.
 
 ---
 
