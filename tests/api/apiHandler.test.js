@@ -744,6 +744,34 @@ describe('Api/apiHandler dispatcher', () => {
     expect(response.requestId).toEqual(expect.any(String));
   });
 
+  it('maps ApiValidationError from updateABClass to INVALID_REQUEST and preserves the failure envelope shape', () => {
+    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+    globalThis.updateABClass.mockImplementation(() => {
+      throw new ApiValidationError('Invalid ABClass update payload', {
+        requestId: 'req-update-abclass',
+      });
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'updateABClass',
+      params: buildSection1Params('updateABClass'),
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid ABClass update payload',
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
   it('maps unexpected controller failures for reference-data handlers to the existing API failure envelope', () => {
     globalThis.updateYearGroup.mockImplementation(() => {
       throw new Error('year-group update exploded');

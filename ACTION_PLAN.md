@@ -194,8 +194,8 @@ Non-functional safety tests:
 
 ### Delivery status
 
-- Current phase: Commit and push
-- Section status: In progress
+- Current phase: Complete
+- Section status: Complete
 - Checklist:
   - [x] red tests added
   - [x] red review clean
@@ -203,8 +203,8 @@ Non-functional safety tests:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Objective
 
@@ -279,6 +279,11 @@ Backend API/client tests:
 - **Verification evidence:**
   - `npm test -- tests/api/googleClassrooms.test.js tests/api/apiHandler.test.js` passed.
   - `npm run lint` passed.
+- **Commit evidence:**
+  - Branch: `feat/ReactFrontend`
+  - Commit: `10f0c4fa007f10f6ada919359cff4fdb64260ab9`
+  - Message: `feat(api): complete Section 2 Google Classroom listing endpoint`
+  - Push: successful (`b4ef53f..10f0c4f  feat/ReactFrontend -> feat/ReactFrontend`)
 - **Follow-up implications for later sections:**
   - Section 3 input validation should treat `cohort`, `yearGroup`, and `courseLength` as user-supplied values, not values fetched in Section 2.
   - Section 3 should validate `courseLength` as an integer-year value at the transport boundary.
@@ -286,6 +291,20 @@ Backend API/client tests:
 ---
 
 ## Section 3 — ABClass upsert and update endpoints
+
+### Delivery status
+
+- Current phase: Commit and push
+- Section status: In progress
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
 
 ### Objective
 
@@ -352,6 +371,17 @@ Backend controller/API tests:
   - Keep endpoint handlers thin and push orchestration to controller methods.
   - Prefer JsonDbApp `updateOne(..., { $set: ... })` for `updateABClass` partial patch paths.
 - **Deviations from plan:**
+  - Repo test conventions use `tests/api/abclassMutations.test.js` and `tests/controllers/abclass-upsert-update.test.js` rather than the placeholder test paths listed above.
+  - Red-phase verification used the repo test command directly because the editor test runner did not resolve these backend Vitest files in this workspace.
+- **Review findings resolved:**
+  - Tightened the controller red harness to enforce the existing per-class collection storage contract rather than allowing an overly permissive shared collection seam.
+  - Added explicit forbidden-field transport coverage for `updateABClass` and endpoint-specific `apiHandler` envelope coverage for `updateABClass` validation failures.
+- **Implementation notes discovered:**
+  - `updateABClass` create-on-missing paths now retain the ABClass model's canonical defaults for unsupplied fields rather than inventing `yearGroup`, `courseLength`, or `active` values.
+  - Existing-class `updateABClass` responses return the persisted partial summary and therefore preserve the stored roster/class owner state, matching the endpoint's non-patchable field contract.
+- **Verification evidence:**
+  - `npm test -- tests/api/abclassMutations.test.js tests/controllers/abclass-upsert-update.test.js tests/models/abclassManager.initialise.test.js tests/api/apiHandler.test.js` passed.
+  - `npm run lint` passed.
 - **Follow-up implications for later sections:**
   - Section 4 delete flow must remain compatible with both upsert and partial-update persistence paths.
 

@@ -558,6 +558,173 @@ class ABClassController {
   }
 
   /**
+   * @param {*} classId
+   * @param {string} methodName
+   * @returns {string}
+   * @private
+   */
+  _validateClassId(classId, methodName) {
+    if (typeof classId !== 'string' || classId.trim().length === 0) {
+      throw new TypeError(`${methodName}: classId must be a non-empty string`);
+    }
+
+    return classId;
+  }
+
+  /**
+   * @param {*} courseLength
+   * @param {string} methodName
+   * @returns {number}
+   * @private
+   */
+  _validateCourseLength(courseLength, methodName) {
+    if (!Number.isInteger(courseLength) || courseLength < 1) {
+      throw new TypeError(
+        `${methodName}: courseLength must be an integer greater than or equal to 1`
+      );
+    }
+
+    return courseLength;
+  }
+
+  /**
+   * @param {object} params
+   * @returns {object}
+   * @private
+   */
+  _buildUpdatePatch(params) {
+    const patch = {};
+
+    if (Object.hasOwn(params, 'cohort')) {
+      patch.cohort = params.cohort === null ? null : String(params.cohort);
+    }
+
+    if (Object.hasOwn(params, 'yearGroup')) {
+      patch.yearGroup = params.yearGroup;
+    }
+
+    if (Object.hasOwn(params, 'courseLength')) {
+      patch.courseLength = this._validateCourseLength(params.courseLength, 'updateABClass');
+    }
+
+    if (Object.hasOwn(params, 'active')) {
+      patch.active = params.active;
+    }
+
+    return patch;
+  }
+
+  /**
+   * @param {ABClass} abClass
+   * @param {object} patch
+   * @returns {ABClass}
+   * @private
+   */
+  _applyPatchToClass(abClass, patch) {
+    if (Object.hasOwn(patch, 'cohort')) {
+      abClass.cohort = patch.cohort;
+    }
+
+    if (Object.hasOwn(patch, 'yearGroup')) {
+      abClass.yearGroup = patch.yearGroup;
+    }
+
+    if (Object.hasOwn(patch, 'courseLength')) {
+      abClass.courseLength = patch.courseLength;
+    }
+
+    if (Object.hasOwn(patch, 'active')) {
+      abClass.active = patch.active;
+    }
+
+    return abClass;
+  }
+
+  /**
+   * @param {ABClass} abClass
+   * @returns {object}
+   * @private
+   */
+  _buildClassSummary(abClass) {
+    return abClass.toPartialJSON();
+  }
+
+  /**
+   * @param {object} params
+   * @returns {object}
+   */
+  upsertABClass(params) {
+    Validate.requireParams(
+      {
+        classId: params?.classId,
+        cohort: params?.cohort,
+        yearGroup: params?.yearGroup,
+        courseLength: params?.courseLength,
+      },
+      'upsertABClass'
+    );
+
+    const classId = this._validateClassId(params.classId, 'upsertABClass');
+    const courseLength = this._validateCourseLength(params.courseLength, 'upsertABClass');
+    const collection = this.dbManager.getCollection(classId);
+    const existingDoc = collection.findOne({ classId: classId });
+    let abClass;
+
+    if (existingDoc) {
+      abClass = ABClass.fromJSON(existingDoc);
+      abClass.cohort = params.cohort === null ? null : String(params.cohort);
+      abClass.yearGroup = params.yearGroup;
+      abClass.courseLength = courseLength;
+      this._refreshRoster(abClass, classId);
+    } else {
+      abClass = this.initialise(classId, {
+        cohort: params.cohort,
+        yearGroup: params.yearGroup,
+        courseLength: courseLength,
+      });
+    }
+
+    this.saveClass(abClass);
+    return this._buildClassSummary(abClass);
+  }
+
+  /**
+   * @param {object} params
+   * @returns {object}
+   */
+  updateABClass(params) {
+    Validate.requireParams({ classId: params?.classId }, 'updateABClass');
+
+    const classId = this._validateClassId(params.classId, 'updateABClass');
+    const patch = this._buildUpdatePatch(params);
+    const collection = this.dbManager.getCollection(classId);
+    const existingDoc = collection.findOne({ classId: classId });
+
+    if (!existingDoc) {
+      const abClass = this.initialise(classId, {
+        cohort: Object.hasOwn(patch, 'cohort') ? patch.cohort : undefined,
+        yearGroup: Object.hasOwn(patch, 'yearGroup') ? patch.yearGroup : undefined,
+        courseLength: Object.hasOwn(patch, 'courseLength') ? patch.courseLength : undefined,
+      });
+
+      if (Object.hasOwn(patch, 'active')) {
+        abClass.active = patch.active;
+      }
+
+      this.saveClass(abClass);
+      return this._buildClassSummary(abClass);
+    }
+
+    const abClass = this._applyPatchToClass(ABClass.fromJSON(existingDoc), patch);
+
+    collection.updateOne({ classId: classId }, { $set: patch });
+    collection.save();
+    this._upsertClassPartial(abClass);
+
+    return this._buildClassSummary(abClass);
+  }
+
+  /**
    * Load an ABClass by its classId. Returns an ABClass instance or null if not found.
    * Strategy: read all documents from the collection named by classId, pick the
    * first document (collection stores a single ABClass serialized object) and
@@ -663,7 +830,7 @@ class ABClassController {
       );
     }
 
-    if (!Object.prototype.hasOwnProperty.call(abClass, 'classId')) {
+    if (!Object.hasOwn(abClass, 'classId')) {
       throw new TypeError('saveClass: missing required classId property on abClass argument');
     }
 
