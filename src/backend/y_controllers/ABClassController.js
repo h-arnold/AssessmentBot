@@ -572,6 +572,31 @@ class ABClassController {
   }
 
   /**
+   * @param {*} classId
+   * @param {string} methodName
+   * @returns {string}
+   * @private
+   */
+  _validateDeleteClassId(classId, methodName) {
+    const validatedClassId = this._validateClassId(classId, methodName);
+
+    if (validatedClassId.includes('..') || validatedClassId.includes('/')) {
+      throw new TypeError(`${methodName}: invalid classId format`);
+    }
+
+    return validatedClassId;
+  }
+
+  /**
+   * @param {Error} error
+   * @returns {boolean}
+   * @private
+   */
+  _isMissingCollectionError(error) {
+    return error?.code === 'COLLECTION_NOT_FOUND';
+  }
+
+  /**
    * @param {*} courseLength
    * @param {string} methodName
    * @returns {number}
@@ -722,6 +747,42 @@ class ABClassController {
     this._upsertClassPartial(abClass);
 
     return this._buildClassSummary(abClass);
+  }
+
+  /**
+   * @param {object} params
+   * @returns {{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }}
+   */
+  deleteABClass(params) {
+    Validate.requireParams({ classId: params?.classId }, 'deleteABClass');
+
+    const classId = this._validateDeleteClassId(params.classId, 'deleteABClass');
+    let fullClassDeleted = false;
+    let partialDeleted = false;
+
+    try {
+      this.dbManager.getDb().dropCollection(classId);
+      fullClassDeleted = true;
+    } catch (error) {
+      if (!this._isMissingCollectionError(error)) {
+        throw error;
+      }
+    }
+
+    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    const existingPartial = partialsCollection.findOne({ classId: classId });
+
+    if (existingPartial) {
+      partialsCollection.deleteOne({ classId: classId });
+      partialsCollection.save();
+      partialDeleted = true;
+    }
+
+    return {
+      classId,
+      fullClassDeleted,
+      partialDeleted,
+    };
   }
 
   /**

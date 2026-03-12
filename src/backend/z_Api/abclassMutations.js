@@ -47,6 +47,21 @@ function validateClassId(classId, methodName) {
 }
 
 /**
+ * @param {*} classId
+ * @param {string} methodName
+ */
+function validateDeleteClassId(classId, methodName) {
+  validateClassId(classId, methodName);
+
+  if (classId.includes('..') || classId.includes('/') || classId.includes('\\')) {
+    throw new ApiValidationError('classId must not contain unsafe path characters.', {
+      method: methodName,
+      fieldName: 'classId',
+    });
+  }
+}
+
+/**
  * @param {*} courseLength
  * @param {string} methodName
  */
@@ -116,6 +131,17 @@ function validateUpdateABClassParams(params) {
 }
 
 /**
+ * @param {object} params
+ */
+function validateDeleteABClassParams(params) {
+  const methodName = 'deleteABClass';
+
+  validateParamsObject(params, methodName);
+  requireParams({ classId: params.classId }, methodName);
+  validateDeleteClassId(params.classId, methodName);
+}
+
+/**
  * Thin transport handler for ABClass create or update.
  *
  * @param {object} params
@@ -140,13 +166,12 @@ function updateABClass(params) {
 /**
  * Thin transport handler for ABClass deletion.
  *
- * Section 1 defines the API contract only. Behaviour is added later.
- *
  * @param {object} params
- * @returns {void}
+ * @returns {object}
  */
 function deleteABClass(params) {
-  throw new Error('deleteABClass is a Section 1 contract-only handler and is not implemented yet.');
+  validateDeleteABClassParams(params);
+  return getController().deleteABClass(params);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

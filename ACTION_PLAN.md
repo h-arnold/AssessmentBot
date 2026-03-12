@@ -294,8 +294,8 @@ Backend API/client tests:
 
 ### Delivery status
 
-- Current phase: Commit and push
-- Section status: In progress
+- Current phase: Complete
+- Section status: Complete
 - Checklist:
   - [x] red tests added
   - [x] red review clean
@@ -303,8 +303,8 @@ Backend API/client tests:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Objective
 
@@ -382,12 +382,31 @@ Backend controller/API tests:
 - **Verification evidence:**
   - `npm test -- tests/api/abclassMutations.test.js tests/controllers/abclass-upsert-update.test.js tests/models/abclassManager.initialise.test.js tests/api/apiHandler.test.js` passed.
   - `npm run lint` passed.
+- **Commit evidence:**
+  - Branch: `feat/ReactFrontend`
+  - Commit: `fb6118cff29dfcf80297d92db025fcd6b953dd52`
+  - Message: `feat(api): complete Section 3 ABClass upsert and update endpoints`
+  - Push: successful (`10f0c4f..fb6118c  feat/ReactFrontend -> feat/ReactFrontend`)
 - **Follow-up implications for later sections:**
   - Section 4 delete flow must remain compatible with both upsert and partial-update persistence paths.
 
 ---
 
 ## Section 4 — ABClass delete endpoint
+
+### Delivery status
+
+- Current phase: Commit and push
+- Section status: In progress
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
 
 ### Objective
 
@@ -460,6 +479,14 @@ Backend controller/API tests:
   - Add a focused delete method on `ABClassController` (for example `deleteClassById`) to keep API handlers thin.
   - Consider adding a small `DbManager.dropCollection(name)` wrapper if direct `getDb().dropCollection(...)` access is undesirable.
 - **Deviations from plan:**
+  - The controller method was implemented as `deleteABClass(params)` to match the transport naming and keep the Section 4 test contract direct.
+  - Repo test conventions use `tests/controllers/abclass-delete.test.js` and extended `tests/api/abclassMutations.test.js` rather than only the placeholder paths listed above.
+- **Review findings resolved:**
+  - Relaxed the delete red harness so it asserts the delete contract and idempotent flags rather than a brittle internal seam or fixed missing-collection message.
+  - Added controller invalid-input coverage and direct delete-handler loud-failure coverage before implementing the runtime path.
+- **Verification evidence:**
+  - `npm test -- tests/api/abclassMutations.test.js tests/controllers/abclass-delete.test.js tests/api/apiHandler.test.js` passed.
+  - `npm run lint` passed.
 - **Follow-up implications for later sections:**
   - Section 5 docs must explicitly describe idempotent delete flags and JsonDbApp method usage (`dropCollection` + `deleteOne`).
 

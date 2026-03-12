@@ -65,6 +65,15 @@ function buildForbiddenUpdatePayload(overrides = {}) {
   };
 }
 
+function buildDeleteSummary(overrides = {}) {
+  return {
+    classId: 'class-001',
+    fullClassDeleted: true,
+    partialDeleted: true,
+    ...overrides,
+  };
+}
+
 afterEach(() => {
   clearAbclassMutationsModuleCache();
 
@@ -179,6 +188,66 @@ describe('Api/abclassMutations direct handlers (Section 3)', () => {
     expect(() => abclassMutationsModule[methodName](params)).toThrow(ApiValidationError);
     expect(upsertSpy).not.toHaveBeenCalled();
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('deleteABClass delegates valid classId to controller and returns the delete summary payload', () => {
+    const params = {
+      classId: 'class-001',
+    };
+    const controllerResult = buildDeleteSummary();
+    const deleteSpy = vi.fn(() => controllerResult);
+
+    class MockABClassController {
+      deleteABClass(args) {
+        return deleteSpy(args);
+      }
+    }
+
+    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+      controllerCtor: MockABClassController,
+    });
+
+    expect(deleteABClass(params)).toEqual(controllerResult);
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
+    expect(deleteSpy).toHaveBeenCalledWith(params);
+  });
+
+  it.each([
+    ['missing params', undefined],
+    ['missing classId', {}],
+    ['empty classId', { classId: '' }],
+    ['unsafe classId', { classId: '../class-001' }],
+  ])('deleteABClass throws ApiValidationError for %s', (_caseName, params) => {
+    const deleteSpy = vi.fn();
+
+    class MockABClassController {
+      deleteABClass(args) {
+        return deleteSpy(args);
+      }
+    }
+
+    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+      controllerCtor: MockABClassController,
+    });
+
+    expect(() => deleteABClass(params)).toThrow(ApiValidationError);
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('deleteABClass rethrows unexpected controller failures loudly', () => {
+    const controllerError = new Error('controller delete exploded');
+
+    class MockABClassController {
+      deleteABClass() {
+        throw controllerError;
+      }
+    }
+
+    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+      controllerCtor: MockABClassController,
+    });
+
+    expect(() => deleteABClass({ classId: 'class-001' })).toThrow(controllerError);
   });
 
   it.each([
