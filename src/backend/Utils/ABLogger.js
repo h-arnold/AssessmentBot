@@ -39,10 +39,10 @@ class ABLogger extends BaseSingleton {
    * UI-focused debug logging gated by DEBUG_UI flag.
    * @param {string} msg
    */
-  debugUi(msg) {
+  debugUi(message) {
     try {
       if (typeof globalThis !== 'undefined' && globalThis.DEBUG_UI) {
-        console.log(`[DEBUG_UI] ${msg}`);
+        console.log(`[DEBUG_UI] ${message}`);
       }
     } catch (error) {
       // Use a recursion guard to avoid re-entrant logging loops and surface via ProgressTracker
@@ -63,15 +63,15 @@ class ABLogger extends BaseSingleton {
   /**
    *
    */
-  serialiseError(err) {
-    if (!err || typeof err !== 'object') return err;
+  serialiseError(error) {
+    if (!error || typeof error !== 'object') return error;
     const out = {};
-    if (err.name) out.name = err.name;
-    if (err.message) out.message = err.message;
-    if (err.stack) out.stack = err.stack;
+    if (error.name) out.name = error.name;
+    if (error.message) out.message = error.message;
+    if (error.stack) out.stack = error.stack;
     // Do not recursively serialise nested causes — keep top-level cause out of scope
-    if (err.cause && typeof err.cause === 'object') {
-      out.cause = { name: err.cause.name, message: err.cause.message };
+    if (error.cause && typeof error.cause === 'object') {
+      out.cause = { name: error.cause.name, message: error.cause.message };
     }
     return out;
   }
@@ -79,27 +79,27 @@ class ABLogger extends BaseSingleton {
   /**
    *
    */
-  serialiseArg(arg) {
-    if (!arg) return arg;
+  serialiseArg(argument) {
+    if (!argument) return argument;
 
     // If it's an Error, serialise
-    if (isErrorLike(arg)) return this.serialiseError(arg);
+    if (isErrorLike(argument)) return this.serialiseError(argument);
 
     // If it's an object/array, shallow-copy and serialise any direct Error-like properties
-    if (typeof arg === 'object') {
-      return this.shallowSerialiseObject(arg, isErrorLike);
+    if (typeof argument === 'object') {
+      return this.shallowSerialiseObject(argument, isErrorLike);
     }
 
-    return arg;
+    return argument;
   }
 
   // Helper to shallow-copy objects/arrays and serialise any direct Error-like properties
   /**
    *
    */
-  shallowSerialiseObject(obj, isErrorLike) {
+  shallowSerialiseObject(object, isErrorLike) {
     try {
-      const copy = Array.isArray(obj) ? [...obj] : { ...obj };
+      const copy = Array.isArray(object) ? [...object] : { ...object };
       for (const k in copy) {
         if (!Object.hasOwn(copy, k)) continue;
         const v = copy[k];
@@ -108,7 +108,7 @@ class ABLogger extends BaseSingleton {
       return copy;
     } catch (error) {
       this.error('ABLogger.shallowSerialiseObject logging failure', error);
-      return obj;
+      return object;
     }
   }
 
@@ -116,33 +116,33 @@ class ABLogger extends BaseSingleton {
   /**
    *
    */
-  log(...args) {
-    console.log(...args.map((a) => this.serialiseArg(a)));
+  log(...arguments_) {
+    console.log(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
    *
    */
-  info(...args) {
-    console.info(...args.map((a) => this.serialiseArg(a)));
+  info(...arguments_) {
+    console.info(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
    *
    */
-  warn(...args) {
-    console.warn(...args.map((a) => this.serialiseArg(a)));
+  warn(...arguments_) {
+    console.warn(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
    *
    */
-  error(...args) {
-    console.error(...args.map((a) => this.serialiseArg(a)));
+  error(...arguments_) {
+    console.error(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
    *
    */
-  debug(...args) {
+  debug(...arguments_) {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit
-    console.log('[DEBUG]', ...args.map((a) => this.serialiseArg(a)));
+    console.log('[DEBUG]', ...arguments_.map((a) => this.serialiseArg(a)));
   }
 }
 

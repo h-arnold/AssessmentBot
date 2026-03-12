@@ -13,11 +13,11 @@ class SheetsAssignment extends Assignment {
    * @param {string} templateDocumentId - The ID of the template spreadsheet document.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
-    const defInstance =
+    const definitionInstance =
       assignmentDefinition instanceof AssignmentDefinition
         ? assignmentDefinition
         : AssignmentDefinition.fromJSON(assignmentDefinition);
-    super(courseId, assignmentId, defInstance);
+    super(courseId, assignmentId, definitionInstance);
   }
 
   /**
@@ -70,12 +70,12 @@ class SheetsAssignment extends Assignment {
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
-        const taskDef = this.assignmentDefinition.tasks[a.taskId];
-        if (!taskDef) {
+        const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
+        if (!taskDefinition) {
           console.warn('Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction');
           return;
         }
-        sub.upsertItemFromExtraction(taskDef, {
+        sub.upsertItemFromExtraction(taskDefinition, {
           pageId: a.pageId,
           content: a.content,
           metadata: a.metadata,

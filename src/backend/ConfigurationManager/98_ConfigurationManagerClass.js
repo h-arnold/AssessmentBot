@@ -134,8 +134,8 @@ class ConfigurationManager extends BaseSingleton {
   maybeDeserializeProperties() {
     try {
       const hasScript = safeGetPropertyKeys(this.scriptProperties).length > 0;
-      const hasDoc = safeGetPropertyKeys(this.documentProperties).length > 0;
-      if (hasScript || hasDoc) return; // early return – nothing to do
+      const hasDocument = safeGetPropertyKeys(this.documentProperties).length > 0;
+      if (hasScript || hasDocument) return; // early return – nothing to do
 
       const propertiesCloner = new PropertiesCloner();
       if (propertiesCloner.sheet) {
@@ -829,15 +829,15 @@ class ConfigurationManager extends BaseSingleton {
    * Helper: normalize truthy/falsey to strict boolean.
    */
   static toBoolean(value) {
-    const toBooleanFn = ConfigurationManager._toBoolean || toBoolean;
-    return toBooleanFn(value);
+    const toBooleanFunction = ConfigurationManager._toBoolean || toBoolean;
+    return toBooleanFunction(value);
   }
   /**
    *
    */
   static toBooleanString(value) {
-    const toBooleanStringFn = ConfigurationManager._toBooleanString || toBooleanString;
-    return toBooleanStringFn(value);
+    const toBooleanStringFunction = ConfigurationManager._toBooleanString || toBooleanString;
+    return toBooleanStringFunction(value);
   }
 
   /** Generic integer accessor with validation and fallback */

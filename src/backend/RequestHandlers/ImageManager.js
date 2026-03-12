@@ -96,18 +96,18 @@ class ImageManager extends BaseRequestManager {
 
     if (!entries?.length) return [];
     // Group by documentId
-    const byDoc = {};
+    const byDocument = {};
     for (const entry of entries) {
-      byDoc[entry.documentId] = byDoc[entry.documentId] || [];
-      byDoc[entry.documentId].push(entry);
+      byDocument[entry.documentId] = byDocument[entry.documentId] || [];
+      byDocument[entry.documentId].push(entry);
     }
     // Round-robin merge
     const merged = [];
-    const docLists = Object.values(byDoc);
+    const documentLists = Object.values(byDocument);
     let added = true;
     while (added) {
       added = false;
-      for (const list of docLists) {
+      for (const list of documentLists) {
         if (list.length > 0) {
           merged.push(list.shift());
           added = true;
@@ -115,10 +115,10 @@ class ImageManager extends BaseRequestManager {
       }
     }
     const results = [];
-    for (let i = 0; i < merged.length; i += maxBatchSize) {
-      const batch = merged.slice(i, i + maxBatchSize);
+    for (let index = 0; index < merged.length; index += maxBatchSize) {
+      const batch = merged.slice(index, index + maxBatchSize);
       this.progressTracker.updateProgress(
-        `Fetching image batch ${Math.floor(i / maxBatchSize) + 1} of ${Math.ceil(
+        `Fetching image batch ${Math.floor(index / maxBatchSize) + 1} of ${Math.ceil(
           merged.length / maxBatchSize
         )}`,
         false
@@ -130,8 +130,8 @@ class ImageManager extends BaseRequestManager {
         muteHttpExceptions: true,
       }));
       const responses = this.sendRequestsInBatches(requests, maxBatchSize);
-      responses.forEach((resp, idx) => {
-        const entry = batch[idx];
+      responses.forEach((resp, index) => {
+        const entry = batch[index];
         if (resp?.getResponseCode?.() === 200) {
           try {
             const blob = resp.getBlob();

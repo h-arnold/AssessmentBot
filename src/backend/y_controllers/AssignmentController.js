@@ -376,13 +376,13 @@ class AssignmentController {
 
     const SLIDES_MIME = 'application/vnd.google-apps.presentation';
     const SHEETS_MIME = 'application/vnd.google-apps.spreadsheet';
-    const resolveType = (docId) => {
-      const file = DriveApp.getFileById(docId);
+    const resolveType = (documentId) => {
+      const file = DriveApp.getFileById(documentId);
       const mimeType = file.getMimeType();
       if (mimeType === SLIDES_MIME) return 'SLIDES';
       if (mimeType === SHEETS_MIME) return 'SHEETS';
       progressTracker.logAndThrowError(
-        `Unsupported document type: ${mimeType} for document ID ${docId}. Only Google Slides and Sheets are supported.`
+        `Unsupported document type: ${mimeType} for document ID ${documentId}. Only Google Slides and Sheets are supported.`
       );
     };
     const referenceType = resolveType(referenceDocumentId);
@@ -484,12 +484,12 @@ class AssignmentController {
 
     // Enforce that reference and template IDs are different
     if (normalisedReferenceId === normalisedTemplateId) {
-      const errorMsg = 'Reference and template documents must be different.';
-      this.progressTracker.logError(errorMsg, {
+      const errorMessage = 'Reference and template documents must be different.';
+      this.progressTracker.logError(errorMessage, {
         referenceDocumentId: normalisedReferenceId,
         templateDocumentId: normalisedTemplateId,
       });
-      throw new Error(errorMsg);
+      throw new Error(errorMessage);
     }
 
     // Build documentIds object for ensureDefinitionFromInputs

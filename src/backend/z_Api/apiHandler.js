@@ -249,48 +249,48 @@ class ApiDispatcher extends BaseSingleton {
   /**
    * Invokes the named allowlisted handler function with the given params.
    */
-  _invokeAllowlistedMethod(handlerName, params) {
+  _invokeAllowlistedMethod(handlerName, parameters) {
     if (handlerName === 'getAuthorisationStatus') {
-      return getAuthorisationStatus(params);
+      return getAuthorisationStatus(parameters);
     }
     if (handlerName === 'getABClassPartials') {
-      return getABClassPartials(params);
+      return getABClassPartials(parameters);
     }
     if (handlerName === 'getGoogleClassrooms') {
-      return getGoogleClassrooms(params);
+      return getGoogleClassrooms(parameters);
     }
     if (handlerName === 'upsertABClass') {
-      return upsertABClass(params);
+      return upsertABClass(parameters);
     }
     if (handlerName === 'updateABClass') {
-      return updateABClass(params);
+      return updateABClass(parameters);
     }
     if (handlerName === 'deleteABClass') {
-      return deleteABClass(params);
+      return deleteABClass(parameters);
     }
     if (handlerName === 'getCohorts') {
-      return getCohorts(params);
+      return getCohorts(parameters);
     }
     if (handlerName === 'createCohort') {
-      return createCohort(params);
+      return createCohort(parameters);
     }
     if (handlerName === 'updateCohort') {
-      return updateCohort(params);
+      return updateCohort(parameters);
     }
     if (handlerName === 'deleteCohort') {
-      return deleteCohort(params);
+      return deleteCohort(parameters);
     }
     if (handlerName === 'getYearGroups') {
-      return getYearGroups(params);
+      return getYearGroups(parameters);
     }
     if (handlerName === 'createYearGroup') {
-      return createYearGroup(params);
+      return createYearGroup(parameters);
     }
     if (handlerName === 'updateYearGroup') {
-      return updateYearGroup(params);
+      return updateYearGroup(parameters);
     }
     if (handlerName === 'deleteYearGroup') {
-      return deleteYearGroup(params);
+      return deleteYearGroup(parameters);
     }
     throw new Error('Allowlisted handler is not implemented.');
   }

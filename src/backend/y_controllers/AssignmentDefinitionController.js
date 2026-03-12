@@ -117,15 +117,15 @@ class AssignmentDefinitionController {
 
     if (form === 'partial') {
       const registry = this._getRegistryCollection();
-      const doc = registry.findOne({ definitionKey }) || null;
-      if (!doc) return null;
-      return AssignmentDefinition.fromJSON(doc);
+      const document = registry.findOne({ definitionKey }) || null;
+      if (!document) return null;
+      return AssignmentDefinition.fromJSON(document);
     }
 
     const fullCollection = this._getFullCollection(definitionKey);
-    const fullDoc = fullCollection.findOne({ definitionKey }) || null;
-    if (!fullDoc) return null;
-    return AssignmentDefinition.fromJSON(fullDoc);
+    const fullDocument = fullCollection.findOne({ definitionKey }) || null;
+    if (!fullDocument) return null;
+    return AssignmentDefinition.fromJSON(fullDocument);
   }
 
   /**
@@ -133,8 +133,8 @@ class AssignmentDefinitionController {
    * @return {AssignmentDefinition[]}
    */
   getAllPartialDefinitions() {
-    const docs = this.dbManager.readAll(this.registryCollectionName) || [];
-    return docs.map((doc) => AssignmentDefinition.fromJSON(doc));
+    const documents = this.dbManager.readAll(this.registryCollectionName) || [];
+    return documents.map((document) => AssignmentDefinition.fromJSON(document));
   }
 
   /**
@@ -143,14 +143,14 @@ class AssignmentDefinitionController {
    * @return {AssignmentDefinition}
    */
   saveDefinition(definition) {
-    const defInstance =
+    const definitionInstance =
       definition instanceof AssignmentDefinition
         ? definition
         : new AssignmentDefinition(definition);
-    defInstance.touchUpdated();
-    const fullPayload = defInstance.toJSON();
-    const fullCollection = this._getFullCollection(defInstance.definitionKey);
-    const filter = { definitionKey: defInstance.definitionKey };
+    definitionInstance.touchUpdated();
+    const fullPayload = definitionInstance.toJSON();
+    const fullCollection = this._getFullCollection(definitionInstance.definitionKey);
+    const filter = { definitionKey: definitionInstance.definitionKey };
     const existingFull = fullCollection.findOne(filter);
 
     if (existingFull) {
@@ -161,7 +161,7 @@ class AssignmentDefinitionController {
 
     fullCollection.save();
 
-    this.savePartialDefinition(defInstance);
+    this.savePartialDefinition(definitionInstance);
 
     return AssignmentDefinition.fromJSON(fullPayload);
   }
@@ -170,13 +170,13 @@ class AssignmentDefinitionController {
    *
    */
   savePartialDefinition(definition) {
-    const defInstance =
+    const definitionInstance =
       definition instanceof AssignmentDefinition
         ? definition
         : new AssignmentDefinition(definition);
-    const payload = defInstance.toPartialJSON();
+    const payload = definitionInstance.toPartialJSON();
     const collection = this._getRegistryCollection();
-    const filter = { definitionKey: defInstance.definitionKey };
+    const filter = { definitionKey: definitionInstance.definitionKey };
     const existing = collection.findOne(filter);
 
     if (existing) {

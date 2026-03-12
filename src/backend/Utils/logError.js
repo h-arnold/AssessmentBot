@@ -4,8 +4,8 @@
  * Adds stack trace when available and DEBUG_ERRORS flag is truthy.
  */
 function logError(context, error) {
-  const msg = error?.message || error?.toString?.() || String(error);
-  const base = `[ERROR][${context}] ${msg}`;
+  const message = error?.message || error?.toString?.() || String(error);
+  const base = `[ERROR][${context}] ${message}`;
   if (globalThis.DEBUG_ERRORS && error && error.stack) {
     console.error(`${base}\n${error.stack}`);
   } else {

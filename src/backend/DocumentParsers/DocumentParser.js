@@ -60,9 +60,9 @@ class DocumentParser {
     markdownTable += '| ' + tableData[0].map(() => '---').join(' | ') + ' |\n';
 
     // Create data rows
-    for (let i = 1; i < tableData.length; i++) {
+    for (let index = 1; index < tableData.length; index++) {
       // Escape pipe characters in Markdown
-      const escapedRow = tableData[i].map((cell) =>
+      const escapedRow = tableData[index].map((cell) =>
         String(cell)
           .replaceAll('\\', '\\\\')
           .replaceAll('|', String.raw`\|`)

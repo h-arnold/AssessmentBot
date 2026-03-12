@@ -77,14 +77,14 @@ const Validate = {
    */
   isGoogleUserId(userId) {
     if (typeof userId !== 'string' && typeof userId !== 'number') return false;
-    const str = String(userId).trim();
+    const string_ = String(userId).trim();
 
     // Common Google userId pattern: all digits (e.g., '12345678901234567890')
     const digitsOnly = /^\d{6,}$/; // at least 6 digits
     // Fallback: alphanumeric identifiers (allow -, _ and .) with reasonable length
     const alnum = /^[\w.-]{6,64}$/;
 
-    const result = digitsOnly.test(str) || alnum.test(str);
+    const result = digitsOnly.test(string_) || alnum.test(string_);
     if (!result) {
       try {
         ProgressTracker.getInstance().logError(`Invalid Google userId: ${userId}`);
@@ -167,15 +167,15 @@ const Validate = {
    * @example
    * Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
    */
-  requireParams(params, context = '') {
-    if (!params || typeof params !== 'object' || Array.isArray(params))
+  requireParams(parameters, context = '') {
+    if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters))
       throw new Error('params must be an object');
 
-    const contextStr = context ? ` for ${context}` : '';
+    const contextString = context ? ` for ${context}` : '';
 
-    for (const [paramName, value] of Object.entries(params)) {
+    for (const [parameterName, value] of Object.entries(parameters)) {
       if (value === null || value === undefined)
-        throw new Error(`${paramName} is required${contextStr}`);
+        throw new Error(`${parameterName} is required${contextString}`);
     }
   },
 

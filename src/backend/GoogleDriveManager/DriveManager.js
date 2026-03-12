@@ -26,11 +26,11 @@ const DriveManager = {
 
     // If no files are provided
     if (!fileIds || fileIds.length === 0) {
-      const noFilesMsg = 'No file IDs provided; nothing to move.';
-      ABLogger.getInstance().info(noFilesMsg);
+      const noFilesMessage = 'No file IDs provided; nothing to move.';
+      ABLogger.getInstance().info(noFilesMessage);
       return {
         status: 'none',
-        message: noFilesMsg,
+        message: noFilesMessage,
         details,
       };
     }
@@ -63,35 +63,35 @@ const DriveManager = {
 
         // Only attempt a parent update if needed.
         if (!alreadyInDestination || parentsToRemove.length > 0) {
-          const updateArgs = {
+          const updateArguments = {
             supportsAllDrives: true,
           };
 
           if (!alreadyInDestination) {
-            updateArgs.addParents = destinationFolderId;
+            updateArguments.addParents = destinationFolderId;
           }
           if (parentsToRemove.length > 0) {
-            updateArgs.removeParents = parentsToRemove.join(',');
+            updateArguments.removeParents = parentsToRemove.join(',');
           }
 
-          Drive.Files.update({}, fileId, null, updateArgs);
+          Drive.Files.update({}, fileId, null, updateArguments);
         }
 
-        const successMsg = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
-        ABLogger.getInstance().info(successMsg);
+        const successMessage = `File ${fileId} moved to folder ${destinationFolderId} successfully.`;
+        ABLogger.getInstance().info(successMessage);
         details.push({
           fileId,
           status: 'moved',
-          message: successMsg,
+          message: successMessage,
         });
         successCount++;
       } catch (error) {
-        const failMsg = `Failed to move file ${fileId}: ${error.message}`;
-        ABLogger.getInstance().error(failMsg, error);
+        const failMessage = `Failed to move file ${fileId}: ${error.message}`;
+        ABLogger.getInstance().error(failMessage, error);
         details.push({
           fileId,
           status: 'failed',
-          message: failMsg,
+          message: failMessage,
         });
         failCount++;
       }
@@ -100,12 +100,12 @@ const DriveManager = {
     // Determine final overall status
     const overallStatus = failCount === 0 ? 'complete' : 'partial';
 
-    const overallMsg = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
-    ABLogger.getInstance().info(overallMsg);
+    const overallMessage = `Moved ${successCount} file(s) successfully, ${failCount} failed.`;
+    ABLogger.getInstance().info(overallMessage);
 
     return {
       status: overallStatus, // 'complete', 'partial', or 'none'
-      message: overallMsg,
+      message: overallMessage,
       details,
     };
   },
@@ -164,14 +164,14 @@ const DriveManager = {
         { supportsAllDrives: true }
       );
 
-      const successMsg = `Template sheet copied successfully. Copied sheet ID: ${copied.id}`;
-      ABLogger.getInstance().info(successMsg);
+      const successMessage = `Template sheet copied successfully. Copied sheet ID: ${copied.id}`;
+      ABLogger.getInstance().info(successMessage);
 
       return {
         status: 'copied',
         file: null,
         fileId: copied.id,
-        message: successMsg,
+        message: successMessage,
       };
     } catch (error) {
       ABLogger.getInstance().error('Failed to copy template sheet', {
@@ -194,11 +194,11 @@ const DriveManager = {
     try {
       Drive.Files.get(folderId, { supportsAllDrives: true, fields: 'id' });
     } catch (error) {
-      const failMsg = `Failed to access folder with ID "${folderId}".`;
-      ProgressTracker.getInstance().logError(failMsg, { folderId, err: error });
-      const err = new Error(failMsg);
-      err.cause = error;
-      throw err;
+      const failMessage = `Failed to access folder with ID "${folderId}".`;
+      ProgressTracker.getInstance().logError(failMessage, { folderId, err: error });
+      const error_ = new Error(failMessage);
+      error_.cause = error;
+      throw error_;
     }
   },
 
@@ -230,11 +230,11 @@ const DriveManager = {
     let failCount = 0;
 
     if (!emails || emails.size === 0) {
-      const noEmailsMsg = 'No emails provided; nothing to share.';
-      ABLogger.getInstance().info(noEmailsMsg);
+      const noEmailsMessage = 'No emails provided; nothing to share.';
+      ABLogger.getInstance().info(noEmailsMessage);
       return {
         status: 'none',
-        message: noEmailsMsg,
+        message: noEmailsMessage,
         details,
       };
     }
@@ -257,13 +257,13 @@ const DriveManager = {
           });
           successCount++;
         } catch (error) {
-          const failMsg = `Failed to share folder with ${email}: ${error.message}`;
-          ABLogger.getInstance().error(failMsg, error);
+          const failMessage = `Failed to share folder with ${email}: ${error.message}`;
+          ABLogger.getInstance().error(failMessage, error);
 
           details.push({
             email,
             status: 'failed',
-            message: failMsg,
+            message: failMessage,
           });
           failCount++;
         }
@@ -274,12 +274,12 @@ const DriveManager = {
     }
 
     const overallStatus = failCount === 0 ? 'complete' : 'partial';
-    const overallMsg = `Shared folder with ${successCount} email(s) successfully, ${failCount} failed.`;
-    ABLogger.getInstance().info(overallMsg);
+    const overallMessage = `Shared folder with ${successCount} email(s) successfully, ${failCount} failed.`;
+    ABLogger.getInstance().info(overallMessage);
 
     return {
       status: overallStatus,
-      message: overallMsg,
+      message: overallMessage,
       details,
     };
   },
@@ -344,21 +344,21 @@ const DriveManager = {
   _getParentViaDriveApi(fileId) {
     const fields = 'parents,driveId';
     try {
-      const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
+      const response = Drive.Files.get(fileId, { supportsAllDrives: true, fields });
 
-      if (res?.parents?.length > 0) {
-        const parentId = res.parents[0];
+      if (response?.parents?.length > 0) {
+        const parentId = response.parents[0];
         ABLogger.getInstance().info(
           `Parent folder ID retrieved via Drive API for file ${fileId}: ${parentId}`
         );
         return parentId;
       }
 
-      if (res?.driveId) {
+      if (response?.driveId) {
         ABLogger.getInstance().info(
-          `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${res.driveId}`
+          `File ${fileId} appears to be in Shared Drive root. Using driveId as parent: ${response.driveId}`
         );
-        return res.driveId;
+        return response.driveId;
       }
 
       const rootId = DriveApp.getRootFolder().getId();
@@ -603,11 +603,14 @@ const DriveManager = {
   _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
-        const res = Drive.Files.get(fileId, { supportsAllDrives: true, fields: 'modifiedTime' });
-        if (!res?.modifiedTime) {
+        const response = Drive.Files.get(fileId, {
+          supportsAllDrives: true,
+          fields: 'modifiedTime',
+        });
+        if (!response?.modifiedTime) {
           throw new TypeError('Advanced Drive API did not return modifiedTime');
         }
-        const parsed = new Date(res.modifiedTime);
+        const parsed = new Date(response.modifiedTime);
         if (Number.isNaN(parsed.getTime())) {
           throw new TypeError(`Invalid modifiedTime format for file ${fileId}`);
         }

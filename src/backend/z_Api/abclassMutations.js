@@ -9,8 +9,8 @@ function getController() {
  * @param {object} params
  * @param {string} methodName
  */
-function validateParamsObject(params, methodName) {
-  if (!params || typeof params !== 'object' || Array.isArray(params)) {
+function validateParametersObject(parameters, methodName) {
+  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throw new ApiValidationError('params must be an object.', {
       method: methodName,
       fieldName: 'params',
@@ -22,9 +22,9 @@ function validateParamsObject(params, methodName) {
  * @param {object} params
  * @param {string} methodName
  */
-function requireParams(params, methodName) {
+function requireParameters(parameters, methodName) {
   try {
-    Validate.requireParams(params, methodName);
+    Validate.requireParams(parameters, methodName);
   } catch (error) {
     throw new ApiValidationError(error.message, {
       method: methodName,
@@ -77,42 +77,42 @@ function validateCourseLength(courseLength, methodName) {
 /**
  * @param {object} params
  */
-function validateUpsertABClassParams(params) {
+function validateUpsertABClassParameters(parameters) {
   const methodName = 'upsertABClass';
 
-  validateParamsObject(params, methodName);
-  requireParams(
+  validateParametersObject(parameters, methodName);
+  requireParameters(
     {
-      classId: params.classId,
-      cohort: params.cohort,
-      yearGroup: params.yearGroup,
-      courseLength: params.courseLength,
+      classId: parameters.classId,
+      cohort: parameters.cohort,
+      yearGroup: parameters.yearGroup,
+      courseLength: parameters.courseLength,
     },
     methodName
   );
-  validateClassId(params.classId, methodName);
-  validateCourseLength(params.courseLength, methodName);
+  validateClassId(parameters.classId, methodName);
+  validateCourseLength(parameters.courseLength, methodName);
 }
 
 /**
  * @param {object} params
  */
-function validateUpdateABClassParams(params) {
+function validateUpdateABClassParameters(parameters) {
   const methodName = 'updateABClass';
   const forbiddenFields = ['classOwner', 'teachers', 'students', 'assignments'];
 
-  validateParamsObject(params, methodName);
-  requireParams({ classId: params.classId }, methodName);
-  validateClassId(params.classId, methodName);
+  validateParametersObject(parameters, methodName);
+  requireParameters({ classId: parameters.classId }, methodName);
+  validateClassId(parameters.classId, methodName);
 
-  if (Object.hasOwn(params, 'courseLength')) {
-    validateCourseLength(params.courseLength, methodName);
+  if (Object.hasOwn(parameters, 'courseLength')) {
+    validateCourseLength(parameters.courseLength, methodName);
   }
 
   if (
-    Object.hasOwn(params, 'active') &&
-    params.active !== null &&
-    !Validate.isBoolean(params.active)
+    Object.hasOwn(parameters, 'active') &&
+    parameters.active !== null &&
+    !Validate.isBoolean(parameters.active)
   ) {
     throw new ApiValidationError('active must be a boolean or null.', {
       method: methodName,
@@ -121,7 +121,7 @@ function validateUpdateABClassParams(params) {
   }
 
   forbiddenFields.forEach((fieldName) => {
-    if (Object.hasOwn(params, fieldName) && params[fieldName] !== undefined) {
+    if (Object.hasOwn(parameters, fieldName) && parameters[fieldName] !== undefined) {
       throw new ApiValidationError(`${fieldName} cannot be updated via updateABClass.`, {
         method: methodName,
         fieldName,
@@ -133,12 +133,12 @@ function validateUpdateABClassParams(params) {
 /**
  * @param {object} params
  */
-function validateDeleteABClassParams(params) {
+function validateDeleteABClassParameters(parameters) {
   const methodName = 'deleteABClass';
 
-  validateParamsObject(params, methodName);
-  requireParams({ classId: params.classId }, methodName);
-  validateDeleteClassId(params.classId, methodName);
+  validateParametersObject(parameters, methodName);
+  requireParameters({ classId: parameters.classId }, methodName);
+  validateDeleteClassId(parameters.classId, methodName);
 }
 
 /**
@@ -147,9 +147,9 @@ function validateDeleteABClassParams(params) {
  * @param {object} params - Request payload with classId, cohort, yearGroup, and courseLength.
  * @returns {object} Partial ABClass summary returned by ABClassController.upsertABClass().
  */
-function upsertABClass(params) {
-  validateUpsertABClassParams(params);
-  return getController().upsertABClass(params);
+function upsertABClass(parameters) {
+  validateUpsertABClassParameters(parameters);
+  return getController().upsertABClass(parameters);
 }
 
 /**
@@ -158,9 +158,9 @@ function upsertABClass(params) {
  * @param {object} params - Request payload with classId and optional editable patch fields.
  * @returns {object} Partial ABClass summary returned by ABClassController.updateABClass().
  */
-function updateABClass(params) {
-  validateUpdateABClassParams(params);
-  return getController().updateABClass(params);
+function updateABClass(parameters) {
+  validateUpdateABClassParameters(parameters);
+  return getController().updateABClass(parameters);
 }
 
 /**
@@ -169,9 +169,9 @@ function updateABClass(params) {
  * @param {object} params - Request payload containing classId.
  * @returns {object} Deletion result returned by ABClassController.deleteABClass().
  */
-function deleteABClass(params) {
-  validateDeleteABClassParams(params);
-  return getController().deleteABClass(params);
+function deleteABClass(parameters) {
+  validateDeleteABClassParameters(parameters);
+  return getController().deleteABClass(parameters);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

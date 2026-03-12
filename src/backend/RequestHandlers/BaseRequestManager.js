@@ -159,8 +159,8 @@ class BaseRequestManager {
     const batches = [];
 
     // Split requests into batches
-    for (let i = 0; i < requests.length; i += batchSize) {
-      batches.push(requests.slice(i, i + batchSize));
+    for (let index = 0; index < requests.length; index += batchSize) {
+      batches.push(requests.slice(index, index + batchSize));
     }
 
     const allResponses = [];
@@ -174,27 +174,27 @@ class BaseRequestManager {
         `${currentMessage}: Sending batch ${index + 1} of ${batches.length}.`,
         false
       );
-      const fetchAllRequests = batch.map((req) => ({
-        url: req.url,
-        method: req.method || 'get',
-        contentType: req.contentType || 'application/json',
-        payload: req.payload || null,
-        headers: req.headers || {},
-        muteHttpExceptions: req.muteHttpExceptions || true,
+      const fetchAllRequests = batch.map((request) => ({
+        url: request.url,
+        method: request.method || 'get',
+        contentType: request.contentType || 'application/json',
+        payload: request.payload || null,
+        headers: request.headers || {},
+        muteHttpExceptions: request.muteHttpExceptions || true,
       }));
 
       const responses = UrlFetchApp.fetchAll(fetchAllRequests);
 
       // Handle each response with retries if necessary
-      responses.forEach((response, idx) => {
-        const originalRequest = batch[idx];
+      responses.forEach((response, index_) => {
+        const originalRequest = batch[index_];
         if (
           response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_OK &&
           response.getResponseCode() !== BaseRequestManager.HTTP_STATUS_CREATED
         ) {
           console.warn(
             `Batch ${index + 1}, Request ${
-              idx + 1
+              index_ + 1
             } failed with status ${response.getResponseCode()}. Retrying...`
           );
           const retryResponse = this.sendRequestWithRetries(originalRequest);

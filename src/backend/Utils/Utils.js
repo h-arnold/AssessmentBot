@@ -12,7 +12,7 @@ const DEFAULT_TOAST_TIMEOUT_SECONDS = 3;
 /**
  * Utility methods used across the backend.
  */
-const Utils = {
+const Utilities_ = {
   /**
    * Generates a SHA-256 hash for a given input.
    *
@@ -24,8 +24,10 @@ const Utils = {
 
     const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, inputBytes);
     const hash = rawHash
-      .map((e) => {
-        const hex = (e < 0 ? e + BYTE_NEGATIVE_OFFSET : e).toString(HEX_RADIX);
+      .map((byteValue) => {
+        const hex = (byteValue < 0 ? byteValue + BYTE_NEGATIVE_OFFSET : byteValue).toString(
+          HEX_RADIX
+        );
         return hex.length === 1 ? '0' + hex : hex;
       })
       .join('');
@@ -44,12 +46,12 @@ const Utils = {
    * @return {string} - The corresponding column letter.
    */
   getColumnLetter(columnIndex) {
-    let temp;
+    let temporary;
     let letter = '';
     while (columnIndex >= 0) {
-      temp = columnIndex % ALPHABET_LENGTH;
-      letter = String.fromCodePoint(temp + UPPERCASE_A_CODE_POINT) + letter;
-      columnIndex = Math.floor((columnIndex - temp) / ALPHABET_LENGTH) - 1;
+      temporary = columnIndex % ALPHABET_LENGTH;
+      letter = String.fromCodePoint(temporary + UPPERCASE_A_CODE_POINT) + letter;
+      columnIndex = Math.floor((columnIndex - temporary) / ALPHABET_LENGTH) - 1;
     }
     return letter;
   },
@@ -61,10 +63,10 @@ const Utils = {
    * @param {Array} arr2 - The second array.
    * @return {boolean} - True if arrays are equal, false otherwise.
    */
-  arraysEqual(arr1, arr2) {
-    if (arr1.length !== arr2.length) return false;
-    for (const [i, element] of arr1.entries()) {
-      if (element !== arr2[i]) return false;
+  arraysEqual(array1, array2) {
+    if (array1.length !== array2.length) return false;
+    for (const [index, element] of array1.entries()) {
+      if (element !== array2[index]) return false;
     }
     return true;
   },
@@ -75,12 +77,12 @@ const Utils = {
    * @param {Object} obj - The object whose keys are to be normalised.
    * @return {Object} - A new object with all keys in lowercase.
    */
-  normaliseKeysToLowerCase(obj) {
-    const normalisedObj = {};
-    for (const [key, value] of Object.entries(obj)) {
-      normalisedObj[key.toLowerCase()] = value;
+  normaliseKeysToLowerCase(object) {
+    const normalisedObject = {};
+    for (const [key, value] of Object.entries(object)) {
+      normalisedObject[key.toLowerCase()] = value;
     }
-    return normalisedObj;
+    return normalisedObject;
   },
 
   // -------------------
@@ -116,19 +118,19 @@ const Utils = {
    *
    */
   clearDocumentProperties() {
-    const docProperties = PropertiesService.getDocumentProperties();
-    docProperties.deleteAllProperties();
+    const documentProperties = PropertiesService.getDocumentProperties();
+    documentProperties.deleteAllProperties();
   },
 
   /**
    * Gets the date in DD/MM/YYYY format for appending to various file names
    */
   getDate() {
-    const dateObj = new Date();
+    const dateObject = new Date();
     const timeZone = Session.getScriptTimeZone();
 
     // "dd/MM/yyyy" produces strings like "29/01/2025"
-    return Utilities.formatDate(dateObj, timeZone, 'dd/MM/yyyy');
+    return Utilities.formatDate(dateObject, timeZone, 'dd/MM/yyyy');
   },
 
   /**
@@ -182,9 +184,9 @@ const Utils = {
     if (!definition.referenceLastModified || !definition.templateLastModified) {
       return true;
     }
-    const refFresh = this.isNewer(referenceModified, definition.referenceLastModified);
+    const referenceFresh = this.isNewer(referenceModified, definition.referenceLastModified);
     const tplFresh = this.isNewer(templateModified, definition.templateLastModified);
-    return refFresh || tplFresh;
+    return referenceFresh || tplFresh;
   },
 
   /**
@@ -204,5 +206,5 @@ const Utils = {
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = Utils;
+  module.exports = Utilities_;
 }

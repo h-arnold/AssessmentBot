@@ -67,9 +67,17 @@ module.exports = [
       'unicorn/prefer-number-properties': 'error',
       // Standardize on error names only (catch clauses should use 'error')
       'unicorn/catch-error-name': 'error',
+      'unicorn/prevent-abbreviations': [
+        'error',
+        {
+          allowList: {
+            DbManager: true,
+            Utils: true,
+          },
+        },
+      ],
       // Disable rules that conflict with GAS naming conventions and preferences
       'unicorn/no-null': 'off',
-      'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
       'unicorn/no-array-for-each': 'off',
@@ -112,7 +120,7 @@ module.exports = [
         },
       ],
       'jsdoc/require-jsdoc': [
-        'warn',
+        'error',
         {
           require: {
             FunctionDeclaration: true,
@@ -134,11 +142,18 @@ module.exports = [
   },
   {
     // Backend-specific rules
-    files: ['src/backend/**/*.js'],
+    files: ['src/backend/DbManager/DbManager.js', 'src/backend/Utils/Utils.js'],
     rules: {
-      'unicorn/filename-case': 'off',
-      // GAS doesn't support numeric separators (underscores in numbers)
-      'unicorn/numeric-separators-style': 'off',
+      'unicorn/prevent-abbreviations': [
+        'error',
+        {
+          checkFilenames: false,
+          allowList: {
+            DbManager: true,
+            Utils: true,
+          },
+        },
+      ],
     },
   },
 ];

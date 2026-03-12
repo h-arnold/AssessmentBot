@@ -107,7 +107,7 @@ class SlidesParser extends DocumentParser {
     if (!contentDetails) return;
 
     const { artifactType, elementContent } = contentDetails;
-    const params = {
+    const parameters = {
       type: artifactType,
       pageId,
       content: elementContent,
@@ -115,7 +115,7 @@ class SlidesParser extends DocumentParser {
       documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
-    this.addArtifactToDefinition(definition, role, params);
+    this.addArtifactToDefinition(definition, role, parameters);
   }
 
   /**
@@ -149,7 +149,7 @@ class SlidesParser extends DocumentParser {
       role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
       pageId
     );
-    const params = {
+    const parameters = {
       type: 'IMAGE',
       pageId,
       metadata: { sourceUrl: url },
@@ -158,7 +158,7 @@ class SlidesParser extends DocumentParser {
       documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
-    this.addArtifactToDefinition(definition, role, params);
+    this.addArtifactToDefinition(definition, role, parameters);
   }
 
   /**
@@ -209,11 +209,11 @@ class SlidesParser extends DocumentParser {
    * @param {Object} params - Artifact payload.
    * @return {void}
    */
-  addArtifactToDefinition(definition, role, params) {
+  addArtifactToDefinition(definition, role, parameters) {
     if (role === 'reference') {
-      definition.addReferenceArtifact(params);
+      definition.addReferenceArtifact(parameters);
     } else if (role === 'template') {
-      definition.addTemplateArtifact(params);
+      definition.addTemplateArtifact(parameters);
     }
   }
 
@@ -232,15 +232,15 @@ class SlidesParser extends DocumentParser {
       if (!defs?.length) return;
       const pageElements = slide.getPageElements();
       // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
-      defs.forEach((def) => {
-        const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
+      defs.forEach((definition) => {
+        const primary = definition.getPrimaryReference() || definition.getPrimaryTemplate();
         if (!primary) return;
         const typeNeeded = primary.getType();
         let extracted = null;
         if (typeNeeded === 'IMAGE') {
           // For images we just supply metadata with sourceUrl again
           extracted = {
-            taskId: def.getId(),
+            taskId: definition.getId(),
             pageId,
             content: null,
             documentId,
@@ -250,7 +250,7 @@ class SlidesParser extends DocumentParser {
           return;
         }
         extracted = this.collectSubmissionArtifact(
-          def,
+          definition,
           pageElements,
           typeNeeded,
           pageId,
@@ -361,11 +361,11 @@ class SlidesParser extends DocumentParser {
     try {
       if (!table || !(table.getNumRows && table.getNumColumns)) return [];
       const rows = [];
-      const numRows = table.getNumRows();
-      const numCols = table.getNumColumns();
-      for (let r = 0; r < numRows; r++) {
+      const numberRows = table.getNumRows();
+      const numberCols = table.getNumColumns();
+      for (let r = 0; r < numberRows; r++) {
         const row = [];
-        for (let c = 0; c < numCols; c++) {
+        for (let c = 0; c < numberCols; c++) {
           const cell = table.getCell(r, c);
           const text = this.extractCellText(cell);
           row.push(text);

@@ -167,12 +167,12 @@ class SheetsAssessor {
     const cellReferenceFeedback = new CellReferenceFeedback();
     let incorrectFormulae = [];
 
-    for (const [i, ref] of referenceArray.entries()) {
-      const student = studentArray[i] || {};
-      const refFormula = ref.referenceFormula || ref.formula || '';
+    for (const [index, reference] of referenceArray.entries()) {
+      const student = studentArray[index] || {};
+      const referenceFormula = reference.referenceFormula || reference.formula || '';
       const studentFormula = student.formula || '';
 
-      if (studentFormula === refFormula) {
+      if (studentFormula === referenceFormula) {
         cellReferenceFeedback.addItem(student.location, 'correct');
         correct++;
       } else if (studentFormula === '') {
@@ -184,7 +184,7 @@ class SheetsAssessor {
 
         incorrectFormulae.push({
           studentFormula: studentFormula,
-          referenceFormula: refFormula,
+          referenceFormula: referenceFormula,
         });
       }
     }

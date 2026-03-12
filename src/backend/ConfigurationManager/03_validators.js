@@ -55,7 +55,7 @@ function toBooleanString(value) {
  *
  */
 function toReadableKey(key) {
-  return key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
+  return key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (string_) => string_.toUpperCase());
 }
 
 /**

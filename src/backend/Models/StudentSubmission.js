@@ -66,10 +66,10 @@ class StudentSubmissionItem {
   /**
    *
    */
-  addFeedback(type, feedbackObj) {
+  addFeedback(type, feedbackObject) {
     if (!type) throw new Error('addFeedback requires a feedback type identifier');
-    if (!feedbackObj) return;
-    this.feedback[type] = feedbackObj.toJSON ? feedbackObj.toJSON() : feedbackObj;
+    if (!feedbackObject) return;
+    this.feedback[type] = feedbackObject.toJSON ? feedbackObject.toJSON() : feedbackObject;
   }
 
   /**
@@ -201,12 +201,14 @@ class StudentSubmission {
    * into the existing submission artifact for the same taskId. This is distinct from
    * TaskDefinition.addReferenceArtifact/addTemplateArtifact, which always create new reference/template
    * artifacts during parsing and never mutate. Expects primitive extraction payload from parsers/assignments.
-   * @param {TaskDefinition} taskDef - Task definition providing ids/type hints.
+   * @param {TaskDefinition} taskDefinition - Task definition providing ids/type hints.
    * @param {Object} extraction - { pageId?, content?, metadata?, documentId? }
    */
-  upsertItemFromExtraction(taskDef, extraction = {}) {
-    if (!taskDef) throw new Error('upsertItemFromExtraction requires taskDef');
-    const taskId = taskDef.getId();
+  upsertItemFromExtraction(taskDefinition, extraction = {}) {
+    if (!taskDefinition) {
+      throw new Error('upsertItemFromExtraction requires taskDefinition');
+    }
+    const taskId = taskDefinition.getId();
     let item = this.items[taskId];
     let mutated = false;
 
@@ -234,14 +236,14 @@ class StudentSubmission {
         mutated = true;
       }
     } else {
-      const resolvedPageId = pageId ?? taskDef.pageId;
+      const resolvedPageId = pageId ?? taskDefinition.pageId;
       const metadataForArtifact = metadataPayload ?? {};
       // Prefer documentId provided by the extraction (parser-level) otherwise use
       // the parent submission's documentId so artifacts carry canonical source.
       const documentIdForArtifact = extractionDocumentId ?? this.documentId ?? null;
       const uid = `${taskId}-${this.studentId}-${resolvedPageId ?? 'na'}-0`;
       const artifact = ArtifactFactory.create({
-        type: this._inferTypeFromTask(taskDef),
+        type: this._inferTypeFromTask(taskDefinition),
         taskId,
         role: 'submission',
         pageId: resolvedPageId,
@@ -252,7 +254,7 @@ class StudentSubmission {
       });
       if (artifact.content == null && artifact.getType() !== 'IMAGE') {
         ABLogger.getInstance().warn(
-          `No content found for ${this.studentName} for task '${taskDef.taskTitle}'.`
+          `No content found for ${this.studentName} for task '${taskDefinition.taskTitle}'.`
         );
       }
       item = new StudentSubmissionItem({ taskId, artifact, onMutate: () => this.touchUpdated() });
@@ -266,12 +268,12 @@ class StudentSubmission {
   /**
    *
    */
-  _inferTypeFromTask(taskDef) {
+  _inferTypeFromTask(taskDefinition) {
     // Attempt to infer from primary reference artifact if present
-    const ref = taskDef.getPrimaryReference();
-    if (ref) return ref.getType();
+    const reference = taskDefinition.getPrimaryReference();
+    if (reference) return reference.getType();
     // fallback: check metadata hints
-    if (taskDef.taskMetadata?.taskType) return taskDef.taskMetadata.taskType;
+    if (taskDefinition.taskMetadata?.taskType) return taskDefinition.taskMetadata.taskType;
     return 'TEXT';
   }
 

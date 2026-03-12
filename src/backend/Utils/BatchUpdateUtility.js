@@ -48,12 +48,12 @@ const BatchUpdateUtility = {
     }
 
     const responses = [];
-    for (const [i, batchUpdate] of batchUpdates.entries()) {
+    for (const [index, batchUpdate] of batchUpdates.entries()) {
       const { requests, spreadsheetId } = batchUpdate;
       try {
         if (!requests || requests.length === 0) {
           // Skip empty requests, but log for user-facing tracking
-          progressTracker.logError(`No batch requests to execute for index ${i}.`, {
+          progressTracker.logError(`No batch requests to execute for index ${index}.`, {
             batchUpdate: batchUpdate,
           });
           continue;
@@ -61,14 +61,14 @@ const BatchUpdateUtility = {
 
         if (!spreadsheetId) {
           progressTracker.logAndThrowError(
-            `Spreadsheet ID is required for batch update at index ${i}.`
+            `Spreadsheet ID is required for batch update at index ${index}.`
           );
         }
 
         const response = Sheets.Spreadsheets.batchUpdate({ requests }, spreadsheetId);
         responses.push(response);
       } catch (error) {
-        progressTracker.logAndThrowError(`Error applying batch update at index ${i}.`, {
+        progressTracker.logAndThrowError(`Error applying batch update at index ${index}.`, {
           error: error,
           batchUpdate: batchUpdate,
         });

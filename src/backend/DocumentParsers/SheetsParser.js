@@ -218,22 +218,22 @@ class SheetsParser extends DocumentParser {
 
     // Use reference array dimensions as the bounds for comparison
     for (const [row, element] of referenceArray.entries()) {
-      const refRow = element || [];
+      const referenceRow = element || [];
       // Template row might not exist if template has fewer rows
-      const tempRow = row < templateArray.length ? templateArray[row] : [];
+      const temporaryRow = row < templateArray.length ? templateArray[row] : [];
 
-      for (const [col, element] of refRow.entries()) {
-        const refFormula = element || '';
+      for (const [col, element] of referenceRow.entries()) {
+        const referenceFormula = element || '';
         // Template cell might not exist if template row is shorter
-        const tempFormula = tempRow[col] || '';
+        const temporaryFormula = temporaryRow[col] || '';
 
         // Check if there's a non-empty reference formula and it doesn't match the template
-        if (refFormula && refFormula !== tempFormula) {
+        if (referenceFormula && referenceFormula !== temporaryFormula) {
           // Normalise the formulae that are going to make it into the reference tasks.
 
-          const normalisedRefFormula = this._normaliseFormulaCase(refFormula);
+          const normalisedReferenceFormula = this._normaliseFormulaCase(referenceFormula);
           referenceFormulaeArray.push({
-            referenceFormula: normalisedRefFormula,
+            referenceFormula: normalisedReferenceFormula,
             location: [row, col],
           });
         }
@@ -289,16 +289,16 @@ class SheetsParser extends DocumentParser {
     });
 
     // Calculate dimensions
-    const numRows = endRow - startRow + 1;
-    const numColumns = endColumn - startColumn + 1;
+    const numberRows = endRow - startRow + 1;
+    const numberColumns = endColumn - startColumn + 1;
 
     return {
       startRow: startRow + 1, // Add 1 to convert from 0-based to 1-based indexing (for Sheets API)
       startColumn: startColumn + 1,
       endRow: endRow + 1,
       endColumn: endColumn + 1,
-      numRows,
-      numColumns,
+      numRows: numberRows,
+      numColumns: numberColumns,
     };
   }
 
@@ -326,12 +326,12 @@ class SheetsParser extends DocumentParser {
         referenceLocationsMap,
         sheetId: sheetData.sheetId,
       };
-      const def = new TaskDefinition({
+      const definition = new TaskDefinition({
         taskTitle: sheetName,
         pageId: String(sheetData.sheetId),
         taskMetadata,
       });
-      def.index = index++;
+      definition.index = index++;
       // Add primary reference SpreadsheetTaskArtifact: represent reference formulas as 2D array skeleton with normalised formulas
       // We convert differences list into a sparse array (leave nulls) sized to bbox dims
       const bbox = sheetData.boundingBox;
@@ -342,32 +342,37 @@ class SheetsParser extends DocumentParser {
         );
         sheetData.formulas.forEach((f) => {
           const [absR, absC] = f.location;
-          const relR = absR - (bbox.startRow - 1);
-          const relC = absC - (bbox.startColumn - 1);
-          if (relR >= 0 && relR < bbox.numRows && relC >= 0 && relC < bbox.numColumns) {
-            grid[relR][relC] = f.referenceFormula || f.formula || '';
+          const relativeRowIndex = absR - (bbox.startRow - 1);
+          const relativeColumnIndex = absC - (bbox.startColumn - 1);
+          if (
+            relativeRowIndex >= 0 &&
+            relativeRowIndex < bbox.numRows &&
+            relativeColumnIndex >= 0 &&
+            relativeColumnIndex < bbox.numColumns
+          ) {
+            grid[relativeRowIndex][relativeColumnIndex] = f.referenceFormula || f.formula || '';
           }
         });
       }
-      def.addReferenceArtifact({
+      definition.addReferenceArtifact({
         type: 'spreadsheet',
         pageId: String(sheetData.sheetId),
         content: grid,
         metadata: { sheetName, bbox },
-        taskIndex: def.index,
+        taskIndex: definition.index,
         documentId: referenceDocumentId,
       });
       // Template artifact: for not-attempted detection we mirror shape (all null / empty) – may extend later.
       const tplGrid = grid.map((row) => row.map(() => null));
-      def.addTemplateArtifact({
+      definition.addTemplateArtifact({
         type: 'spreadsheet',
         pageId: String(sheetData.sheetId),
         content: tplGrid,
         metadata: { sheetName, bbox, template: true },
-        taskIndex: def.index,
+        taskIndex: definition.index,
         documentId: templateDocumentId,
       });
-      defs.push(def);
+      defs.push(definition);
     }
     return defs;
   }
@@ -384,22 +389,27 @@ class SheetsParser extends DocumentParser {
       sheetById[String(s.getSheetId())] = s;
     });
     const artifacts = [];
-    taskDefs.forEach((def) => {
-      const ref = def.getPrimaryReference();
+    taskDefs.forEach((definition) => {
+      const reference = definition.getPrimaryReference();
       const bbox =
-        (def.taskMetadata && (def.taskMetadata.bbox || def.taskMetadata.boundingBox)) || null;
-      const sheet = sheetById[def.pageId];
-      if (!sheet || !bbox || !ref) return;
+        (definition.taskMetadata &&
+          (definition.taskMetadata.bbox || definition.taskMetadata.boundingBox)) ||
+        null;
+      const sheet = sheetById[definition.pageId];
+      if (!sheet || !bbox || !reference) return;
       const taskSheet = new TaskSheet(sheet, 'studentTask');
       let rangeFormulas = [];
       try {
         rangeFormulas = taskSheet.getRange(bbox, 'formulas');
       } catch (error) {
-        this.progressTracker?.logError('Failed to read formulas for sheet ' + def.taskTitle, error);
+        this.progressTracker?.logError(
+          'Failed to read formulas for sheet ' + definition.taskTitle,
+          error
+        );
         return;
       }
       // Reconstruct sparse grid like reference for hashing consistency
-      const grid = ref.content ? ref.content.map((row) => row.map(() => null)) : [];
+      const grid = reference.content ? reference.content.map((row) => row.map(() => null)) : [];
       for (let r = 0; r < bbox.numRows; r++) {
         for (let c = 0; c < bbox.numColumns; c++) {
           const formula = rangeFormulas[r] && rangeFormulas[r][c] ? rangeFormulas[r][c] : '';
@@ -409,11 +419,11 @@ class SheetsParser extends DocumentParser {
         }
       }
       artifacts.push({
-        taskId: def.getId(),
-        pageId: def.pageId,
+        taskId: definition.getId(),
+        pageId: definition.pageId,
         documentId: studentDocumentId,
         content: grid,
-        metadata: { sheetName: def.taskTitle },
+        metadata: { sheetName: definition.taskTitle },
       });
     });
     return artifacts;

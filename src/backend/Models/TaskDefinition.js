@@ -63,20 +63,20 @@ class TaskDefinition {
    * always delegates construction to `ArtifactFactory.create` with the correct role/taskId/pageId.
    * params may include: type, content, metadata, pageId, documentId, uid
    */
-  createArtifact(role, params = {}) {
+  createArtifact(role, parameters = {}) {
     if (role !== 'reference' && role !== 'template')
       throw new Error('Invalid artifact role for TaskDefinition: ' + role);
     const artifactIndex = this.artifacts[role].length;
-    const factoryParams = {
-      ...params,
+    const factoryParameters = {
+      ...parameters,
       role,
       taskId: this.id,
-      pageId: params.pageId ?? this.pageId,
-      metadata: params.metadata ?? {},
+      pageId: parameters.pageId ?? this.pageId,
+      metadata: parameters.metadata ?? {},
       taskIndex: this.index,
       artifactIndex,
     };
-    const artifact = ArtifactFactory.create(factoryParams);
+    const artifact = ArtifactFactory.create(factoryParameters);
     this.artifacts[role].push(artifact);
     return artifact;
   }
@@ -85,15 +85,15 @@ class TaskDefinition {
    * Create and append a reference artifact for this task definition.
    * Thin wrapper over createArtifact that fixes the role to 'reference'.
    */
-  addReferenceArtifact(params) {
-    return this.createArtifact('reference', params);
+  addReferenceArtifact(parameters) {
+    return this.createArtifact('reference', parameters);
   }
   /**
    * Create and append a template artifact for this task definition.
    * Thin wrapper over createArtifact that fixes the role to 'template'.
    */
-  addTemplateArtifact(params) {
-    return this.createArtifact('template', params);
+  addTemplateArtifact(parameters) {
+    return this.createArtifact('template', parameters);
   }
 
   /**
@@ -170,8 +170,8 @@ class TaskDefinition {
     if (json.taskWeighting != null) td.taskWeighting = json.taskWeighting;
     if (json.artifacts) {
       if (json.artifacts.reference) {
-        for (const refJson of json.artifacts.reference) {
-          const art = ArtifactFactory.fromJSON(refJson);
+        for (const referenceJson of json.artifacts.reference) {
+          const art = ArtifactFactory.fromJSON(referenceJson);
           td.artifacts.reference.push(art);
         }
       }

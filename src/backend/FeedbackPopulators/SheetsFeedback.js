@@ -78,8 +78,8 @@ class SheetsFeedback {
         cellFeedback.getItems().forEach((cfItem) => {
           const rowIndex = cfItem.location[0] || 0;
           const colIndex = cfItem.location[1] || 0;
-          const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
-          if (req) requests.push(req);
+          const request = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
+          if (request) requests.push(request);
         });
       }
     });

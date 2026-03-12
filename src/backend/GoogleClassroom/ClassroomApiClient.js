@@ -200,10 +200,10 @@ class ClassroomApiClient {
       let pageToken = null;
 
       do {
-        const params = { pageSize: 40 };
-        if (pageToken) params.pageToken = pageToken;
+        const parameters = { pageSize: 40 };
+        if (pageToken) parameters.pageToken = pageToken;
 
-        const response = Classroom.Courses.Students.list(courseId, params);
+        const response = Classroom.Courses.Students.list(courseId, parameters);
 
         if (response.students && response.students.length > 0) {
           response.students.forEach((student) => {

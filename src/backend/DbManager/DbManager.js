@@ -109,10 +109,10 @@ class DbManager extends BaseSingleton {
    * Ensures the database is initialised. Returns a small status summary for UI/debugging.
    */
   ensureInitialised() {
-    const db = this.getDb();
+    const database = this.getDb();
     let collections = [];
     try {
-      collections = db.listCollections ? db.listCollections() : [];
+      collections = database.listCollections ? database.listCollections() : [];
     } catch (error) {
       console.warn('DbManager: listCollections failed; continuing.', error);
       collections = [];
@@ -143,9 +143,9 @@ class DbManager extends BaseSingleton {
     if (!name || typeof name !== 'string') {
       this.progressTracker.logAndThrowError('Collection name must be a non-empty string.');
     }
-    const db = this.getDb();
+    const database = this.getDb();
     try {
-      return db.getCollection(name);
+      return database.getCollection(name);
     } catch (error) {
       this.progressTracker.logAndThrowError(`Failed to get collection "${name}".`, error);
     }
@@ -185,15 +185,15 @@ class DbManager extends BaseSingleton {
   /**
    * Insert many documents into the named collection, then persist to Drive.
    */
-  insertMany(collectionName, docs) {
-    if (!Array.isArray(docs)) {
+  insertMany(collectionName, documents) {
+    if (!Array.isArray(documents)) {
       this.progressTracker.logAndThrowError('insertMany requires an array of documents.');
     }
     const col = this.getCollection(collectionName);
     try {
-      docs.forEach((d) => col.insertOne(d));
+      documents.forEach((document) => col.insertOne(document));
       col.save();
-      return { inserted: docs.length };
+      return { inserted: documents.length };
     } catch (error) {
       this.progressTracker.logAndThrowError(`Failed to insert into "${collectionName}".`, error);
     }
@@ -202,18 +202,18 @@ class DbManager extends BaseSingleton {
   /**
    * Upsert many documents by _id using $set, then persist to Drive.
    */
-  upsertManyById(collectionName, docs) {
-    if (!Array.isArray(docs)) {
+  upsertManyById(collectionName, documents) {
+    if (!Array.isArray(documents)) {
       this.progressTracker.logAndThrowError('upsertManyById requires an array of documents.');
     }
     const col = this.getCollection(collectionName);
     try {
       let count = 0;
-      docs.forEach((doc) => {
-        if (!doc || typeof doc !== 'object' || !('_id' in doc)) {
+      documents.forEach((document) => {
+        if (!document || typeof document !== 'object' || !('_id' in document)) {
           throw new Error('Each document must be an object with an _id field.');
         }
-        col.updateOne({ _id: doc._id }, { $set: doc }, { upsert: true });
+        col.updateOne({ _id: document._id }, { $set: document }, { upsert: true });
         count++;
       });
       col.save();

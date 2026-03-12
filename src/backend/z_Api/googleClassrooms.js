@@ -4,7 +4,7 @@
  * @param {object} params Optional reserved params. Currently unused.
  * @returns {Array<{classId: string, className: string}>}
  */
-function getGoogleClassrooms(params) {
+function getGoogleClassrooms(parameters) {
   const classrooms = ClassroomApiClient.fetchAllActiveClassrooms();
 
   return classrooms.map((classroom) => {

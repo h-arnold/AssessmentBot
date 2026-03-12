@@ -131,9 +131,9 @@ class ABClass {
     }
 
     if (!(ownerInstance instanceof Teacher)) {
-      const msg = 'setClassOwner requires a Teacher instance';
-      if (logger && typeof logger.error === 'function') logger.error(msg);
-      throw new TypeError(msg);
+      const message = 'setClassOwner requires a Teacher instance';
+      if (logger && typeof logger.error === 'function') logger.error(message);
+      throw new TypeError(message);
     }
 
     this.classOwner = ownerInstance;
@@ -184,8 +184,8 @@ class ABClass {
    */
   getCohortStartYear() {
     if (!this.cohort) return null;
-    const num = Number.parseInt(this.cohort, 10);
-    return Number.isNaN(num) ? null : num;
+    const number_ = Number.parseInt(this.cohort, 10);
+    return Number.isNaN(number_) ? null : number_;
   }
 
   /**
@@ -197,8 +197,8 @@ class ABClass {
     const start = this.getCohortStartYear();
     if (!start || !Number.isInteger(this.courseLength) || this.courseLength < 1) return [];
     const ranges = [];
-    for (let i = 0; i < this.courseLength; i++) {
-      const a = start + i;
+    for (let index = 0; index < this.courseLength; index++) {
+      const a = start + index;
       const b = a + 1;
       ranges.push(`${a}-${b}`);
     }
@@ -219,9 +219,9 @@ class ABClass {
    *
    */
   removeTeacher(predicate) {
-    const idx = findIndexWithPredicate(this.teachers, predicate);
-    if (idx === ITEM_NOT_FOUND_INDEX) return null;
-    return this.teachers.splice(idx, 1)[0];
+    const index = findIndexWithPredicate(this.teachers, predicate);
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
+    return this.teachers.splice(index, 1)[0];
   }
 
   /**
@@ -245,9 +245,9 @@ class ABClass {
    *
    */
   removeStudent(predicate) {
-    const idx = findIndexWithPredicate(this.students, predicate);
-    if (idx === ITEM_NOT_FOUND_INDEX) return null;
-    return this.students.splice(idx, 1)[0];
+    const index = findIndexWithPredicate(this.students, predicate);
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
+    return this.students.splice(index, 1)[0];
   }
 
   /**
@@ -271,9 +271,9 @@ class ABClass {
    *
    */
   removeAssignment(predicate) {
-    const idx = findIndexWithPredicate(this.assignments, predicate);
-    if (idx === ITEM_NOT_FOUND_INDEX) return null;
-    return this.assignments.splice(idx, 1)[0];
+    const index = findIndexWithPredicate(this.assignments, predicate);
+    if (index === ITEM_NOT_FOUND_INDEX) return null;
+    return this.assignments.splice(index, 1)[0];
   }
 
   /**

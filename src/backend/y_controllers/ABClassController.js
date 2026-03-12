@@ -46,18 +46,18 @@ class ABClassController {
     const teachers = ClassroomApiClient.fetchTeachers(courseId);
 
     // Support both new behaviour (Teacher instances) and legacy raw API objects.
-    teachers.forEach((teacherObj) => {
+    teachers.forEach((teacherObject) => {
       // Ensure we operate on a Teacher instance so setClassOwner's instanceof
       // check in ABClass doesn't throw. Support both Teacher instances and
       // plain objects returned by legacy API mocks.
-      let teacherInstance = teacherObj;
-      if (!(teacherObj instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
+      let teacherInstance = teacherObject;
+      if (!(teacherObject instanceof Teacher) && typeof Teacher.fromJSON === 'function') {
         try {
-          teacherInstance = Teacher.fromJSON(teacherObj) || teacherObj;
+          teacherInstance = Teacher.fromJSON(teacherObject) || teacherObject;
         } catch (error) {
           logger.error('_applyTeachers: failed to deserialize teacher payload', {
             courseId,
-            teacherId: teacherObj?.userId,
+            teacherId: teacherObject?.userId,
             err: error,
           });
           throw error;
@@ -66,7 +66,7 @@ class ABClassController {
 
       // If this teacher matches the course owner, set as owner (using a
       // Teacher instance). Otherwise add to teachers list.
-      if (abClass.classOwner && abClass.classOwner.userId === teacherObj.userId) {
+      if (abClass.classOwner && abClass.classOwner.userId === teacherObject.userId) {
         // Prefer the instance we coerced where possible
         abClass.setClassOwner(teacherInstance);
       } else {
@@ -120,24 +120,24 @@ class ABClassController {
    * @returns {object} Normalised class partial payload.
    * @private
    */
-  _normaliseClassPartial(partialDoc) {
-    if (!partialDoc || typeof partialDoc !== 'object') {
+  _normaliseClassPartial(partialDocument) {
+    if (!partialDocument || typeof partialDocument !== 'object') {
       throw new TypeError('getAllClassPartials: expected each partial document to be an object');
     }
 
-    if (!Array.isArray(partialDoc.teachers)) {
+    if (!Array.isArray(partialDocument.teachers)) {
       throw new TypeError('getAllClassPartials: expected partial document teachers to be an array');
     }
 
     return {
-      classId: partialDoc.classId,
-      className: partialDoc.className,
-      cohort: partialDoc.cohort,
-      courseLength: partialDoc.courseLength,
-      yearGroup: partialDoc.yearGroup,
-      classOwner: partialDoc.classOwner,
-      teachers: [...partialDoc.teachers],
-      active: partialDoc.active,
+      classId: partialDocument.classId,
+      className: partialDocument.className,
+      cohort: partialDocument.cohort,
+      courseLength: partialDocument.courseLength,
+      yearGroup: partialDocument.yearGroup,
+      classOwner: partialDocument.classOwner,
+      teachers: [...partialDocument.teachers],
+      active: partialDocument.active,
     };
   }
 
@@ -206,10 +206,12 @@ class ABClassController {
   /**
    *
    */
-  _persistRoster(collection, existingDoc, abClass) {
+  _persistRoster(collection, existingDocument, abClass) {
     const logger = ABLogger.getInstance();
     const payload = this._buildClassroomRosterUpdatePayload(abClass);
-    const filter = existingDoc?._id ? { _id: existingDoc._id } : { classId: abClass.classId };
+    const filter = existingDocument?._id
+      ? { _id: existingDocument._id }
+      : { classId: abClass.classId };
 
     try {
       // Log intent to persist
@@ -333,13 +335,13 @@ class ABClassController {
       partialInstance._hydrationLevel = 'partial';
 
       // 3. Find and replace assignment in abClass.assignments
-      const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
+      const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignment.assignmentId);
 
-      if (idx >= 0) {
-        abClass.assignments[idx] = partialInstance;
+      if (index >= 0) {
+        abClass.assignments[index] = partialInstance;
         logger.info('persistAssignmentRun: replaced existing assignment in ABClass', {
           assignmentId: assignment.assignmentId,
-          index: idx,
+          index: index,
         });
       } else {
         abClass.assignments.push(partialInstance);
@@ -390,10 +392,10 @@ class ABClassController {
     const courseId = abClass.classId;
 
     try {
-      const doc = this._loadFullAssignmentDocument(courseId, assignmentId);
-      this._validateAssignmentDocument(doc);
+      const document = this._loadFullAssignmentDocument(courseId, assignmentId);
+      this._validateAssignmentDocument(document);
 
-      const hydratedAssignment = Assignment.fromJSON(doc);
+      const hydratedAssignment = Assignment.fromJSON(document);
       this._ensureFullDefinition(hydratedAssignment);
       hydratedAssignment._hydrationLevel = 'full';
 
@@ -421,9 +423,9 @@ class ABClassController {
     const logger = ABLogger.getInstance();
     const collectionName = this._getFullAssignmentCollectionName(courseId, assignmentId);
     const fullCollection = this.dbManager.getCollection(collectionName);
-    const doc = fullCollection.findOne({ courseId, assignmentId });
+    const document = fullCollection.findOne({ courseId, assignmentId });
 
-    if (!doc) {
+    if (!document) {
       throw new Error(
         `No document found in collection ${collectionName} for courseId=${courseId}, assignmentId=${assignmentId}. Assignment does not exist or has not been persisted.`
       );
@@ -435,7 +437,7 @@ class ABClassController {
       collectionName,
     });
 
-    return doc;
+    return document;
   }
 
   /**
@@ -443,14 +445,14 @@ class ABClassController {
    * @param {object} doc - Assignment document
    * @private
    */
-  _validateAssignmentDocument(doc) {
-    if (!doc.courseId || !doc.assignmentId) {
+  _validateAssignmentDocument(document) {
+    if (!document.courseId || !document.assignmentId) {
       throw new Error(
         'Corrupt or invalid assignment data: missing required fields courseId or assignmentId'
       );
     }
 
-    if (!doc.assignmentDefinition) {
+    if (!document.assignmentDefinition) {
       throw new Error(
         'Corrupt or invalid assignment data: missing required field assignmentDefinition'
       );
@@ -497,13 +499,13 @@ class ABClassController {
    */
   _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
     const logger = ABLogger.getInstance();
-    const idx = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
+    const index = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
 
-    if (idx >= 0) {
-      abClass.assignments[idx] = hydratedAssignment;
+    if (index >= 0) {
+      abClass.assignments[index] = hydratedAssignment;
       logger.info('rehydrateAssignment: replaced assignment in ABClass', {
         assignmentId,
-        index: idx,
+        index: index,
       });
     } else {
       throw new Error(
@@ -617,23 +619,23 @@ class ABClassController {
    * @returns {object}
    * @private
    */
-  _buildUpdatePatch(params) {
+  _buildUpdatePatch(parameters) {
     const patch = {};
 
-    if (Object.hasOwn(params, 'cohort')) {
-      patch.cohort = params.cohort === null ? null : String(params.cohort);
+    if (Object.hasOwn(parameters, 'cohort')) {
+      patch.cohort = parameters.cohort === null ? null : String(parameters.cohort);
     }
 
-    if (Object.hasOwn(params, 'yearGroup')) {
-      patch.yearGroup = params.yearGroup;
+    if (Object.hasOwn(parameters, 'yearGroup')) {
+      patch.yearGroup = parameters.yearGroup;
     }
 
-    if (Object.hasOwn(params, 'courseLength')) {
-      patch.courseLength = this._validateCourseLength(params.courseLength, 'updateABClass');
+    if (Object.hasOwn(parameters, 'courseLength')) {
+      patch.courseLength = this._validateCourseLength(parameters.courseLength, 'updateABClass');
     }
 
-    if (Object.hasOwn(params, 'active')) {
-      patch.active = params.active;
+    if (Object.hasOwn(parameters, 'active')) {
+      patch.active = parameters.active;
     }
 
     return patch;
@@ -685,33 +687,33 @@ class ABClassController {
    * @param {*} params.courseLength - Required course length, validated as an integer >= 1.
    * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
    */
-  upsertABClass(params) {
+  upsertABClass(parameters) {
     Validate.requireParams(
       {
-        classId: params?.classId,
-        cohort: params?.cohort,
-        yearGroup: params?.yearGroup,
-        courseLength: params?.courseLength,
+        classId: parameters?.classId,
+        cohort: parameters?.cohort,
+        yearGroup: parameters?.yearGroup,
+        courseLength: parameters?.courseLength,
       },
       'upsertABClass'
     );
 
-    const classId = this._validateClassId(params.classId, 'upsertABClass');
-    const courseLength = this._validateCourseLength(params.courseLength, 'upsertABClass');
+    const classId = this._validateClassId(parameters.classId, 'upsertABClass');
+    const courseLength = this._validateCourseLength(parameters.courseLength, 'upsertABClass');
     const collection = this.dbManager.getCollection(classId);
-    const existingDoc = collection.findOne({ classId: classId });
+    const existingDocument = collection.findOne({ classId: classId });
     let abClass;
 
-    if (existingDoc) {
-      abClass = ABClass.fromJSON(existingDoc);
-      abClass.cohort = params.cohort === null ? null : String(params.cohort);
-      abClass.yearGroup = params.yearGroup;
+    if (existingDocument) {
+      abClass = ABClass.fromJSON(existingDocument);
+      abClass.cohort = parameters.cohort === null ? null : String(parameters.cohort);
+      abClass.yearGroup = parameters.yearGroup;
       abClass.courseLength = courseLength;
       this._refreshRoster(abClass, classId);
     } else {
       abClass = this.initialise(classId, {
-        cohort: params.cohort,
-        yearGroup: params.yearGroup,
+        cohort: parameters.cohort,
+        yearGroup: parameters.yearGroup,
         courseLength: courseLength,
       });
     }
@@ -733,15 +735,15 @@ class ABClassController {
    * @param {boolean|null} [params.active] - Optional active-state replacement.
    * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
    */
-  updateABClass(params) {
-    Validate.requireParams({ classId: params?.classId }, 'updateABClass');
+  updateABClass(parameters) {
+    Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
 
-    const classId = this._validateClassId(params.classId, 'updateABClass');
-    const patch = this._buildUpdatePatch(params);
+    const classId = this._validateClassId(parameters.classId, 'updateABClass');
+    const patch = this._buildUpdatePatch(parameters);
     const collection = this.dbManager.getCollection(classId);
-    const existingDoc = collection.findOne({ classId: classId });
+    const existingDocument = collection.findOne({ classId: classId });
 
-    if (!existingDoc) {
+    if (!existingDocument) {
       const abClass = this.initialise(classId, {
         cohort: Object.hasOwn(patch, 'cohort') ? patch.cohort : undefined,
         yearGroup: Object.hasOwn(patch, 'yearGroup') ? patch.yearGroup : undefined,
@@ -756,7 +758,7 @@ class ABClassController {
       return this._buildClassSummary(abClass);
     }
 
-    const abClass = this._applyPatchToClass(ABClass.fromJSON(existingDoc), patch);
+    const abClass = this._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);
 
     collection.updateOne({ classId: classId }, { $set: patch });
     collection.save();
@@ -774,10 +776,10 @@ class ABClassController {
    * @returns {{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }}
    *   Deletion result for the full-class collection and the partial registry row.
    */
-  deleteABClass(params) {
-    Validate.requireParams({ classId: params?.classId }, 'deleteABClass');
+  deleteABClass(parameters) {
+    Validate.requireParams({ classId: parameters?.classId }, 'deleteABClass');
 
-    const classId = this._validateDeleteClassId(params.classId, 'deleteABClass');
+    const classId = this._validateDeleteClassId(parameters.classId, 'deleteABClass');
     let fullClassDeleted = false;
     let partialDeleted = false;
 
@@ -828,8 +830,8 @@ class ABClassController {
     }
 
     // Collection exists - read the single stored document (if any)
-    const doc = collection.findOne({ classId: classId }) || null;
-    if (!doc) {
+    const document = collection.findOne({ classId: classId }) || null;
+    if (!document) {
       // Collection exists but has no document - initialise new class
       logger.info('loadClass: collection exists but no document stored - creating new class', {
         classId,
@@ -844,13 +846,13 @@ class ABClassController {
     // persisted ABClass objects are kept up-to-date with live Classroom data.
     const needsRefresh = true; // retained helper: this._shouldRefreshRoster(metadata, classId);
     // Deserialize the document into an ABClass instance
-    const abClass = ABClass.fromJSON(doc);
+    const abClass = ABClass.fromJSON(document);
     if (needsRefresh) {
       logger.info('loadClass: metadata indicates refresh required - refreshing roster', {
         classId,
       });
       this._refreshRoster(abClass, classId);
-      this._persistRoster(collection, doc, abClass);
+      this._persistRoster(collection, document, abClass);
       logger.info('loadClass: refresh completed and roster persisted', { classId });
     } else {
       logger.info('loadClass: loaded class from collection without refresh', { classId });
@@ -946,11 +948,11 @@ class ABClassController {
     const logger = ABLogger.getInstance();
     try {
       const partialsCollection = this.dbManager.getCollection('abclass_partials');
-      const docs = partialsCollection.find({});
-      if (!Array.isArray(docs)) {
+      const documents = partialsCollection.find({});
+      if (!Array.isArray(documents)) {
         throw new TypeError('getAllClassPartials: unexpected non-array result from find()');
       }
-      return docs.map((doc) => this._normaliseClassPartial(doc));
+      return documents.map((document) => this._normaliseClassPartial(document));
     } catch (error) {
       logger.error('getAllClassPartials: failed to read abclass_partials', { err: error });
       throw error;

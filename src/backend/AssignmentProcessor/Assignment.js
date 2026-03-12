@@ -191,7 +191,7 @@ class Assignment {
     // that deserialized objects don't claim a persisted hydration level.
 
     if (Array.isArray(data.submissions)) {
-      data.submissions.forEach((subObj) => Assignment._rehydrateSubmission(inst, subObj));
+      data.submissions.forEach((subObject) => Assignment._rehydrateSubmission(inst, subObject));
     }
 
     // restore progress tracker singleton if available
@@ -225,15 +225,15 @@ class Assignment {
   /**
    *
    */
-  static _rehydrateSubmission(inst, subObj) {
-    const identifier = subObj && (subObj.studentId || subObj.userId);
+  static _rehydrateSubmission(inst, subObject) {
+    const identifier = subObject && (subObject.studentId || subObject.userId);
 
     try {
       if (
         typeof StudentSubmission !== 'undefined' &&
         typeof StudentSubmission.fromJSON === 'function'
       ) {
-        const submission = StudentSubmission.fromJSON(subObj);
+        const submission = StudentSubmission.fromJSON(subObject);
         inst.submissions.push(submission);
         return;
       }
@@ -248,16 +248,18 @@ class Assignment {
       const submission = new StudentSubmission(
         identifier || null,
         inst.assignmentId,
-        subObj.documentId || null,
-        subObj.studentName || subObj.name || null
+        subObject.documentId || null,
+        subObject.studentName || subObject.name || null
       );
-      Object.keys(subObj || {}).forEach((key) => {
-        if (key === 'updatedAt' && subObj.updatedAt) {
+      Object.keys(subObject || {}).forEach((key) => {
+        if (key === 'updatedAt' && subObject.updatedAt) {
           submission.updatedAt =
-            subObj.updatedAt instanceof Date ? subObj.updatedAt : new Date(subObj.updatedAt);
+            subObject.updatedAt instanceof Date
+              ? subObject.updatedAt
+              : new Date(subObject.updatedAt);
           return;
         }
-        submission[key] = subObj[key];
+        submission[key] = subObject[key];
       });
       inst.submissions.push(submission);
     } catch (error_) {
@@ -265,7 +267,7 @@ class Assignment {
         `StudentSubmission reconstruction failed for studentId=${identifier}:`,
         error_
       );
-      const raw = { ...subObj };
+      const raw = { ...subObject };
       if (raw.updatedAt) {
         if (raw.updatedAt instanceof Date) raw.updatedAt = raw.updatedAt.toISOString();
         else if (Validate.isString(raw.updatedAt)) {
@@ -311,16 +313,16 @@ class Assignment {
       }).toJSON();
     }
 
-    const docType = data.assignmentDefinition.documentType;
+    const documentType = data.assignmentDefinition.documentType;
 
-    if (!docType || typeof docType !== 'string') {
+    if (!documentType || typeof documentType !== 'string') {
       ProgressTracker.getInstance().logAndThrowError(
         `Assignment data missing documentType for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
         { data }
       );
     }
 
-    const type = docType.toUpperCase();
+    const type = documentType.toUpperCase();
 
     if (type === 'SLIDES') {
       return SlidesAssignment.fromJSON(data);
@@ -331,8 +333,8 @@ class Assignment {
     }
 
     ProgressTracker.getInstance().logAndThrowError(
-      `Unknown assignment documentType '${docType}' for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
-      { documentType: docType, data }
+      `Unknown assignment documentType '${documentType}' for courseId=${data.courseId}, assignmentId=${data.assignmentId}`,
+      { documentType: documentType, data }
     );
   }
   /**
@@ -437,11 +439,11 @@ class Assignment {
       if (this.isValidMimeType(fileMimeType, mimeType)) {
         const documentId = driveFileId;
         // New model: submissions array holds StudentSubmission objects with studentId
-        const submissionObj = this.submissions.find((sub) => sub.studentId === studentId);
-        if (submissionObj) {
-          submissionObj.documentId = documentId;
+        const submissionObject = this.submissions.find((sub) => sub.studentId === studentId);
+        if (submissionObject) {
+          submissionObject.documentId = documentId;
           // Keep updatedAt coherent if method exists
-          if (typeof submissionObj.touchUpdated === 'function') submissionObj.touchUpdated();
+          if (typeof submissionObject.touchUpdated === 'function') submissionObject.touchUpdated();
         } else {
           ABLogger.getInstance().info(`No matching submission found for student ID: ${studentId}`);
         }

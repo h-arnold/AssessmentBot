@@ -37,7 +37,8 @@ class LLMRequestManager extends BaseRequestManager {
     let cacheHits = 0;
     let newRequests = 0;
     let notAttemptedCount = 0;
-    // Build uid -> { submission, item, taskDef } map for response routing
+    // Build uid -> { submission, item, taskDefinition } map for response routing.
+    // Retain taskDef alias for existing callers and tests during the migration.
     this.uidIndex = {}; // reset per generation
     const baseUrl = this.configManager.getBackendUrl();
     const apiKey = this.configManager.getApiKey();
@@ -45,16 +46,16 @@ class LLMRequestManager extends BaseRequestManager {
     assignment.submissions.forEach((submission) => {
       const tasks = assignment.assignmentDefinition.tasks;
       Object.values(submission.items).forEach((item) => {
-        const taskDef = tasks[item.taskId];
-        if (!taskDef) {
+        const taskDefinition = tasks[item.taskId];
+        if (!taskDefinition) {
           this.progressTracker.logError('No TaskDefinition for taskId ' + item.taskId);
           return;
         }
         const type = item.getType();
         // Skip spreadsheet tasks (handled by Sheets assessor elsewhere)
         if (type === 'SPREADSHEET') return;
-        const referenceTask = taskDef.getPrimaryReference();
-        const templateTask = taskDef.getPrimaryTemplate();
+        const referenceTask = taskDefinition.getPrimaryReference();
+        const templateTask = taskDefinition.getPrimaryTemplate();
         if (!referenceTask || !templateTask) {
           this.progressTracker.logError(
             'Missing reference/template artifacts for taskId ' + item.taskId
@@ -90,7 +91,12 @@ class LLMRequestManager extends BaseRequestManager {
         }
 
         const uid = studentArtifact.getUid();
-        this.uidIndex[uid] = { submission, item, taskDef };
+        this.uidIndex[uid] = {
+          submission,
+          item,
+          taskDefinition,
+          taskDef: taskDefinition,
+        };
         const payload = {
           taskType: type,
           reference: referenceTask.content,
@@ -430,12 +436,12 @@ class LLMRequestManager extends BaseRequestManager {
   _assignAndCacheAssessment(uid, assessmentData) {
     this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData));
     if (this.uidIndex?.[uid]) {
-      const { item, taskDef } = this.uidIndex[uid];
-      const ref = taskDef.getPrimaryReference();
-      const refHash = ref?.contentHash;
+      const { item, taskDefinition } = this.uidIndex[uid];
+      const reference = taskDefinition.getPrimaryReference();
+      const referenceHash = reference?.contentHash;
       const respHash = item.artifact?.contentHash;
-      if (refHash && respHash) {
-        this.cacheManager.setCachedAssessment(refHash, respHash, assessmentData);
+      if (referenceHash && respHash) {
+        this.cacheManager.setCachedAssessment(referenceHash, respHash, assessmentData);
       }
     }
   }

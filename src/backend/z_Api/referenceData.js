@@ -18,24 +18,24 @@ function getCohorts() {
  * @param {{record: {name: string, active?: boolean}}} params
  * @returns {{name: string, active: boolean}}
  */
-function createCohort(params) {
-  return getController().createCohort(params.record);
+function createCohort(parameters) {
+  return getController().createCohort(parameters.record);
 }
 
 /**
  * @param {{originalName: string, record: {name: string, active?: boolean}}} params
  * @returns {{name: string, active: boolean}}
  */
-function updateCohort(params) {
-  return getController().updateCohort(params);
+function updateCohort(parameters) {
+  return getController().updateCohort(parameters);
 }
 
 /**
  * @param {{name: string}} params
  * @returns {void}
  */
-function deleteCohort(params) {
-  return getController().deleteCohort(params.name);
+function deleteCohort(parameters) {
+  return getController().deleteCohort(parameters.name);
 }
 
 /**
@@ -49,24 +49,24 @@ function getYearGroups() {
  * @param {{record: {name: string}}} params
  * @returns {{name: string}}
  */
-function createYearGroup(params) {
-  return getController().createYearGroup(params.record);
+function createYearGroup(parameters) {
+  return getController().createYearGroup(parameters.record);
 }
 
 /**
  * @param {{originalName: string, record: {name: string}}} params
  * @returns {{name: string}}
  */
-function updateYearGroup(params) {
-  return getController().updateYearGroup(params);
+function updateYearGroup(parameters) {
+  return getController().updateYearGroup(parameters);
 }
 
 /**
  * @param {{name: string}} params
  * @returns {void}
  */
-function deleteYearGroup(params) {
-  return getController().deleteYearGroup(params.name);
+function deleteYearGroup(parameters) {
+  return getController().deleteYearGroup(parameters.name);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -13,11 +13,11 @@ class SlidesAssignment extends Assignment {
    * @param {string} templateDocumentId - The ID of the template slides document.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
-    const defInstance =
+    const definitionInstance =
       assignmentDefinition instanceof AssignmentDefinition
         ? assignmentDefinition
         : AssignmentDefinition.fromJSON(assignmentDefinition);
-    super(courseId, assignmentId, defInstance);
+    super(courseId, assignmentId, definitionInstance);
   }
 
   /**
@@ -115,21 +115,21 @@ class SlidesAssignment extends Assignment {
     const parser = new SlidesParser();
     const taskDefs = Object.values(this.assignmentDefinition.tasks);
     const total = this.submissions.length;
-    this.submissions.forEach((sub, i) => {
+    this.submissions.forEach((sub, index) => {
       if (!sub.documentId) {
         console.warn(`No document ID for student: ${sub.studentName}. Skipping.`);
         return;
       }
       // Update progress with ordinal position (e.g. "Extracting response 3 of 12...")
-      this.progressTracker.updateProgress(`Extracting response ${i + 1} of ${total}...`, false);
+      this.progressTracker.updateProgress(`Extracting response ${index + 1} of ${total}...`, false);
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
-        const taskDef = this.assignmentDefinition.tasks[a.taskId];
-        if (!taskDef) {
+        const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
+        if (!taskDefinition) {
           console.warn('Submission artifact references unknown taskId ' + a.taskId);
           return;
         }
-        sub.upsertItemFromExtraction(taskDef, {
+        sub.upsertItemFromExtraction(taskDefinition, {
           pageId: a.pageId,
           content: a.content,
           metadata: a.metadata,
