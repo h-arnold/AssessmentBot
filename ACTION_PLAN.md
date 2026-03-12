@@ -659,6 +659,11 @@ Backend controller/API tests:
   - Final reviewer pass returned no findings across the completed runtime and documentation scope.
 - **Post-regression docs sync:**
   - Final documentation sync required only source-level JSDoc updates in `src/backend/z_Api/abclassMutations.js` and `src/backend/y_controllers/ABClassController.js`; no additional markdown doc changes were needed after Section 5.
+- **Commit evidence:**
+  - Branch: `feat/ReactFrontend`
+  - Commit: `c377a32f062b92e2f5f55fe42bdb0b8f7ddfd820`
+  - Message: `docs: complete Section 6 regression hardening closeout`
+  - Push: successful (`6479d40..c377a32  feat/ReactFrontend -> feat/ReactFrontend`)
 
 ---
 
