@@ -496,15 +496,15 @@ Backend controller/API tests:
 
 ### Delivery status
 
-- Current phase: Commit and push
-- Section status: In progress
+- Current phase: Complete
+- Section status: Complete
 - Checklist:
   - [x] docs updated
   - [x] docs review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Objective
 
@@ -569,10 +569,28 @@ Backend controller/API tests:
   - Documentation review passed after aligning API-layer and data-shape docs to the implemented `src/backend/z_Api` transport surface.
   - `rg -n "getGoogleClassrooms|upsertABClass|updateABClass|deleteABClass" docs/developer/backend/api-layer.md docs/developer/backend/DATA_SHAPES.md` confirmed all four methods are documented.
   - `rg -n "fullClassDeleted|partialDeleted|classId|className" docs/developer/backend/DATA_SHAPES.md` confirmed the delete-flag and class summary terms are present.
+- **Commit evidence:**
+  - Branch: `feat/ReactFrontend`
+  - Commit: `6479d40e1873a9c3017d0f063ad9cf99acd6a2a7`
+  - Message: `docs: complete Section 5 backend contract updates`
+  - Push: successful (`feat/ReactFrontend -> feat/ReactFrontend`)
 
 ---
 
 ## Section 6 — Regression and contract hardening
+
+### Delivery status
+
+- Current phase: Complete
+- Section status: Complete
+- Checklist:
+  - [x] focused backend suites run
+  - [x] lint passed
+  - [x] docs checks passed
+  - [x] review complete
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
 
 ### Objective
 
@@ -627,6 +645,20 @@ Backend controller/API tests:
   - Record exact failing tests and root causes before applying fixes.
   - Re-run only affected focused suites after each fix, then finish with full section checks.
 - **Deviations from plan:**
+  - The placeholder `tests/api/apiConstants.test.js` path does not exist in this repo; `tests/api/apiHandler.test.js` was used because it contains the `apiConstants` allowlist assertions for the real project layout.
+- **Verification evidence:**
+  - `npm test -- tests/api/apiHandler.test.js` passed and covered both the allowlist/constants assertions and the transport-envelope checks.
+  - `npm test -- tests/api/googleClassrooms.test.js` passed.
+  - `npm test -- tests/api/abclassMutations.test.js` passed.
+  - `npm test -- tests/controllers/abclass-upsert-update.test.js` passed.
+  - `npm test -- tests/controllers/abclass-delete.test.js` passed.
+  - `npm test -- tests/models/abclassManager.initialise.test.js` passed.
+  - `npm run lint` passed.
+  - Documentation term checks passed for `getGoogleClassrooms`, `upsertABClass`, `updateABClass`, `deleteABClass`, `fullClassDeleted`, and `partialDeleted` in the backend docs.
+- **Final review status:**
+  - Final reviewer pass returned no findings across the completed runtime and documentation scope.
+- **Post-regression docs sync:**
+  - Final documentation sync required only source-level JSDoc updates in `src/backend/z_Api/abclassMutations.js` and `src/backend/y_controllers/ABClassController.js`; no additional markdown doc changes were needed after Section 5.
 
 ---
 

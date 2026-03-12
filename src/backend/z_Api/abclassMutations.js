@@ -142,10 +142,10 @@ function validateDeleteABClassParams(params) {
 }
 
 /**
- * Thin transport handler for ABClass create or update.
+ * Thin transport handler for ABClass create or refresh operations.
  *
- * @param {object} params
- * @returns {object}
+ * @param {object} params - Request payload with classId, cohort, yearGroup, and courseLength.
+ * @returns {object} Partial ABClass summary returned by ABClassController.upsertABClass().
  */
 function upsertABClass(params) {
   validateUpsertABClassParams(params);
@@ -153,10 +153,10 @@ function upsertABClass(params) {
 }
 
 /**
- * Thin transport handler for ABClass field updates.
+ * Thin transport handler for editable ABClass field updates.
  *
- * @param {object} params
- * @returns {object}
+ * @param {object} params - Request payload with classId and optional editable patch fields.
+ * @returns {object} Partial ABClass summary returned by ABClassController.updateABClass().
  */
 function updateABClass(params) {
   validateUpdateABClassParams(params);
@@ -166,8 +166,8 @@ function updateABClass(params) {
 /**
  * Thin transport handler for ABClass deletion.
  *
- * @param {object} params
- * @returns {object}
+ * @param {object} params - Request payload containing classId.
+ * @returns {object} Deletion result returned by ABClassController.deleteABClass().
  */
 function deleteABClass(params) {
   validateDeleteABClassParams(params);

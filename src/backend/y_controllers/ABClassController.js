@@ -1,10 +1,10 @@
 /**
  * ABClassController
  *
- * Small utility to load and save ABClass instances from the JsonDbApp-backed
- * collections managed by DbManager. The convention used here is that each
- * class is stored in a collection named after its classId. The documents inside
- * that collection are plain serialized ABClass objects (from ABClass.toJSON()).
+ * Loads, persists, and mutates ABClass records stored in JsonDbApp-backed
+ * collections managed by DbManager. Each class is stored in a collection named
+ * after its classId, with plain serialized ABClass objects written via
+ * ABClass.toJSON().
  */
 
 /**
@@ -675,8 +675,15 @@ class ABClassController {
   }
 
   /**
-   * @param {object} params
-   * @returns {object}
+   * Creates a new ABClass or refreshes an existing one from Google Classroom,
+   * then returns the lightweight partial summary used by transport callers.
+   *
+   * @param {object} params - Mutation payload.
+   * @param {string} params.classId - Classroom course identifier.
+   * @param {*} params.cohort - User-managed cohort value.
+   * @param {*} params.yearGroup - User-managed year group value.
+   * @param {*} params.courseLength - Required course length, validated as an integer >= 1.
+   * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
    */
   upsertABClass(params) {
     Validate.requireParams(
@@ -714,8 +721,17 @@ class ABClassController {
   }
 
   /**
-   * @param {object} params
-   * @returns {object}
+   * Applies a lightweight patch to editable ABClass fields and returns the
+   * persisted partial class summary. If the class does not yet exist, this
+   * initialises it first using the supplied patch fields.
+   *
+   * @param {object} params - Patch payload.
+   * @param {string} params.classId - Classroom course identifier.
+   * @param {*} [params.cohort] - Optional cohort replacement.
+   * @param {*} [params.yearGroup] - Optional year-group replacement.
+   * @param {*} [params.courseLength] - Optional validated course length.
+   * @param {boolean|null} [params.active] - Optional active-state replacement.
+   * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
    */
   updateABClass(params) {
     Validate.requireParams({ classId: params?.classId }, 'updateABClass');
@@ -750,8 +766,13 @@ class ABClassController {
   }
 
   /**
-   * @param {object} params
+   * Deletes the stored full-class collection and matching class-partial row,
+   * returning idempotent deletion flags for each persistence layer.
+   *
+   * @param {object} params - Delete payload.
+   * @param {string} params.classId - Classroom course identifier.
    * @returns {{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }}
+   *   Deletion result for the full-class collection and the partial registry row.
    */
   deleteABClass(params) {
     Validate.requireParams({ classId: params?.classId }, 'deleteABClass');
