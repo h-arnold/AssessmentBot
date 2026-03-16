@@ -32,9 +32,9 @@ globalThis.console = { log: vi.fn(), error: vi.fn() };
 
 // Import the globals module under test
 // Import the globals module under test (exports exist only in Node test env)
-import { saveConfiguration } from '../../src/backend/ConfigurationManager/99_globals.js';
+import { saveConfiguration } from '../../src/AdminSheet/ConfigurationManager/globals.js';
 // Ensure ConfigurationManager class is loaded and exposed globally (Apps Script style)
-const ConfigurationManagerClass = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManagerClass = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
 // Some bundlers put class on default
 globalThis.ConfigurationManager = ConfigurationManagerClass.default || ConfigurationManagerClass;
 

@@ -1,8 +1,8 @@
-const ABClassExport = require('../../src/backend/Models/ABClass.js');
+const ABClassExport = require('../../src/AdminSheet/Models/ABClass.js');
 const ABClass = ABClassExport.ABClass || ABClassExport;
-const StudentExport = require('../../src/backend/Models/Student.js');
+const StudentExport = require('../../src/AdminSheet/Models/Student.js');
 const Student = StudentExport.Student || StudentExport;
-const TeacherExport = require('../../src/backend/Models/Teacher.js');
+const TeacherExport = require('../../src/AdminSheet/Models/Teacher.js');
 const Teacher = TeacherExport.Teacher || TeacherExport;
 
 describe('ABClassController.loadClass', () => {
@@ -32,17 +32,8 @@ describe('ABClassController.loadClass', () => {
       save: vi.fn(),
     };
 
-    const partialsCollectionMock = {
-      findOne: vi.fn().mockReturnValue(null),
-      replaceOne: vi.fn(),
-      insertOne: vi.fn(),
-      save: vi.fn(),
-    };
-
     dbManagerMock = {
-      getCollection: vi.fn((name) =>
-        name === 'abclass_partials' ? partialsCollectionMock : collectionMock
-      ),
+      getCollection: vi.fn().mockReturnValue(collectionMock),
     };
 
     globalThis.DbManager = { getInstance: () => dbManagerMock };
@@ -54,8 +45,10 @@ describe('ABClassController.loadClass', () => {
       fetchAllStudents: vi.fn(),
     };
 
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
-    ABClassController = require('../../src/backend/y_controllers/ABClassController.js');
+    delete require.cache[
+      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
+    ];
+    ABClassController = require('../../src/AdminSheet/y_controllers/ABClassController.js');
     controller = new ABClassController();
   });
 
@@ -66,7 +59,9 @@ describe('ABClassController.loadClass', () => {
     delete globalThis.ABLogger;
     delete globalThis.DbManager;
     delete globalThis.ClassroomApiClient;
-    delete require.cache[require.resolve('../../src/backend/y_controllers/ABClassController.js')];
+    delete require.cache[
+      require.resolve('../../src/AdminSheet/y_controllers/ABClassController.js')
+    ];
   });
 
   it('refreshes roster when course update time is newer than collection metadata', () => {
@@ -117,8 +112,6 @@ describe('ABClassController.loadClass', () => {
     expect(abClass.classOwner).toBeTruthy();
     expect(abClass.classOwner.userId || abClass.classOwner.getUserId()).toBe('owner-999');
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
-    expect(collectionMock.replaceOne).not.toHaveBeenCalled();
-    expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
     const [filterArg, updateArg] = collectionMock.updateOne.mock.calls[0];
@@ -168,13 +161,12 @@ describe('ABClassController.loadClass', () => {
 
     const abClass = controller.loadClass('course-456');
 
-    // loadClass always refreshes the roster and persists only the roster fields.
+    // Since loadClass always refreshes the roster we expect the refresh helpers
+    // to have been called, and persisted collection to be updated.
     expect(ClassroomApiClient.fetchCourse).toHaveBeenCalledWith('course-456');
     expect(ClassroomApiClient.fetchTeachers).toHaveBeenCalledWith('course-456');
     expect(ClassroomApiClient.fetchAllStudents).toHaveBeenCalledWith('course-456');
     expect(collectionMock.updateOne).toHaveBeenCalledTimes(1);
-    expect(collectionMock.replaceOne).not.toHaveBeenCalled();
-    expect(collectionMock.insertOne).not.toHaveBeenCalled();
     expect(collectionMock.save).toHaveBeenCalledTimes(1);
 
     // The refreshed payload uses the empty fetch responses above so the

@@ -4,9 +4,6 @@
  * Manages the creation, caching, and sending of request objects to the LLM.
  */
 class LLMRequestManager extends BaseRequestManager {
-  /**
-   *
-   */
   constructor() {
     super();
     this.progressTracker = ProgressTracker.getInstance();
@@ -214,27 +211,18 @@ class LLMRequestManager extends BaseRequestManager {
     }
   }
 
-  /**
-   *
-   */
   _assignAssessmentArtifacts(item, assessmentData) {
     for (const [criterion, assessment] of Object.entries(assessmentData)) {
       item.addAssessment(criterion, assessment);
     }
   }
 
-  /**
-   *
-   */
   _isSuccessfulResponse(response) {
     if (!response) return false;
     const code = response.getResponseCode();
     return code === 200 || code === 201;
   }
 
-  /**
-   *
-   */
   _logValidationRetry(uid) {
     this.progressTracker.logError(
       'Validation failed for UID: ' +
@@ -247,17 +235,11 @@ class LLMRequestManager extends BaseRequestManager {
     );
   }
 
-  /**
-   *
-   */
   _handleRetryLimitReached(uid) {
     this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
     Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);
   }
 
-  /**
-   *
-   */
   _handleRetryHttpFailure(uid) {
     this.progressTracker.logError('Retry failed for UID: ' + uid);
     Utils.toastMessage('Failed to process assessment for UID: ' + uid, 'Error', 5);

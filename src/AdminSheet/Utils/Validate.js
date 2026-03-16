@@ -137,9 +137,6 @@ class Validate {
     return true;
   }
 
-  /**
-   *
-   */
   static _isIPv4(hostname) {
     const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
     if (!ipv4Exec) return false;

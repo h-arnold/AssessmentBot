@@ -8,13 +8,7 @@
  * - Centralises error handling via ProgressTracker
  */
 
-/**
- *
- */
 class DbManager extends BaseSingleton {
-  /**
-   *
-   */
   constructor(isSingletonCreator = false) {
     // follow BaseSingleton convention: only allow heavy construction when flag provided
     super();

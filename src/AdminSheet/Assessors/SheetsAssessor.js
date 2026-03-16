@@ -3,13 +3,7 @@
  *
  */
 
-/**
- *
- */
 class SheetsAssessor {
-  /**
-   *
-   */
   constructor(tasks, studentTasks) {
     this.tasks = tasks;
     this.submissions = studentTasks;

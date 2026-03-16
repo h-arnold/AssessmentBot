@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockABLogger, createMockPropertiesService } from '../helpers/mockFactories.js';
 
 // Setup global mocks
-globalThis.ABLogger = require('../../src/backend/Utils/ABLogger.js');
+globalThis.ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 // Mock PropertiesService
 const mockPropertiesService = createMockPropertiesService(vi);
@@ -23,9 +23,9 @@ globalThis.Classroom = {
 };
 
 // Import classes after mocks
-const AssignmentController = require('../../src/backend/y_controllers/AssignmentController.js');
+const AssignmentController = require('../../src/AdminSheet/y_controllers/AssignmentController.js');
 
-const { AssignmentDefinition } = require('../../src/backend/Models/AssignmentDefinition.js');
+const { AssignmentDefinition } = require('../../src/AdminSheet/Models/AssignmentDefinition.js');
 
 describe('AssignmentController - Definition Hydration', () => {
   let mockProperties;
@@ -86,17 +86,13 @@ describe('AssignmentController - Definition Hydration', () => {
       deleteTriggerById: vi.fn(),
       removeTriggers: vi.fn(),
     };
-    globalThis.TriggerController = vi.fn().mockImplementation(function () {
-      return mockTriggerController;
-    });
+    globalThis.TriggerController = vi.fn().mockReturnValue(mockTriggerController);
 
     // Mock GoogleClassroomManager
     mockGoogleClassroomManager = {
       getCourseId: vi.fn().mockReturnValue('course-123'),
     };
-    globalThis.GoogleClassroomManager = vi.fn().mockImplementation(function () {
-      return mockGoogleClassroomManager;
-    });
+    globalThis.GoogleClassroomManager = vi.fn().mockReturnValue(mockGoogleClassroomManager);
 
     // Mock ABClassController
     const mockABClass = {
@@ -110,9 +106,7 @@ describe('AssignmentController - Definition Hydration', () => {
       rehydrateAssignment: vi.fn(),
       persistAssignmentRun: vi.fn(),
     };
-    globalThis.ABClassController = vi.fn().mockImplementation(function () {
-      return mockABClassController;
-    });
+    globalThis.ABClassController = vi.fn().mockReturnValue(mockABClassController);
 
     // Mock AssignmentDefinitionController
     mockDefinitionController = {
@@ -120,9 +114,7 @@ describe('AssignmentController - Definition Hydration', () => {
       ensureDefinition: vi.fn(),
       saveDefinition: vi.fn(),
     };
-    globalThis.AssignmentDefinitionController = vi.fn().mockImplementation(function () {
-      return mockDefinitionController;
-    });
+    globalThis.AssignmentDefinitionController = vi.fn().mockReturnValue(mockDefinitionController);
 
     // Mock Assignment factory and subclasses
     globalThis.Assignment = {
@@ -162,16 +154,12 @@ describe('AssignmentController - Definition Hydration', () => {
     };
 
     // Mock other dependencies
-    globalThis.AnalysisSheetManager = vi.fn().mockImplementation(function () {
-      return {
-        createAnalysisSheet: vi.fn(),
-      };
-    });
-    globalThis.OverviewSheetManager = vi.fn().mockImplementation(function () {
-      return {
-        createOverviewSheet: vi.fn(),
-      };
-    });
+    globalThis.AnalysisSheetManager = vi.fn().mockImplementation(() => ({
+      createAnalysisSheet: vi.fn(),
+    }));
+    globalThis.OverviewSheetManager = vi.fn().mockImplementation(() => ({
+      createOverviewSheet: vi.fn(),
+    }));
   });
 
   describe('processSelectedAssignment', () => {
@@ -436,9 +424,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const mockTrigger = {
         createTimeBasedTrigger: vi.fn().mockReturnValue('trigger-123'),
       };
-      globalThis.TriggerController.mockImplementation(function () {
-        return mockTrigger;
-      });
+      globalThis.TriggerController.mockReturnValue(mockTrigger);
 
       const controller = new AssignmentController();
       controller.startProcessing('assignment-456', 'Essay 1_English_10');

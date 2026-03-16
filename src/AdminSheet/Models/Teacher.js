@@ -89,9 +89,6 @@ class Teacher {
     this.userId = val;
   }
 
-  /**
-   *
-   */
   toJSON() {
     return Object.assign(
       {
@@ -102,9 +99,6 @@ class Teacher {
     );
   }
 
-  /**
-   *
-   */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
     const { email, userId } = json;

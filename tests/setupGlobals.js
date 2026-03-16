@@ -1,18 +1,15 @@
-const { randomUUID } = require('node:crypto');
-
 // Global shims for GAS-like environment in unit tests.
 
 // Ensure canonical BaseSingleton is loaded first so tests use the real implementation
 // (prevents singleton fallbacks in individual files from being used).
-require('../src/backend/00_BaseSingleton.js');
+require('../src/AdminSheet/00_BaseSingleton.js');
 
 // Load Assignment classes so they're available globally for polymorphic factory pattern
 const g = globalThis;
-g.RuntimeConstants = require('../src/backend/00_RuntimeConstants.js').RuntimeConstants;
-g.Assignment = require('../src/backend/AssignmentProcessor/Assignment.js');
-g.SlidesAssignment = require('../src/backend/AssignmentProcessor/SlidesAssignment.js');
-g.SheetsAssignment = require('../src/backend/AssignmentProcessor/SheetsAssignment.js');
-const { StudentSubmission } = require('../src/backend/Models/StudentSubmission.js');
+g.Assignment = require('../src/AdminSheet/AssignmentProcessor/Assignment.js');
+g.SlidesAssignment = require('../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js');
+g.SheetsAssignment = require('../src/AdminSheet/AssignmentProcessor/SheetsAssignment.js');
+const { StudentSubmission } = require('../src/AdminSheet/Models/StudentSubmission.js');
 g.StudentSubmission = StudentSubmission;
 
 g.Utils = {
@@ -44,7 +41,6 @@ g.Utils = {
 };
 
 g.Utilities = {
-  getUuid: randomUUID,
   base64Encode(bytes) {
     if (Array.isArray(bytes)) return Buffer.from(Uint8Array.from(bytes)).toString('base64');
     if (typeof bytes === 'string') return Buffer.from(bytes, 'utf8').toString('base64');
@@ -54,30 +50,6 @@ g.Utilities = {
 
 g.Logger = {
   log: (...a) => console.log('[LOG]', ...a),
-};
-
-// In-memory backing store for the PropertiesService.getUserProperties() mock.
-// Call PropertiesService._resetUserProperties() in beforeEach to isolate tests.
-const _userPropertiesData = {};
-
-g.PropertiesService = {
-  _resetUserProperties() {
-    for (const key of Object.keys(_userPropertiesData)) {
-      delete _userPropertiesData[key];
-    }
-  },
-  getUserProperties() {
-    return {
-      getProperty(key) {
-        return Object.prototype.hasOwnProperty.call(_userPropertiesData, key)
-          ? _userPropertiesData[key]
-          : null;
-      },
-      setProperty(key, value) {
-        _userPropertiesData[key] = value;
-      },
-    };
-  },
 };
 // Use the shared ProgressTracker mock for tests
 g.ProgressTracker = require('./mocks/ProgressTracker.js');
@@ -119,17 +91,16 @@ g.ScriptAppManager = class ScriptAppManager {
   }
 };
 
-g.Validate = require('../src/backend/Utils/Validate.js').Validate;
-g.ApiValidationError = require('../src/backend/Utils/ErrorTypes/ApiValidationError.js');
+g.Validate = require('../src/AdminSheet/Utils/Validate.js').Validate;
 
 // Expose ArtifactFactory globally before TaskDefinition usage (TaskDefinition references global ArtifactFactory)
-const { ArtifactFactory } = require('../src/backend/Models/Artifacts/index.js');
+const { ArtifactFactory } = require('../src/AdminSheet/Models/Artifacts/index.js');
 g.ArtifactFactory = ArtifactFactory;
 
 // Expose model classes expected as globals in production runtime
-const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
+const { TaskDefinition } = require('../src/AdminSheet/Models/TaskDefinition.js');
 g.TaskDefinition = TaskDefinition;
-const { AssignmentDefinition } = require('../src/backend/Models/AssignmentDefinition.js');
+const { AssignmentDefinition } = require('../src/AdminSheet/Models/AssignmentDefinition.js');
 g.AssignmentDefinition = AssignmentDefinition;
 
 // Load and expose ConfigurationManager validators as globals so modules that
@@ -137,7 +108,7 @@ g.AssignmentDefinition = AssignmentDefinition;
 // avoids duplicate declaration errors when the same functions are present in
 // both tests and the GAS runtime. Tests should ensure these are present before
 // requiring ConfigurationManager modules.
-const validators = require('../src/backend/ConfigurationManager/03_validators.js');
+const validators = require('../src/AdminSheet/ConfigurationManager/validators.js');
 // Attach individual functions/values to the global scope (globalThis) so
 // source files can reference them without importing. Use the same names
 // exported by the validators module.
@@ -150,18 +121,6 @@ g.validateClassInfo = validators.validateClassInfo;
 g.toBoolean = validators.toBoolean;
 g.toBooleanString = validators.toBooleanString;
 g.toReadableKey = validators.toReadableKey;
-
-// Default LockService mock — always acquires the lock successfully.
-// Individual tests that need to control lock behaviour should override
-// globalThis.LockService in their own beforeEach/afterEach.
-g.LockService = {
-  getUserLock() {
-    return {
-      tryLock: () => true,
-      releaseLock: () => {},
-    };
-  },
-};
 
 // Lightweight ClassroomManager shim used by some modules. Tests often mock
 // Classroom.Courses.Students.list directly, so prefer that when available.
@@ -178,7 +137,7 @@ g.ClassroomManager = {
       const list = Array.isArray(resp.students) ? resp.students : [];
 
       // Try to use the Student model when available so consumers get instances
-      const StudentExport = require('../src/backend/Models/Student.js');
+      const StudentExport = require('../src/AdminSheet/Models/Student.js');
       const StudentModel = StudentExport.Student || StudentExport;
 
       return list.map((s) => {

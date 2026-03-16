@@ -108,9 +108,6 @@ class Utils {
     }
   }
 
-  /**
-   *
-   */
   static clearDocumentProperties() {
     const docProperties = PropertiesService.getDocumentProperties();
     docProperties.deleteAllProperties();

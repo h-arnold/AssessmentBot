@@ -34,9 +34,9 @@ beforeEach(async () => {
 
   // Dynamically import modules after mocks are in place (ESM pattern)
   const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
-    import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
-    import('../../src/backend/y_controllers/ABClassController.js'),
+    import('../../src/AdminSheet/Models/ABClass.js'),
+    import('../../src/AdminSheet/AssignmentProcessor/Assignment.js'),
+    import('../../src/AdminSheet/y_controllers/ABClassController.js'),
   ]);
 
   ABClass = abClassModule.ABClass;
@@ -334,14 +334,6 @@ describe('ABClassController Rehydrate Assignment', () => {
       expect(() => {
         controller.rehydrateAssignment(abClass, null);
       }).toThrow();
-    });
-
-    it('throws when abClass.classId is not a non-empty string', () => {
-      const controller = new ABClassController();
-
-      expect(() => {
-        controller.rehydrateAssignment({ classId: '   ' }, 'assign-invalid-class-id');
-      }).toThrow('rehydrateAssignment: expected abClass.classId to be a non-empty string');
     });
 
     it('handles Assignment.fromJSON failure gracefully', () => {

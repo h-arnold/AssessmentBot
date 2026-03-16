@@ -4,9 +4,6 @@
 // Expect Utils to exist in global scope in GAS environment (generateHash, etc.).
 // Artifacts are defined in `Artifacts.js` and loaded in the same runtime. We only reference by name here.
 
-/**
- *
- */
 class TaskDefinition {
   /**
    * @param {Object} params
@@ -40,17 +37,11 @@ class TaskDefinition {
     };
   }
 
-  /**
-   *
-   */
   _deriveId(taskTitle, pageId) {
     const base = `${taskTitle || ''}::${pageId || ''}`;
     return 't_' + Utils.generateHash(base).substring(0, 12); // shorter stable prefix
   }
 
-  /**
-   *
-   */
   getId() {
     return this.id;
   }
@@ -94,22 +85,13 @@ class TaskDefinition {
     return this.createArtifact('template', params);
   }
 
-  /**
-   *
-   */
   getPrimaryReference() {
     return this.artifacts.reference.length ? this.artifacts.reference[0] : null;
   }
-  /**
-   *
-   */
   getPrimaryTemplate() {
     return this.artifacts.template.length ? this.artifacts.template[0] : null;
   }
 
-  /**
-   *
-   */
   validate() {
     const errors = [];
     if (!this.artifacts.reference.length) errors.push('TaskDefinition missing reference artifact');
@@ -117,9 +99,6 @@ class TaskDefinition {
     return { ok: errors.length === 0, errors };
   }
 
-  /**
-   *
-   */
   toJSON() {
     return {
       id: this.id,
@@ -150,9 +129,6 @@ class TaskDefinition {
     };
   }
 
-  /**
-   *
-   */
   static fromJSON(json) {
     const td = new TaskDefinition({
       taskTitle: json.taskTitle,

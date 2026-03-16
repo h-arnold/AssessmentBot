@@ -6,9 +6,6 @@
  * @class SheetsFeedback
  */
 
-/**
- *
- */
 class SheetsFeedback {
   /**
    * Creates an instance of SheetsFeedback.

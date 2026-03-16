@@ -7,21 +7,12 @@
  * that collection are plain serialized ABClass objects (from ABClass.toJSON()).
  */
 
-/**
- *
- */
 class ABClassController {
-  /**
-   *
-   */
   constructor() {
     this.dbManager = DbManager.getInstance();
   }
 
   // Helper: fetch and apply course metadata (name, owner)
-  /**
-   *
-   */
   _applyCourseMetadata(abClass, courseId) {
     // Call the ClassroomApiClient static method directly and allow errors to surface
     const course = ClassroomApiClient.fetchCourse(courseId);
@@ -37,9 +28,6 @@ class ABClassController {
   }
 
   // Helper: fetch and apply teacher list
-  /**
-   *
-   */
   _applyTeachers(abClass, courseId) {
     const logger = ABLogger.getInstance();
     // Call the ClassroomApiClient static method directly and allow errors to surface
@@ -76,9 +64,6 @@ class ABClassController {
   }
 
   // Helper: fetch and apply students
-  /**
-   *
-   */
   _applyStudents(abClass, courseId) {
     // Call the ClassroomApiClient static method directly; it handles paging. Let errors bubble up.
     const students = ClassroomApiClient.fetchAllStudents(courseId);
@@ -88,9 +73,6 @@ class ABClassController {
     });
   }
 
-  /**
-   *
-   */
   _getCollectionMetadata(collection) {
     try {
       return collection.getMetadata();
@@ -100,9 +82,6 @@ class ABClassController {
     }
   }
 
-  /**
-   *
-   */
   _buildClassroomRosterUpdatePayload(abClass) {
     return {
       className: abClass?.className ?? null,
@@ -114,9 +93,6 @@ class ABClassController {
 
   // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
   // keep the helper for future use once the issue is resolved.
-  /**
-   *
-   */
   _shouldRefreshRoster(metadata, classId) {
     if (!metadata?.lastUpdated) return false;
 
@@ -130,9 +106,6 @@ class ABClassController {
     return courseUpdatedAt.getTime() > lastUpdated.getTime();
   }
 
-  /**
-   *
-   */
   _refreshRoster(abClass, classId) {
     if (!abClass) return;
 
@@ -145,9 +118,6 @@ class ABClassController {
     this._applyStudents(abClass, classId);
   }
 
-  /**
-   *
-   */
   _persistRoster(collection, existingDoc, abClass) {
     const logger = ABLogger.getInstance();
     const payload = this._buildClassroomRosterUpdatePayload(abClass);

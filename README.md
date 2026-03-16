@@ -122,18 +122,6 @@ It’s still up to you to address misconceptions, motivate students, and do all 
 
 ---
 
-### React frontend migration scaffold
-
-A new React frontend scaffold now lives in `src/frontend` and uses **Vite + TypeScript + Ant Design**. Existing non-deprecated GAS logic has been mirrored into `src/backend` so backend code can continue in vanilla V8-compatible JavaScript while the new UI is built separately.
-
-Useful commands:
-
-- `npm run frontend:dev`
-- `npm run frontend:build`
-- `npm run frontend:lint`
-- `npm run frontend:test`
-- `npm run frontend:test:e2e`
-
 ## ⚙️ Setup
 
 The inital set up should take no more than an hour, including deploying the backend and creating all the Assessment Records.

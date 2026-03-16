@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 
 describe('AssignmentDefinition Validation', () => {
   describe('Partial Definition Validation', () => {

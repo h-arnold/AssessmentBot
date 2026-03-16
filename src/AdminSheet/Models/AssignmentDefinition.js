@@ -1,9 +1,6 @@
 // AssignmentDefinition.js
 // Represents a reusable assignment/lesson definition persisted in JsonDbApp.
 
-/**
- *
- */
 class AssignmentDefinition {
   /**
    * @param {Object} params - Assignment definition properties.
@@ -179,9 +176,6 @@ class AssignmentDefinition {
     }
   }
 
-  /**
-   *
-   */
   _hydrateTasks(tasks) {
     // Skip hydration if tasks is null (partial definition)
     if (tasks === null) {
@@ -232,17 +226,11 @@ class AssignmentDefinition {
     this.touchUpdated();
   }
 
-  /**
-   *
-   */
   touchUpdated() {
     this.updatedAt = new Date().toISOString();
     return this.updatedAt;
   }
 
-  /**
-   *
-   */
   toJSON() {
     return {
       primaryTitle: this.primaryTitle,
@@ -268,9 +256,6 @@ class AssignmentDefinition {
     };
   }
 
-  /**
-   *
-   */
   toPartialJSON() {
     return {
       primaryTitle: this.primaryTitle,
@@ -289,9 +274,6 @@ class AssignmentDefinition {
     };
   }
 
-  /**
-   *
-   */
   static fromJSON(json) {
     if (!json) {
       throw new Error('Invalid data for AssignmentDefinition.fromJSON');

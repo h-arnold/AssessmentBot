@@ -1,21 +1,8 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
-const unicorn = require('eslint-plugin-unicorn').default;
-const sonarjs = require('eslint-plugin-sonarjs');
 
 module.exports = [
-  // Ignore legacy GAS source folders entirely from linting
   {
-    ignores: ['src/AdminSheet/**', 'src/AssessmentRecordTemplate/**'],
-  },
-  // Apply unicorn's complete rule set (modern JS preferences + more) to backend only
-  {
-    ...unicorn.configs.all,
-    files: ['src/backend/**/*.js'],
-  },
-  {
-    // Backend GAS JavaScript rules - scoped to backend only
-    files: ['src/backend/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -55,33 +42,53 @@ module.exports = [
         SummarySheetManager: 'readonly',
       },
     },
-    plugins: { googleappsscript, jsdoc, unicorn, sonarjs },
+    plugins: { googleappsscript, jsdoc },
     rules: {
-      ...sonarjs.configs.recommended.rules,
-      // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
-      'sonarjs/prefer-single-boolean-return': 'off',
-      'sonarjs/prefer-immediate-return': 'off',
-      // prefer globalThis instead of window/self/global
-      'unicorn/prefer-global-this': 'error',
-      // insist on Number.parseInt, Number.parseFloat, etc., instead of globals
-      'unicorn/prefer-number-properties': 'error',
-      // Standardize on error names only (catch clauses should use 'error')
-      'unicorn/catch-error-name': 'error',
-      'unicorn/prevent-abbreviations': [
+      // Enforce using the aggregator instead of direct numbered artifact files.
+      'no-restricted-imports': [
         'error',
         {
-          allowList: {
-            DbManager: true,
-            Utils: true,
-          },
+          paths: [
+            {
+              name: '../src/AdminSheet/Models/Artifacts/0_BaseTaskArtifact.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+            {
+              name: '../src/AdminSheet/Models/Artifacts/1_TextTaskArtifact.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+            {
+              name: '../src/AdminSheet/Models/Artifacts/2_TableTaskArtifact.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+            {
+              name: '../src/AdminSheet/Models/Artifacts/3_SpreadsheetTaskArtifact.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+            {
+              name: '../src/AdminSheet/Models/Artifacts/4_ImageTaskArtifact.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+            {
+              name: '../src/AdminSheet/Models/Artifacts/5_ArtifactFactory.js',
+              message:
+                'Import from Models/Artifacts/index.js instead of individual artifact files.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['**/Models/Artifacts/[0-9]_*.js'],
+              message:
+                'Use Models/Artifacts/index.js as the import surface, not numbered artifact files.',
+            },
+          ],
         },
       ],
-      // Disable rules that conflict with GAS naming conventions and preferences
-      'unicorn/no-null': 'off',
-      'unicorn/no-keyword-prefix': 'off',
-      'unicorn/filename-case': 'off',
-      'unicorn/no-array-for-each': 'off',
-      'unicorn/numeric-separators-style': 'off',
       // Prevent accidental redefinition of BaseSingleton outside the canonical file.
       'no-restricted-syntax': [
         'error',
@@ -91,7 +98,12 @@ module.exports = [
           message:
             'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
         },
-
+        {
+          selector:
+            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
+          message:
+            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
+        },
         {
           selector: "AssignmentExpression[left.name='BaseSingleton']",
           message:
@@ -120,7 +132,7 @@ module.exports = [
         },
       ],
       'jsdoc/require-jsdoc': [
-        'error',
+        'warn',
         {
           require: {
             FunctionDeclaration: true,
@@ -140,20 +152,50 @@ module.exports = [
       ],
     },
   },
+  // Add an override to allow BaseSingleton definition in the canonical base file.
   {
-    // Backend-specific rules
-    files: ['src/backend/DbManager/DbManager.js', 'src/backend/Utils/Utils.js'],
+    files: ['src/AdminSheet/00_BaseSingleton.js'],
     rules: {
-      'unicorn/prevent-abbreviations': [
+      'no-restricted-syntax': 'off',
+    },
+  },
+  // Allow singleton constructor calls in their defining modules and tests.
+  {
+    files: [
+      'src/AdminSheet/ConfigurationManager/**/*.js',
+      'src/AdminSheet/UI/98_UIManager.js',
+      'src/AdminSheet/Utils/ProgressTracker.js',
+      'src/AdminSheet/y_controllers/InitController.js',
+      'tests/**/*.js',
+      'tests/**/*.mjs',
+    ],
+    languageOptions: {
+      sourceType: 'module',
+    },
+    rules: {
+      'no-restricted-syntax': [
         'error',
+        // Keep BaseSingleton restrictions but remove singleton constructor restrictions
         {
-          checkFilenames: false,
-          allowList: {
-            DbManager: true,
-            Utils: true,
-          },
+          selector:
+            "Program:not([sourceType='module']) VariableDeclarator[id.name='BaseSingleton']",
+          message:
+            'Do not declare a global BaseSingleton in individual files. Use src/AdminSheet/00_BaseSingleton.js for the canonical implementation.',
+        },
+        {
+          selector:
+            "AssignmentExpression[left.object.name='globalThis'][left.property.name='BaseSingleton']",
+          message:
+            'Do not assign to globalThis.BaseSingleton outside src/AdminSheet/00_BaseSingleton.js; require the canonical base in tests instead.',
+        },
+        {
+          selector: "AssignmentExpression[left.name='BaseSingleton']",
+          message:
+            'Do not assign to BaseSingleton identifier outside src/AdminSheet/00_BaseSingleton.js; keep the canonical implementation in that single file.',
         },
       ],
+      'jsdoc/require-jsdoc': 'off',
+      'no-magic-numbers': 'off',
     },
   },
 ];

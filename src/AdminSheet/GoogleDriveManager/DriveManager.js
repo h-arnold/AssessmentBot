@@ -106,9 +106,6 @@ class DriveManager {
       details,
     };
   }
-  /**
-   *
-   */
   static copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
     Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
 
@@ -298,9 +295,6 @@ class DriveManager {
     return DriveManager._getParentViaDriveApi(fileId);
   }
 
-  /**
-   *
-   */
   static _getParentViaDriveApp(fileId) {
     const retries = 3;
     for (let attempt = 0; attempt < retries; attempt++) {
@@ -335,9 +329,6 @@ class DriveManager {
     return null;
   }
 
-  /**
-   *
-   */
   static _getParentViaDriveApi(fileId) {
     const fields = 'parents,driveId';
     try {
@@ -570,9 +561,6 @@ class DriveManager {
     }
   }
 
-  /**
-   *
-   */
   static _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
@@ -594,9 +582,6 @@ class DriveManager {
     throw new Error('Unable to fetch modified time via DriveApp');
   }
 
-  /**
-   *
-   */
   static _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {

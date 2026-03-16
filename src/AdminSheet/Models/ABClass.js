@@ -64,16 +64,10 @@ class ABClass {
   }
 
   // Owner helpers
-  /**
-   *
-   */
   getClassOwner() {
     return this.classOwner || null;
   }
 
-  /**
-   *
-   */
   setClassOwner(owner) {
     const logger = ABLogger.getInstance();
 
@@ -103,9 +97,6 @@ class ABClass {
    * @param {number|null} defaultValue
    * @return {number|null}
    */
-  /**
-   *
-   */
   static _parseNullableInt(value, defaultValue) {
     if (value === null || value === undefined) return defaultValue;
     if (Number.isInteger(value)) return value;
@@ -115,31 +106,19 @@ class ABClass {
   }
 
   // Basic getters
-  /**
-   *
-   */
   getClassId() {
     return this.classId;
   }
 
-  /**
-   *
-   */
   getClassName() {
     return this.className;
   }
 
-  /**
-   *
-   */
   setClassName(name) {
     this.className = name || null;
   }
 
   // Cohort helpers
-  /**
-   *
-   */
   getCohortStartYear() {
     if (!this.cohort) return null;
     const num = Number.parseInt(this.cohort, 10);
@@ -164,79 +143,52 @@ class ABClass {
   }
 
   // Teacher management
-  /**
-   *
-   */
   addTeacher(teacher) {
     if (!teacher) return null;
     this.teachers.push(teacher);
     return teacher;
   }
 
-  /**
-   *
-   */
   removeTeacher(predicate) {
     const idx = this.teachers.findIndex(predicate);
     if (idx === -1) return null;
     return this.teachers.splice(idx, 1)[0];
   }
 
-  /**
-   *
-   */
   findTeacher(predicate) {
     return this.teachers.find(predicate) || null;
   }
 
   // Student management
-  /**
-   *
-   */
   addStudent(student) {
     if (!student) return null;
     this.students.push(student);
     return student;
   }
 
-  /**
-   *
-   */
   removeStudent(predicate) {
     const idx = this.students.findIndex(predicate);
     if (idx === -1) return null;
     return this.students.splice(idx, 1)[0];
   }
 
-  /**
-   *
-   */
   findStudent(predicate) {
     return this.students.find(predicate) || null;
   }
 
   // Assignment management
-  /**
-   *
-   */
   addAssignment(assignment) {
     if (!assignment) return null;
     this.assignments.push(assignment);
     return assignment;
   }
 
-  /**
-   *
-   */
   removeAssignment(predicate) {
     const idx = this.assignments.findIndex(predicate);
     if (idx === -1) return null;
     return this.assignments.splice(idx, 1)[0];
   }
 
-  /**
-   *
-   */
   findAssignment(predicate) {
     return this.assignments.find(predicate) || null;
   }
@@ -252,9 +204,6 @@ class ABClass {
   }
 
   // toJSON serializes contained objects by calling toJSON if available.
-  /**
-   *
-   */
   toJSON() {
     const serializeArray = (arr) =>
       (arr || []).map((it) => (it && typeof it.toJSON === 'function' ? it.toJSON() : it));
@@ -272,9 +221,6 @@ class ABClass {
   }
 
   // fromJSON reconstructs an ABClass instance from previously serialized data.
-  /**
-   *
-   */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;
     const inst = Object.create(ABClass.prototype);

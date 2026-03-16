@@ -31,9 +31,6 @@ class SheetsAssignment extends Assignment {
     return inst;
   }
 
-  /**
-   *
-   */
   populateTasks() {
     const { referenceDocumentId, templateDocumentId } = this.assignmentDefinition;
     const parser = new SheetsParser();
@@ -105,9 +102,6 @@ class SheetsAssignment extends Assignment {
     return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
   }
 
-  /**
-   *
-   */
   assessResponses() {
     // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
     // Placeholder: integrate AssessmentEngineRouter in later phase.

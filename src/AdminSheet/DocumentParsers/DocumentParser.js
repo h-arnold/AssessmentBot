@@ -27,6 +27,7 @@ class DocumentParser {
    * @return {TaskDefinition[]}
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
+    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
   }
 
@@ -37,6 +38,7 @@ class DocumentParser {
    * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
    */
   extractSubmissionArtifacts(documentId, taskDefinitions) {
+    // eslint-disable-line no-unused-vars
     throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
   }
 

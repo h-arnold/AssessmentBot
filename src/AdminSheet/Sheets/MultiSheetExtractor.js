@@ -5,9 +5,6 @@
  * @property {Object.<string, Object.<string, Array>>} overviewData - Nested object storing aggregated data by year group and class name
  */
 class MultiSheetExtractor extends BaseSheetManager {
-  /**
-   *
-   */
   constructor(sheet) {
     super(sheet);
     this.sheetsData = []; // Array of {fileId: string, name: string, yearGroup: string} from the "master" sheet

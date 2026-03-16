@@ -114,9 +114,6 @@ function saveClassroom(courseName, courseId) {
   }
 }
 
-/**
- *
- */
 function getClassrooms() {
   const googleClassroomController = new GoogleClassroomController();
   try {

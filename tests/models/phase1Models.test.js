@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
+import { TaskDefinition } from '../../src/AdminSheet/Models/TaskDefinition.js';
 import {
   ArtifactFactory,
   TextTaskArtifact,
   TableTaskArtifact,
   SpreadsheetTaskArtifact,
   ImageTaskArtifact,
-} from '../../src/backend/Models/Artifacts/index.js';
-import { StudentSubmission } from '../../src/backend/Models/StudentSubmission.js';
+} from '../../src/AdminSheet/Models/Artifacts/index.js';
+import { StudentSubmission } from '../../src/AdminSheet/Models/StudentSubmission.js';
 import { createTaskDefinition } from '../helpers/modelFactories.js';
 
 describe('Phase1 Model Requirements', () => {

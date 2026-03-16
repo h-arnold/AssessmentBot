@@ -4,7 +4,7 @@ import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
 let mocks;
 
 // Import class under test
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
 
 describe('ConfigurationManager Class Info Migration', () => {
   let configManager;

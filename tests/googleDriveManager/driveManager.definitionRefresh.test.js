@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import DriveManager from '../../src/AdminSheet/GoogleDriveManager/DriveManager.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 
-import DbManager from '../../src/backend/DbManager/DbManager.js';
+import DbManager from '../../src/AdminSheet/DbManager/DbManager.js';
 
 // Mock dependencies
 globalThis.DriveApp = {
@@ -17,7 +17,7 @@ globalThis.Utilities = {
   sleep: vi.fn(),
 };
 
-vi.mock('../../src/backend/DbManager/DbManager.js');
+vi.mock('../../src/AdminSheet/DbManager/DbManager.js');
 
 describe('DriveManager - Definition Refresh Integration', () => {
   let mockCollection;

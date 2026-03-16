@@ -1,10 +1,4 @@
-/**
- *
- */
 class AssignmentDefinitionController {
-  /**
-   *
-   */
   constructor() {
     this.dbManager = DbManager.getInstance();
     this.progressTracker = ProgressTracker.getInstance();
@@ -166,9 +160,6 @@ class AssignmentDefinitionController {
     return AssignmentDefinition.fromJSON(fullPayload);
   }
 
-  /**
-   *
-   */
   savePartialDefinition(definition) {
     const defInstance =
       definition instanceof AssignmentDefinition
@@ -189,31 +180,19 @@ class AssignmentDefinitionController {
     return AssignmentDefinition.fromJSON(payload);
   }
 
-  /**
-   *
-   */
   _getRegistryCollection() {
     return this.dbManager.getCollection(this.registryCollectionName);
   }
 
-  /**
-   *
-   */
   _getFullCollectionName(definitionKey) {
     return `${this.fullCollectionPrefix}${definitionKey}`;
   }
 
-  /**
-   *
-   */
   _getFullCollection(definitionKey) {
     const name = this._getFullCollectionName(definitionKey);
     return this.dbManager.getCollection(name);
   }
 
-  /**
-   *
-   */
   _resolveTopicName({ primaryTopic, topicId, courseId }) {
     if (primaryTopic) return primaryTopic;
     if (!topicId) {
@@ -229,9 +208,6 @@ class AssignmentDefinitionController {
     return ClassroomApiClient.fetchTopicName(courseId, topicId);
   }
 
-  /**
-   *
-   */
   _parseTasks({ documentType, referenceDocumentId, templateDocumentId }) {
     const type = documentType.toUpperCase();
     if (type === 'SLIDES') {
@@ -245,9 +221,6 @@ class AssignmentDefinitionController {
     );
   }
 
-  /**
-   *
-   */
   _parseSlidesTasks(referenceDocumentId, templateDocumentId) {
     const parser = new SlidesParser();
     const definitions = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);
@@ -275,9 +248,6 @@ class AssignmentDefinitionController {
     );
   }
 
-  /**
-   *
-   */
   _parseSheetsTasks(referenceDocumentId, templateDocumentId) {
     const parser = new SheetsParser();
     const definitions = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);

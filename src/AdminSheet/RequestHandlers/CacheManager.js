@@ -4,9 +4,6 @@
  * Handles caching of assessment data to prevent redundant processing.
  */
 class CacheManager {
-  /**
-   *
-   */
   constructor() {
     this.cache = CacheService.getScriptCache();
   }

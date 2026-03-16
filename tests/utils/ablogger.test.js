@@ -2,7 +2,7 @@
 // the project's `vitest.config.js` -> `test.globals: true` setting, so do not
 // require/import vitest here; use the globals directly.
 // Load the singleton base (setupGlobals already requires BaseSingleton)
-const ABLogger = require('../../src/backend/Utils/ABLogger.js');
+const ABLogger = require('../../src/AdminSheet/Utils/ABLogger.js');
 
 describe('ABLogger', () => {
   let logger;

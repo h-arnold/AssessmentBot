@@ -1,9 +1,6 @@
 // StudentSubmission.js
 // Defines StudentSubmission and StudentSubmissionItem classes.
 
-/**
- *
- */
 class StudentSubmissionItem {
   /**
    * @param {Object} p
@@ -24,9 +21,6 @@ class StudentSubmissionItem {
     this.id = this._deriveId();
   }
 
-  /**
-   *
-   */
   _deriveId() {
     // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
     const primaryUid = this.artifact.getUid();
@@ -36,9 +30,6 @@ class StudentSubmissionItem {
     return 'ssi_' + Utils.generateHash(base).substring(0, 16);
   }
 
-  /**
-   *
-   */
   addAssessment(criterion, assessment) {
     if (!criterion)
       throw new Error('addAssessment requires criterion when recording assessment data');
@@ -51,17 +42,11 @@ class StudentSubmissionItem {
     }
   }
 
-  /**
-   *
-   */
   getAssessment(criterion = null) {
     if (!criterion) return this.assessments || null;
     return this.assessments[criterion] || null;
   }
 
-  /**
-   *
-   */
   addFeedback(type, feedbackObj) {
     if (!type) throw new Error('addFeedback requires a feedback type identifier');
     if (!feedbackObj) return;
@@ -72,24 +57,15 @@ class StudentSubmissionItem {
     }
   }
 
-  /**
-   *
-   */
   getFeedback(type = null) {
     if (!type) return this.feedback || null;
     return this.feedback[type] || null;
   }
 
-  /**
-   *
-   */
   getType() {
     return this.artifact.getType();
   }
 
-  /**
-   *
-   */
   toJSON() {
     return {
       id: this.id,
@@ -114,9 +90,6 @@ class StudentSubmissionItem {
     return json;
   }
 
-  /**
-   *
-   */
   static _stripAssessmentReasoning(assessments) {
     if (!assessments || typeof assessments !== 'object') return assessments;
     return Object.fromEntries(
@@ -127,18 +100,12 @@ class StudentSubmissionItem {
     );
   }
 
-  /**
-   *
-   */
   static _removeAssessmentReasoning(assessment) {
     if (!assessment || typeof assessment !== 'object') return assessment;
     const { reasoning, ...rest } = assessment;
     return rest;
   }
 
-  /**
-   *
-   */
   static fromJSON(json) {
     const artifact = ArtifactFactory.fromJSON(json.artifact);
     const item = new StudentSubmissionItem({
@@ -154,9 +121,6 @@ class StudentSubmissionItem {
   }
 }
 
-/**
- *
- */
 class StudentSubmission {
   /**
    * @param {string} studentId
@@ -178,9 +142,6 @@ class StudentSubmission {
     this._updateCounter = 0;
   }
 
-  /**
-   *
-   */
   touchUpdated() {
     // Ensure strictly monotonic updatedAt even if multiple updates within same ms
     const base = new Date().toISOString();
@@ -188,9 +149,6 @@ class StudentSubmission {
     this.updatedAt = base + '#' + this._updateCounter;
   }
 
-  /**
-   *
-   */
   getItem(taskId) {
     return this.items[taskId];
   }
@@ -258,9 +216,6 @@ class StudentSubmission {
     return item;
   }
 
-  /**
-   *
-   */
   _inferTypeFromTask(taskDef) {
     // Attempt to infer from primary reference artifact if present
     const ref = taskDef.getPrimaryReference();
@@ -270,9 +225,6 @@ class StudentSubmission {
     return 'TEXT';
   }
 
-  /**
-   *
-   */
   toJSON() {
     return {
       studentId: this.studentId,
@@ -297,9 +249,6 @@ class StudentSubmission {
     return json;
   }
 
-  /**
-   *
-   */
   static fromJSON(json) {
     const sub = new StudentSubmission(
       json.studentId,

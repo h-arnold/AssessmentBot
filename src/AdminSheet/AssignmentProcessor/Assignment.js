@@ -217,9 +217,6 @@ class Assignment {
     return inst;
   }
 
-  /**
-   *
-   */
   static _rehydrateSubmission(inst, subObj) {
     const identifier = subObj && (subObj.studentId || subObj.userId);
 
@@ -563,38 +560,23 @@ class Assignment {
     throw new Error(`${methodName} must be implemented by subclasses`);
   }
 
-  /**
-   *
-   */
   getTasks() {
     return this.assignmentDefinition?.tasks ?? null;
   }
 
-  /**
-   *
-   */
   setTasks(tasks) {
     this.assignmentDefinition.tasks = tasks;
     return tasks;
   }
 
-  /**
-   *
-   */
   getDocumentType() {
     return this.assignmentDefinition?.documentType ?? null;
   }
 
-  /**
-   *
-   */
   getReferenceDocumentId() {
     return this.assignmentDefinition?.referenceDocumentId ?? null;
   }
 
-  /**
-   *
-   */
   getTemplateDocumentId() {
     return this.assignmentDefinition?.templateDocumentId ?? null;
   }

@@ -1,6 +1,3 @@
-/**
- *
- */
 class TriggerController {
   /**
    * Creates a time-based trigger for the specified function to fire 5 seconds after the current time.
@@ -134,39 +131,3 @@ TriggerController.REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/script.scriptapp',
   'https://www.googleapis.com/auth/classroom.topics.readonly',
 ];
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

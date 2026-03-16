@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Validate } from '../../src/backend/Utils/Validate.js';
+import { Validate } from '../../src/AdminSheet/Utils/Validate.js';
 
 describe('Validate utility', () => {
   describe('primitive helpers', () => {

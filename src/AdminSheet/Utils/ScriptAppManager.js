@@ -4,13 +4,7 @@
  * This class is encapsulates various ScriptApp functionality such as checking Auth modes, getting the script Id etc.
  */
 
-/**
- *
- */
 class ScriptAppManager {
-  /**
-   *
-   */
   constructor() {
     this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
     const status = this.authInfo.getAuthorizationStatus();

@@ -8,9 +8,6 @@
  * @param {Object} [sheet=null] - Optional sheet object to initialize with.
  */
 class BaseSheetManager {
-  /**
-   *
-   */
   constructor(sheet = null, spreadSheetId = null) {
     // If a string is passed, create or get the sheet name
     if (Validate.isString(sheet)) {

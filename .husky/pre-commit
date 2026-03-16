@@ -3,27 +3,26 @@
 # Format staged JavaScript and JSON files with Prettier, add them back to the commit,
 # then run ESLint --fix. This keeps formatting consistent for committed files.
 
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|json|md)$" | grep -Ev "^src/(AdminSheet|AssessmentRecordTemplate)/" || true)
+# Synchronise Apps Script manifests and trigger scopes before linting/formatting.
+echo "Synchronising Apps Script configuration."
+node scripts/sync-appsscript.js
+git add src/AssessmentRecordTemplate/appsscript.json src/AdminSheet/Utils/TriggerController.js
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\.(js|json|md)$" || true)
 
 if [ -n "$STAGED_FILES" ]; then
 	echo "Running Prettier on staged files:"
 	echo "$STAGED_FILES"
 	# Run Prettier (uses local install if available, otherwise npx)
-	# Process each file individually to handle filenames with spaces correctly
 	if command -v npx >/dev/null 2>&1; then
-		echo "$STAGED_FILES" | while IFS= read -r file; do
-			npx prettier --write "$file"
-		done
+		npx prettier --write $STAGED_FILES
 	else
-		echo "$STAGED_FILES" | while IFS= read -r file; do
-			prettier --write "$file"
-		done
+		prettier --write $STAGED_FILES
 	fi
 
 	# Add any changes made by Prettier back to the commit
-	echo "$STAGED_FILES" | while IFS= read -r file; do
-		git add "$file"
-	done
+	git add $STAGED_FILES
 fi
 
 # Run ESLint autofix for remaining JS files

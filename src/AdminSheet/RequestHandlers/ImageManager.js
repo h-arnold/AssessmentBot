@@ -1,10 +1,4 @@
-/**
- *
- */
 class ImageManager extends BaseRequestManager {
-  /**
-   *
-   */
   constructor() {
     super();
     // In GAS runtime BaseRequestManager should supply configManager.

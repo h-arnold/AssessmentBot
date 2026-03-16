@@ -10,7 +10,7 @@ beforeEach(() => {
 });
 
 // Import the class after setting up mocks
-const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
+const ConfigurationManager = require('../../src/AdminSheet/ConfigurationManager/ConfigurationManagerClass.js');
 
 describe('ConfigurationManager setProperty', () => {
   let configManager;

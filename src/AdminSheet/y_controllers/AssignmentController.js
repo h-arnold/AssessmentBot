@@ -6,9 +6,6 @@
  * Encapsulates assignment-related functionality and coordinates various components.
  */
 class AssignmentController {
-  /**
-   *
-   */
   constructor() {
     // Retain Utils for general utility methods not related to Classroom
     this.utils = Utils;
@@ -367,9 +364,6 @@ class AssignmentController {
     keys.forEach((key) => properties.deleteProperty(key));
   }
 
-  /**
-   *
-   */
   _detectDocumentType(referenceDocumentId, templateDocumentId) {
     const progressTracker = this.progressTracker;
     if (!referenceDocumentId || !templateDocumentId) {

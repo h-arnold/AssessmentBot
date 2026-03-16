@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 
 describe('Assignment (legacy alias removal)', () => {
   describe('tasks getter', () => {

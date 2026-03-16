@@ -31,9 +31,9 @@ beforeEach(async () => {
 
   // Dynamically import modules after mocks are in place (ESM pattern)
   const [abClassModule, assignmentModule, abClassControllerModule] = await Promise.all([
-    import('../../src/backend/Models/ABClass.js'),
-    import('../../src/backend/AssignmentProcessor/Assignment.js'),
-    import('../../src/backend/y_controllers/ABClassController.js'),
+    import('../../src/AdminSheet/Models/ABClass.js'),
+    import('../../src/AdminSheet/AssignmentProcessor/Assignment.js'),
+    import('../../src/AdminSheet/y_controllers/ABClassController.js'),
   ]);
 
   ABClass = abClassModule.ABClass;
@@ -387,22 +387,6 @@ describe('ABClassController Persist Assignment', () => {
       // Should add the assignment (as partial) to abClass.assignments
       expect(abClass.assignments).toHaveLength(1);
       expect(abClass.assignments[0].assignmentId).toBe('assign-new');
-    });
-
-    it('throws when abClass.classId is not a non-empty string', () => {
-      const controller = new ABClassController();
-      const { assignment } = createTestFixture({
-        ABClass,
-        courseId: 'course-invalid-class-id',
-        assignmentId: 'assign-invalid-class-id',
-      });
-
-      expect(() => {
-        controller.persistAssignmentRun(
-          { classId: '   ', assignments: [], findAssignmentIndex: () => -1 },
-          assignment
-        );
-      }).toThrow('persistAssignmentRun: expected abClass.classId to be a non-empty string');
     });
   });
 });

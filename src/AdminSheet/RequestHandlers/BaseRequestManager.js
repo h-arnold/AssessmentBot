@@ -4,9 +4,6 @@
  * Handles generic URL requests with error handling, retries, and exponential backoff.
  */
 class BaseRequestManager {
-  /**
-   *
-   */
   constructor() {
     this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
     this.cache = CacheService.getScriptCache(); // Initialize the script cache

@@ -1,15 +1,13 @@
 name: Build Documentation
 
 on:
-  pull_request:
+  push:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'requirements-docs.txt'
       - '.github/workflows/build-docs.yml'
-  push:
-    branches:
-      - main
+  pull_request:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -17,14 +15,8 @@ on:
       - '.github/workflows/build-docs.yml'
   workflow_dispatch:
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   build-docs:
-    permissions:
-      contents: read
     runs-on: ubuntu-latest
     
     steps:
@@ -44,25 +36,8 @@ jobs:
         run: |
           mkdocs build --verbose
       
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: documentation
           path: site/
-
-  deploy-docs:
-    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-    runs-on: ubuntu-latest
-    needs: build-docs
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

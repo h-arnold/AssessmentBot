@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import Assignment from '../../src/backend/AssignmentProcessor/Assignment.js';
-import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
+import Assignment from '../../src/AdminSheet/AssignmentProcessor/Assignment.js';
+import { AssignmentDefinition } from '../../src/AdminSheet/Models/AssignmentDefinition.js';
 import {
   createSlidesAssignment,
   createTextTask,
@@ -15,7 +15,7 @@ import {
 
 /**
  * Build a fully-hydrated slides assignment with rich task/submission data.
- * @return {{ assignment: import('../../src/backend/AssignmentProcessor/SlidesAssignment.js'), taskId: string }}
+ * @return {{ assignment: import('../../src/AdminSheet/AssignmentProcessor/SlidesAssignment.js'), taskId: string }}
  */
 function buildAssignmentFixture() {
   const taskDefinition = createTextTask(1, 'Reference paragraph', 'Template guidance');

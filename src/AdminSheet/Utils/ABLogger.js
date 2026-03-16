@@ -18,9 +18,6 @@
  * NOTE: Keep constructor lightweight; no external service calls.
  */
 class ABLogger extends BaseSingleton {
-  /**
-   *
-   */
   constructor(isSingletonCreator = false) {
     super();
     /**
@@ -58,9 +55,6 @@ class ABLogger extends BaseSingleton {
   }
 
   // Helper: serialise Error objects (and nested causes) to plain objects for logging
-  /**
-   *
-   */
   serialiseError(err) {
     if (!err || typeof err !== 'object') return err;
     const out = {};
@@ -74,9 +68,6 @@ class ABLogger extends BaseSingleton {
     return out;
   }
 
-  /**
-   *
-   */
   serialiseArg(arg) {
     if (!arg) return arg;
 
@@ -94,9 +85,6 @@ class ABLogger extends BaseSingleton {
   }
 
   // Helper to shallow-copy objects/arrays and serialise any direct Error-like properties
-  /**
-   *
-   */
   shallowSerialiseObject(obj, isErrorLike) {
     try {
       const copy = Array.isArray(obj) ? obj.slice() : { ...obj };
@@ -113,33 +101,18 @@ class ABLogger extends BaseSingleton {
   }
 
   // Lightweight forwards to console for tests and runtime logging
-  /**
-   *
-   */
   log(...args) {
     console.log(...args.map((a) => this.serialiseArg(a)));
   }
-  /**
-   *
-   */
   info(...args) {
     console.info(...args.map((a) => this.serialiseArg(a)));
   }
-  /**
-   *
-   */
   warn(...args) {
     console.warn(...args.map((a) => this.serialiseArg(a)));
   }
-  /**
-   *
-   */
   error(...args) {
     console.error(...args.map((a) => this.serialiseArg(a)));
   }
-  /**
-   *
-   */
   debug(...args) {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit
     console.log('[DEBUG]', ...args.map((a) => this.serialiseArg(a)));
