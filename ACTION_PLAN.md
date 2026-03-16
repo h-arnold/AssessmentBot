@@ -182,7 +182,7 @@ Frontend tests:
 - **Implementation notes:** Section 2 is complete; treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
 - **Implementation notes:** keep the existing auth error mapping contract, but move auth request ownership out of the component-local effect path.
 - **Implementation notes:** keep query ownership in the shared auth hook; do not add a separate auth context unless a later requirement cannot be met through the query layer alone.
-- **Validation deviation:** the planned glob `src/**/*auth*.spec.ts*` did not match the current filenames, so validation used the concrete auth spec `src/features/auth/useAuthorisationStatus.spec.tsx`.
+- **Validation deviation:** the planned glob `src/**/*auth*.spec.ts*` did not match the current file names, so validation used the concrete auth spec `src/features/auth/useAuthorisationStatus.spec.tsx`.
 - **Follow-up implications for later sections:** startup warm-up must consume this shared resolved auth state rather than issuing or shadowing another auth request.
 
 ---
@@ -224,6 +224,15 @@ Frontend tests:
 - `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*auth*.spec.ts*`
 - `npm run frontend:lint`
+
+### Progress tracking
+
+- [x] RED: tests added for the thin auth gate boundary, shared auth-result observation, `App.tsx` composition, and main-entry auth-gate composition.
+- [x] RED: intended failure captured against current production composition in `main.tsx`.
+- [ ] GREEN: implementation complete.
+- [ ] GREEN: review clean.
+- [ ] Checks passed.
+- [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
 
