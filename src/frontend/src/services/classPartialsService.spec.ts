@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 
 const callApiMock = vi.fn();
 
@@ -71,5 +72,24 @@ describe('classPartialsService.getABClassPartials', () => {
         const { getABClassPartials } = await import('./classPartialsService');
 
         await expect(getABClassPartials()).rejects.toThrow('Transport failure');
+    });
+
+    it('rejects malformed payloads with incorrect field types through the dedicated schema', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'c1',
+                className: 'Class A',
+                cohort: '2025',
+                courseLength: '2',
+                yearGroup: 10,
+                classOwner: null,
+                teachers: [],
+                active: true,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).rejects.toBeInstanceOf(ZodError);
     });
 });

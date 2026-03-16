@@ -42,6 +42,10 @@ type QueryProviderModule = {
   AppQueryProvider: (props: { children?: unknown }) => unknown;
 };
 
+type AuthGateModule = {
+  AppAuthGate: (props: { children?: unknown }) => unknown;
+};
+
 type ReactElementLike = {
   type?: unknown;
   props?: {
@@ -271,6 +275,41 @@ function getRenderedComponentChain(renderedTree: unknown) {
   return chain;
 }
 
+/**
+ * Returns the rendered main-entry composition chain elements.
+ */
+function getMainEntrypointComposition(renderedTree: ReactElementLike) {
+  const renderedComponentChain = getRenderedComponentChain(renderedTree);
+  const strictModeChild = getOnlyRenderedChild(renderedTree.props?.children) as ReactElementLike;
+  const authGateElement = getOnlyRenderedChild(strictModeChild?.props?.children) as ReactElementLike;
+  const appElement = getOnlyRenderedChild(authGateElement?.props?.children) as ReactElementLike;
+
+  return {
+    renderedComponentChain,
+    strictModeChild,
+    authGateElement,
+    appElement,
+  };
+}
+
+/**
+ * Asserts that App stays free of provider and service orchestration.
+ */
+function expectAppToStayThin() {
+  const importedModuleSpecifiers = getAppImportedModuleSpecifiers();
+  const runtimeImportedModuleSpecifiers = getAppRuntimeImportedModuleSpecifiers();
+  const orchestrationCalls = getAppOrchestrationCalls();
+  const providerComponents = getAppProviderComponents();
+
+  expect(importedModuleSpecifiers).not.toContain('@tanstack/react-query');
+  expect(
+    runtimeImportedModuleSpecifiers.every((specifier) => !specifier.startsWith(serviceImportPrefix))
+  ).toBe(true);
+  expect(orchestrationCalls).toEqual([]);
+  expect(providerComponents).toEqual([]);
+  expect(appUsesGoogleScriptRun()).toBe(false);
+}
+
 const appSourceFile = parseSourceFile('./App.tsx', appSource);
 
 /**
@@ -341,6 +380,9 @@ describe('main entrypoint', () => {
     const { AppQueryProvider } = await importRequiredModule<QueryProviderModule>(
       'query/AppQueryProvider.tsx'
     );
+    const { AppAuthGate } = await importRequiredModule<AuthGateModule>(
+      'features/auth/AppAuthGate.tsx'
+    );
 
     document.body.innerHTML = '<div id="root"></div>';
 
@@ -349,29 +391,13 @@ describe('main entrypoint', () => {
     expect(renderMock).toHaveBeenCalledTimes(1);
 
     const renderedTree = renderMock.mock.calls[0]?.[0] as ReactElementLike;
-    const renderedComponentChain = getRenderedComponentChain(renderedTree);
-    const strictModeChild = getOnlyRenderedChild(renderedTree.props?.children) as ReactElementLike;
-    const providerChild = getOnlyRenderedChild(
-      strictModeChild?.props?.children
-    ) as ReactElementLike;
+    const { renderedComponentChain, strictModeChild, authGateElement, appElement } =
+      getMainEntrypointComposition(renderedTree);
 
     expect(renderedComponentChain.at(0)).toBe('StrictMode');
     expect(strictModeChild?.type).toBe(AppQueryProvider);
-    expect(getRenderedTypeName(providerChild?.type)).toBe('MockApp');
-
-    const importedModuleSpecifiers = getAppImportedModuleSpecifiers();
-    const runtimeImportedModuleSpecifiers = getAppRuntimeImportedModuleSpecifiers();
-    const orchestrationCalls = getAppOrchestrationCalls();
-    const providerComponents = getAppProviderComponents();
-
-    expect(importedModuleSpecifiers).not.toContain('@tanstack/react-query');
-    expect(
-      runtimeImportedModuleSpecifiers.every(
-        (specifier) => !specifier.startsWith(serviceImportPrefix)
-      )
-    ).toBe(true);
-    expect(orchestrationCalls).toEqual([]);
-    expect(providerComponents).toEqual([]);
-    expect(appUsesGoogleScriptRun()).toBe(false);
+    expect(authGateElement?.type).toBe(AppAuthGate);
+    expect(getRenderedTypeName(appElement?.type)).toBe('MockApp');
+    expectAppToStayThin();
   });
 });

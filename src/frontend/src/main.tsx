@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { StrictMode } from './StrictMode';
+import { AppAuthGate } from './features/auth/AppAuthGate';
 import './index.css';
 import { AppQueryProvider } from './query/AppQueryProvider';
 
@@ -12,7 +13,9 @@ if (!(rootElement instanceof HTMLElement)) {
 createRoot(rootElement).render(
   <StrictMode>
     <AppQueryProvider>
-      <App />
+      <AppAuthGate>
+        <App />
+      </AppAuthGate>
     </AppQueryProvider>
   </StrictMode>
 );
