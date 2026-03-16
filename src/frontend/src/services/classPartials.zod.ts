@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const TeacherSummarySchema = z.object({
     userId: z.string().nullable(),
     email: z.string().nullable(),
-    teacherName: z.string().nullable(),
+    teacherName: z.string().nullable().optional().transform((value) => value ?? null),
 });
 
 export type TeacherSummary = z.infer<typeof TeacherSummarySchema>;

@@ -71,13 +71,12 @@ describe('useAuthorisationStatus', () => {
     });
   });
 
-  it('maps auth failures to the existing user-safe copy', async () => {
-    getAuthorisationStatusMock.mockRejectedValueOnce(
-      new ApiTransportError({
-        ok: false,
-        requestId: 'req-1',
-        error: {
-          code: 'RATE_LIMITED',
+    it('maps auth failures to the existing user-safe copy', async () => {
+      getAuthorisationStatusMock.mockRejectedValueOnce(
+        new ApiTransportError({
+          requestId: 'req-1',
+          error: {
+            code: 'RATE_LIMITED',
           message: 'Rate limited.',
           retriable: true,
         },

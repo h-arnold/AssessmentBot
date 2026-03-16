@@ -31,8 +31,9 @@ describe('shared query definitions', () => {
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
 
     const { getAuthorisationStatusQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
 
-    await expect(getAuthorisationStatusQueryOptions().queryFn()).resolves.toBe(true);
+    await expect(queryClient.fetchQuery(getAuthorisationStatusQueryOptions())).resolves.toBe(true);
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
@@ -41,8 +42,9 @@ describe('shared query definitions', () => {
     getABClassPartialsMock.mockResolvedValueOnce(classPartials);
 
     const { getClassPartialsQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
 
-    await expect(getClassPartialsQueryOptions().queryFn()).resolves.toEqual(classPartials);
+    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).resolves.toEqual(classPartials);
     expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -53,9 +55,10 @@ describe('shared query definitions', () => {
     getYearGroupsMock.mockResolvedValueOnce(yearGroups);
 
     const { getCohortsQueryOptions, getYearGroupsQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
 
-    await expect(getCohortsQueryOptions().queryFn()).resolves.toEqual(cohorts);
-    await expect(getYearGroupsQueryOptions().queryFn()).resolves.toEqual(yearGroups);
+    await expect(queryClient.fetchQuery(getCohortsQueryOptions())).resolves.toEqual(cohorts);
+    await expect(queryClient.fetchQuery(getYearGroupsQueryOptions())).resolves.toEqual(yearGroups);
     expect(getCohortsMock).toHaveBeenCalledTimes(1);
     expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
   });
@@ -71,8 +74,9 @@ describe('shared query definitions', () => {
     getABClassPartialsMock.mockRejectedValueOnce(queryError);
 
     const { getClassPartialsQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
 
-    await expect(getClassPartialsQueryOptions().queryFn()).rejects.toBe(queryError);
+    await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).rejects.toBe(queryError);
   });
 
   it('warms class partials through the shared query key contract', async () => {
