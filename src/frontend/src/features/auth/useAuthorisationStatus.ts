@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { getAuthorisationStatus } from '../../services/authService';
+import { useQuery } from '@tanstack/react-query';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import { logFrontendError } from '../../logging/frontendLogger';
+import { getAuthorisationStatusQueryOptions } from '../../query/sharedQueries';
 
 export type AuthViewState = 'loading' | 'authorised' | 'unauthorised';
 
@@ -26,37 +25,32 @@ function mapAuthorisationErrorToUserMessage(error: unknown): string {
  * If the backend call fails, the hook returns the failure message.
  */
 export function useAuthorisationStatus() {
-  const [authViewState, setAuthViewState] = useState<AuthViewState>('loading');
-  const [authError, setAuthError] = useState<string | null>(null);
+  const authQuery = useQuery(getAuthorisationStatusQueryOptions());
 
-  useEffect(() => {
-    let isMounted = true;
-
-    getAuthorisationStatus()
-      .then((isAuthorised) => {
-        if (!isMounted) {
-          return;
-        }
-
-        setAuthViewState(isAuthorised ? 'authorised' : 'unauthorised');
-      })
-      .catch((error: unknown) => {
-        if (!isMounted) {
-          return;
-        }
-
-        logFrontendError('features/auth/useAuthorisationStatus', error);
-        setAuthError(mapAuthorisationErrorToUserMessage(error));
-        setAuthViewState('unauthorised');
-      });
-
-    return () => {
-      isMounted = false;
+  if (authQuery.isPending) {
+    return {
+      authViewState: 'loading' as const,
+      authError: null,
+      isAuthResolved: false,
+      isAuthorised: false,
     };
-  }, []);
+  }
+
+  if (authQuery.isError) {
+    return {
+      authViewState: 'unauthorised' as const,
+      authError: mapAuthorisationErrorToUserMessage(authQuery.error),
+      isAuthResolved: true,
+      isAuthorised: false,
+    };
+  }
+
+  const isAuthorised = authQuery.data === true;
 
   return {
-    authViewState,
-    authError,
+    authViewState: isAuthorised ? ('authorised' as const) : ('unauthorised' as const),
+    authError: null,
+    isAuthResolved: true,
+    isAuthorised,
   };
 }

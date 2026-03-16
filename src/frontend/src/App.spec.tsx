@@ -1,9 +1,12 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { vi } from 'vitest';
 import App from './App';
+import { AppAuthGate } from './features/auth/AppAuthGate';
 import appStyles from './index.css?raw';
 import { dashboardPageSummaryText } from './test/pageExpectations';
+import { createAppQueryClient } from './query/queryClient';
 import {
   appBreadcrumbBaseLabel,
   defaultNavigationKey,
@@ -27,7 +30,7 @@ type ApiResponseEnvelope =
   | {
       ok: true;
       requestId: string;
-      data: boolean;
+      data: unknown;
     }
   | {
       ok: false;
@@ -39,12 +42,52 @@ type ApiResponseEnvelope =
       };
     };
 
+type ApiMethodResponse = ApiResponseEnvelope | { transportFailure: unknown } | 'pending';
+type ApiMethodResponseMap = Partial<Record<string, ApiMethodResponse>>;
+
+const authStatusMethodName = 'getAuthorisationStatus';
+const classPartialsMethodName = 'getABClassPartials';
+const defaultClassPartialsWarmupResponse: ApiResponseEnvelope = {
+  ok: true,
+  requestId: 'req-class-partials-default',
+  data: [],
+};
+
+/**
+ * Resolves the configured mock transport response for a backend method.
+ */
+function getMockResponseForMethod(method: string, responsesByMethod: ApiMethodResponseMap) {
+  return (
+    responsesByMethod[method] ??
+    (method === classPartialsMethodName ? defaultClassPartialsWarmupResponse : undefined)
+  );
+}
+
+/**
+ * Dispatches a configured mock transport response asynchronously.
+ */
+function dispatchMockTransportResponse(
+  response: Exclude<ApiMethodResponse, 'pending'>,
+  failureHandler: ((error: unknown) => void) | undefined,
+  successHandler: ((payload: unknown) => void) | undefined
+) {
+  queueMicrotask(() => {
+    if ('transportFailure' in response) {
+      failureHandler?.(response.transportFailure);
+      return;
+    }
+
+    successHandler?.(response);
+  });
+}
+
 /**
  * Installs a `google.script.run.apiHandler` mock for app-level tests.
  */
-function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailure: unknown }) {
+function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
   let successHandler: ((payload: unknown) => void) | undefined;
   let failureHandler: ((error: unknown) => void) | undefined;
+  const methodCallCounts = new Map<string, number>();
 
   const runMock = {
     withSuccessHandler(handler: (payload: unknown) => void) {
@@ -56,25 +99,46 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
       return runMock;
     },
     apiHandler(request: unknown) {
-      queueMicrotask(() => {
-        if (typeof (request as { method?: unknown })?.method !== 'string') {
-          failureHandler?.(new Error('Invalid transport request payload.'));
-          return;
-        }
+      const method = (request as { method?: unknown })?.method;
 
-        if ('transportFailure' in response) {
-          failureHandler?.(response.transportFailure);
-          return;
-        }
+      if (typeof method !== 'string') {
+        dispatchMockTransportResponse(
+          { transportFailure: new Error('Invalid transport request payload.') },
+          failureHandler,
+          successHandler
+        );
+        return;
+      }
 
-        successHandler?.(response);
-      });
+      methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
+      const response = getMockResponseForMethod(method, responsesByMethod);
+
+      if (response === undefined) {
+        dispatchMockTransportResponse(
+          { transportFailure: new Error(`No mocked response configured for method: ${method}`) },
+          failureHandler,
+          successHandler
+        );
+        return;
+      }
+
+      if (response === 'pending') {
+        return;
+      }
+
+      dispatchMockTransportResponse(response, failureHandler, successHandler);
     },
   };
 
   (globalThis as { google?: unknown }).google = {
     script: {
       run: runMock,
+    },
+  };
+
+  return {
+    getCallCount(method: string) {
+      return methodCallCounts.get(method) ?? 0;
     },
   };
 }
@@ -83,21 +147,22 @@ function installApiHandlerMock(response: ApiResponseEnvelope | { transportFailur
  * Installs a `google.script.run.apiHandler` mock that leaves auth status pending.
  */
 function installPendingApiHandlerMock() {
-  const runMock = {
-    withSuccessHandler() {
-      return runMock;
-    },
-    withFailureHandler() {
-      return runMock;
-    },
-    apiHandler() {},
-  };
+  return installApiHandlerMock({
+    [authStatusMethodName]: 'pending',
+  });
+}
 
-  (globalThis as { google?: unknown }).google = {
-    script: {
-      run: runMock,
-    },
-  };
+/**
+ * Renders the app through the auth gate with a supplied or fresh query client.
+ */
+function renderApp(queryClient = createAppQueryClient()) {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AppAuthGate>
+        <App />
+      </AppAuthGate>
+    </QueryClientProvider>
+  );
 }
 
 /**
@@ -105,7 +170,7 @@ function installPendingApiHandlerMock() {
  */
 async function renderPendingApp() {
   await act(async () => {
-    render(<App />);
+    renderApp();
   });
 }
 
@@ -150,6 +215,7 @@ describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
     document.querySelector('#root')?.remove();
+    vi.restoreAllMocks();
     vi.resetModules();
     vi.doUnmock('antd');
     vi.doUnmock('react-dom/client');
@@ -173,7 +239,7 @@ describe('App', () => {
     await renderPendingApp();
 
     act(() => {
-    fireEvent.click(screen.getByRole('button', { name: collapseNavigationButtonLabel }));
+      fireEvent.click(screen.getByRole('button', { name: collapseNavigationButtonLabel }));
     });
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
@@ -468,92 +534,213 @@ describe('App', () => {
   });
 
   it('shows loading then authorised status when backend returns true', async () => {
-    installApiHandlerMock({
-      ok: true,
-      requestId: 'req-1',
-      data: true,
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-1',
+        data: true,
+      },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(transport.getCallCount(authStatusMethodName)).toBe(1);
+    await waitFor(() => {
+      expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
+    });
   });
 
   it('shows unauthorised status when backend returns false', async () => {
-    installApiHandlerMock({
-      ok: true,
-      requestId: 'req-2',
-      data: false,
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-2',
+        data: false,
+      },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+    expect(transport.getCallCount(authStatusMethodName)).toBe(1);
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
   it('shows backend failure message when backend returns a failure envelope', async () => {
-    installApiHandlerMock({
-      ok: false,
-      requestId: 'req-3',
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Backend authorisation check failed.',
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: false,
+        requestId: 'req-3',
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Backend authorisation check failed.',
+        },
       },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
       await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
   it('shows string failure message when transport fails with a non-Error value', async () => {
-    installApiHandlerMock({
-      transportFailure: 'Backend call failed with a string.',
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        transportFailure: 'Backend call failed with a string.',
+      },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
       await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
   it('shows rate-limited message when backend returns retriable rate limit envelope', async () => {
-    installApiHandlerMock({
-      ok: false,
-      requestId: 'req-rl-1',
-      error: {
-        code: 'RATE_LIMITED',
-        message: 'Rate limited.',
-        retriable: true,
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: false,
+        requestId: 'req-rl-1',
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Rate limited.',
+          retriable: true,
+        },
       },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
       await screen.findByText('The service is busy. Please try again shortly.')
     ).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
   it('shows runtime failure message when google.script.run is unavailable', async () => {
-    render(<App />);
+    renderApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
       await screen.findByText(unableToCheckAuthorisationStatusMessage)
     ).toBeInTheDocument();
+  });
+
+  it('does not start class-partials warm-up while auth is unresolved', async () => {
+    const transport = installPendingApiHandlerMock();
+
+    renderApp();
+
+    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
+  });
+
+  it('keeps navigation ready while startup warm-up runs in the background', async () => {
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-auth-1',
+        data: true,
+      },
+      [classPartialsMethodName]: 'pending',
+    });
+
+    renderApp();
+
+    expect(screen.getByRole('navigation', { name: primaryNavigationLabel })).toBeInTheDocument();
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(transport.getCallCount(authStatusMethodName)).toBe(1);
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
+  });
+
+  it('keeps startup warm-up idempotent across remounts with the same query client', async () => {
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-auth-3',
+        data: true,
+      },
+      [classPartialsMethodName]: 'pending',
+    });
+    const queryClient = createAppQueryClient();
+
+    const firstRender = renderApp(queryClient);
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
+
+    firstRender.unmount();
+    renderApp(queryClient);
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
+  });
+
+  it('does not trigger extra class-partials warm-up during in-app navigation', async () => {
+    const transport = installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-auth-4',
+        data: true,
+      },
+      [classPartialsMethodName]: 'pending',
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+
+    const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
+
+    act(() => {
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
+      );
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
+    });
+
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(1);
+  });
+
+  it('logs one debug event when startup warm-up fails without breaking render', async () => {
+    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+    installApiHandlerMock({
+      [authStatusMethodName]: {
+        ok: true,
+        requestId: 'req-auth-2',
+        data: true,
+      },
+      [classPartialsMethodName]: {
+        transportFailure: new Error('Class partial warm-up failed.'),
+      },
+    });
+
+    renderApp();
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+    });
+    expect(consoleDebugSpy.mock.calls[0]?.[0]).toBe(
+      'features/auth/AppAuthGate.classPartialsWarmup'
+    );
   });
 });

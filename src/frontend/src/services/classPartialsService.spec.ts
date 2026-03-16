@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 
 const callApiMock = vi.fn();
 
@@ -64,6 +65,54 @@ describe('classPartialsService.getABClassPartials', () => {
         expect(result).toEqual(partials);
     });
 
+    it('normalises omitted teacherName fields to null for valid backend payloads', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'c1',
+                className: 'Class A',
+                cohort: '2025',
+                courseLength: 2,
+                yearGroup: 10,
+                classOwner: {
+                    userId: 'owner-1',
+                    email: 'owner-1@example.com',
+                },
+                teachers: [
+                    {
+                        userId: 'teacher-1',
+                        email: 'teacher-1@example.com',
+                    },
+                ],
+                active: true,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).resolves.toEqual([
+            {
+                classId: 'c1',
+                className: 'Class A',
+                cohort: '2025',
+                courseLength: 2,
+                yearGroup: 10,
+                classOwner: {
+                    userId: 'owner-1',
+                    email: 'owner-1@example.com',
+                    teacherName: null,
+                },
+                teachers: [
+                    {
+                        userId: 'teacher-1',
+                        email: 'teacher-1@example.com',
+                        teacherName: null,
+                    },
+                ],
+                active: true,
+            },
+        ]);
+    });
+
     it('propagates rejection when callApi rejects', async () => {
         const apiError = new Error('Transport failure');
         callApiMock.mockRejectedValueOnce(apiError);
@@ -71,5 +120,24 @@ describe('classPartialsService.getABClassPartials', () => {
         const { getABClassPartials } = await import('./classPartialsService');
 
         await expect(getABClassPartials()).rejects.toThrow('Transport failure');
+    });
+
+    it('rejects malformed payloads with incorrect field types through the dedicated schema', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'c1',
+                className: 'Class A',
+                cohort: '2025',
+                courseLength: '2',
+                yearGroup: 10,
+                classOwner: null,
+                teachers: [],
+                active: true,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).rejects.toBeInstanceOf(ZodError);
     });
 });
