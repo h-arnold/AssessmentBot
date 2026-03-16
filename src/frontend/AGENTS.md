@@ -26,6 +26,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Place async orchestration and side effects in feature hooks (for example `useXyz...`).
 - Keep service modules focused on external/runtime API boundaries and transport details.
 - Keep presentational feature components declarative; delegate data loading/state transitions to hooks.
+- When shared server-state is introduced, define query keys through shared factory helpers rather than ad-hoc array literals so later invalidation and prefetch logic stays consistent.
 
 ## 3. Framework and UI Baseline
 
