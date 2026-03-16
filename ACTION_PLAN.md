@@ -229,9 +229,9 @@ Frontend tests:
 
 - [x] RED: tests added for the thin auth gate boundary, shared auth-result observation, `App.tsx` composition, and main-entry auth-gate composition.
 - [x] RED: intended failure captured against current production composition in `main.tsx`.
-- [ ] GREEN: implementation complete.
-- [ ] GREEN: review clean.
-- [ ] Checks passed.
+- [x] GREEN: implementation complete; `main.tsx` now composes `AppAuthGate` outside `App.tsx` while preserving the shared auth boundary.
+- [x] GREEN: review clean.
+- [x] Checks passed.
 - [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
@@ -355,6 +355,12 @@ Frontend tests:
 - `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*query*.spec.ts*`
 - `npm run frontend:lint`
+
+### Progress tracking
+
+- [x] GREEN: startup warm-up remains owned by the dedicated auth-gate boundary outside `App.tsx`, with `main.tsx` composing the provider and gate wrappers.
+- [x] GREEN: targeted startup warm-up, auth-gate, and shared-query checks passed.
+- [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
 

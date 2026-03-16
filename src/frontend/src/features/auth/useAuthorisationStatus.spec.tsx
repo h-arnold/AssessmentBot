@@ -94,8 +94,8 @@ describe('useAuthorisationStatus', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limited.',
+          retriable: true,
         },
-        retriable: true,
       })
     );
 

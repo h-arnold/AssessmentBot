@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
+import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { createAppQueryClient } from '../../query/queryClient';
@@ -18,9 +19,7 @@ vi.mock('../../services/authService', () => ({
 }));
 
 vi.mock('../../query/sharedQueries', async () => {
-  const actual = await vi.importActual<typeof import('../../query/sharedQueries')>(
-    '../../query/sharedQueries'
-  );
+  const actual = await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
 
   return {
     ...actual,
@@ -31,11 +30,11 @@ vi.mock('../../query/sharedQueries', async () => {
 /**
  * Exposes the shared auth-hook result for gate-adjacent assertions.
  */
-function GateObserverProbe() {
+function AuthHookProbe() {
   const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();
 
   return (
-    <output data-testid="gate-observer-probe">
+    <output data-testid="auth-hook-probe">
       {JSON.stringify({
         authViewState,
         authError,
@@ -52,6 +51,9 @@ function GateObserverProbe() {
 function createQueryWrapper() {
   const queryClient = createAppQueryClient();
 
+  /**
+   * Provides the per-test query client to rendered children.
+   */
   function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   }
@@ -75,7 +77,7 @@ describe('AppAuthGate', () => {
     render(
       <AppAuthGate>
         <AuthStatusCard />
-        <GateObserverProbe />
+        <AuthHookProbe />
       </AppAuthGate>,
       {
         wrapper: QueryWrapper,
@@ -86,7 +88,7 @@ describe('AppAuthGate', () => {
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByTestId('gate-observer-probe')).toHaveTextContent(
+      expect(screen.getByTestId('auth-hook-probe')).toHaveTextContent(
         JSON.stringify({
           authViewState: 'authorised',
           authError: null,
@@ -130,8 +132,8 @@ describe('AppAuthGate', () => {
         error: {
           code: 'RATE_LIMITED',
           message: 'Rate limited.',
+          retriable: true,
         },
-        retriable: true,
       })
     );
 
