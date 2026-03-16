@@ -170,18 +170,19 @@ Frontend tests:
 
 ### Progress tracking
 
-- [x] RED: query-level coverage asserts that the shared auth query delegates to the existing `authService` loader.
-- [x] RED: auth-hook coverage asserts that one resolved authorisation result is exposed to consumers.
-- [x] RED: auth-consumer coverage asserts that shared auth state can be consumed without a second auth transport call.
-- [x] RED: `App.tsx` remains covered as a thin composition root.
-- [x] RED: main-entry composition now expects shared query-provider wiring plus `App` only, so later auth-gate warm-up wiring fails intentionally in this phase.
-- [ ] GREEN: refactor production auth composition to satisfy the Section 2 boundary without introducing startup pre-fetch logic.
+- [x] RED: tests added for the shared auth query, shared auth hook, auth consumer flow, `App.tsx` composition root, and main-entry query-provider wiring.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete; production auth composition now satisfies the Section 2 boundary without introducing startup pre-fetch logic.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
+- **Implementation notes:** Section 2 is complete; treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
 - **Implementation notes:** keep the existing auth error mapping contract, but move auth request ownership out of the component-local effect path.
 - **Implementation notes:** keep query ownership in the shared auth hook; do not add a separate auth context unless a later requirement cannot be met through the query layer alone.
+- **Validation deviation:** the planned glob `src/**/*auth*.spec.ts*` did not match the current filenames, so validation used the concrete auth spec `src/features/auth/useAuthorisationStatus.spec.tsx`.
 - **Follow-up implications for later sections:** startup warm-up must consume this shared resolved auth state rather than issuing or shadowing another auth request.
 
 ---
