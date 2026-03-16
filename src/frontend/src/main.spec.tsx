@@ -42,10 +42,6 @@ type QueryProviderModule = {
   AppQueryProvider: (props: { children?: unknown }) => unknown;
 };
 
-type AuthGateModule = {
-  AppAuthGate: (props: { children?: unknown }) => unknown;
-};
-
 type ReactElementLike = {
   type?: unknown;
   props?: {
@@ -281,13 +277,11 @@ function getRenderedComponentChain(renderedTree: unknown) {
 function getMainEntrypointComposition(renderedTree: ReactElementLike) {
   const renderedComponentChain = getRenderedComponentChain(renderedTree);
   const strictModeChild = getOnlyRenderedChild(renderedTree.props?.children) as ReactElementLike;
-  const authGateElement = getOnlyRenderedChild(strictModeChild?.props?.children) as ReactElementLike;
-  const appElement = getOnlyRenderedChild(authGateElement?.props?.children) as ReactElementLike;
+  const appElement = getOnlyRenderedChild(strictModeChild?.props?.children) as ReactElementLike;
 
   return {
     renderedComponentChain,
     strictModeChild,
-    authGateElement,
     appElement,
   };
 }
@@ -376,13 +370,9 @@ describe('main entrypoint', () => {
     expect(renderMock).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps dedicated query-provider ownership in main while App stays a thin shell', async () => {
-    const { AppQueryProvider } = await importRequiredModule<QueryProviderModule>(
-      'query/AppQueryProvider.tsx'
-    );
-    const { AppAuthGate } = await importRequiredModule<AuthGateModule>(
-      'features/auth/AppAuthGate.tsx'
-    );
+  it('keeps dedicated query-provider ownership in main while leaving auth-gate composition for a later section', async () => {
+    const { AppQueryProvider } =
+      await importRequiredModule<QueryProviderModule>('query/AppQueryProvider.tsx');
 
     document.body.innerHTML = '<div id="root"></div>';
 
@@ -391,12 +381,11 @@ describe('main entrypoint', () => {
     expect(renderMock).toHaveBeenCalledTimes(1);
 
     const renderedTree = renderMock.mock.calls[0]?.[0] as ReactElementLike;
-    const { renderedComponentChain, strictModeChild, authGateElement, appElement } =
+    const { renderedComponentChain, strictModeChild, appElement } =
       getMainEntrypointComposition(renderedTree);
 
     expect(renderedComponentChain.at(0)).toBe('StrictMode');
     expect(strictModeChild?.type).toBe(AppQueryProvider);
-    expect(authGateElement?.type).toBe(AppAuthGate);
     expect(getRenderedTypeName(appElement?.type)).toBe('MockApp');
     expectAppToStayThin();
   });

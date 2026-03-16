@@ -168,6 +168,15 @@ Frontend tests:
 - `npm run frontend:test -- src/**/*auth*.spec.ts*`
 - `npm run frontend:lint`
 
+### Progress tracking
+
+- [x] RED: query-level coverage asserts that the shared auth query delegates to the existing `authService` loader.
+- [x] RED: auth-hook coverage asserts that one resolved authorisation result is exposed to consumers.
+- [x] RED: auth-consumer coverage asserts that shared auth state can be consumed without a second auth transport call.
+- [x] RED: `App.tsx` remains covered as a thin composition root.
+- [x] RED: main-entry composition now expects shared query-provider wiring plus `App` only, so later auth-gate warm-up wiring fails intentionally in this phase.
+- [ ] GREEN: refactor production auth composition to satisfy the Section 2 boundary without introducing startup pre-fetch logic.
+
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
