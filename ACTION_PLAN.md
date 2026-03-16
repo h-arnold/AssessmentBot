@@ -6,7 +6,7 @@
 
 - Add React Query as the shared frontend server-state and pre-fetch mechanism for slow/shared datasets, especially `JsonDbApp`-backed reads.
 - Cover provider setup, query-key conventions, startup warm-up integration, and the first shared query definitions.
-- Cover the minimum auth-boundary refactor needed to expose resolved authorisation state to app-level warm-up orchestration without duplicating auth transport calls.
+- Cover the minimum auth-query refactor needed to expose resolved authorisation state to app-level warm-up orchestration without duplicating auth transport calls.
 - Include unit/component test coverage for query-client wiring, startup prefetch orchestration, and background error handling.
 - Pin `@tanstack/react-query` to `5.90.21` rather than using a loose range.
 
@@ -27,13 +27,14 @@
 4. The first datasets to register with shared query keys are `classPartials`, `cohorts`, and `yearGroups`.
 5. Only `classPartials` will be prefetched on app startup in this phase.
 6. Active consumers should keep stale data visible while a background refresh runs.
-7. Background pre-fetch failures should be logged only for now, while leaving room for future Ant Design notification integration.
+7. Background pre-fetch failures should attach orchestration context for tests at `debug` level only for now, while leaving room for future Ant Design notification integration.
 8. `ABClass`-driven invalidation will require a later backend-supported update notification mechanism and is not implemented in this phase.
 9. Startup warm-up must be safe under React `StrictMode` development remount behaviour and must avoid duplicate network work or duplicate background-error noise.
 10. Startup warm-up must only run after the existing auth flow has confirmed the user is authorised; it must not run while auth is unresolved or when the user is unauthorised.
 11. The frontend session must use one stable shared `QueryClient` instance so cached and in-flight query state survives provider re-renders and development remounts.
-12. The existing auth status flow may need to move behind a shared app-level boundary so warm-up orchestration can observe resolved authorisation state without issuing a second auth request.
+12. The existing auth status flow needs to move behind a shared React Query-backed auth boundary before any startup pre-fetch work so warm-up orchestration can observe resolved authorisation state without issuing a second auth request.
 13. Even when startup warm-up uses a rejecting query-client API for failure handling, the warm-up trigger itself must remain fire-and-forget from the render path and must not delay initial paint, shell composition, or navigation readiness.
+14. Startup pre-fetch orchestration should use a small shared pre-fetch handler state model of `idle | running | done | failed`, kept outside the remounting component tree, so session-level warm-up state survives development remounts without becoming a second cache layer.
 
 ---
 
@@ -50,11 +51,13 @@
 - Use British English in comments/docs.
 - Do not add production code purely to satisfy tests.
 - Keep cache persistence explicitly out of scope and document that cached frontend data remains in memory only for the current session.
-- Shared query definitions must throw transport/schema errors without logging them; background startup warm-up owns one-time logging for its own failures.
+- Shared query definitions must throw transport/schema errors without adding extra logging; transport-level logging in `callApi` remains the source of truth for failures in this phase.
 - Page-level query consumers outside startup warm-up should continue to surface failures through normal React Query result state and existing feature-level UI mapping; this phase does not introduce a second global logging layer for those failures.
 - Startup warm-up may use `fetchQuery` rather than `prefetchQuery` so the orchestration boundary can observe rejected promises, but that warm-up call must still be launched in a non-blocking way from the app lifecycle.
+- Startup warm-up may emit a `debug`-level event with orchestration metadata for test visibility, but it must not add a second `warn`/`error` log for the same underlying transport failure.
+- Keep any shared warm-up state policy limited to the pre-fetch handler/orchestration layer; React Query remains the source of truth for cached data, freshness, and in-flight query deduplication.
 
-### TDD workflow (mandatory per section)
+### TDD workflow (mandatory per implementation section)
 
 1. Red: add the failing tests for the section only.
 2. Green: implement the smallest change needed to pass.
@@ -87,7 +90,7 @@
 ### Acceptance criteria
 
 - A shared `QueryClient` factory/configuration exists.
-- A dedicated provider wrapper file exists and is imported by `App.tsx`.
+- A dedicated provider wrapper file exists and is composed from `main.tsx`.
 - A shared query-key convention exists for `classPartials`, `cohorts`, and `yearGroups`, exposed through shared factory helpers.
 - Default query behaviour is explicit: non-zero `staleTime`, session-memory `gcTime`, `retry` off, `refetchOnWindowFocus` off, `refetchOnReconnect` off, and `refetchOnMount` only when stale.
 - The shared `QueryClient` instance is stable for the lifetime of the frontend session and is not recreated on provider re-render or React `StrictMode` development remount.
@@ -100,7 +103,7 @@
 Frontend tests:
 
 1. The dedicated provider wrapper renders children inside `QueryClientProvider`.
-2. `App.tsx` composes the provider wrapper without taking on service orchestration.
+2. `main.tsx` composes the provider wrapper while `App.tsx` stays free of provider and service orchestration.
 3. Shared query-key factory helpers produce the expected keys for `classPartials`, `cohorts`, and `yearGroups`.
 4. Query-client defaults match the agreed baseline behaviour.
 5. The app wrapper reuses one stable `QueryClient` instance across provider re-renders/remounts.
@@ -108,25 +111,76 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/App.spec.tsx`
+- `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*.query*.spec.ts*`
 - `npm run frontend:lint`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** place the provider in its own file and import it through `App.tsx`.
+- **Implementation notes:** place the provider in its own file and compose it from `main.tsx`.
 - **Deviations from plan:** React Query replaces the bespoke registry/coordinator design.
 - **Follow-up implications for later sections:** later sections must consume the shared query keys and query client rather than inventing parallel cache abstractions.
 
 ---
 
-## Section 2 — Define the initial shared queries and startup pre-fetch policy
+## Section 2 — Refactor authorisation into shared query-backed app state
 
 ### Objective
 
-- Define the first shared query options and wire startup prefetch for the agreed dataset.
-- This section defines shared query contracts and prefetch helpers only; app-start orchestration belongs to Section 3.
-- Keep the startup warm-up entrypoint abstract enough that Section 3 can use the React Query API that best fits the agreed background error-handling contract.
+- Move the existing authorisation flow behind shared React Query-backed app state before any startup pre-fetch work begins.
+- Expose one resolved authorisation result that can be consumed by both the auth UI and later startup warm-up orchestration.
+
+### Constraints
+
+- This section must complete before any startup pre-fetch integration work starts.
+- Keep `App.tsx` as a thin composition root.
+- Reuse the existing `authService` transport path; do not add a second auth transport request.
+- Preserve the current user-facing auth-state contract while moving state ownership behind shared query-backed app state.
+- Keep auth failure mapping user-safe and deterministic.
+- Avoid introducing startup pre-fetch logic in this section.
+
+### Acceptance criteria
+
+- A shared auth query definition exists for the existing authorisation status request.
+- A dedicated app-level auth boundary or provider exposes resolved auth state to consumers.
+- The auth UI consumes the shared auth result rather than issuing its own isolated effect-driven request.
+- The refactor does not introduce a second auth transport call.
+- Auth failures continue to map to the existing user-safe copy.
+- `App.tsx` remains free of auth orchestration details.
+- This section leaves a clear auth-gated extension point for later startup warm-up work.
+
+### Required test cases (Red first)
+
+Frontend tests:
+
+1. The shared auth query delegates to the existing auth service loader.
+2. The app-level auth boundary exposes one resolved authorisation result to consumers.
+3. The auth UI consumes shared auth state without triggering a second auth transport call.
+4. Authorised, unauthorised, and failure states preserve the existing user-facing behaviour.
+5. `App.tsx` remains a thin composition root after the refactor.
+
+### Section checks
+
+- `npm run frontend:test -- src/App.spec.tsx`
+- `npm run frontend:test -- src/main.spec.tsx`
+- `npm run frontend:test -- src/**/*auth*.spec.ts*`
+- `npm run frontend:lint`
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
+- **Implementation notes:** keep the existing auth error mapping contract, but move auth request ownership out of the component-local effect path.
+- **Follow-up implications for later sections:** startup warm-up must consume this shared resolved auth state rather than issuing or shadowing another auth request.
+
+---
+
+## Section 3 — Define the initial shared data queries and startup warm-up helper contract
+
+### Objective
+
+- Define the first shared data-query options and the startup warm-up helper contract for the agreed dataset.
+- This section defines shared query contracts and warm-up helpers only; app-start orchestration belongs to Section 4.
+- Keep the startup warm-up entrypoint callable from later app lifecycle code without triggering it here.
 
 ### Constraints
 
@@ -136,8 +190,9 @@ Frontend tests:
 - Shared query definitions and prefetch helpers must not call backend transport directly; they must go through service modules that already use `callApi`/`apiHandler`.
 - Add runtime validation for `classPartials` before its data is cached and shared across consumers.
 - Reuse the existing validated `referenceDataService` loaders for `cohorts` and `yearGroups`; do not add duplicate schema layers for those datasets.
-- The startup warm-up helper must use `fetchQuery` so rejected promises reach the app-level orchestration boundary for one-time startup failure logging.
-- The startup warm-up helper must remain non-blocking: callers may observe completion for logging/tests, but the app render path must not await it.
+- The startup warm-up helper must use `fetchQuery` so rejected promises reach the later orchestration boundary for controlled handling.
+- The startup warm-up helper must be side-effect free apart from the query-client interaction; this section must not wire it into app lifecycle code.
+- The shared pre-fetch handler state for this phase is limited to orchestration metadata such as `idle | running | done | failed` and any in-flight promise reference; it must not become a second data cache.
 
 ### Acceptance criteria
 
@@ -147,10 +202,11 @@ Frontend tests:
 - The `cohorts` and `yearGroups` shared queries delegate to the existing `referenceDataService` loaders and reuse their current validated response contracts.
 - All shared queries preserve the existing `callApi`/`apiHandler` transport path and its envelope parsing and validation behaviour.
 - A shared startup warm-up helper exists for `classPartials` only in this phase.
-- The startup warm-up helper uses `fetchQuery` so Section 3 can both reuse React Query caching/deduplication and handle startup failures at the orchestration boundary.
-- The startup warm-up helper is triggered in a fire-and-forget manner from the app lifecycle so startup remains non-blocking even though failures still reject to the orchestration boundary.
+- The startup warm-up helper uses `fetchQuery` so Section 4 can both reuse React Query caching/deduplication and handle startup failures at the orchestration boundary.
+- The startup warm-up helper returns a promise to its caller and is not itself responsible for app lifecycle scheduling.
+- The startup warm-up helper exposes or works through a small shared pre-fetch handler state model of `idle | running | done | failed` plus the current in-flight promise so later orchestration can deduplicate repeated triggers safely.
 - Repeated startup/view access to the same query reuses React Query caching and in-flight deduplication.
-- Shared query definitions do not log failures directly.
+- Shared query definitions and warm-up helpers do not log failures directly.
 
 ### Required test cases (Red first)
 
@@ -161,8 +217,9 @@ Frontend tests:
 3. The shared `cohorts` and `yearGroups` query definitions delegate to the existing `referenceDataService` loaders.
 4. The `classPartials` startup warm-up helper requests the shared `classPartials` query key through the shared helper contract.
 5. Shared query definitions propagate failures without direct logging.
-6. The startup warm-up helper propagates failures to its caller so Section 3 can own background failure logging.
-7. The startup warm-up helper can be invoked without awaiting it and does not force the caller to block render or navigation.
+6. The startup warm-up helper propagates failures to its caller so Section 4 can own orchestration behaviour.
+7. The startup warm-up helper reuses the shared query client and query definition rather than creating a parallel fetch path.
+8. The startup warm-up helper exposes deterministic `idle`, `running`, `done`, and `failed` orchestration states without storing duplicate response data.
 
 ### Section checks
 
@@ -179,12 +236,12 @@ Frontend tests:
 
 ---
 
-## Section 3 — Add the app-level startup pre-fetch integration
+## Section 4 — Add the app-level startup pre-fetch integration
 
 ### Objective
 
 - Trigger agreed startup warm-up from a dedicated app-level boundary without bloating `App.tsx`.
-- This section owns app-start orchestration for warm-up; query definitions and prefetch helpers are already defined in Section 2.
+- This section owns app-start orchestration for warm-up; auth state is already shared from Section 2 and data-query helpers are already defined in Section 3.
 
 ### Constraints
 
@@ -193,21 +250,23 @@ Frontend tests:
 - Startup warm-up must remain background-only.
 - Startup warm-up must remain non-blocking even though it uses `fetchQuery` for error visibility.
 - Startup warm-up must be idempotent under React `StrictMode` development remounts.
-- Startup warm-up must only run after the existing auth flow confirms the user is authorised.
+- Startup warm-up must only run after the shared auth query confirms the user is authorised.
 - The warm-up boundary must reuse the shared stable `QueryClient` instance rather than creating its own client state.
-- Background warm-up is the only place in this phase that logs startup prefetch failures.
-- The app-level auth boundary must expose resolved authorisation state to warm-up orchestration without duplicating the existing auth transport request.
+- Background warm-up may emit `debug`-level orchestration context for tests, but must not add a second `warn`/`error` log for an already-logged transport failure.
+- The warm-up boundary must consume the resolved shared auth result from Section 2 without duplicating the existing auth transport request.
+- The warm-up boundary must route triggers through the shared pre-fetch handler state rather than calling `fetchQuery` directly from each effect run.
 
 ### Acceptance criteria
 
 - A dedicated startup warm-up component or hook exists outside `App.tsx`.
-- `App.tsx` imports the provider/wrapper composition only.
+- `main.tsx` owns provider/wrapper composition while `App.tsx` remains a thin shell.
 - Startup warm-up does not run while auth is unresolved and does not run when the user is unauthorised.
-- The existing auth flow is refactored, if needed, so app-level warm-up can observe resolved authorisation state without introducing a duplicate auth request.
+- The shared auth flow from Section 2 is reused so app-level warm-up can observe resolved authorisation state without introducing a duplicate auth request.
 - `classPartials` warm-up is implemented in a way that remains safe under React `StrictMode` development remount behaviour.
 - Startup warm-up is scheduled in a fire-and-forget manner and does not block initial render, shell paint, or navigation readiness.
-- Startup warm-up logs its own background prefetch failures once through the existing frontend logger and does not turn them into uncaught render failures.
+- Startup warm-up attaches `debug`-level orchestration context for tests without turning failures into uncaught render failures or adding duplicate higher-severity logs.
 - Warm-up remains compatible with later page-level consumers of the same query.
+- Repeated lifecycle triggers during one frontend session reuse the shared pre-fetch handler state so they do not create duplicate startup requests or duplicate orchestration logs.
 
 ### Required test cases (Red first)
 
@@ -218,30 +277,33 @@ Frontend tests:
 3. The app-level auth boundary exposes one resolved authorisation result that can be consumed by both the auth UI and the startup warm-up gate without a second auth transport call.
 4. Warm-up remains idempotent under development-style remounting and does not create duplicate network work or duplicate background-error logging.
 5. Startup warm-up does not block initial render or navigation even though the helper uses `fetchQuery`.
-6. A startup warm-up failure is logged through the existing frontend logger and does not surface as an uncaught render failure.
+6. A startup warm-up failure emits one `debug`-level orchestration event for test visibility and does not surface as an uncaught render failure.
 7. A later consumer of the same query can reuse the prefetched or in-flight result.
+8. Repeated effect triggers in the same session reuse the shared pre-fetch handler state and in-flight promise rather than scheduling duplicate warm-up work.
 
 ### Section checks
 
 - `npm run frontend:test -- src/App.spec.tsx`
+- `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*query*.spec.ts*`
 - `npm run frontend:lint`
 
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** keep startup warm-up implementation close to the new React Query app wrapper.
-- **Implementation notes:** extend the shared app transport mock helpers so app-level tests can support both the existing auth request and startup prefetch requests without brittle per-test rewiring.
-- **Implementation notes:** introduce the smallest shared auth boundary needed so both the auth UI and startup warm-up can consume one resolved authorisation result.
-- **Implementation notes:** auth-gate warm-up through that shared frontend auth state rather than duplicating auth transport calls.
-- **Implementation notes:** keep logging at the warm-up orchestration boundary rather than inside the shared query definitions.
-- **Implementation notes:** use `fetchQuery` for startup warm-up so the orchestration boundary can catch and log failures explicitly.
+- **Implementation notes:** extend the shared app transport mock helpers so app-level tests can support the auth request and startup prefetch requests without brittle per-test rewiring.
+- **Implementation notes:** auth-gate warm-up through the shared auth state introduced in Section 2 rather than duplicating auth transport calls.
+- **Implementation notes:** keep higher-severity logging at the transport boundary; add only test-oriented `debug` context at the warm-up orchestration boundary.
+- **Implementation notes:** use `fetchQuery` for startup warm-up so the orchestration boundary can catch failures explicitly and attach `debug` context for tests.
 - **Implementation notes:** launch startup warm-up from an effect or equivalent non-blocking lifecycle boundary; do not await it during render or shell composition.
+- **Implementation notes:** implement a thin shared pre-fetch handler that tracks `idle | running | done | failed` plus the current in-flight promise in module scope or an equivalent top-level owner outside the remounting component tree.
+- **Implementation notes:** route startup effects through an `ensure...`-style helper so repeated triggers return the existing in-flight promise or no-op after completion instead of starting another fetch.
 - **Deviations from plan:** this section no longer introduces a bespoke consumer hook because React Query becomes the consumer contract.
 - **Follow-up implications for later sections:** when real screens adopt shared server-state, use query hooks rather than new hand-rolled loading hooks.
 
 ---
 
-## Section 4 — Prepare the invalidation and freshness contract for later feature migration
+## Section 5 — Prepare the invalidation and freshness contract for later feature migration
 
 ### Objective
 
@@ -262,7 +324,7 @@ Frontend tests:
 - No speculative invalidation logic is added in this phase.
 - No `ABClass` invalidation wiring is introduced in the first pass.
 
-### Required test cases (Red first)
+### Required checks
 
 Frontend tests:
 
@@ -271,7 +333,6 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/**/*query*.spec.ts*`
 - `npm run frontend:lint`
 
 ### Implementation notes / deviations / follow-up
@@ -282,7 +343,7 @@ Frontend tests:
 
 ---
 
-## Section 5 — Investigate immediate migration needs and leave the extension points ready
+## Section 6 — Investigate immediate migration needs and leave the extension points ready
 
 ### Objective
 
@@ -323,7 +384,7 @@ Frontend tests:
 
 ---
 
-## Section 6 — Documentation and rollout notes
+## Section 7 — Documentation and rollout notes
 
 ### Objective
 
@@ -406,9 +467,10 @@ Checks:
 ## Suggested implementation order
 
 1. Section 1: React Query foundation, provider wrapper, and query-key contract.
-2. Section 2: initial shared query definitions and `classPartials` startup prefetch policy.
-3. Section 3: app-level startup warm-up integration.
-4. Section 4: freshness and invalidation contract for later feature migration.
-5. Section 5: investigate immediate migration needs and leave extension points ready.
-6. Section 6: documentation and rollout notes.
-7. Regression and contract hardening.
+2. Section 2: shared auth-query-backed app-state refactor.
+3. Section 3: initial shared data-query definitions and `classPartials` startup warm-up helper contract.
+4. Section 4: app-level startup warm-up integration.
+5. Section 5: freshness and invalidation contract for later feature migration.
+6. Section 6: investigate immediate migration needs and leave the extension points ready.
+7. Section 7: documentation and rollout notes.
+8. Regression and contract hardening.
