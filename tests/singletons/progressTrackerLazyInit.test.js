@@ -16,6 +16,7 @@ const _vi =
 const mockSetProperty = _vi.fn();
 const mockGetProperty = _vi.fn();
 const mockDeleteProperty = _vi.fn();
+const mockSerialiseProperties = _vi.fn();
 
 beforeEach(() => {
   ProgressTracker.resetForTests();
@@ -28,14 +29,15 @@ beforeEach(() => {
   };
   // Minimal ConfigurationManager mock used by ProgressTracker.complete()
   globalThis.ConfigurationManager = {
-    getInstance: () => ({ getIsAdminSheet: () => false }),
+    getInstance: _vi.fn(() => ({ getIsAdminSheet: () => false })),
   };
   globalThis.PropertiesCloner = function () {
-    return { serialiseProperties: () => {} };
+    return { serialiseProperties: mockSerialiseProperties };
   };
   mockSetProperty.mockReset();
   mockGetProperty.mockReset();
   mockDeleteProperty.mockReset();
+  mockSerialiseProperties.mockReset();
 });
 
 describe('ProgressTracker lazy initialization', () => {
@@ -56,5 +58,13 @@ describe('ProgressTracker lazy initialization', () => {
     pt.updateProgress('Step 2');
     pt.complete();
     expect(globalThis.PropertiesService.getDocumentProperties).toHaveBeenCalledTimes(1);
+  });
+
+  test('complete does not require ConfigurationManager.getInstance().getIsAdminSheet()', () => {
+    const pt = ProgressTracker.getInstance();
+    globalThis.ConfigurationManager.getInstance.mockReturnValue({});
+
+    expect(() => pt.complete()).not.toThrow();
+    expect(mockSerialiseProperties).toHaveBeenCalledWith(true, false);
   });
 });
