@@ -51,6 +51,8 @@ function safeParseConfigObject(serializedConfig) {
   }
 }
 
+const LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY = 'isAdminSheet';
+
 /**
  *
  */
@@ -218,14 +220,17 @@ class ConfigurationManager extends BaseSingleton {
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
     const canonical = spec && spec.validate ? spec.validate(value, this) : value;
     const normalizedValue = spec && spec.normalize ? spec.normalize(canonical) : canonical;
-
-    this.configCache[key] = String(normalizedValue);
+    const updatedConfig = {
+      ...this.configCache,
+      [key]: String(normalizedValue),
+    };
 
     try {
       this.scriptProperties.setProperty(
         ConfigurationManager.CONFIG_STORE_KEY,
-        JSON.stringify(this.configCache)
+        JSON.stringify(updatedConfig)
       );
+      this.configCache = updatedConfig;
     } catch (persistError) {
       ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
@@ -382,7 +387,9 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   getIsAdminSheet() {
-    return false;
+    this.ensureInitialized();
+    const legacyValue = this.documentProperties.getProperty(LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY);
+    return legacyValue == null ? false : legacyValue;
   }
 
   /**
@@ -455,6 +462,11 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   setIsAdminSheet(isAdmin) {
+    this.ensureInitialized();
+    this.documentProperties.setProperty(
+      LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY,
+      ConfigurationManager.toBooleanString(isAdmin)
+    );
     return ConfigurationManager.toBoolean(isAdmin);
   }
 
