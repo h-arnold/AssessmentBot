@@ -10,6 +10,7 @@ import unicorn from 'eslint-plugin-unicorn';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 const require = createRequire(import.meta.url);
+const { unicodeSecurityRules } = require('../../config/eslint/unicode-security-rules.cjs');
 const {
   security: securityPlugin,
   tsBaseRules,
@@ -136,6 +137,12 @@ export default defineConfig([
             'Keep App.tsx as a composition root. Move state and side effects to feature hooks/components.',
         },
       ],
+    },
+  },
+  {
+    files: ['src/**/*.{spec,test}.{ts,tsx}'],
+    rules: {
+      ...unicodeSecurityRules,
     },
   },
 ]);

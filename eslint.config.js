@@ -1,8 +1,9 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
-const security = require('eslint-plugin-security');
 const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
+const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
+const { security, securityRecommendedWarnRules } = require('./config/eslint/ts-base-rules.cjs');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -58,7 +59,8 @@ module.exports = [
     },
     plugins: { googleappsscript, jsdoc, security, unicorn, sonarjs },
     rules: {
-      ...security.configs.recommended.rules,
+      ...securityRecommendedWarnRules,
+      ...unicodeSecurityRules,
       ...sonarjs.configs.recommended.rules,
       // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
       'sonarjs/prefer-single-boolean-return': 'off',
@@ -140,6 +142,17 @@ module.exports = [
           detectObjects: false,
         },
       ],
+    },
+  },
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    plugins: { security },
+    rules: {
+      ...unicodeSecurityRules,
     },
   },
   {
