@@ -10,7 +10,11 @@ import unicorn from 'eslint-plugin-unicorn';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 const require = createRequire(import.meta.url);
-const { tsBaseRules, sonarjs: sonarjsPlugin } = require('../../config/eslint/ts-base-rules.cjs');
+const {
+  security: securityPlugin,
+  tsBaseRules,
+  sonarjs: sonarjsPlugin,
+} = require('../../config/eslint/ts-base-rules.cjs');
 
 export default defineConfig([
   globalIgnores(['dist', 'playwright-report', 'coverage']),
@@ -26,6 +30,7 @@ export default defineConfig([
     ],
     plugins: {
       jsdoc,
+      security: securityPlugin,
       sonarjs: sonarjsPlugin,
       unicorn,
     },

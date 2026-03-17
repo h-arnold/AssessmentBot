@@ -1,5 +1,6 @@
 const googleappsscript = require('eslint-plugin-googleappsscript');
 const jsdoc = require('eslint-plugin-jsdoc');
+const security = require('eslint-plugin-security');
 const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 
@@ -55,8 +56,9 @@ module.exports = [
         SummarySheetManager: 'readonly',
       },
     },
-    plugins: { googleappsscript, jsdoc, unicorn, sonarjs },
+    plugins: { googleappsscript, jsdoc, security, unicorn, sonarjs },
     rules: {
+      ...security.configs.recommended.rules,
       ...sonarjs.configs.recommended.rules,
       // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
       'sonarjs/prefer-single-boolean-return': 'off',

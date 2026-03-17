@@ -1,8 +1,10 @@
 const sonarjs = require('eslint-plugin-sonarjs');
+const security = require('eslint-plugin-security');
 const unicornModule = require('eslint-plugin-unicorn');
 const unicorn = unicornModule?.__esModule ? unicornModule.default : unicornModule;
 
 const tsBaseRules = {
+  ...security.configs.recommended.rules,
   ...sonarjs.configs.recommended.rules,
   complexity: ['error', 7],
   'jsdoc/require-jsdoc': [
@@ -34,6 +36,7 @@ const tsBaseRules = {
 };
 
 module.exports = {
+  security,
   tsBaseRules,
   sonarjs,
   unicorn,

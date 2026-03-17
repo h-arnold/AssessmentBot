@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 const {
+  security: securityPlugin,
   tsBaseRules,
   sonarjs: sonarjsPlugin,
   unicorn: unicornPlugin,
@@ -29,6 +30,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       jsdoc,
+      security: securityPlugin,
       sonarjs: sonarjsPlugin,
       unicorn: unicornPlugin,
     },
