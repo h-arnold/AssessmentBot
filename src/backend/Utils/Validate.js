@@ -55,7 +55,8 @@ const Validate = {
   isEmail(email) {
     if (typeof email !== 'string') return false;
     // Basic RFC 5322-ish regex adapted for practicality (no catastrophic backtracking)
-    const emailPattern = /^[\w!#$%&'*+./=?^`{|}~-]+@[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*$/;
+    // eslint-disable-next-line security/detect-unsafe-regex -- anchored practical email validation with no nested unbounded alternation; false positive.
+    const emailPattern = /^[\w!#$%&'*+./=?^`{|}~-]+@[\dA-Za-z-]+(?:\.[\dA-Za-z-]+)*$/u;
     const result = emailPattern.test(email.trim());
     if (!result) {
       try {
@@ -72,7 +73,7 @@ const Validate = {
    * Validates a Google userId as returned by Classroom APIs.
    * Historically these are numeric strings, but to be tolerant we accept
    * long digit strings and typical alphanumeric ids.
-   * @param {string} userId
+   * @param {string|number} userId
    * @return {boolean}
    */
   isGoogleUserId(userId) {
@@ -80,9 +81,9 @@ const Validate = {
     const string_ = String(userId).trim();
 
     // Common Google userId pattern: all digits (e.g., '12345678901234567890')
-    const digitsOnly = /^\d{6,}$/; // at least 6 digits
+    const digitsOnly = /^\d{6,}$/u; // at least 6 digits
     // Fallback: alphanumeric identifiers (allow -, _ and .) with reasonable length
-    const alnum = /^[\w.-]{6,64}$/;
+    const alnum = /^[\w.-]{6,64}$/u;
 
     const result = digitsOnly.test(string_) || alnum.test(string_);
     if (!result) {
@@ -112,9 +113,9 @@ const Validate = {
 
     const trimmed = url.trim();
     if (trimmed.length === 0) return false;
-    if (/\s/.test(trimmed)) return false;
+    if (/\s/u.test(trimmed)) return false;
 
-    const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/.exec(trimmed);
+    const match = /^https:\/\/([\d.A-Za-z-]+)(?:[#/?]|$)/u.exec(trimmed);
     if (!match) {
       try {
         ProgressTracker.getInstance().logError(`Invalid URL found: ${trimmed}`, { url: trimmed });
@@ -138,16 +139,18 @@ const Validate = {
     if (labels.some((label) => label.length === 0 || label.length > HOSTNAME_LABEL_MAX_LENGTH))
       return false;
     if (labels.some((label) => label.startsWith('-') || label.endsWith('-'))) return false;
-    if (labels.some((label) => !/^[\da-z-]+$/.test(label))) return false;
+    if (labels.some((label) => !/^[\da-z-]+$/u.test(label))) return false;
 
     return true;
   },
 
   /**
-   *
+   * Determines whether a hostname string is a valid dotted IPv4 address.
+   * @param {string} hostname - Hostname candidate to test.
+   * @return {boolean} `true` when the hostname is an IPv4 address.
    */
   _isIPv4(hostname) {
-    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+    const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(hostname);
     if (!ipv4Exec) return false;
     const octets = [ipv4Exec[1], ipv4Exec[2], ipv4Exec[3], ipv4Exec[4]].map(Number);
     if (octets.some((o) => Number.isNaN(o) || o < 0 || o > IPV4_OCTET_MAX_VALUE)) return false;
@@ -161,7 +164,7 @@ const Validate = {
    * This method is intentionally limited to presence checks only. It does not
    * validate content (e.g., non-empty strings) and will not reject falsy-but-valid
    * values such as 0, false, or ''.
-   * @param {Object<string, *>} params - Object where keys are parameter names and values are the parameter values.
+   * @param {Object<string, *>} parameters - Object where keys are parameter names and values are the parameter values.
    * @param {string} [context] - Optional context (e.g., method name) for the error message.
    * @throws {Error} If any parameter is null or undefined.
    * @example

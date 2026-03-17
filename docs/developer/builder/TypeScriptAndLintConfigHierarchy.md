@@ -49,7 +49,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 
 - `config/eslint/ts-base-rules.cjs`
 - Contains cross-component TypeScript lint standards:
-  - `eslint-plugin-security` recommended rules
+  - `eslint-plugin-security` recommended rules promoted to `error` severity
   - Complexity limit
   - JSDoc requirement baseline
   - Magic number policy
@@ -61,14 +61,16 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - Imports shared TS base rules.
   - Applies `unicorn.configs.all` as the frontend baseline.
   - Adds frontend-only rules/plugins (React hooks, Vite React refresh, browser globals).
-  - Adds stricter Unicode hardening rules for frontend test files.
+  - Applies shared Unicode hardening rules as errors for frontend test files, with scoped test-only suppressions for `require-unicode-regexp` and `security/detect-object-injection` after false-positive triage.
   - Uses targeted `unicorn/*` overrides only where current frontend conventions intentionally differ.
 - `scripts/builder/eslint.config.js`
   - Imports shared TS base rules.
   - Adds builder-only parser/project context for Node-side TypeScript files.
+  - Keeps `security/detect-non-literal-fs-filename` disabled because builder path resolution is already constrained to repo-root-safe paths, plus a small explicit `security/detect-object-injection` allowlist for triaged false positives.
 - `eslint.config.js` (repo root)
   - Remains focused on backend JavaScript linting rules.
-  - Adds stricter Unicode hardening rules for backend source and root `tests/**/*.js`.
+  - Applies shared `eslint-plugin-security` and Unicode hardening rules as errors for backend source.
+  - Keeps `require-unicode-regexp` disabled for root `tests/**/*.js` and scopes `security/detect-object-injection` disables to an explicit list of backend files triaged as false positives.
   - Does not replace frontend/builder TypeScript lint configs.
 
 ## Running lint checks

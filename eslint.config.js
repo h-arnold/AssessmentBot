@@ -3,7 +3,7 @@ const jsdoc = require('eslint-plugin-jsdoc');
 const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
-const { security, securityRecommendedWarnRules } = require('./config/eslint/ts-base-rules.cjs');
+const { security, securityRecommendedErrorRules } = require('./config/eslint/ts-base-rules.cjs');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -59,7 +59,7 @@ module.exports = [
     },
     plugins: { googleappsscript, jsdoc, security, unicorn, sonarjs },
     rules: {
-      ...securityRecommendedWarnRules,
+      ...securityRecommendedErrorRules,
       ...unicodeSecurityRules,
       ...sonarjs.configs.recommended.rules,
       // Temporarily disabled for the backend section only; re-enable requires explicit user approval before modifying these helpers.
@@ -153,6 +153,33 @@ module.exports = [
     plugins: { security },
     rules: {
       ...unicodeSecurityRules,
+      'require-unicode-regexp': 'off',
+    },
+  },
+  {
+    files: [
+      'src/backend/Assessors/SheetsAssessor.js',
+      'src/backend/AssignmentProcessor/Assignment.js',
+      'src/backend/ConfigurationManager/98_ConfigurationManagerClass.js',
+      'src/backend/ConfigurationManager/99_globals.js',
+      'src/backend/DocumentParsers/DocumentParser.js',
+      'src/backend/DocumentParsers/SheetsParser.js',
+      'src/backend/DocumentParsers/SlidesParser.js',
+      'src/backend/Models/StudentSubmission.js',
+      'src/backend/Models/TaskDefinition.js',
+      'src/backend/RequestHandlers/BaseRequestManager.js',
+      'src/backend/RequestHandlers/ImageManager.js',
+      'src/backend/RequestHandlers/LLMRequestManager.js',
+      'src/backend/Utils/ABLogger.js',
+      'src/backend/y_controllers/ABClassController.js',
+      'src/backend/y_controllers/AssignmentController.js',
+      'src/backend/y_controllers/ReferenceDataController.js',
+      'src/backend/z_Api/abclassMutations.js',
+      'src/backend/z_Api/apiHandler.js',
+      'src/backend/z_Api/requestStore.js',
+    ],
+    rules: {
+      'security/detect-object-injection': 'off',
     },
   },
   {

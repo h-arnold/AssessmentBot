@@ -143,6 +143,8 @@ export default defineConfig([
     files: ['src/**/*.{spec,test}.{ts,tsx}'],
     rules: {
       ...unicodeSecurityRules,
+      'require-unicode-regexp': 'off',
+      'security/detect-object-injection': 'off',
     },
   },
 ]);

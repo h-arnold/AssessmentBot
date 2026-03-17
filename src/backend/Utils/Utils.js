@@ -32,7 +32,7 @@ const Utilities_ = {
       })
       .join('');
 
-    if (hash == null) {
+    if (hash === null || hash === undefined) {
       const progressTracker = ProgressTracker.getInstance();
       progressTracker.logAndThrowError('Hash is null. Please check debugger to find out why.');
     } else {
@@ -59,14 +59,14 @@ const Utilities_ = {
   /**
    * Compares two arrays for equality.
    *
-   * @param {Array} arr1 - The first array.
-   * @param {Array} arr2 - The second array.
+   * @param {Array} array1 - The first array.
+   * @param {Array} array2 - The second array.
    * @return {boolean} - True if arrays are equal, false otherwise.
    */
   arraysEqual(array1, array2) {
     if (array1.length !== array2.length) return false;
     for (const [index, element] of array1.entries()) {
-      if (element !== array2[index]) return false;
+      if (element !== array2.at(index)) return false;
     }
     return true;
   },

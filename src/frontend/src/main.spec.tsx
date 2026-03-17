@@ -2,9 +2,11 @@ import appSource from './App.tsx?raw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   type ImportDeclaration,
+  type NamedImportBindings,
   type Node,
   type SourceFile,
   ScriptKind,
+  SyntaxKind,
   ScriptTarget,
   createSourceFile,
   forEachChild,
@@ -113,7 +115,7 @@ function getImportedModuleSpecifiers(sourceFile: SourceFile) {
 /**
  * Returns whether an import declaration contributes runtime bindings.
  */
-function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is ImportDeclaration {
+function hasRuntimeImportBinding(node: Node): node is ImportDeclaration {
   if (!isImportDeclaration(node)) {
     return false;
   }
@@ -124,8 +126,9 @@ function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is Im
     return true; // Bare import like `import 'module'` has runtime effect
   }
 
+  // `phaseModifier` is the TypeScript 5.x+ replacement for the deprecated `isTypeOnly` flag.
   // If the entire import is type-only (e.g., `import type { Foo, Bar }`)
-  if (importClause.isTypeOnly) {
+  if (importClause.phaseModifier === SyntaxKind.TypeKeyword) {
     return false;
   }
 
@@ -134,14 +137,25 @@ function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is Im
     return true;
   }
 
+  return hasRuntimeNamedBindings(importClause.namedBindings);
+}
+
+/**
+ * Returns whether named import bindings contribute runtime bindings.
+ */
+function hasRuntimeNamedBindings(namedBindings: NamedImportBindings | undefined) {
+  if (!namedBindings) {
+    return false;
+  }
+
   // Namespace import always has runtime binding (e.g., `import * as Foo from 'module'`)
-  if (isNamespaceImport(importClause.namedBindings)) {
+  if (isNamespaceImport(namedBindings)) {
     return true;
   }
 
   // Named bindings: return true if ANY specifier is NOT type-only
-  if (isNamedImports(importClause.namedBindings)) {
-    return importClause.namedBindings.elements.some((element) => !element.isTypeOnly);
+  if (isNamedImports(namedBindings)) {
+    return namedBindings.elements.some((element) => !element.isTypeOnly);
   }
 
   return true; // Conservative default
@@ -154,7 +168,7 @@ function getRuntimeImportedModuleSpecifiers(sourceFile: SourceFile) {
   const specifiers: string[] = [];
 
   visitNodes(sourceFile, (node) => {
-    if (!hasRuntimeImportBinding(node, sourceFile)) {
+    if (!hasRuntimeImportBinding(node)) {
       return;
     }
 

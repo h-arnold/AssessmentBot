@@ -307,7 +307,7 @@ class ProgressTracker extends BaseSingleton {
     }
 
     const step = progress.step;
-    const numberMatch = step.toString().match(/\d+/); // Extract the first number in the string
+    const numberMatch = step.toString().match(/\d+/u); // Extract the first number in the string
     return numberMatch ? Number.parseInt(numberMatch[0], 10) : null;
   }
 

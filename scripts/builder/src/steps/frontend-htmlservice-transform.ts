@@ -5,6 +5,7 @@ import { BuildStageError } from '../lib/errors.js';
 import type { BuilderPaths, FrontendHtmlServiceTransformResult } from '../types.js';
 
 const STAGE_ID = 'frontend-htmlservice-transform' as const;
+const HTML_ATTRIBUTE_VALUE_PATTERN = /\b([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
 
 /**
  * Resolves an asset reference from built HTML to an on-disk file path.
@@ -160,15 +161,17 @@ async function replaceAsync(
  * @return {string | undefined} Attribute value when present.
  */
 function readAttributeValue(attributes: string, name: string): string | undefined {
-  const pattern = new RegExp(
-    String.raw`\b${name}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`,
-    'i',
-  );
-  const match = pattern.exec(attributes);
-  if (!match) {
-    return undefined;
+  const targetName = name.toLowerCase();
+
+  for (const match of attributes.matchAll(HTML_ATTRIBUTE_VALUE_PATTERN)) {
+    if (match[1]?.toLowerCase() !== targetName) {
+      continue;
+    }
+
+    return match[2] ?? match[3] ?? match[4];
   }
-  return match[1] ?? match[2] ?? match[3];
+
+  return undefined;
 }
 
 /**
@@ -179,10 +182,10 @@ function readAttributeValue(attributes: string, name: string): string | undefine
  * @return {string} Normalised attribute segment without the named attribute.
  */
 function removeAttribute(attributes: string, name: string): string {
+  const targetName = name.toLowerCase();
   const trimmed = attributes
-    .replaceAll(
-      new RegExp(String.raw`\s*\b${name}\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)`, 'gi'),
-      '',
+    .replaceAll(HTML_ATTRIBUTE_VALUE_PATTERN, (match, attributeName: string) =>
+      attributeName.toLowerCase() === targetName ? '' : match,
     )
     .trim();
   return trimmed.replaceAll(/\s+/g, ' ');

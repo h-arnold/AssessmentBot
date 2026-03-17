@@ -3,12 +3,17 @@
  * Delegates to shared utils where available to keep behaviour consistent.
  */
 
-const API_KEY_PATTERN = /^(?!-)([\dA-Za-z]+(?:-[\dA-Za-z]+)*)$/;
-const DRIVE_ID_PATTERN = /^[\w-]{10,}$/;
+// eslint-disable-next-line security/detect-unsafe-regex -- anchored token validation with bounded character classes; false positive.
+const API_KEY_PATTERN = /^(?!-)([\dA-Za-z]+(?:-[\dA-Za-z]+)*)$/u;
+const DRIVE_ID_PATTERN = /^[\w-]{10,}$/u;
 const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
 
 /**
- *
+ * Validates a configured JsonDbApp log level and normalises it to uppercase.
+ * @param {string} label - Human-readable label for error messaging.
+ * @param {*} value - Candidate log level.
+ * @return {string} Validated uppercase log level.
+ * @throws {Error} If the value is empty or not one of the supported levels.
  */
 function validateLogLevel(label, value) {
   Validate.validateNonEmptyString(label, value);
@@ -20,7 +25,23 @@ function validateLogLevel(label, value) {
 }
 
 /**
- *
+ * Validates a required non-empty string property within a parsed ClassInfo object.
+ * @param {string} keyLabel - Human readable label for error messaging.
+ * @param {string} propertyName - Required property name.
+ * @param {*} propertyValue - Candidate property value.
+ * @throws {TypeError} If the property is missing or empty.
+ */
+function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propertyValue) {
+  if (!Validate.isNonEmptyString(propertyValue)) {
+    throw new TypeError(`${keyLabel} must have a ${propertyName} property (non-empty string).`);
+  }
+}
+
+/**
+ * Validates an API key token used by external integrations.
+ * @param {*} value - Candidate API key.
+ * @return {string} Original API key value when valid.
+ * @throws {Error} If the value is missing or has an invalid token format.
  */
 function validateApiKey(value) {
   if (!Validate.isNonEmptyString(value) || !API_KEY_PATTERN.test(value.trim())) {
@@ -32,7 +53,9 @@ function validateApiKey(value) {
 }
 
 /**
- *
+ * Coerces common boolean-like values to a boolean.
+ * @param {*} value - Value to coerce.
+ * @return {boolean} Coerced boolean value.
  */
 function toBoolean(value) {
   if (Validate.isBoolean(value)) return value;
@@ -45,17 +68,21 @@ function toBoolean(value) {
 }
 
 /**
- *
+ * Coerces a value to a lowercase boolean string.
+ * @param {*} value - Value to normalise.
+ * @return {string} `'true'` or `'false'` depending on the coerced value.
  */
 function toBooleanString(value) {
   return toBoolean(value) ? 'true' : 'false';
 }
 
 /**
- *
+ * Converts an internal camel-case key to a human-readable label.
+ * @param {string} key - Internal configuration key.
+ * @return {string} Human-readable label.
  */
 function toReadableKey(key) {
-  return key.replaceAll(/([A-Z])/g, ' $1').replace(/^./, (string_) => string_.toUpperCase());
+  return key.replaceAll(/([A-Z])/gu, ' $1').replace(/^./u, (string_) => string_.toUpperCase());
 }
 
 /**
@@ -86,16 +113,11 @@ function validateClassInfo(label, value) {
   }
 
   // Validate required properties
-  if (!Validate.isNonEmptyString(parsed.ClassName)) {
-    throw new TypeError(`${keyLabel} must have a ClassName property (non-empty string).`);
-  }
-
-  if (!Validate.isNonEmptyString(parsed.CourseId)) {
-    throw new TypeError(`${keyLabel} must have a CourseId property (non-empty string).`);
-  }
+  validateRequiredClassInfoStringProperty(keyLabel, 'ClassName', parsed.ClassName);
+  validateRequiredClassInfoStringProperty(keyLabel, 'CourseId', parsed.CourseId);
 
   // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
-  const courseIdPattern = /^[\w-]+$/;
+  const courseIdPattern = /^[\w-]+$/u;
   if (!courseIdPattern.test(parsed.CourseId)) {
     throw new TypeError(`${keyLabel} CourseId must be alphanumeric (with hyphens/underscores).`);
   }

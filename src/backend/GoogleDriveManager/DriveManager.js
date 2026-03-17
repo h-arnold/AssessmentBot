@@ -482,7 +482,7 @@ const DriveManager = {
    */
   isValidGoogleDriveFileId(fileId) {
     // Define the regex for a valid google drive file id.
-    const fileIdRegex = /^[\w-]{33,44}$/;
+    const fileIdRegex = /^[\w-]{33,44}$/u;
     // Test if the passed string matches the regex and return the result.
     return fileIdRegex.test(fileId);
   },
@@ -517,7 +517,7 @@ const DriveManager = {
 
     // Attempt to extract ID from URL patterns.
     // Pattern 1: /d/{id}/ or /d/{id}/edit or /d/{id}/view etc.
-    const pathMatch = input.match(/\/d\/([\w-]{33,44})/);
+    const pathMatch = input.match(/\/d\/([\w-]{33,44})/u);
     if (pathMatch && pathMatch[1]) {
       const extractedId = pathMatch[1];
       if (this.isValidGoogleDriveFileId(extractedId)) {
@@ -526,7 +526,7 @@ const DriveManager = {
     }
 
     // Pattern 2: ?id={id} or open?id={id}
-    const queryMatch = input.match(/[&?]id=([\w-]{33,44})/);
+    const queryMatch = input.match(/[&?]id=([\w-]{33,44})/u);
     if (queryMatch && queryMatch[1]) {
       const extractedId = queryMatch[1];
       if (this.isValidGoogleDriveFileId(extractedId)) {
