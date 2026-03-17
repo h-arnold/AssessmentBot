@@ -30,17 +30,19 @@ class AssignmentController {
    * @param {string} assignmentTitle - The title of the assignment
    * @param {Object} documentIds - Object containing Google document IDs to be processed (referenceDocumentId, templateDocumentId)
    * @param {string} assignmentId - Unique identifier for the assignment
+   * @param {string} courseId - Classroom course ID for the selected assignment
    * @throws {Error} If saving or initialisation process fails
    */
-  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
+  saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
     try {
       const { definition } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
+        courseId,
         documentIds,
       });
 
-      this.startProcessing(assignmentId, definition.definitionKey);
+      this.startProcessing(assignmentId, definition.definitionKey, courseId);
       this.progressTracker.startTracking();
 
       // As the rest of the workflow is run from a time-based trigger, waiting for a response from this method shouldn't affect the startup time for the rest of the assessment.
@@ -64,9 +66,10 @@ class AssignmentController {
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
+   * @param {string} courseId - Classroom course ID used for downstream processing.
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
-  startProcessing(assignmentId, definitionKey) {
+  startProcessing(assignmentId, definitionKey, courseId = '') {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
     const properties = PropertiesService.getDocumentProperties();
@@ -87,11 +90,13 @@ class AssignmentController {
     }
 
     try {
-      this.applyDocumentProperties(properties, {
+      const propertyMap = {
         assignmentId,
         definitionKey,
         triggerId,
-      });
+        courseId,
+      };
+      this.applyDocumentProperties(properties, propertyMap);
       ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
       this.progressTracker.logAndThrowError(`Error setting properties: ${error.message}`, error);
@@ -144,6 +149,7 @@ class AssignmentController {
       const assignmentId = properties.getProperty('assignmentId');
       const definitionKey = properties.getProperty('definitionKey');
       const triggerId = properties.getProperty('triggerId');
+      const storedCourseId = properties.getProperty('courseId');
 
       if (!assignmentId || !definitionKey || !triggerId) {
         // Lazily instantiate TriggerController to clean up pending triggers
@@ -159,11 +165,18 @@ class AssignmentController {
       this.progressTracker.startTracking();
       this.progressTracker.updateProgress('Assessment run starting.');
 
-      // Get Course ID from Configuration (handles migration if needed)
-      const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
+      const definitionController = new AssignmentDefinitionController();
+      const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
+      if (!definition) {
+        this.progressTracker.logAndThrowError(
+          `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
+        );
+      }
+
+      const courseId = storedCourseId || definition.courseId;
       if (!courseId) {
         this.progressTracker.logAndThrowError(
-          'Course ID could not be determined. Please ensure class info is set up.'
+          'Course ID could not be determined. It is missing from stored properties and the assignment definition.'
         );
       }
 
@@ -176,14 +189,6 @@ class AssignmentController {
       const assignmentIndex = abClass.findAssignmentIndex((a) => a.assignmentId === assignmentId);
       if (assignmentIndex >= 0) {
         abClassController.rehydrateAssignment(abClass, assignmentId);
-      }
-
-      const definitionController = new AssignmentDefinitionController();
-      const definition = definitionController.getDefinitionByKey(definitionKey, { form: 'full' });
-      if (!definition) {
-        this.progressTracker.logAndThrowError(
-          `Assignment definition not found for key ${definitionKey}. Cannot proceed.`
-        );
       }
 
       const assignment = this.createAssignmentInstance(definition, courseId, assignmentId);
@@ -214,7 +219,7 @@ class AssignmentController {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
         const properties = PropertiesService.getDocumentProperties();
-        this.clearDocumentProperties(properties, ['assignmentId', 'definitionKey', 'triggerId']);
+        this.clearDocumentProperties(properties, ['assignmentId', 'definitionKey', 'triggerId', 'courseId']);
         ABLogger.getInstance().info('Document properties cleaned up.');
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
@@ -400,21 +405,19 @@ class AssignmentController {
    * @param {Object} params - Parameters object.
    * @param {string|null} params.assignmentTitle - The assignment title (optional if fetched from Classroom).
    * @param {string} params.assignmentId - The assignment ID.
+   * @param {string} params.courseId - Classroom course ID.
    * @param {Object} params.documentIds - Object containing document IDs with properties:
    *   - referenceDocumentId or referenceSlideId
    *   - templateDocumentId or templateSlideId
    * @return {Object} { definition, courseId, abClass }
    */
-  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, documentIds, yearGroup = null }) {
+  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, courseId, documentIds, yearGroup = null }) {
     const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
     const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
 
     const documentType = this._detectDocumentType(referenceId, templateId);
 
-    const courseId = ConfigurationManager.getInstance().getAssessmentRecordCourseId();
-    if (!courseId) {
-      ProgressTracker.getInstance().logAndThrowError('Course ID not found in configuration.');
-    }
+    Validate.requireParams({ courseId }, 'ensureDefinitionFromInputs');
 
     const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
     const topicId = courseWork?.topicId || null;
@@ -451,6 +454,7 @@ class AssignmentController {
    *
    * @param {Object} params - Wizard input parameters.
    * @param {string} params.assignmentId - Google Classroom assignment ID (required).
+   * @param {string} params.courseId - Classroom course ID (required).
    * @param {string} [params.assignmentTitle] - Assignment title (fallback if not fetched from Classroom).
    * @param {string} params.referenceDocumentId - Reference document URL or file ID.
    * @param {string} params.templateDocumentId - Template document URL or file ID.
@@ -460,6 +464,7 @@ class AssignmentController {
   createDefinitionFromWizardInputs({
     assignmentId,
     assignmentTitle,
+    courseId,
     referenceDocumentId,
     templateDocumentId,
     yearGroup = null,
@@ -467,6 +472,7 @@ class AssignmentController {
     ABLogger.getInstance().info('AssignmentController.createDefinitionFromWizardInputs invoked:', {
       assignmentId,
       assignmentTitle,
+      courseId,
       referenceDocumentId,
       templateDocumentId,
       yearGroup,
@@ -474,7 +480,7 @@ class AssignmentController {
 
     // Validate required parameters
     Validate.requireParams(
-      { assignmentId, referenceDocumentId, templateDocumentId },
+      { assignmentId, courseId, referenceDocumentId, templateDocumentId },
       'createDefinitionFromWizardInputs'
     );
 
@@ -503,6 +509,7 @@ class AssignmentController {
       const { definition, abClass } = this.ensureDefinitionFromInputs({
         assignmentTitle,
         assignmentId,
+        courseId,
         documentIds,
         yearGroup,
       });

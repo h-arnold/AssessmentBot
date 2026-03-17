@@ -54,18 +54,6 @@ function getConfiguration() {
     // Provide a boolean so callers can know whether a key is present without exposing it.
     hasApiKey: !!rawApiKey,
     backendUrl: safeGet(() => cfg.getBackendUrl(), 'backendUrl', ''),
-    assessmentRecordTemplateId: safeGet(
-      () => cfg.getAssessmentRecordTemplateId(),
-      'assessmentRecordTemplateId',
-      ''
-    ),
-    assessmentRecordDestinationFolder: safeGet(
-      () => cfg.getAssessmentRecordDestinationFolder(),
-      'assessmentRecordDestinationFolder',
-      ''
-    ),
-    updateDetailsUrl: safeGet(() => cfg.getUpdateDetailsUrl(), 'updateDetailsUrl', ''),
-    updateStage: safeGet(() => cfg.getUpdateStage(), 'updateStage', 0),
     isAdminSheet: safeGet(() => cfg.getIsAdminSheet(), 'isAdminSheet', false),
     revokeAuthTriggerSet: safeGet(
       () => cfg.getRevokeAuthTriggerSet(),
@@ -136,18 +124,6 @@ function saveConfiguration(config) {
     }
   }
 
-  // Save classroom data if provided
-  if (config.classroom) {
-    try {
-      this.saveClassroom(config.classroom.courseName, config.classroom.courseId);
-      delete config.classroom; // Remove classroom data before saving other configs
-    } catch (error) {
-      // Keep the logged output concise to avoid exposing sensitive details.
-      console.error('Error saving classroom configuration:', error?.name ?? 'Error');
-      errors.push(`classroom: ${error?.message ?? 'REDACTED'}`);
-    }
-  }
-
   const setters = [
     [
       'backendAssessorBatchSize',
@@ -159,15 +135,6 @@ function saveConfiguration(config) {
     ],
     ['apiKey', (value) => ConfigurationManager.getInstance().setApiKey(value)],
     ['backendUrl', (value) => ConfigurationManager.getInstance().setBackendUrl(value)],
-    [
-      'assessmentRecordTemplateId',
-      (value) => ConfigurationManager.getInstance().setAssessmentRecordTemplateId(value),
-    ],
-    [
-      'assessmentRecordDestinationFolder',
-      (value) => ConfigurationManager.getInstance().setAssessmentRecordDestinationFolder(value),
-    ],
-    ['updateDetailsUrl', (value) => ConfigurationManager.getInstance().setUpdateDetailsUrl(value)],
     [
       'daysUntilAuthRevoke',
       (value) => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(value),
