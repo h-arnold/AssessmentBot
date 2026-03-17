@@ -47,7 +47,7 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
     });
   });
 
-  test('validation of invalid sheet id uses heuristic without Drive access', async () => {
+  test('validation of invalid folder id uses heuristic without Drive access', async () => {
     await harness.withFreshSingletons(() => {
       const singletons = loadSingletonsWithMocks(harness, {
         loadConfigurationManager: true,
@@ -55,7 +55,7 @@ describe('Phase 2: Heavy boundary & classroom manager tests', () => {
       ConfigurationManager = singletons.ConfigurationManager;
       const cfg = ConfigurationManager.getInstance();
       const invalidId = 'short';
-      const result = cfg.isValidGoogleSheetId(invalidId);
+      const result = cfg.isValidGoogleDriveFolderId(invalidId);
       expect(result).toBe(false);
       // Heuristic should avoid DriveApp access
       expect(harness.wasDriveAccessed()).toBe(false);

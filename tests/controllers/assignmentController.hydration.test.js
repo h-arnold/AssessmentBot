@@ -181,6 +181,7 @@ describe('AssignmentController - Definition Hydration', () => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'Essay 1_English_10';
         if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return 'course-123';
         return null;
       });
 
@@ -188,6 +189,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const fullDefinition = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
+        courseId: 'course-123',
         yearGroup: 10,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-123',
@@ -233,6 +235,7 @@ describe('AssignmentController - Definition Hydration', () => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'NonExistent_Topic_10';
         if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return 'course-123';
         return null;
       });
 
@@ -250,12 +253,14 @@ describe('AssignmentController - Definition Hydration', () => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'Test_Topic_10';
         if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return 'course-123';
         return null;
       });
 
       const fullDefinition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
+        courseId: 'course-123',
         yearGroup: 10,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
@@ -280,6 +285,34 @@ describe('AssignmentController - Definition Hydration', () => {
 
       // Verify SlidesAssignment was created (based on documentType)
       expect(globalThis.SlidesAssignment).toHaveBeenCalled();
+    });
+
+    it('uses definition.courseId when stored courseId is missing', () => {
+      mockProperties.getProperty.mockImplementation((key) => {
+        if (key === 'assignmentId') return 'assignment-456';
+        if (key === 'definitionKey') return 'Fallback_Topic_10';
+        if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return null;
+        return null;
+      });
+
+      const fullDefinition = new AssignmentDefinition({
+        primaryTitle: 'Fallback',
+        primaryTopic: 'Topic',
+        courseId: 'course-from-definition',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref',
+        templateDocumentId: 'tpl',
+        tasks: {},
+      });
+
+      mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
+
+      const controller = new AssignmentController();
+      controller.processSelectedAssignment();
+
+      expect(mockABClassController.loadClass).toHaveBeenCalledWith('course-from-definition');
     });
   });
 
@@ -380,6 +413,7 @@ describe('AssignmentController - Definition Hydration', () => {
       const result = controller.ensureDefinitionFromInputs({
         assignmentTitle: 'Assignment Title',
         assignmentId: 'assignment-123',
+        courseId: 'course-123',
         documentIds: {
           referenceDocumentId: 'ref',
           templateDocumentId: 'tpl',
@@ -398,6 +432,7 @@ describe('AssignmentController - Definition Hydration', () => {
       controller.ensureDefinitionFromInputs({
         assignmentTitle: 'Test',
         assignmentId: 'assignment-123',
+        courseId: 'course-123',
         documentIds: {
           referenceDocumentId: 'ref',
           templateDocumentId: 'tpl',
@@ -414,6 +449,7 @@ describe('AssignmentController - Definition Hydration', () => {
       controller.ensureDefinitionFromInputs({
         assignmentTitle: 'Test',
         assignmentId: 'assignment-123',
+        courseId: 'course-123',
         documentIds: {
           referenceDocumentId: 'ref',
           templateDocumentId: 'tpl',

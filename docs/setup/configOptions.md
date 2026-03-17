@@ -6,14 +6,16 @@
     - [🌐 Backend Tab](#-backend-tab)
       - [🔑 API Key](#-api-key)
       - [🌍 URL](#-url)
-  - [🧩 Advanced Options Tab](#-advanced-options-tab)
-    - [📦 Batch Size](#-batch-size)
-    - [🔗 Update Details URL](#-update-details-url)
-    - [🗂️ Assessment Record Template ID](#️-assessment-record-template-id)
-    - [📁 Assessment Record Destination Folder](#-assessment-record-destination-folder)
-    - [⏳ Days Until Auth Revoke](#-days-until-auth-revoke)
-  - [🐞 Debug Tab](#-debug-tab)
-    - [🏫 Classroom](#-classroom)
+    - [🧩 Advanced Options Tab](#-advanced-options-tab)
+      - [📦 Backend Assessor Batch Size](#-backend-assessor-batch-size)
+      - [🖼️ Slides Fetch Batch Size](#-slides-fetch-batch-size)
+      - [⏳ Days Until Auth Revoke](#-days-until-auth-revoke)
+    - [🗃️ Database Tab](#-database-tab)
+      - [🗂️ JSON DB Master Index Key](#-json-db-master-index-key)
+      - [⏱️ JSON DB Lock Timeout (ms)](️#-json-db-lock-timeout-ms)
+      - [📈 JSON DB Log Level](#-json-db-log-level)
+      - [💾 JSON DB Backup On Initialise](#-json-db-backup-on-initialise)
+      - [📁 JSON DB Root Folder ID](#-json-db-root-folder-id)
 
 ## 📂 Where to Find the Settings
 
@@ -37,50 +39,60 @@ This is the URL of your deployed Assessment Bot backend. It should look somethin
 
 ---
 
-## 🧩 Advanced Options Tab
+### 🧩 Advanced Options Tab
 
-These configuration values are _optional_, but you may wish to adjust them depending on your preferences.
+These values are optional, but can be tuned for throughput and reliability.
 
-### 📦 Batch Size
+#### 📦 Backend Assessor Batch Size
 
-**Default:** 20
+**Default:** 120
 
-This is the number of simultaneous requests Assessment Bot will make to the Langflow backend. For my [Google Cloud Run configuration of Langflow](./langflowDeployment/langflowDeployment.md), a batch size of **20** offers the best balance between speed and avoiding timeouts.
+This is the number of student-response requests Assessment Bot sends to the backend in each batch.
 
-### 🔗 Update Details URL
+#### 🖼️ Slides Fetch Batch Size
 
-**Default:**  
- `https://raw.githubusercontent.com/h-arnold/AssessmentBot/refs/heads/main/src/frontend/UpdateManager/assessmentBotVersions.json`
+**Default:** 30
 
-This URL points to a JSON file that contains the Google Drive File IDs of the template admin and assessment record sheets.  
-When you update or run Assessment Bot for the first time, it will copy the files found at these File IDs.  
-If you're using a custom build of Assessment Bot, update this URL to point to your own file.
+This is the number of image fetch requests processed in each batch when working with Slides-based tasks.
 
-### 🗂️ Assessment Record Template ID
-
-**Default:** The File ID of the Assessment Record for your current version (pulled from the **Update Details URL**).
-
-This template is used as the base for all Assessment Records.
-
-### 📁 Assessment Record Destination Folder
-
-**Default:** A folder named **`Assessment Records`** located in the same folder as your **Admin Sheet**.
-
-If you don't specify a folder when first opening the **Admin Sheet**, the script will automatically create the **`Assessment Records`** folder.
-
-### ⏳ Days Until Auth Revoke
+#### ⏳ Days Until Auth Revoke
 
 **Default:** 60 days
 
-When you update the **Admin Sheet**, its authentication is revoked as the final action before it's archived. Since it's not possible to revoke authentication for scripts outside of the currently running script, a time-based trigger is created for each **Assessment Record** to automatically revoke authentication after the specified number of days. This prevents archived Assessment Records from retaining permissions that could be exploited by malicious actors.
+After an assessment record has been created, this value controls when the automatic auth-revocation trigger runs.
 
 ---
 
-## 🐞 Debug Tab
+### 🗃️ Database Tab
 
-This option allows the **Admin Sheet** to act as an **Assessment Record** for debugging purposes.  
-Using this mode enables full use of the **App Script Debugger** for troubleshooting issues.
+These settings control internal JsonDbApp storage behaviour.
 
-### 🏫 Classroom
+#### 🗂️ JSON DB Master Index Key
 
-Select the classroom you want the **Admin Sheet** to simulate as an **Assessment Record**.
+**Default:** `ASSESSMENT_BOT_DB_MASTER_INDEX`
+
+The script property key used by JsonDbApp to locate the database index.
+
+#### ⏱️ JSON DB Lock Timeout (ms)
+
+**Default:** 15000
+
+Timeout used when acquiring database locks.
+
+#### 📈 JSON DB Log Level
+
+**Default:** `INFO`
+
+Controls JsonDbApp logging verbosity.
+
+#### 💾 JSON DB Backup On Initialise
+
+**Default:** `false`
+
+When enabled, JsonDbApp creates a backup when initialising the database.
+
+#### 📁 JSON DB Root Folder ID
+
+**Default:** empty (unset)
+
+Optional Google Drive folder ID used as the root location for database files.

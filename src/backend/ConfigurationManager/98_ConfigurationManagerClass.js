@@ -180,10 +180,9 @@ class ConfigurationManager extends BaseSingleton {
     this.getAllConfigurations();
     switch (key) {
       case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
-      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET:
-      case ConfigurationManager.CONFIG_KEYS.SCRIPT_AUTHORISED: {
+      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET: {
         const v = this.documentProperties.getProperty(key);
-        return v == null ? false : v;
+        return v == null ? false : ConfigurationManager.toBoolean(v);
       }
       default: {
         return this.configCache[key] || '';
@@ -234,84 +233,11 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
-   * Ensures a folder exists alongside the Admin sheet, optionally persisting the resulting ID.
-   * @param {string} folderName - The folder name to create or reuse.
-   * @param {string|null} persistConfigKey - Optional configuration key to persist the folder ID against.
-   * @return {string|null} The folder ID when created/resolved, else null on failure or when not an admin sheet.
-   */
-  _ensureAdminSheetFolder(folderName, persistConfigKey = null) {
-    if (!Utils.validateIsAdminSheet(false)) return null;
-    const logger = ABLogger.getInstance();
-
-    try {
-      // Per project contract: assume Apps Script and internal singletons exist and let
-      // any failures surface. Retrieve the active spreadsheet and its parent folder,
-      // then create or reuse the named folder.
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const spreadsheetId = spreadsheet.getId();
-      const parentFolderId = DriveManager.getParentFolderId(spreadsheetId);
-      if (!parentFolderId) return null;
-      const folderResult = DriveManager.createFolder(parentFolderId, folderName);
-      const folderId = folderResult?.newFolderId;
-
-      // If we successfully resolved/created a folder, always log that fact.
-      // Persist the id only when a persistence key is provided. The previous
-      // inner `if (folderId)` was redundant because we're already inside a
-      // branch where folderId is truthy.
-      if (folderId) {
-        if (persistConfigKey) {
-          try {
-            this.setProperty(persistConfigKey, folderId);
-          } catch (persistError) {
-            // Log persistence error
-            ABLogger.getInstance().error(
-              `ConfigurationManager: Failed to persist folder id for "${folderName}".`,
-              { key: persistConfigKey, cause: persistError }
-            );
-          }
-        }
-
-        logger.info(
-          `ConfigurationManager: Ensured folder "${folderName}" (${folderId}) exists for Admin sheet.`
-        );
-      }
-
-      return folderId || null;
-    } catch (error) {
-      logger.warn(`ConfigurationManager: Failed to ensure folder "${folderName}".`, error);
-      return null;
-    }
-  }
-
-  /**
    *
    */
   isValidApiKey(apiKey) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
     return Validate.isString(apiKey) && pattern.test(apiKey.trim());
-  }
-
-  /**
-   *
-   */
-  isValidGoogleSheetId(sheetId) {
-    // Guard: Only touch Drive when explicitly validating. Accept cheap format heuristic first.
-    if (!sheetId || !Validate.isString(sheetId)) return false;
-    const trimmed = sheetId.trim();
-    if (!ConfigurationManager.DRIVE_ID_PATTERN.test(trimmed)) return false;
-    try {
-      if (globalThis.__TRACE_SINGLETON__)
-        ABLogger.getInstance().debug(
-          '[TRACE][HeavyInit] ConfigurationManager.isValidGoogleSheetId'
-        );
-      const file = DriveApp.getFileById(trimmed);
-      const mime = file && typeof file.getMimeType === 'function' ? file.getMimeType() : '';
-      return mime === MimeType.GOOGLE_SHEETS; // explicit equality
-    } catch (error) {
-      // Keep log concise
-      console.error(`Invalid Google Sheet ID: ${error?.message ?? error}`);
-      return false;
-    }
   }
 
   /**
@@ -400,25 +326,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    *
    */
-  getUpdateDetailsUrl() {
-    const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL);
-    return value || ConfigurationManager.DEFAULTS.UPDATE_DETAILS_URL;
-  }
-
-  /**
-   *
-   */
-  getUpdateStage() {
-    return this.getIntConfig(
-      ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
-      ConfigurationManager.DEFAULTS.UPDATE_STAGE,
-      { min: 0, max: 2 }
-    );
-  }
-
-  /**
-   *
-   */
   getJsonDbMasterIndexKey() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY);
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
@@ -463,235 +370,9 @@ class ConfigurationManager extends BaseSingleton {
   getJsonDbRootFolderId() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID);
     if (value == null || String(value).trim() === '') {
-      const folderId = this._ensureAdminSheetFolder(
-        'Assessment Bot Database Files',
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID
-      );
-      return folderId || ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
+      return ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID;
     }
     return String(value).trim();
-  }
-
-  /**
-   *
-   */
-  getAssessmentRecordTemplateId() {
-    // Simply return the stored property (empty string if unset). Fallback logic is now handled
-    // by BaseUpdateAndInit to avoid recursive instantiation between the two classes.
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID);
-  }
-
-  /**
-   * Returns the Class Info object { ClassName, CourseId, YearGroup }.
-   * Lazy migration: If not in properties, tries to read from legacy ClassInfo sheet,
-   * populates properties, and deletes the sheet.
-   * @returns {Object|null} Class info object with ClassName, CourseId, and YearGroup properties, or null if unavailable.
-   */
-  getClassInfo() {
-    // Ensure the singleton has been initialised so document/script properties are available.
-    this.ensureInitialized();
-
-    // 1. Check Document Properties
-    const jsonString = this.documentProperties.getProperty(
-      ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO
-    );
-
-    if (jsonString) {
-      try {
-        return JSON.parse(jsonString);
-      } catch (error) {
-        ABLogger.getInstance().error('Failed to parse Assessment Record Class Info', error);
-        return null;
-      }
-    }
-
-    // 2. Migration Logic - defer to deprecated helper method which performs the same behaviour
-    const migrated = this._migrateClassInfoFromLegacySheet();
-    if (migrated !== undefined) {
-      return migrated;
-    }
-  }
-
-  /**
-   * Sets the Class Info object to document properties.
-   * @param {Object} classInfo - Class information object.
-   * @param {string} classInfo.ClassName - The name of the class.
-   * @param {string} classInfo.CourseId - The Google Classroom course ID.
-   * @param {number|null} classInfo.YearGroup - The year group of the class (optional).
-   */
-  setClassInfo(classInfo) {
-    Validate.requireParams({ classInfo }, 'setClassInfo');
-
-    // Validate structure
-    if (typeof classInfo !== 'object' || classInfo === null || Array.isArray(classInfo)) {
-      throw new TypeError('classInfo must be an object');
-    }
-
-    Validate.requireParams(
-      { ClassName: classInfo.ClassName, CourseId: classInfo.CourseId },
-      'setClassInfo'
-    );
-
-    const courseIdAsString = String(classInfo.CourseId);
-    const courseIdPattern = /^[\w-]+$/;
-    if (!courseIdPattern.test(courseIdAsString)) {
-      throw new Error('CourseId must match pattern /^[A-Za-z0-9_-]+$/');
-    }
-
-    if ('YearGroup' in classInfo) {
-      const { YearGroup } = classInfo;
-      if (YearGroup !== null && !Validate.isNumber(YearGroup)) {
-        throw new TypeError('classInfo.YearGroup must be a number or null');
-      }
-    }
-
-    const classInfoToPersist = {
-      ...classInfo,
-      CourseId: courseIdAsString,
-    };
-
-    const jsonString = JSON.stringify(classInfoToPersist);
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO, jsonString);
-  }
-
-  /**
-   * Attempts to migrate legacy ClassInfo from a sheet into Document Properties.
-   * @deprecated Remove this method once all ClassInfo sheets are migrated; kept as a helper during rollout.
-   * @return {Object|null|undefined} The migrated classInfo object, null when migration could not proceed
-   *                                due to missing sheet (admin/non-admin distinctions), or undefined when
-   *                                no legacy course id was present.
-   */
-  _migrateClassInfoFromLegacySheet() {
-    const gcm = new GoogleClassroomManager();
-    // Check if we can get course ID from legacy method (which reads sheet)
-    // We use try-catch because getCourseId might throw if sheet is missing/invalid,
-    // in which case we just return null (no migration possible).
-    let courseId;
-    try {
-      courseId = gcm.getCourseId();
-    } catch (error_) {
-      // The AdminSheet isn't assigned a class by default.
-      if (!this.getIsAdminSheet()) {
-        ABLogger.getInstance().error(
-          `No Class Information in Document Properties or 'ClassInfo' sheet.`,
-          error_
-        );
-        throw error_;
-      }
-
-      ABLogger.getInstance().warn(
-        `No Document Properties or 'ClassInfo' sheet to pull class information from.`
-      );
-      // Sheet missing or invalid, cannot migrate.
-      return null;
-    }
-
-    if (courseId != null) {
-      const courseIdString = String(courseId).trim();
-
-      if (courseIdString === '') {
-        const message = `Legacy ClassInfo sheet returned an empty Course ID.`;
-        if (!this.getIsAdminSheet()) {
-          ABLogger.getInstance().error(message);
-          throw new Error(message);
-        }
-        ABLogger.getInstance().warn(message);
-        return null;
-      }
-
-      // Fetch additional details
-      let className;
-      try {
-        const course = ClassroomApiClient.fetchCourse(courseIdString);
-        if (course?.name) {
-          className = course.name;
-        }
-      } catch (error) {
-        ABLogger.getInstance().warn('Could not fetch course details during migration', error);
-      }
-
-      if (!className) {
-        const message =
-          'Class name not available. Please set the classroom via the settings panel.';
-        ABLogger.getInstance().error(message);
-        throw new Error(message);
-      }
-
-      const classInfo = {
-        ClassName: className,
-        CourseId: courseIdString,
-        YearGroup: null, // Default as per requirements
-      };
-
-      this.setClassInfo(classInfo);
-
-      gcm.deleteClassInfoSheet();
-
-      ABLogger.getInstance().info(
-        'Migrated Class Info from Sheet to DocumentProperties',
-        classInfo
-      );
-      return classInfo;
-    }
-  }
-
-  /**
-   * Returns the configured Assessment Record course ID from stored ClassInfo.
-   * Delegates to getClassInfo(), which performs any necessary legacy migration.
-   * Returns null when no value can be determined (useful for admin sheet behaviour).
-   * @returns {string|null}
-   */
-  getAssessmentRecordCourseId() {
-    const info = this.getClassInfo();
-    return info ? info.CourseId : null;
-  }
-
-  /**
-   * Stores the Assessment Record course ID as a document property.
-   * @deprecated Use setClassInfo() instead to set the complete class information object.
-   *             This method will be removed in a future version once all callers are migrated.
-   * @param {string|null} courseId
-   */
-  setAssessmentRecordCourseId(courseId) {
-    this.ensureInitialized();
-    let currentInfo;
-    try {
-      currentInfo = this.getClassInfo();
-    } catch (error_) {
-      ABLogger.getInstance().error('Unable to read Class Info before updating course ID.', error_);
-      throw error_;
-    }
-
-    const safeInfo = currentInfo || {
-      ClassName: 'Unknown Class',
-      CourseId: null,
-      YearGroup: null,
-    };
-    // Create a new object to avoid mutating cached data
-    const updatedInfo = {
-      ClassName: safeInfo.ClassName,
-      CourseId: courseId,
-      YearGroup: safeInfo.YearGroup,
-    };
-    this.setClassInfo(updatedInfo);
-  }
-
-  /**
-   *
-   */
-  getAssessmentRecordDestinationFolder() {
-    if (Utils.validateIsAdminSheet(false)) {
-      let destinationFolder = this.getProperty(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER
-      );
-      if (!destinationFolder) {
-        destinationFolder = this._ensureAdminSheetFolder(
-          'Assessment Records',
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER
-        );
-      }
-      return destinationFolder;
-    }
   }
 
   /**
@@ -727,37 +408,6 @@ class ConfigurationManager extends BaseSingleton {
    */
   setBackendUrl(url) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
-  }
-
-  /**
-   *
-   */
-  setAssessmentRecordTemplateId(templateId) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID, templateId);
-  }
-
-  /**
-   *
-   */
-  setAssessmentRecordDestinationFolder(folderId) {
-    this.setProperty(
-      ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
-      folderId
-    );
-  }
-
-  /**
-   *
-   */
-  setUpdateDetailsUrl(url) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL, url);
-  }
-
-  /**
-   *
-   */
-  setUpdateStage(stage) {
-    this.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, stage);
   }
 
   /**

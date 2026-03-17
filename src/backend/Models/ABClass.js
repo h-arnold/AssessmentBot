@@ -65,15 +65,6 @@ class ABClass {
     assignments = [],
     active = null
   ) {
-    // If classId not provided, attempt to read from ConfigurationManager (Assessment Record Course Id)
-    if (!classId) {
-      const cfg = ConfigurationManager.getInstance();
-      const cfgCourseId = cfg.getAssessmentRecordCourseId();
-      if (cfgCourseId) {
-        classId = String(cfgCourseId);
-      }
-    }
-
     if (!classId) throw new TypeError('classId is required');
     this.classId = classId;
     this.className = className || null;

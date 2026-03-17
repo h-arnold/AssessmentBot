@@ -22,26 +22,7 @@ describe('ABClass model', () => {
     expect(c.yearGroup).toBe(7);
   });
 
-  it('falls back to ConfigurationManager when classId missing', () => {
-    // Provide a fake constructor function with a getInstance static that returns the expected API
-    function FakeConfigurationManager() {}
-    FakeConfigurationManager.getInstance = () => ({
-      getAssessmentRecordCourseId: () => 'cfg-course-123',
-    });
-    globalThis.ConfigurationManager = FakeConfigurationManager;
-
-    const c = new ABClass(null, 'Fallback Class');
-    expect(c.getClassId()).toBe('cfg-course-123');
-    expect(c.getClassName()).toBe('Fallback Class');
-  });
-
-  it('throws when neither classId nor ConfigurationManager provide an id', () => {
-    // Ensure a ConfigurationManager is present but returns no id
-    function EmptyConfigurationManager() {}
-    EmptyConfigurationManager.getInstance = () => ({
-      getAssessmentRecordCourseId: () => null,
-    });
-    globalThis.ConfigurationManager = EmptyConfigurationManager;
+  it('throws when classId is missing', () => {
     expect(() => new ABClass(undefined)).toThrow(TypeError);
   });
 
