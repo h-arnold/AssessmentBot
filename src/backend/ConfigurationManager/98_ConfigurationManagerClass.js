@@ -51,8 +51,6 @@ function safeParseConfigObject(serializedConfig) {
   }
 }
 
-const LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY = 'isAdminSheet';
-
 /**
  *
  */
@@ -386,15 +384,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    *
    */
-  getIsAdminSheet() {
-    this.ensureInitialized();
-    const legacyValue = this.documentProperties.getProperty(LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY);
-    return legacyValue == null ? false : legacyValue;
-  }
-
-  /**
-   *
-   */
   setBackendAssessorBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
   }
@@ -456,18 +445,6 @@ class ConfigurationManager extends BaseSingleton {
    */
   setJsonDbRootFolderId(folderId) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, folderId);
-  }
-
-  /**
-   *
-   */
-  setIsAdminSheet(isAdmin) {
-    this.ensureInitialized();
-    this.documentProperties.setProperty(
-      LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY,
-      ConfigurationManager.toBooleanString(isAdmin)
-    );
-    return ConfigurationManager.toBoolean(isAdmin);
   }
 
   /**

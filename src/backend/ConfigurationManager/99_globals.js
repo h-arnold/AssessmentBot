@@ -54,7 +54,6 @@ function getConfiguration() {
     // Provide a boolean so callers can know whether a key is present without exposing it.
     hasApiKey: !!rawApiKey,
     backendUrl: safeGet(() => cfg.getBackendUrl(), 'backendUrl', ''),
-    isAdminSheet: safeGet(() => cfg.getIsAdminSheet(), 'isAdminSheet', false),
     revokeAuthTriggerSet: safeGet(
       () => cfg.getRevokeAuthTriggerSet(),
       'revokeAuthTriggerSet',

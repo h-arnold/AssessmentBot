@@ -134,26 +134,6 @@ const Utilities_ = {
   },
 
   /**
-   * Validates if current sheet is admin sheet
-   * @param {boolean} throwError - Whether to throw error or just log warning
-   * @returns {boolean} True if admin sheet
-   */
-  validateIsAdminSheet(throwError = true) {
-    const isAdmin = ConfigurationManager.getInstance().getIsAdminSheet();
-    if (!isAdmin) {
-      const message = 'This operation can only be performed from the admin sheet.';
-      if (throwError) {
-        const progressTracker = ProgressTracker.getInstance();
-        progressTracker.logAndThrowError(message);
-      } else {
-        console.warn(message);
-      }
-      return false;
-    }
-    return true;
-  },
-
-  /**
    * Converts a number of days into a future date.
    *
    * @param {number} days - The number of days into the future.

@@ -10,20 +10,13 @@
 
 const { SingletonTestHarness } = require('./SingletonTestHarness.js');
 
-// Helper functions to avoid deep nesting in tests
-function mockUIManagerGetInstance() {
-  // track constructor-like call
-  harness.trackConstructorCall('UIManager');
-  return { mockUIManager: true };
-}
-
 function noop() {}
 
 const harness = new SingletonTestHarness();
 
 // Import singletons for testing
 // Note: We need to be careful about import order and globals
-let ConfigurationManager, InitController, UIManager, ProgressTracker;
+let ConfigurationManager, ProgressTracker;
 
 describe('Phase 0: Baseline Singleton Behavior Tests', () => {
   beforeEach(async () => {
@@ -80,44 +73,6 @@ describe('Phase 0: Baseline Singleton Behavior Tests', () => {
           const callsAfterRepeat = globalThis.PropertiesService._calls.length;
           expect(callsAfterRepeat).toBeLessThanOrEqual(callsBeforeRepeat + 1);
         }
-      });
-    });
-  });
-
-  describe('InitController Lazy Initialization', () => {
-    test('should not instantiate UIManager until UI method invoked (lazy)', async () => {
-      await harness.withFreshSingletons(() => {
-        // Mock UIManager for this test
-        globalThis.UIManager = {
-          getInstance: () => ({
-            createAuthorisedMenu: () => harness.trackConstructorCall('UIManagerMenuCreate'),
-            createAssessmentRecordMenu: () => harness.trackConstructorCall('UIManagerMenuCreate'),
-            createUnauthorisedMenu: () => harness.trackConstructorCall('UIManagerMenuCreate'),
-            showAuthorisationModal: () => {},
-          }),
-        };
-
-        const { loadSingletonsWithMocks } = require('../helpers/singletonTestSetup.js');
-        const singletons = loadSingletonsWithMocks(harness, {
-          loadConfigurationManager: true,
-          loadInitController: true,
-        });
-        const InitController = singletons.InitController;
-        if (!InitController) return;
-
-        // Create InitController instance
-        const initController = InitController.getInstance();
-
-        // Should not have instantiated UIManager yet (menu create count 0)
-        expect(harness.getConstructorCallCount('UIManagerMenuCreate')).toBe(0);
-
-        // Call a UI-related method
-        if (initController.onOpen) {
-          initController.onOpen();
-        }
-
-        // Now UIManager should be instantiated
-        expect(harness.getConstructorCallCount('UIManagerMenuCreate')).toBeGreaterThanOrEqual(0); // menu creation may occur if unauthorised path
       });
     });
   });

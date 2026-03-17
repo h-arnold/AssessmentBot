@@ -89,7 +89,6 @@ describe('saveConfiguration global behaviour', () => {
     vi.spyOn(cfg, 'getBackendAssessorBatchSize').mockReturnValue(30);
     vi.spyOn(cfg, 'getSlidesFetchBatchSize').mockReturnValue(20);
     vi.spyOn(cfg, 'getBackendUrl').mockReturnValue('https://example.com');
-    vi.spyOn(cfg, 'getIsAdminSheet').mockReturnValue(true);
     vi.spyOn(cfg, 'getRevokeAuthTriggerSet').mockReturnValue(false);
     vi.spyOn(cfg, 'getDaysUntilAuthRevoke').mockReturnValue(60);
     vi.spyOn(cfg, 'getJsonDbMasterIndexKey').mockReturnValue('MASTER_INDEX');
@@ -101,6 +100,5 @@ describe('saveConfiguration global behaviour', () => {
     const result = getConfiguration();
 
     expect(result).not.toHaveProperty('isAdminSheet');
-    expect(cfg.getIsAdminSheet).not.toHaveBeenCalled();
   });
 });

@@ -29,7 +29,7 @@ beforeEach(() => {
   };
   // Minimal ConfigurationManager mock used by ProgressTracker.complete()
   globalThis.ConfigurationManager = {
-    getInstance: _vi.fn(() => ({ getIsAdminSheet: () => false })),
+    getInstance: _vi.fn(() => ({})),
   };
   globalThis.PropertiesCloner = function () {
     return { serialiseProperties: mockSerialiseProperties };
