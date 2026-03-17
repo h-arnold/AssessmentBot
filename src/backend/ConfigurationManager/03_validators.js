@@ -25,6 +25,19 @@ function validateLogLevel(label, value) {
 }
 
 /**
+ * Validates a required non-empty string property within a parsed ClassInfo object.
+ * @param {string} keyLabel - Human readable label for error messaging.
+ * @param {string} propertyName - Required property name.
+ * @param {*} propertyValue - Candidate property value.
+ * @throws {TypeError} If the property is missing or empty.
+ */
+function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propertyValue) {
+  if (!Validate.isNonEmptyString(propertyValue)) {
+    throw new TypeError(`${keyLabel} must have a ${propertyName} property (non-empty string).`);
+  }
+}
+
+/**
  * Validates an API key token used by external integrations.
  * @param {*} value - Candidate API key.
  * @return {string} Original API key value when valid.
@@ -100,13 +113,8 @@ function validateClassInfo(label, value) {
   }
 
   // Validate required properties
-  if (!Validate.isNonEmptyString(parsed.ClassName)) {
-    throw new TypeError(`${keyLabel} must have a ClassName property (non-empty string).`);
-  }
-
-  if (!Validate.isNonEmptyString(parsed.CourseId)) {
-    throw new TypeError(`${keyLabel} must have a CourseId property (non-empty string).`);
-  }
+  validateRequiredClassInfoStringProperty(keyLabel, 'ClassName', parsed.ClassName);
+  validateRequiredClassInfoStringProperty(keyLabel, 'CourseId', parsed.CourseId);
 
   // Validate CourseId format - Google Classroom course IDs are typically numeric or alphanumeric
   const courseIdPattern = /^[\w-]+$/u;

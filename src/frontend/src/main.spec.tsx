@@ -2,6 +2,7 @@ import appSource from './App.tsx?raw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   type ImportDeclaration,
+  type NamedImportBindings,
   type Node,
   type SourceFile,
   ScriptKind,
@@ -136,14 +137,25 @@ function hasRuntimeImportBinding(node: Node): node is ImportDeclaration {
     return true;
   }
 
+  return hasRuntimeNamedBindings(importClause.namedBindings);
+}
+
+/**
+ * Returns whether named import bindings contribute runtime bindings.
+ */
+function hasRuntimeNamedBindings(namedBindings: NamedImportBindings | undefined) {
+  if (!namedBindings) {
+    return false;
+  }
+
   // Namespace import always has runtime binding (e.g., `import * as Foo from 'module'`)
-  if (isNamespaceImport(importClause.namedBindings)) {
+  if (isNamespaceImport(namedBindings)) {
     return true;
   }
 
   // Named bindings: return true if ANY specifier is NOT type-only
-  if (isNamedImports(importClause.namedBindings)) {
-    return importClause.namedBindings.elements.some((element) => !element.isTypeOnly);
+  if (isNamedImports(namedBindings)) {
+    return namedBindings.elements.some((element) => !element.isTypeOnly);
   }
 
   return true; // Conservative default

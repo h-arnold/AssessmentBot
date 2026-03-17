@@ -33,9 +33,6 @@ function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
 /**
  * Renders the shared application shell with a collapsible navigation rail.
  */
-/**
- * Renders the shared application shell with a collapsible navigation rail.
- */
 type AppShellProps = Readonly<{
   dashboardContent?: ReactNode;
   isDarkMode: boolean;
@@ -176,6 +173,9 @@ function renderSelectedPage(key: AppNavigationKey, dashboardContent?: ReactNode)
     }
     case 'settings': {
       return pageRenderers.settings(dashboardContent);
+    }
+    default: {
+      throw new TypeError(`Unknown navigation key: ${String(key)}`);
     }
   }
 }
