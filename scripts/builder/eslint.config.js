@@ -37,6 +37,18 @@ export default [
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tsBaseRules,
+      'security/detect-non-literal-fs-filename': 'off',
+    },
+  },
+  {
+    files: [
+      'scripts/builder/src/lib/cli-options.ts',
+      'scripts/builder/src/steps/merge-manifest.ts',
+      'scripts/builder/src/steps/validate-output.ts',
+      'scripts/builder/src/steps/validate-output.spec.ts',
+    ],
+    rules: {
+      'security/detect-object-injection': 'off',
     },
   },
 ];

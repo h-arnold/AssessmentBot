@@ -69,6 +69,7 @@ export function AppShell({
     '--app-motion-duration-mid': token.motionDurationMid,
     '--app-motion-ease-in-out': token.motionEaseInOut,
   } as CSSProperties;
+  const selectedPage = renderSelectedPage(selectedNavigationKey, dashboardContent);
 
   return (
     <Layout className="app-shell" style={shellStyle}>
@@ -152,9 +153,29 @@ export function AppShell({
             aria-label="Breadcrumb"
             className="app-breadcrumb"
           />
-          {pageRenderers[selectedNavigationKey](dashboardContent)}
+          {selectedPage}
         </Content>
       </Layout>
     </Layout>
   );
+}
+
+/**
+ * Resolves the page renderer for the active navigation key without dynamic property access.
+ */
+function renderSelectedPage(key: AppNavigationKey, dashboardContent?: ReactNode) {
+  switch (key) {
+    case 'dashboard': {
+      return pageRenderers.dashboard(dashboardContent);
+    }
+    case 'classes': {
+      return pageRenderers.classes(dashboardContent);
+    }
+    case 'assignments': {
+      return pageRenderers.assignments(dashboardContent);
+    }
+    case 'settings': {
+      return pageRenderers.settings(dashboardContent);
+    }
+  }
 }

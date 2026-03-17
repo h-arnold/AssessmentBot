@@ -5,6 +5,7 @@ import {
   type Node,
   type SourceFile,
   ScriptKind,
+  SyntaxKind,
   ScriptTarget,
   createSourceFile,
   forEachChild,
@@ -113,7 +114,7 @@ function getImportedModuleSpecifiers(sourceFile: SourceFile) {
 /**
  * Returns whether an import declaration contributes runtime bindings.
  */
-function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is ImportDeclaration {
+function hasRuntimeImportBinding(node: Node): node is ImportDeclaration {
   if (!isImportDeclaration(node)) {
     return false;
   }
@@ -124,8 +125,9 @@ function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is Im
     return true; // Bare import like `import 'module'` has runtime effect
   }
 
+  // `phaseModifier` is the TypeScript 5.x+ replacement for the deprecated `isTypeOnly` flag.
   // If the entire import is type-only (e.g., `import type { Foo, Bar }`)
-  if (importClause.isTypeOnly) {
+  if (importClause.phaseModifier === SyntaxKind.TypeKeyword) {
     return false;
   }
 
@@ -154,7 +156,7 @@ function getRuntimeImportedModuleSpecifiers(sourceFile: SourceFile) {
   const specifiers: string[] = [];
 
   visitNodes(sourceFile, (node) => {
-    if (!hasRuntimeImportBinding(node, sourceFile)) {
+    if (!hasRuntimeImportBinding(node)) {
       return;
     }
 

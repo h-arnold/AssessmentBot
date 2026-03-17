@@ -89,7 +89,7 @@ class DbManager extends BaseSingleton {
     } catch (error) {
       // If loading fails because the MasterIndex is missing, attempt a first-time initialise
       const message = String(error?.message ?? '');
-      const missingMaster = /master\s*index|not\s*found|missing/i.test(message);
+      const missingMaster = /master\s*index|not\s*found|missing/iu.test(message);
       if (missingMaster) {
         try {
           this._db = JsonDbApp.createAndInitialiseDatabase(this._getConfig());

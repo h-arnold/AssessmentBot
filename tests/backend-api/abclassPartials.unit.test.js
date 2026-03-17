@@ -29,7 +29,6 @@ describe('Api/abclassPartials – direct unit delegation test', () => {
     // Fresh import so it picks up our stubbed global
 
     delete require.cache[require.resolve(modulePath)];
-    // eslint-disable-next-line import/no-dynamic-require
     const api = require(modulePath);
 
     const result = api.getABClassPartials();

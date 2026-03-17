@@ -1,7 +1,7 @@
 const unicodeSecurityRules = {
-  'security/detect-bidi-characters': 'warn',
+  'security/detect-bidi-characters': 'error',
   'no-irregular-whitespace': [
-    'warn',
+    'error',
     {
       skipComments: false,
       skipRegExps: false,
@@ -10,9 +10,9 @@ const unicodeSecurityRules = {
       skipJSXText: false,
     },
   ],
-  'no-misleading-character-class': 'warn',
-  'no-control-regex': 'warn',
-  'require-unicode-regexp': 'warn',
+  'no-misleading-character-class': 'error',
+  'no-control-regex': 'error',
+  'require-unicode-regexp': 'error',
 };
 
 module.exports = {
