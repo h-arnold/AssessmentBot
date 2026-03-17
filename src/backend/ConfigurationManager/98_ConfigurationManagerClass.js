@@ -218,9 +218,10 @@ class ConfigurationManager extends BaseSingleton {
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
     const canonical = spec && spec.validate ? spec.validate(value, this) : value;
     const normalizedValue = spec && spec.normalize ? spec.normalize(canonical) : canonical;
+    const serialisedValue = String(normalizedValue);
     const updatedConfig = {
       ...this.configCache,
-      [key]: String(normalizedValue),
+      [key]: serialisedValue,
     };
 
     try {
@@ -228,7 +229,7 @@ class ConfigurationManager extends BaseSingleton {
         ConfigurationManager.CONFIG_STORE_KEY,
         JSON.stringify(updatedConfig)
       );
-      this.configCache = updatedConfig;
+      this.configCache[key] = serialisedValue;
     } catch (persistError) {
       ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
