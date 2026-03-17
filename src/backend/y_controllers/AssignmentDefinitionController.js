@@ -19,7 +19,7 @@ class AssignmentDefinitionController {
    * @param {string} params.primaryTitle
    * @param {string|null} [params.primaryTopic]
    * @param {string|null} [params.topicId]
-   * @param {string|null} [params.courseId]
+   * @param {string} params.courseId
    * @param {number|null} [params.yearGroup]
    * @param {string} params.documentType - 'SLIDES' | 'SHEETS'
    * @param {string} params.referenceDocumentId
@@ -30,7 +30,7 @@ class AssignmentDefinitionController {
     primaryTitle,
     primaryTopic = null,
     topicId = null,
-    courseId = null,
+    courseId = '',
     yearGroup = null,
     documentType,
     referenceDocumentId,

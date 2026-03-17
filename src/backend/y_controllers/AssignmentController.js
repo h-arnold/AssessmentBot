@@ -66,10 +66,10 @@ class AssignmentController {
    *
    * @param {string} assignmentId - The ID of the assignment to be processed
    * @param {string} definitionKey - The key of the assignment definition to use
-   * @param {string|null} [courseId=null] - Classroom course ID used for downstream processing.
+   * @param {string} courseId - Classroom course ID used for downstream processing.
    * @throws {Error} If trigger creation fails or if setting document properties fails
    */
-  startProcessing(assignmentId, definitionKey, courseId = null) {
+  startProcessing(assignmentId, definitionKey, courseId = '') {
     // Lazily instantiate TriggerController
     const triggerController = new TriggerController();
     const properties = PropertiesService.getDocumentProperties();
@@ -94,10 +94,8 @@ class AssignmentController {
         assignmentId,
         definitionKey,
         triggerId,
+        courseId,
       };
-      if (courseId) {
-        propertyMap.courseId = courseId;
-      }
       this.applyDocumentProperties(properties, propertyMap);
       ABLogger.getInstance().info('Properties set for processing.');
     } catch (error) {
@@ -420,7 +418,6 @@ class AssignmentController {
     const documentType = this._detectDocumentType(referenceId, templateId);
 
     Validate.requireParams({ courseId }, 'ensureDefinitionFromInputs');
-    Validate.validateNonEmptyString('courseId', courseId);
 
     const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
     const topicId = courseWork?.topicId || null;
@@ -486,7 +483,6 @@ class AssignmentController {
       { assignmentId, courseId, referenceDocumentId, templateDocumentId },
       'createDefinitionFromWizardInputs'
     );
-    Validate.validateNonEmptyString('courseId', courseId);
 
     // Normalise URLs/IDs to Drive file IDs
     const normalisedReferenceId = DriveManager.normaliseToFileId(referenceDocumentId);
