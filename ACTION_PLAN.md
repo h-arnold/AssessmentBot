@@ -221,11 +221,22 @@ Frontend tests:
 - `npm test -- tests/configurationManager/configurationManager.test.js`
 - `npm test -- tests/configurationManager/saveConfiguration.test.js`
 
+### Progress tracking
+
+- [x] RED: tests added for mock alignment with the reduced configuration API.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+- [x] Commit created.
+- [x] Push completed.
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _Intentionally not completed in this planning document._
-- **Deviations from plan:** _Intentionally not completed in this planning document._
-- **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Test and mock alignment completed. Stale deprecated `validateIsAdminSheet` mock surface was removed; existing configuration tests remained aligned with the reduced API.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 3 is complete. Regression and contract hardening remain outstanding.
 
 ---
 
