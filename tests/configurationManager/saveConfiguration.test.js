@@ -29,7 +29,6 @@ globalThis.Utils = mockUtils;
 
 globalThis.console = { log: vi.fn(), error: vi.fn() };
 
-// Import the globals module under test
 // Import the globals module under test (exports exist only in Node test env)
 import {
   getConfiguration,

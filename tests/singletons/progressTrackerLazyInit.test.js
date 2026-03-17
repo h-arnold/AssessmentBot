@@ -27,10 +27,7 @@ beforeEach(() => {
       deleteProperty: mockDeleteProperty,
     })),
   };
-  // Minimal ConfigurationManager mock used by ProgressTracker.complete()
-  globalThis.ConfigurationManager = {
-    getInstance: _vi.fn(() => ({})),
-  };
+
   globalThis.PropertiesCloner = function () {
     return { serialiseProperties: mockSerialiseProperties };
   };
