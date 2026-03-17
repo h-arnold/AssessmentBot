@@ -19,6 +19,12 @@ function expectPersistedConfig(mocks_, expectedConfig) {
   );
 }
 
+describe('shared backend test mocks', () => {
+  it('should not expose deprecated validateIsAdminSheet on Utils mocks', () => {
+    expect(mocks.Utils).not.toHaveProperty('validateIsAdminSheet');
+  });
+});
+
 describe('ConfigurationManager setProperty', () => {
   let configManager;
 
