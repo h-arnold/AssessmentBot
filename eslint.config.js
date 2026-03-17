@@ -133,6 +133,13 @@ module.exports = [
           },
         },
       ],
+      'jsdoc/require-description': 'error',
+      'jsdoc/require-param': 'error',
+      'jsdoc/require-param-description': 'error',
+      'jsdoc/require-param-type': 'error',
+      'jsdoc/require-returns': 'error',
+      'jsdoc/require-returns-description': 'error',
+      'jsdoc/require-returns-type': 'error',
       'no-magic-numbers': [
         'warn',
         {
