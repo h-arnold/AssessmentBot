@@ -49,6 +49,7 @@ This project uses a shared configuration tree so TypeScript and linting standard
 
 - `config/eslint/ts-base-rules.cjs`
 - Contains cross-component TypeScript lint standards:
+  - `eslint-plugin-security` recommended rules
   - Complexity limit
   - JSDoc requirement baseline
   - Magic number policy
@@ -60,12 +61,14 @@ This project uses a shared configuration tree so TypeScript and linting standard
   - Imports shared TS base rules.
   - Applies `unicorn.configs.all` as the frontend baseline.
   - Adds frontend-only rules/plugins (React hooks, Vite React refresh, browser globals).
+  - Adds stricter Unicode hardening rules for frontend test files.
   - Uses targeted `unicorn/*` overrides only where current frontend conventions intentionally differ.
 - `scripts/builder/eslint.config.js`
   - Imports shared TS base rules.
   - Adds builder-only parser/project context for Node-side TypeScript files.
 - `eslint.config.js` (repo root)
-  - Remains focused on existing backend GAS JavaScript linting rules.
+  - Remains focused on backend JavaScript linting rules.
+  - Adds stricter Unicode hardening rules for backend source and root `tests/**/*.js`.
   - Does not replace frontend/builder TypeScript lint configs.
 
 ## Running lint checks
