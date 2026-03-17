@@ -23,8 +23,7 @@ const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
 const ariaCheckedAttribute = 'aria-checked';
-const unableToCheckAuthorisationStatusMessage =
-  'Unable to check authorisation status right now.';
+const unableToCheckAuthorisationStatusMessage = 'Unable to check authorisation status right now.';
 
 type ApiResponseEnvelope =
   | {
@@ -47,21 +46,6 @@ type ApiMethodResponseMap = Partial<Record<string, ApiMethodResponse>>;
 
 const authStatusMethodName = 'getAuthorisationStatus';
 const classPartialsMethodName = 'getABClassPartials';
-const defaultClassPartialsWarmupResponse: ApiResponseEnvelope = {
-  ok: true,
-  requestId: 'req-class-partials-default',
-  data: [],
-};
-
-/**
- * Resolves the configured mock transport response for a backend method.
- */
-function getMockResponseForMethod(method: string, responsesByMethod: ApiMethodResponseMap) {
-  return (
-    responsesByMethod[method] ??
-    (method === classPartialsMethodName ? defaultClassPartialsWarmupResponse : undefined)
-  );
-}
 
 /**
  * Dispatches a configured mock transport response asynchronously.
@@ -111,7 +95,7 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
       }
 
       methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
-      const response = getMockResponseForMethod(method, responsesByMethod);
+      const response = responsesByMethod[method];
 
       if (response === undefined) {
         dispatchMockTransportResponse(
@@ -354,7 +338,9 @@ describe('App', () => {
 
     const mainRegion = screen.getByRole('main');
 
-    expect(within(mainRegion).getByRole('heading', { level: 2, name: 'Dashboard' })).toBeInTheDocument();
+    expect(
+      within(mainRegion).getByRole('heading', { level: 2, name: 'Dashboard' })
+    ).toBeInTheDocument();
     expect(within(mainRegion).getByText(dashboardPageSummaryText)).toBeInTheDocument();
   });
 
@@ -518,11 +504,15 @@ describe('App', () => {
 
     act(() => {
       fireEvent.click(themeModeSwitch);
-      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') })
+      );
       fireEvent.click(
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
       );
-      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') })
+      );
     });
 
     expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'true');
@@ -539,6 +529,11 @@ describe('App', () => {
         ok: true,
         requestId: 'req-1',
         data: true,
+      },
+      [classPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-class-partials-1',
+        data: [],
       },
     });
 
@@ -586,9 +581,7 @@ describe('App', () => {
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(
-      await screen.findByText(unableToCheckAuthorisationStatusMessage)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
@@ -603,9 +596,7 @@ describe('App', () => {
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(
-      await screen.findByText(unableToCheckAuthorisationStatusMessage)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
@@ -637,9 +628,7 @@ describe('App', () => {
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(
-      await screen.findByText(unableToCheckAuthorisationStatusMessage)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
   });
 
   it('does not start class-partials warm-up while auth is unresolved', async () => {
@@ -709,11 +698,15 @@ describe('App', () => {
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
 
     act(() => {
-      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') })
+      );
       fireEvent.click(
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
       );
-      fireEvent.click(within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') }));
+      fireEvent.click(
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('settings') })
+      );
     });
 
     expect(transport.getCallCount(classPartialsMethodName)).toBe(1);

@@ -14,6 +14,8 @@ import {
   isImportDeclaration,
   isJsxOpeningElement,
   isJsxSelfClosingElement,
+  isNamedImports,
+  isNamespaceImport,
   isPropertyAccessExpression,
   isVariableDeclaration,
 } from 'typescript';
@@ -116,13 +118,33 @@ function hasRuntimeImportBinding(node: Node, sourceFile: SourceFile): node is Im
     return false;
   }
 
-  const importClauseText = node.importClause?.getText(sourceFile).trim();
+  const importClause = node.importClause;
 
-  if (!importClauseText) {
+  if (!importClause) {
+    return true; // Bare import like `import 'module'` has runtime effect
+  }
+
+  // If the entire import is type-only (e.g., `import type { Foo, Bar }`)
+  if (importClause.isTypeOnly) {
+    return false;
+  }
+
+  // Default import always has runtime binding (e.g., `import React from 'react'`)
+  if (importClause.name) {
     return true;
   }
 
-  return !/^type\b|^\{\s*type\b/u.test(importClauseText);
+  // Namespace import always has runtime binding (e.g., `import * as Foo from 'module'`)
+  if (isNamespaceImport(importClause.namedBindings)) {
+    return true;
+  }
+
+  // Named bindings: return true if ANY specifier is NOT type-only
+  if (isNamedImports(importClause.namedBindings)) {
+    return importClause.namedBindings.elements.some((element) => !element.isTypeOnly);
+  }
+
+  return true; // Conservative default
 }
 
 /**
@@ -377,8 +399,9 @@ describe('main entrypoint', () => {
   });
 
   it('keeps dedicated query-provider ownership in main and composes the auth gate outside App', async () => {
-    const { AppQueryProvider } =
-      await importRequiredModule<QueryProviderModule>('query/AppQueryProvider.tsx');
+    const { AppQueryProvider } = await importRequiredModule<QueryProviderModule>(
+      'query/AppQueryProvider.tsx'
+    );
     const { AppAuthGate } = await importRequiredModule<AuthGateModule>(
       'features/auth/AppAuthGate.tsx'
     );

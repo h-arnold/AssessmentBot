@@ -1,6 +1,6 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { getAuthorisationStatus } from '../services/authService';
-import type { ClassPartial } from '../services/classPartials.zod';
+import type { ClassPartial } from '../services/classPartialsService';
 import { getABClassPartials } from '../services/classPartialsService';
 import { getCohorts, getYearGroups } from '../services/referenceDataService';
 import { queryKeys } from './queryKeys';
