@@ -150,7 +150,7 @@ describe('ConfigurationManager setProperty', () => {
     });
   });
 
-  describe('URL validation (BACKEND_URL, UPDATE_DETAILS_URL)', () => {
+  describe('URL validation (BACKEND_URL)', () => {
     it('should accept valid URL for BACKEND_URL', () => {
       mocks.Utils.isValidUrl.mockReturnValue(true);
 
@@ -173,177 +173,6 @@ describe('ConfigurationManager setProperty', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, 'invalid-url');
       }).toThrow('Backend Url must be a valid URL string');
-    });
-
-    it('should accept valid URL for UPDATE_DETAILS_URL', () => {
-      mocks.Utils.isValidUrl.mockReturnValue(true);
-
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL,
-          'https://example.com/update'
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL,
-        'https://example.com/update'
-      );
-    });
-
-    it('should reject invalid URL for UPDATE_DETAILS_URL', () => {
-      mocks.Utils.isValidUrl.mockReturnValue(false);
-
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.UPDATE_DETAILS_URL,
-          'invalid-url'
-        );
-      }).toThrow('Update Details Url must be a valid URL string');
-    });
-  });
-
-  describe('Google Sheet ID validation (ASSESSMENT_RECORD_TEMPLATE_ID)', () => {
-    beforeEach(() => {
-      // Mock the isValidGoogleSheetId method
-      vi.spyOn(configManager, 'isValidGoogleSheetId').mockReturnValue(true);
-    });
-
-    it('should accept valid non-empty string with valid Google Sheet ID', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-          'valid-sheet-id'
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-        'valid-sheet-id'
-      );
-    });
-
-    it('should reject empty string', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-          ''
-        );
-      }).toThrow('Assessment Record Template Id must be a non-empty string');
-    });
-
-    it('should reject string with only whitespace', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-          '   '
-        );
-      }).toThrow('Assessment Record Template Id must be a non-empty string');
-    });
-
-    it('should reject invalid Google Sheet ID', () => {
-      configManager.isValidGoogleSheetId.mockReturnValue(false);
-
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID,
-          'invalid-id'
-        );
-      }).toThrow('Assessment Record Template ID must be a valid Google Sheet ID');
-    });
-  });
-
-  describe('Google Drive Folder ID validation (ASSESSMENT_RECORD_DESTINATION_FOLDER)', () => {
-    beforeEach(() => {
-      // Mock the isValidGoogleDriveFolderId method
-      vi.spyOn(configManager, 'isValidGoogleDriveFolderId').mockReturnValue(true);
-    });
-
-    it('should accept valid non-empty string with valid Google Drive Folder ID', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
-          'valid-folder-id'
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
-        'valid-folder-id'
-      );
-    });
-
-    it('should reject empty string', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
-          ''
-        );
-      }).toThrow('Assessment Record Destination Folder must be a non-empty string');
-    });
-
-    it('should reject invalid Google Drive Folder ID', () => {
-      configManager.isValidGoogleDriveFolderId.mockReturnValue(false);
-
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER,
-          'invalid-id'
-        );
-      }).toThrow('Assessment Record Destination Folder must be a valid Google Drive Folder ID');
-    });
-  });
-
-  describe('UPDATE_STAGE validation', () => {
-    it('should accept valid stage 0', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 0);
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
-        '0'
-      );
-    });
-
-    it('should accept valid stage 1', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 1);
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
-        '1'
-      );
-    });
-
-    it('should accept valid stage 2', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 2);
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE,
-        '2'
-      );
-    });
-
-    it('should reject stage below 0', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, -1);
-      }).toThrow('Update Stage must be 0, 1, or 2');
-    });
-
-    it('should reject stage above 2', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 3);
-      }).toThrow('Update Stage must be 0, 1, or 2');
-    });
-
-    it('should reject non-integer stage', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.UPDATE_STAGE, 'abc');
-      }).toThrow('Update Stage must be 0, 1, or 2');
     });
   });
 
@@ -394,43 +223,6 @@ describe('ConfigurationManager setProperty', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 123);
       }).toThrow(/must be a boolean \(true\/false\)/);
-    });
-  });
-
-  describe('ASSESSMENT_RECORD_COURSE_ID validation', () => {
-    it('should accept non-empty string and store in document properties', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
-          'course-123'
-        );
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
-        'course-123'
-      );
-      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
-    });
-
-    it('should allow empty string to clear the property', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID, '');
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
-        ''
-      );
-    });
-
-    it('should reject non-string values', () => {
-      expect(() => {
-        configManager.setProperty(
-          ConfigurationManager.CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID,
-          123
-        );
-      }).toThrow('Assessment Record Course ID must be a string.');
     });
   });
 
@@ -553,54 +345,6 @@ describe('ConfigurationManager setProperty', () => {
       }).toThrow('JSON DB Root Folder ID must be a valid Google Drive Folder ID.');
 
       driveSpy.mockRestore();
-    });
-
-    it('should persist and log when folder created and persistConfigKey provided', () => {
-      // Provide a logger
-      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = {};
-      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
-      globalThis.ABLogger = ABLoggerClass;
-
-      // Ensure drive manager returns a parent and creates a folder
-      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
-      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-123' });
-
-      const spy = vi.spyOn(configManager, 'setProperty');
-
-      const result = configManager._ensureAdminSheetFolder('Test Folder', 'MY_KEY');
-
-      expect(result).toBe('folder-123');
-      expect(spy).toHaveBeenCalledWith('MY_KEY', 'folder-123');
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'ConfigurationManager: Ensured folder "Test Folder" (folder-123) exists for Admin sheet.'
-      );
-
-      spy.mockRestore();
-      delete globalThis.ABLogger;
-    });
-
-    it('should log when folder created without persistConfigKey (no persistence)', () => {
-      const mockLogger = { info: vi.fn(), error: vi.fn(), warn: vi.fn() };
-      const ABLoggerClass = {};
-      ABLoggerClass.getInstance = vi.fn().mockReturnValue(mockLogger);
-      globalThis.ABLogger = ABLoggerClass;
-
-      mocks.DriveManager.getParentFolderId.mockReturnValue('parent-1');
-      mocks.DriveManager.createFolder.mockReturnValue({ newFolderId: 'folder-456' });
-
-      const spy = vi.spyOn(configManager, 'setProperty');
-
-      const result = configManager._ensureAdminSheetFolder('Test Folder 2', null);
-
-      expect(result).toBe('folder-456');
-      expect(spy).not.toHaveBeenCalled();
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'ConfigurationManager: Ensured folder "Test Folder 2" (folder-456) exists for Admin sheet.'
-      );
-
-      spy.mockRestore();
-      delete globalThis.ABLogger;
     });
   });
 
