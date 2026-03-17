@@ -21,7 +21,6 @@ const mockPropertiesService = {
 
 const mockUtils = {
   isValidUrl: vi.fn(),
-  validateIsAdminSheet: vi.fn(),
 };
 
 // minimal globals used by globals.js
@@ -30,9 +29,11 @@ globalThis.Utils = mockUtils;
 
 globalThis.console = { log: vi.fn(), error: vi.fn() };
 
-// Import the globals module under test
 // Import the globals module under test (exports exist only in Node test env)
-import { saveConfiguration } from '../../src/backend/ConfigurationManager/99_globals.js';
+import {
+  getConfiguration,
+  saveConfiguration,
+} from '../../src/backend/ConfigurationManager/99_globals.js';
 // Ensure ConfigurationManager class is loaded and exposed globally (Apps Script style)
 const ConfigurationManagerClass = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 // Some bundlers put class on default
@@ -51,6 +52,7 @@ describe('saveConfiguration global behaviour', () => {
     vi.spyOn(cfg, 'setBackendAssessorBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setSlidesFetchBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setBackendUrl').mockImplementation(() => {});
+    vi.spyOn(cfg, 'setRevokeAuthTriggerSet').mockImplementation(() => {});
     vi.spyOn(cfg, 'setDaysUntilAuthRevoke').mockImplementation(() => {});
   });
 
@@ -79,5 +81,36 @@ describe('saveConfiguration global behaviour', () => {
     const result = saveConfiguration(payload);
     expect(cfg.setApiKey).toHaveBeenCalledWith('new-key-123');
     expect(result.success).toBe(true);
+  });
+
+  it('does not call setRevokeAuthTriggerSet when revokeAuthTriggerSet is absent from payload', () => {
+    const result = saveConfiguration({});
+    expect(cfg.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+  });
+
+  it('calls setRevokeAuthTriggerSet when revokeAuthTriggerSet is provided', () => {
+    const payload = { revokeAuthTriggerSet: true };
+    const result = saveConfiguration(payload);
+    expect(cfg.setRevokeAuthTriggerSet).toHaveBeenCalledWith(true);
+    expect(result.success).toBe(true);
+  });
+
+  it('does not expose isAdminSheet from getConfiguration', () => {
+    vi.spyOn(cfg, 'getApiKey').mockReturnValue('live-api-key');
+    vi.spyOn(cfg, 'getBackendAssessorBatchSize').mockReturnValue(30);
+    vi.spyOn(cfg, 'getSlidesFetchBatchSize').mockReturnValue(20);
+    vi.spyOn(cfg, 'getBackendUrl').mockReturnValue('https://example.com');
+    vi.spyOn(cfg, 'getRevokeAuthTriggerSet').mockReturnValue(false);
+    vi.spyOn(cfg, 'getDaysUntilAuthRevoke').mockReturnValue(60);
+    vi.spyOn(cfg, 'getJsonDbMasterIndexKey').mockReturnValue('MASTER_INDEX');
+    vi.spyOn(cfg, 'getJsonDbLockTimeoutMs').mockReturnValue(5000);
+    vi.spyOn(cfg, 'getJsonDbLogLevel').mockReturnValue('INFO');
+    vi.spyOn(cfg, 'getJsonDbBackupOnInitialise').mockReturnValue(false);
+    vi.spyOn(cfg, 'getJsonDbRootFolderId').mockReturnValue('folder-123');
+
+    const result = getConfiguration();
+
+    expect(result).not.toHaveProperty('isAdminSheet');
   });
 });

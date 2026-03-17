@@ -31,10 +31,10 @@ function getConfiguration() {
     try {
       return getter();
     } catch (error) {
-      // Avoid logging full error objects which may contain sensitive details.
-      // Log a concise error identifier only. Use optional chaining to avoid
-      // referencing properties on possibly undefined/null error objects.
-      console.error(`Error retrieving configuration value for ${name}: ${error?.name ?? 'Error'}`);
+      ABLogger.getInstance().error('Error retrieving configuration value.', {
+        configKey: name,
+        errorName: error?.name ?? 'Error',
+      });
       errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
       return fallback;
     }
@@ -54,7 +54,6 @@ function getConfiguration() {
     // Provide a boolean so callers can know whether a key is present without exposing it.
     hasApiKey: !!rawApiKey,
     backendUrl: safeGet(() => cfg.getBackendUrl(), 'backendUrl', ''),
-    isAdminSheet: safeGet(() => cfg.getIsAdminSheet(), 'isAdminSheet', false),
     revokeAuthTriggerSet: safeGet(
       () => cfg.getRevokeAuthTriggerSet(),
       'revokeAuthTriggerSet',
@@ -116,9 +115,10 @@ function saveConfiguration(config) {
       action();
       return true;
     } catch (error) {
-      // Avoid logging or storing potentially sensitive details (e.g. API keys) in clear text.
-      // Log only a concise identifier using optional chaining to be safe.
-      console.error(`Error saving configuration value for ${name}: ${error?.name ?? 'Error'}`);
+      ABLogger.getInstance().error('Error saving configuration value.', {
+        configKey: name,
+        errorName: error?.name ?? 'Error',
+      });
       errors.push(`${name}: REDACTED`);
       return false;
     }
@@ -135,6 +135,10 @@ function saveConfiguration(config) {
     ],
     ['apiKey', (value) => ConfigurationManager.getInstance().setApiKey(value)],
     ['backendUrl', (value) => ConfigurationManager.getInstance().setBackendUrl(value)],
+    [
+      'revokeAuthTriggerSet',
+      (value) => ConfigurationManager.getInstance().setRevokeAuthTriggerSet(value),
+    ],
     [
       'daysUntilAuthRevoke',
       (value) => ConfigurationManager.getInstance().setDaysUntilAuthRevoke(value),
@@ -167,11 +171,11 @@ function saveConfiguration(config) {
 
   if (errors.length > 0) {
     const message = `Failed to save some configuration values: ${errors.join('; ')}`;
-    console.error(message);
+    ABLogger.getInstance().error(message, { failedSettings: [...errors] });
     return { success: false, error: message };
   }
 
-  console.log('Configuration saved successfully.');
+  ABLogger.getInstance().info('Configuration saved successfully.');
   return { success: true };
 }
 

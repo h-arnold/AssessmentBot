@@ -150,9 +150,10 @@ describe('ConfigurationManager Section 1 red contract', () => {
     const configManager = createManager();
     const expectedStoreKey = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
     const persistError = new Error('serialised config write failed');
-    configManager.configCache = {
+    const initialCache = {
       [CONFIG_KEYS.API_KEY]: 'sk-live',
     };
+    configManager.configCache = { ...initialCache };
 
     mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key) => {
       if (key === expectedStoreKey) {
@@ -165,5 +166,6 @@ describe('ConfigurationManager Section 1 red contract', () => {
       expect.stringContaining('Failed to persist'),
       expect.any(Object)
     );
+    expect(configManager.configCache).toEqual(initialCache);
   });
 });

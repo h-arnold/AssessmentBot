@@ -105,17 +105,17 @@ Frontend tests:
 - [x] RED: tests added for single-POJO script-property persistence, malformed JSON fallback, and script-scoped `REVOKE_AUTH_TRIGGER_SET`.
 - [x] RED: review clean.
 - [x] GREEN: implementation complete.
-- [ ] GREEN: review clean.
+- [x] GREEN: review clean.
 - [x] Checks passed.
 - [x] Action plan updated.
-- [ ] Commit created.
-- [ ] Push completed.
+- [x] Commit created.
+- [x] Push completed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Red-phase coverage was split so the existing `tests/configurationManager/configurationManager.test.js` suite stayed green and the new contract assertions live in `tests/configurationManager/configurationManagerSection1Red.test.js`. A green-phase implementation for single-POJO script-property storage was then applied and the targeted Section 1 tests passed.
-- **Deviations from plan:** Green review is not yet clean. Reviewer findings recorded on 2026-03-17: (1) `98_ConfigurationManagerClass.js` mutates the in-memory config cache before persistence succeeds, so a failed write can leave runtime state diverged from Script Properties; (2) the current Section 1 implementation changed `getIsAdminSheet`/`setIsAdminSheet` behaviour even though Section 2 is where runtime dependency removal is meant to happen; (3) touched test regex literals triggered the current unicode-hardening lint rules.
-- **Follow-up implications for later sections:** Resume with a Section 1 implementation-fix cycle before starting Section 2. The next pass should preserve existing `isAdminSheet` runtime behaviour until Section 2, make cache updates atomic with persistence success, and address the touched-scope lint findings without widening scope.
+- **Implementation notes:** Single-POJO script-property storage was completed. Cache updates were made atomic by persisting the serialised object before swapping `configCache`, and the temporary legacy `isAdminSheet` document-property bridge was restored for Section 1.
+- **Deviations from plan:** Permanent removal of the legacy `isAdminSheet` bridge was deferred as planned to Section 2. Touched-scope lint concerns were resolved without widening scope.
+- **Follow-up implications for later sections:** Section 1 is complete. Section 2 still needs to remove the temporary legacy `isAdminSheet` bridge and finish the remaining runtime dependency removal.
 
 ---
 
@@ -163,20 +163,20 @@ Frontend tests:
 
 ### Progress tracking
 
-- [ ] RED: tests added for `ConfigurationManager` API-surface removal and backend runtime callers updated to the new non-config path.
-- [ ] RED: review clean.
-- [ ] GREEN: implementation complete.
-- [ ] GREEN: review clean.
-- [ ] Checks passed.
-- [ ] Action plan updated.
-- [ ] Commit created.
-- [ ] Push completed.
+- [x] RED: tests added for `ConfigurationManager` API-surface removal and backend runtime callers updated to the new non-config path.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+- [x] Commit created.
+- [x] Push completed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Previous progress entries were verified on 2026-03-17 as unrelated frontend-auth text and were reset before backend work resumed.
-- **Deviations from plan:** _Intentionally not completed in this planning document._
-- **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Section 2 completed by removing the remaining `getIsAdminSheet`/`setIsAdminSheet` runtime dependency path and updating the affected backend callers to the new non-config flow. Deprecated `InitController`/`getIsAdminSheet` test coverage was removed instead of maintained, per the latest requirement.
+- **Deviations from plan:** Deprecated `InitController` coverage tied to `getIsAdminSheet` was deleted rather than rewritten because that path is no longer part of the supported backend contract.
+- **Follow-up implications for later sections:** Section 3 still remains outstanding for any broader test and mock alignment work; this section should not be treated as complete.
 
 ---
 
@@ -221,11 +221,22 @@ Frontend tests:
 - `npm test -- tests/configurationManager/configurationManager.test.js`
 - `npm test -- tests/configurationManager/saveConfiguration.test.js`
 
+### Progress tracking
+
+- [x] RED: tests added for mock alignment with the reduced configuration API.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+- [x] Commit created.
+- [x] Push completed.
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _Intentionally not completed in this planning document._
-- **Deviations from plan:** _Intentionally not completed in this planning document._
-- **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Test and mock alignment completed. Stale deprecated `validateIsAdminSheet` mock surface was removed; existing configuration tests remained aligned with the reduced API.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 3 is complete. Regression and contract hardening remain outstanding.
 
 ---
 

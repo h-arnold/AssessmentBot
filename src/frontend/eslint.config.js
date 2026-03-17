@@ -48,7 +48,7 @@ export default defineConfig([
       'unicorn/no-array-for-each': 'off',
       'unicorn/catch-error-name': 'error',
       'unicorn/no-null': 'off',
-      'unicorn/prevent-abbreviations': 'off',
+      'unicorn/prevent-abbreviations': 'warn',
       'unicorn/no-keyword-prefix': 'off',
       'unicorn/filename-case': 'off',
       'no-console': 'error',

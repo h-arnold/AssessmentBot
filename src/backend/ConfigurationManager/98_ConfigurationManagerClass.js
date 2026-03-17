@@ -10,7 +10,7 @@
  * @property {Object|null} configCache - Cache of configuration properties
  *
  * @example
- * const config = new ConfigurationManager();
+ * const config = ConfigurationManager.getInstance();
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
@@ -68,8 +68,7 @@ class ConfigurationManager extends BaseSingleton {
      * Use ConfigurationManager.getInstance(); do not call constructor directly.
      */
     if (!isSingletonCreator && ConfigurationManager._instance) {
-      // Guard: discourage direct construction after first instance; maintain original object identity
-      return ConfigurationManager._instance; // returning existing is acceptable for singleton semantics
+      return ConfigurationManager._instance;
     }
     // Defer PropertiesService access & deserialisation
     this.scriptProperties = null;
@@ -131,7 +130,10 @@ class ConfigurationManager extends BaseSingleton {
         Object.freeze(this);
       } catch (error_) {
         if (globalThis.__TRACE_SINGLETON__) {
-          console.debug('Freeze failed ConfigurationManager:', error_?.message || error_);
+          ABLogger.getInstance().debug(
+            'Freeze failed ConfigurationManager:',
+            error_?.message || error_
+          );
         }
       }
     }
@@ -216,16 +218,20 @@ class ConfigurationManager extends BaseSingleton {
     this.ensureInitialized();
     this.getAllConfigurations();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
-    const canonical = spec && spec.validate ? spec.validate(value, this) : value;
-    const normalizedValue = spec && spec.normalize ? spec.normalize(canonical) : canonical;
-
-    this.configCache[key] = String(normalizedValue);
+    const canonical = spec?.validate ? spec.validate(value, this) : value;
+    const normalizedValue = spec?.normalize ? spec.normalize(canonical) : canonical;
+    const serialisedValue = String(normalizedValue);
+    const updatedConfig = {
+      ...this.configCache,
+      [key]: serialisedValue,
+    };
 
     try {
       this.scriptProperties.setProperty(
         ConfigurationManager.CONFIG_STORE_KEY,
-        JSON.stringify(this.configCache)
+        JSON.stringify(updatedConfig)
       );
+      this.configCache[key] = serialisedValue;
     } catch (persistError) {
       ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
@@ -258,7 +264,10 @@ class ConfigurationManager extends BaseSingleton {
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
-      console.error(`Invalid Google Drive Folder ID: ${error?.message ?? error}`);
+      ABLogger.getInstance().warn('Invalid Google Drive Folder ID.', {
+        folderId: trimmed,
+        err: error,
+      });
       return false;
     }
   }
@@ -381,13 +390,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    *
    */
-  getIsAdminSheet() {
-    return false;
-  }
-
-  /**
-   *
-   */
   setBackendAssessorBatchSize(batchSize) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, batchSize);
   }
@@ -449,13 +451,6 @@ class ConfigurationManager extends BaseSingleton {
    */
   setJsonDbRootFolderId(folderId) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, folderId);
-  }
-
-  /**
-   *
-   */
-  setIsAdminSheet(isAdmin) {
-    return ConfigurationManager.toBoolean(isAdmin);
   }
 
   /**
