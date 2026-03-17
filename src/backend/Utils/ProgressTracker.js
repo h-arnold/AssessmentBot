@@ -14,7 +14,7 @@ class ProgressTracker extends BaseSingleton {
      */
     // Singleton guard: constructor should only execute once via getInstance()
     if (!isSingletonCreator && ProgressTracker._instance) {
-      return; // no-op if already constructed
+      return ProgressTracker._instance;
     }
 
     // Defer heavy work (PropertiesService access) until ensureInitialized()
@@ -26,7 +26,7 @@ class ProgressTracker extends BaseSingleton {
       ProgressTracker._instance = this;
     }
 
-    console.log('ProgressTracker instance created.');
+    ABLogger.getInstance().info('ProgressTracker instance created.');
   }
 
   /**
@@ -38,7 +38,7 @@ class ProgressTracker extends BaseSingleton {
   ensureInitialized() {
     if (this._initialized) return;
     if (globalThis.__TRACE_SINGLETON__) {
-      console.log('[TRACE][HeavyInit] ProgressTracker.ensureInitialized');
+      ABLogger.getInstance().debug('[TRACE][HeavyInit] ProgressTracker.ensureInitialized');
     }
     this.properties = PropertiesService.getDocumentProperties();
     this._initialized = true;
@@ -63,7 +63,7 @@ class ProgressTracker extends BaseSingleton {
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(initialData));
-    console.log('Progress tracking started.');
+    ABLogger.getInstance().info('Progress tracking started.');
   }
 
   /**
@@ -86,7 +86,7 @@ class ProgressTracker extends BaseSingleton {
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
-    console.log(`Progress updated: Step ${this.step} - ${message}`);
+    ABLogger.getInstance().info(`Progress updated: Step ${this.step} - ${message}`);
   }
 
   /**
@@ -109,7 +109,7 @@ class ProgressTracker extends BaseSingleton {
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
-    console.log('Steps reset to 0.');
+    ABLogger.getInstance().info('Steps reset to 0.');
   }
 
   /**
@@ -126,7 +126,7 @@ class ProgressTracker extends BaseSingleton {
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
-    console.log('Progress tracking completed successfully.');
+    ABLogger.getInstance().info('Progress tracking completed successfully.');
 
     // As ProgressTracker.complete() is only called at the end of a significant task,
     // it is likely that the document properties have been updated.
@@ -141,7 +141,7 @@ class ProgressTracker extends BaseSingleton {
   /**
    * Logs an error encountered during the process.
    * This method is intended for user-facing errors that should be displayed in the UI.
-   * It automatically logs to the console, so no need for additional console.error calls.
+   * It also records developer diagnostics through the shared logger when provided.
    *
    * @param {string} errorMessage - The user-facing error message to log in the UI.
    * @param {string|Error|Object} [extraErrorDetails] - Additional error details for developer logs only.
@@ -157,7 +157,9 @@ class ProgressTracker extends BaseSingleton {
       timestamp: new Date().toISOString(),
     };
     this.properties.setProperty(this.propertyKey, JSON.stringify(updatedData));
-    console.error(`Error logged: ${errorMessage}`);
+    ABLogger.getInstance().error('ProgressTracker logged a user-facing error.', {
+      errorMessage,
+    });
 
     if (extraErrorDetails) {
       this._logDeveloperDetails(extraErrorDetails);
@@ -178,24 +180,27 @@ class ProgressTracker extends BaseSingleton {
     if (typeof extraErrorDetails === 'object' && extraErrorDetails !== null) {
       // If it's an Error object or has a stack property
       if (extraErrorDetails.stack) {
-        console.error(`Developer details - Stack trace: ${extraErrorDetails.stack}`);
+        ABLogger.getInstance().error('Developer details - Stack trace:', extraErrorDetails.stack);
         if (extraErrorDetails.message) {
-          console.error(`Developer details - Message: ${extraErrorDetails.message}`);
+          ABLogger.getInstance().error('Developer details - Message:', extraErrorDetails.message);
         }
         if (extraErrorDetails.name) {
-          console.error(`Developer details - Error type: ${extraErrorDetails.name}`);
+          ABLogger.getInstance().error('Developer details - Error type:', extraErrorDetails.name);
         }
       } else {
         // For other objects, try to stringify them
         try {
-          console.error(`Developer details: ${JSON.stringify(extraErrorDetails)}`);
+          ABLogger.getInstance().error('Developer details:', JSON.stringify(extraErrorDetails));
         } catch (error) {
-          console.error('Developer details: [Object could not be stringified]', error);
+          ABLogger.getInstance().error(
+            'Developer details: [Object could not be stringified]',
+            error
+          );
         }
       }
     } else {
       // For strings or other primitive types – avoid default object stringification
-      console.error('Developer details:', extraErrorDetails);
+      ABLogger.getInstance().error('Developer details:', extraErrorDetails);
     }
   }
 
@@ -259,7 +264,7 @@ class ProgressTracker extends BaseSingleton {
     if (progressJson) {
       return JSON.parse(progressJson);
     }
-    console.log('No progress data found.');
+    ABLogger.getInstance().info('No progress data found.');
     return null;
   }
 
@@ -298,7 +303,7 @@ class ProgressTracker extends BaseSingleton {
     // Fall back to getting it from stored progress
     const progress = this.getCurrentProgress();
     if (!progress?.step) {
-      console.log('No step data available.');
+      ABLogger.getInstance().info('No step data available.');
       return null;
     }
 
@@ -313,7 +318,7 @@ class ProgressTracker extends BaseSingleton {
   clearProgress() {
     this.ensureInitialized();
     this.properties.deleteProperty(this.propertyKey);
-    console.log('All progress data cleared.');
+    ABLogger.getInstance().info('All progress data cleared.');
   }
 }
 

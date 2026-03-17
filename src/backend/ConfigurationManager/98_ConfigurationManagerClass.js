@@ -10,7 +10,7 @@
  * @property {Object|null} configCache - Cache of configuration properties
  *
  * @example
- * const config = new ConfigurationManager();
+ * const config = ConfigurationManager.getInstance();
  * const backendAssessorBatchSize = config.getBackendAssessorBatchSize();
  * config.setLangflowApiKey('sk-abc123');
  */
@@ -68,8 +68,7 @@ class ConfigurationManager extends BaseSingleton {
      * Use ConfigurationManager.getInstance(); do not call constructor directly.
      */
     if (!isSingletonCreator && ConfigurationManager._instance) {
-      // Guard: discourage direct construction after first instance; maintain original object identity
-      return ConfigurationManager._instance; // returning existing is acceptable for singleton semantics
+      return ConfigurationManager._instance;
     }
     // Defer PropertiesService access & deserialisation
     this.scriptProperties = null;
@@ -131,7 +130,10 @@ class ConfigurationManager extends BaseSingleton {
         Object.freeze(this);
       } catch (error_) {
         if (globalThis.__TRACE_SINGLETON__) {
-          console.debug('Freeze failed ConfigurationManager:', error_?.message || error_);
+          ABLogger.getInstance().debug(
+            'Freeze failed ConfigurationManager:',
+            error_?.message || error_
+          );
         }
       }
     }
@@ -262,7 +264,10 @@ class ConfigurationManager extends BaseSingleton {
       const folder = DriveApp.getFolderById(trimmed);
       return !!folder;
     } catch (error) {
-      console.error(`Invalid Google Drive Folder ID: ${error?.message ?? error}`);
+      ABLogger.getInstance().warn('Invalid Google Drive Folder ID.', {
+        folderId: trimmed,
+        err: error,
+      });
       return false;
     }
   }

@@ -52,6 +52,7 @@ describe('saveConfiguration global behaviour', () => {
     vi.spyOn(cfg, 'setBackendAssessorBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setSlidesFetchBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setBackendUrl').mockImplementation(() => {});
+    vi.spyOn(cfg, 'setRevokeAuthTriggerSet').mockImplementation(() => {});
     vi.spyOn(cfg, 'setDaysUntilAuthRevoke').mockImplementation(() => {});
   });
 
@@ -79,6 +80,19 @@ describe('saveConfiguration global behaviour', () => {
     const payload = { apiKey: 'new-key-123' };
     const result = saveConfiguration(payload);
     expect(cfg.setApiKey).toHaveBeenCalledWith('new-key-123');
+    expect(result.success).toBe(true);
+  });
+
+  it('does not call setRevokeAuthTriggerSet when revokeAuthTriggerSet is absent from payload', () => {
+    const result = saveConfiguration({});
+    expect(cfg.setRevokeAuthTriggerSet).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+  });
+
+  it('calls setRevokeAuthTriggerSet when revokeAuthTriggerSet is provided', () => {
+    const payload = { revokeAuthTriggerSet: true };
+    const result = saveConfiguration(payload);
+    expect(cfg.setRevokeAuthTriggerSet).toHaveBeenCalledWith(true);
     expect(result.success).toBe(true);
   });
 

@@ -18,6 +18,8 @@ const mockGetProperty = _vi.fn();
 const mockDeleteProperty = _vi.fn();
 const mockSerialiseProperties = _vi.fn();
 
+const FakeConfigurationManager = {};
+
 let origConfigMgr;
 
 beforeEach(() => {
@@ -36,7 +38,6 @@ beforeEach(() => {
 
   // Set up ConfigurationManager mock
   origConfigMgr = globalThis.ConfigurationManager;
-  function FakeConfigurationManager() {}
   FakeConfigurationManager.getInstance = _vi.fn(() => ({}));
   globalThis.ConfigurationManager = FakeConfigurationManager;
 
