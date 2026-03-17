@@ -21,6 +21,13 @@ const tsBaseRules = {
       },
     },
   ],
+  'jsdoc/require-description': 'error',          // require a summary/description
+  'jsdoc/require-param': 'error',                // require @param tags for all params
+  'jsdoc/require-param-description': 'error',    // require each @param to have a description
+  'jsdoc/require-param-type': 'error',           // require types on @param
+  'jsdoc/require-returns': 'error',              // require @returns tag when function returns
+  'jsdoc/require-returns-description': 'error',  // require description on @returns
+  'jsdoc/require-returns-type': 'error',         // require type on @returns
   '@typescript-eslint/no-magic-numbers': [
     'warn',
     {
