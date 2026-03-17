@@ -163,20 +163,20 @@ Frontend tests:
 
 ### Progress tracking
 
-- [ ] RED: tests added for `ConfigurationManager` API-surface removal and backend runtime callers updated to the new non-config path.
-- [ ] RED: review clean.
-- [ ] GREEN: implementation complete.
-- [ ] GREEN: review clean.
-- [ ] Checks passed.
-- [ ] Action plan updated.
-- [ ] Commit created.
-- [ ] Push completed.
+- [x] RED: tests added for `ConfigurationManager` API-surface removal and backend runtime callers updated to the new non-config path.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+- [x] Commit created.
+- [x] Push completed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Previous progress entries were verified on 2026-03-17 as unrelated frontend-auth text and were reset before backend work resumed.
-- **Deviations from plan:** _Intentionally not completed in this planning document._
-- **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Section 2 completed by removing the remaining `getIsAdminSheet`/`setIsAdminSheet` runtime dependency path and updating the affected backend callers to the new non-config flow. Deprecated `InitController`/`getIsAdminSheet` test coverage was removed instead of maintained, per the latest requirement.
+- **Deviations from plan:** Deprecated `InitController` coverage tied to `getIsAdminSheet` was deleted rather than rewritten because that path is no longer part of the supported backend contract.
+- **Follow-up implications for later sections:** Section 3 still remains outstanding for any broader test and mock alignment work; this section should not be treated as complete.
 
 ---
 
