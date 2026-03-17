@@ -216,8 +216,8 @@ class ConfigurationManager extends BaseSingleton {
     this.ensureInitialized();
     this.getAllConfigurations();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
-    const canonical = spec && spec.validate ? spec.validate(value, this) : value;
-    const normalizedValue = spec && spec.normalize ? spec.normalize(canonical) : canonical;
+    const canonical = spec?.validate ? spec.validate(value, this) : value;
+    const normalizedValue = spec?.normalize ? spec.normalize(canonical) : canonical;
     const serialisedValue = String(normalizedValue);
     const updatedConfig = {
       ...this.configCache,
