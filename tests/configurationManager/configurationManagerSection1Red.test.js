@@ -7,6 +7,8 @@ const {
 } = require('../../src/backend/ConfigurationManager/01_configKeysAndSchema.js');
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
+const LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY = 'isAdminSheet';
+
 describe('ConfigurationManager Section 1 red contract', () => {
   let mocks;
   let logger;
@@ -150,9 +152,10 @@ describe('ConfigurationManager Section 1 red contract', () => {
     const configManager = createManager();
     const expectedStoreKey = ConfigurationManager.CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
     const persistError = new Error('serialised config write failed');
-    configManager.configCache = {
+    const initialCache = {
       [CONFIG_KEYS.API_KEY]: 'sk-live',
     };
+    configManager.configCache = { ...initialCache };
 
     mocks.PropertiesService.scriptProperties.setProperty.mockImplementation((key) => {
       if (key === expectedStoreKey) {
@@ -165,5 +168,42 @@ describe('ConfigurationManager Section 1 red contract', () => {
       expect.stringContaining('Failed to persist'),
       expect.any(Object)
     );
+    expect(configManager.configCache).toEqual(initialCache);
+  });
+
+  describe('legacy isAdminSheet bridge during Section 1', () => {
+    it('reads isAdminSheet from the legacy document property path during Section 1', () => {
+      const configManager = createManager();
+      mocks.PropertiesService.documentProperties.getProperty.mockReturnValue('true');
+
+      expect(configManager.getIsAdminSheet()).toBe('true');
+      expect(mocks.PropertiesService.documentProperties.getProperty).toHaveBeenCalledWith(
+        LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY
+      );
+      expect(mocks.PropertiesService.scriptProperties.getProperty).not.toHaveBeenCalled();
+    });
+
+    it('returns false when the legacy document property is absent during Section 1 reads', () => {
+      const configManager = createManager();
+      mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(null);
+
+      expect(configManager.getIsAdminSheet()).toBe(false);
+      expect(mocks.PropertiesService.documentProperties.getProperty).toHaveBeenCalledWith(
+        LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY
+      );
+      expect(mocks.PropertiesService.scriptProperties.getProperty).not.toHaveBeenCalled();
+    });
+
+    it('writes isAdminSheet to the legacy document property path during Section 1', () => {
+      const configManager = createManager();
+
+      configManager.setIsAdminSheet(true);
+
+      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
+        LEGACY_IS_ADMIN_SHEET_DOCUMENT_KEY,
+        'true'
+      );
+      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
+    });
   });
 });
