@@ -9,6 +9,7 @@ class AssignmentDefinition {
    * @param {Object} params - Assignment definition properties.
    * @param {string} params.primaryTitle - Canonical assignment title.
    * @param {string} params.primaryTopic - Canonical topic name.
+   * @param {string|null} [params.courseId=null] - Owning Google Classroom course ID.
    * @param {number|null} [params.yearGroup=null] - Intended year group; may be null until enriched.
    * @param {string[]} [params.alternateTitles=[]] - Known title variants.
    * @param {string[]} [params.alternateTopics=[]] - Known topic variants.
@@ -26,6 +27,7 @@ class AssignmentDefinition {
   constructor({
     primaryTitle,
     primaryTopic,
+    courseId = null,
     yearGroup = null,
     alternateTitles = [],
     alternateTopics = [],
@@ -42,6 +44,7 @@ class AssignmentDefinition {
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
+    this.courseId = courseId ?? null;
     this.yearGroup = yearGroup ?? null;
     this.alternateTitles = alternateTitles || [];
     this.alternateTopics = alternateTopics || [];
@@ -247,6 +250,7 @@ class AssignmentDefinition {
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
+      courseId: this.courseId,
       yearGroup: this.yearGroup,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
@@ -275,6 +279,7 @@ class AssignmentDefinition {
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
+      courseId: this.courseId,
       yearGroup: this.yearGroup,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
@@ -299,6 +304,7 @@ class AssignmentDefinition {
     return new AssignmentDefinition({
       primaryTitle: json.primaryTitle,
       primaryTopic: json.primaryTopic,
+      courseId: json.courseId ?? null,
       yearGroup: json.yearGroup ?? null,
       alternateTitles: json.alternateTitles ?? [],
       alternateTopics: json.alternateTopics ?? [],

@@ -6,7 +6,7 @@ const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_
 describe('ConfigurationManager class-info removal', () => {
   beforeEach(() => {
     setupGlobalGASMocks(vi);
-    ConfigurationManager.instance = null;
+    ConfigurationManager.resetForTests();
   });
 
   it('does not expose removed class-info APIs', () => {

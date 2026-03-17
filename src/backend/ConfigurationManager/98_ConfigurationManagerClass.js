@@ -182,7 +182,7 @@ class ConfigurationManager extends BaseSingleton {
       case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
       case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET: {
         const v = this.documentProperties.getProperty(key);
-        return v == null ? false : v;
+        return v == null ? false : ConfigurationManager.toBoolean(v);
       }
       default: {
         return this.configCache[key] || '';
@@ -233,23 +233,12 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
-   * Ensures a folder exists alongside the Admin sheet, optionally persisting the resulting ID.
-   * @param {string} folderName - The folder name to create or reuse.
-   * @param {string|null} persistConfigKey - Optional configuration key to persist the folder ID against.
-   * @return {string|null} The folder ID when created/resolved, else null on failure or when not an admin sheet.
-   */
-
-  /**
    *
    */
   isValidApiKey(apiKey) {
     const pattern = ConfigurationManager.API_KEY_PATTERN;
     return Validate.isString(apiKey) && pattern.test(apiKey.trim());
   }
-
-  /**
-   *
-   */
 
   /**
    *
@@ -337,14 +326,6 @@ class ConfigurationManager extends BaseSingleton {
   /**
    *
    */
-
-  /**
-   *
-   */
-
-  /**
-   *
-   */
   getJsonDbMasterIndexKey() {
     const value = this.getProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY);
     return value || ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY;
@@ -428,22 +409,6 @@ class ConfigurationManager extends BaseSingleton {
   setBackendUrl(url) {
     this.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, url);
   }
-
-  /**
-   *
-   */
-
-  /**
-   *
-   */
-
-  /**
-   *
-   */
-
-  /**
-   *
-   */
 
   /**
    *

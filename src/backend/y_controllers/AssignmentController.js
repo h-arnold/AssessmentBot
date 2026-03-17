@@ -177,7 +177,9 @@ class AssignmentController {
 
       const courseId = storedCourseId || definition.courseId;
       if (!courseId) {
-        this.progressTracker.logAndThrowError('Course ID missing from assignment definition.');
+        this.progressTracker.logAndThrowError(
+          'Course ID could not be determined. It is missing from stored properties and the assignment definition.'
+        );
       }
 
       ABLogger.getInstance().info('Course ID retrieved: ' + courseId);
@@ -418,6 +420,7 @@ class AssignmentController {
     const documentType = this._detectDocumentType(referenceId, templateId);
 
     Validate.requireParams({ courseId }, 'ensureDefinitionFromInputs');
+    Validate.validateNonEmptyString('courseId', courseId);
 
     const courseWork = Classroom.Courses.CourseWork.get(courseId, assignmentId);
     const topicId = courseWork?.topicId || null;
@@ -483,6 +486,7 @@ class AssignmentController {
       { assignmentId, courseId, referenceDocumentId, templateDocumentId },
       'createDefinitionFromWizardInputs'
     );
+    Validate.validateNonEmptyString('courseId', courseId);
 
     // Normalise URLs/IDs to Drive file IDs
     const normalisedReferenceId = DriveManager.normaliseToFileId(referenceDocumentId);

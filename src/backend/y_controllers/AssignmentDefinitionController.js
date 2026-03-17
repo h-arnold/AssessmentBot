@@ -80,6 +80,7 @@ class AssignmentDefinitionController {
       definition = new AssignmentDefinition({
         primaryTitle,
         primaryTopic: canonicalTopic,
+        courseId,
         yearGroup,
         documentType,
         referenceDocumentId,
@@ -89,6 +90,8 @@ class AssignmentDefinitionController {
         tasks: {},
         definitionKey,
       });
+    } else if (courseId && !definition.courseId) {
+      definition.courseId = courseId;
     }
 
     if (needsRefresh) {

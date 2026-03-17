@@ -286,6 +286,34 @@ describe('AssignmentController - Definition Hydration', () => {
       // Verify SlidesAssignment was created (based on documentType)
       expect(globalThis.SlidesAssignment).toHaveBeenCalled();
     });
+
+    it('uses definition.courseId when stored courseId is missing', () => {
+      mockProperties.getProperty.mockImplementation((key) => {
+        if (key === 'assignmentId') return 'assignment-456';
+        if (key === 'definitionKey') return 'Fallback_Topic_10';
+        if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return null;
+        return null;
+      });
+
+      const fullDefinition = new AssignmentDefinition({
+        primaryTitle: 'Fallback',
+        primaryTopic: 'Topic',
+        courseId: 'course-from-definition',
+        yearGroup: 10,
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref',
+        templateDocumentId: 'tpl',
+        tasks: {},
+      });
+
+      mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
+
+      const controller = new AssignmentController();
+      controller.processSelectedAssignment();
+
+      expect(mockABClassController.loadClass).toHaveBeenCalledWith('course-from-definition');
+    });
   });
 
   describe('runAssignmentPipeline', () => {
