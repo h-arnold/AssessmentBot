@@ -20,7 +20,6 @@ const CONFIG_KEYS = Object.freeze({
   SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
   API_KEY: 'apiKey',
   BACKEND_URL: 'backendUrl',
-  IS_ADMIN_SHEET: 'isAdminSheet',
   REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
   DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
   JSON_DB_MASTER_INDEX_KEY: 'jsonDbMasterIndexKey',
@@ -59,13 +58,8 @@ const CONFIG_SCHEMA = Object.freeze({
     storage: 'script',
     validate: (v) => Validate.validateUrl('Backend Url', v),
   },
-  [CONFIG_KEYS.IS_ADMIN_SHEET]: {
-    storage: 'document',
-    validate: (v) => Validate.validateBoolean('Is Admin Sheet', v),
-    normalize: toBooleanString,
-  },
   [CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: {
-    storage: 'document',
+    storage: 'script',
     validate: (v) => Validate.validateBoolean('Revoke Auth Trigger Set', v),
     normalize: toBooleanString,
   },

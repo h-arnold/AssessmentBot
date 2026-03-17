@@ -27,9 +27,9 @@ describe('Api/abclassPartials – direct unit delegation test', () => {
 
   it('getABClassPartials() constructs ABClassController and calls getAllClassPartials()', () => {
     // Fresh import so it picks up our stubbed global
-    // eslint-disable-next-line global-require
+
     delete require.cache[require.resolve(modulePath)];
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+    // eslint-disable-next-line import/no-dynamic-require
     const api = require(modulePath);
 
     const result = api.getABClassPartials();

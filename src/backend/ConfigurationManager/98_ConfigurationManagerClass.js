@@ -35,6 +35,25 @@ function safeGetPropertyKeys(store) {
 /**
  *
  */
+function safeParseConfigObject(serializedConfig) {
+  if (serializedConfig == null || serializedConfig === '') {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(serializedConfig);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ *
+ */
 class ConfigurationManager extends BaseSingleton {
   /**
    * NOTE: Do NOT perform any heavy work (PropertiesService access, deserialisation)
@@ -80,6 +99,13 @@ class ConfigurationManager extends BaseSingleton {
    */
   static get JSON_DB_LOG_LEVELS() {
     return ConfigurationManager._JSON_DB_LOG_LEVELS || JSON_DB_LOG_LEVELS;
+  }
+
+  /**
+   *
+   */
+  static get CONFIG_STORE_KEY() {
+    return ConfigurationManager._CONFIG_STORE_KEY || '__CONFIG_STORE_KEY__';
   }
 
   /**
@@ -159,7 +185,9 @@ class ConfigurationManager extends BaseSingleton {
   getAllConfigurations() {
     this.ensureInitialized();
     if (!this.configCache) {
-      this.configCache = this.scriptProperties.getProperties();
+      this.configCache = safeParseConfigObject(
+        this.scriptProperties.getProperty(ConfigurationManager.CONFIG_STORE_KEY)
+      );
     }
     return this.configCache;
   }
@@ -178,16 +206,7 @@ class ConfigurationManager extends BaseSingleton {
   getProperty(key) {
     this.ensureInitialized();
     this.getAllConfigurations();
-    switch (key) {
-      case ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET:
-      case ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET: {
-        const v = this.documentProperties.getProperty(key);
-        return v == null ? false : ConfigurationManager.toBoolean(v);
-      }
-      default: {
-        return this.configCache[key] || '';
-      }
-    }
+    return this.configCache[key] || '';
   }
 
   /**
@@ -195,28 +214,18 @@ class ConfigurationManager extends BaseSingleton {
    */
   setProperty(key, value) {
     this.ensureInitialized();
+    this.getAllConfigurations();
     const spec = ConfigurationManager.CONFIG_SCHEMA[key];
+    const canonical = spec && spec.validate ? spec.validate(value, this) : value;
+    const normalizedValue = spec && spec.normalize ? spec.normalize(canonical) : canonical;
 
-    if (!spec) {
-      try {
-        this.scriptProperties.setProperty(key, String(value));
-      } catch (persistError) {
-        ABLogger.getInstance().error(
-          `ConfigurationManager: Failed to persist configuration key "${key}".`,
-          { key, cause: persistError }
-        );
-        throw persistError;
-      }
-      this.configCache = null;
-      return;
-    }
+    this.configCache[key] = String(normalizedValue);
 
-    const canonical = spec.validate ? spec.validate(value, this) : value;
-    const normalizedValue = spec.normalize ? spec.normalize(canonical) : canonical;
-
-    const store = spec.storage === 'document' ? this.documentProperties : this.scriptProperties;
     try {
-      store.setProperty(key, String(normalizedValue));
+      this.scriptProperties.setProperty(
+        ConfigurationManager.CONFIG_STORE_KEY,
+        JSON.stringify(this.configCache)
+      );
     } catch (persistError) {
       ABLogger.getInstance().error(
         `ConfigurationManager: Failed to persist configuration key "${key}".`,
@@ -224,12 +233,6 @@ class ConfigurationManager extends BaseSingleton {
       );
       throw persistError;
     }
-
-    if (spec.storage === 'document') {
-      return;
-    }
-
-    this.configCache = null;
   }
 
   /**
@@ -379,7 +382,7 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   getIsAdminSheet() {
-    return this.getProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET) || false;
+    return false;
   }
 
   /**
@@ -452,10 +455,7 @@ class ConfigurationManager extends BaseSingleton {
    *
    */
   setIsAdminSheet(isAdmin) {
-    this.setProperty(
-      ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
-      ConfigurationManager.toBoolean(isAdmin)
-    );
+    return ConfigurationManager.toBoolean(isAdmin);
   }
 
   /**
@@ -518,6 +518,7 @@ if (typeof module !== 'undefined' && module.exports) {
   ConfigurationManager._API_KEY_PATTERN = validators.API_KEY_PATTERN;
   ConfigurationManager._DRIVE_ID_PATTERN = validators.DRIVE_ID_PATTERN;
   ConfigurationManager._JSON_DB_LOG_LEVELS = validators.JSON_DB_LOG_LEVELS;
+  ConfigurationManager._CONFIG_STORE_KEY = '__CONFIG_STORE_KEY__';
   ConfigurationManager._toBoolean = validators.toBoolean;
   ConfigurationManager._toBooleanString = validators.toBooleanString;
 }

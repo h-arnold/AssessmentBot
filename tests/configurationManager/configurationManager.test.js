@@ -12,6 +12,13 @@ beforeEach(() => {
 // Import the class after setting up mocks
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
+function expectPersistedConfig(mocks_, expectedConfig) {
+  expect(mocks_.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
+    ConfigurationManager.CONFIG_STORE_KEY,
+    JSON.stringify(expectedConfig)
+  );
+}
+
 describe('ConfigurationManager setProperty', () => {
   let configManager;
 
@@ -20,14 +27,14 @@ describe('ConfigurationManager setProperty', () => {
     vi.clearAllMocks();
 
     // Reset singleton instance
-    ConfigurationManager.instance = null;
+    ConfigurationManager.resetForTests();
 
     // Setup default mock returns
     mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
+    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
     mocks.Utils.isValidUrl.mockReturnValue(true);
-    mocks.Utils.validateIsAdminSheet.mockReturnValue(true);
 
-    configManager = new ConfigurationManager();
+    configManager = new ConfigurationManager(true);
 
     // Manually inject the mock properties services to ensure the test spies work
     configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
@@ -44,10 +51,9 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE,
-        '120'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '120',
+      });
     });
 
     it('should reject batch size below minimum', () => {
@@ -81,10 +87,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE, 50);
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE,
-        '50'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: '50',
+      });
     });
 
     it('should reject batch size below minimum', () => {
@@ -106,10 +111,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE, 60);
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE,
-        '60'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: '60',
+      });
     });
 
     it('should reject days below minimum', () => {
@@ -131,10 +135,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.API_KEY, 'sk-abc123');
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.API_KEY,
-        'sk-abc123'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.API_KEY]: 'sk-abc123',
+      });
     });
 
     it('should reject invalid API key', () => {
@@ -161,10 +164,9 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.BACKEND_URL,
-        'https://example.com'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.BACKEND_URL]: 'https://example.com',
+      });
     });
 
     it('should reject invalid URL for BACKEND_URL', () => {
@@ -176,52 +178,29 @@ describe('ConfigurationManager setProperty', () => {
     });
   });
 
-  describe('Boolean properties (IS_ADMIN_SHEET, REVOKE_AUTH_TRIGGER_SET)', () => {
-    it('should accept boolean true for IS_ADMIN_SHEET and store in document properties', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, true);
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
-        'true'
-      );
-
-      // Should return early and not call script properties
-      expect(mocks.PropertiesService.scriptProperties.setProperty).not.toHaveBeenCalled();
-    });
-
+  describe('Boolean properties (REVOKE_AUTH_TRIGGER_SET)', () => {
     it('should accept string "true" for REVOKE_AUTH_TRIGGER_SET', () => {
       expect(() => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, 'true');
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
-        'true'
-      );
-    });
-
-    it('should accept string "false" for IS_ADMIN_SHEET', () => {
-      expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 'false');
-      }).not.toThrow();
-
-      expect(mocks.PropertiesService.documentProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET,
-        'false'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
+      });
     });
 
     it('should reject invalid boolean values', () => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 'invalid');
+        configManager.setProperty(
+          ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET,
+          'invalid'
+        );
       }).toThrow(/must be a boolean \(true\/false\)/);
     });
 
     it('should reject numeric values for boolean properties', () => {
       expect(() => {
-        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, 123);
+        configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, 123);
       }).toThrow(/must be a boolean \(true\/false\)/);
     });
   });
@@ -235,10 +214,9 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY,
-        'MASTER_INDEX'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]: 'MASTER_INDEX',
+      });
     });
 
     it('should reject empty master index key', () => {
@@ -252,10 +230,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS, 2000);
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS,
-        '2000'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: '2000',
+      });
     });
 
     it('should reject lock timeout below minimum', () => {
@@ -269,10 +246,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL, 'debug');
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL,
-        'DEBUG'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]: 'DEBUG',
+      });
     });
 
     it('should reject invalid log level', () => {
@@ -289,10 +265,9 @@ describe('ConfigurationManager setProperty', () => {
         );
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE,
-        'true'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: 'true',
+      });
     });
 
     it('should reject invalid value for backup on initialise', () => {
@@ -315,10 +290,9 @@ describe('ConfigurationManager setProperty', () => {
       }).not.toThrow();
 
       expect(driveSpy).toHaveBeenCalledWith('folder-id-123');
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
-        'folder-id-123'
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: 'folder-id-123',
+      });
 
       driveSpy.mockRestore();
     });
@@ -328,10 +302,9 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID, '   ');
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
-        ''
-      );
+      expectPersistedConfig(mocks, {
+        [ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID]: '',
+      });
     });
 
     it('should reject invalid JSON DB root folder id', () => {
@@ -354,37 +327,41 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty('unknown_property', 'any_value');
       }).not.toThrow();
 
-      expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledWith(
-        'unknown_property',
-        'any_value'
-      );
+      expectPersistedConfig(mocks, {
+        unknown_property: 'any_value',
+      });
     });
 
-    it('should invalidate cache for unknown properties', () => {
+    it('should update cache for unknown properties', () => {
       configManager.configCache = { some: 'cache' };
 
       configManager.setProperty('unknown_property', 'value');
 
-      expect(configManager.configCache).toBeNull();
+      expect(configManager.configCache).toEqual({ some: 'cache', unknown_property: 'value' });
     });
   });
 
-  describe('Cache invalidation', () => {
-    it('should invalidate cache after setting any script property', () => {
+  describe('Cache updates', () => {
+    it('should update the in-memory cache after setting any script property', () => {
       configManager.configCache = { some: 'cache' };
 
       configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE, 120);
 
-      expect(configManager.configCache).toBeNull();
+      expect(configManager.configCache).toEqual({
+        some: 'cache',
+        [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: '120',
+      });
     });
 
-    it('should not invalidate cache for document properties that return early', () => {
+    it('should update the in-memory cache for REVOKE_AUTH_TRIGGER_SET', () => {
       configManager.configCache = { some: 'cache' };
 
-      configManager.setProperty(ConfigurationManager.CONFIG_KEYS.IS_ADMIN_SHEET, true);
+      configManager.setProperty(ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET, true);
 
-      // Cache should still be intact since the method returns early for document properties
-      expect(configManager.configCache).toEqual({ some: 'cache' });
+      expect(configManager.configCache).toEqual({
+        some: 'cache',
+        [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'true',
+      });
     });
   });
 });

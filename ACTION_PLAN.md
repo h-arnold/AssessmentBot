@@ -100,11 +100,22 @@ Frontend tests:
 
 - `npm test -- tests/configurationManager/configurationManager.test.js`
 
+### Progress tracking
+
+- [x] RED: tests added for single-POJO script-property persistence, malformed JSON fallback, and script-scoped `REVOKE_AUTH_TRIGGER_SET`.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete.
+- [ ] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+- [ ] Commit created.
+- [ ] Push completed.
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _Intentionally not completed in this planning document._
-- **Deviations from plan:** _Intentionally not completed in this planning document._
-- **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Red-phase coverage was split so the existing `tests/configurationManager/configurationManager.test.js` suite stayed green and the new contract assertions live in `tests/configurationManager/configurationManagerSection1Red.test.js`. A green-phase implementation for single-POJO script-property storage was then applied and the targeted Section 1 tests passed.
+- **Deviations from plan:** Green review is not yet clean. Reviewer findings recorded on 2026-03-17: (1) `98_ConfigurationManagerClass.js` mutates the in-memory config cache before persistence succeeds, so a failed write can leave runtime state diverged from Script Properties; (2) the current Section 1 implementation changed `getIsAdminSheet`/`setIsAdminSheet` behaviour even though Section 2 is where runtime dependency removal is meant to happen; (3) touched test regex literals triggered the current unicode-hardening lint rules.
+- **Follow-up implications for later sections:** Resume with a Section 1 implementation-fix cycle before starting Section 2. The next pass should preserve existing `isAdminSheet` runtime behaviour until Section 2, make cache updates atomic with persistence success, and address the touched-scope lint findings without widening scope.
 
 ---
 
@@ -152,16 +163,18 @@ Frontend tests:
 
 ### Progress tracking
 
-- [x] RED: tests added for the shared auth query, shared auth hook, auth consumer flow, `App.tsx` composition root, and main-entry query-provider wiring.
-- [x] RED: review clean.
-- [x] GREEN: implementation complete; production auth composition now satisfies the Section 2 boundary without introducing startup pre-fetch logic.
-- [x] GREEN: review clean.
-- [x] Checks passed.
-- [x] Action plan updated.
+- [ ] RED: tests added for `ConfigurationManager` API-surface removal and backend runtime callers updated to the new non-config path.
+- [ ] RED: review clean.
+- [ ] GREEN: implementation complete.
+- [ ] GREEN: review clean.
+- [ ] Checks passed.
+- [ ] Action plan updated.
+- [ ] Commit created.
+- [ ] Push completed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** _Intentionally not completed in this planning document._
+- **Implementation notes:** Previous progress entries were verified on 2026-03-17 as unrelated frontend-auth text and were reset before backend work resumed.
 - **Deviations from plan:** _Intentionally not completed in this planning document._
 - **Follow-up implications for later sections:** _Intentionally not completed in this planning document._
 
