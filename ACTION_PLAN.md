@@ -13,7 +13,7 @@
 
 - No backwards compatibility path for legacy per-key persisted configuration values.
 - No migration script for existing deployments.
-- No updates to `src/backend/ConfigurationManager/99_globals.js` in this task (deferred to future `apiHandler` migration work).
+- No behavioural refactors to `src/backend/ConfigurationManager/99_globals.js` beyond the minimal, mechanical edits required to keep it compiling and free of new runtime errors introduced by this task (deeper changes are deferred to future `apiHandler` migration work).
 - No frontend or builder changes.
 
 ### Assumptions
