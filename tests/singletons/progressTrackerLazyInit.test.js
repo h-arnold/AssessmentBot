@@ -18,6 +18,8 @@ const mockGetProperty = _vi.fn();
 const mockDeleteProperty = _vi.fn();
 const mockSerialiseProperties = _vi.fn();
 
+let origConfigMgr;
+
 beforeEach(() => {
   ProgressTracker.resetForTests();
   globalThis.PropertiesService = {
@@ -31,10 +33,21 @@ beforeEach(() => {
   globalThis.PropertiesCloner = function () {
     return { serialiseProperties: mockSerialiseProperties };
   };
+
+  // Set up ConfigurationManager mock
+  origConfigMgr = globalThis.ConfigurationManager;
+  function FakeConfigurationManager() {}
+  FakeConfigurationManager.getInstance = _vi.fn(() => ({}));
+  globalThis.ConfigurationManager = FakeConfigurationManager;
+
   mockSetProperty.mockReset();
   mockGetProperty.mockReset();
   mockDeleteProperty.mockReset();
   mockSerialiseProperties.mockReset();
+});
+
+afterEach(() => {
+  globalThis.ConfigurationManager = origConfigMgr;
 });
 
 describe('ProgressTracker lazy initialization', () => {
@@ -59,7 +72,6 @@ describe('ProgressTracker lazy initialization', () => {
 
   test('complete does not require ConfigurationManager.getInstance().getIsAdminSheet()', () => {
     const pt = ProgressTracker.getInstance();
-    globalThis.ConfigurationManager.getInstance.mockReturnValue({});
 
     expect(() => pt.complete()).not.toThrow();
     expect(mockSerialiseProperties).toHaveBeenCalledWith(true, false);
