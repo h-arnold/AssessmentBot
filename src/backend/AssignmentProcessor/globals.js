@@ -10,17 +10,19 @@
  * @param {string} assignmentTitle - The title of the assignment.
  * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
+ * @param {string} courseId - The Classroom course ID.
  */
-function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId) {
+function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
   ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
     assignmentTitle,
     documentIds,
     assignmentId,
+    courseId,
   });
 
   const controller = new AssignmentController();
   try {
-    return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId);
+    return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId);
   } catch (error) {
     ABLogger.getInstance().error(
       'Error in globals.saveStartAndShowProgress:',
@@ -49,6 +51,7 @@ function startProcessing(assignmentId, definitionKey) {
  *
  * @param {Object} params - Wizard input parameters.
  * @param {string} params.assignmentId - Google Classroom assignment ID (required).
+ * @param {string} params.courseId - Classroom course ID (required).
  * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
  * @param {string} params.referenceDocumentId - Reference document URL or file ID.
  * @param {string} params.templateDocumentId - Template document URL or file ID.
@@ -57,6 +60,7 @@ function startProcessing(assignmentId, definitionKey) {
  */
 function createDefinitionFromWizardInputs({
   assignmentId,
+  courseId,
   assignmentTitle,
   referenceDocumentId,
   templateDocumentId,
@@ -66,6 +70,7 @@ function createDefinitionFromWizardInputs({
   try {
     return controller.createDefinitionFromWizardInputs({
       assignmentId,
+      courseId,
       assignmentTitle,
       referenceDocumentId,
       templateDocumentId,

@@ -51,9 +51,6 @@ describe('saveConfiguration global behaviour', () => {
     vi.spyOn(cfg, 'setBackendAssessorBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setSlidesFetchBatchSize').mockImplementation(() => {});
     vi.spyOn(cfg, 'setBackendUrl').mockImplementation(() => {});
-    vi.spyOn(cfg, 'setAssessmentRecordTemplateId').mockImplementation(() => {});
-    vi.spyOn(cfg, 'setAssessmentRecordDestinationFolder').mockImplementation(() => {});
-    vi.spyOn(cfg, 'setUpdateDetailsUrl').mockImplementation(() => {});
     vi.spyOn(cfg, 'setDaysUntilAuthRevoke').mockImplementation(() => {});
   });
 

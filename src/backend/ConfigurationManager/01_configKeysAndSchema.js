@@ -7,12 +7,11 @@
 // require them here to avoid duplicate declaration errors when running in
 // the GAS runtime where these are already present on the global object.
 // Tests will populate these on globalThis in `tests/setupGlobals.js`.
-/* global validateLogLevel, validateApiKey, validateClassInfo, toBooleanString, Validate */
+/* global validateLogLevel, validateApiKey, toBooleanString, Validate */
 
 const BACKEND_ASSESSOR_BATCH_MAX = 500;
 const SLIDES_FETCH_BATCH_MAX = 100;
 const DAYS_UNTIL_AUTH_REVOKE_MAX = 365;
-const UPDATE_STAGE_MAX = 2;
 const JSON_DB_LOCK_TIMEOUT_MIN_MS = 1000;
 const JSON_DB_LOCK_TIMEOUT_MAX_MS = 600000;
 
@@ -21,11 +20,6 @@ const CONFIG_KEYS = Object.freeze({
   SLIDES_FETCH_BATCH_SIZE: 'slidesFetchBatchSize',
   API_KEY: 'apiKey',
   BACKEND_URL: 'backendUrl',
-  ASSESSMENT_RECORD_TEMPLATE_ID: 'assessmentRecordTemplateId',
-  ASSESSMENT_RECORD_DESTINATION_FOLDER: 'assessmentRecordDestinationFolder',
-  ASSESSMENT_RECORD_COURSE_ID: 'assessmentRecordCourseId',
-  UPDATE_DETAILS_URL: 'updateDetailsUrl',
-  UPDATE_STAGE: 'updateStage',
   IS_ADMIN_SHEET: 'isAdminSheet',
   REVOKE_AUTH_TRIGGER_SET: 'revokeAuthTriggerSet',
   DAYS_UNTIL_AUTH_REVOKE: 'daysUntilAuthRevoke',
@@ -34,7 +28,6 @@ const CONFIG_KEYS = Object.freeze({
   JSON_DB_LOG_LEVEL: 'jsonDbLogLevel',
   JSON_DB_BACKUP_ON_INITIALISE: 'jsonDbBackupOnInitialise',
   JSON_DB_ROOT_FOLDER_ID: 'jsonDbRootFolderId',
-  ASSESSMENT_RECORD_CLASS_INFO: 'assessmentRecordClassInfo',
 });
 
 const CONFIG_SCHEMA = Object.freeze({
@@ -65,56 +58,6 @@ const CONFIG_SCHEMA = Object.freeze({
   [CONFIG_KEYS.BACKEND_URL]: {
     storage: 'script',
     validate: (v) => Validate.validateUrl('Backend Url', v),
-  },
-  [CONFIG_KEYS.UPDATE_DETAILS_URL]: {
-    storage: 'script',
-    validate: (v) => Validate.validateUrl('Update Details Url', v),
-  },
-  [CONFIG_KEYS.ASSESSMENT_RECORD_TEMPLATE_ID]: {
-    storage: 'script',
-    validate: (v, instance) => {
-      Validate.validateNonEmptyString('Assessment Record Template Id', v);
-      if (!instance.isValidGoogleSheetId(v)) {
-        throw new Error('Assessment Record Template ID must be a valid Google Sheet ID.');
-      }
-      return v;
-    },
-  },
-  [CONFIG_KEYS.ASSESSMENT_RECORD_COURSE_ID]: {
-    storage: 'document',
-    validate: (v) => {
-      if (v == null || (Validate.isString(v) && v.trim() === '')) return v;
-      if (!Validate.isString(v)) {
-        throw new TypeError('Assessment Record Course ID must be a string.');
-      }
-      return v;
-    },
-  },
-  [CONFIG_KEYS.ASSESSMENT_RECORD_CLASS_INFO]: {
-    storage: 'document',
-    validate: (v) => validateClassInfo('Assessment Record Class Info', v),
-  },
-  [CONFIG_KEYS.ASSESSMENT_RECORD_DESTINATION_FOLDER]: {
-    storage: 'script',
-    validate: (v, instance) => {
-      Validate.validateNonEmptyString('Assessment Record Destination Folder', v);
-      if (!instance.isValidGoogleDriveFolderId(v)) {
-        throw new Error(
-          'Assessment Record Destination Folder must be a valid Google Drive Folder ID.'
-        );
-      }
-      return v;
-    },
-  },
-  [CONFIG_KEYS.UPDATE_STAGE]: {
-    storage: 'script',
-    validate: (v) => {
-      const stage = Number.parseInt(v, 10);
-      if (!Number.isInteger(stage) || stage < 0 || stage > UPDATE_STAGE_MAX) {
-        throw new Error('Update Stage must be 0, 1, or 2');
-      }
-      return stage;
-    },
   },
   [CONFIG_KEYS.IS_ADMIN_SHEET]: {
     storage: 'document',
