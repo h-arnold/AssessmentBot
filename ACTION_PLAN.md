@@ -105,17 +105,17 @@ Frontend tests:
 - [x] RED: tests added for single-POJO script-property persistence, malformed JSON fallback, and script-scoped `REVOKE_AUTH_TRIGGER_SET`.
 - [x] RED: review clean.
 - [x] GREEN: implementation complete.
-- [ ] GREEN: review clean.
+- [x] GREEN: review clean.
 - [x] Checks passed.
 - [x] Action plan updated.
-- [ ] Commit created.
-- [ ] Push completed.
+- [x] Commit created.
+- [x] Push completed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Red-phase coverage was split so the existing `tests/configurationManager/configurationManager.test.js` suite stayed green and the new contract assertions live in `tests/configurationManager/configurationManagerSection1Red.test.js`. A green-phase implementation for single-POJO script-property storage was then applied and the targeted Section 1 tests passed.
-- **Deviations from plan:** Green review is not yet clean. Reviewer findings recorded on 2026-03-17: (1) `98_ConfigurationManagerClass.js` mutates the in-memory config cache before persistence succeeds, so a failed write can leave runtime state diverged from Script Properties; (2) the current Section 1 implementation changed `getIsAdminSheet`/`setIsAdminSheet` behaviour even though Section 2 is where runtime dependency removal is meant to happen; (3) touched test regex literals triggered the current unicode-hardening lint rules.
-- **Follow-up implications for later sections:** Resume with a Section 1 implementation-fix cycle before starting Section 2. The next pass should preserve existing `isAdminSheet` runtime behaviour until Section 2, make cache updates atomic with persistence success, and address the touched-scope lint findings without widening scope.
+- **Implementation notes:** Single-POJO script-property storage was completed. Cache updates were made atomic by persisting the serialised object before swapping `configCache`, and the temporary legacy `isAdminSheet` document-property bridge was restored for Section 1.
+- **Deviations from plan:** Permanent removal of the legacy `isAdminSheet` bridge was deferred as planned to Section 2. Touched-scope lint concerns were resolved without widening scope.
+- **Follow-up implications for later sections:** Section 1 is complete. Section 2 still needs to remove the temporary legacy `isAdminSheet` bridge and finish the remaining runtime dependency removal.
 
 ---
 
