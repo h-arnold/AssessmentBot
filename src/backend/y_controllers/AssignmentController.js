@@ -219,7 +219,12 @@ class AssignmentController {
         // Use the hydrated roster from the class record for processing. This data is transient
         // and must not be persisted with the Assignment to prevent data duplication.
         const properties = PropertiesService.getDocumentProperties();
-        this.clearDocumentProperties(properties, ['assignmentId', 'definitionKey', 'triggerId', 'courseId']);
+        this.clearDocumentProperties(properties, [
+          'assignmentId',
+          'definitionKey',
+          'triggerId',
+          'courseId',
+        ]);
         ABLogger.getInstance().info('Document properties cleaned up.');
       } catch (cleanupError) {
         this.progressTracker.logError(`Failed to clean up properties: ${cleanupError.message}`, {
@@ -411,7 +416,13 @@ class AssignmentController {
    *   - templateDocumentId or templateSlideId
    * @return {Object} { definition, courseId, abClass }
    */
-  ensureDefinitionFromInputs({ assignmentTitle, assignmentId, courseId, documentIds, yearGroup = null }) {
+  ensureDefinitionFromInputs({
+    assignmentTitle,
+    assignmentId,
+    courseId,
+    documentIds,
+    yearGroup = null,
+  }) {
     const referenceId = documentIds?.referenceDocumentId || documentIds?.referenceSlideId;
     const templateId = documentIds?.templateDocumentId || documentIds?.templateSlideId;
 

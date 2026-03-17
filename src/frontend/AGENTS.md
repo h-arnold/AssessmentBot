@@ -27,6 +27,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Keep service modules focused on external/runtime API boundaries and transport details.
 - Keep presentational feature components declarative; delegate data loading/state transitions to hooks.
 - When shared server-state is introduced, define query keys through shared factory helpers rather than ad-hoc array literals so later invalidation and prefetch logic stays consistent.
+- For React Query baseline, startup warm-up, and prefetch policy guidance, use `docs/developer/frontend/frontend-react-query-and-prefetch.md`.
 
 ## 3. Framework and UI Baseline
 

@@ -174,7 +174,6 @@ describe('ConfigurationManager setProperty', () => {
         configManager.setProperty(ConfigurationManager.CONFIG_KEYS.BACKEND_URL, 'invalid-url');
       }).toThrow('Backend Url must be a valid URL string');
     });
-
   });
 
   describe('Boolean properties (IS_ADMIN_SHEET, REVOKE_AUTH_TRIGGER_SET)', () => {
@@ -347,7 +346,6 @@ describe('ConfigurationManager setProperty', () => {
 
       driveSpy.mockRestore();
     });
-
   });
 
   describe('Default case (unknown properties)', () => {

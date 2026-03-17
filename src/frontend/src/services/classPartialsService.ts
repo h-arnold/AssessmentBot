@@ -1,25 +1,7 @@
 import { callApi } from './apiService';
+import { ClassPartialsResponseSchema, type ClassPartial } from './classPartials.zod';
 
-export interface TeacherSummary {
-    userId: string | null;
-    email: string | null;
-    teacherName: string | null;
-}
-
-/**
- * Shape of a class partial document returned by the backend transport.
- * Teacher-bearing fields use TeacherSummary rather than the full Teacher model.
- */
-export interface ClassPartial {
-    classId: string;
-    className: string | null;
-    cohort: string | null;
-    courseLength: number;
-    yearGroup: number | null;
-    classOwner: TeacherSummary | null;
-    teachers: TeacherSummary[];
-    active: boolean | null;
-}
+export type { ClassPartial, TeacherSummary } from './classPartials.zod';
 
 const GET_AB_CLASS_PARTIALS_METHOD = 'getABClassPartials';
 
@@ -29,8 +11,8 @@ const GET_AB_CLASS_PARTIALS_METHOD = 'getABClassPartials';
  * The backend normalises stored partial records to this transport shape before
  * returning them, so storage-only fields are not exposed here.
  *
- * @returns Promise resolving to an array of class partial transport objects.
+ * @returns Promise resolving to an array of validated class partial transport objects.
  */
 export async function getABClassPartials(): Promise<ClassPartial[]> {
-    return callApi<ClassPartial[]>(GET_AB_CLASS_PARTIALS_METHOD);
+    return ClassPartialsResponseSchema.parse(await callApi(GET_AB_CLASS_PARTIALS_METHOD));
 }

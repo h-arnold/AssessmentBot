@@ -150,6 +150,15 @@ Frontend tests:
 - `npm test -- tests/controllers/initController.test.js`
 - `npm test -- tests/singletons/progressTrackerLazyInit.test.js`
 
+### Progress tracking
+
+- [x] RED: tests added for the shared auth query, shared auth hook, auth consumer flow, `App.tsx` composition root, and main-entry query-provider wiring.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete; production auth composition now satisfies the Section 2 boundary without introducing startup pre-fetch logic.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** _Intentionally not completed in this planning document._

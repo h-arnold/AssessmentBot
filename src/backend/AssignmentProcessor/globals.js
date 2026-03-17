@@ -22,7 +22,12 @@ function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, co
 
   const controller = new AssignmentController();
   try {
-    return controller.saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId);
+    return controller.saveStartAndShowProgress(
+      assignmentTitle,
+      documentIds,
+      assignmentId,
+      courseId
+    );
   } catch (error) {
     ABLogger.getInstance().error(
       'Error in globals.saveStartAndShowProgress:',
