@@ -4,16 +4,14 @@ import type { PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { createAppQueryClient } from '../../query/queryClient';
+import { useAuthorisationStatus } from './useAuthorisationStatus';
 
-const getAuthorisationStatusMock = vi.fn();
-const getABClassPartialsMock = vi.fn();
+const { getAuthorisationStatusMock } = vi.hoisted(() => ({
+  getAuthorisationStatusMock: vi.fn(),
+}));
 
 vi.mock('../../services/authService', () => ({
   getAuthorisationStatus: getAuthorisationStatusMock,
-}));
-
-vi.mock('../../services/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
 }));
 
 /**
@@ -25,6 +23,24 @@ function createQueryWrapper() {
   return function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
+}
+
+/**
+ * Exposes the shared auth-hook result for multi-consumer assertions.
+ */
+function AuthHookProbe() {
+  const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();
+
+  return (
+    <output data-testid="auth-hook-probe">
+      {JSON.stringify({
+        authViewState,
+        authError,
+        isAuthResolved,
+        isAuthorised,
+      })}
+    </output>
+  );
 }
 
 describe('useAuthorisationStatus', () => {
@@ -71,12 +87,12 @@ describe('useAuthorisationStatus', () => {
     });
   });
 
-    it('maps auth failures to the existing user-safe copy', async () => {
-      getAuthorisationStatusMock.mockRejectedValueOnce(
-        new ApiTransportError({
-          requestId: 'req-1',
-          error: {
-            code: 'RATE_LIMITED',
+  it('maps auth failures to the existing user-safe copy', async () => {
+    getAuthorisationStatusMock.mockRejectedValueOnce(
+      new ApiTransportError({
+        requestId: 'req-1',
+        error: {
+          code: 'RATE_LIMITED',
           message: 'Rate limited.',
           retriable: true,
         },
@@ -98,17 +114,16 @@ describe('useAuthorisationStatus', () => {
     });
   });
 
-  it('lets the auth UI and auth gate consume one resolved auth request without a second transport call', async () => {
+  it('lets shared auth state be consumed without a second auth transport call', async () => {
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    getABClassPartialsMock.mockResolvedValueOnce([]);
 
-    const { AppAuthGate } = await import('./AppAuthGate');
     const { AuthStatusCard } = await import('./AuthStatusCard');
 
     render(
-      <AppAuthGate>
+      <>
         <AuthStatusCard />
-      </AppAuthGate>,
+        <AuthHookProbe />
+      </>,
       {
         wrapper: createQueryWrapper(),
       }
@@ -116,7 +131,16 @@ describe('useAuthorisationStatus', () => {
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('auth-hook-probe')).toHaveTextContent(
+        JSON.stringify({
+          authViewState: 'authorised',
+          authError: null,
+          isAuthResolved: true,
+          isAuthorised: true,
+        })
+      );
+    });
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
-    expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
   });
 });

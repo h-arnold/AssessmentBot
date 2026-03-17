@@ -168,11 +168,21 @@ Frontend tests:
 - `npm run frontend:test -- src/**/*auth*.spec.ts*`
 - `npm run frontend:lint`
 
+### Progress tracking
+
+- [x] RED: tests added for the shared auth query, shared auth hook, auth consumer flow, `App.tsx` composition root, and main-entry query-provider wiring.
+- [x] RED: review clean.
+- [x] GREEN: implementation complete; production auth composition now satisfies the Section 2 boundary without introducing startup pre-fetch logic.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
+- **Implementation notes:** Section 2 is complete; treat authorisation as the first shared query-backed app-state concern before adding any pre-fetch orchestration.
 - **Implementation notes:** keep the existing auth error mapping contract, but move auth request ownership out of the component-local effect path.
 - **Implementation notes:** keep query ownership in the shared auth hook; do not add a separate auth context unless a later requirement cannot be met through the query layer alone.
+- **Validation deviation:** the planned glob `src/**/*auth*.spec.ts*` did not match the current file names, so validation used the concrete auth spec `src/features/auth/useAuthorisationStatus.spec.tsx`.
 - **Follow-up implications for later sections:** startup warm-up must consume this shared resolved auth state rather than issuing or shadowing another auth request.
 
 ---
@@ -214,6 +224,15 @@ Frontend tests:
 - `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*auth*.spec.ts*`
 - `npm run frontend:lint`
+
+### Progress tracking
+
+- [x] RED: tests added for the thin auth gate boundary, shared auth-result observation, `App.tsx` composition, and main-entry auth-gate composition.
+- [x] RED: intended failure captured against current production composition in `main.tsx`.
+- [x] GREEN: implementation complete; `main.tsx` now composes `AppAuthGate` outside `App.tsx` while preserving the shared auth boundary.
+- [x] GREEN: review clean.
+- [x] Checks passed.
+- [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
 
@@ -336,6 +355,12 @@ Frontend tests:
 - `npm run frontend:test -- src/main.spec.tsx`
 - `npm run frontend:test -- src/**/*query*.spec.ts*`
 - `npm run frontend:lint`
+
+### Progress tracking
+
+- [x] GREEN: startup warm-up remains owned by the dedicated auth-gate boundary outside `App.tsx`, with `main.tsx` composing the provider and gate wrappers.
+- [x] GREEN: targeted startup warm-up, auth-gate, and shared-query checks passed.
+- [x] Action plan updated.
 
 ### Implementation notes / deviations / follow-up
 
