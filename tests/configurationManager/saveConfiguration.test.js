@@ -21,7 +21,6 @@ const mockPropertiesService = {
 
 const mockUtils = {
   isValidUrl: vi.fn(),
-  validateIsAdminSheet: vi.fn(),
 };
 
 // minimal globals used by globals.js

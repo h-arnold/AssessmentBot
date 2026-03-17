@@ -44,7 +44,7 @@ function createMockPropertiesService(vi) {
 function createMockUtils(vi) {
   return {
     isValidUrl: vi.fn(),
-    validateIsAdminSheet: vi.fn(),
+
     generateHash: vi.fn(simpleHash),
     normaliseKeysToLowerCase: vi.fn((obj) => {
       if (!obj || typeof obj !== 'object') return obj;
