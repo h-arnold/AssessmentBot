@@ -82,6 +82,14 @@ body {
   width: min(100%, 720px);
 }
 
+.app-tabbed-page {
+  width: 100%;
+}
+
+.settings-tab-panel {
+  min-height: 16rem;
+}
+
 .auth-card {
   width: min(100%, 720px);
   text-align: center;

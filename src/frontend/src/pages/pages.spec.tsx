@@ -23,7 +23,7 @@ const pageComponentLoaders: Record<AppNavigationKey, () => Promise<ComponentType
   },
 };
 
-describe('section 5 page components', () => {
+describe('page components', () => {
   it.each(pageExpectations)(
     'renders the expected heading and summary text for $heading',
     async ({ heading, key, summary }) => {
@@ -36,3 +36,4 @@ describe('section 5 page components', () => {
     }
   );
 });
+

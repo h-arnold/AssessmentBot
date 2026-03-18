@@ -88,6 +88,8 @@ Use a strict behaviour split when writing frontend tests:
 When both are possible, default to Vitest first for fast feedback, then add Playwright coverage for the highest-value user journeys.
 Vitest + Testing Library may still assert user-visible component outcomes; use Playwright when the confidence target is full browser/runtime behaviour across integration boundaries.
 
+**Mandatory rule:** every new or changed **user-visible interaction** must have Playwright coverage. Do not treat Vitest coverage as sufficient for clicks, keyboard interaction, tab switching, toggles, navigation, or other visible browser behaviour. Where a Vitest test covers visible rendering, add or update a Playwright test that exercises the same interaction in a real browser so visible interaction coverage remains as comprehensive as the supporting Vitest coverage.
+
 ### Quick decision matrix
 
 - Is the assertion mostly about internal state or non-visual wiring? → **Vitest**.
