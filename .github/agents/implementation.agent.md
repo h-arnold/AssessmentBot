@@ -95,6 +95,8 @@ If you touch more than one active module, run the relevant validation for each t
 
 ## 3. Handoff Format
 
+**IMPORTANT**: Before handing off, you **must** ensure that the linter comes back clear and the tests pass for the code that you have implemented. Fix any issues that arise **before** handing back to the orchestrating agent.
+
 When returning work to the orchestrator, always provide:
 
 - **Files changed**: the files you modified.
