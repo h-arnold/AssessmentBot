@@ -1,6 +1,6 @@
 // apiHandler.js
 
-/* global BaseSingleton, Utilities, LockService, ABLogger, ConfigurationManager */
+/* global BaseSingleton, Utilities, LockService, ABLogger */
 
 let apiAllowlist;
 let lockTimeoutMs;
@@ -11,196 +11,18 @@ let requestStoreFns;
 let apiRateLimitErrorName;
 let apiValidationErrorName;
 let apiDisabledErrorName;
+let getBackendConfigHandler = function () {
+  return getBackendConfig();
+};
+let setBackendConfigHandler = function (parameters) {
+  return setBackendConfig(parameters);
+};
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
   INVALID_REQUEST: 'INVALID_REQUEST',
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
 };
-
-const API_KEY_MASK_VISIBLE_SUFFIX_LENGTH = 4;
-const API_KEY_MASK_PREFIX = '****';
-const DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE = 30;
-const DEFAULT_DAYS_UNTIL_AUTH_REVOKE = 60;
-const DEFAULT_SLIDES_FETCH_BATCH_SIZE = 20;
-
-/**
- * Masks an API key while preserving the visible suffix used by the legacy config payload.
- * @param {string} key - Raw API key value.
- * @returns {string} Masked API key.
- */
-function maskApiKey(key) {
-  if (!key) {
-    return '';
-  }
-
-  const asString = String(key);
-  if (asString.length <= API_KEY_MASK_VISIBLE_SUFFIX_LENGTH) {
-    return API_KEY_MASK_PREFIX;
-  }
-
-  return API_KEY_MASK_PREFIX + asString.slice(-API_KEY_MASK_VISIBLE_SUFFIX_LENGTH);
-}
-
-/**
- * Reads the current backend configuration using the legacy public payload shape.
- * @returns {Object} Public configuration payload.
- */
-function getBackendConfig() {
-  const errors = [];
-  const configurationManager = ConfigurationManager.getInstance();
-
-  /**
-   * Reads a single configuration value while preserving legacy fallback behaviour.
-   * @param {Function} getter - Getter callback.
-   * @param {string} name - Public config field name.
-   * @param {*} fallback - Fallback value used on read failure.
-   * @returns {*} Retrieved value or fallback.
-   */
-  function safeGet(getter, name, fallback) {
-    try {
-      return getter();
-    } catch (error) {
-      ABLogger.getInstance().error('Error retrieving configuration value.', {
-        configKey: name,
-        errorName: error?.name ?? 'Error',
-      });
-      errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
-      return fallback;
-    }
-  }
-
-  const rawApiKey = safeGet(() => configurationManager.getApiKey(), 'apiKey', '');
-  const config = {
-    backendAssessorBatchSize: safeGet(
-      () => configurationManager.getBackendAssessorBatchSize(),
-      'backendAssessorBatchSize',
-      DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE
-    ),
-    apiKey: maskApiKey(rawApiKey),
-    hasApiKey: !!rawApiKey,
-    backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
-    revokeAuthTriggerSet: safeGet(
-      () => configurationManager.getRevokeAuthTriggerSet(),
-      'revokeAuthTriggerSet',
-      false
-    ),
-    daysUntilAuthRevoke: safeGet(
-      () => configurationManager.getDaysUntilAuthRevoke(),
-      'daysUntilAuthRevoke',
-      DEFAULT_DAYS_UNTIL_AUTH_REVOKE
-    ),
-    slidesFetchBatchSize: safeGet(
-      () => configurationManager.getSlidesFetchBatchSize(),
-      'slidesFetchBatchSize',
-      DEFAULT_SLIDES_FETCH_BATCH_SIZE
-    ),
-    jsonDbMasterIndexKey: safeGet(
-      () => configurationManager.getJsonDbMasterIndexKey(),
-      'jsonDbMasterIndexKey',
-      ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY
-    ),
-    jsonDbLockTimeoutMs: safeGet(
-      () => configurationManager.getJsonDbLockTimeoutMs(),
-      'jsonDbLockTimeoutMs',
-      ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
-    ),
-    jsonDbLogLevel: safeGet(
-      () => configurationManager.getJsonDbLogLevel(),
-      'jsonDbLogLevel',
-      ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL
-    ),
-    jsonDbBackupOnInitialise: safeGet(
-      () => configurationManager.getJsonDbBackupOnInitialise(),
-      'jsonDbBackupOnInitialise',
-      ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
-    ),
-    jsonDbRootFolderId: safeGet(
-      () => configurationManager.getJsonDbRootFolderId(),
-      'jsonDbRootFolderId',
-      ''
-    ),
-  };
-
-  if (errors.length > 0) {
-    config.loadError = errors.join('; ');
-  }
-
-  return config;
-}
-
-/**
- * Applies supported backend configuration updates using ConfigurationManager setters.
- * @param {Object} config - Partial configuration payload.
- * @returns {{ success: boolean, error?: string }} Result payload.
- */
-function setBackendConfig(config) {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) {
-    throw new ApiValidationError('params must be an object.', {
-      method: 'setBackendConfig',
-      fieldName: 'params',
-    });
-  }
-
-  const errors = [];
-  const configurationManager = ConfigurationManager.getInstance();
-  const setters = [
-    [
-      'backendAssessorBatchSize',
-      (value) => configurationManager.setBackendAssessorBatchSize(value),
-    ],
-    ['slidesFetchBatchSize', (value) => configurationManager.setSlidesFetchBatchSize(value)],
-    ['apiKey', (value) => configurationManager.setApiKey(value)],
-    ['backendUrl', (value) => configurationManager.setBackendUrl(value)],
-    ['revokeAuthTriggerSet', (value) => configurationManager.setRevokeAuthTriggerSet(value)],
-    ['daysUntilAuthRevoke', (value) => configurationManager.setDaysUntilAuthRevoke(value)],
-    ['jsonDbMasterIndexKey', (value) => configurationManager.setJsonDbMasterIndexKey(value)],
-    ['jsonDbLockTimeoutMs', (value) => configurationManager.setJsonDbLockTimeoutMs(value)],
-    ['jsonDbLogLevel', (value) => configurationManager.setJsonDbLogLevel(value)],
-    [
-      'jsonDbBackupOnInitialise',
-      (value) => configurationManager.setJsonDbBackupOnInitialise(value),
-    ],
-    ['jsonDbRootFolderId', (value) => configurationManager.setJsonDbRootFolderId(value)],
-  ];
-
-  /**
-   * Persists a single configuration update while preserving legacy error aggregation.
-   * @param {Function} action - Setter callback.
-   * @param {string} name - Public config field name.
-   * @returns {boolean} True when the update succeeds.
-   */
-  function safeSet(action, name) {
-    try {
-      action();
-      return true;
-    } catch (error) {
-      ABLogger.getInstance().error('Error saving configuration value.', {
-        configKey: name,
-        errorName: error?.name ?? 'Error',
-      });
-      errors.push(`${name}: REDACTED`);
-      return false;
-    }
-  }
-
-  for (const [name, applySetting] of setters) {
-    if (config[name] === undefined) {
-      continue;
-    }
-
-    safeSet(() => applySetting(config[name]), name);
-  }
-
-  if (errors.length > 0) {
-    const message = `Failed to save some configuration values: ${errors.join('; ')}`;
-    ABLogger.getInstance().error(message, { failedSettings: [...errors] });
-    return { success: false, error: message };
-  }
-
-  ABLogger.getInstance().info('Configuration saved successfully.');
-  return { success: true };
-}
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: (parameters) => getAuthorisationStatus(parameters),
@@ -209,8 +31,8 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   upsertABClass: (parameters) => upsertABClass(parameters),
   updateABClass: (parameters) => updateABClass(parameters),
   deleteABClass: (parameters) => deleteABClass(parameters),
-  getBackendConfig: () => getBackendConfig(),
-  setBackendConfig: (parameters) => setBackendConfig(parameters),
+  getBackendConfig: () => getBackendConfigHandler(),
+  setBackendConfig: (parameters) => setBackendConfigHandler(parameters),
   getCohorts: (parameters) => getCohorts(parameters),
   createCohort: (parameters) => createCohort(parameters),
   updateCohort: (parameters) => updateCohort(parameters),
@@ -222,6 +44,10 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
 });
 
 if (typeof module !== 'undefined' && module.exports) {
+  ({
+    getBackendConfig: getBackendConfigHandler,
+    setBackendConfig: setBackendConfigHandler,
+  } = require('./apiConfig.js'));
   ({
     API_ALLOWLIST: apiAllowlist,
     LOCK_TIMEOUT_MS: lockTimeoutMs,
