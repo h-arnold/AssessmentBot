@@ -73,6 +73,7 @@ Test location and naming conventions are defined in the module testing docs and 
 - **Backend boundary**: Do not import anything from `src/backend/` into frontend code. Treat the interface as an API boundary.
 - **Error handling**: Fail loudly in development. No broad catch-and-ignore logic.
 - **Builder compatibility**: Avoid CDN-dependent runtime assets. Keep `index.html` asset wiring compatible with builder inlining into HtmlService output.
+- **Export functions as functions**: Functions should be declared as such, not exported constants with arrow functions. Fail the code review unless there is a very good reason to export a constant over a function.
 
 ### 3.3 Builder (`scripts/builder/`)
 

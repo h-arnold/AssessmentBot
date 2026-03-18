@@ -7,6 +7,7 @@ Applies when editing `src/frontend/**`.
 - Use idiomatic TypeScript targeting modern ECMAScript (ES2024-level standards in project config).
 - Frontend code is ESM React + Vite, not GAS runtime code.
 - Prefer typed, composable React function components and explicit data contracts.
+- Export functions as functions, not constants assigned to arrow functions, for better stack traces and readability. Exporting functions as constants without a very good reason is an anti-pattern and will cause a code review to fail.
 
 ## 2. Frontend Structure
 

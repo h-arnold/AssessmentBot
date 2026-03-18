@@ -158,6 +158,18 @@ Frontend tests:
 
 ## Section 2 — Frontend configuration service and typed transport contract
 
+### Delivery status
+
+- Current phase: Green - in progress
+- Red tests added: complete
+- Red review clean: complete
+- Green implementation complete: pending
+- Green review clean: pending
+- Checks passed: pending
+- Action plan updated: in progress
+- Commit created: pending
+- Push completed: pending
+
 ### Objective
 
 - Add typed frontend service methods for `getBackendConfig` and `setBackendConfig` using the established `callApi` pattern.
@@ -210,7 +222,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/configurationService.spec.ts`
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts`
 
 ### Implementation notes / deviations / follow-up
 
@@ -267,7 +279,7 @@ Frontend tests:
 
 - `npm test -- tests/api/apiHandler.test.js`
 - `npm test -- tests/api/backendConfigApi.test.js`
-- `npm run frontend:test -- src/services/configurationService.spec.ts`
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts`
 
 ### Implementation notes / deviations / follow-up
 
@@ -307,7 +319,7 @@ Frontend tests:
 
 - `npm test -- tests/api/apiHandler.test.js`
 - `npm test -- tests/api/backendConfigApi.test.js`
-- `npm run frontend:test -- src/services/configurationService.spec.ts`
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts`
 - `npm run lint`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
