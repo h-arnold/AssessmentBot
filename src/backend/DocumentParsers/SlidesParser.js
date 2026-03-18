@@ -10,7 +10,7 @@ class SlidesParser extends DocumentParser {
    * Generates a slide export URL for a given slide in a Google Slides presentation.
    * @param {string} documentId - The ID of the Google Slides presentation.
    * @param {string} pageId - The ID of the specific slide within the presentation.
-   * @return {string} - The URL to export the slide as an image.
+   * @returns {string} The URL to export the slide as an image.
    */
   generateSlideImageUrl(documentId, pageId) {
     const url = `https://docs.google.com/presentation/d/${documentId}/export/png?id=${documentId}&pageid=${pageId}`;
@@ -29,6 +29,9 @@ class SlidesParser extends DocumentParser {
    *   ^NotesElement  -> attaches taskNotes
    *   ~ImageId       -> adds Image artifact using slide export URL
    * Page ordering establishes TaskDefinition.index.
+   * @param {string} referenceDocumentId - The ID of the reference presentation.
+   * @param {string} templateDocumentId - The ID of the template presentation.
+   * @returns {TaskDefinition[]} Array of task definitions extracted from presentation slides.
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
     const referencePresentation = SlidesApp.openById(referenceDocumentId);
@@ -59,7 +62,7 @@ class SlidesParser extends DocumentParser {
    * @param {GoogleAppsScript.Slides.Slide[]} slides - Slides to inspect.
    * @param {string} role - Either 'reference' or 'template'.
    * @param {Object} context - Shared state for definition creation.
-   * @return {void}
+   * @returns {void}
    */
   processSlidesForDefinitions(slides, role, context) {
     slides.forEach((slide) => {
@@ -99,7 +102,7 @@ class SlidesParser extends DocumentParser {
    * @param {string} pageId - Slide page ID.
    * @param {string} role - Either 'reference' or 'template'.
    * @param {Object} context - Shared state for definition creation.
-   * @return {void}
+   * @returns {void}
    */
   handleDefinitionTitleElement(pageElement, taskTitle, pageId, role, context) {
     const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
@@ -123,7 +126,7 @@ class SlidesParser extends DocumentParser {
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The notes element.
    * @param {string} pageId - Slide page ID.
    * @param {Map<string, TaskDefinition>} definitionMap - Map of task definitions keyed by title and page.
-   * @return {void}
+   * @returns {void}
    */
   appendNotesToDefinitions(pageElement, pageId, definitionMap) {
     for (const definition of definitionMap.values()) {
@@ -141,7 +144,7 @@ class SlidesParser extends DocumentParser {
    * @param {string} pageId - Slide page ID.
    * @param {string} role - Either 'reference' or 'template'.
    * @param {Object} context - Shared state for definition creation.
-   * @return {void}
+   * @returns {void}
    */
   handleImageArtifactElement(taskTitle, pageId, role, context) {
     const definition = this.ensureTaskDefinition(taskTitle, pageId, context);
@@ -166,7 +169,7 @@ class SlidesParser extends DocumentParser {
    * @param {string} taskTitle - Title extracted from the tag text.
    * @param {string} pageId - Slide page ID.
    * @param {Object} context - Shared state for definition creation.
-   * @return {TaskDefinition} - Existing or newly created task definition.
+   * @returns {TaskDefinition} Existing or newly created task definition.
    */
   ensureTaskDefinition(taskTitle, pageId, context) {
     const definitionKey = `${taskTitle}|${pageId}`;
@@ -183,7 +186,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extract content and Artifact type for a definition element.
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged element.
-   * @return {{artifactType: string, elementContent: *}|null} - Content details or null when unsupported.
+   * @returns {{artifactType: string, elementContent: *}|null} Content details or null when unsupported.
    */
   extractDefinitionContent(pageElement) {
     const elementType = pageElement.getPageElementType();
@@ -206,8 +209,8 @@ class SlidesParser extends DocumentParser {
    * Attach Artifact parameters to a definition with role awareness.
    * @param {TaskDefinition} definition - Task definition to update.
    * @param {string} role - Either 'reference' or 'template'.
-   * @param {Object} params - Artifact payload.
-   * @return {void}
+   * @param {Object} parameters - Artifact payload.
+   * @returns {void}
    */
   addArtifactToDefinition(definition, role, parameters) {
     if (role === 'reference') {
@@ -220,6 +223,9 @@ class SlidesParser extends DocumentParser {
   /**
    * Extract student submission artifacts as primitives.
    * Returns array of { taskId, pageId, content, metadata }
+   * @param {string} documentId - The ID of the student submission presentation.
+   * @param {TaskDefinition[]} taskDefs - Task definitions to extract artifacts for.
+   * @returns {Array} Array of submission artifacts.
    */
   extractSubmissionArtifacts(documentId, taskDefs) {
     const presentation = SlidesApp.openById(documentId);
@@ -271,7 +277,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Group task definitions by page ID for quick lookup.
    * @param {TaskDefinition[]} taskDefs - Task definitions to index.
-   * @return {Object<string, TaskDefinition[]>} - Definitions keyed by page ID.
+   * @returns {Object<string, TaskDefinition[]>} Definitions keyed by page ID.
    */
   groupDefinitionsByPage(taskDefs) {
     const defsByPage = {};
@@ -289,7 +295,7 @@ class SlidesParser extends DocumentParser {
    * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE).
    * @param {string} pageId - Slide page ID.
    * @param {string} documentId - Student document ID for submission artifact.
-   * @return {{taskId: string, pageId: string, content: *, metadata?: Object, documentId: string}|null} - Artifact payload or null.
+   * @returns {{taskId: string, pageId: string, content: *, metadata?: Object, documentId: string}|null} Artifact payload or null.
    */
   collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId, documentId) {
     for (const pageElement of pageElements) {
@@ -300,7 +306,7 @@ class SlidesParser extends DocumentParser {
       if (tag !== '#' && tag !== '~') continue;
       if (key !== definition.taskTitle) continue;
       const contentDetails = this.extractDefinitionContent(pageElement);
-      if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+      if (contentDetails?.artifactType !== typeNeeded) continue;
       return {
         taskId: definition.getId(),
         pageId,
@@ -314,7 +320,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Helper function to retrieve the slide ID.
    * @param {GoogleAppsScript.Slides.Slide} slide - The slide object.
-   * @return {string} - The unique ID of the slide.
+   * @returns {string} The unique ID of the slide.
    */
   // Returns the pageId (slide ID for presentations or sheet tab ID for spreadsheets)
   getPageId(slide) {
@@ -324,7 +330,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extracts text from a shape element.
    * @param {GoogleAppsScript.Slides.Shape} shape - The shape element to extract text from.
-   * @return {string} - The extracted text from the shape.
+   * @returns {string} The extracted text from the shape.
    */
   extractTextFromShape(shape) {
     if (!shape?.getText) {
@@ -344,7 +350,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extracts text from a table element and converts it to Markdown.
    * @param {GoogleAppsScript.Slides.Table} table - The table element to extract text from.
-   * @return {string} - The extracted Markdown text from the table.
+   * @returns {string} The extracted Markdown text from the table.
    */
   extractTextFromTable(table) {
     // Delegate to DocumentParser helper which accepts 2D arrays. We extract cells then convert.
@@ -354,8 +360,8 @@ class SlidesParser extends DocumentParser {
 
   /**
    * Extract raw 2D cell array from a Slides table (preferred for TABLE artifacts).
-   * @param {GoogleAppsScript.Slides.Table} table
-   * @return {Array<Array<string|null>>} Cell values trimmed; empty cells as '' (later normalised to null by TableTaskArtifact)
+   * @param {GoogleAppsScript.Slides.Table} table - The table to extract cells from.
+   * @returns {Array<Array<string|null>>} Cell values trimmed; empty cells as '' (later normalised to null by TableTaskArtifact)
    */
   extractTableCells(table) {
     try {
@@ -382,7 +388,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extract text from a table cell, handling merged cells correctly.
    * @param {GoogleAppsScript.Slides.TableCell} cell - The cell to extract text from.
-   * @return {string} - Trimmed text content, or empty string for merged non-head cells.
+   * @returns {string} Trimmed text content, or empty string for merged non-head cells.
    */
   extractCellText(cell) {
     if (!cell) {
@@ -403,7 +409,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extracts text from any page element (Shape, Table, Image).
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The page element to extract text from.
-   * @return {string} - The extracted text or image description.
+   * @returns {string} The extracted text or image description.
    */
   extractTextFromPageElement(pageElement) {
     const type = pageElement.getPageElementType();
@@ -428,7 +434,7 @@ class SlidesParser extends DocumentParser {
   /**
    * Extracts image description or relevant metadata from an image element.
    * @param {GoogleAppsScript.Slides.Image} image - The image element to extract data from.
-   * @return {string} - The extracted description or metadata.
+   * @returns {string} The extracted description or metadata.
    */
   extractImageDescription(image) {
     // Assuming that the image has alt text or description that specifies the category

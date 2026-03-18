@@ -9,7 +9,7 @@
  */
 class ScriptAppManager {
   /**
-   *
+   * Initialises the ScriptAppManager with authorisation information.
    */
   constructor() {
     this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
@@ -21,8 +21,8 @@ class ScriptAppManager {
   }
 
   /**
-   * Retrieves the script ID and stores it in the instance
-   * @returns {string} The script ID
+   * Retrieves the script ID and stores it in the instance.
+   * @returns {string} The script ID.
    */
   getScriptId() {
     this.scriptId = ScriptApp.getScriptId();

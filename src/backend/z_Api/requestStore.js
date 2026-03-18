@@ -18,6 +18,12 @@ if (typeof module !== 'undefined' && module.exports) {
 
 /**
  * Returns a new started-request record. Pure factory — does not read or write properties.
+ * Used to track when a request was initiated.
+ *
+ * @param {string} requestId - Unique identifier for this request.
+ * @param {string} method - API method name that was invoked.
+ * @returns {Object} Started record with requestId, method, status, and timestamp.
+ * @throws {Error} Throws if requestId or method validation fails.
  */
 function createStartedRecord(requestId, method) {
   Validate.requireParams({ requestId, method }, 'createStartedRecord');
@@ -32,6 +38,9 @@ function createStartedRecord(requestId, method) {
 /**
  * Loads the request store from user properties.
  * Returns an empty object if the property is absent, unparseable, or not a plain object.
+ * Logs warnings if the stored value is invalid or unparseable.
+ *
+ * @returns {Object} Request store object mapping requestId to record. May be empty.
  */
 function loadStore() {
   const raw = PropertiesService.getUserProperties().getProperty(userRequestStoreKey);
@@ -60,7 +69,10 @@ function loadStore() {
 }
 
 /**
- * Persists the request store to user properties.
+ * Persists the request store to user properties as a JSON string.
+ *
+ * @param {Object} store - The request store object to persist.
+ * @throws {Error} Throws if store validation fails or persistence fails.
  */
 function saveStore(store) {
   Validate.requireParams({ store }, 'saveStore');
@@ -68,8 +80,14 @@ function saveStore(store) {
 }
 
 /**
- * Marks a request as successful, recording the completion timestamp.
+ * Marks a request as successful in the store.
+ * Records the completion timestamp as the current time.
  * Mutates and returns the store.
+ *
+ * @param {Object} store - The request store object.
+ * @param {string} requestId - The request ID to mark as successful.
+ * @returns {Object} The mutated store object.
+ * @throws {Error} Throws if store or requestId validation fails.
  */
 function markSuccess(store, requestId) {
   Validate.requireParams({ store, requestId }, 'markSuccess');
@@ -79,8 +97,15 @@ function markSuccess(store, requestId) {
 }
 
 /**
- * Marks a request as failed, recording the completion timestamp and error message.
+ * Marks a request as failed in the store.
+ * Records the completion timestamp and error message for diagnostics.
  * Mutates and returns the store.
+ *
+ * @param {Object} store - The request store object.
+ * @param {string} requestId - The request ID to mark as failed.
+ * @param {string} errorMessage - The error message to store.
+ * @returns {Object} The mutated store object.
+ * @throws {Error} Throws if store, requestId, or errorMessage validation fails.
  */
 function markError(store, requestId, errorMessage) {
   Validate.requireParams({ store, requestId, errorMessage }, 'markError');
@@ -92,13 +117,14 @@ function markError(store, requestId, errorMessage) {
 
 /**
  * Removes stale started entries from the store.
- * An entry is considered stale when its status is 'started' and its startedAtMs is
- * older than the given staleness threshold.  Completed entries (success or error)
- * are never removed.
+ * An entry is considered stale when its status is 'started' and its startedAtMs is older than the given threshold.
+ * Completed entries (success or error) are never removed by this function.
  * Mutates and returns the store.
+ *
  * @param {Object} store - The request store object.
  * @param {number} stalenessThresholdMs - Age in milliseconds beyond which a started entry is stale.
- * @returns {Object} The mutated store.
+ * @returns {Object} The mutated store object.
+ * @throws {Error} Throws if store or stalenessThresholdMs validation fails.
  */
 function pruneStaleEntries(store, stalenessThresholdMs) {
   Validate.requireParams({ store, stalenessThresholdMs }, 'pruneStaleEntries');
@@ -112,9 +138,14 @@ function pruneStaleEntries(store, stalenessThresholdMs) {
 }
 
 /**
- * Removes the oldest completed entries when the store exceeds MAX_TRACKED_REQUESTS.
- * Active (started) entries are always preserved.
- * Returns the compacted store.
+ * Compacts the request store by removing oldest completed entries when the store exceeds MAX_TRACKED_REQUESTS.
+ * Active (started) entries are always preserved to ensure ongoing requests are not lost.
+ * Completed entries are sorted by start time, with oldest entries removed first.
+ * Mutates and returns the store.
+ *
+ * @param {Object} store - The request store object.
+ * @returns {Object} The mutated store object, potentially reduced in size.
+ * @throws {Error} Throws if store validation fails.
  */
 function compactStore(store) {
   Validate.requireParams({ store }, 'compactStore');

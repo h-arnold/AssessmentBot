@@ -37,7 +37,7 @@ const BatchUpdateUtility = {
   /**
    * Executes multiple batch update requests for different spreadsheets.
    * @param {Object[]} batchUpdates - Array of objects each containing 'requests' (Object[]) and 'spreadsheetId' (string).
-   * @return {Object[]} Array of responses from each batch update operation.
+   * @returns {Object[]} Array of responses from each batch update operation.
    * @throws {Error} If any batch update fails.
    */
   executeMultipleBatchUpdates(batchUpdates) {

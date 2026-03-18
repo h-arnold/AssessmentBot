@@ -1,15 +1,15 @@
 // Teacher.js
 
 /**
- * Teacher Class
- *
- * Minimal model to represent a teacher referenced in classroom sheets.
+ * Represents a teacher referenced in classroom sheets.
+ * Holds contact information and unique identifiers.
  */
 class Teacher {
   /**
+   * Constructs a Teacher instance.
    * @param {string} email - Teacher's email address
-   * @param {string} userId - Google userId for the teacher (from Classroom API)
-   * @param {string} teacherName - Optional full name of the teacher
+   * @param {string|null} [userId] - Google userId for the teacher (from Classroom API)
+   * @param {string|null} [teacherName] - Optional full name of the teacher
    */
   constructor(email, userId = null, teacherName = null) {
     this.userId = userId || null;
@@ -19,7 +19,7 @@ class Teacher {
 
   /**
    * Get the teacher's name.
-   * @return {string|null}
+   * @returns {string|null} The teacher's name, or null if not set
    */
   getTeacherName() {
     return this.teacherName;
@@ -27,7 +27,7 @@ class Teacher {
 
   /**
    * Set the teacher's name.
-   * @param {string} name
+   * @param {string|null} name - The teacher's name, or null to clear
    */
   setTeacherName(name = null) {
     if (!name) {
@@ -45,7 +45,7 @@ class Teacher {
 
   /**
    * Get the teacher's email address.
-   * @return {string|null}
+   * @returns {string|null} The teacher's email, or null if not set
    */
   getEmail() {
     return this.email;
@@ -53,7 +53,7 @@ class Teacher {
 
   /**
    * Set the teacher's email address.
-   * @param {string} email
+   * @param {string|null} email - The teacher's email, or null to clear
    */
   setEmail(email = null) {
     if (!email) {
@@ -71,7 +71,7 @@ class Teacher {
 
   /**
    * Get the teacher's Google userId.
-   * @return {string|null}
+   * @returns {string|null} The teacher's Google userId, or null if not set
    */
   getUserId() {
     return this.userId;
@@ -79,7 +79,7 @@ class Teacher {
 
   /**
    * Set the teacher's Google userId.
-   * @param {string} userId
+   * @param {string|null} userId - The teacher's Google userId, or null to clear
    */
   setUserId(userId = null) {
     if (!userId) {
@@ -96,20 +96,21 @@ class Teacher {
   }
 
   /**
-   *
+   * Serialises this teacher to a JSON object.
+   * @returns {Object} A plain object representation of the teacher
    */
   toJSON() {
-    return Object.assign(
-      {
-        email: this.email,
-        userId: this.userId,
-      },
-      this.teacherName == null ? {} : { teacherName: this.teacherName }
-    );
+    return {
+      email: this.email,
+      userId: this.userId,
+      ...(this.teacherName == null ? {} : { teacherName: this.teacherName }),
+    };
   }
 
   /**
-   *
+   * Deserialises a JSON object to a Teacher instance.
+   * @param {Object|null} json - The serialised teacher object
+   * @returns {Teacher|null} A new Teacher instance, or null if json is falsy
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;

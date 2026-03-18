@@ -12,7 +12,7 @@
 class SheetsFeedback {
   /**
    * Creates an instance of SheetsFeedback.
-   * @param {Array} studentTasks - Array of StudentTask objects to process feedback for.
+   * @param {Array<StudentSubmission>} studentTasksOrSubmissions - Array of StudentSubmission objects to process feedback for.
    */
   constructor(studentTasksOrSubmissions) {
     // Accept new model submissions array; fall back for backward compatibility.
@@ -22,8 +22,7 @@ class SheetsFeedback {
 
   /**
    * Applies visual feedback to all student spreadsheets based on their assessments.
-   * Uses different colors for correct, incorrect, and not attempted cells.
-   */
+   * Uses different colors for correct, incorrect, and not attempted cells.   * @returns {void}   */
   applyFeedback() {
     try {
       const batchUpdates = [];
@@ -62,8 +61,8 @@ class SheetsFeedback {
 
   /**
    * Generates all batch update requests for a single student's spreadsheet.
-   * @param {StudentTask} studentTask - The student task to generate requests for.
-   * @return {Array} Array of batch update request objects.
+   * @param {StudentSubmission} sub - The student submission to generate requests for.
+   * @returns {Array} Array of batch update request objects.
    */
   generateBatchRequestsForSubmission(sub) {
     const requests = [];
@@ -92,7 +91,7 @@ class SheetsFeedback {
    * @param {number} colIndex - Zero-based column index.
    * @param {string} status - The status of the cell ("correct", "incorrect", "notAttempted").
    * @param {number} sheetId - The sheet ID (defaults to 0 for the first sheet).
-   * @return {Object} A batch update request object for formatting the cell.
+   * @returns {Object} A batch update request object for formatting the cell.
    */
   createCellFormatRequest(rowIndex, colIndex, status, sheetId = 0) {
     // Create a grid range directly from indices
@@ -122,7 +121,7 @@ class SheetsFeedback {
   /**
    * Gets the appropriate cell format based on the status.
    * @param {string} status - The status of the cell ("correct", "incorrect", "notAttempted").
-   * @return {Object} A format object with background color.
+   * @returns {Object} A format object with background colour.
    */
   getFormatForStatus(status) {
     switch (status) {

@@ -1,21 +1,29 @@
 const ITEM_NOT_FOUND_INDEX = -1;
 
 /**
- *
+ * Finds the index of the first item in an array matching the given predicate.
+ * @param {Array} items - The array to search
+ * @param {Function} predicate - Function that receives (item, index, collection) and returns true for a match
+ * @returns {number} Index of the matching item, or -1 if not found
  */
 function findIndexWithPredicate(items, predicate) {
   return items.findIndex((item, index, collection) => predicate(item, index, collection));
 }
 
 /**
- *
+ * Finds the first item in an array matching the given predicate.
+ * @param {Array} items - The array to search
+ * @param {Function} predicate - Function that receives (item, index, collection) and returns true for a match
+ * @returns {*|null} The matching item, or null if not found
  */
 function findWithPredicate(items, predicate) {
   return items.find((item, index, collection) => predicate(item, index, collection)) || null;
 }
 
 /**
- *
+ * Serialises an array of objects by calling toJSON() on each item if available.
+ * @param {Array} items - Array of objects to serialise
+ * @returns {Array} Array of serialised objects
  */
 function serialiseArray(items) {
   return (items || []).map((item) =>
@@ -24,8 +32,10 @@ function serialiseArray(items) {
 }
 
 /**
- * Serialises an owner object, calling toJSON() if available.
+ * Serialises an owner object by calling toJSON() if available.
  * Returns null when owner is absent.
+ * @param {Object|null} owner - The owner object to serialise
+ * @returns {Object|null} The serialised owner object, or null if owner is falsy
  */
 function serialiseOwner(owner) {
   if (!owner) return null;
@@ -42,29 +52,43 @@ function serialiseOwner(owner) {
  */
 class ABClass {
   /**
-   * @param {string} classId - Google Classroom courseId (primary key)
-   * @param {string} className - Human readable class name
-   * @param {string|number} cohort - Year the cohort started (e.g. 2025) or a string/enum
-   * @param {number} courseLength - Length of the course in years (integer)
-   * @param {number} yearGroup - Current year group (integer)
-   * @param {object} classOwner - The Google Classroom class owner (teacher object)
-   * @param {Array} teachers - Array of teacher objects (raw or Teacher instances)
-   * @param {Array} students - Array of student objects (raw or Student instances)
-   * @param {Array} assignments - Array of assignment objects (raw or Assignment instances)
-   * @param {boolean|null} active - Whether the class is active (null if unknown)
+   * Constructs an ABClass instance with class metadata, students, teachers, and assignments.
+   * Accepts either a legacy positional argument list or a single options object.
+   * @param {...*} arguments_ - Legacy positional arguments or one options object.
    */
-  constructor(
-    classId,
-    className = null,
-    cohort = null,
-    courseLength = 1,
-    yearGroup = null,
-    classOwner = null,
-    teachers = [],
-    students = [],
-    assignments = [],
-    active = null
-  ) {
+  constructor(...arguments_) {
+    const options =
+      arguments_.length === 1 &&
+      arguments_[0] &&
+      typeof arguments_[0] === 'object' &&
+      !Array.isArray(arguments_[0])
+        ? arguments_[0]
+        : {
+            classId: arguments_[0],
+            className: arguments_[1],
+            cohort: arguments_[2],
+            courseLength: arguments_[3],
+            yearGroup: arguments_[4],
+            classOwner: arguments_[5],
+            teachers: arguments_[6],
+            students: arguments_[7],
+            assignments: arguments_[8],
+            active: arguments_[9],
+          };
+
+    const {
+      classId,
+      className = null,
+      cohort = null,
+      courseLength = 1,
+      yearGroup = null,
+      classOwner = null,
+      teachers = [],
+      students = [],
+      assignments = [],
+      active = null,
+    } = options;
+
     if (!classId) throw new TypeError('classId is required');
     this.classId = classId;
     this.className = className || null;
@@ -95,14 +119,19 @@ class ABClass {
 
   // Owner helpers
   /**
-   *
+   * Gets the class owner (teacher).
+   * @returns {Teacher|null} The class owner teacher object, or null if not set
    */
   getClassOwner() {
     return this.classOwner || null;
   }
 
   /**
-   *
+   * Sets the class owner (teacher).
+   * Accepts Teacher instances or plain objects, coercing to Teacher when possible.
+   * @param {Teacher|Object} owner - The teacher object to set as class owner
+   * @returns {Teacher} The verified owner as a Teacher instance
+   * @throws {TypeError} If owner is not a valid Teacher instance
    */
   setClassOwner(owner) {
     const logger = ABLogger.getInstance();
@@ -131,13 +160,12 @@ class ABClass {
     return this.classOwner;
   }
 
-  /*
-   * @param {*} value
-   * @param {number|null} defaultValue
-   * @return {number|null}
-   */
   /**
-   *
+   * Parses a value to an integer, returning a default if parsing fails.
+   * @param {*} value - The value to parse
+   * @param {number|null} defaultValue - The default value to return if parsing fails
+   * @returns {number|null} The parsed integer, or defaultValue if parsing fails
+   * @private
    */
   static _parseNullableInt(value, defaultValue) {
     if (value === null || value === undefined) return defaultValue;
@@ -149,21 +177,24 @@ class ABClass {
 
   // Basic getters
   /**
-   *
+   * Gets the unique class ID (Google Classroom course ID).
+   * @returns {string} The class ID
    */
   getClassId() {
     return this.classId;
   }
 
   /**
-   *
+   * Gets the class name.
+   * @returns {string|null} The class name, or null if not set
    */
   getClassName() {
     return this.className;
   }
 
   /**
-   *
+   * Sets the class name.
+   * @param {string|null} name - The class name to set
    */
   setClassName(name) {
     this.className = name || null;
@@ -171,7 +202,8 @@ class ABClass {
 
   // Cohort helpers
   /**
-   *
+   * Gets the cohort start year as an integer.
+   * @returns {number|null} The cohort start year, or null if not parseable
    */
   getCohortStartYear() {
     if (!this.cohort) return null;
@@ -180,9 +212,9 @@ class ABClass {
   }
 
   /**
-   * Returns an array containing the cohort year range as strings.
-   * e.g. cohort=2025, courseLength=1 -> ['2025-2026']
-   * If courseLength > 1 returns multiple ranges for each academic year segment up to courseLength.
+   * Gets an array of cohort year ranges based on course length.
+   * For example: cohort=2025, courseLength=2 returns ['2025-2026', '2026-2027'].
+   * @returns {Array<string>} Array of year range strings in format 'YYYY-YYYY'
    */
   getCohortYearRanges() {
     const start = this.getCohortStartYear();
@@ -198,7 +230,9 @@ class ABClass {
 
   // Teacher management
   /**
-   *
+   * Adds a teacher to this class.
+   * @param {Teacher} teacher - The teacher to add
+   * @returns {Teacher|null} The added teacher, or null if teacher is falsy
    */
   addTeacher(teacher) {
     if (!teacher) return null;
@@ -207,7 +241,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Removes the first teacher matching the predicate.
+   * @param {Function} predicate - Function that receives (teacher, index, collection) and returns true for the target
+   * @returns {Teacher|null} The removed teacher, or null if not found
    */
   removeTeacher(predicate) {
     const index = findIndexWithPredicate(this.teachers, predicate);
@@ -216,7 +252,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Finds the first teacher matching the predicate.
+   * @param {Function} predicate - Function that receives (teacher, index, collection) and returns true for the target
+   * @returns {Teacher|null} The matching teacher, or null if not found
    */
   findTeacher(predicate) {
     return findWithPredicate(this.teachers, predicate);
@@ -224,7 +262,9 @@ class ABClass {
 
   // Student management
   /**
-   *
+   * Adds a student to this class.
+   * @param {Student} student - The student to add
+   * @returns {Student|null} The added student, or null if student is falsy
    */
   addStudent(student) {
     if (!student) return null;
@@ -233,7 +273,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Removes the first student matching the predicate.
+   * @param {Function} predicate - Function that receives (student, index, collection) and returns true for the target
+   * @returns {Student|null} The removed student, or null if not found
    */
   removeStudent(predicate) {
     const index = findIndexWithPredicate(this.students, predicate);
@@ -242,7 +284,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Finds the first student matching the predicate.
+   * @param {Function} predicate - Function that receives (student, index, collection) and returns true for the target
+   * @returns {Student|null} The matching student, or null if not found
    */
   findStudent(predicate) {
     return findWithPredicate(this.students, predicate);
@@ -250,7 +294,9 @@ class ABClass {
 
   // Assignment management
   /**
-   *
+   * Adds an assignment to this class.
+   * @param {Assignment} assignment - The assignment to add
+   * @returns {Assignment|null} The added assignment, or null if assignment is falsy
    */
   addAssignment(assignment) {
     if (!assignment) return null;
@@ -259,7 +305,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Removes the first assignment matching the predicate.
+   * @param {Function} predicate - Function that receives (assignment, index, collection) and returns true for the target
+   * @returns {Assignment|null} The removed assignment, or null if not found
    */
   removeAssignment(predicate) {
     const index = findIndexWithPredicate(this.assignments, predicate);
@@ -268,7 +316,9 @@ class ABClass {
   }
 
   /**
-   *
+   * Finds the first assignment matching the predicate.
+   * @param {Function} predicate - Function that receives (assignment, index, collection) and returns true for the target
+   * @returns {Assignment|null} The matching assignment, or null if not found
    */
   findAssignment(predicate) {
     return findWithPredicate(this.assignments, predicate);
@@ -278,7 +328,7 @@ class ABClass {
    * Find the array index of an assignment matching the predicate.
    * Supports immutable replace pattern during rehydration.
    * @param {Function} predicate - Function that returns true for the target assignment
-   * @return {number} Index of the matching assignment, or -1 if not found
+   * @returns {number} Index of the matching assignment, or -1 if not found
    */
   findAssignmentIndex(predicate) {
     return findIndexWithPredicate(this.assignments, predicate);
@@ -286,7 +336,8 @@ class ABClass {
 
   // toJSON serializes contained objects by calling toJSON if available.
   /**
-   *
+   * Serialises this class to a JSON object.
+   * @returns {Object} A plain object representation of the class and all its contents
    */
   toJSON() {
     return {
@@ -304,8 +355,9 @@ class ABClass {
   }
 
   /**
-   * Returns a lightweight partial representation of the class, omitting
-   * students and assignments. Suitable for list views and class-selector UIs.
+   * Returns a lightweight partial representation of the class, omitting students and assignments.
+   * Suitable for list views and class-selector UIs.
+   * @returns {Object} A partial object representation with class metadata and teachers, but no students or assignments
    */
   toPartialJSON() {
     return {
@@ -322,7 +374,9 @@ class ABClass {
 
   // fromJSON reconstructs an ABClass instance from previously serialized data.
   /**
-   *
+   * Deserialises a JSON object to an ABClass instance.
+   * @param {Object|null} json - The serialised class object
+   * @returns {ABClass|null} A new ABClass instance, or null if json is falsy
    */
   static fromJSON(json) {
     if (!json || typeof json !== 'object') return null;

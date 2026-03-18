@@ -12,7 +12,7 @@ const JSON_DB_LOG_LEVELS = Object.freeze(['DEBUG', 'INFO', 'WARN', 'ERROR']);
  * Validates a configured JsonDbApp log level and normalises it to uppercase.
  * @param {string} label - Human-readable label for error messaging.
  * @param {*} value - Candidate log level.
- * @return {string} Validated uppercase log level.
+ * @returns {string} Validated uppercase log level.
  * @throws {Error} If the value is empty or not one of the supported levels.
  */
 function validateLogLevel(label, value) {
@@ -40,7 +40,7 @@ function validateRequiredClassInfoStringProperty(keyLabel, propertyName, propert
 /**
  * Validates an API key token used by external integrations.
  * @param {*} value - Candidate API key.
- * @return {string} Original API key value when valid.
+ * @returns {string} Original API key value when valid.
  * @throws {Error} If the value is missing or has an invalid token format.
  */
 function validateApiKey(value) {
@@ -55,7 +55,7 @@ function validateApiKey(value) {
 /**
  * Coerces common boolean-like values to a boolean.
  * @param {*} value - Value to coerce.
- * @return {boolean} Coerced boolean value.
+ * @returns {boolean} Coerced boolean value.
  */
 function toBoolean(value) {
   if (Validate.isBoolean(value)) return value;
@@ -70,7 +70,7 @@ function toBoolean(value) {
 /**
  * Coerces a value to a lowercase boolean string.
  * @param {*} value - Value to normalise.
- * @return {string} `'true'` or `'false'` depending on the coerced value.
+ * @returns {string} `'true'` or `'false'` depending on the coerced value.
  */
 function toBooleanString(value) {
   return toBoolean(value) ? 'true' : 'false';
@@ -79,7 +79,7 @@ function toBooleanString(value) {
 /**
  * Converts an internal camel-case key to a human-readable label.
  * @param {string} key - Internal configuration key.
- * @return {string} Human-readable label.
+ * @returns {string} Human-readable label.
  */
 function toReadableKey(key) {
   return key.replaceAll(/([A-Z])/gu, ' $1').replace(/^./u, (string_) => string_.toUpperCase());

@@ -15,15 +15,17 @@ class ReferenceDataController {
   }
 
   /**
-   * @returns {Array<{name: string, active: boolean}>}
+   * Retrieves all cohort records from storage.
+   * @returns {Array<{name: string, active: boolean}>} List of all cohorts sorted by name.
    */
   listCohorts() {
     return this._listRecords(this._getConfig('cohort'));
   }
 
   /**
-   * @param {{name: string, active?: boolean}} record
-   * @returns {{name: string, active: boolean}}
+   * Creates a new cohort record in storage.
+   * @param {{name: string, active?: boolean}} record - The cohort data to create.
+   * @returns {{name: string, active: boolean}} The persisted cohort record.
    */
   createCohort(record) {
     Validate.requireParams({ record }, 'ReferenceDataController.createCohort');
@@ -31,8 +33,9 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{originalName: string, record: {name: string, active?: boolean}}} payload
-   * @returns {{name: string, active: boolean}}
+   * Updates an existing cohort record in storage.
+   * @param {{originalName: string, record: {name: string, active?: boolean}}} payload - Object containing the original name and updated record data.
+   * @returns {{name: string, active: boolean}} The updated cohort record.
    */
   updateCohort(payload) {
     Validate.requireParams({ payload }, 'ReferenceDataController.updateCohort');
@@ -42,7 +45,9 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {string} name
+   * Deletes a cohort record from storage.
+   * @param {string} name - The name of the cohort to delete.
+   * @returns {void}
    */
   deleteCohort(name) {
     Validate.requireParams({ name }, 'ReferenceDataController.deleteCohort');
@@ -50,15 +55,17 @@ class ReferenceDataController {
   }
 
   /**
-   * @returns {Array<{name: string}>}
+   * Retrieves all year group records from storage.
+   * @returns {Array<{name: string}>} List of all year groups sorted by name.
    */
   listYearGroups() {
     return this._listRecords(this._getConfig('yearGroup'));
   }
 
   /**
-   * @param {{name: string}} record
-   * @returns {{name: string}}
+   * Creates a new year group record in storage.
+   * @param {{name: string}} record - The year group data to create.
+   * @returns {{name: string}} The persisted year group record.
    */
   createYearGroup(record) {
     Validate.requireParams({ record }, 'ReferenceDataController.createYearGroup');
@@ -66,8 +73,9 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{originalName: string, record: {name: string}}} payload
-   * @returns {{name: string}}
+   * Updates an existing year group record in storage.
+   * @param {{originalName: string, record: {name: string}}} payload - Object containing the original name and updated record data.
+   * @returns {{name: string}} The updated year group record.
    */
   updateYearGroup(payload) {
     Validate.requireParams({ payload }, 'ReferenceDataController.updateYearGroup');
@@ -77,7 +85,9 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {string} name
+   * Deletes a year group record from storage.
+   * @param {string} name - The name of the year group to delete.
+   * @returns {void}
    */
   deleteYearGroup(name) {
     Validate.requireParams({ name }, 'ReferenceDataController.deleteYearGroup');
@@ -85,8 +95,13 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {'cohort'|'yearGroup'} resourceType
-   * @returns {{collectionName: string, modelClass: Function}}
+   * Retrieves configuration object for a resource type (cohort or yearGroup).
+   * Contains collection name and model class to use for that resource.
+   *
+   * @param {string} resourceType - Resource type identifier ('cohort' or 'yearGroup').
+   * @returns {{collectionName: string, modelClass: Function}} Configuration object.
+   * @throws {Error} If resourceType is not supported.
+   * @private
    */
   _getConfig(resourceType) {
     if (resourceType === 'cohort') {
@@ -107,8 +122,12 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{collectionName: string, modelClass: Function}} config
-   * @returns {Array<object>} Plain record objects with storage metadata stripped and sorted by `name` ascending.
+   * Retrieves all records from a collection and normalises them.
+   * Records are sorted by name ascending and storage metadata is stripped.
+   *
+   * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
+   * @returns {Array<Object>} Plain record objects sorted by name.
+   * @private
    */
   _listRecords(config) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -118,9 +137,14 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{collectionName: string, modelClass: Function}} config
-   * @param {object} record
-   * @returns {object}
+   * Creates a new record in the collection.
+   * Validates for duplicates (by normalised name) before insertion.
+   *
+   * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
+   * @param {Object} record - The record to create.
+   * @returns {Object} The persisted record as a plain object.
+   * @throws {Error} If a duplicate record (by normalised name) already exists.
+   * @private
    */
   _createRecord(config, record) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -139,10 +163,15 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{collectionName: string, modelClass: Function}} config
-   * @param {string} originalName
-   * @param {object} record
-   * @returns {object}
+   * Updates an existing record by name.
+   * Validates for duplicates (by normalised name) before replacement, excluding the original record.
+   *
+   * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
+   * @param {string} originalName - The original record name to find and replace.
+   * @param {Object} record - The updated record data.
+   * @returns {Object} The updated record as a plain object.
+   * @throws {Error} If the original record is not found or a duplicate exists.
+   * @private
    */
   _updateRecord(config, originalName, record) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -169,8 +198,12 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{collectionName: string}} config
-   * @param {string} name
+   * Deletes an existing record by name.
+   *
+   * @param {{collectionName: string}} config - Resource configuration.
+   * @param {string} name - The record name to find and delete.
+   * @throws {Error} If the record is not found.
+   * @private
    */
   _deleteRecord(config, name) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -187,9 +220,13 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {{modelClass: Function}} config
-   * @param {object} record
-   * @returns {object}
+   * Builds a record by deserialising from JSON and reserialising.
+   * Ensures the record conforms to the model class serialisation format.
+   *
+   * @param {{modelClass: Function}} config - Resource configuration.
+   * @param {Object} record - The record data to build.
+   * @returns {Object} The built (serialised) record.
+   * @private
    */
   _buildRecord(config, record) {
     const modelInstance = config.modelClass.fromJSON(record);
@@ -197,8 +234,12 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {string} name
-   * @returns {string}
+   * Trims whitespace from a name string.
+   *
+   * @param {string} name - The name to trim.
+   * @returns {string} The trimmed name.
+   * @throws {TypeError} If name is not a string.
+   * @private
    */
   _trimName(name) {
     Validate.requireParams({ name }, 'ReferenceDataController._trimName');
@@ -209,34 +250,47 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {string} name
-   * @returns {string}
+   * Normalises a name by trimming and converting to lowercase for comparison purposes.
+   *
+   * @param {string} name - The name to normalise.
+   * @returns {string} The normalised name.
+   * @private
    */
   _normaliseName(name) {
     return this._trimName(name).toLowerCase();
   }
 
   /**
-   * @param {Array<object>} records
-   * @param {string} name
-   * @returns {object|null}
+   * Finds a record by exact (trimmed) name match from a list.
+   *
+   * @param {Array<Object>} records - List of records to search.
+   * @param {string} name - The exact name to find (with trimming).
+   * @returns {Object|null} The matching record or null if not found.
+   * @private
    */
   _findByExactName(records, name) {
     return records.find((record) => this._trimName(record.name) === name) || null;
   }
 
   /**
-   * @param {Array<object>} records
-   * @param {string} normalisedName
-   * @returns {object|null}
+   * Finds a record by normalised name match from a list.
+   * Useful for case-insensitive duplicate detection.
+   *
+   * @param {Array<Object>} records - List of records to search.
+   * @param {string} normalisedName - The normalised name to find.
+   * @returns {Object|null} The matching record or null if not found.
+   * @private
    */
   _findByNormalisedName(records, normalisedName) {
     return records.find((record) => this._normaliseName(record.name) === normalisedName) || null;
   }
 
   /**
-   * @param {object} record
-   * @returns {object}
+   * Converts a record to a plain object, stripping storage-only metadata (e.g. _id).
+   *
+   * @param {Object} record - The record to convert.
+   * @returns {Object} Plain object without storage metadata.
+   * @private
    */
   _toPlainObject(record) {
     const plainObject = {};
@@ -251,8 +305,11 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {Array<object>} records
-   * @returns {Array<object>}
+   * Sorts records by name using merge sort algorithm.
+   *
+   * @param {Array<Object>} records - Records to sort.
+   * @returns {Array<Object>} Sorted records by name ascending.
+   * @private
    */
   _sortRecordsByName(records) {
     const minimumMergeSortPartitionSize = 2;
@@ -280,9 +337,13 @@ class ReferenceDataController {
   }
 
   /**
-   * @param {Array<object>} leftRecords
-   * @param {Array<object>} rightRecords
-   * @returns {Array<object>}
+   * Merges two sorted record arrays by name in ascending order.
+   * Used by merge sort to combine sorted partitions.
+   *
+   * @param {Array<Object>} leftRecords - Left sorted partition.
+   * @param {Array<Object>} rightRecords - Right sorted partition.
+   * @returns {Array<Object>} Merged sorted records.
+   * @private
    */
   _mergeSortedRecords(leftRecords, rightRecords) {
     const mergedRecords = [];

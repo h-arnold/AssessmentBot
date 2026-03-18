@@ -9,8 +9,7 @@ class SlidesAssignment extends Assignment {
    * Constructs a SlidesAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference slides document.
-   * @param {string} templateDocumentId - The ID of the template slides document.
+   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing document type and task metadata.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     const definitionInstance =
@@ -21,9 +20,9 @@ class SlidesAssignment extends Assignment {
   }
 
   /**
-   * Deserialize SlidesAssignment from JSON data.
-   * @param {object} data - JSON data object
-   * @return {SlidesAssignment} Reconstructed SlidesAssignment instance
+   * Deserialises SlidesAssignment from JSON data.
+   * @param {object} data - JSON data object.
+   * @returns {SlidesAssignment} Reconstructed SlidesAssignment instance.
    */
   static fromJSON(data) {
     const inst = Assignment._baseFromJSON(data);

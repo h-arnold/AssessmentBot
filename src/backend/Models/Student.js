@@ -20,7 +20,7 @@ class Student {
 
   /**
    * Serializes the Student instance to a JSON object.
-   * @return {Object} - The JSON representation of the Student.
+   * @returns {Object} The JSON representation of the Student
    */
   toJSON() {
     return {
@@ -32,8 +32,8 @@ class Student {
 
   /**
    * Deserializes a JSON object to a Student instance.
-   * @param {Object} json - The JSON object representing a Student.
-   * @return {Student} - The Student instance.
+   * @param {Object} json - The JSON object representing a Student
+   * @returns {Student} The Student instance
    */
   static fromJSON(json) {
     const { name, email, id } = json;

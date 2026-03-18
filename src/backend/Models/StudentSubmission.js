@@ -4,17 +4,15 @@
 const STUDENT_SUBMISSION_ITEM_HASH_LENGTH = 16;
 
 /**
- *
+ * Represents a single submission item within a student submission.
+ * Each item corresponds to a task and holds the submitted artifact, assessments, and feedback.
  */
 class StudentSubmissionItem {
   /**
-   * @param {Object} p
-   * @param {string} p.taskId
-   * @param {BaseTaskArtifact} p.artifact (role='submission')
-   *
-   * Note: We intentionally do NOT store assignmentId/studentId/documentId/pageId
-   * on the item to avoid duplicated canonical data; these are available on
-   * the parent StudentSubmission or on the artifact itself.
+   * Constructs a StudentSubmissionItem instance.
+   * @param {Object} p - Constructor parameters
+   * @param {string} p.taskId - The task ID
+   * @param {BaseTaskArtifact} p.artifact - The submission artifact (role='submission')
    */
   constructor({ taskId, artifact }) {
     if (!taskId) throw new Error('StudentSubmissionItem missing taskId');
@@ -27,7 +25,10 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Derives a stable unique ID for this submission item.
+   * Uses the artifact's UID if available, falling back to contentHash or taskId.
+   * @returns {string} A unique identifier prefixed with 'ssi_'
+   * @private
    */
   _deriveId() {
     // Prefer artifact UID for stable identity; fall back to contentHash or taskId.
@@ -41,7 +42,9 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Adds an assessment for a specific criterion.
+   * @param {string} criterion - The criterion identifier
+   * @param {Assessment|Object} assessment - The assessment object or JSON
    */
   addAssessment(criterion, assessment) {
     if (!criterion)
@@ -56,7 +59,9 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Gets assessment data for a specific criterion or all assessments.
+   * @param {string|null} [criterion=null] - The criterion to retrieve, or null for all assessments
+   * @returns {Object|null} Assessment data for the criterion, or null if not found
    */
   getAssessment(criterion = null) {
     if (!criterion) return this.assessments || null;
@@ -64,7 +69,9 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Adds feedback of a specific type.
+   * @param {string} type - The feedback type identifier
+   * @param {Object} feedbackObject - The feedback object
    */
   addFeedback(type, feedbackObject) {
     if (!type) throw new Error('addFeedback requires a feedback type identifier');
@@ -73,7 +80,9 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Gets feedback of a specific type or all feedback.
+   * @param {string|null} [type=null] - The feedback type to retrieve, or null for all feedback
+   * @returns {Object|null} Feedback for the type, or null if not found
    */
   getFeedback(type = null) {
     if (!type) return this.feedback || null;
@@ -81,14 +90,16 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Gets the artifact type.
+   * @returns {string} The artifact type
    */
   getType() {
     return this.artifact.getType();
   }
 
   /**
-   *
+   * Serialises this submission item to a JSON object.
+   * @returns {Object} A plain object representation of the submission item
    */
   toJSON() {
     return {
@@ -104,8 +115,8 @@ class StudentSubmissionItem {
   }
 
   /**
-   * Return a partial JSON payload with heavy artifact fields redacted.
-   * @return {Object}
+   * Returns a partial JSON payload with heavy artifact fields redacted.
+   * @returns {Object} A partial representation with artifact content minimised
    */
   toPartialJSON() {
     const json = this.toJSON();
@@ -115,7 +126,10 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Strips assessment reasoning from assessments to reduce payload size.
+   * @param {Object} assessments - Assessment data keyed by criterion
+   * @returns {Object} Assessments without reasoning
+   * @private
    */
   static _stripAssessmentReasoning(assessments) {
     if (!assessments || typeof assessments !== 'object') return assessments;
@@ -128,7 +142,10 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Removes reasoning from a single assessment object.
+   * @param {Object} assessment - The assessment object
+   * @returns {Object} Assessment without the reasoning property
+   * @private
    */
   static _removeAssessmentReasoning(assessment) {
     if (!assessment || typeof assessment !== 'object') return assessment;
@@ -137,7 +154,9 @@ class StudentSubmissionItem {
   }
 
   /**
-   *
+   * Deserialises a JSON object to a StudentSubmissionItem instance.
+   * @param {Object} json - The serialised submission item object
+   * @returns {StudentSubmissionItem} A new StudentSubmissionItem instance
    */
   static fromJSON(json) {
     const artifact = ArtifactFactory.fromJSON(json.artifact);
@@ -155,14 +174,16 @@ class StudentSubmissionItem {
 }
 
 /**
- *
+ * Represents a complete student submission for an assignment.
+ * Contains multiple submission items (one per task) along with artefacts, assessments, and feedback.
  */
 class StudentSubmission {
   /**
-   * @param {string} studentId
-   * @param {string} assignmentId
-   * @param {string=} documentId
-   * @param {string=} studentName
+   * Constructs a StudentSubmission instance.
+   * @param {string} studentId - The student ID
+   * @param {string} assignmentId - The assignment ID
+   * @param {string} [documentId=null] - The source document ID
+   * @param {string} [studentName=null] - The student's name
    */
   constructor(studentId, assignmentId, documentId = null, studentName = null) {
     if (!studentId || !assignmentId)
@@ -179,7 +200,8 @@ class StudentSubmission {
   }
 
   /**
-   *
+   * Updates the updatedAt timestamp to the current time.
+   * Uses a counter to ensure strictly monotonic timestamps even within the same millisecond.
    */
   touchUpdated() {
     // Ensure strictly monotonic updatedAt even if multiple updates within same ms
@@ -189,20 +211,23 @@ class StudentSubmission {
   }
 
   /**
-   *
+   * Gets a submission item for the given task ID.
+   * @param {string} taskId - The task ID
+   * @returns {StudentSubmissionItem|undefined} The submission item, or undefined if not found
    */
   getItem(taskId) {
     return this.items[taskId];
   }
 
   /**
-   * Upsert submission artifacts from primitive extraction results (student side only).
+   * Upserts submission artifacts from primitive extraction results (student side only).
    * Creates the submission artifact via ArtifactFactory when none exists, or merges content/metadata
    * into the existing submission artifact for the same taskId. This is distinct from
    * TaskDefinition.addReferenceArtifact/addTemplateArtifact, which always create new reference/template
    * artifacts during parsing and never mutate. Expects primitive extraction payload from parsers/assignments.
-   * @param {TaskDefinition} taskDefinition - Task definition providing ids/type hints.
-   * @param {Object} extraction - { pageId?, content?, metadata?, documentId? }
+   * @param {TaskDefinition} taskDefinition - Task definition providing ids/type hints
+   * @param {Object} extraction - Extraction parameters (pageId, content, metadata, documentId)
+   * @returns {StudentSubmissionItem} The created or updated submission item
    */
   upsertItemFromExtraction(taskDefinition, extraction = {}) {
     if (!taskDefinition) {
@@ -266,7 +291,11 @@ class StudentSubmission {
   }
 
   /**
-   *
+   * Infers the artifact type from the task definition.
+   * Checks the primary reference artifact first, then metadata hints.
+   * @param {TaskDefinition} taskDefinition - The task definition
+   * @returns {string} The inferred artifact type (defaults to 'TEXT')
+   * @private
    */
   _inferTypeFromTask(taskDefinition) {
     // Attempt to infer from primary reference artifact if present
@@ -278,7 +307,8 @@ class StudentSubmission {
   }
 
   /**
-   *
+   * Serialises this student submission to a JSON object.
+   * @returns {Object} A plain object representation of the submission with all items
    */
   toJSON() {
     return {
@@ -293,8 +323,9 @@ class StudentSubmission {
   }
 
   /**
-   * Return a partial JSON payload with artifacts redacted for lightweight persistence.
-   * @return {Object}
+   * Serialises this submission to a partial JSON object with artifacts redacted.
+   * Suitable for lightweight persistence and list operations.
+   * @returns {Object} A partial object representation with item artifacts redacted
    */
   toPartialJSON() {
     const json = this.toJSON();
@@ -305,7 +336,9 @@ class StudentSubmission {
   }
 
   /**
-   *
+   * Deserialises a JSON object to a StudentSubmission instance.
+   * @param {Object} json - The serialised submission object
+   * @returns {StudentSubmission} A new StudentSubmission instance
    */
   static fromJSON(json) {
     const sub = new StudentSubmission(

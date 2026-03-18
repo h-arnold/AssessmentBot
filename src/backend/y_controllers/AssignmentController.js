@@ -11,7 +11,9 @@ const ASSESSMENT_RUN_SUCCESS_MESSAGE = 'Assessment run completed successfully.';
  */
 class AssignmentController {
   /**
-   *
+   * Initialises the AssignmentController.
+   * Retains Utils for general utility methods and accesses the ProgressTracker singleton.
+   * Other controllers and managers are lazily instantiated in individual methods.
    */
   constructor() {
     // Retain Utils for general utility methods not related to Classroom
@@ -239,7 +241,7 @@ class AssignmentController {
    * @param {AssignmentDefinition} assignmentDefinition - Embedded definition for the assignment.
    * @param {string} courseId - The Classroom course ID.
    * @param {string} assignmentId - The assignment ID.
-   * @return {SlidesAssignment|SheetsAssignment} The instantiated assignment.
+   * @returns {SlidesAssignment|SheetsAssignment} The instantiated assignment.
    */
   createAssignmentInstance(assignmentDefinition, courseId, assignmentId) {
     return this.runStage(
@@ -251,11 +253,14 @@ class AssignmentController {
 
   /**
    * Runs shared assignment stages with optional image processing.
+   * Orchestrates the complete pipeline: adds students, populates tasks, fetches submissions,
+   * processes work and images, and assesses responses.
    * @param {SlidesAssignment|SheetsAssignment} assignment - Assignment instance to populate.
-   * @param {Object[]} students - Students sourced from the class record.
+   * @param {Array<Object>} students - Students sourced from the class record.
    * @param {Object} [options] - Additional pipeline configuration.
    * @param {boolean} [options.includeImages=false] - Whether to process images.
    * @param {AssignmentDefinitionController} [options.definitionController] - Controller to persist refreshed definitions.
+   * @returns {void}
    */
   runAssignmentPipeline(assignment, students, options = {}) {
     const { includeImages = false, definitionController } = options;
@@ -333,10 +338,11 @@ class AssignmentController {
 
   /**
    * Executes a pipeline stage with consistent progress updates.
+   * Handles progress reporting, action execution, and completion messaging for a single pipeline step.
    * @param {string} startMessage - Message reported before execution.
    * @param {Function} action - Stage function to execute.
-   * @param {string} completionMessage - Message reported after execution.
-   * @return {*} The return value of the stage function.
+   * @param {string} [completionMessage] - Message reported after execution (optional).
+   * @returns {*} The return value of the stage function.
    */
   runStage(startMessage, action, completionMessage) {
     this.progressTracker.updateProgress(startMessage);
@@ -351,6 +357,7 @@ class AssignmentController {
    * Sets document properties using the provided key/value map.
    * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
    * @param {Object} propertyMap - Map of document property names to values.
+   * @returns {void}
    */
   applyDocumentProperties(properties, propertyMap) {
     Object.keys(propertyMap).forEach((key) => {
@@ -361,14 +368,21 @@ class AssignmentController {
   /**
    * Removes multiple document properties by key.
    * @param {GoogleAppsScript.Properties.Properties} properties - Document properties service instance.
-   * @param {string[]} keys - Property keys to delete.
+   * @param {Array<string>} keys - Property keys to delete.
+   * @returns {void}
    */
   clearDocumentProperties(properties, keys) {
     keys.forEach((key) => properties.deleteProperty(key));
   }
 
   /**
-   *
+   * Detects and validates document types (Slides or Sheets) from reference and template IDs.
+   * Enforces that both documents exist, are different, and have matching MIME types.
+   * @param {string} referenceDocumentId - The reference document Google ID.
+   * @param {string} templateDocumentId - The template document Google ID.
+   * @returns {string} The document type ('SLIDES' or 'SHEETS').
+   * @throws {Error} If documents are identical, types mismatch, or types are unsupported.
+   * @private
    */
   _detectDocumentType(referenceDocumentId, templateDocumentId) {
     const progressTracker = this.progressTracker;
@@ -406,15 +420,16 @@ class AssignmentController {
   }
 
   /**
-   * Ensures assignment definition from provided inputs.
+   * Ensures an assignment definition exists from provided inputs.
+   * Fetches course work metadata, resolves topic information, and creates or refreshes the definition.
    * @param {Object} params - Parameters object.
-   * @param {string|null} params.assignmentTitle - The assignment title (optional if fetched from Classroom).
-   * @param {string} params.assignmentId - The assignment ID.
-   * @param {string} params.courseId - Classroom course ID.
-   * @param {Object} params.documentIds - Object containing document IDs with properties:
-   *   - referenceDocumentId or referenceSlideId
-   *   - templateDocumentId or templateSlideId
-   * @return {Object} { definition, courseId, abClass }
+   * @param {string|null} [params.assignmentTitle] - The assignment title (optional if fetched from Classroom).
+   * @param {string} params.assignmentId - The assignment ID (required).
+   * @param {string} params.courseId - Classroom course ID (required).
+   * @param {Object} params.documentIds - Object containing document IDs (required).
+   * @param {number|null} [params.yearGroup] - Year group level (optional).
+   * @returns {Object} Object containing { definition, courseId, abClass }.
+   * @throws {Error} If required parameters are missing or definition creation fails.
    */
   ensureDefinitionFromInputs({
     assignmentTitle,
@@ -462,14 +477,14 @@ class AssignmentController {
    * Creates a full AssignmentDefinition from wizard Step 3 inputs without starting the assessment.
    * Normalises reference and template document URLs/IDs, validates them, and returns a complete
    * definition payload with tasks for Step 4 (weightings).
-   *
    * @param {Object} params - Wizard input parameters.
    * @param {string} params.assignmentId - Google Classroom assignment ID (required).
    * @param {string} params.courseId - Classroom course ID (required).
    * @param {string} [params.assignmentTitle] - Assignment title (fallback if not fetched from Classroom).
-   * @param {string} params.referenceDocumentId - Reference document URL or file ID.
-   * @param {string} params.templateDocumentId - Template document URL or file ID.
-   * @return {Object} Full AssignmentDefinition JSON payload including tasks and artifacts.
+   * @param {string} params.referenceDocumentId - Reference document URL or file ID (required).
+   * @param {string} params.templateDocumentId - Template document URL or file ID (required).
+   * @param {number|null} [params.yearGroup] - Year group level (optional).
+   * @returns {Object} Full AssignmentDefinition JSON payload including tasks and metadata.
    * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
    */
   createDefinitionFromWizardInputs({

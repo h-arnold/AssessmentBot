@@ -1,8 +1,10 @@
 /**
  * Thin transport handler for Google Classroom listing.
+ * Fetches all active classrooms from Google Classroom API and normalises to transport format.
  *
- * @param {object} params Optional reserved params. Currently unused.
- * @returns {Array<{classId: string, className: string}>}
+ * @param {*} parameters - Optional reserved parameters; currently unused.
+ * @returns {Array<{classId: string, className: string}>} List of available classrooms.
+ * @throws {ApiValidationError} If classroom data is missing required fields.
  */
 function getGoogleClassrooms(parameters) {
   const classrooms = ClassroomApiClient.fetchAllActiveClassrooms();

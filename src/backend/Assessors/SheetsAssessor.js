@@ -11,7 +11,9 @@ const FORMULAE_SCORE_DECIMAL_PLACES = 2;
  */
 class SheetsAssessor {
   /**
-   *
+   * Initialises a SheetsAssessor instance.
+   * @param {Object} tasks - Reference task definitions indexed by task key.
+   * @param {Array} studentTasks - Array of student submission objects containing response data.
    */
   constructor(tasks, studentTasks) {
     this.tasks = tasks;
@@ -99,7 +101,7 @@ class SheetsAssessor {
    * @param {Object} referenceTask - The reference task object, containing the `taskReference` array.
    * @param {string} taskKey - The key identifying the task.
    * @param {string} studentName - The name of the student (for logging purposes).
-   * @return {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
+   * @returns {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
    */
   assessFormulaeTasks(studentResponseEntry, referenceTask, taskKey, studentName) {
     if (!studentResponseEntry?.response || !referenceTask?.taskReference) {
@@ -154,11 +156,11 @@ class SheetsAssessor {
   }
 
   /**
-   * Compares two arrays of formula objects and counts correct, incorrect, and not attempted responses.
+   * Compares two arrays of formula objects and counts correct, incorrect, and not attempted.
    * Also outputs a list of incorrect formulae with student and reference formulae.
    * @param {Array} referenceArray - Array of reference formula objects ({referenceFormula, location} or similar).
    * @param {Array} studentArray - Array of student formula objects ({formula, location} or similar).
-   * @return {Object} Object with counts and feedback objects.
+   * @returns {Object} Object with counts and feedback objects.
    */
   _compareFormulaArrays(referenceArray, studentArray) {
     let correct = 0;
@@ -203,8 +205,7 @@ class SheetsAssessor {
    * Each entry is separated by two new lines, and within each entry,
    * the student and reference formulae are separated by a single newline.
    * @param {Array} incorrectFormulae - Array of objects: {studentFormula, referenceFormula}
-   * @return {string} Formatted string for display or feedback.
-   * @private
+   * @returns {string} Formatted string for display or feedback.
    */
   _formatIncorrectFormulaeList(incorrectFormulae) {
     if (!Array.isArray(incorrectFormulae) || incorrectFormulae.length === 0) {
@@ -223,8 +224,7 @@ class SheetsAssessor {
    * Includes incorrect formulae list only if there are any incorrect answers.
    * @param {Object} comparisonResults - Result object from compareFormulaArrays.
    * @param {number} totalFormulae - Total number of formulae in the reference array.
-   * @return {string} Formatted reasoning string.
-   * @private
+   * @returns {string} Formatted reasoning string.
    */
   _generateAccuracyReasoning(comparisonResults, totalFormulae) {
     let reasoning = `Attempted ${totalFormulae - comparisonResults.notAttempted} formulae.\n${
@@ -242,8 +242,7 @@ class SheetsAssessor {
    * Generates a formatted completeness reasoning string for formula assessment.
    * @param {Object} comparisonResults - Result object from compareFormulaArrays.
    * @param {number} totalFormulae - Total number of formulae in the reference array.
-   * @return {string} Formatted completeness reasoning.
-   * @private
+   * @returns {string} Formatted completeness reasoning.
    */
   _generateCompletenessReasoning(comparisonResults, totalFormulae) {
     return `Completed ${
@@ -252,14 +251,11 @@ class SheetsAssessor {
   }
 
   /**
-   * Calculates assessment scores for formulae based on provided scores and the total count of formulae.
-   *
-   * @param {Array<number>} scores - An array of scores for each formula assessed.
-   * @param {number} countOfFormulae - The total number of formulae to be assessed.
-   * @returns {Object} An object containing:
-   *   - {number} completenessScore: The score representing formula completeness.
-   *   - {number} accuracyScore: The score representing formula accuracy.
-   *   - {string} spagScore: Always returns 'N' as SPaG is not assessed for formulae.
+   * Calculates assessment scores for formulae based on comparison results and total count.
+   * Returns completeness, accuracy, and SPaG scores for the assessed formulae.
+   * @param {Object} scores - Comparison results object containing counts of correct/incorrect/notAttempted.
+   * @param {number} countOfFormulae - The total number of formulae to assess.
+   * @returns {Object} Object with completenessScore, accuracyScore, and spagScore (always 'N').
    */
   calculateFormulaeAssessmentScores(scores, countOfFormulae) {
     const completenessScore = this._calculateFormulaeCompletenessScore(scores, countOfFormulae);

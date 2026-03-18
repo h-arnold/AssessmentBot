@@ -23,7 +23,10 @@ if (typeof globalThis !== 'undefined' && globalThis.ABClassController) {
 }
 /**
  * GAS-exposed handler that returns all class partials via the controller.
- * @returns {Array<object>}
+ * Delegates to ABClassController.getAllClassPartials() to retrieve all partial class documents.
+ *
+ * @param {*} parameters - Optional; currently unused.
+ * @returns {Array<Object>} Array of normalised class partial objects (without storage metadata).
  */
 function getABClassPartials() {
   const controller = new ControllerCtor();

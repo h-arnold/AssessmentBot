@@ -7,18 +7,20 @@
 const TASK_DEFINITION_HASH_LENGTH = 12;
 
 /**
- *
+ * Represents a task definition within an assignment.
+ * Contains reference and template artifacts along with metadata and notes.
  */
 class TaskDefinition {
   /**
-   * @param {Object} params
-   * @param {string} params.taskTitle
-   * @param {string=} params.pageId
-   * @param {string=} params.taskNotes
-   * @param {Object=} params.taskMetadata
-   * @param {string=} params.id - Stable ID (if omitted, derived then hashed from title+pageId once).
-   * @param {number=} params.index - Positional index within source document
-   * @param {number=} params.taskWeighting - not yet implemented. Will be used to determine the weighting given to this task when calculating the average score.
+   * Constructs a TaskDefinition instance.
+   * @param {Object} params - Task definition parameters
+   * @param {string} params.taskTitle - The task title
+   * @param {string} [params.pageId] - Source page ID
+   * @param {string} [params.taskNotes] - Optional task notes
+   * @param {Object} [params.taskMetadata] - Optional task metadata
+   * @param {string} [params.id] - Stable ID (if omitted, derived from title+pageId)
+   * @param {number} [params.index] - Positional index within source document
+   * @param {number|null} [taskWeighting] - Optional task weighting (not yet implemented)
    */
   constructor(
     { taskTitle, pageId = null, taskNotes = null, taskMetadata = {}, id = null, index = null } = {},
@@ -43,7 +45,11 @@ class TaskDefinition {
   }
 
   /**
-   *
+   * Derives a stable unique ID from task title and page ID using a hash.
+   * @param {string} taskTitle - The task title
+   * @param {string|null} pageId - The page ID
+   * @returns {string} A stable ID prefixed with 't_'
+   * @private
    */
   _deriveId(taskTitle, pageId) {
     const base = `${taskTitle || ''}::${pageId || ''}`;
@@ -51,17 +57,20 @@ class TaskDefinition {
   }
 
   /**
-   *
+   * Gets the task ID.
+   * @returns {string} The unique task ID
    */
   getId() {
     return this.id;
   }
 
   /**
-   * Internal helper that always creates a new reference/template artifact for this task.
-   * Used only during parsing/definition-building; it never mutates an existing artifact and
-   * always delegates construction to `ArtifactFactory.create` with the correct role/taskId/pageId.
-   * params may include: type, content, metadata, pageId, documentId, uid
+   * Creates a new artifact with the specified role and parameters.
+   * Used during parsing/definition-building to create either reference or template artefacts.
+   * @param {string} role - The artifact role ('reference' or 'template')
+   * @param {Object} [parameters={}] - Artifact parameters (type, content, metadata, pageId, documentId, uid, etc.)
+   * @returns {BaseTaskArtifact} The created artifact
+   * @throws {Error} If role is invalid
    */
   createArtifact(role, parameters = {}) {
     if (role !== 'reference' && role !== 'template')
@@ -82,35 +91,40 @@ class TaskDefinition {
   }
 
   /**
-   * Create and append a reference artifact for this task definition.
-   * Thin wrapper over createArtifact that fixes the role to 'reference'.
+   * Creates and appends a reference artifact for this task definition.
+   * @param {Object} parameters - Artifact parameters
+   * @returns {BaseTaskArtifact} The created reference artifact
    */
   addReferenceArtifact(parameters) {
     return this.createArtifact('reference', parameters);
   }
   /**
-   * Create and append a template artifact for this task definition.
-   * Thin wrapper over createArtifact that fixes the role to 'template'.
+   * Creates and appends a template artifact for this task definition.
+   * @param {Object} parameters - Artifact parameters
+   * @returns {BaseTaskArtifact} The created template artifact
    */
   addTemplateArtifact(parameters) {
     return this.createArtifact('template', parameters);
   }
 
   /**
-   *
+   * Gets the primary (first) reference artifact.
+   * @returns {BaseTaskArtifact|null} The primary reference artifact, or null if none exists
    */
   getPrimaryReference() {
     return this.artifacts.reference.length > 0 ? this.artifacts.reference[0] : null;
   }
   /**
-   *
+   * Gets the primary (first) template artifact.
+   * @returns {BaseTaskArtifact|null} The primary template artifact, or null if none exists
    */
   getPrimaryTemplate() {
     return this.artifacts.template.length > 0 ? this.artifacts.template[0] : null;
   }
 
   /**
-   *
+   * Validates that this task definition has required artefacts.
+   * @returns {Object} Object with 'ok' boolean and 'errors' array
    */
   validate() {
     const errors = [];
@@ -122,7 +136,8 @@ class TaskDefinition {
   }
 
   /**
-   *
+   * Serialises this task definition to a JSON object.
+   * @returns {Object} A plain object representation with all artifacts
    */
   toJSON() {
     return {
@@ -141,8 +156,8 @@ class TaskDefinition {
   }
 
   /**
-   * Produce a partial JSON payload with artifact content redacted.
-   * @return {Object}
+   * Serialises this task definition to a partial JSON object with artifact content redacted.
+   * @returns {Object} A partial object representation with lightweight artifact data
    */
   toPartialJSON() {
     return {
@@ -155,7 +170,9 @@ class TaskDefinition {
   }
 
   /**
-   *
+   * Deserialises a JSON object to a TaskDefinition instance.
+   * @param {Object} json - The serialised task definition object
+   * @returns {TaskDefinition} A new TaskDefinition instance
    */
   static fromJSON(json) {
     const td = new TaskDefinition({

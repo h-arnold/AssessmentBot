@@ -13,7 +13,7 @@ const LLM_TOAST_DURATION_SECONDS = 5;
  */
 class LLMRequestManager extends BaseRequestManager {
   /**
-   *
+   * Initialises the LLMRequestManager with configuration, cache, progress tracking, and error handling.
    */
   constructor() {
     super();
@@ -28,9 +28,9 @@ class LLMRequestManager extends BaseRequestManager {
 
   /**
    * Generates an array of request objects based on the Assignment instance.
-   * Utilizes caching to avoid redundant requests.
+   * Utilises caching to avoid redundant requests.
    * @param {Assignment} assignment - The Assignment instance containing student tasks.
-   * @return {Object[]} - An array of request objects ready to be sent via UrlFetchApp.fetchAll().
+   * @returns {Object[]} An array of request objects ready to be sent via UrlFetchApp.fetchAll().
    */
   generateRequestObjects(assignment) {
     const requests = [];
@@ -127,6 +127,7 @@ class LLMRequestManager extends BaseRequestManager {
    * @param {HTTPResponse[]} responses - Array of HTTPResponse objects from UrlFetchApp.fetchAll().
    * @param {Object[]} requests - Array of request objects sent in the current batch.
    * @param {Assignment} assignment - The Assignment instance containing StudentTasks.
+   * @returns {void}
    */
   processResponses(responses, requests, assignment) {
     this.progressTracker.updateProgress(`Double-checking all assessments.`, true);
@@ -165,7 +166,7 @@ class LLMRequestManager extends BaseRequestManager {
   /**
    * Validates the structure of the assessment data returned by the LLM.
    * @param {Object} data - The assessment data.
-   * @return {boolean} - True if valid, false otherwise.
+   * @returns {boolean} True if valid, false otherwise.
    */
   validateAssessmentData(data) {
     const requiredCriteria = ['completeness', 'accuracy', 'spag'];
@@ -178,10 +179,10 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Sends requests to Langflow and processes the responses, adding them assessment data to the assignment object.
-   * @param {Object[]} requests - an array of request objects to send
+   * Sends requests to Langflow and processes the responses, adding assessment data to the assignment object.
+   * @param {Object[]} requests - An array of request objects to send.
    * @param {Object} assignment - The Assignment instance containing StudentTasks.
-   * @return {void}
+   * @returns {void}
    */
   processStudentResponses(requests, assignment) {
     if (!requests || requests.length === 0) {
@@ -202,7 +203,7 @@ class LLMRequestManager extends BaseRequestManager {
   /**
    * Creates an Assessment instance from LLM data.
    * @param {Object} data - The assessment data from LLM.
-   * @return {Object} - An object mapping criteria to Assessment instances.
+   * @returns {Object} An object mapping criteria to Assessment instances.
    */
   createAssessmentFromData(data) {
     // Assuming uniform criteria; adjust if criteria vary
@@ -214,9 +215,10 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   * Assign assessments to the mapped StudentSubmissionItem via uidIndex.
-   * @param {string} uid
-   * @param {Object} assessmentData (criterion -> Assessment instance)
+   * Assigns assessments to the mapped StudentSubmissionItem via uidIndex.
+   * @param {string} uid - The unique identifier for the submission.
+   * @param {Object} assessmentData - Assessment data (criterion -> Assessment instance).
+   * @returns {void}
    */
   assignAssessmentToStudentTask(uid, assessmentData) {
     // name retained to minimise external ripple
@@ -229,7 +231,10 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   *
+   * Assigns assessments to a StudentSubmissionItem.
+   * @param {Object} item - The StudentSubmissionItem to assign assessments to.
+   * @param {Object} assessmentData - Assessment data mapping criteria to Assessment instances.
+   * @returns {void}
    */
   _assignAssessmentArtifacts(item, assessmentData) {
     for (const [criterion, assessment] of Object.entries(assessmentData)) {
@@ -238,7 +243,9 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   *
+   * Checks if an HTTP response indicates successful completion.
+   * @param {HTTPResponse} response - The HTTP response to check.
+   * @returns {boolean} True if the response indicates success.
    */
   _isSuccessfulResponse(response) {
     if (!response) return false;
@@ -249,7 +256,9 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   *
+   * Logs a validation retry attempt for a submission.
+   * @param {string} uid - The unique identifier of the submission.
+   * @returns {void}
    */
   _logValidationRetry(uid) {
     this.progressTracker.logError(
@@ -264,7 +273,9 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   *
+   * Handles the case where retry limit has been reached for a submission.
+   * @param {string} uid - The unique identifier of the submission.
+   * @returns {void}
    */
   _handleRetryLimitReached(uid) {
     this.progressTracker.logError('Max validation retries reached for UID: ' + uid + '.');
@@ -276,7 +287,9 @@ class LLMRequestManager extends BaseRequestManager {
   }
 
   /**
-   *
+   * Handles HTTP failure during retry attempt.
+   * @param {string} uid - The unique identifier of the submission.
+   * @returns {void}
    */
   _handleRetryHttpFailure(uid) {
     this.progressTracker.logError('Retry failed for UID: ' + uid);
@@ -323,7 +336,7 @@ class LLMRequestManager extends BaseRequestManager {
 
   /**
    * Creates a default assessment for unattempted tasks.
-   * @return {Object} - An object with default assessments for each criterion.
+   * @returns {Object} An object with default assessments for each criterion.
    */
   createNotAttemptedAssessment() {
     const criteria = ['completeness', 'accuracy', 'spag'];
@@ -418,8 +431,8 @@ class LLMRequestManager extends BaseRequestManager {
 
   /**
    * Extracts and parses assessment data from an HTTPResponse.
-   * @param {HTTPResponse} response
-   * @return {Object} Normalized assessment data.
+   * @param {HTTPResponse} response - The HTTP response containing the assessment data.
+   * @returns {Object} Normalised assessment data.
    */
   _extractAssessmentData(response) {
     // Parse direct JSON payload from new /v1/assessor API
@@ -430,8 +443,9 @@ class LLMRequestManager extends BaseRequestManager {
 
   /**
    * Assigns assessments to StudentTask and caches the result.
-   * @param {string} uid
-   * @param {Object} assessmentData
+   * @param {string} uid - The unique identifier of the submission.
+   * @param {Object} assessmentData - The assessment data to assign and cache.
+   * @returns {void}
    */
   _assignAndCacheAssessment(uid, assessmentData) {
     this.assignAssessmentToStudentTask(uid, this.createAssessmentFromData(assessmentData));

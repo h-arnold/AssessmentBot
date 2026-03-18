@@ -2,10 +2,12 @@
 // Represents a reusable assignment/lesson definition persisted in JsonDbApp.
 
 /**
- *
+ * Represents a reusable assignment definition with reference and template documents.
+ * Can be instantiated in "partial" form (metadata only, tasks: null) or "full" form (with tasks).
  */
 class AssignmentDefinition {
   /**
+   * Constructs an AssignmentDefinition instance.
    * @param {Object} params - Assignment definition properties.
    * @param {string} params.primaryTitle - Canonical assignment title.
    * @param {string} params.primaryTopic - Canonical topic name.
@@ -183,7 +185,10 @@ class AssignmentDefinition {
   }
 
   /**
-   *
+   * Hydrates task objects from plain JSON or existing TaskDefinition instances.
+   * Converts raw task payloads to TaskDefinition instances, skipping if tasks is null (partial definition).
+   * @param {Object|null} tasks - A map of taskId to task objects, or null for partial definitions
+   * @private
    */
   _hydrateTasks(tasks) {
     // Skip hydration if tasks is null (partial definition)
@@ -211,12 +216,13 @@ class AssignmentDefinition {
   }
 
   /**
-   * Generates the canonical definition key `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
-   * @param {Object} params
-   * @param {string} params.primaryTitle
-   * @param {string} params.primaryTopic
-   * @param {number|null|undefined} params.yearGroup
-   * @return {string}
+   * Generates the canonical definition key for persistence.
+   * Format: `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
+   * @param {Object} params - Parameters for key generation
+   * @param {string} params.primaryTitle - The primary assignment title
+   * @param {string} params.primaryTopic - The primary topic name
+   * @param {number|null|undefined} params.yearGroup - The year group (or null/undefined)
+   * @returns {string} The canonical definition key
    */
   static buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup }) {
     const yr = yearGroup === undefined || yearGroup === null ? 'null' : yearGroup;
@@ -224,10 +230,10 @@ class AssignmentDefinition {
   }
 
   /**
-   * Update reference/template modified timestamps and touch updatedAt.
-   * @param {Object} params
-   * @param {string|null} [params.referenceLastModified]
-   * @param {string|null} [params.templateLastModified]
+   * Updates reference and template document modification timestamps, and touches updatedAt.
+   * @param {Object} params - Timestamp parameters
+   * @param {string|null} [params.referenceLastModified] - ISO timestamp for reference document
+   * @param {string|null} [params.templateLastModified] - ISO timestamp for template document
    */
   updateModifiedTimestamps({ referenceLastModified = null, templateLastModified = null } = {}) {
     if (referenceLastModified !== null) this.referenceLastModified = referenceLastModified;
@@ -236,7 +242,8 @@ class AssignmentDefinition {
   }
 
   /**
-   *
+   * Updates the updatedAt timestamp to the current time.
+   * @returns {string} The new ISO timestamp
    */
   touchUpdated() {
     this.updatedAt = new Date().toISOString();
@@ -244,7 +251,8 @@ class AssignmentDefinition {
   }
 
   /**
-   *
+   * Serialises this assignment definition to a JSON object.
+   * @returns {Object} A plain object representation of the full assignment with all tasks
    */
   toJSON() {
     return {
@@ -273,7 +281,8 @@ class AssignmentDefinition {
   }
 
   /**
-   *
+   * Serialises this assignment definition to a partial JSON object (without tasks).
+   * @returns {Object} A plain object representation with metadata but tasks set to null
    */
   toPartialJSON() {
     return {
@@ -295,7 +304,10 @@ class AssignmentDefinition {
   }
 
   /**
-   *
+   * Deserialises a JSON object to an AssignmentDefinition instance.
+   * @param {Object} json - The serialised assignment definition object
+   * @returns {AssignmentDefinition} A new AssignmentDefinition instance
+   * @throws {Error} If json is falsy
    */
   static fromJSON(json) {
     if (!json) {

@@ -110,7 +110,13 @@ const DriveManager = {
     };
   },
   /**
-   *
+   * Copy a template sheet to a destination folder, optionally checking for existing files.
+   * If a file with the same name already exists, returns its ID without copying.
+   * @param {string} templateSheetId - The ID of the template sheet to copy.
+   * @param {string} destinationFolderId - The ID of the destination folder. If not provided, uses the template's parent folder.
+   * @param {string} newSheetName - The name for the copied sheet.
+   * @returns {{status: 'copied'|'skipped', file: null, fileId: string, message: string}} An object with copy status, file ID, and message.
+   * @throws {Error} If templateSheetId or newSheetName is not provided, or destination folder cannot be accessed.
    */
   copyTemplateSheet(templateSheetId, destinationFolderId, newSheetName) {
     Validate.requireParams({ templateSheetId, newSheetName }, 'copyTemplateSheet');
@@ -302,7 +308,11 @@ const DriveManager = {
   },
 
   /**
-   *
+   * Retrieve the parent folder ID of a file using DriveApp with retry logic.
+   * Attempts to access the parent via DriveApp, retrying on failure with exponential backoff.
+   * @param {string} fileId - The ID of the file to retrieve the parent for.
+   * @returns {string|null} The parent folder ID, or null if none is found or all retries fail.
+   * @private
    */
   _getParentViaDriveApp(fileId) {
     const retries = 3;
@@ -339,7 +349,12 @@ const DriveManager = {
   },
 
   /**
-   *
+   * Retrieve the parent folder ID of a file using the Advanced Drive API with fallback logic.
+   * Falls back to Shared Drive root or My Drive root if needed.
+   * @param {string} fileId - The ID of the file to retrieve the parent for.
+   * @returns {string} The parent folder ID (API response, Shared Drive root, or My Drive root).
+   * @throws {Error} If all fallback attempts fail.
+   * @private
    */
   _getParentViaDriveApi(fileId) {
     const fields = 'parents,driveId';
@@ -476,9 +491,9 @@ const DriveManager = {
   },
 
   /**
-   * Validates if a string is a valid Google Drive File ID (format check only).
+   * Validate if a string is a valid Google Drive File ID (format check only).
    * @param {string} fileId - The File ID to validate.
-   * @return {boolean} - True if the format is valid, false otherwise.
+   * @returns {boolean} True if the format is valid, false otherwise.
    */
   isValidGoogleDriveFileId(fileId) {
     // Define the regex for a valid google drive file id.
@@ -488,7 +503,7 @@ const DriveManager = {
   },
 
   /**
-   * Normalises a Google Drive URL or file ID to a file ID.
+   * Normalise a Google Drive URL or file ID to a file ID.
    * Accepts either a full Google Drive/Docs/Slides/Sheets URL or a raw file ID.
    * If the input is already a valid file ID, it is returned unchanged.
    * If the input is a URL, the file ID is extracted and validated.
@@ -502,7 +517,7 @@ const DriveManager = {
    * - Query parameter format: ?id={id}
    *
    * @param {string} urlOrId - A Google Drive URL or file ID.
-   * @return {string} The extracted or validated file ID.
+   * @returns {string} The extracted or validated file ID.
    * @throws {Error} If the input is not a valid URL or file ID.
    */
   normaliseToFileId(urlOrId) {
@@ -517,8 +532,8 @@ const DriveManager = {
 
     // Attempt to extract ID from URL patterns.
     // Pattern 1: /d/{id}/ or /d/{id}/edit or /d/{id}/view etc.
-    const pathMatch = input.match(/\/d\/([\w-]{33,44})/u);
-    if (pathMatch && pathMatch[1]) {
+    const pathMatch = /\/d\/([\w-]{33,44})/u.exec(input);
+    if (pathMatch?.[1]) {
       const extractedId = pathMatch[1];
       if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
@@ -526,8 +541,8 @@ const DriveManager = {
     }
 
     // Pattern 2: ?id={id} or open?id={id}
-    const queryMatch = input.match(/[&?]id=([\w-]{33,44})/u);
-    if (queryMatch && queryMatch[1]) {
+    const queryMatch = /[&?]id=([\w-]{33,44})/u.exec(input);
+    if (queryMatch?.[1]) {
       const extractedId = queryMatch[1];
       if (this.isValidGoogleDriveFileId(extractedId)) {
         return extractedId;
@@ -546,7 +561,7 @@ const DriveManager = {
   /**
    * Fetch the last modified timestamp for a Drive file with retries and Shared Drive fallback.
    * @param {string} fileId - Drive file ID.
-   * @return {string} ISO 8601 timestamp of the file's last modified time.
+   * @returns {string} ISO 8601 timestamp of the file's last modified time.
    * @throws {Error} If fileId is not provided or file cannot be accessed.
    */
   getFileModifiedTime(fileId) {
@@ -574,7 +589,13 @@ const DriveManager = {
   },
 
   /**
-   *
+   * Fetch the last modified timestamp for a file via DriveApp with retry logic.
+   * @param {string} fileId - The ID of the file to fetch the modification time for.
+   * @param {number} retries - The number of retry attempts to make.
+   * @param {number} baseWaitMs - The base wait time in milliseconds for exponential backoff.
+   * @returns {string} ISO 8601 timestamp of the file's last modified time.
+   * @throws {Error} If all retry attempts fail.
+   * @private
    */
   _fetchModifiedTimeViaDriveApp(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {
@@ -598,7 +619,13 @@ const DriveManager = {
   },
 
   /**
-   *
+   * Fetch the last modified timestamp for a file via Advanced Drive API with retry logic.
+   * @param {string} fileId - The ID of the file to fetch the modification time for.
+   * @param {number} retries - The number of retry attempts to make.
+   * @param {number} baseWaitMs - The base wait time in milliseconds for exponential backoff.
+   * @returns {string} ISO 8601 timestamp of the file's last modified time.
+   * @throws {Error} If all retry attempts fail.
+   * @private
    */
   _fetchModifiedTimeViaDriveApi(fileId, retries, baseWaitMs) {
     for (let attempt = 0; attempt < retries; attempt++) {

@@ -10,19 +10,11 @@ const STRIP_TRAILING_QUOTE_SLICE_INDEX = -1;
  */
 class SheetsParser extends DocumentParser {
   /**
-   * Constructs a SheetsParser instance.
-   */
-  constructor() {
-    super(); // Call parent constructor
-    // Initialization if needed
-  }
-
-  /**
    * Helper to extract TaskSheet objects from a spreadsheet.
    *
    * @param {string} documentId - The ID of the spreadsheet document
    * @param {string} type - 'reference' or 'template'
-   * @return {Object} Map of sheet names to TaskSheet objects
+   * @returns {Object} Map of sheet names to TaskSheet objects
    * @private
    */
   _extractFormulaeFromTaskSheets(documentId, type) {
@@ -46,7 +38,7 @@ class SheetsParser extends DocumentParser {
    *
    * @param {string} referenceDocumentId - The ID of the reference document
    * @param {string} templateDocumentId - The ID of the template document
-   * @return {Object} An object containing referenceTasks and templateTasks with raw formula data
+   * @returns {Object} An object containing referenceTasks and templateTasks with raw formula data
    * @private
    */
   _extractRawSheetData(referenceDocumentId, templateDocumentId) {
@@ -73,7 +65,7 @@ class SheetsParser extends DocumentParser {
    * access and iteration scenarios without duplicating the full formula objects.
    *
    * @param {Array} formulas - Array of formula differences with location information
-   * @return {Object} Map with location keys and formula indices as values
+   * @returns {Object} Map with location keys and formula indices as values
    * @private
    */
   _createReferenceLocationsMap(formulas) {
@@ -90,7 +82,7 @@ class SheetsParser extends DocumentParser {
    * Compares formulae between reference and template sheets, including bounding box calculations.
    *
    * @param {Object} taskData - Object containing referenceTasks and templateTasks
-   * @return {Object} Object with differences organised by taskName, including bounding boxes
+   * @returns {Object} Object with differences organised by taskName, including bounding boxes
    */
   compareFormulae(taskData) {
     try {
@@ -141,7 +133,7 @@ class SheetsParser extends DocumentParser {
    * Trims spaces from any formulae when they are not in quotes.
    *
    * @param {string} formula - The formula to normalise
-   * @return {string} The normalised formula
+   * @returns {string} The normalised formula
    * @private
    */
   _normaliseFormulaCase(formula) {
@@ -181,8 +173,8 @@ class SheetsParser extends DocumentParser {
 
   /**
    * Removes wrapped formula quotes returned by GAS and unescapes doubled quotes.
-   * @param {string} formula
-   * @return {string}
+   * @param {string} formula - The formula to unwrap.
+   * @returns {string} The unwrapped formula.
    * @private
    */
   _unwrapWrappedFormula(formula) {
@@ -210,7 +202,7 @@ class SheetsParser extends DocumentParser {
    * @param {Array<Array<string>>} referenceArray - The reference formula array
    * @param {Array<Array<string>>} templateArray - The template formula array
    * @param {string} taskName - The name of the task sheet being compared
-   * @return {Array} Array of differences with formula and location info
+   * @returns {Array} Array of differences with formula and location info
    * @private
    */
   _compareFormulaArrays(referenceArray, templateArray) {
@@ -248,7 +240,7 @@ class SheetsParser extends DocumentParser {
    *
    * @param {string} referenceDocumentId - The ID of the reference document
    * @param {string} templateDocumentId - The ID of the template document
-   * @return {Object} Object containing formulae differences by sheet name with bounding boxes
+   * @returns {Object} Object containing formulae differences by sheet name with bounding boxes
    */
   processAndCompareSheets(referenceDocumentId, templateDocumentId) {
     try {
@@ -265,7 +257,7 @@ class SheetsParser extends DocumentParser {
    * The bounding box represents the smallest rectangular area that contains all differences.
    *
    * @param {Array} differences - Array of formula differences with location information
-   * @return {Object} Bounding box as {startRow, startColumn, endRow, endColumn, numRows, numColumns}
+   * @returns {Object} Bounding box as {startRow, startColumn, endRow, endColumn, numRows, numColumns}
    * @private
    */
   _calculateBoundingBox(differences) {
@@ -313,6 +305,9 @@ class SheetsParser extends DocumentParser {
 
   /**
    * New Phase 2: create TaskDefinitions for spreadsheet tasks.
+   * @param {string} referenceDocumentId - The ID of the reference spreadsheet.
+   * @param {string} templateDocumentId - The ID of the template spreadsheet.
+   * @returns {TaskDefinition[]} Array of task definitions extracted from spreadsheets.
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
     const diffs = this.processAndCompareSheets(referenceDocumentId, templateDocumentId);
@@ -379,6 +374,9 @@ class SheetsParser extends DocumentParser {
 
   /**
    * Extract student submission artifacts by reading only reference formula locations.
+   * @param {string} studentDocumentId - The ID of the student submission spreadsheet.
+   * @param {TaskDefinition[]} taskDefs - Task definitions to extract artifacts for.
+   * @returns {Array} Array of submission artifacts with task ID, page ID, and formula content.
    */
   extractSubmissionArtifacts(studentDocumentId, taskDefs) {
     if (!studentDocumentId) return [];
@@ -412,7 +410,7 @@ class SheetsParser extends DocumentParser {
       const grid = reference.content ? reference.content.map((row) => row.map(() => null)) : [];
       for (let r = 0; r < bbox.numRows; r++) {
         for (let c = 0; c < bbox.numColumns; c++) {
-          const formula = rangeFormulas[r] && rangeFormulas[r][c] ? rangeFormulas[r][c] : '';
+          const formula = rangeFormulas?.[r]?.[c] ?? '';
           if (formula) {
             grid[r][c] = formula; // SpreadsheetTaskArtifact will canonicalise
           }

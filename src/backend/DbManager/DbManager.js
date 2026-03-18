@@ -13,7 +13,9 @@
  */
 class DbManager extends BaseSingleton {
   /**
-   *
+   * Constructs a DbManager instance.
+   * Singleton guard: only allow heavy construction when the isSingletonCreator flag is provided.
+   * @param {boolean} isSingletonCreator - Flag indicating if this is the singleton initialisation.
    */
   constructor(isSingletonCreator = false) {
     // follow BaseSingleton convention: only allow heavy construction when flag provided
@@ -36,6 +38,8 @@ class DbManager extends BaseSingleton {
   /**
    * Resolve configuration for JsonDbApp from ConfigurationManager only.
    * ConfigurationManager owns fetching, validation and defaults.
+   * @returns {Object} Configuration object for JsonDbApp initialisation.
+   * @private
    */
   _getConfig() {
     const configManager = ConfigurationManager.getInstance();
@@ -54,6 +58,9 @@ class DbManager extends BaseSingleton {
 
   /**
    * Throws a user-friendly error when the JsonDbApp library cannot be found.
+   * @returns {void}
+   * @throws {Error} When JsonDbApp is not available.
+   * @private
    */
   _assertLibraryAvailable() {
     const ok =
@@ -73,6 +80,7 @@ class DbManager extends BaseSingleton {
    *
    * Strategy: if ScriptProperties does not contain the masterIndexKey, create a new
    * database; otherwise attempt to load an existing one.
+   * @returns {Object} The initialised database instance.
    */
   getDb() {
     if (this._db) return this._db;
@@ -107,6 +115,7 @@ class DbManager extends BaseSingleton {
 
   /**
    * Ensures the database is initialised. Returns a small status summary for UI/debugging.
+   * @returns {Object} Status object with 'ok' boolean, masterIndexKey, and list of collections.
    */
   ensureInitialised() {
     const database = this.getDb();
@@ -138,6 +147,8 @@ class DbManager extends BaseSingleton {
 
   /**
    * Fetch a collection by name. Auto-creation is always enabled to support per-assignment storage.
+   * @param {string} name - The name of the collection to retrieve.
+   * @returns {Object} The collection object.
    */
   getCollection(name) {
     if (!name || typeof name !== 'string') {
@@ -153,6 +164,8 @@ class DbManager extends BaseSingleton {
 
   /**
    * Read all documents from a collection. Returns an array of plain objects.
+   * @param {string} name - The name of the collection to read from.
+   * @returns {Array} Array of all documents in the collection.
    */
   readAll(name) {
     const col = this.getCollection(name);
@@ -167,6 +180,8 @@ class DbManager extends BaseSingleton {
   /**
    * Persist any pending changes in the collection to Drive.
    * Accepts either a collection instance or a collection name.
+   * @param {Object|string} collectionOrName - Collection instance or collection name.
+   * @returns {boolean} True if the collection was saved successfully.
    */
   saveCollection(collectionOrName) {
     const col =
@@ -184,6 +199,9 @@ class DbManager extends BaseSingleton {
 
   /**
    * Insert many documents into the named collection, then persist to Drive.
+   * @param {string} collectionName - The name of the collection to insert into.
+   * @param {Array<Object>} documents - Array of documents to insert.
+   * @returns {Object} Object with 'inserted' count.
    */
   insertMany(collectionName, documents) {
     if (!Array.isArray(documents)) {
@@ -201,6 +219,9 @@ class DbManager extends BaseSingleton {
 
   /**
    * Upsert many documents by _id using $set, then persist to Drive.
+   * @param {string} collectionName - The name of the collection to upsert into.
+   * @param {Array<Object>} documents - Array of documents with _id fields to upsert.
+   * @returns {Object} Object with 'upserted' count.
    */
   upsertManyById(collectionName, documents) {
     if (!Array.isArray(documents)) {

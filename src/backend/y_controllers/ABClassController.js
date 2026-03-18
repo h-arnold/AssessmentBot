@@ -8,19 +8,33 @@
  */
 
 /**
+ * ABClassController
  *
+ * Loads, persists, and mutates ABClass records stored in JsonDbApp-backed
+ * collections managed by DbManager. Each class is stored in a collection named
+ * after its classId, with plain serialized ABClass objects written via
+ * ABClass.toJSON().
+ */
+
+/**
+ * Creates the ABClassController.
  */
 class ABClassController {
   /**
-   *
+   * Initialises the ABClassController.
    */
   constructor() {
     this.dbManager = DbManager.getInstance();
   }
 
-  // Helper: fetch and apply course metadata (name, owner)
   /**
+   * Fetches course metadata from the Classroom API and applies it to the ABClass.
+   * Updates the class name and owner information.
    *
+   * @param {ABClass} abClass - The class instance to update.
+   * @param {string} courseId - The Classroom course ID.
+   * @throws {Error} Rethrows any errors from ClassroomApiClient.
+   * @private
    */
   _applyCourseMetadata(abClass, courseId) {
     // Call the ClassroomApiClient static method directly and allow errors to surface
@@ -36,9 +50,14 @@ class ABClassController {
     }
   }
 
-  // Helper: fetch and apply teacher list
   /**
+   * Fetches teacher list from the Classroom API and populates them in the ABClass.
+   * Handles both Teacher instances and legacy API objects.
    *
+   * @param {ABClass} abClass - The class instance to populate.
+   * @param {string} courseId - The Classroom course ID.
+   * @throws {Error} Rethrows any errors from ClassroomApiClient or deserialisation.
+   * @private
    */
   _applyTeachers(abClass, courseId) {
     const logger = ABLogger.getInstance();
@@ -75,9 +94,14 @@ class ABClassController {
     });
   }
 
-  // Helper: fetch and apply students
   /**
+   * Fetches all students from the Classroom API and populates them in the ABClass.
+   * Handles pagination automatically via ClassroomApiClient.
    *
+   * @param {ABClass} abClass - The class instance to populate.
+   * @param {string} courseId - The Classroom course ID.
+   * @throws {Error} Rethrows any errors from ClassroomApiClient.
+   * @private
    */
   _applyStudents(abClass, courseId) {
     // Call the ClassroomApiClient static method directly; it handles paging. Let errors bubble up.
@@ -89,7 +113,11 @@ class ABClassController {
   }
 
   /**
+   * Retrieves metadata from a collection, returning null if retrieval fails.
    *
+   * @param {Object} collection - The collection to query.
+   * @returns {Object|null} Metadata or null if retrieval fails.
+   * @private
    */
   _getCollectionMetadata(collection) {
     try {
@@ -101,7 +129,11 @@ class ABClassController {
   }
 
   /**
+   * Builds a roster update payload containing class metadata and member arrays.
    *
+   * @param {ABClass} abClass - The class instance to serialise.
+   * @returns {Object} Payload with className, classOwner, teachers, and students.
+   * @private
    */
   _buildClassroomRosterUpdatePayload(abClass) {
     return {
@@ -116,8 +148,9 @@ class ABClassController {
    * Normalises a stored partial document to the documented transport shape.
    * This prevents storage-only metadata from leaking to API consumers.
    *
-   * @param {object} partialDoc - Raw partial document read from storage.
-   * @returns {object} Normalised class partial payload.
+   * @param {Object} partialDocument - Raw partial document read from storage.
+   * @returns {Object} Normalised class partial payload.
+   * @throws {TypeError} If the document is not a plain object or lacks required fields.
    * @private
    */
   _normaliseClassPartial(partialDocument) {
@@ -144,7 +177,13 @@ class ABClassController {
   // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
   // keep the helper for future use once the issue is resolved.
   /**
+   * Determines whether a roster needs updating based on course modification time.
+   * Currently disabled pending Issue #88 investigation.
    *
+   * @param {Object} metadata - Collection metadata including lastUpdated timestamp.
+   * @param {string} classId - The Classroom course ID.
+   * @returns {boolean} True if the course has been updated since the last fetch.
+   * @private
    */
   _shouldRefreshRoster(metadata, classId) {
     if (!metadata?.lastUpdated) return false;
@@ -160,7 +199,12 @@ class ABClassController {
   }
 
   /**
+   * Clears and refreshes all roster data (owner, teachers, students) for a class.
+   * Fetches latest data from the Classroom API.
    *
+   * @param {ABClass} abClass - The class instance to refresh.
+   * @param {string} classId - The Classroom course ID.
+   * @private
    */
   _refreshRoster(abClass, classId) {
     if (!abClass) return;
@@ -204,7 +248,14 @@ class ABClassController {
   }
 
   /**
+   * Persists roster changes to a collection and updates the partial registry.
+   * Logs intent and completion for diagnostic purposes.
    *
+   * @param {Object} collection - The JsonDb collection to persist to.
+   * @param {Object} existingDocument - The existing document (if any) to identify for update.
+   * @param {ABClass} abClass - The class instance to persist.
+   * @throws {Error} Rethrows any persistence errors.
+   * @private
    */
   _persistRoster(collection, existingDocument, abClass) {
     const logger = ABLogger.getInstance();
@@ -246,9 +297,11 @@ class ABClassController {
 
   /**
    * Generate consistent collection name for full assignment persistence.
-   * @param {string} courseId - The course ID
-   * @param {string} assignmentId - The assignment ID
-   * @return {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>
+   *
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID.
+   * @returns {string} Collection name following pattern: assign_full_<courseId>_<assignmentId>.
+   * @private
    */
   _getFullAssignmentCollectionName(courseId, assignmentId) {
     return `assign_full_${courseId}_${assignmentId}`;
@@ -369,10 +422,13 @@ class ABClassController {
 
   /**
    * Rehydrate an assignment by loading the full version from its dedicated collection.
-   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
-   *   a `classId` property and a `toPartialJSON()` method.
-   * @param {string} assignmentId - The assignment ID to rehydrate
-   * @return {Assignment} The fully hydrated assignment instance
+   * Updates the ABClass with the hydrated assignment and ensures full definition is available.
+   *
+   * @param {ABClass|Object} abClass - An ABClass instance with classId property.
+   * @param {string} assignmentId - The assignment ID to rehydrate.
+   * @returns {Assignment} The fully hydrated assignment instance.
+   * @throws {TypeError} If parameters are invalid.
+   * @throws {Error} If the assignment document is not found or corrupt.
    */
   rehydrateAssignment(abClass, assignmentId) {
     const logger = ABLogger.getInstance();
@@ -413,10 +469,12 @@ class ABClassController {
   }
 
   /**
-   * Load full assignment document from its dedicated collection.
-   * @param {string} courseId
-   * @param {string} assignmentId
-   * @return {object} Assignment document
+   * Loads the full assignment document from its dedicated collection.
+   *
+   * @param {string} courseId - The Classroom course ID.
+   * @param {string} assignmentId - The assignment ID.
+   * @returns {Object} The assignment document.
+   * @throws {Error} If the document is not found or an error occurs during loading.
    * @private
    */
   _loadFullAssignmentDocument(courseId, assignmentId) {
@@ -441,8 +499,10 @@ class ABClassController {
   }
 
   /**
-   * Validate that assignment document has all required fields.
-   * @param {object} doc - Assignment document
+   * Validates that an assignment document has all required fields.
+   *
+   * @param {Object} document - The assignment document to validate.
+   * @throws {Error} If required fields courseId, assignmentId, or assignmentDefinition are missing.
    * @private
    */
   _validateAssignmentDocument(document) {
@@ -460,9 +520,10 @@ class ABClassController {
   }
 
   /**
-   * Ensure assignment has a full definition, fetching or persisting if needed.
-   * Detects partial definitions via tasks === null.
-   * @param {Assignment} assignment
+   * Ensures the assignment has a full definition.
+   * Detects partial definitions (tasks === null) and fetches or persists the full definition as needed.
+   *
+   * @param {Assignment} assignment - The assignment to check and potentially complete.
    * @private
    */
   _ensureFullDefinition(assignment) {
@@ -490,11 +551,12 @@ class ABClassController {
   }
 
   /**
-   * Replace assignment in ABClass assignments array.
-   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
-   *   a `classId` property and a `toPartialJSON()` method.
-   * @param {string} assignmentId
-   * @param {Assignment} hydratedAssignment
+   * Replaces an assignment in the ABClass assignments array.
+   *
+   * @param {ABClass|Object} abClass - The class containing the assignments.
+   * @param {string} assignmentId - The assignment ID to replace.
+   * @param {Assignment} hydratedAssignment - The new fully hydrated assignment instance.
+   * @throws {Error} If the assignment ID is not found in the class.
    * @private
    */
   _replaceAssignmentInClass(abClass, assignmentId, hydratedAssignment) {
@@ -515,23 +577,25 @@ class ABClassController {
   }
 
   /**
-   * Initialise an ABClass instance by populating data that can be fetched using
+   * Initialises an ABClass instance by populating data that can be fetched using
    * the classId (Google Classroom courseId) alone. Populates: className,
    * classOwner, teachers and students. Additional properties (assignments,
    * cohort, courseLength, yearGroup) may be provided via options.
    *
-   * @param {string} classId - classId (Google Classroom courseId)
-   * @param {Object} [options]
-   * @param {string|number} [options.cohort]
-   * @param {number} [options.courseLength]
-   * @param {number} [options.yearGroup]
-   * @returns {ABClass} populated ABClass instance
+   * @param {string} classId - The Classroom course ID.
+   * @param {Object} [options={}] - Optional configuration for class properties.
+   * @param {string|number} [options.cohort] - Cohort value for the class.
+   * @param {number} [options.courseLength] - Course duration in weeks.
+   * @param {number} [options.yearGroup] - Academic year group.
+   * @param {Assignment[]} [options.assignments] - Assignments to add to the class.
+   * @returns {ABClass} Populated ABClass instance with roster data.
+   * @throws {TypeError} If classId is missing.
    */
   initialise(classId, options = {}) {
     if (!classId) throw new TypeError('classId is required');
 
     // Create a fresh ABClass instance for this id
-    const abClass = new ABClass(classId);
+    const abClass = new ABClass({ classId });
 
     // Apply straightforward options first
     if (options.cohort !== undefined) {
@@ -560,9 +624,11 @@ class ABClassController {
   }
 
   /**
-   * @param {*} classId
-   * @param {string} methodName
-   * @returns {string}
+   * Validates that a classId is a non-empty string.
+   * @param {*} classId - The class ID to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {string} The validated classId.
+   * @throws {TypeError} If classId is not a non-empty string.
    * @private
    */
   _validateClassId(classId, methodName) {
@@ -574,9 +640,11 @@ class ABClassController {
   }
 
   /**
-   * @param {*} classId
-   * @param {string} methodName
-   * @returns {string}
+   * Validates that a classId is safe for deletion operations (no path traversal characters).
+   * @param {*} classId - The class ID to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {string} The validated classId.
+   * @throws {TypeError} If classId is invalid or contains path traversal characters.
    * @private
    */
   _validateDeleteClassId(classId, methodName) {
@@ -590,8 +658,9 @@ class ABClassController {
   }
 
   /**
-   * @param {Error} error
-   * @returns {boolean}
+   * Checks if an error is a collection not found error from JsonDb.
+   * @param {Error} error - The error to check.
+   * @returns {boolean} True if the error is a COLLECTION_NOT_FOUND error.
    * @private
    */
   _isMissingCollectionError(error) {
@@ -599,9 +668,11 @@ class ABClassController {
   }
 
   /**
-   * @param {*} courseLength
-   * @param {string} methodName
-   * @returns {number}
+   * Validates that courseLength is a positive integer.
+   * @param {*} courseLength - The course length to validate.
+   * @param {string} methodName - The calling method name for error reporting.
+   * @returns {number} The validated courseLength.
+   * @throws {TypeError} If courseLength is not an integer >= 1.
    * @private
    */
   _validateCourseLength(courseLength, methodName) {
@@ -615,8 +686,13 @@ class ABClassController {
   }
 
   /**
-   * @param {object} params
-   * @returns {object}
+   * Builds a patch object from update parameters for selective field updates.
+   * @param {Object} parameters - The update parameters object.
+   * @param {*} [parameters.cohort] - Optional cohort value.
+   * @param {*} [parameters.yearGroup] - Optional year group value.
+   * @param {*} [parameters.courseLength] - Optional course length (validated).
+   * @param {boolean} [parameters.active] - Optional active flag.
+   * @returns {Object} Patch object containing only provided fields.
    * @private
    */
   _buildUpdatePatch(parameters) {
@@ -642,9 +718,10 @@ class ABClassController {
   }
 
   /**
-   * @param {ABClass} abClass
-   * @param {object} patch
-   * @returns {ABClass}
+   * Applies a patch object to an ABClass instance, updating specified fields.
+   * @param {ABClass} abClass - The class instance to update.
+   * @param {Object} patch - The patch object containing fields to update.
+   * @returns {ABClass} The updated class instance.
    * @private
    */
   _applyPatchToClass(abClass, patch) {
@@ -668,8 +745,9 @@ class ABClassController {
   }
 
   /**
-   * @param {ABClass} abClass
-   * @returns {object}
+   * Builds a lightweight partial summary of an ABClass for transport.
+   * @param {ABClass} abClass - The class instance to summarise.
+   * @returns {Object} Partial JSON summary of the class.
    * @private
    */
   _buildClassSummary(abClass) {
@@ -677,15 +755,16 @@ class ABClassController {
   }
 
   /**
-   * Creates a new ABClass or refreshes an existing one from Google Classroom,
-   * then returns the lightweight partial summary used by transport callers.
-   *
-   * @param {object} params - Mutation payload.
-   * @param {string} params.classId - Classroom course identifier.
-   * @param {*} params.cohort - User-managed cohort value.
-   * @param {*} params.yearGroup - User-managed year group value.
-   * @param {*} params.courseLength - Required course length, validated as an integer >= 1.
-   * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
+   * Creates a new ABClass or updates an existing one with fresh classroom data and custom metadata.
+   * Validates all required parameters, then either creates a new class or refreshes an existing one,
+   * applying the provided metadata (cohort, yearGroup, courseLength).
+   * @param {Object} parameters - Update parameters.
+   * @param {string} parameters.classId - Classroom course identifier (required).
+   * @param {*} parameters.cohort - User-managed cohort value (required).
+   * @param {*} parameters.yearGroup - User-managed year group value (required).
+   * @param {number} parameters.courseLength - Required course length, validated as an integer >= 1 (required).
+   * @returns {Object} Partial ABClass summary from toPartialJSON().
+   * @throws {Error} If required parameters are missing or validation fails.
    */
   upsertABClass(parameters) {
     Validate.requireParams(
@@ -723,17 +802,15 @@ class ABClassController {
   }
 
   /**
-   * Applies a lightweight patch to editable ABClass fields and returns the
-   * persisted partial class summary. If the class does not yet exist, this
-   * initialises it first using the supplied patch fields.
-   *
-   * @param {object} params - Patch payload.
-   * @param {string} params.classId - Classroom course identifier.
-   * @param {*} [params.cohort] - Optional cohort replacement.
-   * @param {*} [params.yearGroup] - Optional year-group replacement.
-   * @param {*} [params.courseLength] - Optional validated course length.
-   * @param {boolean|null} [params.active] - Optional active-state replacement.
-   * @returns {object} Partial ABClass summary from ABClass.toPartialJSON().
+   * Applies a lightweight patch to editable ABClass fields and returns the persisted partial class summary.
+   * If the class does not yet exist, initialises it first using the supplied patch fields.
+   * @param {Object} parameters - Patch parameters object.
+   * @param {string} parameters.classId - Classroom course identifier (required).
+   * @param {*} [parameters.cohort] - Optional cohort replacement.
+   * @param {*} [parameters.yearGroup] - Optional year-group replacement.
+   * @param {*} [parameters.courseLength] - Optional validated course length.
+   * @param {boolean|null} [parameters.active] - Optional active-state replacement.
+   * @returns {Object} Partial ABClass summary from toPartialJSON().
    */
   updateABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
@@ -768,13 +845,11 @@ class ABClassController {
   }
 
   /**
-   * Deletes the stored full-class collection and matching class-partial row,
-   * returning idempotent deletion flags for each persistence layer.
-   *
-   * @param {object} params - Delete payload.
-   * @param {string} params.classId - Classroom course identifier.
-   * @returns {{ classId: string, fullClassDeleted: boolean, partialDeleted: boolean }}
-   *   Deletion result for the full-class collection and the partial registry row.
+   * Deletes the stored full-class collection and matching class-partial row.
+   * Returns idempotent deletion flags for each persistence layer.
+   * @param {Object} parameters - Delete parameters object.
+   * @param {string} parameters.classId - Classroom course identifier (required).
+   * @returns {{classId: string, fullClassDeleted: boolean, partialDeleted: boolean}} Deletion result for the full-class collection and the partial registry row.
    */
   deleteABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'deleteABClass');
@@ -810,12 +885,10 @@ class ABClassController {
 
   /**
    * Load an ABClass by its classId. Returns an ABClass instance or null if not found.
-   * Strategy: read all documents from the collection named by classId, pick the
-   * first document (collection stores a single ABClass serialized object) and
-   * call ABClass.fromJSON on it.
-   *
-   * @param {string} classId
-   * @returns {ABClass|null}
+   * Reads all documents from the collection named by classId, deserialises the first document,
+   * and optionally refreshes roster data from Classroom API.
+   * @param {string} classId - The Classroom course identifier.
+   * @returns {ABClass|null} The loaded class instance, or null if not found.
    */
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
@@ -861,10 +934,9 @@ class ABClassController {
   }
 
   /**
-   * Write-through persistence: saves the full class document to its own
-   * collection and upserts a partial summary document to 'abclass_partials'.
-   *
-   * @param {ABClass|Object} abClass
+   * Write-through persistence: saves the full class document to its own collection
+   * and upserts a partial summary document to the partials registry.
+   * @param {ABClass|Object} abClass - The class instance or plain object to persist.
    * @returns {void}
    * @throws {Error} Rethrows any persistence error from either collection.
    * @private
@@ -899,12 +971,9 @@ class ABClassController {
 
   /**
    * Save a class representation to its collection named by classId.
-   * Delegates to _persistClassAndPartial for write-through persistence.
-   * Returns true on success.
-   *
-   * @param {ABClass|Object} abClass - An ABClass instance or plain object with
-   *   a `classId` property and a `toPartialJSON()` method.
-   * @returns {boolean}
+   * Delegates to _persistClassAndPartial for write-through persistence to both full and partial stores.
+   * @param {ABClass|Object} abClass - The class instance or plain object with classId property and toPartialJSON() method.
+   * @returns {void}
    * @throws {TypeError} If abClass is missing required properties or methods.
    */
   saveClass(abClass) {

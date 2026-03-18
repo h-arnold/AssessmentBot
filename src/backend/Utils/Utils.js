@@ -17,7 +17,7 @@ const Utilities_ = {
    * Generates a SHA-256 hash for a given input.
    *
    * @param {string|Uint8Array} input - The string or byte array to be hashed.
-   * @return {string} - The SHA-256 hash of the input.
+   * @returns {string} The SHA-256 hash of the input.
    */
   generateHash(input) {
     const inputBytes = Validate.isString(input) ? Utilities.newBlob(input).getBytes() : input;
@@ -43,7 +43,7 @@ const Utilities_ = {
    * Converts a column index to its corresponding letter.
    *
    * @param {number} columnIndex - The column index to convert (0-based).
-   * @return {string} - The corresponding column letter.
+   * @returns {string} The corresponding column letter.
    */
   getColumnLetter(columnIndex) {
     let temporary;
@@ -61,7 +61,7 @@ const Utilities_ = {
    *
    * @param {Array} array1 - The first array.
    * @param {Array} array2 - The second array.
-   * @return {boolean} - True if arrays are equal, false otherwise.
+   * @returns {boolean} True if arrays are equal, false otherwise.
    */
   arraysEqual(array1, array2) {
     if (array1.length !== array2.length) return false;
@@ -72,10 +72,10 @@ const Utilities_ = {
   },
 
   /**
-   * Normalises all keys in an object to lowercase. Sometimes the LLM will capitalize the keys of objects which causes problems elsewhere.
+   * Normalises all keys in an object to lowercase. Sometimes the LLM will capitalise the keys of objects which causes problems elsewhere.
    *
-   * @param {Object} obj - The object whose keys are to be normalised.
-   * @return {Object} - A new object with all keys in lowercase.
+   * @param {Object} object - The object whose keys are to be normalised.
+   * @returns {Object} A new object with all keys in lowercase.
    */
   normaliseKeysToLowerCase(object) {
     const normalisedObject = {};
@@ -115,7 +115,8 @@ const Utilities_ = {
   },
 
   /**
-   *
+   * Clears all document properties.
+   * @returns {void}
    */
   clearDocumentProperties() {
     const documentProperties = PropertiesService.getDocumentProperties();
@@ -123,7 +124,8 @@ const Utilities_ = {
   },
 
   /**
-   * Gets the date in DD/MM/YYYY format for appending to various file names
+   * Gets the date in DD/MM/YYYY format for appending to various file names.
+   * @returns {string} The formatted date string.
    */
   getDate() {
     const dateObject = new Date();
@@ -155,7 +157,7 @@ const Utilities_ = {
    * @param {Object} definition - The assignment definition to check.
    * @param {string|Date} referenceModified - Last modified timestamp of reference document.
    * @param {string|Date} templateModified - Last modified timestamp of template document.
-   * @return {boolean} True if refresh is needed.
+   * @returns {boolean} True if refresh is needed.
    */
   definitionNeedsRefresh(definition, referenceModified, templateModified) {
     if (!definition?.tasks || Object.keys(definition.tasks).length === 0) {
@@ -173,7 +175,7 @@ const Utilities_ = {
    * Checks if a candidate timestamp is newer than a baseline timestamp.
    * @param {string|Date} candidate - The candidate timestamp.
    * @param {string|Date} baseline - The baseline timestamp.
-   * @return {boolean} True if candidate is newer than baseline.
+   * @returns {boolean} True if candidate is newer than baseline.
    */
   isNewer(candidate, baseline) {
     if (!candidate || !baseline) return false;

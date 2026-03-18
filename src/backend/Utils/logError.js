@@ -2,6 +2,9 @@
  * Central error logging utility to provide consistent formatting.
  * Usage: logError('ContextDescription', errorObjectOrMessage);
  * Adds stack trace when available and DEBUG_ERRORS flag is truthy.
+ * @param {string} context - Context description for the error.
+ * @param {string|Error|Object} error - The error object or message to log.
+ * @returns {void}
  */
 function logError(context, error) {
   const message = error?.message || error?.toString?.() || String(error);

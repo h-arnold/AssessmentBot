@@ -9,8 +9,9 @@ const CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE = 2;
  */
 class Cohort {
   /**
-   * @param {string} name The cohort display name.
-   * @param {boolean} [active] Whether the cohort is active.
+   * Constructs a Cohort instance.
+   * @param {string} name - The cohort display name
+   * @param {boolean} [active] - Whether the cohort is active (defaults to true)
    */
   constructor(name, active) {
     Validate.requireParams({ name }, 'Cohort.constructor');
@@ -22,14 +23,16 @@ class Cohort {
   }
 
   /**
-   * @returns {string}
+   * Gets the cohort display name.
+   * @returns {string} The cohort name
    */
   getName() {
     return this.name;
   }
 
   /**
-   * @param {string} name The cohort display name.
+   * Sets the cohort display name.
+   * @param {string} name - The cohort display name
    */
   setName(name) {
     Validate.requireParams({ name }, 'Cohort.setName');
@@ -42,14 +45,16 @@ class Cohort {
   }
 
   /**
-   * @returns {boolean}
+   * Gets the cohort active status.
+   * @returns {boolean} Whether the cohort is active
    */
   getActive() {
     return this.active;
   }
 
   /**
-   * @param {boolean} active Whether the cohort is active.
+   * Sets the cohort active status.
+   * @param {boolean} active - Whether the cohort is active
    */
   setActive(active) {
     Validate.requireParams({ active }, 'Cohort.setActive');
@@ -62,7 +67,8 @@ class Cohort {
   }
 
   /**
-   * @returns {{name: string, active: boolean}}
+   * Serializes the Cohort instance to a JSON object.
+   * @returns {Object} The JSON representation of the cohort
    */
   toJSON() {
     return {
@@ -72,8 +78,9 @@ class Cohort {
   }
 
   /**
-   * @param {{name: string, active?: boolean}} json The serialised cohort.
-   * @returns {Cohort}
+   * Deserializes a JSON object to a Cohort instance.
+   * @param {Object} json - The serialised cohort object
+   * @returns {Cohort} The Cohort instance
    */
   static fromJSON(json) {
     Validate.requireParams({ json }, 'Cohort.fromJSON');
@@ -82,7 +89,7 @@ class Cohort {
       throw new TypeError('json must be an object.');
     }
 
-    const active = Object.prototype.hasOwnProperty.call(json, 'active') ? json.active : true;
+    const active = Object.hasOwn(json, 'active') ? json.active : true;
     return new Cohort(json.name, active);
   }
 }

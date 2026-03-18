@@ -22,9 +22,9 @@ class DocumentParser {
 
   /**
    * Phase 2 abstract: extract ordered TaskDefinitions from reference/template docs.
-   * @param {string} referenceDocumentId
-   * @param {string=} templateDocumentId
-   * @return {TaskDefinition[]}
+   * @param {string} referenceDocumentId - The ID of the reference document.
+   * @param {string=} templateDocumentId - Optional ID of the template document.
+   * @returns {TaskDefinition[]} Ordered task definitions extracted from reference and template documents.
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
     throw new Error("Method 'extractTaskDefinitions' must be implemented by subclass");
@@ -32,9 +32,9 @@ class DocumentParser {
 
   /**
    * Phase 2 abstract: extract primitive submission artifact records (no hashing) for a student document.
-   * @param {string} documentId
-   * @param {TaskDefinition[]} taskDefinitions
-   * @return {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>}
+   * @param {string} documentId - The ID of the student submission document.
+   * @param {TaskDefinition[]} taskDefinitions - Definitions of tasks to extract.
+   * @returns {Array<{taskId:string,pageId?:string,content:any,metadata?:Object}>} Submission artefacts indexed by task ID.
    */
   extractSubmissionArtifacts(documentId, taskDefinitions) {
     throw new Error("Method 'extractSubmissionArtifacts' must be implemented by subclass");
@@ -43,7 +43,7 @@ class DocumentParser {
   /**
    * Converts a table to a Markdown-formatted string.
    * @param {Array<Array<string>>} tableData - 2D array containing the table data.
-   * @return {string} - The Markdown-formatted table.
+   * @returns {string} The Markdown-formatted table.
    */
   convertToMarkdownTable(tableData) {
     if (!tableData || tableData.length === 0 || tableData[0].length === 0) {

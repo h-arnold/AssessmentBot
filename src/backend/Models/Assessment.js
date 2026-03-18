@@ -18,7 +18,7 @@ class Assessment {
 
   /**
    * Serializes the Assessment instance to a JSON object.
-   * @return {Object} - The JSON representation of the Assessment.
+   * @returns {Object} The JSON representation of the Assessment
    */
   toJSON() {
     return {
@@ -29,8 +29,8 @@ class Assessment {
 
   /**
    * Deserializes a JSON object to an Assessment instance.
-   * @param {Object} json - The JSON object representing an Assessment.
-   * @return {Assessment} - The Assessment instance.
+   * @param {Object} json - The JSON object representing an Assessment
+   * @returns {Assessment} The Assessment instance
    */
   static fromJSON(json) {
     const { score, reasoning } = json;

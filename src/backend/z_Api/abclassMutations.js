@@ -1,13 +1,19 @@
 /**
- * @returns {ABClassController}
+ * Factory function that returns a new ABClassController instance.
+ *
+ * @returns {ABClassController} A new controller instance.
  */
 function getController() {
   return new ABClassController();
 }
 
 /**
- * @param {object} params
- * @param {string} methodName
+ * Validates that parameters is a plain object (not an array).
+ * Throws ApiValidationError if validation fails.
+ *
+ * @param {*} parameters - The parameters object to validate.
+ * @param {string} methodName - Name of the calling method (for error messages).
+ * @throws {ApiValidationError} If parameters is not a plain object.
  */
 function validateParametersObject(parameters, methodName) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
@@ -19,8 +25,12 @@ function validateParametersObject(parameters, methodName) {
 }
 
 /**
- * @param {object} params
- * @param {string} methodName
+ * Validates that required parameters are present.
+ * Wraps validation errors as ApiValidationError.
+ *
+ * @param {*} parameters - Parameters object to validate; should not be empty.
+ * @param {string} methodName - Name of the calling method (for error messages).
+ * @throws {ApiValidationError} If any required parameter is missing.
  */
 function requireParameters(parameters, methodName) {
   try {
@@ -34,8 +44,11 @@ function requireParameters(parameters, methodName) {
 }
 
 /**
- * @param {*} classId
- * @param {string} methodName
+ * Validates that classId is a non-empty string.
+ *
+ * @param {*} classId - The class ID to validate.
+ * @param {string} methodName - Name of the calling method (for error messages).
+ * @throws {ApiValidationError} If classId is not a non-empty string.
  */
 function validateClassId(classId, methodName) {
   if (!Validate.isNonEmptyString(classId)) {
@@ -47,8 +60,11 @@ function validateClassId(classId, methodName) {
 }
 
 /**
- * @param {*} classId
- * @param {string} methodName
+ * Validates a classId for deletion, disallowing unsafe path characters.
+ *
+ * @param {*} classId - The class ID to validate.
+ * @param {string} methodName - Name of the calling method (for error messages).
+ * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
 function validateDeleteClassId(classId, methodName) {
   validateClassId(classId, methodName);
@@ -62,8 +78,11 @@ function validateDeleteClassId(classId, methodName) {
 }
 
 /**
- * @param {*} courseLength
- * @param {string} methodName
+ * Validates that courseLength is a positive integer.
+ *
+ * @param {*} courseLength - The course length to validate.
+ * @param {string} methodName - Name of the calling method (for error messages).
+ * @throws {ApiValidationError} If courseLength is not a positive integer.
  */
 function validateCourseLength(courseLength, methodName) {
   if (!Number.isInteger(courseLength) || courseLength < 1) {
@@ -75,7 +94,10 @@ function validateCourseLength(courseLength, methodName) {
 }
 
 /**
- * @param {object} params
+ * Validates all required parameters for upsertABClass operation.
+ *
+ * @param {*} parameters - Request parameters to validate.
+ * @throws {ApiValidationError} If any required parameter is invalid.
  */
 function validateUpsertABClassParameters(parameters) {
   const methodName = 'upsertABClass';
@@ -95,7 +117,11 @@ function validateUpsertABClassParameters(parameters) {
 }
 
 /**
- * @param {object} params
+ * Validates all parameters for updateABClass operation.
+ * Prevents mutation of protected fields (classOwner, teachers, students, assignments).
+ *
+ * @param {*} parameters - Request parameters to validate.
+ * @throws {ApiValidationError} If any parameter is invalid or protected fields are supplied.
  */
 function validateUpdateABClassParameters(parameters) {
   const methodName = 'updateABClass';
@@ -131,7 +157,10 @@ function validateUpdateABClassParameters(parameters) {
 }
 
 /**
- * @param {object} params
+ * Validates all required parameters for deleteABClass operation.
+ *
+ * @param {*} parameters - Request parameters to validate.
+ * @throws {ApiValidationError} If any required parameter is invalid.
  */
 function validateDeleteABClassParameters(parameters) {
   const methodName = 'deleteABClass';
@@ -143,9 +172,11 @@ function validateDeleteABClassParameters(parameters) {
 
 /**
  * Thin transport handler for ABClass create or refresh operations.
+ * Delegates to controller after validating request parameters.
  *
- * @param {object} params - Request payload with classId, cohort, yearGroup, and courseLength.
- * @returns {object} Partial ABClass summary returned by ABClassController.upsertABClass().
+ * @param {Object} parameters - Request payload with classId, cohort, yearGroup, and courseLength.
+ * @returns {Object} Partial ABClass summary from the controller.
+ * @throws {ApiValidationError} If parameters fail validation.
  */
 function upsertABClass(parameters) {
   validateUpsertABClassParameters(parameters);
@@ -154,9 +185,11 @@ function upsertABClass(parameters) {
 
 /**
  * Thin transport handler for editable ABClass field updates.
+ * Delegates to controller after validating request parameters.
  *
- * @param {object} params - Request payload with classId and optional editable patch fields.
- * @returns {object} Partial ABClass summary returned by ABClassController.updateABClass().
+ * @param {Object} parameters - Request payload with classId and optional editable patch fields.
+ * @returns {Object} Partial ABClass summary from the controller.
+ * @throws {ApiValidationError} If parameters fail validation.
  */
 function updateABClass(parameters) {
   validateUpdateABClassParameters(parameters);
@@ -165,9 +198,11 @@ function updateABClass(parameters) {
 
 /**
  * Thin transport handler for ABClass deletion.
+ * Delegates to controller after validating request parameters.
  *
- * @param {object} params - Request payload containing classId.
- * @returns {object} Deletion result returned by ABClassController.deleteABClass().
+ * @param {Object} parameters - Request payload containing classId.
+ * @returns {Object} Deletion result with classId and deletion status flags.
+ * @throws {ApiValidationError} If parameters fail validation.
  */
 function deleteABClass(parameters) {
   validateDeleteABClassParameters(parameters);

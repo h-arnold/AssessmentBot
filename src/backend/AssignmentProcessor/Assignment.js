@@ -13,9 +13,7 @@ class Assignment {
    * Constructs an Assignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {number} assignmentWeighting - to be implemented later. Used to inform the weight given to the assignment when calculating the average overall.
-   * @param {Date} dueDate - to be implemented later
-   * @param {Date} lastUpdated - the last time the assignment was updated (probably by running an assessments)
+   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing document type, reference/template IDs, and task metadata.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     this.courseId = courseId;
@@ -38,11 +36,10 @@ class Assignment {
   }
 
   /**
-   * Serialize this Assignment to a plain JSON-friendly object.
-   * - Dates are converted to ISO strings.
-   * - If TaskDefinition or StudentSubmission provide toJSON, those are used.
-   * - progressTracker is intentionally not serialized (singleton/session-specific).
-   * @return {object}
+   * Serialises this Assignment to a plain JSON-friendly object.
+   * Dates are converted to ISO strings. If TaskDefinition or StudentSubmission provide toJSON, those are used.
+   * progressTracker is intentionally not serialised (singleton/session-specific).
+   * @returns {object} Assignment data with course/assignment IDs, dates, definition, and submissions.
    */
   toJSON() {
     const definitionJson = this.assignmentDefinition?.toJSON
@@ -82,11 +79,10 @@ class Assignment {
   }
 
   /**
-   * Helper to extract full definition fields from assignmentDefinition.
-   * Used by toJSON to include complete definition data.
-   * @param {object} definitionJson - The serialized definition object
-   * @return {object} Full definition fields
-   * @private
+   * Extracts full definition fields from the serialised definition object.
+   * Used by toJSON to include complete definition data (document type, IDs, and tasks).
+   * @param {object} definitionJson - The serialised definition object.
+   * @returns {object} Full definition fields including documentType, IDs, and tasks.
    */
   _extractFullDefinitionFields(definitionJson) {
     return {
@@ -98,11 +94,10 @@ class Assignment {
   }
 
   /**
-   * Helper to extract minimal fields for partial definitions.
+   * Extracts minimal root fields for partial definitions.
    * Only includes documentType (for routing); omits doc IDs and tasks.
-   * @param {object} definitionJson - The serialized definition object
-   * @return {object} Minimal root fields
-   * @private
+   * @param {object} definitionJson - The serialised definition object.
+   * @returns {object} Minimal root fields with only documentType.
    */
   _extractPartialRootFields(definitionJson) {
     return {
@@ -111,8 +106,8 @@ class Assignment {
   }
 
   /**
-   * Produce a lightweight JSON payload with heavy artifact fields redacted.
-   * @return {object}
+   * Produces a lightweight JSON payload with heavy artifact fields redacted.
+   * @returns {object} Assignment data with redacted definition.
    */
   toPartialJSON() {
     const definitionJson = this.assignmentDefinition.toPartialJSON();
@@ -135,11 +130,11 @@ class Assignment {
 
   /**
    * Factory method to create the correct Assignment subclass based on documentType.
-   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing docType and task metadata
-   * @param {string} courseId - The ID of the course
-   * @param {string} assignmentId - The ID of the assignment
-   * @return {Assignment} Instance of appropriate subclass
-   * @throws {Error} If documentType is invalid or unknown
+   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing docType and task metadata.
+   * @param {string} courseId - The ID of the course.
+   * @param {string} assignmentId - The ID of the assignment.
+   * @returns {Assignment} Instance of appropriate subclass (SlidesAssignment or SheetsAssignment).
+   * @throws {Error} If documentType is invalid or unknown.
    */
   static create(assignmentDefinition, courseId, assignmentId) {
     if (!assignmentDefinition?.documentType) {
@@ -166,8 +161,8 @@ class Assignment {
   /**
    * Internal helper to restore base Assignment fields from JSON data.
    * Used by both base Assignment and subclass fromJSON methods.
-   * @param {object} data - JSON data object
-   * @return {Assignment} Assignment instance with base fields populated
+   * @param {object} data - JSON data object.
+   * @returns {Assignment} Assignment instance with base fields populated.
    */
   static _baseFromJSON(data) {
     if (!data || typeof data !== 'object')
@@ -223,7 +218,10 @@ class Assignment {
   }
 
   /**
-   *
+   * Rehydrates a submission object from JSON data and adds it to the assignment's submissions array.
+   * Handles StudentSubmission deserialization or falls back to plain object reconstruction.
+   * @param {Assignment} inst - The Assignment instance to add the submission to.
+   * @param {object} subObject - The submission object to rehydrate.
    */
   static _rehydrateSubmission(inst, subObject) {
     const identifier = subObject && (subObject.studentId || subObject.userId);
@@ -280,10 +278,10 @@ class Assignment {
   }
 
   /**
-   * Polymorphic deserialization routing based on documentType field.
+   * Polymorphic deserialisation routing based on documentType field.
    * Routes to appropriate subclass fromJSON or creates base Assignment for legacy data.
-   * @param {object} data - JSON data object
-   * @return {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment)
+   * @param {object} data - JSON data object.
+   * @returns {Assignment} Instance of appropriate class (SlidesAssignment, SheetsAssignment, or base Assignment).
    */
   static fromJSON(data) {
     if (!data || typeof data !== 'object')
@@ -341,7 +339,7 @@ class Assignment {
    * Fetches the assignment name from Google Classroom.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @return {string} - The name/title of the assignment.
+   * @returns {string} The name/title of the assignment.
    */
   fetchAssignmentName(courseId, assignmentId) {
     try {
@@ -354,9 +352,9 @@ class Assignment {
   }
 
   /**
-   * Update the lastUpdated timestamp to the current date/time.
+   * Updates the lastUpdated timestamp to the current date/time.
    * Call this whenever the assignment is modified in-memory.
-   * @return {Date} the new lastUpdated value
+   * @returns {Date} The new lastUpdated value.
    */
   touchUpdated() {
     // Use setLastUpdated to centralize validation/copying behavior.
@@ -365,18 +363,18 @@ class Assignment {
 
   /**
    * Returns the lastUpdated Date or null if not set.
-   * @return {Date|null}
+   * @returns {Date|null} The lastUpdated Date or null.
    */
   getLastUpdated() {
     return this.lastUpdated || null;
   }
 
   /**
-   * Set the lastUpdated timestamp from a JavaScript Date object (or null to clear).
+   * Sets the lastUpdated timestamp from a JavaScript Date object (or null to clear).
    * The method copies the provided Date to avoid external mutation.
-   * @param {Date|null} date
-   * @throws {TypeError} if the provided value is not a Date or null
-   * @return {Date|null} the stored Date instance or null
+   * @param {Date|null} date - The Date to set, or null to clear the timestamp.
+   * @returns {Date|null} The stored Date instance or null.
+   * @throws {TypeError} If the provided value is not a Date or null.
    */
   setLastUpdated(date) {
     if (date === null) {
@@ -394,6 +392,7 @@ class Assignment {
   /**
    * Adds a student to the assignment.
    * @param {Student} student - The Student instance to add.
+   * @returns {StudentSubmission|null} The created StudentSubmission, or null if studentId is not resolvable.
    */
   addStudent(student) {
     // Expect student object with id
@@ -417,11 +416,11 @@ class Assignment {
   }
 
   /**
-   * Process a single attachment for a student's submission.
-   * Separated out to reduce cognitive complexity in the parent method.
-   * @param {object} attachment
-   * @param {string} studentId
-   * @param {string} mimeType
+   * Processes a single attachment for a student's submission.
+   * Separates logic to reduce cognitive complexity in the parent method.
+   * @param {object} attachment - The attachment object from Classroom submission.
+   * @param {string} studentId - The Google Classroom student ID.
+   * @param {string} mimeType - The expected MIME type to validate against.
    */
   _processAttachmentForSubmission(attachment, studentId, mimeType) {
     const driveFileId = attachment?.driveFile?.id;
@@ -460,6 +459,7 @@ class Assignment {
   /**
    * Fetches and assigns submitted Google Drive documents for each student, filtered by the provided MIME type.
    * @param {string} mimeType - The Google Drive MIME type to filter for (e.g., MimeType.GOOGLE_SLIDES, MimeType.GOOGLE_SHEETS).
+   * @returns {void}
    */
   fetchSubmittedDocumentsByMimeType(mimeType) {
     try {
@@ -496,10 +496,10 @@ class Assignment {
   }
 
   /**
-   * Helper to validate if the file's MIME type matches the expected type (Google Docs or Google Sheets).
+   * Validates if the file's MIME type matches the expected type.
    * @param {string} fileMimeType - The MIME type of the file from Drive.
    * @param {string} expectedMimeType - The expected Google MIME type.
-   * @return {boolean} True if valid, false otherwise.
+   * @returns {boolean} True if valid, false otherwise.
    */
   isValidMimeType(fileMimeType, expectedMimeType) {
     return fileMimeType === expectedMimeType;
@@ -508,6 +508,7 @@ class Assignment {
   /**
    * Fetches and assigns submitted documents for each student.
    * This is a base method that should be implemented by subclasses.
+   * @returns {void}
    */
   fetchSubmittedDocuments() {
     this._requireImplementation('fetchSubmittedDocuments');
@@ -516,6 +517,7 @@ class Assignment {
   /**
    * Populates tasks from reference documents.
    * This is a base method that should be implemented by subclasses.
+   * @returns {void}
    */
   populateTasks() {
     this._requireImplementation('populateTasks');
@@ -524,6 +526,7 @@ class Assignment {
   /**
    * Processes all student submissions by extracting responses.
    * This is a base method that should be implemented by subclasses.
+   * @returns {void}
    */
   processAllSubmissions() {
     this._requireImplementation('processAllSubmissions');
@@ -531,7 +534,7 @@ class Assignment {
 
   /**
    * Generates an array of request objects ready to be sent to the LLM.
-   * @return {Object[]} - An array of request objects.
+   * @returns {Object[]} An array of request objects.
    */
   generateLLMRequests() {
     return this._getLLMManager().generateRequestObjects(this);
@@ -539,6 +542,8 @@ class Assignment {
 
   /**
    * Assesses student responses by interacting with the LLM.
+   * Generates LLM requests for all submissions and processes responses.
+   * @returns {void}
    */
   assessResponses() {
     // Base Assignment only handles non-spreadsheet (text/table/image) via LLM
@@ -552,9 +557,9 @@ class Assignment {
   }
 
   /**
-   * Small helper to centralise creation of the LLMRequestManager instance.
-   * This keeps construction in a single place and reduces copy/paste.
-   * @return {LLMRequestManager}
+   * Creates and returns an LLMRequestManager instance.
+   * Centralises construction to reduce duplicated logic across multiple methods.
+   * @returns {LLMRequestManager} A new LLMRequestManager instance.
    */
   _getLLMManager() {
     return new LLMRequestManager();
@@ -571,14 +576,17 @@ class Assignment {
   }
 
   /**
-   *
+   * Gets the tasks object from the assignment definition.
+   * @returns {Object|null} Task definitions keyed by task ID, or null if not set.
    */
   getTasks() {
     return this.assignmentDefinition?.tasks ?? null;
   }
 
   /**
-   *
+   * Sets the tasks object in the assignment definition.
+   * @param {Object} tasks - Task definitions keyed by task ID.
+   * @returns {Object} The assigned tasks object.
    */
   setTasks(tasks) {
     this.assignmentDefinition.tasks = tasks;
@@ -586,21 +594,24 @@ class Assignment {
   }
 
   /**
-   *
+   * Gets the document type from the assignment definition.
+   * @returns {string|null} The document type (e.g., 'SLIDES', 'SHEETS'), or null if not set.
    */
   getDocumentType() {
     return this.assignmentDefinition?.documentType ?? null;
   }
 
   /**
-   *
+   * Gets the reference document ID from the assignment definition.
+   * @returns {string|null} The reference document ID, or null if not set.
    */
   getReferenceDocumentId() {
     return this.assignmentDefinition?.referenceDocumentId ?? null;
   }
 
   /**
-   *
+   * Gets the template document ID from the assignment definition.
+   * @returns {string|null} The template document ID, or null if not set.
    */
   getTemplateDocumentId() {
     return this.assignmentDefinition?.templateDocumentId ?? null;

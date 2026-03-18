@@ -9,8 +9,7 @@ class SheetsAssignment extends Assignment {
    * Constructs a SheetsAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
-   * @param {string} templateDocumentId - The ID of the template spreadsheet document.
+   * @param {AssignmentDefinition|Object} assignmentDefinition - Embedded definition containing document type and task metadata.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     const definitionInstance =
@@ -21,9 +20,9 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Deserialize SheetsAssignment from JSON data.
-   * @param {object} data - JSON data object
-   * @return {SheetsAssignment} Reconstructed SheetsAssignment instance
+   * Deserialises SheetsAssignment from JSON data.
+   * @param {object} data - JSON data object.
+   * @returns {SheetsAssignment} Reconstructed SheetsAssignment instance.
    */
   static fromJSON(data) {
     const inst = Assignment._baseFromJSON(data);
@@ -32,7 +31,7 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   *
+   * Populates task definitions from the reference and template spreadsheets.
    */
   populateTasks() {
     const { referenceDocumentId, templateDocumentId } = this.assignmentDefinition;
@@ -86,9 +85,9 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Helper to determine if a student response entry is valid (not undefined/null and has a response).
-   * @param {Object} studentResponseEntry
-   * @return {boolean}
+   * Determines if a student response entry is valid (not undefined/null and has a response).
+   * @param {Object} studentResponseEntry - The student's response entry object to validate.
+   * @returns {boolean} True if the response entry is valid and contains a response.
    */
   hasValidStudentResponse(studentResponseEntry) {
     // Use optional chaining to check presence of response property and ensure it's not null/undefined
@@ -96,9 +95,9 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Helper to determine if a reference task entry is valid (not undefined/null and has a taskReference).
-   * @param {Object} referenceTask
-   * @return {boolean}
+   * Determines if a reference task entry is valid (not undefined/null and has a taskReference).
+   * @param {Object} referenceTask - The reference task object to validate.
+   * @returns {boolean} True if the reference task is valid and contains a taskReference.
    */
   hasValidReferenceTask(referenceTask) {
     // Optional chaining for concise existence check
@@ -106,7 +105,8 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   *
+   * Assesses all student responses using the SheetsAssessor.
+   * Routes assessment through the dedicated assessor using response artefacts.
    */
   assessResponses() {
     // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.

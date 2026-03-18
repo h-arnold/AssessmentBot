@@ -4,7 +4,8 @@
  */
 class ProgressTracker extends BaseSingleton {
   /**
-   *
+   * Initialises the ProgressTracker singleton instance.
+   * @param {boolean} [isSingletonCreator=false] - Internal flag indicating whether this is the singleton creator instance.
    */
   constructor(isSingletonCreator = false) {
     super();
@@ -12,11 +13,6 @@ class ProgressTracker extends BaseSingleton {
      * JSDoc Singleton Banner
      * Use ProgressTracker.getInstance(); do not call constructor directly.
      */
-    // Singleton guard: constructor should only execute once via getInstance()
-    if (!isSingletonCreator && ProgressTracker._instance) {
-      return ProgressTracker._instance;
-    }
-
     // Defer heavy work (PropertiesService access) until ensureInitialized()
     this.properties = null;
     this.propertyKey = 'ProgressTracker';
@@ -27,6 +23,15 @@ class ProgressTracker extends BaseSingleton {
     }
 
     ABLogger.getInstance().info('ProgressTracker instance created.');
+  }
+
+  /**
+   * Resets the singleton cache for tests.
+   * @returns {void}
+   */
+  static resetForTests() {
+    super.resetForTests();
+    ProgressTracker._instance = null;
   }
 
   /**
@@ -245,8 +250,8 @@ class ProgressTracker extends BaseSingleton {
    *
    * @param {string} errorMessage - The message to log and include in the thrown error
    * @param {string|Error|Object} [extraErrorDetails] - Additional error details for developer logs
-   * @throws {Error} - Always throws an error with the errorMessage
-   * @returns {never}
+   * @throws {Error} Always throws an error with the errorMessage.
+   * @returns {never} This method always throws and never returns.
    */
   logAndThrowError(errorMessage, extraErrorDetails) {
     this.logError(errorMessage, extraErrorDetails);
@@ -322,10 +327,22 @@ class ProgressTracker extends BaseSingleton {
   }
 }
 
+const ProgressTrackerProxy = new Proxy(ProgressTracker, {
+  construct(target, arguments_, newTarget) {
+    if (target._instance) {
+      return target._instance;
+    }
+
+    const instance = Reflect.construct(target, arguments_, newTarget);
+    target._instance = instance;
+    return instance;
+  },
+});
+
 // Export for Node (module.exports) and attach to global when running in GAS.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ProgressTracker;
+  module.exports = ProgressTrackerProxy;
 } else {
   // Use globalThis instead of `this` so linters and strict environments are happy.
-  globalThis.ProgressTracker = ProgressTracker; // global assignment for GAS
+  globalThis.ProgressTracker = ProgressTrackerProxy; // global assignment for GAS
 }

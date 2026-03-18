@@ -1,9 +1,13 @@
 /**
+ * AssignmentDefinitionController
  *
+ * Manages the creation, retrieval, and persistence of assignment definitions.
+ * Definitions are stored in a registry collection and full documents in dedicated collections.
  */
 class AssignmentDefinitionController {
   /**
-   *
+   * Initialises the AssignmentDefinitionController.
+   * Sets up database manager and registry/collection naming conventions for persisting assignment definitions.
    */
   constructor() {
     this.dbManager = DbManager.getInstance();
@@ -15,16 +19,16 @@ class AssignmentDefinitionController {
   /**
    * Ensure an AssignmentDefinition exists and is fresh for the provided identifiers.
    * Parses documents when missing or stale and persists immediately.
-   * @param {Object} params
-   * @param {string} params.primaryTitle
-   * @param {string|null} [params.primaryTopic]
-   * @param {string|null} [params.topicId]
-   * @param {string} params.courseId
-   * @param {number|null} [params.yearGroup]
-   * @param {string} params.documentType - 'SLIDES' | 'SHEETS'
-   * @param {string} params.referenceDocumentId
-   * @param {string} params.templateDocumentId
-   * @return {AssignmentDefinition}
+   * @param {Object} params - Configuration parameters.
+   * @param {string} params.primaryTitle - The primary title of the assignment.
+   * @param {string|null} [params.primaryTopic] - Topic name (optional).
+   * @param {string|null} [params.topicId] - Topic ID to look up (optional).
+   * @param {string} params.courseId - Classroom course ID.
+   * @param {number|null} [params.yearGroup] - Year group level (optional).
+   * @param {string} params.documentType - Document type ('SLIDES' or 'SHEETS').
+   * @param {string} params.referenceDocumentId - Google ID of the reference document.
+   * @param {string} params.templateDocumentId - Google ID of the template document.
+   * @returns {AssignmentDefinition} The fresh or newly created assignment definition.
    */
   ensureDefinition({
     primaryTitle,
@@ -109,10 +113,11 @@ class AssignmentDefinitionController {
 
   /**
    * Retrieve a definition by its composite key.
-   * @param {string} definitionKey
-   * @param {Object} [options]
+   * Returns the full definition if available, or a partial metadata entry from the registry.
+   * @param {string} definitionKey - The composite definition key.
+   * @param {Object} [options] - Retrieval options.
    * @param {'full'|'partial'} [options.form='full'] - Which store to query.
-   * @return {AssignmentDefinition|null}
+   * @returns {AssignmentDefinition|null} The definition instance, or null if not found.
    */
   getDefinitionByKey(definitionKey, options = {}) {
     const { form = 'full' } = options;
@@ -133,7 +138,8 @@ class AssignmentDefinitionController {
 
   /**
    * Return all partial assignment definitions from the registry as model instances.
-   * @return {AssignmentDefinition[]}
+   * Partial definitions contain essential metadata only; tasks are stored separately in full definitions.
+   * @returns {Array<AssignmentDefinition>} Array of all partial definitions in the registry.
    */
   getAllPartialDefinitions() {
     const documents = this.dbManager.readAll(this.registryCollectionName) || [];
@@ -142,8 +148,9 @@ class AssignmentDefinitionController {
 
   /**
    * Persist a definition to the JsonDb collection (upsert by definitionKey).
-   * @param {AssignmentDefinition|Object} definition
-   * @return {AssignmentDefinition}
+   * Saves both the full definition and a partial registry entry.
+   * @param {AssignmentDefinition|Object} definition - The definition instance or JSON object to save.
+   * @returns {AssignmentDefinition} The saved definition deserialised from persisted JSON.
    */
   saveDefinition(definition) {
     const definitionInstance =
@@ -170,7 +177,11 @@ class AssignmentDefinitionController {
   }
 
   /**
-   *
+   * Saves the partial representation of a definition to the registry collection.
+   * The partial contains only essential metadata whilst tasks are stored separately.
+   * @param {AssignmentDefinition|Object} definition - The definition instance or JSON object.
+   * @returns {AssignmentDefinition} The definition instance deserialised from saved JSON.
+   * @private
    */
   savePartialDefinition(definition) {
     const definitionInstance =
@@ -193,21 +204,32 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Retrieves the registry collection for all definition metadata.
    *
+   * @returns {Object} The JsonDb collection instance.
+   * @private
    */
   _getRegistryCollection() {
     return this.dbManager.getCollection(this.registryCollectionName);
   }
 
   /**
+   * Generates the collection name for storing a full definition.
    *
+   * @param {string} definitionKey - The definition composite key.
+   * @returns {string} Collection name with prefix and key.
+   * @private
    */
   _getFullCollectionName(definitionKey) {
     return `${this.fullCollectionPrefix}${definitionKey}`;
   }
 
   /**
+   * Retrieves the JsonDb collection for storing a full definition.
    *
+   * @param {string} definitionKey - The definition composite key.
+   * @returns {Object} The JsonDb collection instance.
+   * @private
    */
   _getFullCollection(definitionKey) {
     const name = this._getFullCollectionName(definitionKey);
@@ -215,7 +237,15 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Resolves the canonical topic name from provided metadata or API.
+   * Returns null if no topic is available (assignment may not have one).
    *
+   * @param {Object} params - Destructured parameters.
+   * @param {string} [params.primaryTopic] - Provided topic name.
+   * @param {string} [params.topicId] - Topic ID to look up.
+   * @param {string} [params.courseId] - Course ID for topic lookup.
+   * @returns {string|null} Topic name or null if not found.
+   * @private
    */
   _resolveTopicName({ primaryTopic, topicId, courseId }) {
     if (primaryTopic) return primaryTopic;
@@ -233,7 +263,16 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Parses task definitions from reference and template documents.
+   * Dispatches to type-specific parsers based on document type.
    *
+   * @param {Object} params - Destructured parameters.
+   * @param {string} params.documentType - Document type ('SLIDES' or 'SHEETS').
+   * @param {string} params.referenceDocumentId - Reference document Google ID.
+   * @param {string} params.templateDocumentId - Template document Google ID.
+   * @returns {Object} Task definitions map with task ID as key.
+   * @throws {Error} If document type is unknown or parsing fails.
+   * @private
    */
   _parseTasks({ documentType, referenceDocumentId, templateDocumentId }) {
     const type = documentType.toUpperCase();
@@ -249,7 +288,13 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Parses task definitions from Google Slides documents.
+   * Validates each task definition and logs errors for invalid tasks.
    *
+   * @param {string} referenceDocumentId - Reference slides Google ID.
+   * @param {string} templateDocumentId - Template slides Google ID.
+   * @returns {Object} Map of valid task definitions indexed by task ID.
+   * @private
    */
   _parseSlidesTasks(referenceDocumentId, templateDocumentId) {
     const parser = new SlidesParser();
@@ -279,7 +324,13 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Parses task definitions from Google Sheets documents.
+   * Validates each task definition and logs errors for invalid tasks.
    *
+   * @param {string} referenceDocumentId - Reference spreadsheet Google ID.
+   * @param {string} templateDocumentId - Template spreadsheet Google ID.
+   * @returns {Object} Map of valid task definitions indexed by task ID.
+   * @private
    */
   _parseSheetsTasks(referenceDocumentId, templateDocumentId) {
     const parser = new SheetsParser();

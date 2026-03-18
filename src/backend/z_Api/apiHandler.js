@@ -52,14 +52,19 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 /**
- * Dispatches an incoming API request to the appropriate allowlisted handler.
+ * Dispatches incoming API requests to allowlisted handlers.
+ * Manages request lifecycle phases (admission, handler invocation, completion) with rate limiting and state tracking.
  */
 class ApiDispatcher extends BaseSingleton {
   /**
    * Validates, resolves, and dispatches the request, returning a structured response envelope.
-   * As the API boundary entry point this method always returns an envelope and never throws;
-   * Validate.requireParams is therefore intentionally omitted in favour of the structured
-   * INVALID_REQUEST path.
+   * As the API boundary entry point, this method always returns an envelope and never throws.
+   * Always wraps errors in a structured response.
+   *
+   * @param {Object} request - Request object with method and optional params.
+   * @param {string} request.method - The API method name to dispatch.
+   * @param {*} [request.params] - Optional parameters for the handler.
+   * @returns {Object} Response envelope with ok, requestId, and data or error fields.
    */
   handle(request) {
     const requestId = this._resolveRequestId();
@@ -100,13 +105,15 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Acquires the user lock, prunes stale started entries, registers a started entry in the
-   * request store, and releases the lock.
-   * Returns a failure envelope if the lock cannot be acquired or the active limit is reached.
+   * Acquires the user lock, prunes stale started entries, registers a started entry in the request store,
+   * and releases the lock. Returns a failure envelope if the lock cannot be acquired or active limit is reached.
+   * Inline pruning and record creation use lockAcquiredAt as the timestamp reference to minimise Date.now() calls,
+   * which is required for reliable lock-timing observability tests.
    *
-   * Pruning and record creation are inlined using lockAcquiredAt as the reference timestamp
-   * to keep the observable Date.now() call count to exactly three (phaseStart, lockAcquiredAt,
-   * endTime), which is required for reliable lock-timing observability tests.
+   * @param {string} requestId - Unique identifier for this request.
+   * @param {string} method - The API method name.
+   * @returns {Object} Success envelope { ok: true } or failure envelope on admission error.
+   * @private
    */
   _runAdmissionPhase(requestId, method) {
     const phaseStart = Date.now();
@@ -185,7 +192,13 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Acquires the user lock, marks the request as success or error, compacts the store, and releases the lock.
-   * Logs a warning if the completion lock cannot be acquired.
+   * Logs a warning if the completion lock cannot be acquired but does not fail the overall request.
+   *
+   * @param {string} requestId - Unique identifier for this request.
+   * @param {string} method - The API method name.
+   * @param {boolean} handlerFailed - Whether the handler threw an error.
+   * @param {Error} [handlerError] - The error thrown by the handler, if any.
+   * @private
    */
   _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
     const phaseStart = Date.now();
@@ -229,7 +242,12 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Returns true if the request is a non-array object with a non-empty method string.
+   * Determines whether the request object is valid.
+   * A valid request is a non-array object with a non-empty method string.
+   *
+   * @param {*} request - The request object to validate.
+   * @returns {boolean} True if the request is valid.
+   * @private
    */
   _isValidRequest(request) {
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
@@ -240,14 +258,24 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Generates a backend-owned requestId for transport and tracking.
+   * Generates a backend-owned request ID for transport and tracking purposes.
+   *
+   * @returns {string} A unique request ID.
+   * @private
    */
   _resolveRequestId() {
     return Utilities.getUuid();
   }
 
   /**
-   * Invokes the named allowlisted handler function with the given params.
+   * Invokes the named allowlisted handler function with the given parameters.
+   * Dispatches to the appropriate handler based on the method name.
+   *
+   * @param {string} handlerName - The allowlisted method name.
+   * @param {*} parameters - Optional request parameters.
+   * @returns {*} The handler response data.
+   * @throws {Error} Re-throws any error from the handler or if handler name is unknown.
+   * @private
    */
   _invokeAllowlistedMethod(handlerName, parameters) {
     if (handlerName === 'getAuthorisationStatus') {
@@ -296,7 +324,12 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Builds a successful response envelope with the given requestId and data.
+   * Builds a successful response envelope.
+   *
+   * @param {string} requestId - Unique request identifier.
+   * @param {*} data - Response data from the handler.
+   * @returns {Object} Response envelope with ok=true, requestId, and data.
+   * @private
    */
   _success(requestId, data) {
     return {
@@ -307,7 +340,14 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Builds a failure response envelope with the given requestId, error code, message, and retriable flag.
+   * Builds a failure response envelope.
+   *
+   * @param {string} requestId - Unique request identifier.
+   * @param {string} code - Error code (e.g. RATE_LIMITED, INVALID_REQUEST).
+   * @param {string} message - Human-readable error message.
+   * @param {boolean} retriable - Whether the operation can be safely retried.
+   * @returns {Object} Response envelope with ok=false, error details.
+   * @private
    */
   _failure(requestId, code, message, retriable) {
     return {
@@ -323,6 +363,13 @@ class ApiDispatcher extends BaseSingleton {
 
   /**
    * Maps runtime errors to API failure envelopes.
+   * Recognises specific error types (ApiRateLimitError, ApiValidationError, ApiDisabledError)
+   * and maps them to appropriate error codes. Falls back to INTERNAL_ERROR for unknown error types.
+   *
+   * @param {string} requestId - Unique request identifier.
+   * @param {Error} error - The runtime error to map.
+   * @returns {Object} Failure response envelope.
+   * @private
    */
   _mapErrorToFailureEnvelope(requestId, error) {
     const errorName = error?.name;
@@ -354,7 +401,13 @@ class ApiDispatcher extends BaseSingleton {
 }
 
 /**
- * Entry point that delegates the request to the ApiDispatcher singleton.
+ * Entry point for the API handler.
+ * Delegates the request to the ApiDispatcher singleton, which manages all request lifecycle and validation.
+ *
+ * @param {Object} request - Request object with method and optional params.
+ * @param {string} request.method - The API method name to dispatch.
+ * @param {*} [request.params] - Optional parameters for the handler.
+ * @returns {Object} Response envelope (ok, requestId, data or error).
  */
 function apiHandler(request) {
   return ApiDispatcher.getInstance().handle(request);

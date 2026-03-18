@@ -2,21 +2,14 @@
 
 /**
  * Handles operations related to Google Classroom entities.
- *
- * @class ClassroomApiClient
- * This class is responsible solely for read-only interactions with the Google Classroom API.
+ * This object is responsible solely for read-only interactions with the Google Classroom API.
  */
-class ClassroomApiClient {
-  /**
-   * Exists to satisfy lint rules that disallow static-only classes.
-   */
-  constructor() {}
-
+const ClassroomApiClient = {
   /**
    * Fetches all classrooms where the user is a teacher.
    * @returns {Array<GoogleAppsScript.Classroom.Schema.Course>} An array of classroom objects.
    */
-  static fetchClassrooms() {
+  fetchClassrooms() {
     const progressTracker = ProgressTracker.getInstance();
     try {
       const response = Classroom.Courses.list({ teacherId: 'me', courseStates: ['ACTIVE'] });
@@ -26,14 +19,14 @@ class ClassroomApiClient {
     } catch (error) {
       progressTracker.logAndThrowError(`Failed to fetch classrooms: ${error.message}`, error);
     }
-  }
+  },
 
   /**
    * Fetches all active classrooms with pagination.
    * Iterates through all pages until there is no nextPageToken.
    * @returns {Array<Object>} An array of objects containing course IDs and names.
    */
-  static fetchAllActiveClassrooms() {
+  fetchAllActiveClassrooms() {
     const progressTracker = ProgressTracker.getInstance();
     try {
       let courses = [];
@@ -60,14 +53,14 @@ class ClassroomApiClient {
       progressTracker.logError(`Failed to retrieve active classrooms: ${error.message}`, error);
       return [];
     }
-  }
+  },
 
   /**
    * Fetch a single course by ID.
-   * @param {string} courseId
-   * @returns {GoogleAppsScript.Classroom.Schema.Course|null}
+   * @param {string} courseId - The ID of the course to fetch.
+   * @returns {GoogleAppsScript.Classroom.Schema.Course|null} The course object, or null if not found.
    */
-  static fetchCourse(courseId) {
+  fetchCourse(courseId) {
     const progressTracker = ProgressTracker.getInstance();
     try {
       const course = Classroom.Courses.get(courseId);
@@ -76,15 +69,15 @@ class ClassroomApiClient {
       progressTracker.logError(`Failed to fetch course (${courseId}): ${error.message}`, error);
       return null;
     }
-  }
+  },
 
   /**
    * Fetch a topic's name for a given course/topic id pair.
-   * @param {string} courseId
-   * @param {string} topicId
-   * @return {string|null} Topic name or null when missing.
+   * @param {string} courseId - The ID of the course.
+   * @param {string} topicId - The ID of the topic.
+   * @returns {string|null} Topic name or null when missing.
    */
-  static fetchTopicName(courseId, topicId) {
+  fetchTopicName(courseId, topicId) {
     const progressTracker = ProgressTracker.getInstance();
     if (!courseId || !topicId) {
       progressTracker.logAndThrowError('courseId and topicId are required to fetch topic name.');
@@ -109,14 +102,14 @@ class ClassroomApiClient {
       });
       throw error;
     }
-  }
+  },
 
   /**
-   * Fetches the updateTime property for a course and returns it as a JS Date.
-   * @param {string} courseId
+   * Fetch the updateTime property for a course and return it as a JavaScript Date.
+   * @param {string} courseId - The ID of the course.
    * @returns {Date|null} JavaScript Date instance representing the course's updateTime, or null if not available.
    */
-  static fetchCourseUpdateTime(courseId) {
+  fetchCourseUpdateTime(courseId) {
     try {
       const course = Classroom.Courses.get(courseId);
       if (!course?.updateTime) {
@@ -142,15 +135,15 @@ class ClassroomApiClient {
       });
       return null;
     }
-  }
+  },
 
   /**
    * Fetch teachers for a given course.
    * Maps Classroom API teacher resources to `Teacher` model instances.
-   * @param {string} courseId
-   * @returns {Teacher[]} array of Teacher model instances
+   * @param {string} courseId - The ID of the course.
+   * @returns {Teacher[]} An array of Teacher model instances.
    */
-  static fetchTeachers(courseId) {
+  fetchTeachers(courseId) {
     const progressTracker = ProgressTracker.getInstance();
     try {
       const resp = Classroom.Courses.Teachers.list(courseId) || {};
@@ -185,15 +178,15 @@ class ClassroomApiClient {
       );
       return [];
     }
-  }
+  },
 
   /**
-   * Fetches all students from Google Classroom for a given course.
+   * Fetch all students from Google Classroom for a given course.
    * Iterates through pages until there is no nextPageToken.
    * @param {string} courseId - The ID of the Google Classroom course.
-   * @return {Student[]} - An array of Student instances.
+   * @returns {Student[]} An array of Student instances.
    */
-  static fetchAllStudents(courseId) {
+  fetchAllStudents(courseId) {
     const progressTracker = ProgressTracker.getInstance();
     try {
       const studentList = [];
@@ -227,8 +220,8 @@ class ClassroomApiClient {
       );
       return [];
     }
-  }
-}
+  },
+};
 
 // Export for Node tests / CommonJS environment
 if (typeof module !== 'undefined') {

@@ -10,7 +10,7 @@ const CACHE_EXPIRY_HOURS = 6;
  */
 class CacheManager {
   /**
-   *
+   * Initialises the CacheManager with the Apps Script cache service.
    */
   constructor() {
     this.cache = CacheService.getScriptCache();
@@ -20,7 +20,7 @@ class CacheManager {
    * Generates a unique cache key based on content hashes.
    * @param {string} contentHashReference - Hash of the reference content.
    * @param {string} contentHashResponse - Hash of the student's response content.
-   * @return {string} - The cache key.
+   * @returns {string|null} The cache key, or null if either input is falsy.
    */
   generateCacheKey(contentHashReference, contentHashResponse) {
     // If either input is falsy, return null to indicate no usable key.
@@ -40,7 +40,7 @@ class CacheManager {
    * Retrieves cached assessment data if available.
    * @param {string} contentHashReference - Hash of the reference content.
    * @param {string} contentHashResponse - Hash of the student's response content.
-   * @return {Object|null} - The cached assessment data or null if not found.
+   * @returns {Object|null} The cached assessment data, or null if not found.
    */
   getCachedAssessment(contentHashReference, contentHashResponse) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);
@@ -66,6 +66,7 @@ class CacheManager {
    * @param {string} contentHashReference - Hash of the reference content.
    * @param {string} contentHashResponse - Hash of the student's response content.
    * @param {Object} assessmentData - The assessment data to cache.
+   * @returns {void}
    */
   setCachedAssessment(contentHashReference, contentHashResponse, assessmentData) {
     const cacheKey = this.generateCacheKey(contentHashReference, contentHashResponse);

@@ -4,10 +4,12 @@
 
 /**
  * Represents a year-group reference record.
+ * A year group defines student cohort progression through an academic year.
  */
 class YearGroup {
   /**
-   * @param {string} name The year-group display name.
+   * Constructs a YearGroup instance.
+   * @param {string} name - The year-group display name
    */
   constructor(name) {
     Validate.requireParams({ name }, 'YearGroup.constructor');
@@ -16,14 +18,16 @@ class YearGroup {
   }
 
   /**
-   * @returns {string}
+   * Gets the year group display name.
+   * @returns {string} The year group name
    */
   getName() {
     return this.name;
   }
 
   /**
-   * @param {string} name The year-group display name.
+   * Sets the year group display name.
+   * @param {string} name - The year-group display name
    */
   setName(name) {
     Validate.requireParams({ name }, 'YearGroup.setName');
@@ -36,7 +40,8 @@ class YearGroup {
   }
 
   /**
-   * @returns {{name: string}}
+   * Serializes the YearGroup instance to a JSON object.
+   * @returns {Object} The JSON representation of the year group
    */
   toJSON() {
     return {
@@ -45,8 +50,9 @@ class YearGroup {
   }
 
   /**
-   * @param {{name: string}} json The serialised year group.
-   * @returns {YearGroup}
+   * Deserializes a JSON object to a YearGroup instance.
+   * @param {Object} json - The serialised year group object
+   * @returns {YearGroup} The YearGroup instance
    */
   static fromJSON(json) {
     Validate.requireParams({ json }, 'YearGroup.fromJSON');

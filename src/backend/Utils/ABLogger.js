@@ -19,7 +19,8 @@
  */
 class ABLogger extends BaseSingleton {
   /**
-   *
+   * Initialises the ABLogger singleton instance.
+   * @param {boolean} [isSingletonCreator=false] - Internal flag indicating whether this is the singleton creator instance.
    */
   constructor(isSingletonCreator = false) {
     super();
@@ -37,7 +38,8 @@ class ABLogger extends BaseSingleton {
 
   /**
    * UI-focused debug logging gated by DEBUG_UI flag.
-   * @param {string} msg
+   * @param {string} message - The message to log.
+   * @returns {void}
    */
   debugUi(message) {
     try {
@@ -59,9 +61,10 @@ class ABLogger extends BaseSingleton {
     }
   }
 
-  // Helper: serialise Error objects (and nested causes) to plain objects for logging
   /**
-   *
+   * Serialises an Error object (and nested causes) to a plain object for logging.
+   * @param {Error} error - The error object to serialise.
+   * @returns {Object} Plain object representation of the error.
    */
   serialiseError(error) {
     if (!error || typeof error !== 'object') return error;
@@ -77,7 +80,9 @@ class ABLogger extends BaseSingleton {
   }
 
   /**
-   *
+   * Serialises an argument, converting Error objects to plain objects.
+   * @param {any} argument - The argument to serialise.
+   * @returns {any} The serialised argument.
    */
   serialiseArg(argument) {
     if (!argument) return argument;
@@ -93,9 +98,11 @@ class ABLogger extends BaseSingleton {
     return argument;
   }
 
-  // Helper to shallow-copy objects/arrays and serialise any direct Error-like properties
   /**
-   *
+   * Helper to shallow-copy objects/arrays and serialise any direct Error-like properties.
+   * @param {Object|Array} object - The object or array to shallow-copy and serialise.
+   * @param {Function} isErrorLike - Function to check if a value is error-like.
+   * @returns {Object|Array} Shallow copy of the input with serialised error properties.
    */
   shallowSerialiseObject(object, isErrorLike) {
     try {
@@ -112,33 +119,42 @@ class ABLogger extends BaseSingleton {
     }
   }
 
-  // Lightweight forwards to console for tests and runtime logging
   /**
-   *
+   * Forwards arguments to console.log after serialising each argument.
+   * @param {...any} arguments_ - Arguments to log.
+   * @returns {void}
    */
   log(...arguments_) {
     console.log(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Forwards arguments to console.info after serialising each argument.
+   * @param {...any} arguments_ - Arguments to log.
+   * @returns {void}
    */
   info(...arguments_) {
     console.info(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Forwards arguments to console.warn after serialising each argument.
+   * @param {...any} arguments_ - Arguments to log.
+   * @returns {void}
    */
   warn(...arguments_) {
     console.warn(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Forwards arguments to console.error after serialising each argument.
+   * @param {...any} arguments_ - Arguments to log.
+   * @returns {void}
    */
   error(...arguments_) {
     console.error(...arguments_.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Forwards arguments to console.log in debug format after serialising each argument.
+   * @param {...any} arguments_ - Arguments to log.
+   * @returns {void}
    */
   debug(...arguments_) {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit
@@ -147,7 +163,9 @@ class ABLogger extends BaseSingleton {
 }
 
 /**
- *
+ * Determines whether a value is error-like (an Error instance or error-shaped object).
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is error-like.
  */
 function isErrorLike(value) {
   return value instanceof Error || (value?.name && value?.message && value?.stack);

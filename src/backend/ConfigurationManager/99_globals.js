@@ -8,7 +8,9 @@ const DEFAULT_DAYS_UNTIL_AUTH_REVOKE = 60;
 const DEFAULT_SLIDES_FETCH_BATCH_SIZE = 20;
 
 /**
- *
+ * Masks an API key by replacing most of it with asterisks, showing only the last 4 characters.
+ * @param {string} key - The API key to mask.
+ * @returns {string} Masked API key (e.g., '****abcd').
  */
 function maskApiKey(key) {
   if (!key) return '';
@@ -19,13 +21,19 @@ function maskApiKey(key) {
 
 /**
  * Retrieves the current configuration settings from the ConfigurationManager.
- * @returns {object} An object containing the current configuration values.
+ * Safely retrieves all configuration values with error handling.
+ * @returns {object} An object containing current configuration values.
  */
 function getConfiguration() {
   const errors = [];
 
   /**
-   *
+   * Safely retrieves a configuration value using the provided getter function.
+   * Catches and logs any errors that occur during retrieval.
+   * @param {Function} getter - Callback function to retrieve the configuration value.
+   * @param {string} name - Name of the configuration key (for logging).
+   * @param {string} fallback - Fallback value if retrieval fails.
+   * @returns {*} The retrieved value or fallback if an error occurred.
    */
   function safeGet(getter, name, fallback = '') {
     try {
@@ -102,13 +110,18 @@ function getConfiguration() {
 /**
  * Saves the provided configuration settings using the ConfigurationManager.
  * @param {object} config - The configuration object to be saved.
- * @throws {Error} Throws an error if the configuration fails to save.
+ * @returns {object} Result object with success flag and optional error message.
+ * @throws {Error} Throws an error if critical save operation fails.
  */
 function saveConfiguration(config) {
   const errors = [];
 
   /**
-   *
+   * Safely saves a configuration value by calling the provided action function.
+   * Catches and logs any errors that occur during saving.
+   * @param {Function} action - Callback function to save the configuration value.
+   * @param {string} name - Name of the configuration key (for logging).
+   * @returns {boolean} True if successful, false if an error occurred.
    */
   function safeSet(action, name) {
     try {

@@ -4,13 +4,12 @@
  */
 
 /**
- * Initiates the processing of an assignment asynchronously by setting up a trigger
- * and opens the progress modal.
- *
+ * Initiates processing of an assignment asynchronously by setting up a trigger and opens the progress modal.
  * @param {string} assignmentTitle - The title of the assignment.
  * @param {Object} documentIds - An object containing referenceDocumentId and templateDocumentId.
  * @param {string} assignmentId - The ID of the assignment.
  * @param {string} courseId - The Classroom course ID.
+ * @returns {*} The result from the AssignmentController.
  */
 function saveStartAndShowProgress(assignmentTitle, documentIds, assignmentId, courseId) {
   ABLogger.getInstance().info('saveStartAndShowProgress invoked (globals):', {
@@ -60,7 +59,8 @@ function startProcessing(assignmentId, definitionKey) {
  * @param {string} params.assignmentTitle - Assignment title (fallback if not fetched from Classroom).
  * @param {string} params.referenceDocumentId - Reference document URL or file ID.
  * @param {string} params.templateDocumentId - Template document URL or file ID.
- * @return {Object} Full AssignmentDefinition JSON payload including tasks and artifacts.
+ * @param {number} params.yearGroup - Optional year group for the assignment.
+ * @returns {Object} Full AssignmentDefinition JSON payload including tasks and artefacts.
  * @throws {Error} If validation fails, documents are identical, types mismatch, or assignment lacks topic.
  */
 function createDefinitionFromWizardInputs({
@@ -92,6 +92,7 @@ function createDefinitionFromWizardInputs({
 
 /**
  * Processes the selected assignment by retrieving parameters and executing the workflow.
+ * @returns {*} The result from the AssignmentController.
  */
 function triggerProcessSelectedAssignment() {
   const controller = new AssignmentController();

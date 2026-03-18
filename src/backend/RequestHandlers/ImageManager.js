@@ -5,7 +5,7 @@
  */
 class ImageManager extends BaseRequestManager {
   /**
-   *
+   * Initialises the ImageManager with configuration and progress tracking singletons.
    */
   constructor() {
     super();
@@ -20,8 +20,8 @@ class ImageManager extends BaseRequestManager {
    * Return true when the passed object exposes a callable getType()
    * method and reports 'IMAGE'. Centralises the defensive check used
    * throughout this class for readability and a single point of change.
-   * @param {any} artifact
-   * @returns {boolean}
+   * @param {any} artifact - The artifact object to check.
+   * @returns {boolean} True if the artifact is an image artefact.
    */
   isImageArtifact(artifact) {
     return typeof artifact?.getType === 'function' && artifact.getType() === 'IMAGE';
@@ -30,8 +30,8 @@ class ImageManager extends BaseRequestManager {
   /**
    * Collect all image artifacts (reference, template, submission) across the assignment.
    * Returns entries containing uid, url (metadata.sourceUrl), documentId, scope, taskId, and optional itemId.
-   * @param {Assignment} assignment
-   * @returns {Array<{uid:string,url:string,documentId:string,scope:'reference'|'template'|'submission',taskId:string,itemId?:string}>}
+   * @param {Assignment} assignment - The assignment containing tasks and submissions.
+   * @returns {Array<{uid:string,url:string,documentId:string,scope:'reference'|'template'|'submission',taskId:string,itemId?:string}>} Array of image artefact entries.
    */
   collectAllImageArtifacts(assignment) {
     const results = [];
@@ -88,8 +88,8 @@ class ImageManager extends BaseRequestManager {
 
   /**
    * Fetch images as blobs with round-robin ordering by documentId to distribute load.
-   * @param {Array<{uid:string,url:string,documentId:string}>} entries
-   * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>}
+   * @param {Array<{uid:string,url:string,documentId:string}>} entries - Image artefact entries to fetch.
+   * @returns {Array<{uid:string, blob:GoogleAppsScript.Base.Blob}>} Array of fetched image blobs with their UIDs.
    */
   fetchImagesAsBlobs(entries) {
     const maxBatchSize = ConfigurationManager.getInstance().getSlidesFetchBatchSize();

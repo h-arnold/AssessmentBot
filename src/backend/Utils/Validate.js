@@ -13,8 +13,8 @@ const IPV4_OCTET_MAX_VALUE = 255;
 const Validate = {
   /**
    * Determines whether a value is a string.
-   * @param {*} value
-   * @returns {boolean}
+   * @param {*} value - The value to check.
+   * @returns {boolean} True if the value is a string.
    */
   isString(value) {
     return typeof value === 'string';
@@ -22,8 +22,8 @@ const Validate = {
 
   /**
    * Determines whether a value is a non-empty string (after trimming whitespace).
-   * @param {*} value
-   * @returns {boolean}
+   * @param {*} value - The value to check.
+   * @returns {boolean} True if the value is a non-empty string.
    */
   isNonEmptyString(value) {
     return Validate.isString(value) && value.trim().length > 0;
@@ -31,8 +31,8 @@ const Validate = {
 
   /**
    * Determines whether a value is a finite number.
-   * @param {*} value
-   * @returns {boolean}
+   * @param {*} value - The value to check.
+   * @returns {boolean} True if the value is a finite number.
    */
   isNumber(value) {
     return typeof value === 'number' && Number.isFinite(value);
@@ -40,8 +40,8 @@ const Validate = {
 
   /**
    * Determines whether a value is a boolean.
-   * @param {*} value
-   * @returns {boolean}
+   * @param {*} value - The value to check.
+   * @returns {boolean} True if the value is a boolean.
    */
   isBoolean(value) {
     return typeof value === 'boolean';
@@ -49,8 +49,8 @@ const Validate = {
 
   /**
    * Validates an email address using a permissive but practical regex.
-   * @param {string} email
-   * @return {boolean}
+   * @param {string} email - The email address to validate.
+   * @returns {boolean} True if the email is valid.
    */
   isEmail(email) {
     if (typeof email !== 'string') return false;
@@ -73,8 +73,8 @@ const Validate = {
    * Validates a Google userId as returned by Classroom APIs.
    * Historically these are numeric strings, but to be tolerant we accept
    * long digit strings and typical alphanumeric ids.
-   * @param {string|number} userId
-   * @return {boolean}
+   * @param {string|number} userId - The user ID to validate.
+   * @returns {boolean} True if the userId is valid.
    */
   isGoogleUserId(userId) {
     if (typeof userId !== 'string' && typeof userId !== 'number') return false;
@@ -105,8 +105,8 @@ const Validate = {
    * - Host must be a DNS hostname (not an IP address and not localhost)
    * - Port numbers are not permitted
    *
-   * @param {string} url
-   * @return {boolean}
+   * @param {string} url - The URL to validate.
+   * @returns {boolean} True if the URL is valid.
    */
   isValidUrl(url) {
     if (typeof url !== 'string') return false;
@@ -147,7 +147,7 @@ const Validate = {
   /**
    * Determines whether a hostname string is a valid dotted IPv4 address.
    * @param {string} hostname - Hostname candidate to test.
-   * @return {boolean} `true` when the hostname is an IPv4 address.
+   * @returns {boolean} True when the hostname is an IPv4 address.
    */
   _isIPv4(hostname) {
     const ipv4Exec = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(hostname);
@@ -230,8 +230,8 @@ const Validate = {
 
   /**
    * Attempts to parse a lowercase boolean string value.
-   * @param {string|undefined} value
-   * @returns {boolean|undefined}
+   * @param {string|undefined} value - The string value to parse.
+   * @returns {boolean|undefined} True, false, or undefined if unable to parse.
    */
   _coerceBooleanString(value) {
     if (value === 'true') {

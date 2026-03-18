@@ -16,7 +16,7 @@ const HTTP_STATUS_CREATED = 201;
  */
 class BaseRequestManager {
   /**
-   *
+   * Initialises the BaseRequestManager with configuration, cache, progress tracking, and logging singletons.
    */
   constructor() {
     this.configManager = ConfigurationManager.getInstance(); // Lazy singleton access
@@ -28,7 +28,7 @@ class BaseRequestManager {
   /**
    * Determines if an HTTP status code represents a retryable error.
    * @param {number} statusCode - The HTTP status code to check.
-   * @return {boolean} - True if the error is retryable, false otherwise.
+   * @returns {boolean} True if the error is retryable, false otherwise.
    * @private
    */
   _isRetryableError(statusCode) {
@@ -43,7 +43,7 @@ class BaseRequestManager {
   /**
    * Determines if an HTTP status code represents a client error that should abort processing.
    * @param {number} statusCode - The HTTP status code to check.
-   * @return {boolean} - True if the error should abort processing, false otherwise.
+   * @returns {boolean} True if the error should abort processing, false otherwise.
    * @private
    */
   _shouldAbort(statusCode) {
@@ -58,7 +58,7 @@ class BaseRequestManager {
    * Sends a single HTTP request with retries and exponential backoff.
    * @param {Object} request - The request object compatible with UrlFetchApp.fetch().
    * @param {number} [maxRetries=2] - Maximum number of retries.
-   * @return {HTTPResponse|null} - The HTTPResponse object or null if all retries fail.
+   * @returns {HTTPResponse|null} The HTTPResponse object or null if all retries fail.
    */
   sendRequestWithRetries(request, maxRetries = DEFAULT_MAX_RETRIES) {
     let attempt = 0;
@@ -151,8 +151,8 @@ class BaseRequestManager {
 
   /**
    * Sends multiple HTTP requests in batches with retries and exponential backoff.
-   * @param {Object[]} rthisequests - An array of request objects compatible with UrlFetchApp.fetchAll().
-   * @return {HTTPResponse[]} - An array of HTTPResponse objects.
+   * @param {Object[]} requests - An array of request objects compatible with UrlFetchApp.fetchAll().
+   * @returns {HTTPResponse[]} An array of HTTPResponse objects from all batches.
    */
   sendRequestsInBatches(requests) {
     const batchSize = ConfigurationManager.getInstance().getBackendAssessorBatchSize();
