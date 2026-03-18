@@ -163,10 +163,10 @@ Frontend tests:
 - Current phase: Green - in progress
 - Red tests added: complete
 - Red review clean: complete
-- Green implementation complete: pending
+- Green implementation complete: in progress
 - Green review clean: pending
 - Checks passed: pending
-- Action plan updated: in progress
+- Action plan updated: complete
 - Commit created: pending
 - Push completed: pending
 
@@ -227,8 +227,11 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** describe actual changes made when done.
+- **Implementation notes:** Section 2 red coverage is complete, the frontend service has been renamed to `backendConfigurationService`, and the corresponding schema/spec files now use the backend-prefixed names. Green implementation was paused by rate limiting before review and delivery artefacts could be completed.
 - **Deviations from plan:** note any departures from the original section design.
+- **Deviations from plan:** The frontend configuration service rename was introduced during Section 2 to align with the backend API boundary and reduce naming collisions with future frontend config surfaces.
 - **Follow-up implications for later sections:** record effects for downstream work.
+- **Follow-up implications for later sections:** Section 2 still needs the green review, commit, and push steps before the section can be closed.
 
 ---
 
