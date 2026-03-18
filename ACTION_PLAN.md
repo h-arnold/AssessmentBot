@@ -160,7 +160,7 @@ Frontend tests:
 
 ### Delivery status
 
-- Current phase: Push pending
+- Current phase: Complete
 - Red tests added: complete
 - Red review clean: complete
 - Green implementation complete: complete
@@ -168,7 +168,7 @@ Frontend tests:
 - Checks passed: complete
 - Action plan updated: complete
 - Commit created: complete
-- Push completed: pending
+- Push completed: complete
 
 ### Objective
 
@@ -234,11 +234,26 @@ Frontend tests:
 
 - Commit SHA: `e29df2504275ac18ccb72bca57e36e685109d835`
 - Commit message: `feat(frontend): section 2 backend config masking validation`
+- Commit SHA: `fb14e2ce3e91c96fd6647c15cac5cd53e492e708`
+- Commit message: `docs(plan): update section 2 delivery tracking`
 - Branch name: `feat/ReactFrontend`
+- Push confirmation: pushed successfully to `origin/feat/ReactFrontend` (`a0b5568..fb14e2c`)
 
 ---
 
 ## Section 3 — Legacy transport cleanup and usage migration
+
+### Delivery status
+
+- Current phase: Commit and push pending
+- Red tests added: complete
+- Red review clean: complete
+- Green implementation complete: complete
+- Green review clean: complete
+- Checks passed: complete
+- Action plan updated: complete
+- Commit created: pending
+- Push completed: pending
 
 ### Objective
 
@@ -289,9 +304,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** record effects for downstream work.
+- **Implementation notes:** Added a dedicated backend configuration API transport spec in `tests/api/backendConfigApi.test.js` and consolidated the `getBackendConfig` / `setBackendConfig` transport coverage there, including masked reads, partial writes, ignoring `undefined` fields, explicit API-key clearing, malformed write envelopes, transport error envelopes, and a sentinel assertion that the legacy transport file is absent. Removed the legacy backend transport file `src/backend/ConfigurationManager/99_globals.js` and deleted the obsolete supported test `tests/configurationManager/saveConfiguration.test.js`, which was the last required-test dependency on that file. Reduced `tests/api/apiHandler.test.js` back to general dispatcher coverage so the migrated boundary is clearer from method names and the dedicated backend configuration transport suite.
+- **Deviations from plan:** The backend configuration transport test extraction from `tests/api/apiHandler.test.js` into `tests/api/backendConfigApi.test.js` was completed during the Section 3 green phase without a separate TDD cycle, per the explicit user instruction, and then validated with the required Section 3 checks.
+- **Follow-up implications for later sections:** Regression should continue to run both backend API suites plus the frontend backend-configuration service spec. Deprecated references under `src/AdminSheet` and `src/AssessmentRecordTemplate` were intentionally left untouched because Section 3 acceptance was scoped to active code and supported tests.
 
 ---
 
