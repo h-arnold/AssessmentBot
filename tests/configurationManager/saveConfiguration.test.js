@@ -62,6 +62,11 @@ describe('saveConfiguration global behaviour', () => {
     expect(result.success).toBe(true);
   });
 
+  it('fails fast when the save payload is null', () => {
+    expect(() => saveConfiguration(null)).toThrow('Cannot read properties of null');
+    expect(cfg.setApiKey).not.toHaveBeenCalled();
+  });
+
   it('does not call setApiKey when apiKey is explicitly undefined', () => {
     const payload = { apiKey: undefined };
     const result = saveConfiguration(payload);

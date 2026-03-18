@@ -27,6 +27,106 @@ const SECTION_1_API_METHOD_ENTRIES = Object.freeze(
   Object.fromEntries(SECTION_1_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
 );
 
+const BACKEND_CONFIG_API_METHOD_NAMES = Object.freeze(['getBackendConfig', 'setBackendConfig']);
+
+const BACKEND_CONFIG_API_METHOD_ENTRIES = Object.freeze(
+  Object.fromEntries(BACKEND_CONFIG_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
+);
+
+const CONFIGURATION_MANAGER_DEFAULTS = Object.freeze({
+  JSON_DB_MASTER_INDEX_KEY: 'MASTER_INDEX',
+  JSON_DB_LOCK_TIMEOUT_MS: 5000,
+  JSON_DB_LOG_LEVEL: 'INFO',
+  JSON_DB_BACKUP_ON_INITIALISE: false,
+});
+
+function buildBackendConfigResponse(overrides = {}) {
+  return {
+    backendAssessorBatchSize: 30,
+    apiKey: '****7890',
+    hasApiKey: true,
+    backendUrl: 'https://backend.example.test',
+    revokeAuthTriggerSet: true,
+    daysUntilAuthRevoke: 45,
+    slidesFetchBatchSize: 20,
+    jsonDbMasterIndexKey: 'MASTER_INDEX',
+    jsonDbLockTimeoutMs: 5000,
+    jsonDbLogLevel: 'INFO',
+    jsonDbBackupOnInitialise: false,
+    jsonDbRootFolderId: 'folder-123',
+    ...overrides,
+  };
+}
+
+function installConfigurationManagerMock(
+  vi,
+  { getterValues = {}, setterImplementations = {} } = {}
+) {
+  const originalConfigurationManager = globalThis.ConfigurationManager;
+  const values = {
+    apiKey: 'live-secret-7890',
+    backendAssessorBatchSize: 30,
+    backendUrl: 'https://backend.example.test',
+    revokeAuthTriggerSet: true,
+    daysUntilAuthRevoke: 45,
+    slidesFetchBatchSize: 20,
+    jsonDbMasterIndexKey: 'MASTER_INDEX',
+    jsonDbLockTimeoutMs: 5000,
+    jsonDbLogLevel: 'INFO',
+    jsonDbBackupOnInitialise: false,
+    jsonDbRootFolderId: 'folder-123',
+    ...getterValues,
+  };
+
+  const manager = {
+    getApiKey: vi.fn(() => values.apiKey),
+    getBackendAssessorBatchSize: vi.fn(() => values.backendAssessorBatchSize),
+    getBackendUrl: vi.fn(() => values.backendUrl),
+    getRevokeAuthTriggerSet: vi.fn(() => values.revokeAuthTriggerSet),
+    getDaysUntilAuthRevoke: vi.fn(() => values.daysUntilAuthRevoke),
+    getSlidesFetchBatchSize: vi.fn(() => values.slidesFetchBatchSize),
+    getJsonDbMasterIndexKey: vi.fn(() => values.jsonDbMasterIndexKey),
+    getJsonDbLockTimeoutMs: vi.fn(() => values.jsonDbLockTimeoutMs),
+    getJsonDbLogLevel: vi.fn(() => values.jsonDbLogLevel),
+    getJsonDbBackupOnInitialise: vi.fn(() => values.jsonDbBackupOnInitialise),
+    getJsonDbRootFolderId: vi.fn(() => values.jsonDbRootFolderId),
+    setBackendAssessorBatchSize: vi.fn(
+      setterImplementations.setBackendAssessorBatchSize || (() => {})
+    ),
+    setSlidesFetchBatchSize: vi.fn(setterImplementations.setSlidesFetchBatchSize || (() => {})),
+    setApiKey: vi.fn(setterImplementations.setApiKey || (() => {})),
+    setBackendUrl: vi.fn(setterImplementations.setBackendUrl || (() => {})),
+    setRevokeAuthTriggerSet: vi.fn(setterImplementations.setRevokeAuthTriggerSet || (() => {})),
+    setDaysUntilAuthRevoke: vi.fn(setterImplementations.setDaysUntilAuthRevoke || (() => {})),
+    setJsonDbMasterIndexKey: vi.fn(setterImplementations.setJsonDbMasterIndexKey || (() => {})),
+    setJsonDbLockTimeoutMs: vi.fn(setterImplementations.setJsonDbLockTimeoutMs || (() => {})),
+    setJsonDbLogLevel: vi.fn(setterImplementations.setJsonDbLogLevel || (() => {})),
+    setJsonDbBackupOnInitialise: vi.fn(
+      setterImplementations.setJsonDbBackupOnInitialise || (() => {})
+    ),
+    setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
+  };
+
+  const configurationManager = {
+    DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
+    getInstance: vi.fn(() => manager),
+  };
+
+  globalThis.ConfigurationManager = configurationManager;
+
+  return {
+    manager,
+    configurationManager,
+    restore() {
+      if (originalConfigurationManager === undefined) {
+        delete globalThis.ConfigurationManager;
+        return;
+      }
+      globalThis.ConfigurationManager = originalConfigurationManager;
+    },
+  };
+}
+
 function buildSection1Params(methodName) {
   switch (methodName) {
     case 'getGoogleClassrooms': {
@@ -286,6 +386,18 @@ describe('Api/apiConstants', () => {
 
     expect(API_ALLOWLIST).toEqual(expect.objectContaining(SECTION_1_API_METHOD_ENTRIES));
   });
+
+  it('contains the backend configuration methods in API_METHODS', () => {
+    const { API_METHODS } = loadApiConstantsModule();
+
+    expect(API_METHODS).toEqual(expect.objectContaining(BACKEND_CONFIG_API_METHOD_ENTRIES));
+  });
+
+  it('contains the backend configuration methods in API_ALLOWLIST', () => {
+    const { API_ALLOWLIST } = loadApiConstantsModule();
+
+    expect(API_ALLOWLIST).toEqual(expect.objectContaining(BACKEND_CONFIG_API_METHOD_ENTRIES));
+  });
 });
 
 describe('Api/apiHandler dispatcher', () => {
@@ -532,6 +644,239 @@ describe('Api/apiHandler dispatcher', () => {
       expect(response.requestId).toEqual(expect.any(String));
     }
   );
+
+  it('dispatches getBackendConfig and returns masked configuration data', () => {
+    const configurationManagerMock = installConfigurationManagerMock(vi, {
+      getterValues: {
+        apiKey: 'live-secret-7890',
+      },
+    });
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getBackendConfig',
+      });
+
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalledTimes(1);
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: buildBackendConfigResponse(),
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+      expect(response.data.apiKey).toBe('****7890');
+      expect(response.data.apiKey).not.toContain('live-secret-7890');
+      expect(response.data.hasApiKey).toBe(true);
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('dispatches setBackendConfig and applies only the defined configuration updates', () => {
+    const configurationManagerMock = installConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+      const params = {
+        backendAssessorBatchSize: 42,
+        backendUrl: 'https://updated-backend.example.test',
+        daysUntilAuthRevoke: 21,
+      };
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params,
+      });
+
+      expect(configurationManagerMock.configurationManager.getInstance).toHaveBeenCalled();
+      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(42);
+      expect(configurationManagerMock.manager.setBackendUrl).toHaveBeenCalledWith(
+        'https://updated-backend.example.test'
+      );
+      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).toHaveBeenCalledWith(21);
+      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('does not call setters for undefined setBackendConfig fields', () => {
+    const configurationManagerMock = installConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          backendAssessorBatchSize: 18,
+          apiKey: undefined,
+          backendUrl: undefined,
+          jsonDbRootFolderId: undefined,
+        },
+      });
+
+      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(18);
+      expect(configurationManagerMock.manager.setApiKey).not.toHaveBeenCalled();
+      expect(configurationManagerMock.manager.setBackendUrl).not.toHaveBeenCalled();
+      expect(configurationManagerMock.manager.setJsonDbRootFolderId).not.toHaveBeenCalled();
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls setApiKey with an empty string when setBackendConfig explicitly clears the API key', () => {
+    const configurationManagerMock = installConfigurationManagerMock(vi);
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          apiKey: '',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setApiKey).toHaveBeenCalledWith('');
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
+      });
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it.each([
+    ['null params', null],
+    ['array params', []],
+    ['string params', 'invalid'],
+  ])(
+    'returns an INVALID_REQUEST envelope for malformed setBackendConfig payloads: %s',
+    (_caseName, params) => {
+      const configurationManagerMock = installConfigurationManagerMock(vi);
+
+      try {
+        const { ApiDispatcher } = loadApiHandlerModule();
+        const dispatcher = ApiDispatcher.getInstance();
+
+        const response = dispatcher.handle({
+          method: 'setBackendConfig',
+          params,
+        });
+
+        expect(configurationManagerMock.configurationManager.getInstance).not.toHaveBeenCalled();
+        expect(response).toEqual({
+          ok: false,
+          requestId: response.requestId,
+          error: {
+            code: 'INVALID_REQUEST',
+            message: 'params must be an object.',
+            retriable: false,
+          },
+        });
+        expect(response.requestId).toEqual(expect.any(String));
+      } finally {
+        configurationManagerMock.restore();
+      }
+    }
+  );
+
+  it('keeps configuration transport errors envelope-based through apiHandler', () => {
+    const originalConfigurationManager = globalThis.ConfigurationManager;
+    globalThis.ConfigurationManager = {
+      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
+      getInstance: vi.fn(() => {
+        throw new Error('configuration exploded');
+      }),
+    };
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getBackendConfig',
+      });
+
+      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
+      expect(response).toEqual({
+        ok: false,
+        requestId: response.requestId,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal API error.',
+          retriable: false,
+        },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      if (originalConfigurationManager === undefined) {
+        delete globalThis.ConfigurationManager;
+      } else {
+        globalThis.ConfigurationManager = originalConfigurationManager;
+      }
+    }
+  });
+
+  it('keeps configuration write transport errors envelope-based through apiHandler', () => {
+    const originalConfigurationManager = globalThis.ConfigurationManager;
+    globalThis.ConfigurationManager = {
+      DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
+      getInstance: vi.fn(() => {
+        throw new Error('configuration save exploded');
+      }),
+    };
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          backendUrl: 'https://updated-backend.example.test',
+        },
+      });
+
+      expect(globalThis.ConfigurationManager.getInstance).toHaveBeenCalledTimes(1);
+      expect(response).toEqual({
+        ok: false,
+        requestId: response.requestId,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal API error.',
+          retriable: false,
+        },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      if (originalConfigurationManager === undefined) {
+        delete globalThis.ConfigurationManager;
+      } else {
+        globalThis.ConfigurationManager = originalConfigurationManager;
+      }
+    }
+  });
 
   it('keeps the success envelope unchanged for getGoogleClassrooms when using the real handler', () => {
     globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({

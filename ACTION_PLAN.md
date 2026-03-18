@@ -66,6 +66,18 @@ For each section below:
 
 ## Section 1 — Backend configuration API migration
 
+### Delivery status
+
+- Current phase: Complete
+- Red tests added: complete
+- Red review clean: complete
+- Green implementation complete: complete
+- Green review clean: complete
+- Checks passed: complete
+- Action plan updated: complete
+- Commit created: pending
+- Push completed: pending
+
 ### Objective
 
 - Add canonical backend API handlers for configuration reads and writes through `apiHandler`, replacing the legacy frontend-callable globals as the active transport surface.
@@ -129,9 +141,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Deviations from plan:** note any departures from the original section design.
-- **Follow-up implications for later sections:** record effects for downstream work.
+- **Implementation notes:** Added `getBackendConfig` and `setBackendConfig` to the backend API constants allowlist and wired both through `ApiDispatcher._invokeAllowlistedMethod(...)` in `src/backend/z_Api/apiHandler.js`. The new handlers preserve the legacy configuration payload shape and save semantics from `src/backend/ConfigurationManager/99_globals.js`, including masked `apiKey`, `hasApiKey`, partial updates, ignoring `undefined` fields, explicit API-key clearing with `apiKey: ''`, and envelope-based error handling through `apiHandler`. Added focused API tests for allowlisting, dispatch, masked reads, partial writes, malformed write payload rejection, and transport error propagation.
+- **Deviations from plan:** `src/backend/ConfigurationManager/99_globals.js` was not removed in this section because backend tests still use it as the legacy semantic reference and the broader transport cleanup is deferred to Section 3.
+- **Follow-up implications for later sections:** Frontend transport work in Section 2 should call the new `getBackendConfig` and `setBackendConfig` method names exclusively. Section 3 should remove any remaining frontend-facing reliance on the legacy configuration globals and can consolidate duplicated configuration transport helpers once the migration is complete.
 
 ---
 
