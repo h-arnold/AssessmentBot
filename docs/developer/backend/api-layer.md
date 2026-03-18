@@ -4,7 +4,7 @@
 
 `src/backend/z_Api` contains the Google Apps Script global transport handlers invoked by the React frontend through `apiHandler`.
 
-This is an active migration area. During migration, some entry points still exist in legacy backend `globals.js` files.
+This is now the canonical backend transport path for frontend-callable methods. Legacy backend `globals.js` transport files should be treated as migration leftovers or deprecated references only.
 
 This layer is deliberately REST-ish in structure:
 
@@ -22,11 +22,12 @@ This layer is deliberately REST-ish in structure:
 
 ## Relationship to `globals.js`
 
-Legacy backend `globals.js` files are currently retained for reference only during migration.
+Legacy backend `globals.js` files are reference-only during migration and are not the authority for new or migrated frontend transport methods.
 
 - `src/backend/AssignmentProcessor/globals.js`
-- `src/backend/ConfigurationManager/globals.js`
 - `src/backend/y_controllers/globals.js`
+
+Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/apiHandler.js`, with allowlisted method names registered in `src/backend/z_Api/apiConstants.js` and implemented in `src/backend/z_Api/apiConfig.js`.
 
 Migration rule:
 
@@ -98,6 +99,23 @@ Feature services should expose typed helpers per method and return parsed `data`
 Use the allowlisted method names exactly as implemented in `API_METHODS`, for example `callApi('getGoogleClassrooms')`.
 
 ### Current migrated endpoints
+
+- `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
+  Source: `src/backend/z_Api/apiConfig.js`. Registered in `src/backend/z_Api/apiConstants.js` and dispatched through `src/backend/z_Api/apiHandler.js`.
+  Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
+  Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
+
+- `getBackendConfig` read data returns the public configuration payload with the following stable fields: `backendAssessorBatchSize`, masked `apiKey`, `hasApiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.
+  Masking contract: `apiKey` is never returned as the raw stored secret. It is returned as `''`, `'****'`, or `'****'` plus the visible four-character suffix.
+  Read-failure contract: when one or more configuration reads fail, the response still returns the payload with fallback values and adds optional `loadError` text. `hasApiKey` reflects whether a raw key was present before masking.
+
+- `setBackendConfig` accepts a partial write payload. Only supplied fields are written.
+  Writable patch fields: `backendAssessorBatchSize`, `apiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.
+  Validation contract: `params` must be an object; malformed payloads are reported by the transport as `INVALID_REQUEST`.
+  Save-result contract: `{ success: true } | { success: false, error: string }`.
+
+- Dedicated transport tests for backend configuration live in `tests/api/backendConfigApi.test.js`.
+  Keep broader dispatcher coverage in `tests/api/apiHandler.test.js`.
 
 - `getAuthorisationStatus` — returns current script authorisation status. Source: `src/backend/z_Api/auth.js`.
   Do not call `google.script.run.getAuthorisationStatus` from frontend feature or service modules.

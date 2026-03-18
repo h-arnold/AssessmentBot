@@ -16,6 +16,8 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 - Implement allowlisted dispatch in `ApiDispatcher._invokeAllowlistedMethod(...)` and keep the handler path thin.
 - Return plain response data from allowlisted methods; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.
 - Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all allowlisted methods.
+- Treat `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js` as the canonical backend configuration transport methods.
+- Do not reintroduce configuration transport through `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed.
 
 ## 1. Runtime Model (GAS V8 Script)
 

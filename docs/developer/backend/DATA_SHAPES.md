@@ -10,6 +10,10 @@
     - [Persistence strategy](#persistence-strategy)
     - [Shape](#shape)
   - [Google Classroom Picker and ABClass Mutation Transport Shapes](#google-classroom-picker-and-abclass-mutation-transport-shapes)
+  - [Backend Configuration Transport Shapes](#backend-configuration-transport-shapes)
+    - [`getBackendConfig` response data](#getbackendconfig-response-data)
+    - [`setBackendConfig` request data](#setbackendconfig-request-data)
+    - [`setBackendConfig` response data](#setbackendconfig-response-data)
     - [`getGoogleClassrooms` response data](#getgoogleclassrooms-response-data)
     - [ABClass write-boundary ownership](#abclass-write-boundary-ownership)
     - [`upsertABClass` request and response data](#upsertabclass-request-and-response-data)
@@ -189,6 +193,103 @@ These shapes describe the `data` payload inside the stable `apiHandler` transpor
 - Error: `{ ok: false, requestId, error: { code, message, retriable } }`
 
 Frontend callers should use `callApi(...)` with the exact allowlisted backend method names.
+
+## Backend Configuration Transport Shapes
+
+Backend configuration transport now uses the `src/backend/z_Api` API layer only. The legacy `src/backend/ConfigurationManager/99_globals.js` transport file has been removed and should not be treated as an active contract source.
+
+These shapes describe the `data` payload inside the stable `apiHandler` transport envelope:
+
+- Success: `{ ok: true, requestId, data }`
+- Error: `{ ok: false, requestId, error: { code, message, retriable } }`
+
+Frontend callers should use `src/frontend/src/services/backendConfigurationService.ts`, which validates payloads with the Zod schemas in `src/frontend/src/services/backendConfiguration.zod.ts`.
+
+### `getBackendConfig` response data
+
+```json
+{
+  "backendAssessorBatchSize": 30,
+  "apiKey": "****7890",
+  "hasApiKey": true,
+  "backendUrl": "https://backend.example.test",
+  "revokeAuthTriggerSet": true,
+  "daysUntilAuthRevoke": 45,
+  "slidesFetchBatchSize": 20,
+  "jsonDbMasterIndexKey": "MASTER_INDEX",
+  "jsonDbLockTimeoutMs": 5000,
+  "jsonDbLogLevel": "INFO",
+  "jsonDbBackupOnInitialise": false,
+  "jsonDbRootFolderId": "folder-123",
+  "loadError": "apiKey: Script property not found"
+}
+```
+
+Key notes:
+
+- `apiKey` is a masked display value, never the raw stored secret.
+- Masking contract: the value is `''`, `'****'`, or `'****'` plus the visible four-character suffix.
+- `hasApiKey` indicates whether a raw key exists in storage before masking.
+- `loadError` is optional and is present only when one or more configuration reads fail.
+- `loadError` aggregates failing public field names with the thrown error message when one is available; it is diagnostic text, not a separately redacted secret field.
+- The remaining fields are the public configuration values exposed to the frontend configuration UI.
+
+### `setBackendConfig` request data
+
+`setBackendConfig` accepts a partial patch object. Only supplied fields are written.
+
+```json
+{
+  "backendAssessorBatchSize": 42,
+  "apiKey": "new-secret-key",
+  "backendUrl": "https://backend.example.test",
+  "revokeAuthTriggerSet": true,
+  "daysUntilAuthRevoke": 21,
+  "slidesFetchBatchSize": 25,
+  "jsonDbMasterIndexKey": "MASTER_INDEX",
+  "jsonDbLockTimeoutMs": 5000,
+  "jsonDbLogLevel": "INFO",
+  "jsonDbBackupOnInitialise": false,
+  "jsonDbRootFolderId": "folder-123"
+}
+```
+
+Writable patch fields:
+
+- `backendAssessorBatchSize`
+- `apiKey`
+- `backendUrl`
+- `revokeAuthTriggerSet`
+- `daysUntilAuthRevoke`
+- `slidesFetchBatchSize`
+- `jsonDbMasterIndexKey`
+- `jsonDbLockTimeoutMs`
+- `jsonDbLogLevel`
+- `jsonDbBackupOnInitialise`
+- `jsonDbRootFolderId`
+
+Key notes:
+
+- Omitted fields are not written.
+- An explicit empty-string `apiKey` clears the stored key.
+- `params` must be an object; malformed payloads are rejected at the API boundary.
+
+### `setBackendConfig` response data
+
+```json
+{ "success": true }
+```
+
+or
+
+```json
+{ "success": false, "error": "Failed to save some configuration values: backendUrl: REDACTED" }
+```
+
+Key notes:
+
+- Save-result contract: `{ success: true } | { success: false, error: string }`.
+- The result reports aggregate write failure without exposing raw secret values.
 
 ### `getGoogleClassrooms` response data
 

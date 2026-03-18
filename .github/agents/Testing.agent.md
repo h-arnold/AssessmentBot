@@ -64,6 +64,8 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - Name tests, `describe(...)` blocks, helper constants, and fixtures after the behaviour or surface under test.
 - Do **not** use action-plan section numbering in test names or helpers (for example `Section 1`, `Section 2`, `SECTION_1_*`).
 - When migrating a transport surface, rename tests to the real method/class names and retire the old planning labels rather than carrying them forward.
+- For backend configuration transport, use `tests/api/backendConfigApi.test.js` as the dedicated suite and keep general dispatcher coverage in `tests/api/apiHandler.test.js`.
+- Do not recreate removed legacy configuration transport coverage around `src/backend/ConfigurationManager/99_globals.js`.
 
 ## 3. Idiomatic Patterns
 

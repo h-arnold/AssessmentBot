@@ -10,6 +10,8 @@ Backend currently exposes API-style entry files under `src/backend/z_Api`. Tests
 
 These API functions should be tested as thin wrappers around controller delegation and error propagation.
 
+Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler.test.js`.
+
 ## Production/Test Boundary
 
 ### Core rule
@@ -99,14 +101,15 @@ The following problems caused backend test failures and should be treated as reg
 Anti-patterns:
 
 - `../../src/backend/Api/apiHandler.js` when the current file is under `src/backend/z_Api`
-- `../../src/backend/ConfigurationManager/validators.js` when the current file is [03_validators.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/03_validators.js)
-- `../../src/backend/ConfigurationManager/ConfigurationManagerClass.js` when the current file is [98_ConfigurationManagerClass.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/98_ConfigurationManagerClass.js)
-- `../../src/backend/ConfigurationManager/globals.js` when the current file is [99_globals.js](/workspaces/AssessmentBot/src/backend/ConfigurationManager/99_globals.js)
+- `../../src/backend/ConfigurationManager/validators.js` when the current file is [03_validators.js](/workspaces/googleSlidesAssessor/src/backend/ConfigurationManager/03_validators.js)
+- `../../src/backend/ConfigurationManager/ConfigurationManagerClass.js` when the current file is [98_ConfigurationManagerClass.js](/workspaces/googleSlidesAssessor/src/backend/ConfigurationManager/98_ConfigurationManagerClass.js)
+- `../../src/backend/ConfigurationManager/99_globals.js` for configuration transport after that legacy surface has been removed
 
 Preferred:
 
 - update the tests to the real current path
 - or add an intentional test-side alias/wrapper if a stable alias is required
+- for backend configuration transport, use `tests/api/backendConfigApi.test.js` as the primary suite instead of rebuilding coverage around removed `globals.js` entry points
 
 ### 2. Putting test fallbacks into production runtime code
 
@@ -148,6 +151,7 @@ Preferred:
 - use helper names that describe the transport or domain concept, not a temporary planning document
 - when a feature migrates from `globals.js` to `apiHandler`, replace legacy-surface tests with new transport tests rather than preserving both naming schemes
 - treat existing `SECTION_*` constants or "Section N ..." describe titles in the test suite as legacy names and rename them to behaviour-focused names when you next touch those tests, rather than copying the old pattern
+- apply this rule consistently to backend configuration transport tests; do not recreate action-plan-number labels in `tests/api/backendConfigApi.test.js` or related helpers
 
 ## Test Framework
 
@@ -160,7 +164,7 @@ Preferred:
 
 ## Directory Structure
 
-```
+```text
 tests/
 ├── __mocks__/                 # Shared mock implementations
 │   └── googleAppsScript.js    # Mock GAS globals (PropertiesService, SpreadsheetApp, etc.)
@@ -925,14 +929,15 @@ npm test -- tests/models/abclass.test.js
 npm test -- -t "should serialise correctly"
 ```
 
-### Using Console Output
+### Avoid Console Output In Tests
 
 ```javascript
-it('should do something', () => {
-  console.log('Debug value:', myValue);
+it('returns the expected value', () => {
   expect(myValue).toBe(expected);
 });
 ```
+
+Prefer assertions, spies, and targeted mock inspection over temporary `console.*` statements. If local debugging output is briefly necessary while diagnosing a failure, remove it before handing tests back.
 
 <!-- Vitest UI section removed: @vitest/ui not currently installed; add back if tooling added. -->
 

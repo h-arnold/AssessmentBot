@@ -111,9 +111,15 @@ Vitest + Testing Library may still assert user-visible component outcomes; use P
 
 Name frontend tests after the behaviour, component, hook, or service they verify.
 
-Avoid temporary planning labels in test names and helpers. In particular, do not use action-plan section numbering such as `Section 1`, `Section 2`, or similar in `describe(...)` blocks, test titles, constants, or fixture names. Those labels become misleading as plans evolve or are deleted.
+Avoid temporary planning labels in test names and helpers. In particular, do not use action-plan section numbering such as `Section 1`, `Section 2`, or similar in `describe(...)` blocks, test titles, constants, or fixture names. This is a repository-wide rule and applies even when tests are written directly from an action plan. Those labels become misleading as plans evolve or are deleted.
 
 Prefer names such as `getBackendConfig rejects malformed payloads` or `Configuration service calls callApi with the backend method name` over names that refer only to a planning document.
+
+When frontend work depends on backend configuration transport behaviour, keep the layers separate:
+
+- frontend service validation and `callApi` usage belong in `src/frontend/src/services/backendConfigurationService.spec.ts`
+- dedicated backend configuration transport coverage belongs in `tests/api/backendConfigApi.test.js`
+- broader backend dispatcher coverage remains in `tests/api/apiHandler.test.js`
 
 ## Related standards
 

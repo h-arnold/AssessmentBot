@@ -50,6 +50,8 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Keep method names aligned with backend `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
+- Use `src/frontend/src/services/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
+- Treat `getBackendConfig` and `setBackendConfig` as the canonical backend configuration method names. Do not route configuration UI flows through legacy backend globals.
 
 ## 5. Error Handling and Quality
 
@@ -71,6 +73,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` before changing tests.
+- When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfigurationService.spec.ts`.
 
 ## 8. Validation and Type Definition Standard
 

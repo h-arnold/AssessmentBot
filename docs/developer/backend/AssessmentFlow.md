@@ -39,7 +39,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
    - Full definition: `assdef_full_{definitionKey}` collection
    - Partial summaries: Stored in `class_{courseId}` and `assignment_definitions` collections
 3. **Cache-First Assessment**: Always check cache before calling LLM to save API calls and time
-4. **Fail-Fast Error Handling**: Errors propagate up immediately, logged at each level
+4. **Fail-Fast Error Handling**: Errors propagate up immediately and should be logged at the appropriate top-level boundary without duplicating the same details at every layer
 5. **Singleton Pattern**: UIManager, ProgressTracker, ABLogger, ConfigurationManager, DbManager are all singletons
 6. **Factory Pattern**: Assignment.create() returns appropriate subclass based on documentType
 7. **Progress Tracking**: ProgressTracker updates visible to user throughout flow via Progress sheet
@@ -48,6 +48,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 10. **Document Properties**: Used for cross-execution parameter passing between trigger setup and execution
 11. **Lazy Loading**: Task definitions only re-parsed when Drive file modification times are newer than cached timestamps
 12. **Batch Operations**: LLM requests sent in batches via `UrlFetchApp.fetchAll()` for efficiency
+13. **Configuration Transport**: Frontend configuration reads and writes now flow through `apiHandler` using `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js`, with typed frontend access in `src/frontend/src/services/backendConfigurationService.ts`
 
 ---
 
@@ -57,6 +58,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 - API functions should stay thin and delegate to controllers.
 - Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.
+- Backend configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; the canonical read/write methods are `getBackendConfig` and `setBackendConfig` through `src/backend/z_Api/apiHandler.js`.
 - Some detailed examples below still describe legacy AdminSheet/UI flows and should be treated as reference until fully migrated.
 
 ---
@@ -1055,7 +1057,7 @@ submission.items["task_001"] = {
 
 **Analysis Sheet Structure**:
 
-```
+```text
 | Student Name | Task 1 - Completeness | Task 1 - Accuracy | Task 1 - SPaG | ... | Averages - Completeness | Averages - Accuracy | Averages - SPaG |
 |--------------|----------------------|-------------------|---------------|-----|------------------------|---------------------|-----------------|
 | Jane Doe     | 4                    | 5                 | 4             | ... | 4.2                    | 4.5                 | 4.3             |
@@ -1067,7 +1069,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 **Overview Sheet Structure**:
 
-```
+```text
 | Assignment Name | Avg Completeness | Avg Accuracy | Avg SPaG | Last Updated        |
 |----------------|------------------|--------------|----------|---------------------|
 | Essay 1        | 80               | 85           | 90       | 2025-01-15T10:30:00 |
@@ -1235,7 +1237,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 1. Errors in user-facing operations → `ProgressTracker.logError()`
 2. Developer diagnostics → `ABLogger.error/warn/info()`
-3. Critical failures → Both ProgressTracker and ABLogger
+3. Critical top-level failures may use both channels, but each should carry its own purpose-specific detail without duplicating the same error payload in both
 4. Never use `console.*` in production code
 
 ---
@@ -1267,7 +1269,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 Here's the complete chain from user action to completion:
 
-```
+```text
 User clicks "Assess Student Work"
   ↓
 showAssignmentDropdown() [globals]
