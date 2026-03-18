@@ -6,18 +6,30 @@ import '@testing-library/jest-dom/vitest';
 class ResizeObserverMock {
   /**
    * Starts observing the supplied element.
+   *
+   * @returns {void} No return value.
    */
-  observe() {}
+  observe() {
+    return;
+  }
 
   /**
    * Stops observing the supplied element.
+   *
+   * @returns {void} No return value.
    */
-  unobserve() {}
+  unobserve() {
+    return;
+  }
 
   /**
    * Disconnects all active observations.
+   *
+   * @returns {void} No return value.
    */
-  disconnect() {}
+  disconnect() {
+    return;
+  }
 }
 
 Object.defineProperty(globalThis, 'ResizeObserver', {
