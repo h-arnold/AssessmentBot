@@ -147,6 +147,7 @@ Preferred:
 - name tests after the behaviour, method, or class they verify
 - use helper names that describe the transport or domain concept, not a temporary planning document
 - when a feature migrates from `globals.js` to `apiHandler`, replace legacy-surface tests with new transport tests rather than preserving both naming schemes
+- treat existing `SECTION_*` constants or "Section N ..." describe titles in the test suite as legacy names and rename them to behaviour-focused names when you next touch those tests, rather than copying the old pattern
 
 ## Test Framework
 
