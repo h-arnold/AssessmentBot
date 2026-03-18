@@ -30,7 +30,7 @@ function maskApiKey(key) {
  */
 function getBackendConfig() {
   const errors = [];
-  const configurationManager = ConfigurationManager.getInstance();
+  const configManager = ConfigurationManager.getInstance();
 
   /**
    * Reads a single configuration value while preserving legacy fallback behaviour.
@@ -52,53 +52,53 @@ function getBackendConfig() {
     }
   }
 
-  const rawApiKey = safeGet(() => configurationManager.getApiKey(), 'apiKey', '');
+  const rawApiKey = safeGet(() => configManager.getApiKey(), 'apiKey', '');
   const config = {
     backendAssessorBatchSize: safeGet(
-      () => configurationManager.getBackendAssessorBatchSize(),
+      () => configManager.getBackendAssessorBatchSize(),
       'backendAssessorBatchSize',
       DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE
     ),
     apiKey: maskApiKey(rawApiKey),
     hasApiKey: !!rawApiKey,
-    backendUrl: safeGet(() => configurationManager.getBackendUrl(), 'backendUrl', ''),
+    backendUrl: safeGet(() => configManager.getBackendUrl(), 'backendUrl', ''),
     revokeAuthTriggerSet: safeGet(
-      () => configurationManager.getRevokeAuthTriggerSet(),
+      () => configManager.getRevokeAuthTriggerSet(),
       'revokeAuthTriggerSet',
       false
     ),
     daysUntilAuthRevoke: safeGet(
-      () => configurationManager.getDaysUntilAuthRevoke(),
+      () => configManager.getDaysUntilAuthRevoke(),
       'daysUntilAuthRevoke',
       DEFAULT_DAYS_UNTIL_AUTH_REVOKE
     ),
     slidesFetchBatchSize: safeGet(
-      () => configurationManager.getSlidesFetchBatchSize(),
+      () => configManager.getSlidesFetchBatchSize(),
       'slidesFetchBatchSize',
       DEFAULT_SLIDES_FETCH_BATCH_SIZE
     ),
     jsonDbMasterIndexKey: safeGet(
-      () => configurationManager.getJsonDbMasterIndexKey(),
+      () => configManager.getJsonDbMasterIndexKey(),
       'jsonDbMasterIndexKey',
       ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY
     ),
     jsonDbLockTimeoutMs: safeGet(
-      () => configurationManager.getJsonDbLockTimeoutMs(),
+      () => configManager.getJsonDbLockTimeoutMs(),
       'jsonDbLockTimeoutMs',
       ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
     ),
     jsonDbLogLevel: safeGet(
-      () => configurationManager.getJsonDbLogLevel(),
+      () => configManager.getJsonDbLogLevel(),
       'jsonDbLogLevel',
       ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL
     ),
     jsonDbBackupOnInitialise: safeGet(
-      () => configurationManager.getJsonDbBackupOnInitialise(),
+      () => configManager.getJsonDbBackupOnInitialise(),
       'jsonDbBackupOnInitialise',
       ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
     ),
     jsonDbRootFolderId: safeGet(
-      () => configurationManager.getJsonDbRootFolderId(),
+      () => configManager.getJsonDbRootFolderId(),
       'jsonDbRootFolderId',
       ''
     ),
@@ -125,62 +125,62 @@ function setBackendConfig(config) {
   }
 
   const errors = [];
-  const configurationManager = ConfigurationManager.getInstance();
+  const configManager = ConfigurationManager.getInstance();
   const updates = [
     {
       name: 'backendAssessorBatchSize',
       value: config.backendAssessorBatchSize,
-      applySetting: (value) => configurationManager.setBackendAssessorBatchSize(value),
+      applySetting: (value) => configManager.setBackendAssessorBatchSize(value),
     },
     {
       name: 'slidesFetchBatchSize',
       value: config.slidesFetchBatchSize,
-      applySetting: (value) => configurationManager.setSlidesFetchBatchSize(value),
+      applySetting: (value) => configManager.setSlidesFetchBatchSize(value),
     },
     {
       name: 'apiKey',
       value: config.apiKey,
-      applySetting: (value) => configurationManager.setApiKey(value),
+      applySetting: (value) => configManager.setApiKey(value),
     },
     {
       name: 'backendUrl',
       value: config.backendUrl,
-      applySetting: (value) => configurationManager.setBackendUrl(value),
+      applySetting: (value) => configManager.setBackendUrl(value),
     },
     {
       name: 'revokeAuthTriggerSet',
       value: config.revokeAuthTriggerSet,
-      applySetting: (value) => configurationManager.setRevokeAuthTriggerSet(value),
+      applySetting: (value) => configManager.setRevokeAuthTriggerSet(value),
     },
     {
       name: 'daysUntilAuthRevoke',
       value: config.daysUntilAuthRevoke,
-      applySetting: (value) => configurationManager.setDaysUntilAuthRevoke(value),
+      applySetting: (value) => configManager.setDaysUntilAuthRevoke(value),
     },
     {
       name: 'jsonDbMasterIndexKey',
       value: config.jsonDbMasterIndexKey,
-      applySetting: (value) => configurationManager.setJsonDbMasterIndexKey(value),
+      applySetting: (value) => configManager.setJsonDbMasterIndexKey(value),
     },
     {
       name: 'jsonDbLockTimeoutMs',
       value: config.jsonDbLockTimeoutMs,
-      applySetting: (value) => configurationManager.setJsonDbLockTimeoutMs(value),
+      applySetting: (value) => configManager.setJsonDbLockTimeoutMs(value),
     },
     {
       name: 'jsonDbLogLevel',
       value: config.jsonDbLogLevel,
-      applySetting: (value) => configurationManager.setJsonDbLogLevel(value),
+      applySetting: (value) => configManager.setJsonDbLogLevel(value),
     },
     {
       name: 'jsonDbBackupOnInitialise',
       value: config.jsonDbBackupOnInitialise,
-      applySetting: (value) => configurationManager.setJsonDbBackupOnInitialise(value),
+      applySetting: (value) => configManager.setJsonDbBackupOnInitialise(value),
     },
     {
       name: 'jsonDbRootFolderId',
       value: config.jsonDbRootFolderId,
-      applySetting: (value) => configurationManager.setJsonDbRootFolderId(value),
+      applySetting: (value) => configManager.setJsonDbRootFolderId(value),
     },
   ];
 

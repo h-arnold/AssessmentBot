@@ -165,6 +165,24 @@ test.describe('app shell', () => {
     await expect(settingsItem).toHaveClass(/ant-menu-item-selected/);
   });
 
+  test('settings tabs switch visible panels in the browser', async ({ page }) => {
+    await mockPendingGoogleScriptRun(page);
+    await page.goto('/');
+
+    await page.getByRole('menuitem', { name: settingsLabel }).click();
+
+    const classesTab = page.getByRole('tab', { name: 'Classes' });
+    const backendSettingsTab = page.getByRole('tab', { name: 'Backend settings' });
+
+    await expect(classesTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('region', { name: 'Classes panel' })).toBeVisible();
+
+    await backendSettingsTab.click();
+
+    await expect(backendSettingsTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('region', { name: 'Backend settings panel' })).toBeVisible();
+  });
+
   test('shows shell on initial load', async ({ page }) => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
