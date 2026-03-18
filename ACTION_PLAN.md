@@ -245,15 +245,15 @@ Frontend tests:
 
 ### Delivery status
 
-- Current phase: Commit and push pending
+- Current phase: Complete
 - Red tests added: complete
 - Red review clean: complete
 - Green implementation complete: complete
 - Green review clean: complete
 - Checks passed: complete
 - Action plan updated: complete
-- Commit created: pending
-- Push completed: pending
+- Commit created: complete
+- Push completed: complete
 
 ### Objective
 
@@ -308,9 +308,26 @@ Frontend tests:
 - **Deviations from plan:** The backend configuration transport test extraction from `tests/api/apiHandler.test.js` into `tests/api/backendConfigApi.test.js` was completed during the Section 3 green phase without a separate TDD cycle, per the explicit user instruction, and then validated with the required Section 3 checks.
 - **Follow-up implications for later sections:** Regression should continue to run both backend API suites plus the frontend backend-configuration service spec. Deprecated references under `src/AdminSheet` and `src/AssessmentRecordTemplate` were intentionally left untouched because Section 3 acceptance was scoped to active code and supported tests.
 
+### Delivery evidence
+
+- Commit SHA: `28e170a5e90d9d9429cab020eb09ae19175dc263`
+- Commit message: `refactor(backend): section 3 legacy transport cleanup`
+- Commit SHA: `60f03e8d94ae161ab5e7e39e250a5a760f8e995e`
+- Commit message: `docs(plan): update section 3 delivery tracking`
+- Branch name: `feat/ReactFrontend`
+- Push confirmation: pushed successfully to `origin/feat/ReactFrontend` (`fb14e2c..60f03e8`)
+
 ---
 
 ## Regression and contract hardening
+
+### Delivery status
+
+- Current phase: Complete
+- Checks passed: complete
+- Action plan updated: complete
+- Commit created: pending
+- Push completed: pending
 
 ### Objective
 
@@ -347,8 +364,17 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** summarise what was done during regression phase.
-- **Deviations from plan:** note any additional work discovered or done.
+- **Implementation notes:** Re-ran the focused backend transport suites `tests/api/apiHandler.test.js` and `tests/api/backendConfigApi.test.js`, the frontend service suite `src/services/backendConfigurationService.spec.ts`, backend lint, frontend lint, and the frontend TypeScript build. All required regression commands passed after the Section 3 transport cleanup and backend configuration test extraction.
+- **Deviations from plan:** No frontend E2E test run was required because the migration changed backend transport wiring and service/schema validation only, with no browser-visible UI behaviour changes.
+
+### Delivery evidence
+
+- Check result: `npm test -- tests/api/apiHandler.test.js` passed (`58/58` tests)
+- Check result: `npm test -- tests/api/backendConfigApi.test.js` passed (`10/10` tests)
+- Check result: `npm run frontend:test -- src/services/backendConfigurationService.spec.ts` passed (`12/12` tests)
+- Check result: `npm run lint` passed
+- Check result: `npm run frontend:lint` passed
+- Check result: `npm exec tsc -- -b src/frontend/tsconfig.json` passed
 
 ---
 
