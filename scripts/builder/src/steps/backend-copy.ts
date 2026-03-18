@@ -10,7 +10,7 @@ const STAGE_ID = 'backend-copy' as const;
  * Returns whether a backend file is runtime-relevant for GAS output.
  *
  * @param {string} filePath - Absolute backend source file path.
- * @return {boolean} `true` when the file should be copied.
+ * @returns {boolean} `true` when the file should be copied.
  */
 export function isRuntimeBackendFile(filePath: string): boolean {
   const normalised = filePath.replaceAll('\\', '/');
@@ -26,7 +26,7 @@ export function isRuntimeBackendFile(filePath: string): boolean {
  * Recursively lists all files under a directory.
  *
  * @param {string} rootDir - Directory to enumerate.
- * @return {Promise<string[]>} Absolute file paths.
+ * @returns {Promise<string[]>} Absolute file paths.
  */
 async function listFilesRecursive(rootDir: string): Promise<string[]> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
@@ -50,7 +50,7 @@ async function listFilesRecursive(rootDir: string): Promise<string[]> {
  * Copies runtime backend source files into final GAS output.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<BackendCopyResult>} Stage metadata with copied file list.
+ * @returns {Promise<BackendCopyResult>} Stage metadata with copied file list.
  */
 export async function runBackendCopy(paths: BuilderPaths): Promise<BackendCopyResult> {
   let sourceFiles: string[];

@@ -29,6 +29,8 @@ vi.mock('../../query/sharedQueries', async () => {
 
 /**
  * Exposes the shared auth-hook result for gate-adjacent assertions.
+ *
+ * @returns {JSX.Element} The rendered auth hook probe.
  */
 function AuthHookProbe() {
   const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();
@@ -47,12 +49,18 @@ function AuthHookProbe() {
 
 /**
  * Creates a fresh React Query wrapper for each test.
+ *
+ * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; QueryWrapper: (properties: Readonly<PropsWithChildren>) => JSX.Element; }} The query client and wrapper component for the test.
  */
 function createQueryWrapper() {
   const queryClient = createAppQueryClient();
 
   /**
    * Provides the per-test query client to rendered children.
+ *
+ * @param {{ children: PropsWithChildren['children'] }} root0 - The wrapper properties.
+ * @param {PropsWithChildren['children']} root0.children - The wrapped children.
+ * @returns {JSX.Element} The query wrapper.
    */
   function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

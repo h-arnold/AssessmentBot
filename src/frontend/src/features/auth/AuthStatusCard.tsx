@@ -5,6 +5,8 @@ const { Text } = Typography;
 
 /**
  * Renders the auth status card content for loading and resolved states.
+ *
+ * @returns {JSX.Element} The auth status card.
  */
 export function AuthStatusCard() {
   const { authViewState, authError } = useAuthorisationStatus();

@@ -27,6 +27,9 @@ const MAX_SERIALISED_METADATA_LENGTH = 2000;
 
 /**
  * Returns true when a metadata key should be redacted.
+ *
+ * @param {string} key Metadata key to inspect.
+ * @returns {boolean} Whether the key should be redacted.
  */
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_FIELD_NAMES.has(key.toLowerCase());
@@ -34,6 +37,9 @@ function isSensitiveKey(key: string): boolean {
 
 /**
  * Truncates long metadata string values to keep log payloads bounded.
+ *
+ * @param {string} value String value to truncate.
+ * @returns {string} The truncated or original string.
  */
 function truncateValue(value: string): string {
   if (value.length <= MAX_SERIALISED_METADATA_LENGTH) {
@@ -45,6 +51,9 @@ function truncateValue(value: string): string {
 
 /**
  * Recursively redacts sensitive metadata values.
+ *
+ * @param {unknown} value Metadata value to sanitise.
+ * @returns {unknown} The sanitised metadata value.
  */
 function redactValue(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -72,6 +81,9 @@ function redactValue(value: unknown): unknown {
 
 /**
  * Sanitises metadata before emitting to the console endpoint.
+ *
+ * @param {Record<string, unknown> | undefined} metadata Metadata to sanitise.
+ * @returns {Record<string, unknown> | undefined} The sanitised metadata, or undefined.
  */
 function sanitiseMetadata(metadata: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
   if (!metadata) {
@@ -83,6 +95,9 @@ function sanitiseMetadata(metadata: Record<string, unknown> | undefined): Record
 
 /**
  * Returns true when stack traces should be included in log entries.
+ *
+ * @param {FrontendLogOptions | undefined} options Logger options.
+ * @returns {boolean} Whether stack traces should be included.
  */
 function shouldIncludeStack(options: FrontendLogOptions | undefined): boolean {
   if (typeof options?.includeStack === 'boolean') {
@@ -95,6 +110,10 @@ function shouldIncludeStack(options: FrontendLogOptions | undefined): boolean {
 
 /**
  * Returns true when a log level is enabled in the current runtime mode.
+ *
+ * @param {FrontendLogLevel} level Log level to evaluate.
+ * @param {FrontendLogOptions | undefined} options Logger options.
+ * @returns {boolean} Whether the level is enabled.
  */
 function isLevelEnabled(level: FrontendLogLevel, options: FrontendLogOptions | undefined): boolean {
   const isDevelopmentRuntime = options?.isDevelopmentRuntime ?? import.meta.env.DEV;
@@ -106,15 +125,18 @@ function isLevelEnabled(level: FrontendLogLevel, options: FrontendLogOptions | u
   return level === 'warn' || level === 'error';
 }
 
-const consoleMethodByLevel: Record<FrontendLogLevel, (message?: unknown, ...optionalParams: unknown[]) => void> = {
-  debug: (...args) => globalThis.console.debug(...args),
-  info: (...args) => globalThis.console.info(...args),
-  warn: (...args) => globalThis.console.warn(...args),
-  error: (...args) => globalThis.console.error(...args),
+const consoleMethodByLevel: Record<FrontendLogLevel, (message?: unknown, ...optionalParameters: unknown[]) => void> = {
+  debug: (...arguments_) => globalThis.console.debug(...arguments_),
+  info: (...arguments_) => globalThis.console.info(...arguments_),
+  warn: (...arguments_) => globalThis.console.warn(...arguments_),
+  error: (...arguments_) => globalThis.console.error(...arguments_),
 };
 
 /**
  * Emits a log entry to the browser console using a level-matched endpoint.
+ *
+ * @param {FrontendLogEntry} entry Log entry to emit.
+ * @returns {void} Nothing.
  */
 function writeToConsole(entry: FrontendLogEntry): void {
   consoleMethodByLevel[entry.level](entry.context, entry);
@@ -122,6 +144,11 @@ function writeToConsole(entry: FrontendLogEntry): void {
 
 /**
  * Writes a structured frontend log event to the console endpoint.
+ *
+ * @param {FrontendLogLevel} level Log level to emit.
+ * @param {FrontendLogPayload} payload Log payload to emit.
+ * @param {FrontendLogOptions | undefined} options Logger options.
+ * @returns {void} Nothing.
  */
 export function logFrontendEvent(
   level: FrontendLogLevel,
@@ -146,6 +173,12 @@ export function logFrontendEvent(
 
 /**
  * Normalises and logs unknown errors using a consistent payload shape.
+ *
+ * @param {string} context Log context.
+ * @param {unknown} error Error to log.
+ * @param {Record<string, unknown> | undefined} metadata Additional metadata.
+ * @param {FrontendLogOptions | undefined} options Logger options.
+ * @returns {void} Nothing.
  */
 export function logFrontendError(
   context: string,

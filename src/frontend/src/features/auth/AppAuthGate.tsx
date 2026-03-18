@@ -18,6 +18,9 @@ const warmedQueryClients = new WeakSet<QueryClient>();
 
 /**
  * Logs startup warm-up failures with debug-only orchestration context.
+ *
+ * @param {unknown} error The warm-up failure to log.
+ * @returns {void} Nothing.
  */
 function logClassPartialsWarmupFailure(error: unknown) {
   const normalisedError = normaliseUnknownError(error);
@@ -38,8 +41,12 @@ function logClassPartialsWarmupFailure(error: unknown) {
 
 /**
  * Provides an auth-aware boundary for startup warm-up orchestration.
+ *
+ * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
+ * @returns {JSX.Element} The auth gate wrapper.
  */
-export function AppAuthGate({ children }: Readonly<PropsWithChildren>) {
+export function AppAuthGate(properties: Readonly<PropsWithChildren>) {
+  const { children } = properties;
   const queryClient = useQueryClient();
   const { isAuthResolved, isAuthorised } = useAuthorisationStatus();
 

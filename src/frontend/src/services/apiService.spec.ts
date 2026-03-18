@@ -30,10 +30,12 @@ type GoogleScript = {
     };
 };
 
-type CallApi = <TResponse>(method: string, params?: unknown) => Promise<TResponse>;
+type CallApi = <TResponse>(method: string, parameters?: unknown) => Promise<TResponse>;
 
 /**
  * Sets a mock `google` runtime object for tests.
+ *
+ * @param {GoogleScript} value - The mock Google runtime to install.
  */
 function setGoogle(value: GoogleScript): void {
     (globalThis as unknown as Record<string, unknown>).google = value;
@@ -41,6 +43,8 @@ function setGoogle(value: GoogleScript): void {
 
 /**
  * Removes the mock `google` runtime object after each test.
+ *
+ * @returns {void} Nothing.
  */
 function clearGoogle(): void {
     delete (globalThis as Record<string, unknown>).google;
@@ -50,6 +54,8 @@ const apiServiceModulePath: string = './apiService';
 
 /**
  * Loads a fresh `callApi` export from the module under test.
+ *
+ * @returns {Promise<CallApi>} The `callApi` function from the module under test.
  */
 async function loadCallApi(): Promise<CallApi> {
     const apiServiceModule = (await import(apiServiceModulePath)) as {
@@ -68,6 +74,9 @@ const MAX_ATTEMPTS = 4;
 
 /**
  * Builds a retriable RATE_LIMITED envelope for retry-path tests.
+ *
+ * @param {string} requestId - The request identifier to include in the envelope.
+ * @returns {ApiErrorEnvelope} The constructed error envelope.
  */
 function makeRateLimitedEnvelope(requestId: string): ApiErrorEnvelope {
     return {
@@ -79,6 +88,9 @@ function makeRateLimitedEnvelope(requestId: string): ApiErrorEnvelope {
 
 /**
  * Creates a controllable `google.script.run` harness for unit tests.
+ *
+ * @param {RunnerHarnessResponse} response - The response shape to replay through the harness.
+ * @returns {{ runner: GoogleScriptRunWithApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The runner harness and its spy.
  */
 function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
     runner: GoogleScriptRunWithApiHandler;
@@ -92,6 +104,9 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
     const runner: GoogleScriptRunWithApiHandler = {
         /**
          * Registers the success callback for the harness.
+         *
+         * @param {(responseValue: unknown) => void} handler - The success callback.
+         * @returns {GoogleScriptRunWithApiHandler} The harness runner.
          */
         withSuccessHandler(handler: (responseValue: unknown) => void) {
             successHandler = handler;
@@ -99,6 +114,9 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
         },
         /**
          * Registers the failure callback for the harness.
+         *
+         * @param {(error: unknown) => void} handler - The failure callback.
+         * @returns {GoogleScriptRunWithApiHandler} The harness runner.
          */
         withFailureHandler(handler: (error: unknown) => void) {
             failureHandler = handler;
@@ -106,6 +124,9 @@ function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
         },
         /**
          * Dispatches the request into the harness spy.
+         *
+         * @param {unknown} request - The request payload to dispatch.
+         * @returns {void} Nothing.
          */
         apiHandler(request: unknown) {
             apiHandlerSpy(request);
@@ -300,6 +321,9 @@ describe('apiService.callApi', () => {
  * Creates a `google.script.run` harness that returns responses in sequence.
  * Each call to `apiHandler` consumes the next response; the last response is
  * repeated if the sequence is exhausted.
+ *
+ * @param {RunnerHarnessResponse[]} responses - The ordered responses to replay.
+ * @returns {{ runner: GoogleScriptRunWithApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The sequential harness and its spy.
  */
 function createSequentialHarness(responses: RunnerHarnessResponse[]): {
     runner: GoogleScriptRunWithApiHandler;

@@ -3,6 +3,8 @@ import { pageContent } from './pageContent';
 
 /**
  * Renders the assignments placeholder page.
+ *
+ * @returns {JSX.Element} The assignments page.
  */
 export function AssignmentsPage() {
   return (

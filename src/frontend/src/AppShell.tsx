@@ -20,6 +20,9 @@ const darkModeLabel = 'Dark mode';
 
 /**
  * Converts typed navigation metadata into Ant Design menu items.
+ *
+ * @param {AppNavigationItem[]} items Navigation items to transform.
+ * @returns {Required<MenuProps>['items']} Ant Design menu items for the supplied navigation tree.
  */
 function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
   return items.map(({ children, icon, key, label }) => ({
@@ -33,7 +36,7 @@ function toMenuItems(items: AppNavigationItem[]): Required<MenuProps>['items'] {
 /**
  * Renders the shared application shell with a collapsible navigation rail.
  */
-type AppShellProps = Readonly<{
+type AppShellProperties = Readonly<{
   dashboardContent?: ReactNode;
   isDarkMode: boolean;
   onThemeModeChange: (checked: boolean) => void;
@@ -41,12 +44,12 @@ type AppShellProps = Readonly<{
 
 /**
  * Application shell layout with header, navigation, and content.
+ *
+ * @param {AppShellProperties} properties Shell configuration values.
+ * @returns {JSX.Element} The rendered application shell.
  */
-export function AppShell({
-  dashboardContent,
-  isDarkMode,
-  onThemeModeChange,
-}: AppShellProps) {
+export function AppShell(properties: AppShellProperties) {
+  const { dashboardContent, isDarkMode, onThemeModeChange } = properties;
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [selectedNavigationKey, setSelectedNavigationKey] =
     useState<AppNavigationKey>(defaultNavigationKey);
@@ -159,6 +162,10 @@ export function AppShell({
 
 /**
  * Resolves the page renderer for the active navigation key without dynamic property access.
+ *
+ * @param {AppNavigationKey} key Active navigation key.
+ * @param {ReactNode | undefined} dashboardContent Optional dashboard content slot.
+ * @returns {ReactNode} The page renderer output for the active navigation key.
  */
 function renderSelectedPage(key: AppNavigationKey, dashboardContent?: ReactNode) {
   switch (key) {

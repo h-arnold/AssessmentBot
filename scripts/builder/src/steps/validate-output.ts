@@ -27,7 +27,7 @@ type GasManifest = {
  * Recursively lists files beneath a directory in deterministic order.
  *
  * @param {string} rootDir - Directory to scan.
- * @return {Promise<string[]>} Absolute file paths.
+ * @returns {Promise<string[]>} Absolute file paths.
  */
 async function listFilesRecursive(rootDir: string): Promise<string[]> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
@@ -52,7 +52,7 @@ async function listFilesRecursive(rootDir: string): Promise<string[]> {
  * Ensures required final GAS output files are present.
  *
  * @param {Set<string>} relativeFiles - Relative output file paths.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function validateRequiredFiles(relativeFiles: Set<string>): void {
   const missingFiles = REQUIRED_FILES.filter((requiredPath) => !relativeFiles.has(requiredPath));
@@ -68,7 +68,7 @@ function validateRequiredFiles(relativeFiles: Set<string>): void {
  * Validates merged GAS manifest structure and de-duplication assumptions.
  *
  * @param {string} manifestContent - Raw manifest JSON string.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 export function validateManifestSanity(manifestContent: string): void {
   const parsedManifest = parseManifestContent(manifestContent);
@@ -80,7 +80,7 @@ export function validateManifestSanity(manifestContent: string): void {
  * Validates HtmlService output does not reference forbidden external assets.
  *
  * @param {string} reactAppHtml - ReactApp HtmlService template content.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 export function validateForbiddenFrontendReferences(reactAppHtml: string): void {
   for (const pattern of FORBIDDEN_ASSET_PATTERNS) {
@@ -97,7 +97,7 @@ export function validateForbiddenFrontendReferences(reactAppHtml: string): void 
  * Detects duplicate protected global declarations across GAS JavaScript files.
  *
  * @param {Record<string, string>} jsSourcesByPath - JavaScript sources keyed by relative file path.
- * @return {Record<string, string[]>} Duplicate declarations keyed by symbol name.
+ * @returns {Record<string, string[]>} Duplicate declarations keyed by symbol name.
  */
 export function findDuplicateProtectedGlobals(
   jsSourcesByPath: Record<string, string>,
@@ -122,7 +122,7 @@ export function findDuplicateProtectedGlobals(
  * Scans JavaScript source for top-level declaration names only.
  *
  * @param {string} source - JavaScript source text.
- * @return {string[]} Declaration names detected at brace depth zero.
+ * @returns {string[]} Declaration names detected at brace depth zero.
  */
 export function scanFileTopLevelDeclarations(source: string): string[] {
   const names: string[] = [];
@@ -140,7 +140,7 @@ export function scanFileTopLevelDeclarations(source: string): string[] {
  * Parses manifest JSON and wraps parse failures with stage context.
  *
  * @param {string} manifestContent - Raw manifest JSON string.
- * @return {GasManifest} Parsed manifest object.
+ * @returns {GasManifest} Parsed manifest object.
  */
 function parseManifestContent(manifestContent: string): GasManifest {
   try {
@@ -154,7 +154,7 @@ function parseManifestContent(manifestContent: string): GasManifest {
  * Validates oauth scope requirements for the merged manifest.
  *
  * @param {string[] | undefined} oauthScopes - Optional oauth scopes list.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function validateOauthScopes(oauthScopes: string[] | undefined): void {
   if (!Array.isArray(oauthScopes) || oauthScopes.length === 0) {
@@ -176,7 +176,7 @@ function validateOauthScopes(oauthScopes: string[] | undefined): void {
  * Validates advanced services requirements for the merged manifest.
  *
  * @param {GasManifest['dependencies']['enabledAdvancedServices']} services - Optional advanced services list.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function validateAdvancedServices(
   services: NonNullable<GasManifest['dependencies']>['enabledAdvancedServices'],
@@ -207,7 +207,7 @@ function validateAdvancedServices(
  * Returns duplicate values while preserving repeated entries.
  *
  * @param {string[]} values - Input values.
- * @return {string[]} Values that appear more than once.
+ * @returns {string[]} Values that appear more than once.
  */
 function findDuplicatedValues(values: string[]): string[] {
   return values.filter((value, index, list) => list.indexOf(value) !== index);
@@ -219,7 +219,7 @@ function findDuplicatedValues(values: string[]): string[] {
  * @param {Map<string, Set<string>>} protectedDeclarations - Collected protected declarations map.
  * @param {string} relativePath - Relative source path being processed.
  * @param {string[]} declaredNames - Top-level declarations found in source.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function addProtectedDeclarationMatches(
   protectedDeclarations: Map<string, Set<string>>,
@@ -243,7 +243,7 @@ function addProtectedDeclarationMatches(
  * Extracts top-level declaration names from a parsed JavaScript statement node.
  *
  * @param {ts.Statement} statement - TypeScript AST statement node.
- * @return {string[]} Declaration names from supported declaration statements.
+ * @returns {string[]} Declaration names from supported declaration statements.
  */
 function getTopLevelDeclarationNames(statement: ts.Statement): string[] {
   if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) {
@@ -264,7 +264,7 @@ function getTopLevelDeclarationNames(statement: ts.Statement): string[] {
  * Runs final output validation checks and emits concise build metadata.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<ValidateOutputResult>} Validation summary metadata.
+ * @returns {Promise<ValidateOutputResult>} Validation summary metadata.
  */
 export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOutputResult> {
   try {

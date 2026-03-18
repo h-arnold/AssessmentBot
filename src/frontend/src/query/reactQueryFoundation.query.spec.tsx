@@ -46,6 +46,9 @@ const reactQueryModuleId = '@tanstack/react-query';
 
 /**
  * Imports a required module and fails with a clear message if it is missing.
+ *
+ * @param {string} relativePath - The module path relative to this spec file.
+ * @returns {Promise<TModule>} The imported module.
  */
 async function importRequiredModule<TModule>(relativePath: string): Promise<TModule> {
   try {
@@ -76,6 +79,8 @@ describe('React Query foundation', () => {
 
     /**
      * Confirms the React Query client is available from provider context.
+      *
+      * @returns {JSX.Element} The query client probe element.
      */
     function QueryClientProbe() {
       const isExpectedQueryClient = useQueryClient() === queryClient;
@@ -129,6 +134,8 @@ describe('React Query foundation', () => {
 
     /**
      * Captures each query client reference observed across renders.
+      *
+      * @returns {JSX.Element} The stable query client probe element.
      */
     function QueryClientProbe() {
       seenClients.push(useQueryClient());

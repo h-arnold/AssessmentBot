@@ -12,7 +12,7 @@ const HTML_ATTRIBUTE_VALUE_PATTERN = /\b([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(
  *
  * @param {BuilderPaths} paths - Resolved builder filesystem paths.
  * @param {string} assetRef - Asset path extracted from HTML tags.
- * @return {string} Absolute path to the referenced built asset.
+ * @returns {string} Absolute path to the referenced built asset.
  */
 function resolveBuiltAssetPath(paths: BuilderPaths, assetRef: string): string {
   const sanitisedRef = assetRef.replace(/^\.\//, '');
@@ -30,7 +30,7 @@ function resolveBuiltAssetPath(paths: BuilderPaths, assetRef: string): string {
  * Converts Vite output HTML into a GAS HtmlService template with inlined assets.
  *
  * @param {BuilderPaths} paths - Resolved builder filesystem paths.
- * @return {Promise<FrontendHtmlServiceTransformResult>} Transform output metadata.
+ * @returns {Promise<FrontendHtmlServiceTransformResult>} Transform output metadata.
  */
 export async function runFrontendHtmlServiceTransform(
   paths: BuilderPaths,
@@ -133,7 +133,7 @@ export async function runFrontendHtmlServiceTransform(
  * @param {string} input - Input text to transform.
  * @param {RegExp} pattern - Match pattern.
  * @param {(match: string, ...groups: string[]) => Promise<string>} replacer - Async replacer callback.
- * @return {Promise<string>} Transformed output string.
+ * @returns {Promise<string>} Transformed output string.
  */
 async function replaceAsync(
   input: string,
@@ -158,7 +158,7 @@ async function replaceAsync(
  *
  * @param {string} attributes - Raw HTML attribute segment.
  * @param {string} name - Attribute name to read.
- * @return {string | undefined} Attribute value when present.
+ * @returns {string | undefined} Attribute value when present.
  */
 function readAttributeValue(attributes: string, name: string): string | undefined {
   const targetName = name.toLowerCase();
@@ -179,7 +179,7 @@ function readAttributeValue(attributes: string, name: string): string | undefine
  *
  * @param {string} attributes - Raw HTML attribute segment.
  * @param {string} name - Attribute name to remove.
- * @return {string} Normalised attribute segment without the named attribute.
+ * @returns {string} Normalised attribute segment without the named attribute.
  */
 function removeAttribute(attributes: string, name: string): string {
   const targetName = name.toLowerCase();
@@ -195,7 +195,7 @@ function removeAttribute(attributes: string, name: string): string {
  * Detects unresolved local asset references in `src` or `href` attributes.
  *
  * @param {string} html - HTML content to scan.
- * @return {boolean} `true` when local `assets/` references remain.
+ * @returns {boolean} `true` when local `assets/` references remain.
  */
 function hasUnresolvedAssetAttributeReference(html: string): boolean {
   const pattern = /\b(?:src|href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^"\s'>]+))/gi;
@@ -216,7 +216,7 @@ function hasUnresolvedAssetAttributeReference(html: string): boolean {
  * Detects unresolved external module script references in transformed HTML.
  *
  * @param {string} html - HTML content to scan.
- * @return {boolean} `true` when a module script still has a `src` attribute.
+ * @returns {boolean} `true` when a module script still has a `src` attribute.
  */
 function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
   const pattern = /<script\b([^>]*)><\/script>/gim;

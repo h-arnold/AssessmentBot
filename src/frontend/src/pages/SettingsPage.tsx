@@ -3,6 +3,8 @@ import { pageContent } from './pageContent';
 
 /**
  * Renders the settings placeholder page.
+ *
+ * @returns {JSX.Element} The settings page.
  */
 export function SettingsPage() {
   return (

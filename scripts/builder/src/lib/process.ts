@@ -45,7 +45,7 @@ export class CommandExecutionError extends Error {
  *
  * @param {NodeJS.WriteStream} stream - Output stream to write to.
  * @param {string} message - Message text to write.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function writeLine(stream: NodeJS.WriteStream, message: string): void {
   stream.write(`${message}\n`);
@@ -55,7 +55,7 @@ function writeLine(stream: NodeJS.WriteStream, message: string): void {
  * Writes an informational build message.
  *
  * @param {string} message - Message text to write.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 export function logInfo(message: string): void {
   writeLine(process.stdout, message);
@@ -65,7 +65,7 @@ export function logInfo(message: string): void {
  * Writes an error build message.
  *
  * @param {string} message - Message text to write.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 export function logError(message: string): void {
   writeLine(process.stderr, message);
@@ -75,7 +75,7 @@ export function logError(message: string): void {
  * Logs a build failure with stage-aware context when available.
  *
  * @param {unknown} err - Error value thrown by the build pipeline.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 export function logBuildFailure(err: unknown): void {
   if (isBuildStageError(err)) {
@@ -97,7 +97,7 @@ export function logBuildFailure(err: unknown): void {
  * @param {string} command - Executable command name.
  * @param {string[]} args - Command arguments.
  * @param {CommandRunOptions} options - Command execution options.
- * @return {Promise<CommandRunResult>} Captured command output.
+ * @returns {Promise<CommandRunResult>} Captured command output.
  */
 export async function runCommand(
   command: string,

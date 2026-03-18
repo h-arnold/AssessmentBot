@@ -20,7 +20,7 @@ const SCRIPT_ASSET_FILE = 'index-abc.js';
 /**
  * Creates a unique temporary directory for a test case.
  *
- * @return {Promise<string>} Path to the created temporary directory.
+ * @returns {Promise<string>} Path to the created temporary directory.
  */
 async function createTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'frontend-htmlservice-transform-'));
@@ -30,7 +30,7 @@ async function createTempDir(): Promise<string> {
  * Builds a complete `BuilderPaths` object rooted at a temporary directory.
  *
  * @param {string} rootDir - Root temporary directory for the test fixture.
- * @return {BuilderPaths} Fully resolved builder path values.
+ * @returns {BuilderPaths} Fully resolved builder path values.
  */
 function createBuilderPaths(rootDir: string): BuilderPaths {
   const repoRoot = rootDir;
@@ -63,7 +63,7 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
  *
  * @param {BuilderPaths} paths - Builder path set for the test fixture.
  * @param {string[]} htmlLines - HTML lines that will be joined using newlines.
- * @return {Promise<void>} Resolves when the fixture is written.
+ * @returns {Promise<void>} Resolves when the fixture is written.
  */
 async function writeFrontendIndexHtml(paths: BuilderPaths, htmlLines: string[]): Promise<void> {
   await fs.writeFile(path.join(paths.buildFrontendDir, 'index.html'), htmlLines.join('\n'), 'utf-8');
@@ -75,7 +75,7 @@ async function writeFrontendIndexHtml(paths: BuilderPaths, htmlLines: string[]):
  * @param {BuilderPaths} paths - Builder path set for the test fixture.
  * @param {string} assetName - Asset file name relative to `assets`.
  * @param {string} contents - File contents to write.
- * @return {Promise<void>} Resolves when the asset file is written.
+ * @returns {Promise<void>} Resolves when the asset file is written.
  */
 async function writeFrontendAsset(
   paths: BuilderPaths,
@@ -89,7 +89,7 @@ async function writeFrontendAsset(
  * Runs the transform and reads the emitted HtmlService template output.
  *
  * @param {BuilderPaths} paths - Builder path set for the test fixture.
- * @return {Promise<{ result: Awaited<ReturnType<typeof runFrontendHtmlServiceTransform>>; output: string }>}
+ * @returns {Promise<{ result: Awaited<ReturnType<typeof runFrontendHtmlServiceTransform>>; output: string }>}
  * Stage result and transformed HTML output.
  */
 async function runTransformAndReadOutput(

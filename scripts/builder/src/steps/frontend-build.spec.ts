@@ -29,7 +29,7 @@ const FRONTEND_BUILD_STAGE = 'frontend-build';
 /**
  * Builds a representative `BuilderPaths` fixture for step tests.
  *
- * @return {BuilderPaths} Fully resolved builder path values.
+ * @returns {BuilderPaths} Fully resolved builder path values.
  */
 function createBuilderPaths(): BuilderPaths {
   return {

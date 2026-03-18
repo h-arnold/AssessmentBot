@@ -26,7 +26,7 @@ type Manifest = {
  * Sorts object keys recursively to produce deterministic JSON output.
  *
  * @param {unknown} value - Value to normalise.
- * @return {unknown} Equivalent value with stable key ordering.
+ * @returns {unknown} Equivalent value with stable key ordering.
  */
 export function sortKeysDeep(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -48,7 +48,7 @@ export function sortKeysDeep(value: unknown): unknown {
  *
  * @param {string[] | undefined} baseScopes - Base manifest scopes.
  * @param {string[] | undefined} additionalScopes - Additional manifest scopes.
- * @return {string[]} De-duplicated alphabetically sorted scopes.
+ * @returns {string[]} De-duplicated alphabetically sorted scopes.
  */
 export function mergeScopes(baseScopes: string[] | undefined, additionalScopes: string[] | undefined): string[] {
   return [...new Set([...(baseScopes ?? []), ...(additionalScopes ?? [])])].sort((left, right) =>
@@ -61,7 +61,7 @@ export function mergeScopes(baseScopes: string[] | undefined, additionalScopes: 
  *
  * @param {ManifestService[] | undefined} baseServices - Base manifest services.
  * @param {ManifestService[] | undefined} additionalServices - Additional manifest services.
- * @return {ManifestService[]} Deterministic services merged by service ID.
+ * @returns {ManifestService[]} Deterministic services merged by service ID.
  */
 export function mergeServices(
   baseServices: ManifestService[] | undefined,
@@ -86,7 +86,7 @@ export function mergeServices(
  * Reads and parses a manifest JSON file.
  *
  * @param {string} manifestPath - Absolute manifest path.
- * @return {Promise<Manifest>} Parsed manifest object.
+ * @returns {Promise<Manifest>} Parsed manifest object.
  */
 async function readManifest(manifestPath: string): Promise<Manifest> {
   try {
@@ -101,7 +101,7 @@ async function readManifest(manifestPath: string): Promise<Manifest> {
  * Merges backend and JsonDbApp manifests and writes final GAS manifest output.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<MergeManifestResult>} Output metadata and merged counts.
+ * @returns {Promise<MergeManifestResult>} Output metadata and merged counts.
  */
 export async function runMergeManifest(paths: BuilderPaths): Promise<MergeManifestResult> {
   const baseManifest = await readManifest(paths.backendManifestPath);

@@ -12,7 +12,7 @@ const APPS_SCRIPT_JSON = 'appsscript.json';
  * Builds a complete `BuilderPaths` object rooted at a temporary directory.
  *
  * @param {string} rootDir - Root temporary directory for the test fixture.
- * @return {BuilderPaths} Fully resolved builder path values.
+ * @returns {BuilderPaths} Fully resolved builder path values.
  */
 export function createBuilderPaths(rootDir: string): BuilderPaths {
   return {
@@ -39,7 +39,7 @@ export function createBuilderPaths(rootDir: string): BuilderPaths {
  *
  * @param {string} tempRoot - Temporary root directory for fixture files.
  * @param {(releaseFixtureRoot: string) => Promise<void>} setup - Fixture setup callback.
- * @return {Promise<Uint8Array>} Archive bytes for use in mocked fetch responses.
+ * @returns {Promise<Uint8Array>} Archive bytes for use in mocked fetch responses.
  */
 export async function createReleaseArchive(
   tempRoot: string,
@@ -60,7 +60,7 @@ export async function createReleaseArchive(
  * Writes a minimal JsonDb release manifest fixture.
  *
  * @param {string} releaseFixtureRoot - Root fixture directory containing release files.
- * @return {Promise<void>} Resolves once the manifest is written.
+ * @returns {Promise<void>} Resolves once the manifest is written.
  */
 export async function writeReleaseManifest(releaseFixtureRoot: string): Promise<void> {
   await fs.writeFile(path.join(releaseFixtureRoot, APPS_SCRIPT_JSON), '{"oauthScopes":[]}', 'utf-8');
@@ -72,7 +72,7 @@ export async function writeReleaseManifest(releaseFixtureRoot: string): Promise<
  * @param {string} releaseFixtureRoot - Root fixture directory containing release files.
  * @param {string} relativeFilePath - File path relative to the release root.
  * @param {string} content - File content.
- * @return {Promise<void>} Resolves once the file is written.
+ * @returns {Promise<void>} Resolves once the file is written.
  */
 export async function writeReleaseFile(
   releaseFixtureRoot: string,

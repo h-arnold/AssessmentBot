@@ -9,7 +9,7 @@ import { isRuntimeBackendFile, runBackendCopy } from './backend-copy.js';
 /**
  * Creates a unique temporary directory for a test case.
  *
- * @return {Promise<string>} Path to the created temporary directory.
+ * @returns {Promise<string>} Path to the created temporary directory.
  */
 async function createTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'backend-copy-'));
@@ -19,7 +19,7 @@ async function createTempDir(): Promise<string> {
  * Builds a complete `BuilderPaths` object rooted at a temporary directory.
  *
  * @param {string} rootDir - Root temporary directory for the test fixture.
- * @return {BuilderPaths} Fully resolved builder path values.
+ * @returns {BuilderPaths} Fully resolved builder path values.
  */
 function createBuilderPaths(rootDir: string): BuilderPaths {
   const repoRoot = rootDir;

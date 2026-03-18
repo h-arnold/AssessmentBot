@@ -49,6 +49,10 @@ const classPartialsMethodName = 'getABClassPartials';
 
 /**
  * Dispatches a configured mock transport response asynchronously.
+ *
+ * @param {Exclude<ApiMethodResponse, 'pending'>} response - The mocked transport response to dispatch.
+ * @param {((error: unknown) => void) | undefined} failureHandler - The registered failure callback.
+ * @param {((payload: unknown) => void) | undefined} successHandler - The registered success callback.
  */
 function dispatchMockTransportResponse(
   response: Exclude<ApiMethodResponse, 'pending'>,
@@ -67,6 +71,9 @@ function dispatchMockTransportResponse(
 
 /**
  * Installs a `google.script.run.apiHandler` mock for app-level tests.
+ *
+ * @param {ApiMethodResponseMap} responsesByMethod - The mocked responses keyed by API method.
+ * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
 function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
   let successHandler: ((payload: unknown) => void) | undefined;
@@ -129,6 +136,8 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
 
 /**
  * Installs a `google.script.run.apiHandler` mock that leaves auth status pending.
+ *
+ * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
 function installPendingApiHandlerMock() {
   return installApiHandlerMock({
@@ -138,6 +147,9 @@ function installPendingApiHandlerMock() {
 
 /**
  * Renders the app through the auth gate with a supplied or fresh query client.
+ *
+ * @param {ReturnType<typeof createAppQueryClient>} queryClient - The query client to use for rendering.
+ * @returns {ReturnType<typeof render>} The Testing Library render result.
  */
 function renderApp(queryClient = createAppQueryClient()) {
   return render(
@@ -151,6 +163,8 @@ function renderApp(queryClient = createAppQueryClient()) {
 
 /**
  * Renders the app while keeping the pending auth state stable for layout-only assertions.
+ *
+ * @returns {Promise<void>} A promise that resolves after the pending render has settled.
  */
 async function renderPendingApp() {
   await act(async () => {
@@ -162,6 +176,8 @@ const breadcrumbNavigationName = 'Breadcrumb';
 
 /**
  * Returns the rendered breadcrumb landmark.
+ *
+ * @returns {HTMLElement} The breadcrumb navigation landmark.
  */
 function getBreadcrumbElement() {
   return screen.getByRole('navigation', { name: breadcrumbNavigationName });
@@ -169,6 +185,8 @@ function getBreadcrumbElement() {
 
 /**
  * Asserts breadcrumb labels while keeping expectations scoped to the breadcrumb itself.
+ *
+ * @param {string[]} labels - The breadcrumb labels that should be visible.
  */
 function expectBreadcrumbLabels(labels: string[]) {
   const breadcrumb = getBreadcrumbElement();
@@ -190,6 +208,8 @@ function expectBreadcrumbLabels(labels: string[]) {
 
 /**
  * Returns the theme mode switch once it is rendered.
+ *
+ * @returns {HTMLElement} The theme mode switch locator.
  */
 function getThemeModeSwitch() {
   return screen.getByRole('switch', { name: 'Dark mode' });

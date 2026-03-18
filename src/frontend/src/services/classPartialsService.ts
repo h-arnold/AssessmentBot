@@ -11,7 +11,7 @@ const GET_AB_CLASS_PARTIALS_METHOD = 'getABClassPartials';
  * The backend normalises stored partial records to this transport shape before
  * returning them, so storage-only fields are not exposed here.
  *
- * @returns Promise resolving to an array of validated class partial transport objects.
+ * @returns {Promise<ClassPartial[]>} Promise resolving to validated class partial transport objects.
  */
 export async function getABClassPartials(): Promise<ClassPartial[]> {
     return ClassPartialsResponseSchema.parse(await callApi(GET_AB_CLASS_PARTIALS_METHOD));

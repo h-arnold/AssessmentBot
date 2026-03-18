@@ -18,7 +18,7 @@ const MANIFEST_JSON = '{"oauthScopes":["a"]}';
 /**
  * Creates a unique temporary directory for each test run.
  *
- * @return {Promise<string>} Temporary root directory path.
+ * @returns {Promise<string>} Temporary root directory path.
  */
 async function createTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'materialise-output-'));
@@ -28,7 +28,7 @@ async function createTempDir(): Promise<string> {
  * Creates a complete builder paths object for tests.
  *
  * @param {string} rootDir - Temporary repository root path.
- * @return {BuilderPaths} Resolved path structure.
+ * @returns {BuilderPaths} Resolved path structure.
  */
 function createBuilderPaths(rootDir: string): BuilderPaths {
   const buildDir = path.join(rootDir, 'build');

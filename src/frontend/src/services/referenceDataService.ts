@@ -34,6 +34,8 @@ import {
 
 /**
  * Retrieves cohort reference-data records from the backend transport.
+ *
+ * @returns {Promise<CohortListResponse>} The cohort list response.
  */
 export async function getCohorts(): Promise<CohortListResponse> {
     return CohortListResponseSchema.parse(await callApi('getCohorts'));
@@ -41,6 +43,9 @@ export async function getCohorts(): Promise<CohortListResponse> {
 
 /**
  * Sends a cohort-create request to the backend transport.
+ *
+ * @param {CreateCohortInput} input Cohort create input.
+ * @returns {Promise<CreateCohortResponse>} The cohort create response.
  */
 export async function createCohort(input: CreateCohortInput): Promise<CreateCohortResponse> {
     const parsedInput = CreateCohortInputSchema.parse(input);
@@ -49,6 +54,9 @@ export async function createCohort(input: CreateCohortInput): Promise<CreateCoho
 
 /**
  * Sends a cohort-update request to the backend transport.
+ *
+ * @param {UpdateCohortInput} input Cohort update input.
+ * @returns {Promise<UpdateCohortResponse>} The cohort update response.
  */
 export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCohortResponse> {
     const parsedInput = UpdateCohortInputSchema.parse(input);
@@ -57,6 +65,9 @@ export async function updateCohort(input: UpdateCohortInput): Promise<UpdateCoho
 
 /**
  * Sends a cohort-delete request to the backend transport.
+ *
+ * @param {DeleteCohortInput} input Cohort delete input.
+ * @returns {Promise<DeleteCohortResponse>} The cohort delete response.
  */
 export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCohortResponse> {
     const parsedInput = DeleteCohortInputSchema.parse(input);
@@ -65,6 +76,8 @@ export async function deleteCohort(input: DeleteCohortInput): Promise<DeleteCoho
 
 /**
  * Retrieves year-group reference-data records from the backend transport.
+ *
+ * @returns {Promise<YearGroupListResponse>} The year-group list response.
  */
 export async function getYearGroups(): Promise<YearGroupListResponse> {
     return YearGroupListResponseSchema.parse(await callApi('getYearGroups'));
@@ -72,6 +85,9 @@ export async function getYearGroups(): Promise<YearGroupListResponse> {
 
 /**
  * Sends a year-group-create request to the backend transport.
+ *
+ * @param {CreateYearGroupInput} input Year-group create input.
+ * @returns {Promise<CreateYearGroupResponse>} The year-group create response.
  */
 export async function createYearGroup(
     input: CreateYearGroupInput
@@ -82,6 +98,9 @@ export async function createYearGroup(
 
 /**
  * Sends a year-group-update request to the backend transport.
+ *
+ * @param {UpdateYearGroupInput} input Year-group update input.
+ * @returns {Promise<UpdateYearGroupResponse>} The year-group update response.
  */
 export async function updateYearGroup(
     input: UpdateYearGroupInput
@@ -92,6 +111,9 @@ export async function updateYearGroup(
 
 /**
  * Sends a year-group-delete request to the backend transport.
+ *
+ * @param {DeleteYearGroupInput} input Year-group delete input.
+ * @returns {Promise<DeleteYearGroupResponse>} The year-group delete response.
  */
 export async function deleteYearGroup(
     input: DeleteYearGroupInput

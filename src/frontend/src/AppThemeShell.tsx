@@ -9,6 +9,8 @@ const appThemeToken = {
 
 /**
  * Reads the OS-level reduced motion media query when the runtime supports it.
+ *
+ * @returns {MediaQueryList | null} The reduced-motion media query object, or null when unsupported.
  */
 function getReducedMotionMediaQuery() {
   return typeof globalThis.matchMedia === 'function'
@@ -18,6 +20,8 @@ function getReducedMotionMediaQuery() {
 
 /**
  * Tracks the OS-level reduced motion preference for global theme motion control.
+ *
+ * @returns {boolean} Whether the user prefers reduced motion.
  */
 function usePrefersReducedMotion() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
@@ -51,12 +55,16 @@ function usePrefersReducedMotion() {
 /**
  * Owns shell theme state outside `App.tsx` and applies the matching Ant Design algorithm.
  */
-type AppThemeShellProps = Readonly<{ dashboardContent?: ReactNode }>;
+type AppThemeShellProperties = Readonly<{ dashboardContent?: ReactNode }>;
 
 /**
  * Theme-owning wrapper that configures Ant Design tokens and algorithms.
+ *
+ * @param {AppThemeShellProperties} properties Theme shell configuration values.
+ * @returns {JSX.Element} The themed application shell.
  */
-export function AppThemeShell({ dashboardContent }: AppThemeShellProps) {
+export function AppThemeShell(properties: AppThemeShellProperties) {
+  const { dashboardContent } = properties;
   const [isDarkMode, setIsDarkMode] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
 

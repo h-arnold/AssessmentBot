@@ -8,6 +8,8 @@ const APP_QUERY_STALE_TIME_MS =
 
 /**
  * Creates the shared React Query client configuration for the frontend session.
+ *
+ * @returns {QueryClient} The shared query client.
  */
 export function createAppQueryClient(): QueryClient {
     return new QueryClient({

@@ -26,7 +26,7 @@ export class BuildStageError extends Error {
  * Checks whether a value is a `BuildStageError`.
  *
  * @param {unknown} err - Value to evaluate.
- * @return {err is BuildStageError} `true` when the value is a stage error.
+ * @returns {err is BuildStageError} `true` when the value is a stage error.
  */
 export function isBuildStageError(err: unknown): err is BuildStageError {
   return err instanceof BuildStageError;
@@ -36,7 +36,7 @@ export function isBuildStageError(err: unknown): err is BuildStageError {
  * Normalises unknown thrown values to `Error`.
  *
  * @param {unknown} err - Value thrown by runtime code.
- * @return {Error} Existing error instance or a wrapped error.
+ * @returns {Error} Existing error instance or a wrapped error.
  */
 export function asError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));

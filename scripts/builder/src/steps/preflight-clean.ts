@@ -11,7 +11,7 @@ const STAGE_ID = 'preflight-clean' as const;
  * Validates required source/config paths and recreates build directories.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<PreflightCleanResult>} Summary of directories created.
+ * @returns {Promise<PreflightCleanResult>} Summary of directories created.
  */
 export async function runPreflightClean(
   paths: BuilderPaths,
@@ -65,7 +65,7 @@ export async function runPreflightClean(
  * Reads a file if it exists.
  *
  * @param {string} filePath - Absolute file path.
- * @return {Promise<Buffer | null>} File contents, or null when absent.
+ * @returns {Promise<Buffer | null>} File contents, or null when absent.
  */
 async function readOptionalFile(filePath: string): Promise<Buffer | null> {
   try {

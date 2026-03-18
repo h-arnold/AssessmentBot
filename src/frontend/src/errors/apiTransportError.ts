@@ -19,6 +19,8 @@ export class ApiTransportError extends Error {
 
   /**
    * Builds a transport error from an API error envelope.
+    *
+    * @param {ApiErrorEnvelope} response API error envelope returned by the backend.
    */
   public constructor(response: ApiErrorEnvelope) {
     super(response.error.message);

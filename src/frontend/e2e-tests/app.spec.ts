@@ -18,6 +18,9 @@ const navigationMenuLabels = ['Dashboard', 'Classes', 'Assignments', settingsLab
 
 /**
  * Returns the rendered breadcrumb locator.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Locator} The breadcrumb locator.
  */
 function getBreadcrumb(page: Page) {
   return page.getByRole('navigation', { name: breadcrumbNavigationName });
@@ -25,6 +28,9 @@ function getBreadcrumb(page: Page) {
 
 /**
  * Asserts the visible breadcrumb labels.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {string[]} labels - The expected breadcrumb labels.
  */
 async function expectBreadcrumbLabels(page: Page, labels: string[]) {
   const breadcrumb = getBreadcrumb(page);
@@ -38,6 +44,9 @@ async function expectBreadcrumbLabels(page: Page, labels: string[]) {
 
 /**
  * Returns the rendered theme mode switch.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Locator} The theme mode switch locator.
  */
 function getThemeModeSwitch(page: Page) {
   return page.getByRole('switch', { name: themeSwitchLabel });
@@ -45,6 +54,9 @@ function getThemeModeSwitch(page: Page) {
 
 /**
  * Returns the computed header background colour.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @returns {Promise<string>} The computed banner background colour.
  */
 async function getHeaderBackgroundColour(page: Page) {
   return page.getByRole('banner').evaluate((element) => getComputedStyle(element).backgroundColor);
@@ -52,6 +64,8 @@ async function getHeaderBackgroundColour(page: Page) {
 
 /**
  * Installs a deterministic `google.script.run` mock that keeps auth status pending.
+ *
+ * @param {Page} page - The Playwright page under test.
  */
 async function mockPendingGoogleScriptRun(page: Page) {
   await page.addInitScript(() => {

@@ -14,7 +14,7 @@ const PLACEHOLDER_SENTINEL = 'JsonDbApp snapshot placeholder';
  * Creates the deterministic ordered source file list for JsonDbApp inlining.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {string[]} Absolute JsonDbApp source file paths in load order.
+ * @returns {string[]} Absolute JsonDbApp source file paths in load order.
  */
 function resolveOrderedSourcePaths(paths: BuilderPaths): string[] {
   return [...paths.jsonDbAppSourceFiles]
@@ -26,7 +26,7 @@ function resolveOrderedSourcePaths(paths: BuilderPaths): string[] {
  * Sanitises and de-duplicates configured export names while preserving order.
  *
  * @param {string[]} configuredExports - Configured JsonDbApp public API names.
- * @return {string[]} Unique export names in declaration order.
+ * @returns {string[]} Unique export names in declaration order.
  */
 export function resolvePublicExports(configuredExports: string[]): string[] {
   const uniqueExports: string[] = [];
@@ -45,7 +45,7 @@ export function resolvePublicExports(configuredExports: string[]): string[] {
  *
  * @param {string[]} sourceChunks - Ordered raw JsonDbApp source contents.
  * @param {string[]} publicExports - Public API names to expose from namespace.
- * @return {string} Wrapped JavaScript source for GAS output.
+ * @returns {string} Wrapped JavaScript source for GAS output.
  */
 export function generateJsonDbNamespaceWrapper(sourceChunks: string[], publicExports: string[]): string {
   const body = sourceChunks.join('\n\n');
@@ -58,7 +58,7 @@ export function generateJsonDbNamespaceWrapper(sourceChunks: string[], publicExp
  * Detects symbol names that appear as top-level declarations in script source.
  *
  * @param {string} source - JavaScript source code to scan.
- * @return {string[]} Declared symbol names.
+ * @returns {string[]} Declared symbol names.
  */
 export function scanTopLevelDeclarations(source: string): string[] {
   return scanFileTopLevelDeclarations(source);
@@ -69,7 +69,7 @@ export function scanTopLevelDeclarations(source: string): string[] {
  *
  * @param {string[]} declaredSymbols - Top-level declared symbols in source.
  * @param {string[]} exportedApi - Configured exports to expose.
- * @return {void}
+ * @returns {void}
  */
 function validateConfiguredExports(declaredSymbols: string[], exportedApi: string[]): void {
   const missingExports = exportedApi.filter((exportName) => !declaredSymbols.includes(exportName));
@@ -86,7 +86,7 @@ function validateConfiguredExports(declaredSymbols: string[], exportedApi: strin
  * Validates that vendored JsonDbApp source is not a placeholder snapshot.
  *
  * @param {string[]} sourceChunks - Ordered raw JsonDbApp source contents.
- * @return {void}
+ * @returns {void}
  */
 function validateNoPlaceholderSnapshot(sourceChunks: string[]): void {
   const hasPlaceholderSource = sourceChunks.some((source) => source.includes(PLACEHOLDER_SENTINEL));
@@ -103,7 +103,7 @@ function validateNoPlaceholderSnapshot(sourceChunks: string[]): void {
  * Generates the inlined JsonDbApp namespace bundle and writes it to build output.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<JsonDbInlineNamespaceResult>} Bundle output metadata.
+ * @returns {Promise<JsonDbInlineNamespaceResult>} Bundle output metadata.
  */
 export async function runJsonDbInlineNamespace(
   paths: BuilderPaths,

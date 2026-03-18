@@ -16,6 +16,8 @@ vi.mock('../../services/authService', () => ({
 
 /**
  * Creates a fresh React Query wrapper for each test.
+ *
+ * @returns {(properties: Readonly<PropsWithChildren>) => JSX.Element} The query client wrapper used by the tests.
  */
 function createQueryWrapper() {
   const queryClient = createAppQueryClient();
@@ -27,6 +29,8 @@ function createQueryWrapper() {
 
 /**
  * Exposes the shared auth-hook result for multi-consumer assertions.
+ *
+ * @returns {JSX.Element} The rendered auth hook probe.
  */
 function AuthHookProbe() {
   const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();

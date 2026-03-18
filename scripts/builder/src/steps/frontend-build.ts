@@ -11,7 +11,7 @@ const FRONTEND_BUILD_STAGE = 'frontend-build';
  * Runs the frontend Vite build with HtmlService-compatible options.
  *
  * @param {BuilderPaths} paths - Resolved builder filesystem paths.
- * @return {Promise<FrontendBuildResult>} Build output metadata.
+ * @returns {Promise<FrontendBuildResult>} Build output metadata.
  */
 export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBuildResult> {
   return runFrontendBuildWithMode(paths, 'production');
@@ -22,7 +22,7 @@ export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBui
  *
  * @param {BuilderPaths} paths - Resolved builder filesystem paths.
  * @param {FrontendBuildMode} mode - Frontend bundle mode.
- * @return {Promise<FrontendBuildResult>} Build output metadata.
+ * @returns {Promise<FrontendBuildResult>} Build output metadata.
  */
 export async function runFrontendBuildWithMode(
   paths: BuilderPaths,

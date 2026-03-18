@@ -7,7 +7,7 @@ import type { BuildStageId } from '../types.js';
  * Checks whether a path exists.
  *
  * @param {string} targetPath - Absolute or relative path to inspect.
- * @return {Promise<boolean>} `true` when the path exists.
+ * @returns {Promise<boolean>} `true` when the path exists.
  */
 export async function pathExists(targetPath: string): Promise<boolean> {
   try {
@@ -28,7 +28,7 @@ export async function pathExists(targetPath: string): Promise<boolean> {
  * @param {string} targetPath - Path to validate.
  * @param {string} label - Friendly label used in error messages.
  * @param {BuildStageId} stage - Build stage identifier for failure context.
- * @return {Promise<void>} Resolves when the path is a valid directory.
+ * @returns {Promise<void>} Resolves when the path is a valid directory.
  */
 export async function requireDirectory(
   targetPath: string,
@@ -54,7 +54,7 @@ export async function requireDirectory(
  * @param {string} targetPath - Path to validate.
  * @param {string} label - Friendly label used in error messages.
  * @param {BuildStageId} stage - Build stage identifier for failure context.
- * @return {Promise<void>} Resolves when the path is a valid file.
+ * @returns {Promise<void>} Resolves when the path is a valid file.
  */
 export async function requireFile(
   targetPath: string,
@@ -78,7 +78,7 @@ export async function requireFile(
  * Removes a directory recursively.
  *
  * @param {string} targetPath - Directory path to remove.
- * @return {Promise<void>} Resolves when removal completes.
+ * @returns {Promise<void>} Resolves when removal completes.
  */
 export async function removeDir(targetPath: string): Promise<void> {
   await fs.rm(targetPath, { recursive: true, force: true });
@@ -88,7 +88,7 @@ export async function removeDir(targetPath: string): Promise<void> {
  * Ensures one or more directories exist.
  *
  * @param {string | string[]} targets - Directory path or paths to create.
- * @return {Promise<void>} Resolves when all target directories exist.
+ * @returns {Promise<void>} Resolves when all target directories exist.
  */
 export async function ensureDirs(targets: string | string[]): Promise<void> {
   const targetList = Array.isArray(targets) ? targets : [targets];

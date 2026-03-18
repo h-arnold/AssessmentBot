@@ -12,7 +12,7 @@ const FORBIDDEN_ROOT_SEGMENTS = ['work', 'frontend'];
  * Recursively lists all files under a directory in deterministic order.
  *
  * @param {string} rootDir - Directory root to enumerate.
- * @return {Promise<string[]>} Absolute file paths sorted lexicographically.
+ * @returns {Promise<string[]>} Absolute file paths sorted lexicographically.
  */
 async function listFilesRecursive(rootDir: string): Promise<string[]> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
@@ -37,7 +37,7 @@ async function listFilesRecursive(rootDir: string): Promise<string[]> {
  * Validates that required GAS layout files exist.
  *
  * @param {Set<string>} materialisedFiles - Materialised file paths relative to gas root.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function validateRequiredLayout(materialisedFiles: Set<string>): void {
   const missing = REQUIRED_LAYOUT_FILES.filter((requiredPath) => !materialisedFiles.has(requiredPath));
@@ -53,7 +53,7 @@ function validateRequiredLayout(materialisedFiles: Set<string>): void {
  * Validates that temporary workspace segments do not leak into final GAS output.
  *
  * @param {string[]} relativeFiles - Materialised relative output files.
- * @return {void} No return value.
+ * @returns {void} No return value.
  */
 function validateNoWorkdirLeakage(relativeFiles: string[]): void {
   const leakedPaths = relativeFiles.filter((relativePath) => {
@@ -73,7 +73,7 @@ function validateNoWorkdirLeakage(relativeFiles: string[]): void {
  * Materialises and verifies final GAS output directory structure.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<MaterialiseOutputResult>} Deterministic output metadata.
+ * @returns {Promise<MaterialiseOutputResult>} Deterministic output metadata.
  */
 export async function runMaterialiseOutput(paths: BuilderPaths): Promise<MaterialiseOutputResult> {
   let absoluteFiles: string[];

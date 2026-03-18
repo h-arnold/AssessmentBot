@@ -8,12 +8,16 @@ import { pageContent } from './pageContent';
 /**
  * Renders the dashboard landing page.
  */
-type DashboardPageProps = Readonly<{ contentSlot?: ReactNode }>;
+type DashboardPageProperties = Readonly<{ contentSlot?: ReactNode }>;
 
 /**
  * Dashboard landing page component.
+ *
+ * @param {DashboardPageProperties} properties Dashboard page properties.
+ * @returns {JSX.Element} The dashboard page.
  */
-export function DashboardPage({ contentSlot }: DashboardPageProps) {
+export function DashboardPage(properties: DashboardPageProperties) {
+  const { contentSlot } = properties;
   return (
     <PageSection
       heading={pageContent.dashboard.heading}

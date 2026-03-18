@@ -11,7 +11,7 @@ const FRONTEND_MODE_FLAG_PREFIX = `${FRONTEND_MODE_FLAG}=`;
  * Parses supported CLI options for the builder entrypoint.
  *
  * @param {string[]} args - Raw process arguments excluding node/script paths.
- * @return {BuilderCliOptions} Parsed options.
+ * @returns {BuilderCliOptions} Parsed options.
  */
 export function parseCliOptions(args: string[]): BuilderCliOptions {
   for (let index = 0; index < args.length; index += 1) {
@@ -36,7 +36,7 @@ export function parseCliOptions(args: string[]): BuilderCliOptions {
  * Validates and parses frontend mode values.
  *
  * @param {string | undefined} mode - Mode token from CLI input.
- * @return {FrontendBuildMode} Parsed frontend build mode.
+ * @returns {FrontendBuildMode} Parsed frontend build mode.
  */
 function parseFrontendMode(mode: string | undefined): FrontendBuildMode {
   if (mode === 'production' || mode === 'dev') {

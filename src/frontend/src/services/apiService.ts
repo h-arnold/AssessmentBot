@@ -12,9 +12,9 @@ const ApiSuccessResponseSchema = z.object({
     requestId: z.string(),
     data: z.unknown(),
     meta: z.record(z.string(), z.unknown()).optional(),
-}).superRefine((response, ctx) => {
+}).superRefine((response, context) => {
     if (!Object.prototype.hasOwnProperty.call(response, 'data')) {
-        ctx.addIssue({
+        context.addIssue({
             // Use explicit string code to avoid deprecated enum reference
             code: 'custom',
             message: 'Success response envelope must include a data field.',
@@ -49,6 +49,8 @@ type GoogleScriptRunApiHandler = {
 
 /**
  * Returns the typed `google.script.run` runner for API calls.
+ *
+ * @returns {GoogleScriptRunApiHandler} The API runner.
  */
 function getRunner(): GoogleScriptRunApiHandler {
     const runnerCandidate = (globalThis as { google?: { script?: { run?: unknown } } }).google?.script
@@ -76,6 +78,8 @@ const EXPONENTIAL_BACKOFF_BASE = 2;
 
 /**
  * Returns a cryptographically-safe random jitter value between 0 and JITTER_MS milliseconds.
+ *
+ * @returns {number} A jitter value in milliseconds.
  */
 function randomJitterMs(): number {
     const buf = new Uint32Array(1);
@@ -86,6 +90,10 @@ function randomJitterMs(): number {
 /**
  * Dispatches a single API attempt and returns the parsed response data,
  * or throws ApiTransportError if the backend returns a failure envelope.
+ *
+ * @template TResponse
+ * @param {unknown} requestPayload API request payload.
+ * @returns {Promise<TResponse>} Parsed backend response data.
  */
 async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TResponse> {
     return new Promise<TResponse>((resolve, reject) => {
@@ -111,6 +119,10 @@ async function dispatchAttempt<TResponse>(requestPayload: unknown): Promise<TRes
 
 /**
  * Returns true when the given error should trigger a retry attempt.
+ *
+ * @param {unknown} error Error to inspect.
+ * @param {number} attempt Zero-based attempt index.
+ * @returns {boolean} Whether the call should retry.
  */
 function shouldRetry(error: unknown, attempt: number): boolean {
     return (
@@ -127,12 +139,17 @@ function shouldRetry(error: unknown, attempt: number): boolean {
  * Automatically retries up to MAX_ATTEMPTS total attempts when the backend
  * responds with a RATE_LIMITED error that is marked as retriable.
  * Each retry waits for a bounded exponential backoff with jitter.
+ *
+ * @template TResponse
+ * @param {string} method Backend method name.
+ * @param {unknown} parameters Optional request parameters.
+ * @returns {Promise<TResponse>} Parsed backend response data.
  */
 export async function callApi<TResponse>(
     method: string,
-    params?: unknown
+    parameters?: unknown
 ): Promise<TResponse> {
-    const requestPayload = ApiRequestSchema.parse({ method, params });
+    const requestPayload = ApiRequestSchema.parse({ method, params: parameters });
     let lastError: ApiTransportError | undefined;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {

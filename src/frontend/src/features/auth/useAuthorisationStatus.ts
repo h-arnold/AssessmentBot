@@ -9,6 +9,9 @@ const rateLimitedAuthErrorMessage = 'The service is busy. Please try again short
 
 /**
  * Maps auth feature errors to user-safe copy.
+ *
+ * @param {unknown} error Auth check failure to map.
+ * @returns {string} User-safe error copy.
  */
 function mapAuthorisationErrorToUserMessage(error: unknown): string {
   if (error instanceof ApiTransportError && error.code === 'RATE_LIMITED') {
@@ -23,6 +26,13 @@ function mapAuthorisationErrorToUserMessage(error: unknown): string {
  *
  * Returns loading state immediately, then either authorised or unauthorised.
  * If the backend call fails, the hook returns the failure message.
+ *
+ * @returns {Readonly<{
+ *   authViewState: AuthViewState;
+ *   authError: string | null;
+ *   isAuthResolved: boolean;
+ *   isAuthorised: boolean;
+ * }>} The current authorisation view state.
  */
 export function useAuthorisationStatus() {
   const authQuery = useQuery(getAuthorisationStatusQueryOptions());

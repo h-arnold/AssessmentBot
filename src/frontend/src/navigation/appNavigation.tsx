@@ -38,6 +38,9 @@ type AppBreadcrumbDefinition = NonNullable<BreadcrumbProps['items']>[number];
 /**
  * Wraps Ant Design icons so menu items keep a visual icon in collapsed mode while
  * hiding decorative icon wrappers from assistive technology.
+ *
+ * @param {ComponentType<{ 'aria-hidden'?: boolean }>} Icon Icon component to wrap.
+ * @returns {ReactElement} The wrapped navigation icon.
  */
 function renderNavigationIcon(Icon: ComponentType<{ 'aria-hidden'?: boolean }>) {
   return (
@@ -91,6 +94,9 @@ export const defaultNavigationKey: AppNavigationKey = 'dashboard';
 
 /**
  * Builds a consistent fail-fast error for unexpected page-renderer access.
+ *
+ * @param {string} key Unknown navigation key.
+ * @returns {TypeError} A fail-fast navigation error.
  */
 function buildUnknownPageKeyError(key: string) {
   return new TypeError(`Unknown page key: ${key}`);
@@ -118,6 +124,9 @@ export const pageRenderers = new Proxy(pageRendererMap, {
 
 /**
  * Returns the shared label for a navigation key.
+ *
+ * @param {AppNavigationKey} key Navigation key to resolve.
+ * @returns {string} The shared label for the navigation key.
  */
 export function getNavigationLabel(key: AppNavigationKey) {
   const navigationDefinition = navigationDefinitionByKey.get(key);
@@ -131,6 +140,9 @@ export function getNavigationLabel(key: AppNavigationKey) {
 
 /**
  * Builds the minimal breadcrumb trail for the active navigation entry.
+ *
+ * @param {AppNavigationKey} key Active navigation key.
+ * @returns {NonNullable<BreadcrumbProps['items']>} Breadcrumb items for the active navigation key.
  */
 export function getBreadcrumbItems(
   key: AppNavigationKey
@@ -143,6 +155,9 @@ export function getBreadcrumbItems(
 
 /**
  * Guards menu click keys before they are applied to app state.
+ *
+ * @param {string} value Candidate navigation key.
+ * @returns {value is AppNavigationKey} Whether the value is a valid app navigation key.
  */
 export function isAppNavigationKey(value: string): value is AppNavigationKey {
   return appNavigationKeys.has(value as AppNavigationKey);

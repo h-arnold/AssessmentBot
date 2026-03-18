@@ -21,7 +21,7 @@ const VALIDATE_OUTPUT_STAGE = 'validate-output';
 /**
  * Creates a unique temporary root for tests.
  *
- * @return {Promise<string>} Temporary directory path.
+ * @returns {Promise<string>} Temporary directory path.
  */
 async function createTempDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'validate-output-'));
@@ -31,7 +31,7 @@ async function createTempDir(): Promise<string> {
  * Creates a complete builder paths object for tests.
  *
  * @param {string} rootDir - Temporary repository root.
- * @return {BuilderPaths} Fully resolved test paths.
+ * @returns {BuilderPaths} Fully resolved test paths.
  */
 function createBuilderPaths(rootDir: string): BuilderPaths {
   const buildDir = path.join(rootDir, 'build');
@@ -60,7 +60,7 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
  * Writes minimum valid final GAS artefacts for validation tests.
  *
  * @param {BuilderPaths} paths - Builder paths for output.
- * @return {Promise<void>} Resolves once fixture files are written.
+ * @returns {Promise<void>} Resolves once fixture files are written.
  */
 async function writeValidGasArtefacts(paths: BuilderPaths): Promise<void> {
   await fs.mkdir(paths.buildGasUiDir, { recursive: true });

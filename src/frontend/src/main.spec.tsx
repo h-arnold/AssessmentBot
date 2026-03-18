@@ -43,11 +43,11 @@ const providerComponentNames = new Set(['AppQueryProvider', 'QueryClientProvider
 const googleScriptRunPrefix = 'google.script.run';
 
 type QueryProviderModule = {
-  AppQueryProvider: (props: { children?: unknown }) => unknown;
+  AppQueryProvider: (properties: { children?: unknown }) => unknown;
 };
 
 type AuthGateModule = {
-  AppAuthGate: (props: { children?: unknown }) => unknown;
+  AppAuthGate: (properties: { children?: unknown }) => unknown;
 };
 
 type ReactElementLike = {
@@ -69,6 +69,9 @@ vi.mock('./App', () => ({
 
 /**
  * Imports a required module and fails with a clear message if it is missing.
+ *
+ * @param {string} relativePath - The module path relative to this spec file.
+ * @returns {Promise<TModule>} The imported module.
  */
 async function importRequiredModule<TModule>(relativePath: string): Promise<TModule> {
   try {
@@ -80,6 +83,10 @@ async function importRequiredModule<TModule>(relativePath: string): Promise<TMod
 
 /**
  * Parses a TSX source file from raw source text.
+ *
+ * @param {string} fileName - The synthetic file name to associate with the source.
+ * @param {string} sourceText - The TSX source text to parse.
+ * @returns {SourceFile} The parsed source file.
  */
 function parseSourceFile(fileName: string, sourceText: string) {
   return createSourceFile(fileName, sourceText, ScriptTarget.Latest, true, ScriptKind.TSX);
@@ -87,6 +94,9 @@ function parseSourceFile(fileName: string, sourceText: string) {
 
 /**
  * Walks the AST depth-first and invokes the visitor for each node.
+ *
+ * @param {Node} node - The current AST node.
+ * @param {(node: Node) => void} visitor - The visitor callback to invoke for each node.
  */
 function visitNodes(node: Node, visitor: (node: Node) => void) {
   visitor(node);
@@ -97,6 +107,9 @@ function visitNodes(node: Node, visitor: (node: Node) => void) {
 
 /**
  * Returns the module specifiers imported by the source file.
+ *
+ * @param {SourceFile} sourceFile - The source file to inspect.
+ * @returns {string[]} The module specifiers imported by the file.
  */
 function getImportedModuleSpecifiers(sourceFile: SourceFile) {
   const specifiers: string[] = [];
@@ -114,6 +127,9 @@ function getImportedModuleSpecifiers(sourceFile: SourceFile) {
 
 /**
  * Returns whether an import declaration contributes runtime bindings.
+ *
+ * @param {Node} node - The node to inspect.
+ * @returns {boolean} Whether the import contributes runtime bindings.
  */
 function hasRuntimeImportBinding(node: Node): node is ImportDeclaration {
   if (!isImportDeclaration(node)) {
@@ -142,6 +158,9 @@ function hasRuntimeImportBinding(node: Node): node is ImportDeclaration {
 
 /**
  * Returns whether named import bindings contribute runtime bindings.
+ *
+ * @param {NamedImportBindings | undefined} namedBindings - The named import bindings to inspect.
+ * @returns {boolean} Whether the bindings contribute runtime bindings.
  */
 function hasRuntimeNamedBindings(namedBindings: NamedImportBindings | undefined) {
   if (!namedBindings) {
@@ -163,6 +182,9 @@ function hasRuntimeNamedBindings(namedBindings: NamedImportBindings | undefined)
 
 /**
  * Returns the runtime import specifiers used by the source file.
+ *
+ * @param {SourceFile} sourceFile - The source file to inspect.
+ * @returns {string[]} The runtime import specifiers used by the file.
  */
 function getRuntimeImportedModuleSpecifiers(sourceFile: SourceFile) {
   const specifiers: string[] = [];
@@ -184,6 +206,10 @@ function getRuntimeImportedModuleSpecifiers(sourceFile: SourceFile) {
 
 /**
  * Collects hook-like call names made inside the named function component.
+ *
+ * @param {SourceFile} sourceFile - The source file to inspect.
+ * @param {string} functionName - The function name to search within.
+ * @returns {string[]} The called identifier names.
  */
 function getCalledIdentifiersWithinFunction(sourceFile: SourceFile, functionName: string) {
   const calledIdentifiers = new Set<string>();
@@ -213,6 +239,10 @@ function getCalledIdentifiersWithinFunction(sourceFile: SourceFile, functionName
 
 /**
  * Collects JSX component names rendered directly within the named function component.
+ *
+ * @param {SourceFile} sourceFile - The source file to inspect.
+ * @param {string} functionName - The function name to search within.
+ * @returns {string[]} The rendered JSX component names.
  */
 function getRenderedJsxComponentNamesWithinFunction(sourceFile: SourceFile, functionName: string) {
   const componentNames = new Set<string>();
@@ -238,6 +268,10 @@ function getRenderedJsxComponentNamesWithinFunction(sourceFile: SourceFile, func
 
 /**
  * Collects property access expressions referenced within the named function component.
+ *
+ * @param {SourceFile} sourceFile - The source file to inspect.
+ * @param {string} functionName - The function name to search within.
+ * @returns {string[]} The property access expressions.
  */
 function getPropertyAccessesWithinFunction(sourceFile: SourceFile, functionName: string) {
   const propertyAccesses = new Set<string>();
@@ -263,6 +297,9 @@ function getPropertyAccessesWithinFunction(sourceFile: SourceFile, functionName:
 
 /**
  * Returns the only child from a React element props payload.
+ *
+ * @param {unknown} children - The rendered children payload.
+ * @returns {unknown} The first defined child or the original payload.
  */
 function getOnlyRenderedChild(children: unknown) {
   if (Array.isArray(children)) {
@@ -274,6 +311,9 @@ function getOnlyRenderedChild(children: unknown) {
 
 /**
  * Returns a display name for a rendered React element type.
+ *
+ * @param {unknown} type - The rendered element type.
+ * @returns {string} The display name for the rendered type.
  */
 function getRenderedTypeName(type: unknown) {
   if (typeof type === 'string') {
@@ -293,6 +333,9 @@ function getRenderedTypeName(type: unknown) {
 
 /**
  * Returns the rendered component chain by following single-child composition.
+ *
+ * @param {unknown} renderedTree - The rendered tree to inspect.
+ * @returns {string[]} The rendered component chain.
  */
 function getRenderedComponentChain(renderedTree: unknown) {
   const chain: string[] = [];
@@ -313,6 +356,9 @@ function getRenderedComponentChain(renderedTree: unknown) {
 
 /**
  * Returns the rendered main-entry composition chain elements.
+ *
+ * @param {ReactElementLike} renderedTree - The rendered tree to inspect.
+ * @returns {{ renderedComponentChain: string[]; strictModeChild: ReactElementLike; providerChild: ReactElementLike; appElement: ReactElementLike; }} The composition chain and key child elements.
  */
 function getMainEntrypointComposition(renderedTree: ReactElementLike) {
   const renderedComponentChain = getRenderedComponentChain(renderedTree);
@@ -330,6 +376,8 @@ function getMainEntrypointComposition(renderedTree: ReactElementLike) {
 
 /**
  * Asserts that App stays free of provider and service orchestration.
+ *
+ * @returns {void} Nothing.
  */
 function expectAppToStayThin() {
   const importedModuleSpecifiers = getAppImportedModuleSpecifiers();
@@ -350,6 +398,8 @@ const appSourceFile = parseSourceFile('./App.tsx', appSource);
 
 /**
  * Returns the module specifiers imported by App.
+ *
+ * @returns {string[]} The imported module specifiers.
  */
 function getAppImportedModuleSpecifiers() {
   return getImportedModuleSpecifiers(appSourceFile);
@@ -357,6 +407,8 @@ function getAppImportedModuleSpecifiers() {
 
 /**
  * Returns the runtime module specifiers imported by App.
+ *
+ * @returns {string[]} The runtime module specifiers.
  */
 function getAppRuntimeImportedModuleSpecifiers() {
   return getRuntimeImportedModuleSpecifiers(appSourceFile);
@@ -364,6 +416,8 @@ function getAppRuntimeImportedModuleSpecifiers() {
 
 /**
  * Returns provider/service orchestration calls made directly inside App.
+ *
+ * @returns {string[]} The orchestration call names.
  */
 function getAppOrchestrationCalls() {
   return getCalledIdentifiersWithinFunction(appSourceFile, 'App').filter((identifier) =>
@@ -373,6 +427,8 @@ function getAppOrchestrationCalls() {
 
 /**
  * Returns provider components rendered directly inside App.
+ *
+ * @returns {string[]} The rendered provider component names.
  */
 function getAppProviderComponents() {
   return getRenderedJsxComponentNamesWithinFunction(appSourceFile, 'App').filter((componentName) =>
@@ -382,6 +438,8 @@ function getAppProviderComponents() {
 
 /**
  * Returns whether App touches the Google Apps Script runtime directly.
+ *
+ * @returns {boolean} Whether App touches the Google Apps Script runtime directly.
  */
 function appUsesGoogleScriptRun() {
   return getPropertyAccessesWithinFunction(appSourceFile, 'App').some(

@@ -19,7 +19,7 @@ const TAR_LISTING_NAME_START_COLUMN_INDEX = 5;
  *
  * @param {string} url - Source URL to download.
  * @param {string} outputPath - Absolute destination file path.
- * @return {Promise<void>} Resolves when download is complete.
+ * @returns {Promise<void>} Resolves when download is complete.
  */
 async function downloadArchive(url: string, outputPath: string): Promise<void> {
   try {
@@ -52,7 +52,7 @@ async function downloadArchive(url: string, outputPath: string): Promise<void> {
  *
  * @param {string} rootDir - Absolute directory to scan.
  * @param {string} baseDir - Base directory for relative output paths.
- * @return {Promise<string[]>} Relative JavaScript file paths.
+ * @returns {Promise<string[]>} Relative JavaScript file paths.
  */
 async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): Promise<string[]> {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
@@ -78,7 +78,7 @@ async function listJavaScriptFilesRecursive(rootDir: string, baseDir: string): P
  * Validates archive entries to prevent path traversal and link attacks.
  *
  * @param {string} archivePath - Absolute path to the tar.gz archive.
- * @return {Promise<void>} Resolves when all entries are safe.
+ * @returns {Promise<void>} Resolves when all entries are safe.
  */
 async function validateArchiveContents(archivePath: string): Promise<void> {
   // Use verbose listing so we can inspect entry types and reject links.
@@ -121,7 +121,7 @@ async function validateArchiveContents(archivePath: string): Promise<void> {
  * Downloads and extracts the pinned JsonDbApp release snapshot.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<string>} Absolute extraction root path.
+ * @returns {Promise<string>} Absolute extraction root path.
  */
 async function materialisePinnedJsonDbRelease(paths: BuilderPaths): Promise<string> {
   const archivePath = path.join(paths.buildWorkDir, `jsondbapp-${JSON_DB_RELEASE_TAG}.tar.gz`);
@@ -142,7 +142,7 @@ async function materialisePinnedJsonDbRelease(paths: BuilderPaths): Promise<stri
  * Validates and resolves JsonDbApp source files from the pinned GitHub release.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
- * @return {Promise<ResolveJsonDbSourceResult>} Deterministic source file list.
+ * @returns {Promise<ResolveJsonDbSourceResult>} Deterministic source file list.
  */
 export async function runResolveJsonDbSource(paths: BuilderPaths): Promise<ResolveJsonDbSourceResult> {
   try {

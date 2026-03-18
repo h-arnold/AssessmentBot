@@ -19,6 +19,10 @@ type AuthServiceMockScenario =
 
 /**
  * Installs a `google.script.run` mock before page scripts execute.
+ *
+ * @param {Page} page - The Playwright page under test.
+ * @param {AuthServiceMockScenario} scenario - The scenario that should be simulated.
+ * @returns {Promise<void>} A promise that resolves once the init script is installed.
  */
 async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario) {
   await page.addInitScript((mockScenario: AuthServiceMockScenario) => {
@@ -26,6 +30,11 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
 
     /**
      * Dispatches a mocked apiHandler response based on the selected scenario.
+     *
+    * @param {{ successHandler: ((response: unknown) => void) | undefined; failureHandler: ((error: unknown) => void) | undefined; }} run - The mocked `google.script.run` surface.
+    * @param {((response: unknown) => void) | undefined} run.successHandler - The currently registered success callback.
+    * @param {((error: unknown) => void) | undefined} run.failureHandler - The currently registered failure callback.
+    * @param {AuthServiceMockScenario} scenario - The selected mock scenario.
      */
     function dispatchScenarioResponse(
       run: {

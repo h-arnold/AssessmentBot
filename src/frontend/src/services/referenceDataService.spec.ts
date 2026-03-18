@@ -11,6 +11,8 @@ vi.mock('./apiService', () => ({
 
 /**
  * Loads the reference-data service module under test.
+ *
+ * @returns {Promise<unknown>} The imported reference-data service module.
  */
 async function loadReferenceDataService() {
     return import('./referenceDataService');
