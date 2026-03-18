@@ -75,8 +75,8 @@ For each section below:
 - Green review clean: complete
 - Checks passed: complete
 - Action plan updated: complete
-- Commit created: pending
-- Push completed: pending
+- Commit created: complete
+- Push completed: complete
 
 ### Objective
 
@@ -144,6 +144,15 @@ Frontend tests:
 - **Implementation notes:** Added `getBackendConfig` and `setBackendConfig` to the backend API constants allowlist and wired both through `ApiDispatcher._invokeAllowlistedMethod(...)`. The configuration transport logic now lives in `src/backend/z_Api/apiConfig.js`, while `src/backend/z_Api/apiHandler.js` remains responsible for request validation, lifecycle tracking, allowlisted dispatch, and response envelope shaping. The extracted handlers preserve the legacy configuration payload shape and save semantics from `src/backend/ConfigurationManager/99_globals.js`, including masked `apiKey`, `hasApiKey`, partial updates, ignoring `undefined` fields, explicit API-key clearing with `apiKey: ''`, malformed write payload rejection, and envelope-based error handling through `apiHandler`. Added focused API tests for allowlisting, dispatch, masked reads, partial writes, malformed write payload rejection, and transport error propagation.
 - **Deviations from plan:** `src/backend/ConfigurationManager/99_globals.js` was not removed in this section because backend tests still use it as the legacy semantic reference and the broader transport cleanup is deferred to Section 3.
 - **Follow-up implications for later sections:** Frontend transport work in Section 2 should call the new `getBackendConfig` and `setBackendConfig` method names exclusively. Section 3 should remove any remaining frontend-facing reliance on the legacy configuration globals and can consolidate or delete legacy transport helpers once the migration is complete.
+
+### Delivery evidence
+
+- Commit SHA: `4cbb637`
+- Commit message: `Section 1: update API handler and configuration save coverage`
+- Commit SHA: `a1bf2cc`
+- Commit message: `Section 1: extract backend config API handlers`
+- Branch name: `feat/ReactFrontend`
+- Push confirmation: pushed successfully after rebasing onto `origin/feat/ReactFrontend`
 
 ---
 
