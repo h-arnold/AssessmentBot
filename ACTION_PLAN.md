@@ -326,8 +326,8 @@ Frontend tests:
 - Current phase: Complete
 - Checks passed: complete
 - Action plan updated: complete
-- Commit created: pending
-- Push completed: pending
+- Commit created: complete
+- Push completed: complete
 
 ### Objective
 
@@ -375,10 +375,25 @@ Frontend tests:
 - Check result: `npm run lint` passed
 - Check result: `npm run frontend:lint` passed
 - Check result: `npm exec tsc -- -b src/frontend/tsconfig.json` passed
+- Commit SHA: `a1f5b107ad2f2653eb97e67a748416ea29ff6cd6`
+- Commit message: `docs(plan): record regression contract hardening completion`
+- Commit SHA: `711e28e3dfa544e43998cec1b47083a96b56d38b`
+- Commit message: `test: clean up API test formatting`
+- Branch name: `feat/ReactFrontend`
+- Push confirmation: pushed successfully to `origin/feat/ReactFrontend` (`60f03e8..711e28e`)
 
 ---
 
 ## Documentation and rollout notes
+
+### Delivery status
+
+- Current phase: Commit and push pending
+- Docs updated: complete
+- Docs review clean: complete
+- Action plan updated: complete
+- Commit created: pending
+- Push completed: pending
 
 ### Objective
 
@@ -423,7 +438,14 @@ Also update for path-guidance and testing-guidance consistency:
 
 ### Implementation notes / deviations / follow-up
 
-- ...
+- **Implementation notes:** Updated the backend API-layer documentation, transport data-shape reference, backend/frontend AGENTS guidance, backend/frontend testing guidance, Testing Specialist instructions, and backend assessment-flow notes so they consistently describe `src/backend/z_Api` as the active frontend-callable transport path and `getBackendConfig` / `setBackendConfig` as the canonical configuration methods. The docs now capture the masked `apiKey` read contract, `hasApiKey`, optional `loadError`, the writable configuration patch fields, the save-result union contract, and the dedicated ownership split between `tests/api/backendConfigApi.test.js`, `tests/api/apiHandler.test.js`, and `src/frontend/src/services/backendConfigurationService.spec.ts`.
+- **Deviations from plan:** `ACTION_PLAN.md` tracking was updated separately from the main docs-agent pass so commit/push evidence could be recorded with the exact delivered artefacts after each section push.
+- **Follow-up implications for later sections:** `docs/developer/backend/AssessmentFlow.md` still intentionally mixes current transport notes with deprecated AdminSheet/UI walkthroughs, so any future rewrite should either split the historical flow into a separate archive or fully migrate the remaining narrative to the active React/frontend and `z_Api` boundary.
+
+### Delivery evidence
+
+- Docs updated: `docs/developer/backend/api-layer.md`, `docs/developer/backend/DATA_SHAPES.md`, `src/backend/AGENTS.md`, `src/frontend/AGENTS.md`, `docs/developer/backend/backend-testing.md`, `docs/developer/frontend/frontend-testing.md`, `.github/agents/Testing.agent.md`, `docs/developer/backend/AssessmentFlow.md`
+- Docs review result: clean after review/fix cycle with no remaining findings
 
 ---
 
