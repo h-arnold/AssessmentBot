@@ -160,14 +160,14 @@ Frontend tests:
 
 ### Delivery status
 
-- Current phase: Green - in progress
+- Current phase: Push pending
 - Red tests added: complete
 - Red review clean: complete
-- Green implementation complete: in progress
-- Green review clean: pending
-- Checks passed: pending
+- Green implementation complete: complete
+- Green review clean: complete
+- Checks passed: complete
 - Action plan updated: complete
-- Commit created: pending
+- Commit created: complete
 - Push completed: pending
 
 ### Objective
@@ -226,12 +226,15 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** describe actual changes made when done.
-- **Implementation notes:** Section 2 red coverage is complete, the frontend service has been renamed to `backendConfigurationService`, and the corresponding schema/spec files now use the backend-prefixed names. Green implementation was paused by rate limiting before review and delivery artefacts could be completed.
-- **Deviations from plan:** note any departures from the original section design.
+- **Implementation notes:** Added `src/frontend/src/services/backendConfigurationService.ts` helpers for `getBackendConfig()` and `setBackendConfig()` that route through `callApi(...)` and parse both request and response payloads with adjacent Zod schemas in `src/frontend/src/services/backendConfiguration.zod.ts`. The read schema now enforces the backend masked-secret contract precisely by accepting only `''`, exactly `****`, or `****` plus exactly four visible suffix characters, while still treating `loadError` as an optional field. The write-input schema remains strict and excludes read-only fields such as `hasApiKey` and `loadError`, and the write-result schema preserves the backend save-result union `{ success: true } | { success: false, error: string }`. Frontend service coverage in `src/frontend/src/services/backendConfigurationService.spec.ts` now includes valid masked reads, optional `loadError`, malformed read/write payload rejection, unmasked API-key rejection, invalid masked API-key rejection, write-input validation, and read-only field rejection before transport.
 - **Deviations from plan:** The frontend configuration service rename was introduced during Section 2 to align with the backend API boundary and reduce naming collisions with future frontend config surfaces.
-- **Follow-up implications for later sections:** record effects for downstream work.
-- **Follow-up implications for later sections:** Section 2 still needs the green review, commit, and push steps before the section can be closed.
+- **Follow-up implications for later sections:** Section 3 should migrate any remaining active callers and fixtures to `backendConfigurationService` plus the `getBackendConfig` / `setBackendConfig` transport names, then remove the legacy frontend-facing configuration globals once no supported path depends on them.
+
+### Delivery evidence
+
+- Commit SHA: `e29df2504275ac18ccb72bca57e36e685109d835`
+- Commit message: `feat(frontend): section 2 backend config masking validation`
+- Branch name: `feat/ReactFrontend`
 
 ---
 
