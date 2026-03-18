@@ -98,7 +98,7 @@ Report enough detail to be actionable without noise.
 Before declaring completion:
 
 1. Run tests you changed (targeted first).
-2. Run the linter. Fix any lint issues that come up.
+2. Run the linter. **YOU MUST** return code free of linter issues.
 3. Run the relevant broader suite for the touched component.
 4. Summarise:
    - files created/modified
