@@ -57,6 +57,16 @@ const malformedReadResponse = {
     hasApiKey: 'true',
 };
 
+const unmaskedApiKeyReadResponse = {
+    ...validMaskedBackendConfig,
+    apiKey: 'sk-live-abcdef123456',
+};
+
+const invalidMaskedApiKeyReadResponse = {
+    ...validMaskedBackendConfig,
+    apiKey: '****abc',
+};
+
 const malformedWriteResponse = {
     success: false,
 };
@@ -134,6 +144,20 @@ describe('backendConfigurationService', () => {
 
     it('rejects malformed read responses through the dedicated configuration schema', async () => {
         callApiMock.mockResolvedValueOnce(malformedReadResponse);
+        const { getBackendConfig } = await loadBackendConfigurationService();
+
+        await expect(getBackendConfig()).rejects.toBeInstanceOf(ZodError);
+    });
+
+    it('rejects backend configuration payloads that expose an unmasked apiKey value', async () => {
+        callApiMock.mockResolvedValueOnce(unmaskedApiKeyReadResponse);
+        const { getBackendConfig } = await loadBackendConfigurationService();
+
+        await expect(getBackendConfig()).rejects.toBeInstanceOf(ZodError);
+    });
+
+    it('rejects backend configuration payloads whose masked apiKey does not match the backend mask contract', async () => {
+        callApiMock.mockResolvedValueOnce(invalidMaskedApiKeyReadResponse);
         const { getBackendConfig } = await loadBackendConfigurationService();
 
         await expect(getBackendConfig()).rejects.toBeInstanceOf(ZodError);

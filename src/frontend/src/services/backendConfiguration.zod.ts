@@ -2,11 +2,14 @@ import { z } from 'zod';
 
 const IntegerSchema = z.number().int();
 const NonEmptyStringSchema = z.string();
+const MaskedApiKeySchema = z
+    .string()
+    .refine((value) => value === '' || value === '****' || /^\*{4}.{4}$/.test(value));
 
 export const BackendConfigSchema = z
     .object({
         backendAssessorBatchSize: IntegerSchema,
-        apiKey: z.string(),
+        apiKey: MaskedApiKeySchema,
         hasApiKey: z.boolean(),
         backendUrl: z.string(),
         revokeAuthTriggerSet: z.boolean(),
