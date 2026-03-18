@@ -4,15 +4,15 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 
 ## 0. Backend API Entry Layer
 
-- `src/backend/Api` is the target entry surface for functions called from the frontend via `google.script.run` as migration progresses.
+- `src/backend/z_Api` is the current active entry surface for functions called from the frontend via `google.script.run` / `apiHandler` as migration progresses.
 - Organise API files by domain/resource in a REST-ish style.
 - Keep API functions thin and delegate to controller classes unless delegation would add unnecessary verbosity.
-- Existing backend `globals.js` files are migration references and should be removed once equivalent `Api` functions exist.
+- Existing backend `globals.js` files are migration references and should be removed once equivalent `z_Api` functions exist.
 
 ### 0.1 Required `apiHandler` migration pattern
 
-- Treat `src/backend/Api/apiHandler.js` as the single frontend transport entrypoint.
-- Register new frontend-callable methods in `src/backend/Api/apiConstants.js` (`API_METHODS` and `API_ALLOWLIST`).
+- Treat `src/backend/z_Api/apiHandler.js` as the single frontend transport entrypoint.
+- Register new frontend-callable methods in `src/backend/z_Api/apiConstants.js` (`API_METHODS` and `API_ALLOWLIST`).
 - Implement allowlisted dispatch in `ApiDispatcher._invokeAllowlistedMethod(...)` and keep the handler path thin.
 - Return plain response data from allowlisted methods; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.
 - Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all allowlisted methods.

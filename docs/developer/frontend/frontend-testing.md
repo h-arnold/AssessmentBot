@@ -107,6 +107,14 @@ Vitest + Testing Library may still assert user-visible component outcomes; use P
   - user sees light/dark mode switch reflected in the rendered UI
   - user sees motion disabled or minimal when reduced-motion preference is active
 
+## Test naming and traceability
+
+Name frontend tests after the behaviour, component, hook, or service they verify.
+
+Avoid temporary planning labels in test names and helpers. In particular, do not use action-plan section numbering such as `Section 1`, `Section 2`, or similar in `describe(...)` blocks, test titles, constants, or fixture names. Those labels become misleading as plans evolve or are deleted.
+
+Prefer names such as `getBackendConfig rejects malformed payloads` or `Configuration service calls callApi with the backend method name` over names that refer only to a planning document.
+
 ## Related standards
 
 For frontend logging, error mapping, and environment-specific diagnostics policy, use:

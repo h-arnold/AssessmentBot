@@ -6,7 +6,7 @@ AssessmentBot uses **Vitest** as the testing framework for unit and integration 
 
 Backend production code still runs as concatenated GAS script files, not as a Node module graph. Tests must adapt to that runtime model rather than forcing production files to behave like normal Node modules.
 
-Backend currently exposes API-style entry files under `src/backend/z_Api` while migration guidance still refers to `src/backend/Api` as the target surface. Tests should target the files that actually exist in the current runtime path.
+Backend currently exposes API-style entry files under `src/backend/z_Api`. Tests should target the files that actually exist in the current runtime path and avoid stale `src/backend/Api` references unless and until the codebase actually moves there.
 
 These API functions should be tested as thin wrappers around controller delegation and error propagation.
 
@@ -133,6 +133,20 @@ Preferred:
 
 - match the real numbered filename exactly
 - treat numeric prefixes as part of the dependency contract, not cosmetic naming
+
+### 4. Naming tests after action-plan sections
+
+Anti-patterns:
+
+- `describe('Section 1 transport', ...)`
+- `const SECTION_1_API_METHOD_NAMES = [...]`
+- test names that only refer to plan sections instead of the behaviour under test
+
+Preferred:
+
+- name tests after the behaviour, method, or class they verify
+- use helper names that describe the transport or domain concept, not a temporary planning document
+- when a feature migrates from `globals.js` to `apiHandler`, replace legacy-surface tests with new transport tests rather than preserving both naming schemes
 
 ## Test Framework
 
@@ -296,7 +310,7 @@ deprecated legacy UI/init coverage.
 - Test edge cases (null inputs, missing data, corrupt data)
 - Verify logging calls for all significant operations
 
-### 6.1 API Layer Tests (`src/backend/z_Api`, migrating towards `src/backend/Api`)
+### 6.1 API Layer Tests (`src/backend/z_Api`)
 
 Test API-layer functions as boundary wrappers:
 
