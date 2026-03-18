@@ -22,7 +22,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 ### Key Components
 
-- **Backend API Layer**: `src/backend/Api` thin GAS global wrappers for frontend `google.script.run` calls
+- **Backend API Layer**: `src/backend/z_Api` thin GAS global wrappers for frontend `apiHandler` transport calls
 - **UI Layer**: `UIManager`, HTML templates
 - **Controllers**: `AssignmentController`, `AssignmentDefinitionController`, `ABClassController`
 - **Models**: `Assignment` (base), `SlidesAssignment`, `SheetsAssignment`, `AssignmentDefinition`, `TaskDefinition`, `StudentSubmission`
@@ -53,7 +53,7 @@ This document traces the complete assessment flow in AssessmentBot, starting fro
 
 ## Migration Note: API Layer
 
-The active backend is moving to `src/backend/Api` as the canonical GAS entry layer for frontend calls.
+The active backend currently uses `src/backend/z_Api` as the canonical GAS entry layer for frontend calls.
 
 - API functions should stay thin and delegate to controllers.
 - Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.

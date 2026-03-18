@@ -59,6 +59,12 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - Frontend and builder unit test suites must satisfy minimum coverage thresholds of **85%** for lines, functions, statements, and branches.
 - Use the dedicated coverage commands to verify the enforced thresholds before handoff.
 
+## 2.2 Test naming and traceability
+
+- Name tests, `describe(...)` blocks, helper constants, and fixtures after the behaviour or surface under test.
+- Do **not** use action-plan section numbering in test names or helpers (for example `Section 1`, `Section 2`, `SECTION_1_*`).
+- When migrating a transport surface, rename tests to the real method/class names and retire the old planning labels rather than carrying them forward.
+
 ## 3. Idiomatic Patterns
 
 - Reuse existing helpers/factories before creating new ones.

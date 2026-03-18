@@ -46,7 +46,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 ### 4.1 Required API transport pattern
 
 - Route backend calls through `src/frontend/src/services/apiService.ts` (`callApi`) and avoid direct `google.script.run.<method>` calls in feature code.
-- Keep method names aligned with backend `API_METHODS` in `src/backend/Api/apiConstants.js`.
+- Keep method names aligned with backend `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
 
