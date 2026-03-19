@@ -29,6 +29,7 @@ Commit and push phase:
 - Create a commit for the section changes and a separate commit for plan or documentation updates if they are not already included.
 - Push the current branch.
 - Record commit SHAs, exact commit messages, branch name, and confirmation that push succeeded.
+- Stop all agents who are not completing a task before assigning new ones.
 - If commit or push fails, do not continue. Resolve the failure or ask the user.
 
 Section exit criteria:
