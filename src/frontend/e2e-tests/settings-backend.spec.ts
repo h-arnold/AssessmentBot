@@ -39,6 +39,7 @@ const emptyApiKeyHelperCopy = 'Enter a new API key.';
 const partialLoadWarning = 'apiKey: REDACTED';
 const backendSettingsLoadFailureCopy = 'Unable to load backend settings right now.';
 const backendSettingsSaveFailureCopy = 'Configuration save failed.';
+const backendSettingsSavedCopy = 'Backend settings saved.';
 const backendSettingsInitialDelayMs = 150;
 const backendSettingsSaveDelayMs = 150;
 const apiKeyValidationMessage =
@@ -284,7 +285,7 @@ test.describe('backend settings journey', () => {
     await page.goto('/');
     await openBackendSettings(page);
 
-    await expect(page.getByRole('alert')).toHaveTextContent(backendSettingsLoadFailureCopy);
+    await expect(page.getByRole('alert')).toContainText(backendSettingsLoadFailureCopy);
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
   });
 
@@ -305,6 +306,9 @@ test.describe('backend settings journey', () => {
     await openBackendSettings(page);
 
     await expect(page.getByText(emptyApiKeyHelperCopy)).toBeVisible();
+
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('tabpanel', { name: backendSettingsTabLabel })).toBeFocused();
 
     await page.keyboard.press('Tab');
     await expect(getField(page, apiKeyLabel)).toBeFocused();
@@ -339,7 +343,7 @@ test.describe('backend settings journey', () => {
     await page.goto('/');
     await openBackendSettings(page);
 
-    await expect(page.getByRole('alert')).toHaveTextContent(partialLoadWarning);
+    await expect(page.getByRole('alert')).toContainText(partialLoadWarning);
     await expect(page.getByRole('button', { name: saveButtonLabel })).toBeDisabled();
   });
 
@@ -372,6 +376,7 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');
     await page.keyboard.type('45');
@@ -380,6 +385,7 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveClass(/ant-btn-loading/);
     await expect(page.getByRole('button', { name: saveButtonLabel })).toBeDisabled();
+    await expect(page.getByText(backendSettingsSavedCopy)).toBeVisible();
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();
     await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('48');
@@ -412,13 +418,14 @@ test.describe('backend settings journey', () => {
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
     await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
     await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
     await page.keyboard.press('Control+A');
     await page.keyboard.type('46');
 
     await page.getByRole('button', { name: saveButtonLabel }).click();
 
-    await expect(page.getByRole('alert')).toHaveTextContent(backendSettingsSaveFailureCopy);
+    await expect(page.getByRole('alert')).toContainText(backendSettingsSaveFailureCopy);
     await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('46');
   });
 });
