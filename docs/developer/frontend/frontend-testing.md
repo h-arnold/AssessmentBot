@@ -29,13 +29,19 @@ npm run frontend:test:coverage
 
 ## Playwright execution
 
+Before the first Playwright run on a fresh machine, dev container, or CI image, install Chromium and its required system dependencies once:
+
+```bash
+npm --prefix src/frontend exec -- playwright install --with-deps chromium
+```
+
 Use the non-interactive Playwright command as the pass/fail gate:
 
 ```bash
 npm run frontend:test:e2e
 ```
 
-If Chromium or its system dependencies are missing on a fresh machine or CI image, install them once and rerun the suite:
+If Chromium or its system dependencies are later missing or have been removed, rerun the install command and then rerun the suite:
 
 ```bash
 npm --prefix src/frontend exec -- playwright install --with-deps chromium

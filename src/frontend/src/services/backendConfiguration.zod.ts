@@ -66,6 +66,14 @@ const BackendApiKeyWriteSchema = z.string().refine(
 );
 const MaskedApiKeySchema = z.string().refine(isMaskedApiKeyValue);
 
+/**
+ * Transport schema for backend configuration reads.
+ *
+ * @remarks
+ * The read payload intentionally allows a blank `backendUrl` so partial-load responses carrying a
+ * backend `loadError` can still be parsed and surfaced to the settings UI without failing the
+ * entire query.
+ */
 export const BackendConfigSchema = z
     .object({
         backendAssessorBatchSize: IntegerSchema,
@@ -86,6 +94,13 @@ export const BackendConfigSchema = z
 
 export type BackendConfig = z.infer<typeof BackendConfigSchema>;
 
+/**
+ * Transport schema for backend configuration writes.
+ *
+ * @remarks
+ * This schema models the editable patch payload only. Read-only transport fields such as
+ * `hasApiKey`, `loadError`, and `revokeAuthTriggerSet` are intentionally excluded from writes.
+ */
 export const BackendConfigWriteInputSchema = z
     .object({
         backendAssessorBatchSize: IntegerSchema.optional(),
@@ -103,6 +118,13 @@ export const BackendConfigWriteInputSchema = z
 
 export type BackendConfigWriteInput = z.infer<typeof BackendConfigWriteInputSchema>;
 
+/**
+ * Transport schema for backend configuration save results.
+ *
+ * @remarks
+ * This models the domain result returned inside the shared API success envelope. Transport-layer
+ * failures are still represented by the outer `callApi` error envelope rather than this union.
+ */
 export const BackendConfigWriteResultSchema = z.union([
     z
         .object({
