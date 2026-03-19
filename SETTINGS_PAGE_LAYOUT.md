@@ -13,7 +13,13 @@ The goal is to replace the current placeholder backend settings tab with a prope
 3. Use Ant Design components rather than recreating legacy modal patterns.
 4. Keep async orchestration in a feature hook, not in `SettingsPage`.
 5. Validate in the frontend with Zod and again in the backend via the existing configuration manager.
-6. Prefer a single visible form with clear sections over nested tabs, to avoid hidden-field validation problems.
+6. Prefer a single visible form with clear sections over nested tabs to avoid hidden-field validation problems.
+
+## Constraints
+
+1. Do not define a bespoke recovery path for configuration load failures in this iteration.
+2. Allow `callApi(...)` to use its existing retry and exponential backoff behaviour; if configuration loading still fails after that, fail fast and surface the failure clearly for developer debugging.
+3. Use a top-level `Alert` as the default failure state for this settings page rather than introducing a richer recovery flow for now.
 
 ## Proposed component tree
 
@@ -40,10 +46,12 @@ SettingsPage
                 │   ├── JSON DB backup on initialise
                 │   └── JSON DB root folder ID
                 └── FormActions
-                    ├── Save button
-                    └── Optional reset/reload button
+                    └── Save button
+```
 
-Proposed frontend file structure
+## Proposed frontend file structure
+
+```text
 src/frontend/src/
   features/
     settings/
@@ -55,459 +63,506 @@ src/frontend/src/
         backendSettingsForm.zod.ts
         backendSettingsFormMapper.ts
         backendSettingsFields.ts
-Notes
-SettingsPage.tsx should remain a composition layer only.
+```
+
+### Notes
 
-BackendSettingsPanel.tsx should focus on rendering.
+- `SettingsPage.tsx` should remain a composition layer only.
+- `BackendSettingsPanel.tsx` should focus on rendering.
+- `useBackendSettings.ts` should own:
+  - loading current config
+  - preparing form initial values
+  - mapping form values to the write payload
+  - calling `src/frontend/src/services/backendConfigurationService.ts`, which in turn uses `callApi('getBackendConfig')` and `callApi('setBackendConfig', parsedInput)` through the shared `apiHandler` transport rather than calling backend globals directly
+  - handling success and error feedback
+- `backendSettingsForm.zod.ts` should be the canonical frontend validation schema.
+- Ant Design `App.useApp()` requires an `App` provider in the root shell, so the implementation should add that wrapper before the settings feature uses context-aware `message` or `notification`.
+
+### Suggested hook state matrix
 
-useBackendSettings.ts should own:
+Use a small explicit state model in `useBackendSettings.ts` so the React flow stays idiomatic and testable:
+
+- `isInitialLoading`
+  - `true` while the first `getBackendConfig()` request is in flight
+  - renders the initial `Skeleton` state rather than the editable form
+- `loadError`
+  - stores the current blocking load failure message when the initial read fails completely
+  - renders a top-level `Alert`
+- `partialLoadError`
+  - stores backend `loadError` warnings when the payload is present but incomplete
+  - keeps the form visible but blocks saving
+- `isSaveBlocked`
+  - derived from `partialLoadError !== null || loadError !== null`
+  - disables submit affordances while keeping failure visible
+- `isSaving`
+  - `true` only while `setBackendConfig()` is in flight
+  - drives Ant Design loading/disabled affordances rather than custom spinners
+- `saveError`
+  - stores the latest save failure after transport/domain error mapping
+  - renders as persistent inline feedback until the next successful save or reload
+- `hasStoredApiKey`
+  - derived from the read payload and used only for API key UX/validation branching
 
-loading current config
+Suggested transitions:
 
-preparing form initial values
+1. `isInitialLoading` → success: form becomes editable.
+2. `isInitialLoading` → hard failure: show top-level `Alert`, hide or disable the form, fail fast.
+3. successful read with backend `loadError`: show warning `Alert`, render the form, set `isSaveBlocked=true`.
+4. save submit: set `isSaving=true`, clear stale save error, keep load errors intact.
+5. successful save: show `message.success`, then re-fetch current config from the backend and rebase the form from the fresh payload.
+6. failed save: set `saveError`, keep the current form values visible, and clear `isSaving`.
 
-mapping form values to write payload
+## Ant Design components to use
 
-calling getBackendConfig() and setBackendConfig()
+### 1. [Form](https://ant.design/components/form/)
 
-handling success and error feedback
+Use `Form` as the primary interaction container.
 
-backendSettingsForm.zod.ts should be the canonical frontend validation schema.
+**Why**
 
-Ant Design components to use
-1. Form
-Use Form as the primary interaction container.
+- central field registration
+- inline validation feedback
+- submit handling
+- form-wide disabled/loading state
+- strong compatibility with Ant Design inputs
 
-Why
-central field registration
+**Planned usage**
 
-inline validation feedback
+- `Form.useForm()`
+- `name`
+- `layout="vertical"`
+- `onFinish`
+- `onFinishFailed`
+- `requiredMark`
+- `scrollToFirstError={{ focus: true }}`
 
-submit handling
+### 2. [Card](https://ant.design/components/card/)
 
-form-wide disabled/loading state
+Use `Card` for visual section grouping.
 
-strong compatibility with Ant Design inputs
+**Planned grouping**
 
-Planned usage
-Form.useForm()
+- outer page card or panel wrapper
+- inner cards for:
+  - Backend
+  - Advanced
+  - Database
 
-layout="vertical"
+**Why**
 
-onFinish
+- cleaner than nested tabs
+- keeps all fields visible during validation
+- simpler page scanning
 
-onFinishFailed
+### 3. [Input.Password](https://ant.design/components/input/)
 
-requiredMark
+Use `Input.Password` for `apiKey`.
 
-2. Card
-Use Card for visual section grouping.
+**Why**
 
-Planned grouping
-outer page card or panel wrapper
+- communicates sensitivity clearly
+- appropriate for a secret-like value
+- avoids showing the existing value in plain text
 
-inner cards for:
+**Behaviour**
 
-Backend
+- Never prefill with the masked backend value.
+- If a key already exists:
+  - leave the field blank
+  - show helper text or a placeholder indicating a stored key exists
+- If the field is left blank when a key already exists:
+  - omit `apiKey` from the save payload
+- If no key exists:
+  - require a non-empty API key
 
-Advanced
+### 4. [Input](https://ant.design/components/input/)
 
-Database
+Use `Input` for plain string fields:
 
-Why
-cleaner than nested tabs
+- `backendUrl`
+- `jsonDbMasterIndexKey`
+- `jsonDbRootFolderId`
 
-keeps all fields visible during validation
+**Why**
 
-simpler page scanning
+- single-line text entry
+- straightforward integration with `Form.Item`
+- suitable for custom schema validation
 
-3. Input.Password
-Use for apiKey.
+### 5. [InputNumber](https://ant.design/components/input-number/)
 
-Why
-communicates sensitivity clearly
+Use `InputNumber` for bounded integer fields:
 
-appropriate for a secret-like value
+- `backendAssessorBatchSize`
+- `slidesFetchBatchSize`
+- `daysUntilAuthRevoke`
+- `jsonDbLockTimeoutMs`
 
-avoids showing the existing value in plain text
+**Why**
 
-Behaviour
-never prefill with the masked backend value
+- correct numeric affordance
+- built-in min/max UI hints
+- easier to use than free text for numeric configuration
 
-if a key already exists:
+**Planned props**
 
-leave the field blank
+- `precision={0}`
+- `min`
+- `max`
+- full-width styling where needed
 
-show helper text or placeholder indicating a stored key exists
+**Validation note**
 
-if the field is left blank when a key already exists:
+Do not rely on `InputNumber` alone for validation. Final validation still belongs in the Zod schema and backend configuration manager.
 
-omit apiKey from the save payload
+### 6. [Select](https://ant.design/components/select/)
 
-if no key exists:
+Use `Select` for `jsonDbLogLevel`.
 
-require a non-empty API key
+**Options**
 
-4. Input
-Use for plain string fields:
+- `DEBUG`
+- `INFO`
+- `WARN`
+- `ERROR`
 
-backendUrl
+**Why**
 
-jsonDbMasterIndexKey
+- fixed set of values
+- prevents typo-based invalid input
+- mirrors backend-supported values
 
-jsonDbRootFolderId
+### 7. [Switch](https://ant.design/components/switch/)
 
-Why
-single-line text entry
+Use `Switch` for boolean settings:
 
-straightforward integration with Form.Item
+- `jsonDbBackupOnInitialise`
 
-suitable for custom schema validation
+**Important form binding detail**
 
-5. InputNumber
-Use for bounded integer fields:
-
-backendAssessorBatchSize
-
-slidesFetchBatchSize
-
-daysUntilAuthRevoke
-
-jsonDbLockTimeoutMs
-
-Why
-correct numeric affordance
-
-built-in min/max UI hints
-
-easier to use than free text for numeric configuration
-
-Planned props
-precision={0}
-
-min
-
-max
-
-full width styling where needed
-
-Validation note
-Do not rely on InputNumber alone for validation. Final validation still belongs in the Zod schema and backend configuration manager.
-
-6. Select
-Use for jsonDbLogLevel.
-
-Options
-DEBUG
-
-INFO
-
-WARN
-
-ERROR
-
-Why
-fixed set of values
-
-prevents typo-based invalid input
-
-mirrors backend-supported values
-
-7. Switch
-Use for boolean settings:
-
-jsonDbBackupOnInitialise
-
-optionally revokeAuthTriggerSet if that remains editable in the new UI
-
-Important form binding detail
 Use:
 
+```tsx
 <Form.Item name="jsonDbBackupOnInitialise" valuePropName="checked">
-Why
-Switch binds on checked, not value.
+```
 
-8. Alert
-Use Alert for persistent inline messages.
+**Why**
 
-Planned uses
-top-of-form warning when loadError is returned from getBackendConfig()
+`Switch` binds on `checked`, not `value`.
 
-save failure summaries that need to remain visible while the user corrects issues
+### 8. [Alert](https://ant.design/components/alert/)
 
-optional informational note about API key behaviour
+Use `Alert` for persistent inline messages.
 
-Types
-warning for partial-load issues
+**Planned uses**
 
-error for save problems
+- top-of-form warning when `loadError` is returned from the `backendConfigurationService.getBackendConfig()` read path
+- save failure summaries that need to remain visible while the user corrects issues
+- optional informational note about API key behaviour
 
-info for guidance copy if needed
+**Types**
 
-9. App.useApp() with message and notification
-Use context-aware Ant Design feedback APIs.
+- `warning` for partial-load issues
+- `error` for save problems
+- `info` for guidance copy if needed
 
-message
+### 9. [App](https://ant.design/components/app/) with [message](https://ant.design/components/message/) and [notification](https://ant.design/components/notification/)
+
+Use context-aware Ant Design feedback APIs via `App.useApp()`.
+
+**`message`**
+
 Use for short, direct-action feedback:
 
-successful save
+- successful save
+- possibly simple save failure
 
-possibly simple save failure
+**`notification`**
 
-notification
 Use only when failure details are richer and need more space.
 
-Why
+**Why**
+
 These APIs respect app context and theme, and fit the repo’s feedback guidance better than static calls.
 
-10. Button
+### 10. [Button](https://ant.design/components/button/)
+
 Use:
 
-primary Save button
+- primary Save button
 
-optional secondary Reset or Reload button
+**Planned behaviour**
 
-Planned behaviour
-htmlType="submit" for Save
+- `htmlType="submit"` for Save
+- loading while save is in progress
 
-loading while save is in progress
+### 11. [Skeleton](https://ant.design/components/skeleton/)
 
-11. Skeleton
-Use for first-load placeholder rendering before the config payload is available.
+Use `Skeleton` for first-load placeholder rendering before the config payload is available.
 
-Why
-more natural for page-load UX than a blocking spinner
+**Why**
 
-shows users the intended page structure immediately
+- more natural for page-load UX than a blocking spinner
+- shows users the intended page structure immediately
 
-12. Space, Row, Col, and/or Flex
+### 12. Layout helpers: [Space](https://ant.design/components/space/), [Grid (`Row` / `Col`)](https://ant.design/components/grid/), and/or [Flex](https://ant.design/components/flex/)
+
 Use these layout helpers for spacing and responsive form arrangement.
 
-Planned layout approach
-two columns for wider screens where appropriate
+**Planned layout approach**
 
-stacked layout on narrower screens
+- two columns for wider screens where appropriate
+- stacked layout on narrower screens
+- action row aligned consistently beneath the section cards
 
-action row aligned consistently beneath the section cards
+## Field-to-component mapping
 
-Field-to-component mapping
-Setting field	Component	Notes
-apiKey	Input.Password	blank value with masked helper text if already stored
-backendUrl	Input	strict custom HTTPS validation
-backendAssessorBatchSize	InputNumber	integer 1–500
-slidesFetchBatchSize	InputNumber	integer 1–100
-daysUntilAuthRevoke	InputNumber	integer 1–365
-jsonDbMasterIndexKey	Input	required non-empty
-jsonDbLockTimeoutMs	InputNumber	integer 1000–600000
-jsonDbLogLevel	Select	enum value
-jsonDbBackupOnInitialise	Switch	checked binding
-jsonDbRootFolderId	Input	optional, validate only when populated
-Validation model
-Frontend validation source of truth
+| Setting field              | Component        | Notes                                                 |
+| -------------------------- | ---------------- | ----------------------------------------------------- |
+| `apiKey`                   | `Input.Password` | Blank value with masked helper text if already stored |
+| `backendUrl`               | `Input`          | Match existing backend HTTPS validation rules         |
+| `backendAssessorBatchSize` | `InputNumber`    | Integer `1–500`                                       |
+| `slidesFetchBatchSize`     | `InputNumber`    | Integer `1–100`                                       |
+| `daysUntilAuthRevoke`      | `InputNumber`    | Integer `1–365`                                       |
+| `jsonDbMasterIndexKey`     | `Input`          | Required non-empty                                    |
+| `jsonDbLockTimeoutMs`      | `InputNumber`    | Integer `1000–600000`                                 |
+| `jsonDbLogLevel`           | `Select`         | Enum value                                            |
+| `jsonDbBackupOnInitialise` | `Switch`         | `checked` binding                                     |
+| `jsonDbRootFolderId`       | `Input`          | Optional; validate only when populated                |
+
+`revokeAuthTriggerSet` should be removed from the UI entirely. It is a backend operational flag managed by initialisation routines rather than a user-facing setting.
+
+## Validation model
+
+### Frontend validation source of truth
+
 Create a dedicated adjacent schema file:
 
+```text
 src/frontend/src/features/settings/backend/backendSettingsForm.zod.ts
-The frontend form schema should enforce at least the following:
+```
 
-backendUrl
+The frontend form schema should enforce at least the following.
 
-required
+#### `backendUrl`
 
-trimmed
+- required
+- trimmed
+- HTTPS only
+- no whitespace
+- no localhost
+- no IPv4 literal host
+- hostname must be structurally valid
 
-HTTPS only
+#### `backendAssessorBatchSize`
 
-no whitespace
+- integer between `1` and `500`
 
-no localhost
+#### `slidesFetchBatchSize`
 
-no IPv4 literal host
+- integer between `1` and `100`
 
-hostname must be structurally valid
+#### `daysUntilAuthRevoke`
 
-backendAssessorBatchSize
+- integer between `1` and `365`
 
-integer between 1 and 500
+#### `jsonDbMasterIndexKey`
 
-slidesFetchBatchSize
+- required non-empty string
 
-integer between 1 and 100
+#### `jsonDbLockTimeoutMs`
 
-daysUntilAuthRevoke
+- integer between `1000` and `600000`
 
-integer between 1 and 365
+#### `jsonDbLogLevel`
 
-jsonDbMasterIndexKey
+- one of `DEBUG`, `INFO`, `WARN`, `ERROR`
 
-required non-empty string
+#### `jsonDbRootFolderId`
 
-jsonDbLockTimeoutMs
+- optional
+- must match the expected Drive identifier format when supplied
 
-integer between 1000 and 600000
+#### `apiKey`
 
-jsonDbLogLevel
+- required only when no backend key already exists
 
-one of DEBUG, INFO, WARN, ERROR
+### Consistency recommendations for the validation layers
 
-jsonDbRootFolderId
+Keep the three validation layers aligned but distinct:
 
-optional
+1. `backendConfiguration.zod.ts` should remain the transport schema for the backend configuration read/write payload shape.
+2. `backendSettingsForm.zod.ts` should own user-input validation, normalisation, and form-specific rules such as conditional API key requirements.
+3. The backend `ConfigurationManager` remains the final authority for persisted configuration validation.
 
-must match expected Drive identifier format when supplied
+To keep these layers as consistent as possible:
 
-apiKey
+- reuse the same field names and enum values across all layers
+- mirror backend numeric limits exactly in the form schema
+- mirror the backend URL rules exactly rather than introducing different frontend-only URL semantics
+- keep form-only concerns, such as `hasApiKey`-driven conditional requirements, out of the transport schema
+- keep transport-only concerns, such as masked read payloads and write result envelopes, out of the form schema
+- prefer shared frontend error contracts and shared transport/domain mapping utilities where the behaviour is generic
+- add a backend-settings-specific error mapper only if this feature introduces genuinely unique error semantics that would make a shared mapper noisy or misleading
+- add mapper tests that prove form values translate cleanly into `BackendConfigWriteInput`
 
-required only when no backend key already exists
+### Validation strategy
 
-Validation strategy
 Validation should happen in three layers:
 
-Ant Design field integration and inline error rendering
+1. Ant Design field integration and inline error rendering.
+2. Zod schema validation in the frontend feature layer.
+3. Existing backend configuration validation in the configuration manager.
 
-Zod schema validation in the frontend feature layer
+## Data flow
 
-Existing backend configuration validation in the configuration manager
+### Read flow
 
-Data flow
-Read flow
-BackendSettingsPanel mounts
+1. `BackendSettingsPanel` mounts.
+2. `useBackendSettings` calls `backendConfigurationService.getBackendConfig()`.
+3. The response is parsed through the existing frontend service schema.
+4. That service reads through `callApi('getBackendConfig')`, which routes via the shared frontend `apiHandler` transport path.
+5. If the request fails completely after `callApi(...)` retry/backoff, the hook fails fast and renders a top-level `Alert`.
+6. If the request succeeds, the hook maps the backend payload into form initial values.
+7. Backend `loadError`, if present in an otherwise valid payload, is rendered as an inline warning `Alert`.
+8. If backend `loadError` is present, saving is blocked until a future successful reload clears that condition.
 
-useBackendSettings calls getBackendConfig()
+### Write flow
 
-response is parsed through the existing frontend service schema
+1. The user edits fields.
+2. The user clicks Save.
+3. If the latest load produced `loadError`, the hook throws an error and the UI keeps the form in a blocked state with a persistent inline `Alert`.
+4. Form values are normalised and validated against the dedicated settings Zod schema.
+5. The hook maps values to `BackendConfigWriteInput`.
+6. `backendConfigurationService.setBackendConfig()` is called.
+7. That service writes through `callApi('setBackendConfig', parsedInput)`, which routes via the shared frontend `apiHandler` transport path.
+8. Success uses `message.success`.
+9. After a successful save, the hook immediately re-fetches the current config from the backend and re-bases the form from that fresh payload.
+10. Failure throws an error from the hook and displays it as an inline `Alert`. `notification.error` should be used only if extra asynchronous context is genuinely needed.
 
-hook maps backend payload into form initial values
+## API key handling rules
 
-loadError, if present, is rendered as an inline Alert
-
-Write flow
-user edits fields
-
-user clicks Save
-
-form values are normalised and validated against the dedicated settings Zod schema
-
-hook maps values to BackendConfigWriteInput
-
-setBackendConfig() is called
-
-success uses message.success
-
-failure uses inline Alert and, if needed, notification.error
-
-API key handling rules
 The API key field needs special handling.
 
-Read
-do not populate the input with the masked backend value
+### Read
 
-use hasApiKey to determine whether a stored key exists
+- do not populate the input with the masked backend value
+- use `hasApiKey` to determine whether a stored key exists
+- show masked state only as explanatory helper text or placeholder
 
-show masked state only as explanatory helper text or placeholder
+### Write
 
-Write
-if the user enters a value, send it as the new API key
+- if the user enters a value, send it as the new API key
+- if the user leaves the field blank and a stored key exists, omit `apiKey`
+- explicit API key clearing is out of scope for this UI; support replacement or retention only
 
-if the user leaves the field blank and a stored key exists, omit apiKey
+## Error and feedback behaviour
 
-if explicit clearing remains supported, handle that deliberately rather than accidentally
+### Persistent inline feedback
 
-Error and feedback behaviour
-Persistent inline feedback
-Use Alert for:
+Use `Alert` for:
 
-partial configuration load warnings
+- partial configuration load warnings
+- non-field save failures
+- any guidance the user may need while editing
 
-non-field save failures
+### Default load failure state
 
-any guidance the user may need while editing
+Use a top-level `Alert` as the default hard-failure state when the initial configuration read fails completely. Do not add a bespoke recovery workflow in this iteration; allow the failure to surface clearly after the shared `callApi(...)` retry path is exhausted.
 
-Transient feedback
-Use message.success for successful saves.
+### Transient feedback
 
-Logging
+Use `message.success` for successful saves.
+
+### Logging
+
 Keep raw technical details out of user-facing copy. Any developer diagnostics should remain in frontend logging utilities and should not expose secrets.
 
-Why not nested tabs inside Backend settings
+### Error mapping recommendation
+
+- transport or runtime failures should throw from the hook and be mapped to user-safe inline error copy in the component
+- backend `{ success: false, error }` save responses should also be treated as failures and surfaced through the same inline error path
+- technical details such as request identifiers or backend error codes should stay in logs rather than the rendered UI
+- because the feature uses visible inline feedback, the error state should persist until the next successful load or save clears it
+
+## Why not nested tabs inside Backend settings?
+
 The legacy modal used tabs partly because it lived in a constrained dialog.
 
 For the new page:
 
-nested tabs would add complexity
+- nested tabs would add complexity
+- they would reintroduce hidden-field validation problems
+- cards and vertical sections provide a simpler, clearer layout
+- the page already has a top-level tab system
 
-they would reintroduce hidden-field validation problems
+## Accessibility and usability expectations
 
-cards and vertical sections provide a simpler, clearer layout
+- every field must have a visible label
+- validation errors should be inline and linked to the correct field
+- the first invalid field should be focused or scrolled into view on submit failure
+- the save action should expose a visible loading state
+- section boundaries should be visually and semantically clear
 
-the page already has a top-level tab system
+## Testing expectations
 
-Accessibility and usability expectations
-every field must have a visible label
-
-validation errors should be inline and linked to the correct field
-
-the first invalid field should be focused or scrolled into view on submit failure
-
-the save action should expose a visible loading state
-
-section boundaries should be visually and semantically clear
-
-Testing expectations
 The new backend settings page introduces visible interactions, so both test layers are needed.
 
-Vitest + Testing Library
+### Vitest + Testing Library
+
 Cover:
 
-initial load state
+- initial load state
+- hard load failure rendering as a top-level `Alert`
+- blocked save state when `loadError` is present
+- field rendering from backend data
+- API key masking behaviour
+- API key required state when no stored key exists
+- API key omission when a stored key exists and the field is left blank
+- payload mapping
+- validation logic
+- full hook state transitions (`isInitialLoading`, `loadError`, `partialLoadError`, `isSaveBlocked`, `isSaving`, `saveError`)
+- transport error mapping
+- backend save failure mapping
+- successful save followed by config re-fetch and form rebase
+- save success/failure state handling
+- top-level load error vs inline partial-load warning rendering
+- first-invalid-field focus behaviour on submit failure
+- error clearing behaviour after successful reload/save
 
-field rendering from backend data
+### Playwright
 
-API key masking behaviour
-
-payload mapping
-
-validation logic
-
-save success/failure state handling
-
-Playwright
 Cover:
 
-navigating to Settings
+- navigating to Settings
+- selecting Backend settings
+- seeing the initial skeleton state before config is ready
+- seeing a top-level `Alert` when the initial config read fails
+- editing fields
+- seeing inline validation
+- keyboard-only entry and submission flow across the form
+- focus moving to the first invalid field after a failed submit
+- seeing save blocked when the page is in a partial-load error state
+- leaving the API key blank when an existing key is present and still saving successfully
+- seeing validation failure when no stored API key exists and the field is left blank
+- saving successfully
+- seeing the form refresh from the backend after a successful save
+- seeing save failure feedback when appropriate
 
-selecting Backend settings
+## Summary
 
-editing fields
-
-seeing inline validation
-
-saving successfully
-
-seeing save failure feedback when appropriate
-
-Summary
 The recommended implementation is a sectioned Ant Design page-based form using:
 
-Form
-
-Card
-
-Input.Password
-
-Input
-
-InputNumber
-
-Select
-
-Switch
-
-Alert
-
-Button
-
-Skeleton
-
-App.useApp() with message and optionally notification
+- `Form`
+- `Card`
+- `Input.Password`
+- `Input`
+- `InputNumber`
+- `Select`
+- `Switch`
+- `Alert`
+- `Button`
+- `Skeleton`
+- `App.useApp()` with `message` and, optionally, `notification`
 
 This keeps the implementation simple, accessible, and aligned with both the active frontend architecture and the legacy configuration feature set.
