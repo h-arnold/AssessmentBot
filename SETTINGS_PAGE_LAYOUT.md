@@ -333,7 +333,7 @@ Use these layout helpers for spacing and responsive form arrangement.
 | Setting field              | Component        | Notes                                                 |
 | -------------------------- | ---------------- | ----------------------------------------------------- |
 | `apiKey`                   | `Input.Password` | Blank value with masked helper text if already stored |
-| `backendUrl`               | `Input`          | Match existing backend HTTPS validation rules         |
+| `backendUrl`               | `Input`          | Trimmed before validation; must be a valid URL        |
 | `backendAssessorBatchSize` | `InputNumber`    | Integer `1–500`                                       |
 | `slidesFetchBatchSize`     | `InputNumber`    | Integer `1–100`                                       |
 | `daysUntilAuthRevoke`      | `InputNumber`    | Integer `1–365`                                       |
@@ -360,7 +360,7 @@ The frontend form schema should enforce at least the following.
 #### `backendUrl`
 
 - required
-- trimmed
+- normalised by trimming before validation
 - must be a valid URL using Zod URL validation
 
 #### `backendAssessorBatchSize`
@@ -408,6 +408,7 @@ To keep these layers as consistent as possible:
 
 - reuse the same field names and enum values across all layers
 - mirror backend numeric limits exactly in the form schema
+- normalise `backendUrl` by trimming before frontend form validation so user input is handled consistently
 - use Zod URL validation for `backendUrl` in both the transport schema and the form schema so frontend reads and writes share one URL contract
 - keep form-only concerns, such as `hasApiKey`-driven conditional requirements, out of the transport schema
 - keep transport-only concerns, such as masked read payloads and write result envelopes, out of the form schema
@@ -446,14 +447,14 @@ Validation should happen in three layers:
 
 1. The user edits fields.
 2. The user clicks Save.
-3. If the latest load produced `loadError`, the hook throws an error and the UI keeps the form in a blocked state with a persistent inline `Alert`.
+3. If the latest load produced `loadError`, the UI keeps the form in a blocked state with a persistent inline `Alert` and disabled submit affordances.
 4. Form values are normalised and validated against the dedicated settings Zod schema.
 5. The hook maps values to `BackendConfigWriteInput`.
 6. `backendConfigurationService.setBackendConfig()` is called.
 7. That service writes through `callApi('setBackendConfig', parsedInput)`, which routes via the shared frontend `apiHandler` transport path.
 8. Success uses `message.success`.
 9. After a successful save, the hook immediately re-fetches the current config from the backend and the panel re-bases the form from that fresh payload with `form.setFieldsValue(...)`.
-10. Failure throws an error from the hook and displays it as an inline `Alert`. `notification.error` should be used only if extra asynchronous context is genuinely needed.
+10. Failure sets persistent save-error state and displays it as an inline `Alert`. `notification.error` should be used only if extra asynchronous context is genuinely needed.
 
 ## API key handling rules
 
