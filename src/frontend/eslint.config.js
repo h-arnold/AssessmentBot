@@ -140,6 +140,22 @@ export default defineConfig([
     },
   },
   {
+    files: [
+      'src/features/settings/backend/backendSettingsForm.zod.ts',
+      'src/services/backendConfiguration.zod.ts',
+      'src/services/backendConfigurationValidation.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': [
+        'error',
+        ...(Array.isArray(tsBaseRules['@typescript-eslint/no-magic-numbers'])
+          ? tsBaseRules['@typescript-eslint/no-magic-numbers'].slice(1)
+          : []),
+      ],
+      'unicorn/prevent-abbreviations': 'warn',
+    },
+  },
+  {
     files: ['src/**/*.{spec,test}.{ts,tsx}'],
     rules: {
       ...unicodeSecurityRules,

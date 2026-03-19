@@ -7,17 +7,20 @@ type BackendApiResponseScenario = Readonly<
     kind: 'success';
     data: unknown;
     delayMs?: number;
+    releaseSignal?: string;
   }
   | {
     kind: 'transportFailure';
     message: string;
     delayMs?: number;
+    releaseSignal?: string;
   }
   | {
     kind: 'failureEnvelope';
     code?: string;
     message: string;
     delayMs?: number;
+    releaseSignal?: string;
   }
 >;
 
@@ -41,7 +44,7 @@ const partialLoadWarning = 'apiKey: REDACTED';
 const backendSettingsLoadFailureCopy = 'Unable to load backend settings right now.';
 const backendSettingsSaveFailureCopy = 'Configuration save failed.';
 const backendSettingsSavedCopy = 'Backend settings saved.';
-const backendSettingsInitialDelayMs = 150;
+const backendSettingsLoadReleaseSignal = 'backend-settings-initial-load';
 const backendSettingsSaveDelayMs = 150;
 const apiKeyValidationMessage =
   'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.';
@@ -104,6 +107,8 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
         getBackendConfig: mockScenario.getBackendConfig,
         setBackendConfig: mockScenario.setBackendConfig,
       };
+      const releasedSignals = new Set();
+      const releaseResolvers = new Map();
 
       function isBackendSettingsTransportRequest(request) {
         return (
@@ -137,6 +142,26 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
         }
       }
 
+      function waitForReleaseSignal(signal) {
+        if (signal === undefined || releasedSignals.has(signal)) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          releaseResolvers.set(signal, resolve);
+        });
+      }
+
+      globalThis.__releaseBackendSettingsSignal = (signal) => {
+        releasedSignals.add(signal);
+        const resolve = releaseResolvers.get(signal);
+
+        if (resolve !== undefined) {
+          releaseResolvers.delete(signal);
+          resolve();
+        }
+      };
+
       function handleStaticMethod(method, handler) {
         if (method === 'getAuthorisationStatus') {
           sendSuccess(handler, true, 'req-auth-status');
@@ -159,7 +184,15 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
           return;
         }
 
-        setTimeout(() => {
+        void (async () => {
+          await waitForReleaseSignal(response.releaseSignal);
+
+          if (response.delayMs !== undefined) {
+            await new Promise((resolve) => {
+              setTimeout(resolve, response.delayMs);
+            });
+          }
+
           if (response.kind === 'transportFailure') {
             callbacks.failureHandler?.(new Error(response.message));
             return;
@@ -176,7 +209,7 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
           }
 
           sendSuccess(callbacks.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
-        }, response.delayMs ?? 0);
+        })();
       }
 
       const run = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
@@ -241,7 +274,7 @@ test.describe('backend settings journey', () => {
         {
           kind: 'success',
           data: baseBackendConfig,
-          delayMs: backendSettingsInitialDelayMs,
+          releaseSignal: backendSettingsLoadReleaseSignal,
         },
       ],
       setBackendConfig: [],
@@ -252,6 +285,10 @@ test.describe('backend settings journey', () => {
 
     await expect(page.getByRole('status', { name: loadingBackendSettingsLabel })).toBeVisible();
     await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
+
+    await page.evaluate((signal) => {
+      globalThis.__releaseBackendSettingsSignal(signal);
+    }, backendSettingsLoadReleaseSignal);
 
     await expect(page.getByRole('region', { name: backendSettingsPanelLabel })).toBeVisible();
     await expect(getField(page, apiKeyLabel)).toHaveValue('');

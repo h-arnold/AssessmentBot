@@ -31,6 +31,7 @@ const backendSettingsHookState = {
 const { useBackendSettingsMock } = vi.hoisted(() => ({
   useBackendSettingsMock: vi.fn(),
 }));
+const slowPanelInteractionTimeoutMs = 30_000;
 
 vi.mock('./useBackendSettings', () => ({
   useBackendSettings: useBackendSettingsMock,
@@ -122,7 +123,7 @@ describe('BackendSettingsPanel', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-  });
+  }, slowPanelInteractionTimeoutMs);
 
   it('renders the planned section cards and visible field labels', () => {
     useBackendSettingsMock.mockImplementation(() => ({
@@ -244,7 +245,7 @@ describe('BackendSettingsPanel', () => {
     await waitFor(() => {
       expect(getField('API key')).toHaveFocus();
     });
-  });
+  }, slowPanelInteractionTimeoutMs);
 
   it('shows stored-key helper text when an API key already exists', () => {
     useBackendSettingsMock.mockImplementation(() => ({

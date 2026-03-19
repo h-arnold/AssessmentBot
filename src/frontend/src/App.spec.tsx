@@ -1,6 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReactNode } from 'react';
 import { vi } from 'vitest';
 import App from './App';
 import { AppAuthGate } from './features/auth/AppAuthGate';
@@ -441,69 +440,31 @@ describe('App', () => {
     expect(themeModeSwitch).toHaveAttribute(ariaCheckedAttribute, 'false');
   });
 
-  it('ConfigProvider receives expected algorithm when state changes', async () => {
-    // Keep the auth hook pending so the entrypoint render stays focused on theme wiring.
-    installPendingApiHandlerMock();
+  it('theme toggle updates the Ant Design shell styling', async () => {
+    const { AppThemeShell } = await import('./AppThemeShell');
 
-    const rootElement = document.createElement('div');
-    rootElement.id = 'root';
-    document.body.append(rootElement);
-
-    let renderedTree: ReactNode | undefined;
-
-    vi.doMock('react-dom/client', () => ({
-      createRoot: () => ({
-        render(node: ReactNode) {
-          renderedTree = node;
-        },
-      }),
-    }));
-
-    vi.doMock('antd', async () => {
-      const actual = await vi.importActual('antd');
-      const actualTheme = (actual as { theme: { darkAlgorithm: unknown } }).theme;
-
-      return {
-        ...(actual as Record<string, unknown>),
-        ConfigProvider({
-          children,
-          theme: themeConfig,
-        }: {
-          children: ReactNode;
-          theme?: {
-            algorithm?: unknown;
-          };
-        }) {
-          return (
-            <div
-              data-testid="config-provider"
-              data-algorithm={
-                themeConfig?.algorithm === actualTheme.darkAlgorithm ? 'dark' : 'light'
-              }
-            >
-              {children}
-            </div>
-          );
-        },
-      };
+    await act(async () => {
+      render(<AppThemeShell />);
     });
 
-    await import('./main');
+    const header = document.querySelector('.app-header');
 
-    if (renderedTree === undefined) {
-      throw new Error('Expected main.tsx to render the application tree.');
+    if (!(header instanceof HTMLElement)) {
+      throw new TypeError('Expected the themed app header to be rendered.');
     }
 
-    render(<>{renderedTree}</>);
-
-    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'light');
+    const initialHeaderBackground = header.style.backgroundColor;
 
     act(() => {
       fireEvent.click(getThemeModeSwitch());
     });
 
-    expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'dark');
+    await waitFor(() => {
+      expect(header.style.backgroundColor).not.toBe(initialHeaderBackground);
+    });
   });
+
+
 
   it('theme toggle state persists during in-app page navigation', async () => {
     installPendingApiHandlerMock();
@@ -645,7 +606,7 @@ describe('App', () => {
   it('does not start class-partials warm-up while auth is unresolved', async () => {
     const transport = installPendingApiHandlerMock();
 
-    renderApp();
+    await renderPendingApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
