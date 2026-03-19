@@ -166,6 +166,32 @@ Frontend tests:
 
 ## Section 2 — Form contract, validation, and mapping
 
+### Delivery status
+
+- Current phase: Complete
+- Status: Complete
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
+
+### Review findings log
+
+- Red review initially found a compile blocker in `backendSettingsFormMapper.spec.ts` because the placeholder schema inferred an empty object type. The test scaffolding was adjusted so the suite still compiles while keeping the intended runtime-red assertions unchanged.
+- Green review initially found two frontend write-contract mismatches: `revokeAuthTriggerSet` was still writable, and blank `apiKey` writes were still accepted at the transport boundary. The implementation was tightened so retention is represented by omission only and read-only fields are rejected before transport.
+- Green review clean. The reviewer confirmed the form schema, mapper, and frontend transport schema now match the Section 2 replacement-or-retention semantics.
+
+### Verification log
+
+- `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts` passed.
+- `npm run frontend:lint` completed with warnings only and no errors.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+
 ### Objective
 
 - Introduce the backend settings form schema and mapping layer so frontend input rules mirror the backend contract while keeping transport validation and form validation separate.
@@ -231,6 +257,10 @@ Frontend tests:
 - Add `@remarks` to any feature-specific error-mapping helper introduced here, clarifying why shared transport/domain mapping is preferred and when a backend-settings-specific mapper is justified.
 
 ### Implementation notes / deviations / follow-up
+
+- Complete.
+- No behavioural deviation from the plan in this section.
+- The frontend transport schema intentionally still allows blank `backendUrl` on read payloads so later sections can surface backend `loadError` partial-load states without failing the entire query.
 
 ---
 
