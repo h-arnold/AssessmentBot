@@ -29,7 +29,7 @@
 ### Assumptions
 
 1. `getBackendConfig` and `setBackendConfig` remain the canonical backend configuration methods, exposed through `backendConfigurationService.ts` and ultimately routed via `callApi(...)`.
-2. The current backend validation limits and field semantics remain authoritative, so the new frontend form schema should mirror them rather than inventing parallel rules.
+2. The current backend validation limits remain authoritative, and the frontend should align field semantics where practical. For `backendUrl`, both the transport schema and the form schema should use Zod URL validation as the frontend contract, with a follow-on backend hardening task to bring `Validate.validateUrl(...)` into the same contract.
 3. A successful save should immediately re-fetch backend configuration and re-base the form from the returned payload.
 4. A complete initial load failure should fail fast and render a top-level Ant Design `Alert`.
 5. Partial-load warnings returned as backend `loadError` should keep the form visible but block saving.
@@ -77,19 +77,19 @@ For each section below:
 
 ### Objective
 
-- Replace the backend settings placeholder with a real feature entry point and add the shell prerequisites needed for context-aware Ant Design feedback.
+- Replace the backend settings placeholder with a real feature entry point, add the Ant Design `App` shell wrapper required for `App.useApp()`, and add the shell prerequisites needed for context-aware Ant Design feedback.
 
 ### Constraints
 
 - Keep `src/frontend/src/App.tsx` thin and avoid introducing feature orchestration there.
-- Add Ant Design `App` support at the shell/root level rather than inside the backend settings feature.
+- Add Ant Design `App` support at the shell/root level rather than inside the backend settings feature, so `App.useApp()` can be used for context-aware feedback.
 - Preserve the existing `SettingsPage` tab structure and reuse `TabbedPageSection`.
 - Do not introduce any direct backend calls in page components.
 
 ### Acceptance criteria
 
 - `SettingsPage` renders `BackendSettingsPanel` for the backend settings tab instead of a blank placeholder card.
-- The application shell provides the Ant Design `App` context required for `App.useApp()`.
+- The application shell wraps the UI in Ant Design `App`, providing the context required for `App.useApp()`.
 - The existing settings heading/summary and tab structure still render correctly.
 - No service calls or feature state machines are introduced into `App.tsx` or `SettingsPage.tsx`.
 
@@ -131,18 +131,22 @@ Frontend tests:
 
 ### Constraints
 
-- Reuse `src/frontend/src/services/backendConfiguration.zod.ts` for transport shape validation; do not duplicate that contract in the feature.
+- Reuse `src/frontend/src/services/backendConfiguration.zod.ts` for transport shape validation, but tighten `backendUrl` there to use Zod URL validation instead of a plain string.
 - Keep form-specific rules in `backendSettingsForm.zod.ts`.
-- Mirror backend numeric ranges, enum values, URL semantics, and optional field rules exactly.
+- Mirror backend numeric ranges, enum values, and optional field rules exactly where the backend already provides a clear contract.
+- Use Zod URL validation for `backendUrl` in both the transport schema and the form schema, and record follow-on backend validator hardening so all layers converge on the same URL contract.
 - Prefer shared frontend error contracts/mappers; add feature-specific mapping only if genuinely necessary.
 - Keep API key handling to replacement or retention only.
+- Treat `revokeAuthTriggerSet` as read-only in the frontend and never include it in feature write payloads.
 
 ### Acceptance criteria
 
+- `backendConfiguration.zod.ts` validates `backendUrl` with Zod URL validation at the transport boundary.
 - A dedicated `backendSettingsForm.zod.ts` exists and derives its TypeScript types from the schema.
 - A dedicated mapper converts between backend configuration payloads, form values, and write payloads without duplicating transport logic.
 - Form validation enforces the agreed field rules for `backendUrl`, integer ranges, log-level enum, optional Drive folder ID, and API key conditional requirements.
 - API key handling preserves the stored-key/blank-field semantics described in `SETTINGS_PAGE_LAYOUT.md`.
+- Mapper logic only emits editable fields in the write payload and never sends `hasApiKey`, masked read `apiKey`, `loadError`, or `revokeAuthTriggerSet`.
 - Error mapping uses shared contracts/utilities where possible and only adds backend-settings-specific mapping if unique semantics appear.
 
 ### Required test cases (Red first)
@@ -163,15 +167,16 @@ Frontend tests:
 
 1. `backendSettingsForm.zod.ts` accepts valid form values matching backend ranges and enums.
 2. `backendSettingsForm.zod.ts` rejects invalid URL, integer range, enum, and folder-ID inputs.
-3. API key validation requires a value only when `hasStoredApiKey` is false.
+3. API key validation requires a value only when `hasApiKey` is false.
 4. Mapper logic converts backend masked payloads into form values without leaking masked API key content into the input.
 5. Mapper logic omits `apiKey` from the write payload when a stored key exists and the field is left blank.
 6. Mapper logic includes `apiKey` when a replacement value is entered.
-7. Error mapping uses shared contracts for generic transport/domain failures and only introduces feature-specific mapping when warranted.
+7. Mapper logic never includes `revokeAuthTriggerSet`, `hasApiKey`, or `loadError` in the write payload.
+8. Error mapping uses shared contracts for generic transport/domain failures and only introduces feature-specific mapping when warranted.
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/features/settings/backend/backendSettingsForm.zod.spec.ts src/frontend/src/features/settings/backend/backendSettingsFormMapper.spec.ts src/frontend/src/services/backendConfigurationService.spec.ts`
+- `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
@@ -183,11 +188,12 @@ Frontend tests:
 
 ### Objective
 
-- Implement `useBackendSettings.ts` as the single orchestration point for load, save, state transitions, blocking rules, error mapping, and successful-save re-fetch behaviour.
+- Implement `useBackendSettings.ts` as the single orchestration point for load, save, state transitions, blocking rules, error mapping, React Query-backed read orchestration, and successful-save re-fetch behaviour.
 
 ### Constraints
 
 - Keep all backend interaction inside the hook/service boundary.
+- Use the agreed hybrid data-loading approach: React Query for backend configuration reads, local Ant Design form state for editing, and service-layer writes followed by query-driven refresh.
 - Use the explicit state model from `SETTINGS_PAGE_LAYOUT.md` (`isInitialLoading`, `loadError`, `partialLoadError`, `isSaveBlocked`, `isSaving`, `saveError`, `hasApiKey`).
 - A complete initial load failure must fail fast and surface a top-level `Alert` state.
 - Partial-load warnings must block save without hiding the form.
@@ -197,11 +203,13 @@ Frontend tests:
 ### Acceptance criteria
 
 - `useBackendSettings.ts` owns initial load, save submission, re-fetch after save, and error clearing rules.
+- The feature uses the agreed hybrid model: React Query owns the backend configuration read lifecycle, while the form keeps local edit state until save.
+- `BackendSettingsPanel.tsx` owns the Ant Design `FormInstance` and re-bases form state with `form.setFieldsValue(...)` when the hook publishes fresh values after load or save.
 - The hook consumes `backendConfigurationService.ts` only; no direct transport calls or backend globals are introduced.
 - Hard load failures map to a top-level failure state.
 - Partial-load warnings set a blocked-save state while keeping editable data visible.
 - Save submission uses the smallest safe write payload generated by the mapper.
-- Successful save clears stale save errors, shows success feedback, re-fetches config, and re-bases the form from the fresh payload.
+- Successful save clears stale save errors, shows success feedback, re-fetches config, and re-bases the form from the fresh payload via `form.setFieldsValue(...)`.
 - Save failures preserve current input state and map to persistent user-safe inline feedback.
 
 ### Required test cases (Red first)
@@ -223,12 +231,13 @@ Frontend tests:
 1. Initial load enters `isInitialLoading` and resolves into editable state on success.
 2. Initial hard load failure sets `loadError`, prevents save, and exposes the top-level failure state.
 3. Successful read with backend `loadError` sets `partialLoadError` and `isSaveBlocked` while keeping form data available.
-4. Save submission sets `isSaving`, clears stale save error, and calls the mapper/service correctly.
-5. Successful save triggers `message.success`, re-fetches backend config, and re-bases the form from the returned payload.
+4. Save submission sets `isSaving`, clears stale save error, and calls the mapper/service correctly without moving edit state into shared query cache.
+5. Successful save triggers `message.success`, re-fetches backend config, and re-bases the form from the returned payload via `form.setFieldsValue(...)`.
 6. Domain save failures (`{ success: false, error }`) map to persistent save error state.
 7. Transport/runtime failures map to the shared user-safe error path and keep current form values intact.
 8. API key branch logic behaves correctly for stored-key and no-key states.
 9. Hook state resets appropriately after a successful reload/save.
+10. React Query-backed reads and local form editing remain correctly separated in the hybrid model.
 
 ### Section checks
 
@@ -290,12 +299,12 @@ Frontend tests:
 6. Save button shows loading while save is in flight.
 7. Validation errors are rendered inline and associated with the correct fields.
 8. Submit failure focuses or scrolls to the first invalid field.
-9. API key helper text changes correctly based on `hasStoredApiKey`.
+9. API key helper text changes correctly based on `hasApiKey`.
 10. Boolean and numeric fields bind correctly to Ant Design form state.
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`
+- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
@@ -319,7 +328,7 @@ Frontend tests:
 
 ### Acceptance criteria
 
-- Frontend unit/component tests cover validation, mapping, hook state transitions, rendering, accessibility attributes, and error mapping.
+- Frontend unit/component tests cover validation, mapping, hook state transitions, rendering, accessibility attributes, error mapping, and the agreed hybrid read/edit split.
 - Playwright covers the visible user journey through Settings → Backend settings, including validation, save, blocked-save state, keyboard interaction, and success/failure feedback.
 - Transport-layer tests remain separated by responsibility between frontend service specs and backend API specs.
 - New tests use behaviour-based names rather than action-plan section labels.
@@ -350,6 +359,7 @@ Frontend tests:
    - hard load failure top-level `Alert`
    - keyboard-only data entry
    - inline validation and first-invalid-field focus
+   - visible save-button disabled/loading affordances during blocked and saving states
    - blocked save when partial-load warning exists
    - API key retention with existing stored key
    - API key requirement when no stored key exists
@@ -398,7 +408,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/services/backendConfigurationService.spec.ts src/frontend/src/features/settings/backend/useBackendSettings.spec.ts src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts`
 - `npm run frontend:test:coverage`
 - `npm run frontend:lint`

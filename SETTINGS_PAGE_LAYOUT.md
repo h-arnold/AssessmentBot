@@ -77,13 +77,14 @@ src/frontend/src/
   - handling success and error feedback
 - `backendSettingsForm.zod.ts` should be the canonical frontend validation schema.
 - Ant Design `App.useApp()` requires an `App` provider in the root shell, so the implementation should add that wrapper before the settings feature uses context-aware `message` or `notification`.
+- Use React Query for the backend configuration read path only. Keep form editing local to the panel and perform writes through the existing service layer, followed by a query-driven refresh.
 
 ### Suggested hook state matrix
 
 Use a small explicit state model in `useBackendSettings.ts` so the React flow stays idiomatic and testable:
 
 - `isInitialLoading`
-  - `true` while the first `getBackendConfig()` request is in flight
+  - `true` while the first `getBackendConfig()` request is in flight through the feature's React Query read path
   - renders the initial `Skeleton` state rather than the editable form
 - `loadError`
   - stores the current blocking load failure message when the initial read fails completely
@@ -100,7 +101,7 @@ Use a small explicit state model in `useBackendSettings.ts` so the React flow st
 - `saveError`
   - stores the latest save failure after transport/domain error mapping
   - renders as persistent inline feedback until the next successful save or reload
-- `hasStoredApiKey`
+- `hasApiKey`
   - derived from the read payload and used only for API key UX/validation branching
 
 Suggested transitions:
@@ -109,8 +110,20 @@ Suggested transitions:
 2. `isInitialLoading` → hard failure: show top-level `Alert`, hide or disable the form, fail fast.
 3. successful read with backend `loadError`: show warning `Alert`, render the form, set `isSaveBlocked=true`.
 4. save submit: set `isSaving=true`, clear stale save error, keep load errors intact.
-5. successful save: show `message.success`, then re-fetch current config from the backend and rebase the form from the fresh payload.
+5. successful save: show `message.success`, then re-fetch current config from the backend and rebase the form from the fresh payload with `form.setFieldsValue(...)`.
 6. failed save: set `saveError`, keep the current form values visible, and clear `isSaving`.
+
+### Read/edit ownership model
+
+Use a simple hybrid model for this feature:
+
+- React Query owns backend configuration reads and refreshes
+- `useBackendSettings.ts` adapts the query result into the feature state model
+- `BackendSettingsPanel.tsx` owns the Ant Design `FormInstance` and local edit state
+- when a fresh payload arrives after initial load or successful save, the panel re-bases the form with `form.setFieldsValue(...)`
+- do not introduce a keyed remount or other fallback rebase mechanism in this iteration
+
+This keeps prefetch and query lifecycle support available without moving the user's in-progress edits into shared cache state.
 
 ## Ant Design components to use
 
@@ -330,7 +343,7 @@ Use these layout helpers for spacing and responsive form arrangement.
 | `jsonDbBackupOnInitialise` | `Switch`         | `checked` binding                                     |
 | `jsonDbRootFolderId`       | `Input`          | Optional; validate only when populated                |
 
-`revokeAuthTriggerSet` should be removed from the UI entirely. It is a backend operational flag managed by initialisation routines rather than a user-facing setting.
+`revokeAuthTriggerSet` should be removed from the UI entirely. It is a backend operational flag managed by initialisation routines rather than a user-facing setting, and should be treated as read-only by the frontend.
 
 ## Validation model
 
@@ -348,11 +361,7 @@ The frontend form schema should enforce at least the following.
 
 - required
 - trimmed
-- HTTPS only
-- no whitespace
-- no localhost
-- no IPv4 literal host
-- hostname must be structurally valid
+- must be a valid URL using Zod URL validation
 
 #### `backendAssessorBatchSize`
 
@@ -399,12 +408,18 @@ To keep these layers as consistent as possible:
 
 - reuse the same field names and enum values across all layers
 - mirror backend numeric limits exactly in the form schema
-- mirror the backend URL rules exactly rather than introducing different frontend-only URL semantics
+- use Zod URL validation for `backendUrl` in both the transport schema and the form schema so frontend reads and writes share one URL contract
 - keep form-only concerns, such as `hasApiKey`-driven conditional requirements, out of the transport schema
 - keep transport-only concerns, such as masked read payloads and write result envelopes, out of the form schema
 - prefer shared frontend error contracts and shared transport/domain mapping utilities where the behaviour is generic
 - add a backend-settings-specific error mapper only if this feature introduces genuinely unique error semantics that would make a shared mapper noisy or misleading
 - add mapper tests that prove form values translate cleanly into `BackendConfigWriteInput`
+
+### Backend URL hardening follow-up
+
+The frontend URL contract should move ahead with Zod URL validation for both transport parsing and form validation.
+
+The backend validator should then be hardened in a follow-on task so `Validate.validateUrl(...)` and the configuration manager enforce the same valid-URL contract, with matching backend transport tests.
 
 ### Validation strategy
 
@@ -419,11 +434,11 @@ Validation should happen in three layers:
 ### Read flow
 
 1. `BackendSettingsPanel` mounts.
-2. `useBackendSettings` calls `backendConfigurationService.getBackendConfig()`.
-3. The response is parsed through the existing frontend service schema.
+2. `useBackendSettings` starts the React Query-backed read using `backendConfigurationService.getBackendConfig()`.
+3. The response is parsed through the existing frontend service schema before it is exposed to the feature.
 4. That service reads through `callApi('getBackendConfig')`, which routes via the shared frontend `apiHandler` transport path.
 5. If the request fails completely after `callApi(...)` retry/backoff, the hook fails fast and renders a top-level `Alert`.
-6. If the request succeeds, the hook maps the backend payload into form initial values.
+6. If the request succeeds, the hook maps the backend payload into form values for the panel.
 7. Backend `loadError`, if present in an otherwise valid payload, is rendered as an inline warning `Alert`.
 8. If backend `loadError` is present, saving is blocked until a future successful reload clears that condition.
 
@@ -437,7 +452,7 @@ Validation should happen in three layers:
 6. `backendConfigurationService.setBackendConfig()` is called.
 7. That service writes through `callApi('setBackendConfig', parsedInput)`, which routes via the shared frontend `apiHandler` transport path.
 8. Success uses `message.success`.
-9. After a successful save, the hook immediately re-fetches the current config from the backend and re-bases the form from that fresh payload.
+9. After a successful save, the hook immediately re-fetches the current config from the backend and the panel re-bases the form from that fresh payload with `form.setFieldsValue(...)`.
 10. Failure throws an error from the hook and displays it as an inline `Alert`. `notification.error` should be used only if extra asynchronous context is genuinely needed.
 
 ## API key handling rules
@@ -447,7 +462,7 @@ The API key field needs special handling.
 ### Read
 
 - do not populate the input with the masked backend value
-- use `hasStoredApiKey` (derived from the transport field `hasApiKey`) to determine whether a stored key exists
+- use `hasApiKey` (derived from the transport field `hasApiKey`) to determine whether a stored key exists
 - show masked state only as explanatory helper text or placeholder
 
 ### Write
@@ -455,6 +470,14 @@ The API key field needs special handling.
 - if the user enters a value, send it as the new API key
 - if the user leaves the field blank and a stored key exists, omit `apiKey`
 - explicit API key clearing is out of scope for this UI; support replacement or retention only
+
+### Frontend write payload rules
+
+- only editable frontend fields should be emitted in the write payload
+- `revokeAuthTriggerSet` is read-only and must never be sent from the feature
+- `hasApiKey` and `loadError` are read-only transport fields and must never be sent from the feature
+- masked read `apiKey` values must never be echoed back in writes
+- `apiKey` remains a writable field, but only as an explicit replacement value supplied by the user
 
 ## Error and feedback behaviour
 
@@ -518,6 +541,7 @@ Cover:
 - field rendering from backend data
 - API key masking behaviour
 - API key required state when no stored key exists
+- form rebasing via `form.setFieldsValue(...)` after a successful refresh
 - API key omission when a stored key exists and the field is left blank
 - payload mapping
 - validation logic
