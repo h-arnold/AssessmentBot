@@ -232,7 +232,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/features/settings/backend/useBackendSettings.spec.ts src/frontend/src/services/backendConfigurationService.spec.ts`
+- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
