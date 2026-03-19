@@ -1,6 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
+
+const backendSettingsFeatureEntryText = 'Backend settings feature entry';
+const backendSettingsFeatureEntryRegionLabel = 'Backend settings feature entry';
+
+vi.mock(
+  '../features/settings/backend/BackendSettingsPanel',
+  () => ({
+    BackendSettingsPanel() {
+      return (
+        <div role="region" aria-label={backendSettingsFeatureEntryRegionLabel}>
+          {backendSettingsFeatureEntryText}
+        </div>
+      );
+    },
+  }),
+);
 
 describe('SettingsPage', () => {
   it('renders the shared settings heading and summary copy', () => {
@@ -12,18 +29,18 @@ describe('SettingsPage', () => {
     expect(screen.getByText(pageContent.settings.summary)).toBeInTheDocument();
   });
 
-  it('renders the settings tabs and switches between placeholder panels', () => {
+  it('renders the backend settings feature entry when the tab is selected', () => {
     render(<SettingsPage />);
 
     const classesTab = screen.getByRole('tab', { name: 'Classes' });
     const backendSettingsTab = screen.getByRole('tab', { name: 'Backend settings' });
 
     expect(classesTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('region', { name: 'Classes panel' })).toBeInTheDocument();
 
     fireEvent.click(backendSettingsTab);
 
     expect(backendSettingsTab).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('region', { name: 'Backend settings panel' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: backendSettingsFeatureEntryRegionLabel })).toBeInTheDocument();
+    expect(screen.getByText(backendSettingsFeatureEntryText)).toBeInTheDocument();
   });
 });

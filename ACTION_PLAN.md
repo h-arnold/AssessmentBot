@@ -75,6 +75,31 @@ For each section below:
 
 ## Section 1 — Frontend entry wiring and shell prerequisites
 
+### Delivery status
+
+- Current phase: Complete
+- Status: Complete
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
+
+### Review findings log
+
+- Red review clean. The reviewer confirmed the new `SettingsPage` and `AppThemeShell` tests are correctly targeted at the missing Section 1 wiring. The temporary React `act(...)` warning in the shell spec is acceptable during red and should only be revisited if it remains once the shell wrapper is implemented.
+- Green review clean. The reviewer confirmed the backend settings tab now mounts the feature entry component, the shell now provides Ant Design `App` context at the correct level, and `App.tsx` plus `SettingsPage.tsx` remain composition-only.
+
+### Verification log
+
+- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/AppThemeShell.spec.tsx` passed.
+- `npm run frontend:lint` passed.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+
 ### Objective
 
 - Replace the backend settings placeholder with a real feature entry point, add the Ant Design `App` shell wrapper required for `App.useApp()`, and add the shell prerequisites needed for context-aware Ant Design feedback.
@@ -125,6 +150,10 @@ Frontend tests:
 - Add `@remarks` to any new Settings-page composition entry point that simply wires in `BackendSettingsPanel`, clarifying that `SettingsPage.tsx` is intentionally kept as a composition layer with no backend orchestration.
 
 ### Implementation notes / deviations / follow-up
+
+- Complete.
+- No deviation from the plan in this section.
+- Introduced a minimal `BackendSettingsPanel` entry component only; form behaviour and backend orchestration remain for later sections.
 
 ---
 
