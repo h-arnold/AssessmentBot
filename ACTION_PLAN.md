@@ -358,7 +358,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/services/backendConfigurationService.spec.ts src/frontend/src/features/settings/backend/useBackendSettings.spec.ts src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
