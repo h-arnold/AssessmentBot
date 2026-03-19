@@ -387,6 +387,43 @@ Frontend tests:
 
 ## Section 4 — Backend settings panel UI and accessibility
 
+### Delivery status
+
+- Current phase: Complete
+- Status: Complete
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [ ] push completed
+
+### Review findings log
+
+- Red review clean. The reviewer confirmed `BackendSettingsPanel.spec.tsx` is well scoped to the planned load states, field rendering, validation/focus behaviour, API key helper copy, and save-state affordances, and that the suite fails only because the current panel still renders the placeholder card.
+- Green review initially found a user-visible validation bug in `BackendSettingsPanel.tsx`: controlled inline field errors were never cleared after the field became valid or after the form rebased from fresh backend values. The panel now clears those controlled errors on valid field changes and on form rebase, and the missing `@remarks` follow-through was added for the helper-copy and submit-failure paths.
+- Green review clean. The reviewer confirmed the stale inline-error problem is resolved, the panel remains hook-driven and declarative, and the Section 4 implementation now satisfies the required UI and accessibility behaviour.
+
+### Verification log
+
+- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx` failed as intended during the red phase, with 11 of 11 tests failing because the planned Section 4 panel UI is not implemented yet.
+- `npm run frontend:lint` completed with existing warnings only and no errors during the red phase.
+- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed after the Section 4 implementation and stale-error fix, with 10 tests passing.
+- `npm run frontend:lint` completed with warnings only and no errors after the Section 4 implementation. Remaining warnings are the pre-existing schema warnings in `backendSettingsForm.zod.ts` and `backendConfiguration.zod.ts`.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the Section 4 implementation.
+
+### Delivery artefacts
+
+- Branch: `feat/SettingsPage`
+- Code commit SHA: `edac4d2`
+- Code commit message: `feat: add backend settings panel ui`
+- Plan commit SHA: pending
+- Plan commit message: pending
+- Push confirmation: pending
+
 ### Objective
 
 - Build the presentational backend settings panel with sectioned Ant Design cards, clear labels, correct field bindings, and accessible failure/success feedback.
@@ -451,6 +488,10 @@ Frontend tests:
 - Add `@remarks` to any form-submit failure handler, clarifying why `scrollToFirstError={{ focus: true }}` is required for accessibility and browser-visible validation behaviour.
 
 ### Implementation notes / deviations / follow-up
+
+- Complete.
+- No behavioural deviation from the plan in this section.
+- Added a small `matchMedia` shim to the shared frontend test setup so Ant Design responsive observers behave consistently in jsdom-backed component tests.
 
 ---
 
