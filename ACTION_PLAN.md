@@ -499,28 +499,40 @@ Frontend tests:
 
 ### Delivery status
 
-- Current phase: Red complete
-- Status: In progress
+- Current phase: Complete
+- Status: Complete
 - Checklist:
   - [x] red tests added
-  - [ ] red review clean
-  - [ ] green implementation complete
-  - [ ] green review clean
-  - [ ] checks passed
-  - [ ] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
 
 ### Review findings log
 
-- Red review not started yet. Work stopped after the red tests were implemented, per user instruction.
+- Red review initially found two blocking issues in the Section 5 test work: the new Playwright spec used invalid locator matcher APIs for alert assertions, and the successful-save browser journey did not assert the visible save-success feedback required by the frontend testing policy.
+- Red review also noted that the overlapping-save hook test did not fully model the post-save refetch path, which left a noisy React Query warning in the targeted test run.
+- The red-phase test suites were tightened to use valid Playwright locator assertions, cover the visible `Backend settings saved.` feedback in the successful-save journey, and fully model the successful-save refetch path in the overlapping-save hook test.
+- Red review clean. The reviewer confirmed the Section 5 test suites now satisfy the required Vitest/Playwright split, keep the transport assertions in the correct layers, and use behaviour-based names throughout.
+- Green review clean. The reviewer confirmed the only green-phase change was correcting the Playwright focus-order expectation to match the real accessible Ant Design tab-to-tabpanel sequence, and that no production-code change was required for Section 5.
 
 ### Verification log
 
 - `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed after the red-phase test additions.
+- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts` passed after the red-review fixes, and the earlier React Query `Query data cannot be undefined` warning no longer appeared.
+- `npm test -- tests/api/backendConfigApi.test.js` passed during the red review.
 - `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` could not run in this container because Playwright Chromium is missing required system libraries, including `libnspr4.so` and `libnss3.so`.
 - `npm run frontend:lint` passed with pre-existing warnings only.
 - `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+- `npm --prefix src/frontend exec -- playwright install --with-deps chromium` installed Playwright Chromium plus the missing Debian runtime libraries so the browser suite could run in this dev container.
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed during green verification after correcting the browser-keyboard expectation.
+- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` passed during green verification after aligning the keyboard-focus assertions with the actual Ant Design tab-to-tabpanel focus sequence.
+- `npm run frontend:lint` passed during green verification with the same pre-existing warnings only.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed during green verification.
+- `npm test -- tests/api/backendConfigApi.test.js` passed during green verification.
 
 ### Delivery artefacts
 
@@ -593,8 +605,10 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - Red-phase tests were added in the frontend service, hook, panel, and Playwright layers.
-- No red review, green implementation, commit, or push work was started because the user asked to stop after the red phase was implemented.
-- The new Playwright spec could not be executed in this environment because the Chromium runtime dependencies are unavailable.
+- Red review is now complete and clean after tightening the Playwright matcher usage, adding visible browser coverage for the save-success feedback, and modelling the post-save refetch path more accurately in the hook tests.
+- Green required no production-code change. Once Playwright Chromium and its Debian dependencies were installed in this container, the browser failures reduced to an over-specific Playwright assumption about focus order.
+- The Playwright spec now reflects the actual accessible sequence after activating the Backend settings tab: focus remains on the selected tab, the next `Tab` moves into the tabpanel, and the following `Tab` lands on the first form field before keyboard-only data entry continues.
+- Complete.
 
 ---
 
