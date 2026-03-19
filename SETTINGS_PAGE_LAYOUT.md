@@ -269,7 +269,7 @@ Use `Alert` for persistent inline messages.
 
 **Planned uses**
 
-- top-of-form warning when `loadError` is returned from the `backendConfigurationService.getBackendConfig()` read path
+- top-of-form warning when the backend returns `loadError` in an otherwise successful `getBackendConfig()` payload
 - save failure summaries that need to remain visible while the user corrects issues
 - optional informational note about API key behaviour
 
@@ -324,8 +324,7 @@ Use these layout helpers for spacing and responsive form arrangement.
 
 **Planned layout approach**
 
-- two columns for wider screens where appropriate
-- stacked layout on narrower screens
+- stacked section cards in a single column for this iteration
 - action row aligned consistently beneath the section cards
 
 ## Field-to-component mapping
@@ -504,8 +503,8 @@ Keep raw technical details out of user-facing copy. Any developer diagnostics sh
 
 ### Error mapping recommendation
 
-- transport or runtime failures should throw from the hook and be mapped to user-safe inline error copy in the component
-- backend `{ success: false, error }` save responses should also be treated as failures and surfaced through the same inline error path
+- transport or runtime failures should be mapped inside `useBackendSettings.ts` into user-safe load/save state that the panel renders via `Alert`
+- backend `{ success: false, error }` save responses should also be treated as failures and surfaced through the same hook-owned inline error path
 - technical details such as request identifiers or backend error codes should stay in logs rather than the rendered UI
 - because the feature uses visible inline feedback, the error state should persist until the next successful load or save clears it
 

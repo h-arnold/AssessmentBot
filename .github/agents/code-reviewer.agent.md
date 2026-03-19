@@ -131,6 +131,7 @@ Frontend E2E tests (Playwright) should be run when reviewing integration-level c
 ```bash
 npm run frontend:test:e2e
 ```
+If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
 
 **Builder**:
 ```bash
@@ -184,6 +185,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] No imports from `src/backend/`.
 - [ ] `@ant-design/v5-patch-for-react-19` patch import present in entrypoint if modified.
 - [ ] No CDN-dependent runtime assets; assets must be inlineable by the builder.
+- [ ] Playwright E2E has passed for any user-visible interaction or browser integration change.
 
 ### Builder Only
 - [ ] `BuildStageError` used with correct `BuildStageId` for pipeline failures.

@@ -1,5 +1,6 @@
 import { Card } from 'antd';
 import type { TabsProps } from 'antd';
+import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { TabbedPageSection } from './TabbedPageSection';
 import { pageContent } from './pageContent';
 
@@ -22,7 +23,11 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
 const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
   key,
   label,
-  children: <SettingsPlaceholderPanel label={label} />,
+  children: key === 'backend-settings' ? (
+    <BackendSettingsPanel />
+  ) : (
+    <SettingsPlaceholderPanel label={label} />
+  ),
 })) satisfies NonNullable<TabsProps['items']>;
 
 /**
@@ -37,6 +42,10 @@ function SettingsPlaceholderPanel({ label }: Readonly<{ label: string }>) {
 
 /**
  * Renders the settings page with reusable Ant Design tabs for each section.
+ *
+ * @remarks
+ * `SettingsPage.tsx` is intentionally kept as a composition layer and wires the backend tab
+ * directly to `BackendSettingsPanel` without introducing backend orchestration here.
  *
  * @returns {JSX.Element} The settings page.
  */

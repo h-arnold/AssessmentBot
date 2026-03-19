@@ -14,6 +14,7 @@ import {
   navigationItems,
   type AppNavigationKey,
 } from './navigation/appNavigation';
+import { createGoogleScriptRunApiHandlerMock } from './test/googleScriptRunHarness';
 
 const checkingAuthorisationStatusText = 'Checking authorisation status...';
 const applicationTitleText = appBreadcrumbBaseLabel;
@@ -76,50 +77,40 @@ function dispatchMockTransportResponse(
  * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
 function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
-  let successHandler: ((payload: unknown) => void) | undefined;
-  let failureHandler: ((error: unknown) => void) | undefined;
   const methodCallCounts = new Map<string, number>();
 
-  const runMock = {
-    withSuccessHandler(handler: (payload: unknown) => void) {
-      successHandler = handler;
-      return runMock;
-    },
-    withFailureHandler(handler: (error: unknown) => void) {
-      failureHandler = handler;
-      return runMock;
-    },
-    apiHandler(request: unknown) {
-      const method = (request as { method?: unknown })?.method;
+  const runMock = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+    const { failureHandler, successHandler } = callbacks;
 
-      if (typeof method !== 'string') {
-        dispatchMockTransportResponse(
-          { transportFailure: new Error('Invalid transport request payload.') },
-          failureHandler,
-          successHandler
-        );
-        return;
-      }
+    const method = (request as { method?: unknown })?.method;
 
-      methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
-      const response = responsesByMethod[method];
+    if (typeof method !== 'string') {
+      dispatchMockTransportResponse(
+        { transportFailure: new Error('Invalid transport request payload.') },
+        failureHandler,
+        successHandler
+      );
+      return;
+    }
 
-      if (response === undefined) {
-        dispatchMockTransportResponse(
-          { transportFailure: new Error(`No mocked response configured for method: ${method}`) },
-          failureHandler,
-          successHandler
-        );
-        return;
-      }
+    methodCallCounts.set(method, (methodCallCounts.get(method) ?? 0) + 1);
+    const response = responsesByMethod[method];
 
-      if (response === 'pending') {
-        return;
-      }
+    if (response === undefined) {
+      dispatchMockTransportResponse(
+        { transportFailure: new Error(`No mocked response configured for method: ${method}`) },
+        failureHandler,
+        successHandler
+      );
+      return;
+    }
 
-      dispatchMockTransportResponse(response, failureHandler, successHandler);
-    },
-  };
+    if (response === 'pending') {
+      return;
+    }
+
+    dispatchMockTransportResponse(response, failureHandler, successHandler);
+  });
 
   (globalThis as { google?: unknown }).google = {
     script: {

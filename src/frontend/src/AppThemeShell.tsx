@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd';
+import { App as AntdApp, ConfigProvider, theme } from 'antd';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from './AppShell';
@@ -49,16 +49,15 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
-/**
- * Owns shell theme state outside `App.tsx` and applies the matching Ant Design algorithm.
- */
-/**
- * Owns shell theme state outside `App.tsx` and applies the matching Ant Design algorithm.
- */
 type AppThemeShellProperties = Readonly<{ dashboardContent?: ReactNode }>;
 
 /**
  * Theme-owning wrapper that configures Ant Design tokens and algorithms.
+ *
+ * @remarks
+ * The Ant Design `App` provider must live at the application shell so descendants can call
+ * `App.useApp()` for context-aware `message` and `notification` feedback in the backend settings
+ * feature. Keeping it here avoids burying the provider inside the feature subtree.
  *
  * @param {AppThemeShellProperties} properties Theme shell configuration values.
  * @returns {JSX.Element} The themed application shell.
@@ -81,11 +80,13 @@ export function AppThemeShell(properties: AppThemeShellProperties) {
 
   return (
     <ConfigProvider theme={themeConfig}>
-      <AppShell
-        dashboardContent={dashboardContent}
-        isDarkMode={isDarkMode}
-        onThemeModeChange={setIsDarkMode}
-      />
+      <AntdApp>
+        <AppShell
+          dashboardContent={dashboardContent}
+          isDarkMode={isDarkMode}
+          onThemeModeChange={setIsDarkMode}
+        />
+      </AntdApp>
     </ConfigProvider>
   );
 }

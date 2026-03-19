@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createGoogleScriptRunApiHandlerMock, type GoogleScriptRunApiHandler } from '../test/googleScriptRunHarness';
 
 type ApiSuccessEnvelope<TData> = {
     ok: true;
@@ -18,16 +19,14 @@ type ApiErrorEnvelope = {
     meta?: Record<string, unknown>;
 };
 
-type GoogleScriptRunWithApiHandler = {
-    withSuccessHandler: (handler: (response: unknown) => void) => GoogleScriptRunWithApiHandler;
-    withFailureHandler: (handler: (error: unknown) => void) => GoogleScriptRunWithApiHandler;
-    apiHandler: (request: unknown) => void;
-};
-
 type GoogleScript = {
     script?: {
-        run?: GoogleScriptRunWithApiHandler;
+        run?: unknown;
     };
+};
+
+type GoogleScriptRunWithoutApiHandler = Omit<GoogleScriptRunApiHandler, 'apiHandler'> & {
+    apiHandler: undefined;
 };
 
 type CallApi = <TResponse>(method: string, parameters?: unknown) => Promise<TResponse>;
@@ -48,6 +47,20 @@ function setGoogle(value: GoogleScript): void {
  */
 function clearGoogle(): void {
     delete (globalThis as Record<string, unknown>).google;
+}
+
+/**
+ * Creates a mock runner shape that exposes handler registration but omits `apiHandler`.
+ *
+ * @returns {GoogleScriptRunWithoutApiHandler} The runner-like shape for missing-apiHandler tests.
+ */
+function createRunnerWithoutApiHandler(): GoogleScriptRunWithoutApiHandler {
+    return {
+        ...createGoogleScriptRunApiHandlerMock(() => {
+            return;
+        }),
+        apiHandler: undefined,
+    };
 }
 
 const apiServiceModulePath: string = './apiService';
@@ -71,7 +84,6 @@ type RunnerHarnessResponse =
 
 const SECOND_ATTEMPT_CALL_COUNT = 2;
 const MAX_ATTEMPTS = 4;
-
 /**
  * Builds a retriable RATE_LIMITED envelope for retry-path tests.
  *
@@ -90,57 +102,27 @@ function makeRateLimitedEnvelope(requestId: string): ApiErrorEnvelope {
  * Creates a controllable `google.script.run` harness for unit tests.
  *
  * @param {RunnerHarnessResponse} response - The response shape to replay through the harness.
- * @returns {{ runner: GoogleScriptRunWithApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The runner harness and its spy.
+ * @returns {{ runner: GoogleScriptRunApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The runner harness and its spy.
  */
 function createGoogleScriptRunHarness(response: RunnerHarnessResponse): {
-    runner: GoogleScriptRunWithApiHandler;
+    runner: GoogleScriptRunApiHandler;
     apiHandlerSpy: ReturnType<typeof vi.fn>;
 } {
-    let successHandler: ((value: unknown) => void) | undefined;
-    let failureHandler: ((error: unknown) => void) | undefined;
-
     const apiHandlerSpy = vi.fn();
 
-    const runner: GoogleScriptRunWithApiHandler = {
-        /**
-         * Registers the success callback for the harness.
-         *
-         * @param {(responseValue: unknown) => void} handler - The success callback.
-         * @returns {GoogleScriptRunWithApiHandler} The harness runner.
-         */
-        withSuccessHandler(handler: (responseValue: unknown) => void) {
-            successHandler = handler;
-            return runner;
-        },
-        /**
-         * Registers the failure callback for the harness.
-         *
-         * @param {(error: unknown) => void} handler - The failure callback.
-         * @returns {GoogleScriptRunWithApiHandler} The harness runner.
-         */
-        withFailureHandler(handler: (error: unknown) => void) {
-            failureHandler = handler;
-            return runner;
-        },
-        /**
-         * Dispatches the request into the harness spy.
-         *
-         * @param {unknown} request - The request payload to dispatch.
-         * @returns {void} Nothing.
-         */
-        apiHandler(request: unknown) {
-            apiHandlerSpy(request);
+    const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+        apiHandlerSpy(request);
 
-            queueMicrotask(() => {
-                if (response.kind === 'success') {
-                    successHandler?.(response.payload);
-                    return;
-                }
+        queueMicrotask(() => {
+            if (response.kind === 'success') {
+                callbacks.successHandler?.(response.payload);
+                return;
+            }
 
-                failureHandler?.(response.payload);
-            });
-        },
-    };
+            callbacks.failureHandler?.(response.payload);
+        });
+    });
+
     return {
         runner,
         apiHandlerSpy,
@@ -195,15 +177,7 @@ describe('apiService.callApi', () => {
 
         setGoogle({
             script: {
-                run: {
-                    withSuccessHandler() {
-                        return this as GoogleScriptRunWithApiHandler;
-                    },
-                    withFailureHandler() {
-                        return this as GoogleScriptRunWithApiHandler;
-                    },
-                    apiHandler: undefined as unknown as (request: unknown) => void,
-                },
+                run: createRunnerWithoutApiHandler(),
             },
         });
 
@@ -313,6 +287,65 @@ describe('apiService.callApi', () => {
             },
         });
     });
+
+    it('keeps concurrent responses bound to the correct request handlers', async () => {
+        const callApi = await loadCallApi();
+
+        const alphaEnvelope: ApiSuccessEnvelope<{ label: string }> = {
+            ok: true,
+            requestId: 'req-concurrent-alpha',
+            data: { label: 'alpha' },
+        };
+        const betaEnvelope: ApiSuccessEnvelope<{ label: string }> = {
+            ok: true,
+            requestId: 'req-concurrent-beta',
+            data: { label: 'beta' },
+        };
+
+        let releaseAlphaResponse: (() => void) | undefined;
+        let releaseBetaResponse: (() => void) | undefined;
+
+        const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+            const method = (request as { method?: unknown })?.method;
+
+            if (method === 'loadAlpha') {
+                releaseAlphaResponse = () => {
+                    callbacks.successHandler?.(alphaEnvelope);
+                };
+                return;
+            }
+
+            if (method === 'loadBeta') {
+                releaseBetaResponse = () => {
+                    callbacks.successHandler?.(betaEnvelope);
+                };
+                return;
+            }
+
+            callbacks.failureHandler?.(new Error(`Unexpected method: ${String(method)}`));
+        });
+
+        setGoogle({
+            script: {
+                run: runner,
+            },
+        });
+
+        const alphaPromise = callApi<{ label: string }>('loadAlpha');
+        const betaPromise = callApi<{ label: string }>('loadBeta');
+
+        if (releaseAlphaResponse === undefined || releaseBetaResponse === undefined) {
+            throw new Error('Expected both concurrent responses to be registered before release.');
+        }
+
+        releaseBetaResponse();
+        releaseAlphaResponse();
+
+        await expect(Promise.all([alphaPromise, betaPromise])).resolves.toEqual([
+            { label: 'alpha' },
+            { label: 'beta' },
+        ]);
+    });
 });
 
 // ── Helpers for retry policy tests ───────────────────────────────────────────
@@ -323,42 +356,30 @@ describe('apiService.callApi', () => {
  * repeated if the sequence is exhausted.
  *
  * @param {RunnerHarnessResponse[]} responses - The ordered responses to replay.
- * @returns {{ runner: GoogleScriptRunWithApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The sequential harness and its spy.
+ * @returns {{ runner: GoogleScriptRunApiHandler; apiHandlerSpy: ReturnType<typeof vi.fn>; }} The sequential harness and its spy.
  */
 function createSequentialHarness(responses: RunnerHarnessResponse[]): {
-    runner: GoogleScriptRunWithApiHandler;
+    runner: GoogleScriptRunApiHandler;
     apiHandlerSpy: ReturnType<typeof vi.fn>;
 } {
     let callCount = 0;
-    let successHandler: ((value: unknown) => void) | undefined;
-    let failureHandler: ((error: unknown) => void) | undefined;
 
     const apiHandlerSpy = vi.fn();
 
-    const runner: GoogleScriptRunWithApiHandler = {
-        withSuccessHandler(handler: (responseValue: unknown) => void) {
-            successHandler = handler;
-            return runner;
-        },
-        withFailureHandler(handler: (error: unknown) => void) {
-            failureHandler = handler;
-            return runner;
-        },
-        apiHandler(request: unknown) {
-            apiHandlerSpy(request);
+    const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+        apiHandlerSpy(request);
 
-            const response = responses[Math.min(callCount, responses.length - 1)];
-            callCount++;
+        const response = responses[Math.min(callCount, responses.length - 1)];
+        callCount++;
 
-            queueMicrotask(() => {
-                if (response.kind === 'success') {
-                    successHandler?.(response.payload);
-                    return;
-                }
-                failureHandler?.(response.payload);
-            });
-        },
-    };
+        queueMicrotask(() => {
+            if (response.kind === 'success') {
+                callbacks.successHandler?.(response.payload);
+                return;
+            }
+            callbacks.failureHandler?.(response.payload);
+        });
+    });
 
     return { runner, apiHandlerSpy };
 }

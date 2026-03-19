@@ -1,5 +1,6 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { getAuthorisationStatus } from '../services/authService';
+import { getBackendConfig } from '../services/backendConfigurationService';
 import type { ClassPartial } from '../services/classPartialsService';
 import { getABClassPartials } from '../services/classPartialsService';
 import { getCohorts, getYearGroups } from '../services/referenceDataService';
@@ -26,6 +27,18 @@ export function getClassPartialsQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.classPartials(),
     queryFn: getABClassPartials,
+  });
+}
+
+/**
+ * Returns the shared backend-configuration query definition.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared backend-configuration query options.
+ */
+export function getBackendConfigQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.backendConfig(),
+    queryFn: getBackendConfig,
   });
 }
 

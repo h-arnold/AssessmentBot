@@ -27,6 +27,29 @@ npm run frontend:test:e2e
 npm run frontend:test:coverage
 ```
 
+## Playwright execution
+
+Before the first Playwright run on a fresh machine, dev container, or CI image, install Chromium and its required system dependencies once:
+
+```bash
+npm --prefix src/frontend exec -- playwright install --with-deps chromium
+```
+
+Use the non-interactive Playwright command as the pass/fail gate:
+
+```bash
+npm run frontend:test:e2e
+```
+
+If Chromium or its system dependencies are later missing or have been removed, rerun the install command and then rerun the suite:
+
+```bash
+npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm run frontend:test:e2e
+```
+
+Use `--ui` or `--headed --debug` only for interactive diagnosis. The required completion signal is a clean `npm run frontend:test:e2e` run.
+
 Target a specific unit test pattern:
 
 ```bash
@@ -153,9 +176,19 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 **Important:** for frontend logging assertions, spy on browser console endpoints (`console.debug/info/warn/error`) rather than reading implementation-specific globals.
 
 - Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
+- Frontend `apiHandler` mock helper: `src/frontend/src/test/googleScriptRunHarness.ts`.
 - Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
 
 When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec.
+
+### Mandatory `apiHandler` mock rule
+
+When a frontend test needs to mock `google.script.run.apiHandler`, you must use the shared helper in `src/frontend/src/test/googleScriptRunHarness.ts`.
+
+- **Vitest / jsdom tests:** use `createGoogleScriptRunApiHandlerMock(...)`.
+- **Playwright browser init scripts:** inline `googleScriptRunApiHandlerFactorySource` inside `page.addInitScript(...)`.
+
+Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared runner object or store handlers on shared mutable state. Each mocked call must model GAS-style per-call callback isolation so overlapping requests cannot overwrite one another's success or failure handlers.
 
 ## Current Structure
 
