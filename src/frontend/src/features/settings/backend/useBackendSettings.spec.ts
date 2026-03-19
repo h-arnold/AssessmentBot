@@ -332,10 +332,12 @@ describe('useBackendSettings', () => {
     it('ignores additional save requests while the first save is still in flight', async () => {
         const pendingSaveResult = createDeferred<BackendConfigWriteResult>();
 
-        getBackendConfigMock.mockResolvedValueOnce(baseBackendConfig);
-        mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(
-            baseStoredKeyFormValues
-        );
+        getBackendConfigMock
+            .mockResolvedValueOnce(baseBackendConfig)
+            .mockResolvedValueOnce(baseBackendConfig);
+        mapBackendConfigToBackendSettingsFormValuesMock
+            .mockReturnValueOnce(baseStoredKeyFormValues)
+            .mockReturnValueOnce(baseStoredKeyFormValues);
         mapBackendSettingsFormValuesToBackendConfigWriteInputMock.mockReturnValueOnce(
             baseWriteInputWithoutApiKey
         );
@@ -373,7 +375,12 @@ describe('useBackendSettings', () => {
         });
 
         await waitFor(() => {
-            expect(getCurrentState().isSaving).toBe(false);
+            expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
+            expect(getCurrentState()).toMatchObject({
+                isSaving: false,
+                saveError: null,
+                backendSettingsFormValues: baseStoredKeyFormValues,
+            });
         });
     });
 

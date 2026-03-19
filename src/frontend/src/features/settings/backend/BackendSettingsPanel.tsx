@@ -128,9 +128,7 @@ function getApiKeyHelperCopy(hasApiKey: boolean): string {
  * @param {string | undefined} fieldErrorMessage The current field error message.
  * @returns {'error' | undefined} The Ant Design validation state.
  */
-function getFieldValidateStatus(
-  fieldErrorMessage: string | undefined
-): 'error' | undefined {
+function getFieldValidateStatus(fieldErrorMessage: string | undefined): 'error' | undefined {
   return fieldErrorMessage === undefined ? undefined : 'error';
 }
 
@@ -264,28 +262,28 @@ export function BackendSettingsPanel() {
       hasApiKey,
     } satisfies BackendSettingsForm;
 
-  const validationResult = BackendSettingsFormSchema.safeParse(formValues);
-  if (!validationResult.success) {
-    setBackendSettingsFieldErrors(
-      form,
-      validationResult.error.issues.flatMap((issue) => {
-        const [fieldName] = issue.path;
+    const validationResult = BackendSettingsFormSchema.safeParse(formValues);
+    if (!validationResult.success) {
+      setBackendSettingsFieldErrors(
+        form,
+        validationResult.error.issues.flatMap((issue) => {
+          const [fieldName] = issue.path;
 
-        if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
-          return [];
-        }
+          if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
+            return [];
+          }
 
-        return [
-          {
-            fieldName: fieldName as BackendSettingsFieldName,
-            message: issue.message,
-          },
-        ];
-      }),
-      setFieldErrorMessages
-    );
-    return;
-  }
+          return [
+            {
+              fieldName: fieldName as BackendSettingsFieldName,
+              message: issue.message,
+            },
+          ];
+        }),
+        setFieldErrorMessages
+      );
+      return;
+    }
 
     clearBackendSettingsFieldErrors(form, backendSettingsFieldNames, setFieldErrorMessages);
 
@@ -350,21 +348,14 @@ export function BackendSettingsPanel() {
     const fieldNamesToClear = validationResult.success
       ? changedFieldNames
       : changedFieldNames.filter(
-          (fieldName) =>
-            !validationResult.error.issues.some((issue) => issue.path[0] === fieldName)
+          (fieldName) => !validationResult.error.issues.some((issue) => issue.path[0] === fieldName)
         );
 
     clearBackendSettingsFieldErrors(form, fieldNamesToClear, setFieldErrorMessages);
   };
 
   if (loadError !== null) {
-    return (
-      <Alert
-        title={loadError}
-        showIcon
-        type="error"
-      />
-    );
+    return <Alert title={loadError} showIcon type="error" />;
   }
 
   if (isInitialLoading) {
@@ -378,21 +369,9 @@ export function BackendSettingsPanel() {
   return (
     <Card className="settings-tab-panel" role="region" aria-label="Backend settings panel">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
-        {partialLoadError !== null && (
-          <Alert
-            title={partialLoadError}
-            showIcon
-            type="warning"
-          />
-        )}
+        {partialLoadError !== null && <Alert title={partialLoadError} showIcon type="warning" />}
 
-        {saveError !== null && (
-          <Alert
-            title={saveError}
-            showIcon
-            type="error"
-          />
-        )}
+        {saveError !== null && <Alert title={saveError} showIcon type="error" />}
 
         <Form<BackendSettingsForm>
           form={form}
@@ -421,10 +400,7 @@ export function BackendSettingsPanel() {
                 <Input.Password autoComplete="new-password" />
               </Form.Item>
 
-              <Text
-                type="secondary"
-                style={{ display: 'block', marginBottom: 24, marginTop: -16 }}
-              >
+              <Text type="secondary" style={{ display: 'block', marginBottom: 24, marginTop: -16 }}>
                 {getApiKeyHelperCopy(hasApiKey)}
               </Text>
 
@@ -480,10 +456,7 @@ export function BackendSettingsPanel() {
                   'slidesFetchBatchSize'
                 )}
                 validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'slidesFetchBatchSize'
-                  )
+                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'slidesFetchBatchSize')
                 )}
                 rules={[
                   {
@@ -506,10 +479,7 @@ export function BackendSettingsPanel() {
                   'daysUntilAuthRevoke'
                 )}
                 validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'daysUntilAuthRevoke'
-                  )
+                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'daysUntilAuthRevoke')
                 )}
                 rules={[
                   {
@@ -534,10 +504,7 @@ export function BackendSettingsPanel() {
                   'jsonDbMasterIndexKey'
                 )}
                 validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'jsonDbMasterIndexKey'
-                  )
+                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbMasterIndexKey')
                 )}
                 rules={[
                   {
@@ -560,10 +527,7 @@ export function BackendSettingsPanel() {
                   'jsonDbLockTimeoutMs'
                 )}
                 validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'jsonDbLockTimeoutMs'
-                  )
+                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbLockTimeoutMs')
                 )}
                 rules={[
                   {
@@ -609,15 +573,9 @@ export function BackendSettingsPanel() {
               <Form.Item
                 label="JSON DB root folder ID"
                 name="jsonDbRootFolderId"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'jsonDbRootFolderId'
-                )}
+                help={getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbRootFolderId')}
                 validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'jsonDbRootFolderId'
-                  )
+                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbRootFolderId')
                 )}
                 rules={[
                   {

@@ -3,21 +3,21 @@ import type { BackendConfig, BackendConfigWriteResult } from '../src/services/ba
 
 type BackendApiResponseScenario = Readonly<
   | {
-      kind: 'success';
-      data: unknown;
-      delayMs?: number;
-    }
+    kind: 'success';
+    data: unknown;
+    delayMs?: number;
+  }
   | {
-      kind: 'transportFailure';
-      message: string;
-      delayMs?: number;
-    }
+    kind: 'transportFailure';
+    message: string;
+    delayMs?: number;
+  }
   | {
-      kind: 'failureEnvelope';
-      code?: string;
-      message: string;
-      delayMs?: number;
-    }
+    kind: 'failureEnvelope';
+    code?: string;
+    message: string;
+    delayMs?: number;
+  }
 >;
 
 type BackendSettingsRuntimeScenario = Readonly<{
