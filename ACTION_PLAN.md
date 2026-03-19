@@ -119,6 +119,11 @@ Frontend tests:
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
+### Required `@remarks` JSDoc follow-through
+
+- Add `@remarks` to the shell/root component or wrapper introduced for Ant Design `App` support, explaining that `App.useApp()` is required for context-aware `message`/`notification` usage inside the backend settings feature and therefore the provider must live at the application shell rather than inside the feature subtree.
+- Add `@remarks` to any new Settings-page composition entry point that simply wires in `BackendSettingsPanel`, clarifying that `SettingsPage.tsx` is intentionally kept as a composition layer with no backend orchestration.
+
 ### Implementation notes / deviations / follow-up
 
 ---
@@ -179,6 +184,15 @@ Frontend tests:
 - `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Required `@remarks` JSDoc follow-through
+
+- Add `@remarks` to `backendSettingsForm.zod.ts` documenting why `backendUrl` is normalised by trimming before validation and why the frontend now uses Zod URL validation even though backend hardening is tracked as follow-up work.
+- Add `@remarks` to the mapper function(s) in `backendSettingsFormMapper.ts` that handle API key and write-payload shaping, explaining:
+  - why masked read `apiKey` values are never echoed back
+  - why blank `apiKey` means retention when `hasApiKey` is true
+  - why `revokeAuthTriggerSet`, `hasApiKey`, and `loadError` are excluded from writes
+- Add `@remarks` to any feature-specific error-mapping helper introduced here, clarifying why shared transport/domain mapping is preferred and when a backend-settings-specific mapper is justified.
 
 ### Implementation notes / deviations / follow-up
 
@@ -245,6 +259,12 @@ Frontend tests:
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
+### Required `@remarks` JSDoc follow-through
+
+- Add `@remarks` to `useBackendSettings.ts` documenting the chosen hybrid architecture: React Query owns backend-configuration reads/refresh, while the Ant Design form keeps local edit state so in-progress edits are not moved into shared query cache.
+- Add `@remarks` to the hook method(s) that publish fresh values after load/save, explaining why rebasing is done by the panel via `form.setFieldsValue(...)` rather than relying on `initialValues` or a keyed remount.
+- Add `@remarks` to any save handler or blocked-save guard, clarifying why partial-load warnings disable save while keeping the form visible instead of introducing a separate recovery workflow.
+
 ### Implementation notes / deviations / follow-up
 
 ---
@@ -307,6 +327,12 @@ Frontend tests:
 - `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Required `@remarks` JSDoc follow-through
+
+- Add `@remarks` to `BackendSettingsPanel.tsx` explaining that the component owns the Ant Design `FormInstance` for library-integration reasons, while orchestration remains in the hook.
+- Add `@remarks` to any helper that renders API key guidance copy, documenting the replacement-or-retention UX decision and why explicit key clearing is intentionally out of scope.
+- Add `@remarks` to any form-submit failure handler, clarifying why `scrollToFirstError={{ focus: true }}` is required for accessibility and browser-visible validation behaviour.
 
 ### Implementation notes / deviations / follow-up
 
@@ -414,6 +440,10 @@ Frontend tests:
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 - `npm test -- tests/api/backendConfigApi.test.js`
+
+### Required `@remarks` JSDoc follow-through
+
+- During final review, confirm the non-obvious implementation decisions captured in earlier sections are reflected in `@remarks` on the relevant exported schemas, mappers, hooks, components, and shell wrappers before deleting this plan.
 
 ### Implementation notes / deviations / follow-up
 

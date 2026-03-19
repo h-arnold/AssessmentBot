@@ -85,6 +85,16 @@ Frontend tests:
 
 - `npm test -- tests/...`
 
+### Optional `@remarks` JSDoc follow-through
+
+- Use this section only when the implementation is likely to need `@remarks` documentation on classes, functions, methods, hooks, schemas, mappers, or components.
+- Record any places where a future developer may need help understanding:
+  - why something was implemented in a particular way
+  - key gotchas or failure modes to avoid
+  - non-obvious interactions with other parts of the codebase
+- Prefer this when the reasoning would not be obvious from the final code alone, especially if it is currently captured only in the action plan and would otherwise be lost when the plan is deleted.
+- If no such documentation is needed for the section, write `None`.
+
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** describe actual changes made when done.
@@ -149,6 +159,12 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
+
+### Optional `@remarks` JSDoc review
+
+- Confirm whether any non-obvious design decisions, gotchas, or cross-component interactions discovered during implementation should be preserved in `@remarks` documentation.
+- If earlier sections planned `@remarks`, verify that the relevant code now contains them before deleting the action plan.
+- If no `@remarks` are needed, record `None`.
 
 ### Implementation notes / deviations / follow-up
 
