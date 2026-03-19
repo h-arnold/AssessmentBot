@@ -46,7 +46,9 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 
 ### 4.1 Required API transport pattern
 
-- Route backend calls through `src/frontend/src/services/apiService.ts` (`callApi`) and avoid direct `google.script.run.<method>` calls in feature code.
+- **Hard rule:** all frontend-to-backend calls must be routed through `src/frontend/src/services/apiService.ts` (`callApi`).
+- Never call backend API methods directly from frontend feature code, components, hooks, or services via `google.script.run`, backend globals, or any other transport shortcut.
+- Wrap backend methods in a frontend service module that owns request/response validation and calls `callApi(...)`.
 - Keep method names aligned with backend `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
@@ -58,6 +60,8 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - Fail loudly in development; do not hide failures behind broad catch-and-ignore logic.
 - When implementing or refactoring frontend logging/error handling, read `docs/developer/frontend/frontend-logging-and-error-handling.md` first and treat it as the single source of truth.
 - Keep this AGENTS file as a signpost only; do not duplicate detailed logging policy here.
+- Default hard-failure UI state should be a top-level Ant Design `Alert` unless a stronger user experience case is explicitly documented for a feature.
+- Prefer shared frontend error contracts and mapping utilities; add feature-specific error mapping only when a feature has genuinely unique error semantics.
 - Never implement or fall back to defaults unless explicitly instructed to do so.
 - Keep component state and side effects predictable and testable.
 
