@@ -494,7 +494,9 @@ describe('App', () => {
       throw new Error('Expected main.tsx to render the application tree.');
     }
 
-    render(<>{renderedTree}</>);
+    await act(async () => {
+      render(<>{renderedTree}</>);
+    });
 
     expect(screen.getByTestId('config-provider')).toHaveAttribute('data-algorithm', 'light');
 
@@ -645,7 +647,7 @@ describe('App', () => {
   it('does not start class-partials warm-up while auth is unresolved', async () => {
     const transport = installPendingApiHandlerMock();
 
-    renderApp();
+    await renderPendingApp();
 
     expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
