@@ -115,7 +115,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/pages/SettingsPage.spec.tsx src/frontend/src/App.spec.tsx`
+- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/App.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
