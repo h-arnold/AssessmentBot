@@ -188,7 +188,7 @@ Frontend tests:
 ### Constraints
 
 - Keep all backend interaction inside the hook/service boundary.
-- Use the explicit state model from `SETTINGS_PAGE_LAYOUT.md` (`isInitialLoading`, `loadError`, `partialLoadError`, `isSaveBlocked`, `isSaving`, `saveError`, `hasStoredApiKey`).
+- Use the explicit state model from `SETTINGS_PAGE_LAYOUT.md` (`isInitialLoading`, `loadError`, `partialLoadError`, `isSaveBlocked`, `isSaving`, `saveError`, `hasApiKey`).
 - A complete initial load failure must fail fast and surface a top-level `Alert` state.
 - Partial-load warnings must block save without hiding the form.
 - Successful save must re-fetch current config from the backend and re-base the form.
