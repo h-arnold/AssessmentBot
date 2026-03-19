@@ -177,8 +177,8 @@ Frontend tests:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Review findings log
 
@@ -191,6 +191,13 @@ Frontend tests:
 - `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts` passed.
 - `npm run frontend:lint` completed with warnings only and no errors.
 - `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+
+### Delivery artefacts
+
+- Branch: `feat/SettingsPage`
+- Commit SHA: `b720143`
+- Commit message: `feat: add backend settings form contract`
+- Push confirmation: `git push` succeeded for `feat/SettingsPage`
 
 ### Objective
 
@@ -266,6 +273,43 @@ Frontend tests:
 
 ## Section 3 — Hook orchestration and state model
 
+### Delivery status
+
+- Current phase: Complete
+- Status: Complete
+- Checklist:
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [ ] push completed
+
+### Review findings log
+
+- Red review initially found a frontend type-check blocker in the Ant Design mock inside `useBackendSettings.spec.ts` because `vi.importActual('antd')` was inferred as `unknown`. The test setup was tightened with an explicit `typeof Antd` cast so the suite fails only for the intended missing hook behaviour.
+- Red review clean. The reviewer confirmed the targeted hook spec now compiles, type-checks, and fails only on the missing Section 3 orchestration behaviour.
+- Green review initially found that the post-save refresh bypassed React Query by calling the service directly and mutating cache state manually. The hook was tightened so successful saves now refresh through the shared backend-config React Query path instead.
+- Green review clean. The reviewer confirmed the hook now keeps the refresh path inside React Query, publishes query-derived values for form rebasing, and satisfies the Section 3 state-model contract.
+
+### Verification log
+
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the red-phase mock typing fix.
+- `npm run frontend:lint` completed with warnings only and no errors during the red phase.
+- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts` failed as intended during the red phase, with `backendConfigurationService.spec.ts` passing and `useBackendSettings.spec.ts` failing on the expected missing-hook assertions.
+- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts` passed after the Section 3 implementation and refresh-path fix.
+- `npm run frontend:lint` completed with warnings only and no errors after the Section 3 implementation. Remaining warnings are the pre-existing schema warnings in `backendSettingsForm.zod.ts` and `backendConfiguration.zod.ts`.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the Section 3 implementation.
+
+### Delivery artefacts
+
+- Branch: `feat/SettingsPage`
+- Commit SHA: `baf4ecf`
+- Commit message: `feat: add backend settings hook orchestration`
+- Push confirmation: pending
+
 ### Objective
 
 - Implement `useBackendSettings.ts` as the single orchestration point for load, save, state transitions, blocking rules, error mapping, React Query-backed read orchestration, and successful-save re-fetch behaviour.
@@ -332,6 +376,10 @@ Frontend tests:
 - Add `@remarks` to any save handler or blocked-save guard, clarifying why partial-load warnings disable save while keeping the form visible instead of introducing a separate recovery workflow.
 
 ### Implementation notes / deviations / follow-up
+
+- Complete.
+- No behavioural deviation from the plan in this section.
+- The hook now derives published form values directly from the shared backend-config query result so the panel can rebase from query-owned snapshots without effect-driven mirror state.
 
 ---
 
