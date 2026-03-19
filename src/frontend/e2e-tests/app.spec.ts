@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pageExpectations } from '../src/test/pageExpectations';
+import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
 const breadcrumbNavigationName = 'Breadcrumb';
@@ -15,6 +16,20 @@ const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
 const settingsLabel = 'Settings';
 const navigationMenuLabels = ['Dashboard', 'Classes', 'Assignments', settingsLabel];
+const backendSettingsFixture = {
+  backendAssessorBatchSize: 30,
+  apiKey: '****cdef',
+  hasApiKey: true,
+  backendUrl: 'https://backend.example.com',
+  revokeAuthTriggerSet: false,
+  daysUntilAuthRevoke: 60,
+  slidesFetchBatchSize: 20,
+  jsonDbMasterIndexKey: 'master-index',
+  jsonDbLockTimeoutMs: 15_000,
+  jsonDbLogLevel: 'INFO',
+  jsonDbBackupOnInitialise: true,
+  jsonDbRootFolderId: 'folder-1234',
+};
 
 /**
  * Returns the rendered breadcrumb locator.
@@ -68,23 +83,35 @@ async function getHeaderBackgroundColour(page: Page) {
  * @param {Page} page - The Playwright page under test.
  */
 async function mockPendingGoogleScriptRun(page: Page) {
-  await page.addInitScript(() => {
-    const run = {
-      withSuccessHandler() {
-        return run;
-      },
-      withFailureHandler() {
-        return run;
-      },
-      apiHandler() {},
-    };
+  await page.addInitScript(`
+    (() => {
+      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
+      const backendSettingsFixture = ${JSON.stringify(backendSettingsFixture)};
 
-    (globalThis as { google?: unknown }).google = {
-      script: {
-        run,
-      },
-    };
-  });
+      globalThis.google = {
+        script: {
+          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+            if (request?.method === 'getBackendConfig') {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-backend-config',
+                data: backendSettingsFixture,
+              });
+              return;
+            }
+
+            if (request?.method === 'getABClassPartials') {
+              callbacks.successHandler?.({
+                ok: true,
+                requestId: 'req-class-partials',
+                data: [],
+              });
+            }
+          }),
+        },
+      };
+    })();
+  `);
 }
 
 test.describe('app shell', () => {
