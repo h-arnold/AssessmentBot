@@ -625,8 +625,8 @@ Frontend tests:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Review findings log
 
@@ -647,9 +647,9 @@ Frontend tests:
 - Branch: `feat/SettingsPage`
 - Code commit SHA:
 - Code commit message:
-- Plan commit SHA:
-- Plan commit message:
-- Push confirmation:
+- Plan commit SHA: `68f912684561f6a87ed90058aefdf7351ef76ede`
+- Plan commit message: `docs: record regression hardening status`
+- Push confirmation: `git push` succeeded for `feat/SettingsPage`
 
 ### Objective
 
