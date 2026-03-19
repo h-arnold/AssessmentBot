@@ -447,7 +447,7 @@ The API key field needs special handling.
 ### Read
 
 - do not populate the input with the masked backend value
-- use `hasApiKey` to determine whether a stored key exists
+- use `hasStoredApiKey` (derived from the transport field `hasApiKey`) to determine whether a stored key exists
 - show masked state only as explanatory helper text or placeholder
 
 ### Write
