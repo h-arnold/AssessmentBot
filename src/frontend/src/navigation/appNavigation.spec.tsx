@@ -47,6 +47,6 @@ describe('app navigation config', () => {
   });
 
   it('invalid key handling fails fast in development', () => {
-    expect(() => pageRenderers['reports' as AppNavigationKey]).toThrowError('Unknown page key: reports');
+    expect(() => pageRenderers['reports' as AppNavigationKey]).toThrow('Unknown page key: reports');
   });
 });

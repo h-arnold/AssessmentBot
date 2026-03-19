@@ -72,18 +72,9 @@ export const BackendSettingsFormSchema = z
       }),
   })
   .superRefine((value, context) => {
-    if (value.hasApiKey) {
-      if (value.apiKey !== '' && !isBackendApiKeyToken(value.apiKey)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['apiKey'],
-          message: backendApiKeyValidationMessage,
-        });
-      }
-      return;
-    }
+    const isTokenInvalid = !isBackendApiKeyToken(value.apiKey);
 
-    if (value.apiKey === '' || !isBackendApiKeyToken(value.apiKey)) {
+    if (isTokenInvalid && (!value.hasApiKey || value.apiKey !== '')) {
       context.addIssue({
         code: 'custom',
         path: ['apiKey'],

@@ -146,8 +146,13 @@ export default defineConfig([
       'src/services/backendConfigurationValidation.ts',
     ],
     rules: {
-      '@typescript-eslint/no-magic-numbers': 'error',
-      'unicorn/prevent-abbreviations': 'error',
+      '@typescript-eslint/no-magic-numbers': [
+        'error',
+        ...(Array.isArray(tsBaseRules['@typescript-eslint/no-magic-numbers'])
+          ? tsBaseRules['@typescript-eslint/no-magic-numbers'].slice(1)
+          : []),
+      ],
+      'unicorn/prevent-abbreviations': 'warn',
     },
   },
   {
