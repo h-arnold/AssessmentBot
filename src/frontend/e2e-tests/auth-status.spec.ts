@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 type AuthServiceMockScenario =
   | {
@@ -25,77 +26,55 @@ type AuthServiceMockScenario =
  * @returns {Promise<void>} A promise that resolves once the init script is installed.
  */
 async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario) {
-  await page.addInitScript((mockScenario: AuthServiceMockScenario) => {
-    const delayMs = mockScenario.delayMs ?? 0;
+  await page.addInitScript(
+    `
+      (() => {
+        const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
+        const mockScenario = ${JSON.stringify(scenario)};
+        const delayMs = mockScenario.delayMs ?? 0;
 
-    /**
-     * Dispatches a mocked apiHandler response based on the selected scenario.
-     *
-    * @param {{ successHandler: ((response: unknown) => void) | undefined; failureHandler: ((error: unknown) => void) | undefined; }} run - The mocked `google.script.run` surface.
-    * @param {((response: unknown) => void) | undefined} run.successHandler - The currently registered success callback.
-    * @param {((error: unknown) => void) | undefined} run.failureHandler - The currently registered failure callback.
-    * @param {AuthServiceMockScenario} scenario - The selected mock scenario.
-     */
-    function dispatchScenarioResponse(
-      run: {
-        successHandler: ((response: unknown) => void) | undefined;
-        failureHandler: ((error: unknown) => void) | undefined;
-      },
-      scenario: AuthServiceMockScenario
-    ) {
-      if (scenario.kind === 'success') {
-        run.successHandler?.({
-          ok: true,
-          requestId: 'req-e2e-success',
-          data: scenario.result,
-        });
-        return;
-      }
-
-      if (scenario.kind === 'apiFailure') {
-        run.successHandler?.({
-          ok: false,
-          requestId: 'req-e2e-failure',
-          error: {
-            code: 'INTERNAL_ERROR',
-            message: scenario.message,
-          },
-        });
-        return;
-      }
-
-      run.failureHandler?.(new Error(scenario.message));
-    }
-
-    const run = {
-      successHandler: undefined as ((response: unknown) => void) | undefined,
-      failureHandler: undefined as ((error: unknown) => void) | undefined,
-      withSuccessHandler(handler: (response: unknown) => void) {
-        this.successHandler = handler;
-        return this;
-      },
-      withFailureHandler(handler: (error: unknown) => void) {
-        this.failureHandler = handler;
-        return this;
-      },
-      apiHandler(request: unknown) {
-        setTimeout(() => {
-          if (typeof (request as { method?: unknown })?.method !== 'string') {
-            this.failureHandler?.(new Error('Invalid transport request payload.'));
+        function dispatchScenarioResponse(callbacks, activeScenario) {
+          if (activeScenario.kind === 'success') {
+            callbacks.successHandler?.({
+              ok: true,
+              requestId: 'req-e2e-success',
+              data: activeScenario.result,
+            });
             return;
           }
 
-          dispatchScenarioResponse(this, mockScenario);
-        }, delayMs);
-      },
-    };
+          if (activeScenario.kind === 'apiFailure') {
+            callbacks.successHandler?.({
+              ok: false,
+              requestId: 'req-e2e-failure',
+              error: {
+                code: 'INTERNAL_ERROR',
+                message: activeScenario.message,
+              },
+            });
+            return;
+          }
 
-    globalThis.google = {
-      script: {
-        run,
-      },
-    };
-  }, scenario);
+          callbacks.failureHandler?.(new Error(activeScenario.message));
+        }
+
+        globalThis.google = {
+          script: {
+            run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+              setTimeout(() => {
+                if (typeof request?.method !== 'string') {
+                  callbacks.failureHandler?.(new Error('Invalid transport request payload.'));
+                  return;
+                }
+
+                dispatchScenarioResponse(callbacks, mockScenario);
+              }, delayMs);
+            }),
+          },
+        };
+      })();
+    `
+  );
 }
 
 test.describe('auth status flow', () => {

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { BackendConfig, BackendConfigWriteResult } from '../src/services/backendConfiguration.zod';
+import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 type BackendApiResponseScenario = Readonly<
   | {
@@ -93,6 +94,7 @@ const refreshedWriteResult = {
 async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsRuntimeScenario) {
   await page.addInitScript(`
     (() => {
+      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const mockScenario = ${JSON.stringify(scenario)};
       const callCounts = {
         getBackendConfig: 0,
@@ -149,7 +151,7 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
         return false;
       }
 
-      function handleBackendSettingsResponse(method, responseIndex, handler) {
+      function handleBackendSettingsResponse(method, responseIndex, callbacks) {
         const responseQueue = responseQueues[method];
         const response = responseQueue[responseIndex];
 
@@ -159,15 +161,13 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
 
         setTimeout(() => {
           if (response.kind === 'transportFailure') {
-            if (handler.failureHandler !== undefined) {
-              handler.failureHandler(new Error(response.message));
-            }
+            callbacks.failureHandler?.(new Error(response.message));
             return;
           }
 
           if (response.kind === 'failureEnvelope') {
             sendFailureEnvelope(
-              handler.successHandler,
+              callbacks.successHandler,
               \`req-\${method}-\${responseIndex}\`,
               response.code ?? 'INTERNAL_ERROR',
               response.message
@@ -175,44 +175,30 @@ async function mockBackendSettingsRuntime(page: Page, scenario: BackendSettingsR
             return;
           }
 
-          sendSuccess(handler.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
+          sendSuccess(callbacks.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
         }, response.delayMs ?? 0);
       }
 
-      const run = {
-        successHandler: undefined,
-        failureHandler: undefined,
-        withSuccessHandler(handler) {
-          this.successHandler = handler;
-          return this;
-        },
-        withFailureHandler(handler) {
-          this.failureHandler = handler;
-          return this;
-        },
-        apiHandler(request) {
-          if (!isBackendSettingsTransportRequest(request)) {
-            if (this.failureHandler !== undefined) {
-              this.failureHandler(new Error('Invalid transport request payload.'));
-            }
-            return;
-          }
+      const run = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+        if (!isBackendSettingsTransportRequest(request)) {
+          callbacks.failureHandler?.(new Error('Invalid transport request payload.'));
+          return;
+        }
 
-          const method = request.method;
+        const method = request.method;
 
-          if (handleStaticMethod(method, this.successHandler)) {
-            return;
-          }
+        if (handleStaticMethod(method, callbacks.successHandler)) {
+          return;
+        }
 
-          if (method !== 'getBackendConfig' && method !== 'setBackendConfig') {
-            return;
-          }
+        if (method !== 'getBackendConfig' && method !== 'setBackendConfig') {
+          return;
+        }
 
-          const responseIndex = callCounts[method];
-          callCounts[method] = responseIndex + 1;
-          handleBackendSettingsResponse(method, responseIndex, this);
-        },
-      };
+        const responseIndex = callCounts[method];
+        callCounts[method] = responseIndex + 1;
+        handleBackendSettingsResponse(method, responseIndex, callbacks);
+      });
 
       globalThis.google = {
         script: {

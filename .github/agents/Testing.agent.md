@@ -34,6 +34,7 @@ Choose test strategy by component.
 - Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e` until it passes.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
+- When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
 
 ### Builder (`scripts/builder`)
 - Framework: Vitest (`npm run builder:test`), Node environment.
