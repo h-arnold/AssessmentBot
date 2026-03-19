@@ -86,8 +86,8 @@ For each section below:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ### Review findings log
 
@@ -99,6 +99,13 @@ For each section below:
 - `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/AppThemeShell.spec.tsx` passed.
 - `npm run frontend:lint` passed.
 - `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+
+### Delivery artefacts
+
+- Branch: `feat/SettingsPage`
+- Commit SHA: `20e131a`
+- Commit message: `feat: wire backend settings shell entry`
+- Push confirmation: `git push` succeeded for `feat/SettingsPage`
 
 ### Objective
 
