@@ -41,7 +41,7 @@ const partialLoadWarning = 'apiKey: REDACTED';
 const backendSettingsLoadFailureCopy = 'Unable to load backend settings right now.';
 const backendSettingsSaveFailureCopy = 'Configuration save failed.';
 const backendSettingsSavedCopy = 'Backend settings saved.';
-const backendSettingsInitialDelayMs = 150;
+const backendSettingsInitialDelayMs = 1000;
 const backendSettingsSaveDelayMs = 150;
 const apiKeyValidationMessage =
   'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.';

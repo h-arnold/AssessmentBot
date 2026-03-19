@@ -140,6 +140,17 @@ export default defineConfig([
     },
   },
   {
+    files: [
+      'src/features/settings/backend/backendSettingsForm.zod.ts',
+      'src/services/backendConfiguration.zod.ts',
+      'src/services/backendConfigurationValidation.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-magic-numbers': 'error',
+      'unicorn/prevent-abbreviations': 'error',
+    },
+  },
+  {
     files: ['src/**/*.{spec,test}.{ts,tsx}'],
     rules: {
       ...unicodeSecurityRules,
