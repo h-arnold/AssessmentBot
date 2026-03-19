@@ -81,15 +81,6 @@ runSubagent({
 });
 ```
 
-Codex environment:
-
-- Use `codex-delegate` from repository root.
-- Example pattern:
-  - `codex-delegate --role implementation --task "<task>" --instructions "<constraints and acceptance criteria>" --working-dir . --timeout-minutes 10`
-- For testing/review tasks, use the corresponding role template when present (for example `testing` or `code-reviewer`).
-- If a required role is not available in `.codex/<role>.md`, use `implementation` with explicit instructions.
-- **IMPORTANT**: _Be patient_. Sub-agent delegation may take several minutes, especially for complex tasks. Avoid multiple rapid-fire delegations that could cause confusion or overload. Never kill sub-agent process unless they have exceeded their timeout.
-
 ### 5. Shared Config Rule
 
 Before changing any TypeScript or ESLint configuration, read:
