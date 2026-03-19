@@ -31,7 +31,7 @@ Choose test strategy by component.
 
 ### Frontend (`src/frontend`)
 - Unit/component tests: Vitest + Testing Library (`npm run frontend:test`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
-- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`.
+- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e` until it passes.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 
@@ -47,7 +47,7 @@ Use commands relevant to the component under test:
 - Backend targeted: `npm test -- <path_to_test>`
 - Backend full: `npm test`
 - Frontend targeted/full: `npm run frontend:test -- <pattern>` or `npm run frontend:test`
-- Frontend E2E: `npm run frontend:test:e2e`
+- Frontend E2E: `npm run frontend:test:e2e` (required for visible browser behaviour; rerun after installing Chromium dependencies if needed)
 - Frontend coverage gate (minimum 85%): `npm run frontend:test:coverage`
 - Builder tests: `npm run builder:test`
 - Builder coverage gate (minimum 85%): `npm run builder:test:coverage`
@@ -101,7 +101,7 @@ Before declaring completion:
 
 1. Run tests you changed (targeted first).
 2. Run the linter. **YOU MUST** return code free of linter issues.
-3. Run the relevant broader suite for the touched component.
+3. Run the relevant broader suite for the touched component. For frontend user-visible changes, this includes `npm run frontend:test:e2e` and any browser dependency install step needed to make it pass.
 4. Summarise:
    - files created/modified
    - commands run

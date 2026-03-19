@@ -27,6 +27,23 @@ npm run frontend:test:e2e
 npm run frontend:test:coverage
 ```
 
+## Playwright execution
+
+Use the non-interactive Playwright command as the pass/fail gate:
+
+```bash
+npm run frontend:test:e2e
+```
+
+If Chromium or its system dependencies are missing on a fresh machine or CI image, install them once and rerun the suite:
+
+```bash
+npm --prefix src/frontend exec -- playwright install --with-deps chromium
+npm run frontend:test:e2e
+```
+
+Use `--ui` or `--headed --debug` only for interactive diagnosis. The required completion signal is a clean `npm run frontend:test:e2e` run.
+
 Target a specific unit test pattern:
 
 ```bash

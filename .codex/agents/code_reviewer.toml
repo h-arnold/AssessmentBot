@@ -25,12 +25,14 @@ Universal review principles:
 Module-specific standards to enforce:
 - Backend: GAS-compatible JavaScript only; public methods should validate inputs with `Validate.requireParams`; respect the `ProgressTracker` and `ABLogger` error logging contract; use singletons via `getInstance()`; avoid defensive feature-detection guards on known internal modules or GAS services; guard Node-only exports; ensure new entities implement `toJSON()` and `fromJSON()` when relevant.
 - Frontend: keep `App.tsx` a thin composition root; keep side effects and async orchestration in hooks rather than render paths; no imports from `src/backend/`; preserve builder compatibility for inlineable assets; prefer exporting functions as functions unless there is a strong reason not to.
+- Frontend E2E checks: when reviewing any user-visible interaction or browser integration change, require `npm run frontend:test:e2e` to pass. If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun the suite before marking the review clean.
 - Builder: preserve stage-based pipeline behaviour; surface pipeline failures as `BuildStageError` with correct stage context; keep manifest merge deterministic and based on `src/backend/appsscript.json`; keep path resolution inside the repo root; do not manually edit generated `build/*` artefacts.
 
 Review workflow:
 - Run the mandatory checks for every touched module when the environment and task permit:
   - Backend: `npm run lint`, `npm test`, and `vitest run --coverage`; add `npm run test:all` when broader singleton or legacy UI behaviour may be affected.
   - Frontend: `npm run frontend:lint`, `npm exec tsc -- -b src/frontend/tsconfig.json`, `npm run frontend:test`, and `npm run frontend:test:coverage`; run `npm run frontend:test:e2e` for integration-level changes.
+  - Frontend review is not complete until the relevant Playwright run has passed for any user-visible interaction or browser integration change.
   - Builder: `npm run builder:lint`, `npm run build`, `npm run builder:test`, and `npm run builder:test:coverage`.
 - Review coverage and flag meaningful untested paths.
 - Check readability, complexity, coupling, consistency, and British English.
