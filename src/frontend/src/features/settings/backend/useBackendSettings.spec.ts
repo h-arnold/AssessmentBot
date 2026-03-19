@@ -329,6 +329,54 @@ describe('useBackendSettings', () => {
         expect(mapBackendSettingsFormValuesToBackendConfigWriteInputMock).not.toHaveBeenCalled();
     });
 
+    it('ignores additional save requests while the first save is still in flight', async () => {
+        const pendingSaveResult = createDeferred<BackendConfigWriteResult>();
+
+        getBackendConfigMock.mockResolvedValueOnce(baseBackendConfig);
+        mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(
+            baseStoredKeyFormValues
+        );
+        mapBackendSettingsFormValuesToBackendConfigWriteInputMock.mockReturnValueOnce(
+            baseWriteInputWithoutApiKey
+        );
+        setBackendConfigMock.mockReturnValueOnce(pendingSaveResult.promise);
+
+        const { getCurrentState } = await renderBackendSettingsHook();
+
+        await waitFor(() => {
+            expect(getCurrentState().backendSettingsFormValues).toEqual(baseStoredKeyFormValues);
+        });
+
+        let firstSavePromise!: Promise<void>;
+
+        await act(async () => {
+            firstSavePromise = getCurrentState().saveBackendSettings(baseStoredKeyFormValues);
+            await Promise.resolve();
+        });
+
+        await waitFor(() => {
+            expect(getCurrentState().isSaving).toBe(true);
+        });
+
+        await act(async () => {
+            await getCurrentState().saveBackendSettings(baseReplacementFormValues);
+        });
+
+        expect(setBackendConfigMock).toHaveBeenCalledTimes(1);
+        expect(mapBackendSettingsFormValuesToBackendConfigWriteInputMock).toHaveBeenCalledTimes(
+            1
+        );
+
+        await act(async () => {
+            pendingSaveResult.resolve({ success: true });
+            await firstSavePromise;
+        });
+
+        await waitFor(() => {
+            expect(getCurrentState().isSaving).toBe(false);
+        });
+    });
+
     it('keeps partial-load data visible while blocking save when the backend returns loadError', async () => {
         getBackendConfigMock.mockResolvedValueOnce(partialLoadBackendConfig);
         mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(baseStoredKeyFormValues);

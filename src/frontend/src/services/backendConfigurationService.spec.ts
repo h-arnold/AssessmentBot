@@ -70,6 +70,11 @@ const invalidBackendUrlReadResponse = {
     backendUrl: 'not-a-url',
 };
 
+const invalidLoadErrorReadResponse = {
+    ...validMaskedBackendConfig,
+    loadError: 123,
+};
+
 const unmaskedApiKeyReadResponse = {
     ...validMaskedBackendConfig,
     apiKey: 'sk-live-abcdef123456',
@@ -177,6 +182,13 @@ describe('backendConfigurationService', () => {
         await expect(getBackendConfig()).resolves.toEqual(
             validMaskedBackendConfigWithoutLoadError
         );
+    });
+
+    it('rejects backend configuration payloads with a malformed loadError before returning it', async () => {
+        callApiMock.mockResolvedValueOnce(invalidLoadErrorReadResponse);
+        const { getBackendConfig } = await loadBackendConfigurationService();
+
+        await expect(getBackendConfig()).rejects.toBeInstanceOf(ZodError);
     });
 
     it('parses a partial-load payload with a blank backendUrl when loadError is present', async () => {

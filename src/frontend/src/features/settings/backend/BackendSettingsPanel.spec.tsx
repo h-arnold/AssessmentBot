@@ -114,12 +114,14 @@ describe('BackendSettingsPanel', () => {
         jsonDbRootFolderId: 'folder-1234',
       },
       hasApiKey: true,
+      isSaveBlocked: true,
       partialLoadError: 'apiKey: REDACTED',
     }));
 
     renderBackendSettingsPanel();
 
     expect(screen.getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   it('renders the planned section cards and visible field labels', () => {
@@ -143,6 +145,9 @@ describe('BackendSettingsPanel', () => {
 
     renderBackendSettingsPanel();
 
+    expect(
+      screen.getByRole('region', { name: 'Backend settings panel' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Backend' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Advanced' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Database' })).toBeInTheDocument();
@@ -207,7 +212,10 @@ describe('BackendSettingsPanel', () => {
 
     renderBackendSettingsPanel();
 
-    expect(screen.getByRole('button', { name: /save/i })).toHaveClass('ant-btn-loading');
+    const saveButton = screen.getByRole('button', { name: /save/i });
+
+    expect(saveButton).toHaveClass('ant-btn-loading');
+    expect(saveButton).toBeDisabled();
   });
 
   it('moves focus to the first invalid field after submit failure', async () => {

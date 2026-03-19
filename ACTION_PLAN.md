@@ -497,6 +497,40 @@ Frontend tests:
 
 ## Section 5 — End-to-end-visible behaviour and cross-layer tests
 
+### Delivery status
+
+- Current phase: Red complete
+- Status: In progress
+- Checklist:
+  - [x] red tests added
+  - [ ] red review clean
+  - [ ] green implementation complete
+  - [ ] green review clean
+  - [ ] checks passed
+  - [ ] action plan updated
+  - [ ] commit created
+  - [ ] push completed
+
+### Review findings log
+
+- Red review not started yet. Work stopped after the red tests were implemented, per user instruction.
+
+### Verification log
+
+- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed after the red-phase test additions.
+- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` could not run in this container because Playwright Chromium is missing required system libraries, including `libnspr4.so` and `libnss3.so`.
+- `npm run frontend:lint` passed with pre-existing warnings only.
+- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
+
+### Delivery artefacts
+
+- Branch: `feat/SettingsPage`
+- Code commit SHA:
+- Code commit message:
+- Plan commit SHA:
+- Plan commit message:
+- Push confirmation:
+
 ### Objective
 
 - Add comprehensive automated coverage for the new backend settings feature using the repo’s Vitest/Playwright split and existing service/API test locations.
@@ -557,6 +591,10 @@ Frontend tests:
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
 ### Implementation notes / deviations / follow-up
+
+- Red-phase tests were added in the frontend service, hook, panel, and Playwright layers.
+- No red review, green implementation, commit, or push work was started because the user asked to stop after the red phase was implemented.
+- The new Playwright spec could not be executed in this environment because the Chromium runtime dependencies are unavailable.
 
 ---
 
