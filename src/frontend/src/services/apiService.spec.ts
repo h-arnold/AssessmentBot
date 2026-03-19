@@ -21,8 +21,12 @@ type ApiErrorEnvelope = {
 
 type GoogleScript = {
     script?: {
-        run?: GoogleScriptRunApiHandler;
+        run?: unknown;
     };
+};
+
+type GoogleScriptRunWithoutApiHandler = Omit<GoogleScriptRunApiHandler, 'apiHandler'> & {
+    apiHandler: undefined;
 };
 
 type CallApi = <TResponse>(method: string, parameters?: unknown) => Promise<TResponse>;
@@ -48,14 +52,14 @@ function clearGoogle(): void {
 /**
  * Creates a mock runner shape that exposes handler registration but omits `apiHandler`.
  *
- * @returns {GoogleScriptRunApiHandler} The runner-like shape for missing-apiHandler tests.
+ * @returns {GoogleScriptRunWithoutApiHandler} The runner-like shape for missing-apiHandler tests.
  */
-function createRunnerWithoutApiHandler(): GoogleScriptRunApiHandler {
+function createRunnerWithoutApiHandler(): GoogleScriptRunWithoutApiHandler {
     return {
         ...createGoogleScriptRunApiHandlerMock(() => {
             return;
         }),
-        apiHandler: undefined as unknown as (request: unknown) => void,
+        apiHandler: undefined,
     };
 }
 
@@ -80,8 +84,6 @@ type RunnerHarnessResponse =
 
 const SECOND_ATTEMPT_CALL_COUNT = 2;
 const MAX_ATTEMPTS = 4;
-const CONCURRENT_ALPHA_DELAY_MS = 20;
-
 /**
  * Builds a retriable RATE_LIMITED envelope for retry-path tests.
  *
@@ -300,20 +302,23 @@ describe('apiService.callApi', () => {
             data: { label: 'beta' },
         };
 
+        let releaseAlphaResponse: (() => void) | undefined;
+        let releaseBetaResponse: (() => void) | undefined;
+
         const runner = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
             const method = (request as { method?: unknown })?.method;
 
             if (method === 'loadAlpha') {
-                setTimeout(() => {
+                releaseAlphaResponse = () => {
                     callbacks.successHandler?.(alphaEnvelope);
-                }, CONCURRENT_ALPHA_DELAY_MS);
+                };
                 return;
             }
 
             if (method === 'loadBeta') {
-                setTimeout(() => {
+                releaseBetaResponse = () => {
                     callbacks.successHandler?.(betaEnvelope);
-                }, 0);
+                };
                 return;
             }
 
@@ -328,6 +333,13 @@ describe('apiService.callApi', () => {
 
         const alphaPromise = callApi<{ label: string }>('loadAlpha');
         const betaPromise = callApi<{ label: string }>('loadBeta');
+
+        if (releaseAlphaResponse === undefined || releaseBetaResponse === undefined) {
+            throw new Error('Expected both concurrent responses to be registered before release.');
+        }
+
+        releaseBetaResponse();
+        releaseAlphaResponse();
 
         await expect(Promise.all([alphaPromise, betaPromise])).resolves.toEqual([
             { label: 'alpha' },
