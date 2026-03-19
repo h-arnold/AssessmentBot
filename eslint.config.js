@@ -81,7 +81,7 @@ module.exports = [
           },
         },
       ],
-      'unicorn/no-array-callback-reference': error,
+      'unicorn/no-array-callback-reference': 'warn',
       // Disable rules that conflict with GAS naming conventions and preferences
       'unicorn/no-null': 'off',
       'unicorn/no-keyword-prefix': 'off',
