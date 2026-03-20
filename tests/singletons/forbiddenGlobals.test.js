@@ -9,13 +9,16 @@ describe('Forbidden global singleton identifiers', () => {
     path.normalize('src/backend/ConfigurationManager/98_ConfigurationManagerClass.js'),
     // Allow test environment instantiations via z_singletons deprecation comment (no actual instantiation now)
   ]);
+  const ignoredDirectories = new Set(['node_modules']);
 
   function walk(dir) {
-    return fs.readdirSync(dir).flatMap((entry) => {
-      const full = path.join(dir, entry);
-      const stat = fs.statSync(full);
-      if (stat.isDirectory()) return walk(full);
-      return [full];
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.isDirectory()) {
+        if (ignoredDirectories.has(entry.name)) return [];
+        return walk(path.join(dir, entry.name));
+      }
+
+      return [path.join(dir, entry.name)];
     });
   }
 
@@ -23,44 +26,44 @@ describe('Forbidden global singleton identifiers', () => {
   const files = walk(SRC_DIR)
     .filter((f) => f.endsWith('.js'))
     .filter((f) => !deprecatedFiles.has(f));
+  const fileContents = files.map((file) => fs.readFileSync(file, 'utf8'));
+
+  function findOffenders(pattern) {
+    const offenders = [];
+
+    fileContents.forEach((content, index) => {
+      if (pattern.test(content)) {
+        offenders.push(path.relative(process.cwd(), files[index]));
+      }
+    });
+
+    return offenders;
+  }
 
   test('no usage of configurationManager.<member> remains', () => {
-    const offenders = [];
     const pattern = /configurationManager\./g;
-    for (const file of files) {
-      const rel = path.relative(process.cwd(), file);
-      const content = fs.readFileSync(file, 'utf8');
-      if (pattern.test(content)) {
-        offenders.push(rel);
-      }
-    }
-    expect(offenders).toEqual([]);
+
+    expect(findOffenders(pattern)).toEqual([]);
   }, 20000);
 
   test('no usage of initController.<member> remains', () => {
-    const offenders = [];
     const pattern = /initController\./g;
-    for (const file of files) {
-      const rel = path.relative(process.cwd(), file);
-      const content = fs.readFileSync(file, 'utf8');
-      if (pattern.test(content)) {
-        offenders.push(rel);
-      }
-    }
-    expect(offenders).toEqual([]);
+
+    expect(findOffenders(pattern)).toEqual([]);
   });
 
   test('no direct new ConfigurationManager() outside allowed files', () => {
-    const offenders = [];
     const pattern = /new\s+ConfigurationManager\s*\(/g;
-    for (const file of files) {
-      const rel = path.relative(process.cwd(), file);
+
+    const offenders = [];
+    fileContents.forEach((content, index) => {
+      const rel = path.relative(process.cwd(), files[index]);
       const normalized = rel.replace(/\\/g, '/');
-      const content = fs.readFileSync(file, 'utf8');
       if (pattern.test(content) && !allowedNewConfigurationManagerFiles.has(normalized)) {
         offenders.push(rel);
       }
-    }
+    });
+
     expect(offenders).toEqual([]);
   });
 });
