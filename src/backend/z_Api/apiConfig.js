@@ -2,9 +2,6 @@
 
 const API_KEY_MASK_VISIBLE_SUFFIX_LENGTH = 4;
 const API_KEY_MASK_PREFIX = '****';
-const DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE = 30;
-const DEFAULT_DAYS_UNTIL_AUTH_REVOKE = 60;
-const DEFAULT_SLIDES_FETCH_BATCH_SIZE = 20;
 
 /**
  * Masks an API key while preserving the visible suffix used by the legacy config payload.
@@ -29,84 +26,46 @@ function maskApiKey(key) {
  * @returns {Object} Public configuration payload.
  */
 function getBackendConfig() {
-  const errors = [];
   const configManager = ConfigurationManager.getInstance();
 
   /**
-   * Reads a single configuration value while preserving legacy fallback behaviour.
-   * @param {Function} getter - Getter callback.
-   * @param {string} name - Public config field name.
-   * @param {*} fallback - Fallback value used on read failure.
-   * @returns {*} Retrieved value or fallback.
+   * Seeds the default backend configuration when no values have been persisted yet.
+   * @returns {void}
    */
-  function safeGet(getter, name, fallback) {
-    try {
-      return getter();
-    } catch (error) {
-      ABLogger.getInstance().error('Error retrieving configuration value.', {
-        configKey: name,
-        errorName: error?.name ?? 'Error',
-      });
-      errors.push(`${name}: ${error?.message ?? 'REDACTED'}`);
-      return fallback;
+  function initialiseDefaultBackendConfig() {
+    const storedConfig = configManager.getAllConfigurations();
+    if (Object.keys(storedConfig).length > 0) {
+      return;
     }
+
+    configManager.setBackendAssessorBatchSize(configManager.getBackendAssessorBatchSize());
+    configManager.setSlidesFetchBatchSize(configManager.getSlidesFetchBatchSize());
+    configManager.setRevokeAuthTriggerSet(configManager.getRevokeAuthTriggerSet());
+    configManager.setDaysUntilAuthRevoke(configManager.getDaysUntilAuthRevoke());
+    configManager.setJsonDbMasterIndexKey(configManager.getJsonDbMasterIndexKey());
+    configManager.setJsonDbLockTimeoutMs(configManager.getJsonDbLockTimeoutMs());
+    configManager.setJsonDbLogLevel(configManager.getJsonDbLogLevel());
+    configManager.setJsonDbBackupOnInitialise(configManager.getJsonDbBackupOnInitialise());
   }
 
-  const rawApiKey = safeGet(() => configManager.getApiKey(), 'apiKey', '');
+  initialiseDefaultBackendConfig();
+
+  const rawApiKey = configManager.getApiKey();
+  const jsonDatabaseRootFolderId = configManager.getJsonDbRootFolderId();
   const config = {
-    backendAssessorBatchSize: safeGet(
-      () => configManager.getBackendAssessorBatchSize(),
-      'backendAssessorBatchSize',
-      DEFAULT_BACKEND_ASSESSOR_BATCH_SIZE
-    ),
+    backendAssessorBatchSize: configManager.getBackendAssessorBatchSize(),
     apiKey: maskApiKey(rawApiKey),
     hasApiKey: !!rawApiKey,
-    backendUrl: safeGet(() => configManager.getBackendUrl(), 'backendUrl', ''),
-    revokeAuthTriggerSet: safeGet(
-      () => configManager.getRevokeAuthTriggerSet(),
-      'revokeAuthTriggerSet',
-      false
-    ),
-    daysUntilAuthRevoke: safeGet(
-      () => configManager.getDaysUntilAuthRevoke(),
-      'daysUntilAuthRevoke',
-      DEFAULT_DAYS_UNTIL_AUTH_REVOKE
-    ),
-    slidesFetchBatchSize: safeGet(
-      () => configManager.getSlidesFetchBatchSize(),
-      'slidesFetchBatchSize',
-      DEFAULT_SLIDES_FETCH_BATCH_SIZE
-    ),
-    jsonDbMasterIndexKey: safeGet(
-      () => configManager.getJsonDbMasterIndexKey(),
-      'jsonDbMasterIndexKey',
-      ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY
-    ),
-    jsonDbLockTimeoutMs: safeGet(
-      () => configManager.getJsonDbLockTimeoutMs(),
-      'jsonDbLockTimeoutMs',
-      ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
-    ),
-    jsonDbLogLevel: safeGet(
-      () => configManager.getJsonDbLogLevel(),
-      'jsonDbLogLevel',
-      ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL
-    ),
-    jsonDbBackupOnInitialise: safeGet(
-      () => configManager.getJsonDbBackupOnInitialise(),
-      'jsonDbBackupOnInitialise',
-      ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
-    ),
-    jsonDbRootFolderId: safeGet(
-      () => configManager.getJsonDbRootFolderId(),
-      'jsonDbRootFolderId',
-      ''
-    ),
+    backendUrl: configManager.getBackendUrl(),
+    revokeAuthTriggerSet: configManager.getRevokeAuthTriggerSet(),
+    daysUntilAuthRevoke: configManager.getDaysUntilAuthRevoke(),
+    slidesFetchBatchSize: configManager.getSlidesFetchBatchSize(),
+    jsonDbMasterIndexKey: configManager.getJsonDbMasterIndexKey(),
+    jsonDbLockTimeoutMs: configManager.getJsonDbLockTimeoutMs(),
+    jsonDbLogLevel: configManager.getJsonDbLogLevel(),
+    jsonDbBackupOnInitialise: configManager.getJsonDbBackupOnInitialise(),
+    jsonDbRootFolderId: jsonDatabaseRootFolderId || '',
   };
-
-  if (errors.length > 0) {
-    config.loadError = errors.join('; ');
-  }
 
   return config;
 }
