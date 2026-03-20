@@ -221,6 +221,29 @@ class ConfigurationManager extends BaseSingleton {
   }
 
   /**
+   * Persists the default backend configuration the first time it is needed.
+   * Returns immediately when any configuration has already been stored.
+   * @returns {Object} The current configuration cache.
+   */
+  ensureDefaultConfiguration() {
+    const config = this.getAllConfigurations();
+    if (Object.keys(config).length > 0) {
+      return config;
+    }
+
+    this.setBackendAssessorBatchSize(this.getBackendAssessorBatchSize());
+    this.setSlidesFetchBatchSize(this.getSlidesFetchBatchSize());
+    this.setRevokeAuthTriggerSet(this.getRevokeAuthTriggerSet());
+    this.setDaysUntilAuthRevoke(this.getDaysUntilAuthRevoke());
+    this.setJsonDbMasterIndexKey(this.getJsonDbMasterIndexKey());
+    this.setJsonDbLockTimeoutMs(this.getJsonDbLockTimeoutMs());
+    this.setJsonDbLogLevel(this.getJsonDbLogLevel());
+    this.setJsonDbBackupOnInitialise(this.getJsonDbBackupOnInitialise());
+
+    return this.configCache;
+  }
+
+  /**
    * Checks whether a configuration property exists in the cache.
    * @param {string} key - The configuration property key to check.
    * @returns {boolean} True if the property exists; false otherwise.

@@ -27,28 +27,7 @@ function maskApiKey(key) {
  */
 function getBackendConfig() {
   const configManager = ConfigurationManager.getInstance();
-
-  /**
-   * Seeds the default backend configuration when no values have been persisted yet.
-   * @returns {void}
-   */
-  function initialiseDefaultBackendConfig() {
-    const storedConfig = configManager.getAllConfigurations();
-    if (Object.keys(storedConfig).length > 0) {
-      return;
-    }
-
-    configManager.setBackendAssessorBatchSize(configManager.getBackendAssessorBatchSize());
-    configManager.setSlidesFetchBatchSize(configManager.getSlidesFetchBatchSize());
-    configManager.setRevokeAuthTriggerSet(configManager.getRevokeAuthTriggerSet());
-    configManager.setDaysUntilAuthRevoke(configManager.getDaysUntilAuthRevoke());
-    configManager.setJsonDbMasterIndexKey(configManager.getJsonDbMasterIndexKey());
-    configManager.setJsonDbLockTimeoutMs(configManager.getJsonDbLockTimeoutMs());
-    configManager.setJsonDbLogLevel(configManager.getJsonDbLogLevel());
-    configManager.setJsonDbBackupOnInitialise(configManager.getJsonDbBackupOnInitialise());
-  }
-
-  initialiseDefaultBackendConfig();
+  configManager.ensureDefaultConfiguration();
 
   const rawApiKey = configManager.getApiKey();
   const jsonDatabaseRootFolderId = configManager.getJsonDbRootFolderId();
