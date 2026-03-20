@@ -2,146 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { existsSync } from 'node:fs';
 
 const { loadApiHandlerModule } = require('../helpers/apiHandlerTestUtils.js');
-
-const CONFIGURATION_MANAGER_DEFAULTS = Object.freeze({
-  BACKEND_ASSESSOR_BATCH_SIZE: 120,
-  SLIDES_FETCH_BATCH_SIZE: 30,
-  DAYS_UNTIL_AUTH_REVOKE: 60,
-  JSON_DB_MASTER_INDEX_KEY: 'MASTER_INDEX',
-  JSON_DB_LOCK_TIMEOUT_MS: 15000,
-  JSON_DB_LOG_LEVEL: 'INFO',
-  JSON_DB_BACKUP_ON_INITIALISE: false,
-  JSON_DB_ROOT_FOLDER_ID: null,
-});
-
-function buildBackendConfigResponse(overrides = {}) {
-  return {
-    backendAssessorBatchSize: 30,
-    apiKey: '****7890',
-    hasApiKey: true,
-    backendUrl: 'https://backend.example.test',
-    revokeAuthTriggerSet: true,
-    daysUntilAuthRevoke: 45,
-    slidesFetchBatchSize: 20,
-    jsonDbMasterIndexKey: 'MASTER_INDEX',
-    jsonDbLockTimeoutMs: 5000,
-    jsonDbLogLevel: 'INFO',
-    jsonDbBackupOnInitialise: false,
-    jsonDbRootFolderId: 'folder-123',
-    ...overrides,
-  };
-}
-
-function installConfigurationManagerMock(
-  getterValues = {},
-  setterImplementations = {},
-  options = {}
-) {
-  const originalConfigurationManager = globalThis.ConfigurationManager;
-  const hasPersistedConfiguration =
-    options.allConfigurations === undefined
-      ? true
-      : Object.keys(options.allConfigurations).length > 0;
-  const values = {
-    apiKey: 'live-secret-7890',
-    backendAssessorBatchSize: 30,
-    backendUrl: 'https://backend.example.test',
-    revokeAuthTriggerSet: true,
-    daysUntilAuthRevoke: 45,
-    slidesFetchBatchSize: 20,
-    jsonDbMasterIndexKey: 'MASTER_INDEX',
-    jsonDbLockTimeoutMs: 5000,
-    jsonDbLogLevel: 'INFO',
-    jsonDbBackupOnInitialise: false,
-    jsonDbRootFolderId: 'folder-123',
-    ...getterValues,
-  };
-
-  const manager = {
-    getAllConfigurations: vi.fn(() => options.allConfigurations ?? {}),
-    ensureDefaultConfiguration: vi.fn(
-      setterImplementations.ensureDefaultConfiguration || (() => {})
-    ),
-    getApiKey: vi.fn(() => (hasPersistedConfiguration ? values.apiKey : '')),
-    getBackendAssessorBatchSize: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.backendAssessorBatchSize
-        : CONFIGURATION_MANAGER_DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE
-    ),
-    getBackendUrl: vi.fn(() => (hasPersistedConfiguration ? values.backendUrl : '')),
-    getRevokeAuthTriggerSet: vi.fn(() =>
-      hasPersistedConfiguration ? values.revokeAuthTriggerSet : false
-    ),
-    getDaysUntilAuthRevoke: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.daysUntilAuthRevoke
-        : CONFIGURATION_MANAGER_DEFAULTS.DAYS_UNTIL_AUTH_REVOKE
-    ),
-    getSlidesFetchBatchSize: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.slidesFetchBatchSize
-        : CONFIGURATION_MANAGER_DEFAULTS.SLIDES_FETCH_BATCH_SIZE
-    ),
-    getJsonDbMasterIndexKey: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.jsonDbMasterIndexKey
-        : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_MASTER_INDEX_KEY
-    ),
-    getJsonDbLockTimeoutMs: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.jsonDbLockTimeoutMs
-        : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
-    ),
-    getJsonDbLogLevel: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.jsonDbLogLevel
-        : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_LOG_LEVEL
-    ),
-    getJsonDbBackupOnInitialise: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.jsonDbBackupOnInitialise
-        : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
-    ),
-    getJsonDbRootFolderId: vi.fn(() =>
-      hasPersistedConfiguration
-        ? values.jsonDbRootFolderId
-        : CONFIGURATION_MANAGER_DEFAULTS.JSON_DB_ROOT_FOLDER_ID
-    ),
-    setBackendAssessorBatchSize: vi.fn(
-      setterImplementations.setBackendAssessorBatchSize || (() => {})
-    ),
-    setSlidesFetchBatchSize: vi.fn(setterImplementations.setSlidesFetchBatchSize || (() => {})),
-    setApiKey: vi.fn(setterImplementations.setApiKey || (() => {})),
-    setBackendUrl: vi.fn(setterImplementations.setBackendUrl || (() => {})),
-    setRevokeAuthTriggerSet: vi.fn(setterImplementations.setRevokeAuthTriggerSet || (() => {})),
-    setDaysUntilAuthRevoke: vi.fn(setterImplementations.setDaysUntilAuthRevoke || (() => {})),
-    setJsonDbMasterIndexKey: vi.fn(setterImplementations.setJsonDbMasterIndexKey || (() => {})),
-    setJsonDbLockTimeoutMs: vi.fn(setterImplementations.setJsonDbLockTimeoutMs || (() => {})),
-    setJsonDbLogLevel: vi.fn(setterImplementations.setJsonDbLogLevel || (() => {})),
-    setJsonDbBackupOnInitialise: vi.fn(
-      setterImplementations.setJsonDbBackupOnInitialise || (() => {})
-    ),
-    setJsonDbRootFolderId: vi.fn(setterImplementations.setJsonDbRootFolderId || (() => {})),
-  };
-
-  globalThis.ConfigurationManager = {
-    DEFAULTS: CONFIGURATION_MANAGER_DEFAULTS,
-    getInstance: vi.fn(() => manager),
-  };
-
-  return {
-    manager,
-    configurationManager: globalThis.ConfigurationManager,
-    restore() {
-      if (originalConfigurationManager === undefined) {
-        delete globalThis.ConfigurationManager;
-        return;
-      }
-
-      globalThis.ConfigurationManager = originalConfigurationManager;
-    },
-  };
-}
+const {
+  CONFIGURATION_MANAGER_DEFAULTS,
+  buildBackendConfigResponse,
+  createConfigurationManagerMock,
+} = require('../helpers/backendConfigTestHelpers.js');
 
 const legacyConfigurationGlobalsPath = new URL(
   '../../src/backend/ConfigurationManager/99_globals.js',
@@ -154,7 +19,8 @@ afterEach(() => {
 
 describe('backend configuration API transport', () => {
   it('returns masked backend configuration data through apiHandler', () => {
-    const configurationManagerMock = installConfigurationManagerMock(
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
       {
         apiKey: 'live-secret-7890',
       },
@@ -188,7 +54,8 @@ describe('backend configuration API transport', () => {
   });
 
   it('masks short API keys without exposing the raw value', () => {
-    const configurationManagerMock = installConfigurationManagerMock(
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
       {
         apiKey: '1234',
       },
@@ -213,7 +80,8 @@ describe('backend configuration API transport', () => {
   });
 
   it('seeds and returns default backend configuration when nothing has been saved yet', () => {
-    const configurationManagerMock = installConfigurationManagerMock(
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
       {},
       {},
       { allConfigurations: {} }
@@ -266,7 +134,8 @@ describe('backend configuration API transport', () => {
   });
 
   it('does not seed defaults when backend configuration already exists', () => {
-    const configurationManagerMock = installConfigurationManagerMock(
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
       {
         apiKey: 'live-secret-7890',
         backendUrl: 'https://backend.example.test',
@@ -329,7 +198,7 @@ describe('backend configuration API transport', () => {
   });
 
   it('applies only defined backend configuration updates through apiHandler', () => {
-    const configurationManagerMock = installConfigurationManagerMock();
+    const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -364,7 +233,7 @@ describe('backend configuration API transport', () => {
   });
 
   it('does not call setters for undefined setBackendConfig fields', () => {
-    const configurationManagerMock = installConfigurationManagerMock();
+    const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -396,7 +265,8 @@ describe('backend configuration API transport', () => {
   });
 
   it('reports failed backend configuration writes through apiHandler', () => {
-    const configurationManagerMock = installConfigurationManagerMock(
+    const configurationManagerMock = createConfigurationManagerMock(
+      vi,
       {},
       {
         setApiKey: () => {
@@ -436,7 +306,7 @@ describe('backend configuration API transport', () => {
   });
 
   it('calls every backend configuration setter when all fields are provided', () => {
-    const configurationManagerMock = installConfigurationManagerMock();
+    const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -490,7 +360,7 @@ describe('backend configuration API transport', () => {
   });
 
   it('calls setApiKey with an empty string when setBackendConfig explicitly clears the API key', () => {
-    const configurationManagerMock = installConfigurationManagerMock();
+    const configurationManagerMock = createConfigurationManagerMock(vi);
 
     try {
       const { ApiDispatcher } = loadApiHandlerModule();
@@ -522,7 +392,7 @@ describe('backend configuration API transport', () => {
   ])(
     'returns an invalid request envelope for malformed setBackendConfig params: %s',
     (_caseName, params) => {
-      const configurationManagerMock = installConfigurationManagerMock();
+      const configurationManagerMock = createConfigurationManagerMock(vi);
 
       try {
         const { ApiDispatcher } = loadApiHandlerModule();

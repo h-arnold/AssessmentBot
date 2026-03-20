@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { setupGlobalGASMocks } from '../helpers/mockFactories.js';
+import {
+  buildDefaultBackendConfigStore,
+  createConfiguredConfigurationManager,
+} from '../helpers/backendConfigTestHelpers.js';
 const {
   CONFIG_KEYS: CONFIG_MANAGER_CONFIG_KEYS,
   CONFIG_SCHEMA: CONFIG_MANAGER_CONFIG_SCHEMA,
@@ -8,15 +11,7 @@ const {
   DEFAULTS: CONFIG_MANAGER_DEFAULTS,
 } = require('../../src/backend/ConfigurationManager/02_defaults.js');
 
-// Set up global mocks using helper (once at module level)
 let mocks;
-
-beforeEach(() => {
-  // Create fresh GAS mocks for each test
-  mocks = setupGlobalGASMocks(vi, { mockConsole: true });
-});
-
-// Import the class after setting up mocks
 const ConfigurationManager = require('../../src/backend/ConfigurationManager/98_ConfigurationManagerClass.js');
 
 function expectPersistedConfig(mocks_, expectedConfig) {
@@ -27,6 +22,10 @@ function expectPersistedConfig(mocks_, expectedConfig) {
 }
 
 describe('shared backend test mocks', () => {
+  beforeEach(() => {
+    ({ mocks } = createConfiguredConfigurationManager(vi, ConfigurationManager));
+  });
+
   it('should not expose deprecated validateIsAdminSheet on Utils mocks', () => {
     expect(mocks.Utils).not.toHaveProperty('validateIsAdminSheet');
   });
@@ -36,23 +35,7 @@ describe('ConfigurationManager setProperty', () => {
   let configManager;
 
   beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
-
-    // Reset singleton instance
-    ConfigurationManager.resetForTests();
-
-    // Setup default mock returns
-    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
-    mocks.Utils.isValidUrl.mockReturnValue(true);
-
-    configManager = new ConfigurationManager(true);
-
-    // Manually inject the mock properties services to ensure the test spies work
-    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
-    configManager.documentProperties = mocks.PropertiesService.documentProperties;
-    configManager._initialized = true; // Mark as initialized to skip ensureInitialized's service calls
+    ({ mocks, configManager } = createConfiguredConfigurationManager(vi, ConfigurationManager));
   });
 
   describe('BACKEND_ASSESSOR_BATCH_SIZE validation', () => {
@@ -383,70 +366,18 @@ describe('ConfigurationManager default backend configuration bootstrap', () => {
   let configManager;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    ConfigurationManager.resetForTests();
-
-    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
-    mocks.Utils.isValidUrl.mockReturnValue(true);
-
-    configManager = new ConfigurationManager(true);
-    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
-    configManager.documentProperties = mocks.PropertiesService.documentProperties;
-    configManager._initialized = true;
-    configManager.configCache = null;
+    ({ mocks, configManager } = createConfiguredConfigurationManager(vi, ConfigurationManager));
   });
 
   it('seeds the default backend configuration once when the config store is empty', () => {
+    const expectedDefaultStore = buildDefaultBackendConfigStore(ConfigurationManager);
     const result = configManager.ensureDefaultConfiguration();
 
     expect(mocks.PropertiesService.scriptProperties.setProperty).toHaveBeenCalledTimes(8);
     expect(
       JSON.parse(mocks.PropertiesService.scriptProperties.setProperty.mock.calls.at(-1)[1])
-    ).toEqual({
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: String(
-        ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: String(
-        ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
-      [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: String(
-        ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]:
-        ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY,
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: String(
-        ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
-      ),
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]:
-        ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL,
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: String(
-        ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
-      ),
-    });
-    expect(result).toEqual({
-      [ConfigurationManager.CONFIG_KEYS.BACKEND_ASSESSOR_BATCH_SIZE]: String(
-        ConfigurationManager.DEFAULTS.BACKEND_ASSESSOR_BATCH_SIZE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.SLIDES_FETCH_BATCH_SIZE]: String(
-        ConfigurationManager.DEFAULTS.SLIDES_FETCH_BATCH_SIZE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.REVOKE_AUTH_TRIGGER_SET]: 'false',
-      [ConfigurationManager.CONFIG_KEYS.DAYS_UNTIL_AUTH_REVOKE]: String(
-        ConfigurationManager.DEFAULTS.DAYS_UNTIL_AUTH_REVOKE
-      ),
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_MASTER_INDEX_KEY]:
-        ConfigurationManager.DEFAULTS.JSON_DB_MASTER_INDEX_KEY,
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOCK_TIMEOUT_MS]: String(
-        ConfigurationManager.DEFAULTS.JSON_DB_LOCK_TIMEOUT_MS
-      ),
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_LOG_LEVEL]:
-        ConfigurationManager.DEFAULTS.JSON_DB_LOG_LEVEL,
-      [ConfigurationManager.CONFIG_KEYS.JSON_DB_BACKUP_ON_INITIALISE]: String(
-        ConfigurationManager.DEFAULTS.JSON_DB_BACKUP_ON_INITIALISE
-      ),
-    });
+    ).toEqual(expectedDefaultStore);
+    expect(result).toEqual(expectedDefaultStore);
     expect(configManager.getJsonDbRootFolderId()).toBe(
       ConfigurationManager.DEFAULTS.JSON_DB_ROOT_FOLDER_ID
     );
@@ -477,18 +408,7 @@ describe('ConfigurationManager getter and helper behaviour', () => {
   let configManager;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    ConfigurationManager.resetForTests();
-
-    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
-    mocks.Utils.isValidUrl.mockReturnValue(true);
-
-    configManager = new ConfigurationManager(true);
-    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
-    configManager.documentProperties = mocks.PropertiesService.documentProperties;
-    configManager._initialized = true;
-    configManager.configCache = null;
+    ({ mocks, configManager } = createConfiguredConfigurationManager(vi, ConfigurationManager));
   });
 
   it('reads typed configuration values from the persisted store', () => {
@@ -609,18 +529,7 @@ describe('ConfigurationManager internal helper branches', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    ConfigurationManager.resetForTests();
-
-    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
-    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
-    mocks.Utils.isValidUrl.mockReturnValue(true);
-
-    configManager = new ConfigurationManager(true);
-    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
-    configManager.documentProperties = mocks.PropertiesService.documentProperties;
-    configManager._initialized = true;
-    configManager.configCache = null;
+    ({ mocks, configManager } = createConfiguredConfigurationManager(vi, ConfigurationManager));
   });
 
   it('reuses the singleton instance on repeated construction attempts', () => {
