@@ -187,6 +187,31 @@ describe('backend configuration API transport', () => {
     }
   });
 
+  it('masks short API keys without exposing the raw value', () => {
+    const configurationManagerMock = installConfigurationManagerMock(
+      {
+        apiKey: '1234',
+      },
+      {},
+      { allConfigurations: { apiKey: '1234' } }
+    );
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'getBackendConfig',
+      });
+
+      expect(response.data.apiKey).toBe('****');
+      expect(response.data.hasApiKey).toBe(true);
+      expect(response.data.apiKey).not.toContain('1234');
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
   it('seeds and returns default backend configuration when nothing has been saved yet', () => {
     const configurationManagerMock = installConfigurationManagerMock(
       {},
@@ -403,6 +428,60 @@ describe('backend configuration API transport', () => {
           success: false,
           error: expect.stringContaining('Failed to save some configuration values:'),
         },
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      configurationManagerMock.restore();
+    }
+  });
+
+  it('calls every backend configuration setter when all fields are provided', () => {
+    const configurationManagerMock = installConfigurationManagerMock();
+
+    try {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      const response = dispatcher.handle({
+        method: 'setBackendConfig',
+        params: {
+          backendAssessorBatchSize: 42,
+          slidesFetchBatchSize: 24,
+          apiKey: 'new-secret',
+          backendUrl: 'https://updated-backend.example.test',
+          revokeAuthTriggerSet: true,
+          daysUntilAuthRevoke: 90,
+          jsonDbMasterIndexKey: 'UPDATED_MASTER_INDEX',
+          jsonDbLockTimeoutMs: 20000,
+          jsonDbLogLevel: 'DEBUG',
+          jsonDbBackupOnInitialise: true,
+          jsonDbRootFolderId: 'folder-123',
+        },
+      });
+
+      expect(configurationManagerMock.manager.setBackendAssessorBatchSize).toHaveBeenCalledWith(42);
+      expect(configurationManagerMock.manager.setSlidesFetchBatchSize).toHaveBeenCalledWith(24);
+      expect(configurationManagerMock.manager.setApiKey).toHaveBeenCalledWith('new-secret');
+      expect(configurationManagerMock.manager.setBackendUrl).toHaveBeenCalledWith(
+        'https://updated-backend.example.test'
+      );
+      expect(configurationManagerMock.manager.setRevokeAuthTriggerSet).toHaveBeenCalledWith(true);
+      expect(configurationManagerMock.manager.setDaysUntilAuthRevoke).toHaveBeenCalledWith(90);
+      expect(configurationManagerMock.manager.setJsonDbMasterIndexKey).toHaveBeenCalledWith(
+        'UPDATED_MASTER_INDEX'
+      );
+      expect(configurationManagerMock.manager.setJsonDbLockTimeoutMs).toHaveBeenCalledWith(20000);
+      expect(configurationManagerMock.manager.setJsonDbLogLevel).toHaveBeenCalledWith('DEBUG');
+      expect(configurationManagerMock.manager.setJsonDbBackupOnInitialise).toHaveBeenCalledWith(
+        true
+      );
+      expect(configurationManagerMock.manager.setJsonDbRootFolderId).toHaveBeenCalledWith(
+        'folder-123'
+      );
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: { success: true },
       });
       expect(response.requestId).toEqual(expect.any(String));
     } finally {

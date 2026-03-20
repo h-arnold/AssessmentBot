@@ -571,3 +571,84 @@ describe('ConfigurationManager getter and helper behaviour', () => {
     expect(ConfigurationManager.toBooleanString('')).toBe('false');
   });
 });
+
+describe('ConfigurationManager internal helper branches', () => {
+  let configManager;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ConfigurationManager.resetForTests();
+
+    mocks.PropertiesService.documentProperties.getProperty.mockReturnValue(false);
+    mocks.PropertiesService.scriptProperties.getProperty.mockReturnValue(null);
+    mocks.Utils.isValidUrl.mockReturnValue(true);
+
+    configManager = new ConfigurationManager(true);
+    configManager.scriptProperties = mocks.PropertiesService.scriptProperties;
+    configManager.documentProperties = mocks.PropertiesService.documentProperties;
+    configManager._initialized = true;
+    configManager.configCache = null;
+  });
+
+  it('reuses the singleton instance on repeated construction attempts', () => {
+    const first = configManager;
+    const second = new ConfigurationManager(true);
+
+    expect(second).toBe(first);
+  });
+
+  it('skips propertyStore deserialisation when script properties already exist', () => {
+    mocks.PropertiesService.scriptProperties.getKeys.mockReturnValue(['existing']);
+
+    configManager.maybeDeserializeProperties();
+
+    expect(mocks.PropertiesCloner).not.toHaveBeenCalled();
+  });
+
+  it('deserialises properties when a propertiesStore sheet is available', () => {
+    const deserialiseProperties = vi.fn();
+    const originalPropertiesCloner = globalThis.PropertiesCloner;
+    globalThis.PropertiesCloner = function PropertiesCloner() {
+      this.sheet = { name: 'propertiesStore' };
+      this.deserialiseProperties = deserialiseProperties;
+      this.serialiseProperties = vi.fn();
+    };
+
+    try {
+      configManager.maybeDeserializeProperties();
+
+      expect(deserialiseProperties).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.PropertiesCloner = originalPropertiesCloner;
+    }
+  });
+
+  it('returns false when Google Drive folder IDs are missing or malformed', () => {
+    mocks.DriveApp.getFolderById.mockReturnValue({});
+
+    expect(configManager.isValidGoogleDriveFolderId(null)).toBe(false);
+    expect(configManager.isValidGoogleDriveFolderId('short')).toBe(false);
+    expect(configManager.isValidGoogleDriveFolderId('folder-12345')).toBe(true);
+    expect(mocks.DriveApp.getFolderById).toHaveBeenCalledWith('folder-12345');
+  });
+
+  it('validates API keys using the configured token pattern', () => {
+    expect(configManager.isValidApiKey('sk-abc123')).toBe(true);
+    expect(configManager.isValidApiKey('invalid-key-')).toBe(false);
+  });
+
+  it('delegates JSON DB root folder updates to setProperty', () => {
+    const setPropertySpy = vi.spyOn(configManager, 'setProperty');
+    const validatorSpy = vi
+      .spyOn(configManager, 'isValidGoogleDriveFolderId')
+      .mockReturnValue(true);
+
+    configManager.setJsonDbRootFolderId('folder-123');
+
+    expect(setPropertySpy).toHaveBeenCalledWith(
+      ConfigurationManager.CONFIG_KEYS.JSON_DB_ROOT_FOLDER_ID,
+      'folder-123'
+    );
+    expect(validatorSpy).toHaveBeenCalledWith('folder-123');
+  });
+});
