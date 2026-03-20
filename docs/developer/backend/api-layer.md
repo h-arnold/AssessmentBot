@@ -104,10 +104,12 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
   Source: `src/backend/z_Api/apiConfig.js`. Registered in `src/backend/z_Api/apiConstants.js` and dispatched through `src/backend/z_Api/apiHandler.js`.
   Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
   Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
+  Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
 
 - `getBackendConfig` read data returns the public configuration payload with the following stable fields: `backendAssessorBatchSize`, masked `apiKey`, `hasApiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.
   Masking contract: `apiKey` is never returned as the raw stored secret. It is returned as `''`, `'****'`, or `'****'` plus the visible four-character suffix.
-  Read-failure contract: when one or more configuration reads fail, the response still returns the payload with fallback values and adds optional `loadError` text. `hasApiKey` reflects whether a raw key was present before masking.
+  Bootstrap contract: when the persisted configuration store is completely empty, `ConfigurationManager` seeds the defaultable backend settings on first read before the payload is returned. `apiKey`, `backendUrl`, and `jsonDbRootFolderId` remain unseeded when absent.
+  Response normalisation: `jsonDbRootFolderId` is returned as `''` when the stored value is blank or unset. `hasApiKey` reflects whether a raw key was present before masking.
 
 - `setBackendConfig` accepts a partial write payload. Only supplied fields are written.
   Writable patch fields: `backendAssessorBatchSize`, `apiKey`, `backendUrl`, `revokeAuthTriggerSet`, `daysUntilAuthRevoke`, `slidesFetchBatchSize`, `jsonDbMasterIndexKey`, `jsonDbLockTimeoutMs`, `jsonDbLogLevel`, `jsonDbBackupOnInitialise`, and `jsonDbRootFolderId`.

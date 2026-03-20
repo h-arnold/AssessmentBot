@@ -220,8 +220,7 @@ Frontend callers should use `src/frontend/src/services/backendConfigurationServi
   "jsonDbLockTimeoutMs": 5000,
   "jsonDbLogLevel": "INFO",
   "jsonDbBackupOnInitialise": false,
-  "jsonDbRootFolderId": "folder-123",
-  "loadError": "apiKey: Script property not found"
+  "jsonDbRootFolderId": "folder-123"
 }
 ```
 
@@ -230,8 +229,9 @@ Key notes:
 - `apiKey` is a masked display value, never the raw stored secret.
 - Masking contract: the value is `''`, `'****'`, or `'****'` plus the visible four-character suffix.
 - `hasApiKey` indicates whether a raw key exists in storage before masking.
-- `loadError` is optional and is present only when one or more configuration reads fail.
-- `loadError` aggregates failing public field names with the thrown error message when one is available; it is diagnostic text, not a separately redacted secret field.
+- When the stored configuration object is completely empty, `ConfigurationManager.ensureDefaultConfiguration()` persists the defaultable backend settings before this payload is returned.
+- `apiKey`, `backendUrl`, and `jsonDbRootFolderId` are not seeded during that first-time bootstrap when they are absent.
+- `jsonDbRootFolderId` is normalised to `''` in the response when the stored value is blank or unset.
 - The remaining fields are the public configuration values exposed to the frontend configuration UI.
 
 ### `setBackendConfig` request data
