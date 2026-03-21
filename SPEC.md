@@ -161,7 +161,7 @@ The UI table should resolve keys to human-readable names by joining:
 
 The composition root for this feature should live under `SettingsPage` in the **Classes** tab rather than on the top-level `ClassesPage` shell route.
 
-For the detailed tab layout, modal hierarchy, component selection, and state design, use `CLASSROOM_TAB_LAYOUT_AND_MODALS.md` alongside this spec.
+For the detailed tab layout, modal hierarchy, component selection, and state design, use `CLASSES_TAB_LAYOUT_AND_MODALS.md` alongside this spec.
 
 Proposed high-level tree:
 
@@ -230,8 +230,6 @@ The backend `getGoogleClassrooms` API surface already exists. Add the missing fr
 
 - `queryKeys.googleClassrooms()`
 - `getGoogleClassroomsQueryOptions()`
-
-Add a dedicated frontend service and adjacent Zod schema for `getGoogleClassrooms`.
 
 ## Core merged view model
 

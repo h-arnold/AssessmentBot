@@ -1,4 +1,4 @@
-# Classroom Tab Layout and Modals
+# Classes Tab Layout and Modals
 
 ## Purpose
 
@@ -331,7 +331,7 @@ Classes tab
 2. Use `Modal.confirm` only for simple destructive confirmation where no extra fields are required.
 3. Keep one primary modal open at a time unless a secondary create/edit/delete modal is explicitly nested from a management modal.
 4. When a secondary modal closes successfully, return focus to the invoking button inside the parent modal.
-5. Use `destroyOnHidden` only when resetting state is desirable; otherwise keep parent modal state stable during child modal flows.
+5. Use `destroyOnHidden` only when resetting state is desirable; otherwise keep parent modal state stable during child modal flows. In the current Ant Design Modal docs this is the supported prop, while `destroyOnClose` is shown as deprecated.
 6. Surface final mutation summaries in the top-level alert stack after the modal closes.
 
 ## Modal state vocabulary

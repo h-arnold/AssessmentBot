@@ -6,7 +6,7 @@
 
 - Implement the Classes CRUD feature in the **Classes** tab on the top-level `SettingsPage`.
 - Replace the current placeholder Classes-tab content in `src/frontend/src/pages/SettingsPage.tsx` with a real feature entry for CRUD-only class management.
-- Use `CLASSROOM_TAB_LAYOUT_AND_MODALS.md` as the UI-layout and modal-state companion document for implementation details that sit below the product/data-contract level.
+- Use `CLASSES_TAB_LAYOUT_AND_MODALS.md` as the UI-layout and modal-state companion document for implementation details that sit below the product/data-contract level.
 - Update backend reference-data models, controllers, and API handlers so cohorts and year groups use stable keys.
 - Update `ABClass` transport and persistence contracts so class metadata stores `cohortKey` and `yearGroupKey` rather than mutable display names.
 - Add the required frontend services, Zod schemas, React Query definitions, view-model mapping, page UI, modal workflows, and automated test coverage.
