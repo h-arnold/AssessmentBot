@@ -648,8 +648,8 @@ Frontend tests:
 
 ### Section checks
 
-- `npm test -- tests/models/... tests/controllers/... tests/api/...`
-- `npm run frontend:test -- src/features/classes/... src/services/... src/query/...`
+- `npm test -- tests/models/<model-test-path> tests/controllers/<controller-test-path> tests/api/<api-test-path>`
+- `npm run frontend:test -- src/features/classes/<feature-test-path> src/services/<service-test-path> src/query/<query-test-path>`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts`
 - `npm run lint`
 - `npm run frontend:lint`
