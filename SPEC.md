@@ -23,8 +23,8 @@ This page is **not** intended to host class analysis or assessment-run controls 
 2. This page is for **CRUD operations on `ABClass` entities only**.
 3. Orphaned `ABClass` records should remain visible on the same page and should support **deletion only**.
 4. The page should use a **single table** with status as a visible column.
-5. Rows should be sorted to show **active**, then **inactive**, then **orphaned**.
-   Assumption: rows with no `ABClass` yet (`not created`) should sort after inactive and before orphaned unless later directed otherwise.
+5. Rows should be sorted to show **active**, then **inactive**, then **not created**, then **orphaned**.
+   Assumption: rows with no `ABClass` yet (`not created`) are treated as a distinct status that sorts after inactive and before orphaned unless later directed otherwise.
 6. The Google Classroom list should refresh on page load only; no manual refresh control is needed for now.
 7. Cohort and year-group management should use **secondary modals** for create, edit, and delete flows.
 8. Bulk editing should remain **modal-driven**, not inline.
