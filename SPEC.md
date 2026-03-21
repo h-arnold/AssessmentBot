@@ -8,7 +8,7 @@ Draft v1.2 — refined after the second review pass.
 
 This document defines the intended behaviour for the Classes CRUD surface.
 
-The top-level Classes page will be used to:
+The Classes CRUD feature will live in the **Classes** tab within the top-level **Settings** page and will be used to:
 
 - list active Google Classrooms alongside persisted `ABClass` records
 - show which Google Classrooms do and do not yet have corresponding `ABClass` records
@@ -19,7 +19,7 @@ This page is **not** intended to host class analysis or assessment-run controls 
 
 ## Agreed product decisions
 
-1. The top-level **Classes** page is the correct home for this feature.
+1. The **Classes** tab in the top-level **Settings** page is the correct home for this feature.
 2. This page is for **CRUD operations on `ABClass` entities only**.
 3. Orphaned `ABClass` records should remain visible on the same page and should support **deletion only**.
 4. The page should use a **single table** with status as a visible column.
@@ -96,6 +96,8 @@ If `ABClass` stores a stable key instead:
   key: string;
   name: string;
   active: boolean;
+  startYear: number;
+  startMonth: number;
 }
 ```
 
@@ -157,22 +159,26 @@ The UI table should resolve keys to human-readable names by joining:
 
 ## Page architecture
 
-The top-level `ClassesPage` should become the composition root for this feature.
+The composition root for this feature should live under `SettingsPage` in the **Classes** tab rather than on the top-level `ClassesPage` shell route.
+
+For the detailed tab layout, modal hierarchy, component selection, and state design, use `CLASSES_TAB_LAYOUT_AND_MODALS.md` alongside this spec.
 
 Proposed high-level tree:
 
 ```text
-ClassesPage
-└── ClassesManagementPage
-    ├── PageHeader / summary
-    ├── Alert region (load, partial-load, mutation summary)
-    ├── ClassesToolbar
-    │   ├── Bulk actions trigger
-    │   ├── Secondary modal launchers
-    │   │   ├── Manage cohorts
-    │   │   └── Manage year groups
-    │   └── Selection summary
-    └── ClassesTable
+SettingsPage
+└── TabbedPageSection
+    └── Classes tab
+        └── ClassesManagementPanel
+            ├── PageHeader / summary
+            ├── Alert region (load, partial-load, mutation summary)
+            ├── ClassesToolbar
+            │   ├── Bulk actions trigger
+            │   ├── Secondary modal launchers
+            │   │   ├── Manage cohorts
+            │   │   └── Manage year groups
+            │   └── Selection summary
+            └── ClassesTable
 ```
 
 ### Out of scope for this page
@@ -187,7 +193,7 @@ The first implementation slice must not add:
 
 ## Required datasets
 
-The Classes page depends on four shared datasets:
+The Settings-page **Classes** tab depends on four shared datasets:
 
 - `classPartials`
 - `googleClassrooms`
@@ -204,11 +210,11 @@ Startup warm-up should prefetch:
 - `cohorts`
 - `yearGroups`
 
-These datasets should be treated as shared lookup data because they will be reused for joins, filters, and query composition beyond the Classes page.
+These datasets should be treated as shared lookup data because they will be reused for joins, filters, and query composition beyond the Classes tab.
 
-### Classes-page entry
+### Classes-tab entry
 
-When the Classes page is opened, prefetch:
+When the Classes tab is opened, prefetch:
 
 - `googleClassrooms`
 
@@ -220,12 +226,10 @@ No dedicated manual refresh control is required in v1.
 
 ## Query additions
 
-Add a shared query key and query options for Google Classrooms:
+The backend `getGoogleClassrooms` API surface already exists. Add the missing frontend service, adjacent Zod schema, shared query key, and shared query options for Google Classrooms:
 
 - `queryKeys.googleClassrooms()`
 - `getGoogleClassroomsQueryOptions()`
-
-Add a dedicated frontend service and adjacent Zod schema for `getGoogleClassrooms`.
 
 ## Core merged view model
 
@@ -279,6 +283,8 @@ This is the first-run case.
 - persisted `ABClass` partial exists
 - class is not present in the active Google Classroom list
 
+For v1, this status means **not present in the active Google Classroom list** only. It is not yet a definitive signal that the Classroom was deleted or archived. Future work may widen the Classroom dataset to include archived classes so this label can become more precise.
+
 ## Sort order
 
 Default table sort order should be:
@@ -313,13 +319,12 @@ Recommended Ant Design components:
 1. checkbox selection column
 2. status column
 3. `className`
-4. `classId`
-5. cohort
-6. `courseLength`
-7. year group
-8. `classOwner`
-9. `teachers`
-10. `active`
+4. cohort
+5. `courseLength`
+6. year group
+7. `active`
+
+`classId` should remain available to the feature as the row key and hidden identifier, but it does not need a visible table column in the Classes-tab UI. `classOwner` and `teachers` should not be displayed in the table because they are backend-managed Google Classroom metadata and are populated only after the stored `ABClass` exists.
 
 ## Rendering rules
 
@@ -330,8 +335,6 @@ For rows without persisted `ABClass` data, unavailable fields should render as `
 - cohort
 - course length
 - year group
-- class owner
-- teachers
 - active
 
 ### Active and inactive rows
@@ -445,7 +448,7 @@ For all bulk actions:
 
 ## Reference-data management specification
 
-Reference-data management should be launched from secondary modals on the Classes page.
+Reference-data management should be launched from secondary modals in the Settings-page **Classes** tab.
 
 ## Cohort management modal
 
@@ -487,6 +490,24 @@ As with cohorts, backend validation is authoritative.
 
 Update the cohort and year-group models and transport contracts so they expose stable keys.
 
+Key requirements:
+
+- generate UUID keys on create
+- keys are immutable on rename
+- all cohort and year-group records are keyed; no unkeyed records are supported in the v1 contract
+- CRUD request and response shapes should identify records by `key`, not mutable display names
+
+For cohorts, also add:
+
+- `startYear: number`
+- `startMonth: number`
+
+Defaulting rules for cohorts:
+
+- `startMonth` defaults to `9` (September)
+- `startYear` defaults to the current calendar year when the current month is September or later
+- `startYear` defaults to the previous calendar year when the current month is earlier than September
+
 ## 2. Update `ABClass` metadata to store keys
 
 Update the `ABClass` domain model and transport contracts to use:
@@ -495,6 +516,8 @@ Update the `ABClass` domain model and transport contracts to use:
 - `yearGroupKey`
 
 rather than mutable display names.
+
+This spec assumes a one-off destructive reset of existing data before rollout, so no compatibility or backfill layer is required in production code for the old name-based contract.
 
 ## 3. Strengthen `updateABClass` validation for `active`
 
@@ -514,6 +537,8 @@ Add backend validation so:
 
 - `deleteCohort` fails if any persisted `ABClass` uses that cohort key
 - `deleteYearGroup` fails if any persisted `ABClass` uses that year-group key
+
+The preferred implementation source for these in-use checks is the `abclass_partials` registry, because it already exists as the lightweight index of persisted class metadata.
 
 ## 5. Partial-response shaping
 
@@ -559,14 +584,17 @@ The implementation plan should be organised around the following broad workstrea
 ## 1. Contract design
 
 - confirm the final blank-slate transport contract for `cohortKey` and `yearGroupKey`
+- record explicitly that rollout depends on a one-off destructive reset of existing persisted data
 - ensure later sections can rely on the key-based contract without compatibility fallbacks
 - identify every backend and frontend consumer that must adopt the new key-based contract
+- record that parts of the assessment workflow currently depend on `ABClass.yearGroup` as a numeric academic-year field and will require follow-on refactor work outside this v1 delivery
 
 ## 2. Reference-data model and API updates
 
-- add stable keys to cohort and year-group records
-- update create, edit, list, and delete handlers to expose keys
+- add stable UUID keys to cohort and year-group records
+- update create, edit, list, and delete handlers to expose keys and use keyed CRUD payloads
 - preserve existing active-state behaviour for cohorts
+- add `startYear` and `startMonth` to cohorts, including the defaulting rules above
 - add delete guards for in-use cohort and year-group keys
 
 ## 3. `ABClass` domain and API updates
@@ -585,7 +613,7 @@ The implementation plan should be organised around the following broad workstrea
 ## 5. Frontend service and schema work
 
 - add or update Zod schemas for key-based cohort and year-group payloads
-- add the frontend `googleClassrooms` service wrapper
+- add the frontend `googleClassrooms` service wrapper for the existing backend API surface
 - update service contracts for any changed `ABClass`, cohort, or year-group payloads
 - keep all transport calls routed through `callApi(...)`
 
@@ -596,9 +624,9 @@ The implementation plan should be organised around the following broad workstrea
 - add invalidation and forced refresh behaviour for cohort and year-group mutations
 - update any canonical React Query documentation that changes as a result
 
-## 7. Classes-page feature implementation
+## 7. Settings-page Classes-tab feature implementation
 
-- replace the current placeholder `ClassesPage` with a real feature entry component
+- replace the current placeholder Classes-tab content in `SettingsPage` with a real feature entry component
 - build the merged row view model for active, inactive, not-created, and orphaned rows
 - implement default status sorting and row selection
 - render the main Ant Design table and status affordances
@@ -638,7 +666,7 @@ The implementation plan should be organised around the following broad workstrea
 
 ## Blocking load failure
 
-If the Classes page cannot load essential datasets, show a top-level `Alert`.
+If the Settings-page Classes tab cannot load any essential startup-prefetched dataset (`classPartials`, `cohorts`, or `yearGroups`), show a top-level `Alert` and fail fast/loudly rather than silently continuing with a partially warmed client state.
 
 ## Partial-load failure
 
@@ -652,7 +680,7 @@ If one dataset fails but others succeed:
 
 ### No active Google Classrooms
 
-Show `Empty` state for the table.
+Show `Empty` state for the table only when the Google Classroom fetch succeeds and returns zero active classes. A fetch failure must surface as an error state rather than being treated as an empty result.
 
 ### First run: no `ABClass` records yet
 
@@ -683,7 +711,7 @@ After successful mutations, refresh the relevant queries:
 
 Include in v1:
 
-- Classes-page ownership for this feature
+- Settings-page **Classes** tab ownership for this feature
 - a single CRUD-focused table
 - status column with default sort order
 - merged active, inactive, not-created, and orphaned rows
@@ -694,7 +722,7 @@ Include in v1:
 - `ABClass` storage of cohort and year-group keys
 - backend validation to prevent `active` updates creating missing classes
 - backend validation to prevent deleting in-use cohorts and year groups
-- Google Classrooms view-entry prefetch on Classes-page entry
+- Google Classrooms view-entry prefetch on Classes-tab entry
 
 Defer from v1:
 
@@ -704,3 +732,4 @@ Defer from v1:
 - class analysis features on this page
 - assessment-run controls on this page
 - broader assignment workflows
+- fetching all Google Classrooms, including archived classes, to refine orphaned-row labelling
