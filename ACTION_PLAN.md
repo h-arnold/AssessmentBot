@@ -4,18 +4,21 @@
 
 ### Scope
 
-- Implement the Classes CRUD feature on the top-level `ClassesPage`.
-- Replace the current placeholder `src/frontend/src/pages/ClassesPage.tsx` with a real feature entry for CRUD-only class management.
+- Implement the Classes CRUD feature in the **Classes** tab on the top-level `SettingsPage`.
+- Replace the current placeholder Classes-tab content in `src/frontend/src/pages/SettingsPage.tsx` with a real feature entry for CRUD-only class management.
+- Use `CLASSROOM_TAB_LAYOUT_AND_MODALS.md` as the UI-layout and modal-state companion document for implementation details that sit below the product/data-contract level.
 - Update backend reference-data models, controllers, and API handlers so cohorts and year groups use stable keys.
 - Update `ABClass` transport and persistence contracts so class metadata stores `cohortKey` and `yearGroupKey` rather than mutable display names.
 - Add the required frontend services, Zod schemas, React Query definitions, view-model mapping, page UI, modal workflows, and automated test coverage.
-- Update shared prefetch behaviour so `cohorts` and `yearGroups` warm at startup alongside `classPartials`, while `googleClassrooms` remains a Classes-page entry prefetch.
+- Update shared prefetch behaviour so `cohorts` and `yearGroups` warm at startup alongside `classPartials`, while `googleClassrooms` remains a Classes-tab entry prefetch.
 - Add backend validation to prevent `active` updates from creating missing classes and to block deletion of in-use cohort or year-group records.
+- Add `startYear` and `startMonth` to the cohort model so cohort-year calculations remain possible after moving to stable keys.
+- Update the plan and rollout notes to record that some assessment-workflow paths depend on the current numeric `ABClass.yearGroup` behaviour and will require follow-on refactor work outside this delivery.
 
 ### Out of scope
 
-- Class analysis features on the Classes page.
-- Assessment-run controls on the Classes page.
+- Class analysis features on the Settings-page Classes tab.
+- Assessment-run controls on the Settings-page Classes tab.
 - Inline editing inside the table.
 - Dedicated bulk backend endpoints in this delivery.
 - Manual Google Classroom refresh controls in this delivery.
@@ -23,12 +26,14 @@
 
 ### Assumptions
 
-1. `cohort` and `yearGroup` will move to stable-key reference-data records, and the canonical `ABClass` metadata fields will become `cohortKey` and `yearGroupKey`.
-2. `googleClassrooms` remains a narrow page-entry dataset returning active Classroom rows only; it does not become a startup warm-up dataset in this delivery.
-3. Frontend shared server-state continues to use React Query with shared query-key helpers and transport access routed through `callApi(...)` only.
-4. The current `apiHandler` envelope remains the transport contract; changed payload shapes should be introduced through existing allowlisted methods unless implementation proves a new method is required.
-5. All user-visible interactions introduced by this feature require Playwright coverage in addition to appropriate Vitest coverage.
-6. This feature can be implemented as a blank-slate contract without compatibility or backfill work.
+1. Rollout uses a one-off destructive reset of existing persisted data, so the new code may treat the key-based reference-data and `ABClass` contracts as blank-slate shapes without compatibility or backfill logic.
+2. All cohort and year-group records are keyed records. Cohort keys and year-group keys are generated as UUIDs on create and remain immutable on rename.
+3. Cohorts add `startYear` and `startMonth` as part of the v1 stable-key contract.
+4. `googleClassrooms` remains a narrow page-entry dataset returning active Classroom rows only; the backend API surface already exists and this delivery adds the missing frontend service/query integration.
+5. Frontend shared server-state continues to use React Query with shared query-key helpers and transport access routed through `callApi(...)` only.
+6. The current `apiHandler` envelope remains the transport contract; changed payload shapes should be introduced through existing allowlisted methods unless implementation proves a new method is required.
+7. All user-visible interactions introduced by this feature require Playwright coverage in addition to appropriate Vitest coverage.
+8. Some assessment-workflow paths currently depend on `ABClass.yearGroup` as a numeric academic-year field; that downstream refactor is out of scope for this delivery and must be recorded in follow-up documentation.
 
 ---
 
@@ -41,7 +46,7 @@
 - Avoid defensive guards that hide wiring issues.
 - Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
-- Keep `ClassesPage.tsx` as a composition layer; do not move feature orchestration into page-level shell components.
+- Keep `SettingsPage.tsx` as a composition layer; do not move feature orchestration into page-level shell components.
 - Route all frontend-to-backend calls through `callApi(...)`; never call backend globals or `google.script.run` directly from feature code.
 - Use Zod for new or updated frontend validation logic and derive TypeScript types from schemas.
 - When shared server-state is introduced or changed, use shared query-key helpers and update canonical React Query documentation if policy changes.
@@ -80,6 +85,9 @@ For each section below:
 - Preserve current cohort active-state semantics while introducing keys.
 - Do not silently repurpose existing name fields to carry keys; keep key and display-name responsibilities explicit.
 - Treat the new key-based reference-data shape as the only supported contract for this delivery.
+- Generate UUID keys on create and keep them immutable on rename.
+- All CRUD request shapes must identify target reference-data records by `key`, not by mutable display name.
+- Cohorts must include `startYear` and `startMonth`, with defaults applied from the agreed academic-year rule.
 
 ### Acceptance criteria
 
@@ -87,30 +95,36 @@ For each section below:
 - Backend and frontend code can rely on the blank-slate key-based contract without compatibility fallbacks.
 - Backend and frontend schemas agree on the new reference-data shapes.
 - The changed contract is reflected in the relevant canonical docs or queued explicitly in the documentation section.
+- Cohort records expose `key`, `name`, `active`, `startYear`, and `startMonth`.
+- Year-group records expose `key` and `name`.
+- CRUD request and response shapes for reference data are fully keyed.
 
 ### Required test cases (Red first)
 
 Backend model tests:
 
-1. Cohort model serialises and deserialises `{ key, name, active }` correctly.
+1. Cohort model serialises and deserialises `{ key, name, active, startYear, startMonth }` correctly.
 2. Year-group model serialises and deserialises `{ key, name }` correctly.
 3. Cohort and year-group constructors reject missing or malformed keys.
+4. Cohort defaulting sets `startMonth` to September and derives `startYear` from the current month/year using the agreed academic-year rule.
 
 Backend controller tests:
 
 1. Reference-data list methods return keys and names in the expected plain-object shape.
 2. Create and update paths preserve key integrity and duplicate protection rules.
-3. None unless implementation introduces a normalisation helper for unrelated contract-shaping reasons.
+3. Create and update paths for cohorts preserve `startYear` and `startMonth` rules.
 
 API layer tests:
 
 1. `getCohorts`, `createCohort`, `updateCohort`, `getYearGroups`, `createYearGroup`, and `updateYearGroup` expose the new key-bearing payloads.
 2. Invalid reference-data payloads surface `INVALID_REQUEST` envelopes through the API layer when applicable.
+3. Keyed update and delete request shapes are validated at the API boundary.
 
 Frontend tests:
 
 1. Updated Zod schemas accept valid key-bearing cohort and year-group payloads.
 2. Updated frontend service contracts reject malformed key-bearing payloads.
+3. Updated frontend schemas enforce the keyed CRUD request shapes.
 
 ### Section checks
 
@@ -203,6 +217,7 @@ Frontend tests:
 - Keep API-layer methods thin; put behavioural rules in controllers and/or dedicated validation helpers.
 - Do not allow `active` updates to create missing classes.
 - Delete guards for cohorts and year groups must be backend-authoritative.
+- Use `abclass_partials` as the preferred source for in-use reference-data checks unless implementation proves it insufficient.
 
 ### Acceptance criteria
 
@@ -272,6 +287,9 @@ Frontend tests:
 - Shared query helpers exist for `googleClassrooms`, `cohorts`, `yearGroups`, and `classPartials` as needed.
 - Startup warm-up can fetch `classPartials`, `cohorts`, and `yearGroups`.
 - Cohort and year-group mutations invalidate and refresh the relevant shared queries.
+- The warm-up client is considered warmed only when all three startup-prefetched datasets succeed.
+- Startup warm-up does not add extra retry loops beyond the existing `apiHandler` retry behaviour.
+- If any startup-prefetched dataset fails, the feature surfaces a fail-fast/loud top-level alert rather than silently continuing with a partially warmed state.
 
 ### Required test cases (Red first)
 
@@ -294,6 +312,8 @@ Frontend tests:
 3. Shared query helpers expose the correct query keys and query functions for `googleClassrooms`.
 4. Startup warm-up orchestration fetches `classPartials`, `cohorts`, and `yearGroups` after authorisation.
 5. Cohort and year-group mutation flows invalidate the correct shared queries.
+6. The warm-up marker is set only after all three startup-prefetched datasets resolve successfully.
+7. A failed startup-prefetch path surfaces the expected fail-fast/loud alert state without additional retry orchestration.
 
 ### Section checks
 
@@ -313,22 +333,22 @@ Frontend tests:
 
 ---
 
-## Section 5 — Classes-page entry and merged view-model orchestration
+## Section 5 — Settings-page Classes-tab entry and merged view-model orchestration
 
 ### Objective
 
-- Replace the placeholder Classes page with a real feature entry that loads the shared datasets and builds the merged row view model.
+- Replace the placeholder Settings-page Classes-tab content with a real feature entry that loads the shared datasets and builds the merged row view model.
 
 ### Constraints
 
-- Keep `ClassesPage.tsx` thin and move orchestration into a feature hook or view-model helper.
+- Keep `SettingsPage.tsx` thin and move orchestration into a feature hook or view-model helper.
 - The merged row model must represent `active`, `inactive`, `notCreated`, and `orphaned` rows.
 - Sorting defaults must follow the agreed order.
 - This section must remain CRUD-only; do not add analysis or assessment-run behaviour.
 
 ### Acceptance criteria
 
-- The Classes page renders a real feature entry component.
+- The Settings-page Classes tab renders a real feature entry component.
 - The merged row view model correctly combines Google Classroom rows, stored `ABClass` partials, and reference-data lookups.
 - Default sort order is active, inactive, not created, then orphaned.
 - The page exposes the required loading and partial-load state needed for later UI sections.
@@ -349,7 +369,7 @@ API layer tests:
 
 Frontend tests:
 
-1. `ClassesPage` renders the Classes management feature entry.
+1. `SettingsPage` renders the Classes-tab management feature entry.
 2. The merged view-model helper derives the correct status for active, inactive, not-created, and orphaned rows.
 3. The merged view-model helper resolves cohort and year-group names from keys.
 4. The default sort order is applied correctly.
@@ -357,7 +377,7 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/pages/ClassesPage.spec.tsx src/features/classes/*.spec.ts src/features/classes/**/*.spec.tsx`
+- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/features/classes/*.spec.ts src/features/classes/**/*.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
@@ -409,11 +429,21 @@ API layer tests:
 
 Frontend tests:
 
-1. Table renders the required columns and row content for each status.
-2. Selection state updates correctly when rows are toggled.
-3. Ineligible rows or actions surface the correct disabled states or tooltips.
-4. Orphaned rows show the correct warning affordance.
-5. Playwright covers the visible table render, sorting, and selection behaviour.
+Vitest:
+
+1. Table renders the required columns and row content for active, inactive, `notCreated`, and orphaned rows.
+2. Table loading state renders with shell structure intact during initial Google Classroom entry fetch.
+3. Selection state updates correctly when rows are toggled from no selection to mixed and fully eligible selections.
+4. Ineligible rows or actions surface the correct disabled states or tooltips, including deletion-only orphaned rows.
+5. Summary-card counts and selection-summary text update correctly for mixed row-state datasets.
+
+Playwright:
+
+1. User opens the Settings page, switches to the Classes tab, and sees the default sorted table with summary and toolbar cards.
+2. User sees the no-selection state with the bulk-action trigger disabled and the selection summary reset.
+3. User selects eligible and ineligible rows and sees the correct enabled, disabled, and tooltip-backed bulk affordances.
+4. User sees the first-run `notCreated` rendering and the orphaned warning affordance in the live table.
+5. User sees the no-active-classrooms empty state without losing the management launchers.
 
 ### Section checks
 
@@ -470,11 +500,22 @@ API layer tests:
 
 Frontend tests:
 
-1. Bulk create modal validates required inputs and dispatches one mutation per selected row.
-2. Bulk delete confirmation text is correct and destructive flow works.
-3. Bulk active-state modal or action blocks ineligible selections.
-4. Partial failures keep failed rows selected and show summary feedback.
-5. Playwright covers the visible create, delete, and active-state user journeys.
+Vitest:
+
+1. Bulk create modal covers opening, ready, validation-error, submitting, partial-success, and success-close states.
+2. Bulk create validates required cohort and year-group inputs, applies the default `courseLength` of `1`, and dispatches one mutation per selected row.
+3. Bulk delete confirmation copy states that both full and partial stored class records are removed.
+4. Bulk delete workflow covers ready, submitting, partial-success, and submission-failure summary mapping.
+5. Bulk active-state action blocks ineligible selections before open and maps submitting and partial-success outcomes correctly.
+6. Partial failures keep failed rows selected and drive the top-level mutation summary state expected by the tab.
+
+Playwright:
+
+1. User selects `notCreated` rows, opens Bulk create, sees active-cohort-only options, validates required fields, and completes a successful create flow.
+2. User triggers a bulk-create partial failure and sees failed rows remain selected with warning feedback after close.
+3. User opens Bulk delete, sees the destructive copy, confirms, and receives success or partial-failure summary feedback.
+4. User attempts an ineligible bulk active/inactive action and sees the blocked-before-open explanation.
+5. User completes an eligible bulk active or inactive confirmation flow and sees the tab-level summary update after the modal closes.
 
 ### Section checks
 
@@ -531,12 +572,25 @@ API layer tests:
 
 Frontend tests:
 
-1. Bulk cohort modal offers only active cohorts and updates selected rows correctly.
-2. Bulk year-group modal uses key-based options correctly.
-3. Cohort management modal handles create, edit, delete, and active-state transitions.
-4. Year-group management modal handles create, edit, and delete.
-5. Blocked deletes surface the correct feedback.
-6. Playwright covers the visible reference-data and bulk-metadata flows.
+Vitest:
+
+1. Bulk cohort modal covers ready, validation-error, submitting, and partial-success states and offers only active cohorts.
+2. Bulk year-group modal covers ready, validation-error, submitting, and partial-success states with key-based options and payloads.
+3. Manage cohorts modal covers opening/list-loading, empty, ready, mutation-in-progress, and list-reload-warning states.
+4. Create/Edit cohort modal covers opening, ready, validation-error, submitting, success-close, and submission-failure states.
+5. Delete cohort confirmation covers ready, blocked, submitting, success-close, and submission-failure states, including in-use delete messaging.
+6. Manage year groups modal covers opening/list-loading, empty, ready, mutation-in-progress, and list-reload-warning states.
+7. Create/Edit year group modal covers opening, ready, validation-error, submitting, success-close, and submission-failure states.
+8. Delete year group confirmation covers ready, blocked, submitting, success-close, and submission-failure states.
+
+Playwright:
+
+1. User opens Bulk set cohort, sees active cohorts only, submits a valid change, and receives summary feedback.
+2. User opens Bulk set year group, submits a valid change, and sees the updated year-group value reflected in the table.
+3. User opens Manage cohorts, exercises empty or ready states as applicable, then completes create, edit, active-state change, and delete flows.
+4. User attempts to delete an in-use cohort and sees the blocked state clearly before the modal closes.
+5. User opens Manage year groups and completes create, edit, and delete flows.
+6. User attempts to delete an in-use year group and sees the blocked state clearly before the modal closes.
 
 ### Section checks
 
@@ -592,11 +646,21 @@ API layer tests:
 
 Frontend tests:
 
-1. Blocking load failure state renders correctly.
-2. Partial-load warning state renders correctly while leaving usable data visible.
-3. Empty states render correctly for the agreed scenarios.
-4. Mutation summary alerts render the correct counts and persistence behaviour.
-5. Playwright covers the main visible failure and empty-state journeys.
+Vitest:
+
+1. Alert stack renders no-alert, blocking startup-prefetch failure, blocking Google Classroom entry failure, partial-load warning, and mutation-summary states in severity order.
+2. Summary card covers initial loading, ready-with-data, ready-with-zero-values, and blocked suppression behaviour.
+3. Toolbar card covers no-selection, mixed eligible/ineligible selection, mutation-in-progress, and ready states.
+4. Table empty-state and failure-state rendering matches the agreed no-active-classrooms, first-run, partial-load, and blocking-failure rules.
+5. Mutation summary alerts render the correct counts, severity, persistence behaviour, and replacement rules.
+
+Playwright:
+
+1. User encounters a startup-prefetch failure and sees the blocking top-level alert with normal interaction disabled.
+2. User encounters a Google Classroom entry failure and sees the blocking error rather than an empty state.
+3. User encounters a partial-load warning and still sees usable summary, toolbar, and table content.
+4. User encounters the no-active-classrooms empty state and still has access to cohort and year-group management launchers.
+5. User completes a mutation that yields success or partial-failure feedback and sees the alert-stack summary persist clearly after modal close.
 
 ### Section checks
 
@@ -681,6 +745,8 @@ Frontend tests:
 - API docs reflect any changed request and response payloads.
 - React Query/prefetch docs reflect the new startup warm-up and invalidation behaviour.
 - Any contract caveats or deferred follow-up items are documented.
+- Documentation records that rollout assumed a one-off destructive reset of existing persisted data.
+- Documentation records the deferred assessment-workflow refactor required by the `yearGroup` contract change.
 
 ### Required checks
 
@@ -707,7 +773,7 @@ Frontend tests:
 2. Section 2 — `ABClass` contract update and partial-shape refresh
 3. Section 3 — `ABClass` mutation validation hardening
 4. Section 4 — Frontend service, schema, and shared-query groundwork
-5. Section 5 — Classes-page entry and merged view-model orchestration
+5. Section 5 — Settings-page Classes-tab entry and merged view-model orchestration
 6. Section 6 — Main table rendering, selection, and status affordances
 7. Section 7 — Bulk create, delete, and active-state workflows
 8. Section 8 — Bulk cohort/year-group updates and reference-data management modals
