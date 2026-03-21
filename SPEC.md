@@ -70,7 +70,7 @@ The current transport layer already exposes:
 
 ## Recommendation: use stable keys for cohorts and year groups
 
-I think adding stable keys for both cohorts and year groups is the better long-term model.
+Adding stable keys for both cohorts and year groups is the recommended long-term model.
 
 ### Why this is preferable
 
