@@ -4,36 +4,31 @@
 
 ### Scope
 
-- Implement the new frontend **Backend settings** feature under the existing `SettingsPage` tab structure.
-- Replace the current backend settings placeholder with a sectioned Ant Design form that follows `SETTINGS_PAGE_LAYOUT.md`.
-- Keep frontend/backend integration routed through the existing frontend service layer (`apiService.ts` → `backendConfigurationService.ts` → backend `apiHandler`).
-- Add the required frontend feature files under `src/frontend/src/features/settings/backend/` and wire them into the existing settings page composition.
-- Implement frontend-only validation, mapping, hook state management, user feedback, accessibility behaviour, and automated test coverage for the feature.
-- Reuse existing shared frontend facilities wherever possible, including:
-  - `src/frontend/src/services/apiService.ts`
-  - `src/frontend/src/services/backendConfigurationService.ts`
-  - `src/frontend/src/services/backendConfiguration.zod.ts`
-  - shared frontend logging/error handling utilities
-  - existing `SettingsPage` / `TabbedPageSection` composition
-  - existing frontend test helpers and Playwright harness patterns
+- Implement the Classes CRUD feature on the top-level `ClassesPage`.
+- Replace the current placeholder `src/frontend/src/pages/ClassesPage.tsx` with a real feature entry for CRUD-only class management.
+- Update backend reference-data models, controllers, and API handlers so cohorts and year groups use stable keys.
+- Update `ABClass` transport and persistence contracts so class metadata stores `cohortKey` and `yearGroupKey` rather than mutable display names.
+- Add the required frontend services, Zod schemas, React Query definitions, view-model mapping, page UI, modal workflows, and automated test coverage.
+- Update shared prefetch behaviour so `cohorts` and `yearGroups` warm at startup alongside `classPartials`, while `googleClassrooms` remains a Classes-page entry prefetch.
+- Add backend validation to prevent `active` updates from creating missing classes and to block deletion of in-use cohort or year-group records.
 
 ### Out of scope
 
-- Changing the backend configuration transport contract unless implementation uncovers a genuine mismatch with the agreed layout plan.
-- Introducing a bespoke recovery workflow for hard configuration load failures.
-- Adding UI support for `revokeAuthTriggerSet`.
-- Adding UI support for explicit API key clearing.
-- Reworking the broader Settings information architecture beyond replacing the backend settings placeholder tab content.
-- Changing TypeScript or ESLint configuration unless implementation uncovers a true blocker.
+- Class analysis features on the Classes page.
+- Assessment-run controls on the Classes page.
+- Inline editing inside the table.
+- Dedicated bulk backend endpoints in this delivery.
+- Manual Google Classroom refresh controls in this delivery.
+- Builder changes unless implementation uncovers a genuine build-pipeline blocker.
 
 ### Assumptions
 
-1. `getBackendConfig` and `setBackendConfig` remain the canonical backend configuration methods, exposed through `backendConfigurationService.ts` and ultimately routed via `callApi(...)`.
-2. The current backend validation limits remain authoritative, and the frontend should align field semantics where practical. For `backendUrl`, the frontend form schema should normalise by trimming before validation, and both the transport schema and the form schema should use Zod URL validation as the frontend contract, with a follow-on backend hardening task to bring `Validate.validateUrl(...)` into the same contract.
-3. A successful save should immediately re-fetch backend configuration and re-base the form from the returned payload.
-4. A complete initial load failure should fail fast and render a top-level Ant Design `Alert`.
-5. Partial-load warnings returned as backend `loadError` should keep the form visible but block saving.
-6. Shared frontend error contracts/mappers should be preferred, with backend-settings-specific mapping added only if the feature ends up with genuinely unique semantics.
+1. `cohort` and `yearGroup` will move to stable-key reference-data records, and the canonical `ABClass` metadata fields will become `cohortKey` and `yearGroupKey`.
+2. `googleClassrooms` remains a narrow page-entry dataset returning active Classroom rows only; it does not become a startup warm-up dataset in this delivery.
+3. Frontend shared server-state continues to use React Query with shared query-key helpers and transport access routed through `callApi(...)` only.
+4. The current `apiHandler` envelope remains the transport contract; changed payload shapes should be introduced through existing allowlisted methods unless implementation proves a new method is required.
+5. All user-visible interactions introduced by this feature require Playwright coverage in addition to appropriate Vitest coverage.
+6. This feature can be implemented as a blank-slate contract without compatibility or backfill work.
 
 ---
 
@@ -41,15 +36,15 @@
 
 ### Engineering constraints
 
-- Keep `SettingsPage.tsx` as a composition layer only.
-- Keep `BackendSettingsPanel.tsx` presentational; place orchestration and side effects in `useBackendSettings.ts`.
-- Route all frontend-to-backend calls through `callApi(...)`; never call backend globals or `google.script.run` directly.
-- Reuse `backendConfigurationService.ts` and `backendConfiguration.zod.ts` rather than duplicating transport logic.
-- Reuse shared error contracts/mappers and shared logging utilities before creating feature-specific abstractions.
-- Fail fast on invalid inputs, transport failures, and persistence failures.
-- Do not add a bespoke recovery path for hard load failures in this iteration.
+- Keep API and entry points thin and delegate behaviour to controllers, services, hooks, or view-model helpers.
+- Fail fast on invalid inputs, missing reference data, and persistence failures.
+- Avoid defensive guards that hide wiring issues.
 - Keep changes minimal, localised, and consistent with repository conventions.
 - Use British English in comments and documentation.
+- Keep `ClassesPage.tsx` as a composition layer; do not move feature orchestration into page-level shell components.
+- Route all frontend-to-backend calls through `callApi(...)`; never call backend globals or `google.script.run` directly from feature code.
+- Use Zod for new or updated frontend validation logic and derive TypeScript types from schemas.
+- When shared server-state is introduced or changed, use shared query-key helpers and update canonical React Query documentation if policy changes.
 
 ### TDD workflow (mandatory per section)
 
@@ -67,276 +62,154 @@ For each section below:
 - Builder lint (if touched): `npm run builder:lint`
 - Backend tests: `npm test -- <target>`
 - Frontend unit tests: `npm run frontend:test -- <target>`
-- Frontend e2e tests (if UX changes): `npm run frontend:test:e2e -- <target>`
+- Frontend e2e tests: `npm run frontend:test:e2e -- <target>`
 - Frontend coverage: `npm run frontend:test:coverage`
 - Frontend type-check: `npm exec tsc -- -b src/frontend/tsconfig.json`
 
 ---
 
-## Section 1 — Frontend entry wiring and shell prerequisites
-
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review clean. The reviewer confirmed the new `SettingsPage` and `AppThemeShell` tests are correctly targeted at the missing Section 1 wiring. The temporary React `act(...)` warning in the shell spec is acceptable during red and should only be revisited if it remains once the shell wrapper is implemented.
-- Green review clean. The reviewer confirmed the backend settings tab now mounts the feature entry component, the shell now provides Ant Design `App` context at the correct level, and `App.tsx` plus `SettingsPage.tsx` remain composition-only.
-
-### Verification log
-
-- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/AppThemeShell.spec.tsx` passed.
-- `npm run frontend:lint` passed.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Commit SHA: `20e131a`
-- Commit message: `feat: wire backend settings shell entry`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
+## Section 1 — Reference-data key contract groundwork
 
 ### Objective
 
-- Replace the backend settings placeholder with a real feature entry point, add the Ant Design `App` shell wrapper required for `App.useApp()`, and add the shell prerequisites needed for context-aware Ant Design feedback.
+- Establish the stable-key contract for cohorts and year groups across models, controllers, API surfaces, transport docs, and frontend schemas before any UI work begins.
 
 ### Constraints
 
-- Keep `src/frontend/src/App.tsx` thin and avoid introducing feature orchestration there.
-- Add Ant Design `App` support at the shell/root level rather than inside the backend settings feature, so `App.useApp()` can be used for context-aware feedback.
-- Preserve the existing `SettingsPage` tab structure and reuse `TabbedPageSection`.
-- Do not introduce any direct backend calls in page components.
+- Keep API handlers thin and push record-shape logic into the relevant model/controller layers.
+- Preserve current cohort active-state semantics while introducing keys.
+- Do not silently repurpose existing name fields to carry keys; keep key and display-name responsibilities explicit.
+- Treat the new key-based reference-data shape as the only supported contract for this delivery.
 
 ### Acceptance criteria
 
-- `SettingsPage` renders `BackendSettingsPanel` for the backend settings tab instead of a blank placeholder card.
-- The application shell wraps the UI in Ant Design `App`, providing the context required for `App.useApp()`.
-- The existing settings heading/summary and tab structure still render correctly.
-- No service calls or feature state machines are introduced into `App.tsx` or `SettingsPage.tsx`.
+- Cohort and year-group records expose stable keys in backend and frontend contracts.
+- Backend and frontend code can rely on the blank-slate key-based contract without compatibility fallbacks.
+- Backend and frontend schemas agree on the new reference-data shapes.
+- The changed contract is reflected in the relevant canonical docs or queued explicitly in the documentation section.
 
 ### Required test cases (Red first)
 
 Backend model tests:
 
-1. None.
+1. Cohort model serialises and deserialises `{ key, name, active }` correctly.
+2. Year-group model serialises and deserialises `{ key, name }` correctly.
+3. Cohort and year-group constructors reject missing or malformed keys.
 
 Backend controller tests:
 
-1. None.
+1. Reference-data list methods return keys and names in the expected plain-object shape.
+2. Create and update paths preserve key integrity and duplicate protection rules.
+3. None unless implementation introduces a normalisation helper for unrelated contract-shaping reasons.
 
 API layer tests:
 
-1. None unless frontend integration work uncovers a required transport contract adjustment.
+1. `getCohorts`, `createCohort`, `updateCohort`, `getYearGroups`, `createYearGroup`, and `updateYearGroup` expose the new key-bearing payloads.
+2. Invalid reference-data payloads surface `INVALID_REQUEST` envelopes through the API layer when applicable.
 
 Frontend tests:
 
-1. `SettingsPage` renders the backend settings feature entry instead of the old placeholder panel.
-2. `SettingsPage` still preserves the existing tabs and switches correctly between Classes and Backend settings.
-3. The shell provides Ant Design `App` context without regressing the existing app render path.
+1. Updated Zod schemas accept valid key-bearing cohort and year-group payloads.
+2. Updated frontend service contracts reject malformed key-bearing payloads.
 
 ### Section checks
 
-- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/App.spec.tsx`
+- `npm test -- tests/api/<reference-data-api-targets>.test.js`
+- `npm test -- tests/controllers/<reference-data-controller-targets>.test.js`
+- `npm run frontend:test -- src/services/referenceData.zod.spec.ts src/services/referenceDataService.spec.ts`
+- `npm run lint`
 - `npm run frontend:lint`
-- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
-### Required `@remarks` JSDoc follow-through
+### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` to the shell/root component or wrapper introduced for Ant Design `App` support, explaining that `App.useApp()` is required for context-aware `message`/`notification` usage inside the backend settings feature and therefore the provider must live at the application shell rather than inside the feature subtree.
-- Add `@remarks` to any new Settings-page composition entry point that simply wires in `BackendSettingsPanel`, clarifying that `SettingsPage.tsx` is intentionally kept as a composition layer with no backend orchestration.
+- Add `@remarks` where key-generation or contract-shaping behaviour would otherwise be non-obvious.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No deviation from the plan in this section.
-- Introduced a minimal `BackendSettingsPanel` entry component only; form behaviour and backend orchestration remain for later sections.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
 
 ---
 
-## Section 2 — Form contract, validation, and mapping
-
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review initially found a compile blocker in `backendSettingsFormMapper.spec.ts` because the placeholder schema inferred an empty object type. The test scaffolding was adjusted so the suite still compiles while keeping the intended runtime-red assertions unchanged.
-- Green review initially found two frontend write-contract mismatches: `revokeAuthTriggerSet` was still writable, and blank `apiKey` writes were still accepted at the transport boundary. The implementation was tightened so retention is represented by omission only and read-only fields are rejected before transport.
-- Green review clean. The reviewer confirmed the form schema, mapper, and frontend transport schema now match the Section 2 replacement-or-retention semantics.
-
-### Verification log
-
-- `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts` passed.
-- `npm run frontend:lint` completed with warnings only and no errors.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Commit SHA: `b720143`
-- Commit message: `feat: add backend settings form contract`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
+## Section 2 — `ABClass` contract update and partial-shape refresh
 
 ### Objective
 
-- Introduce the backend settings form schema and mapping layer so frontend input rules mirror the backend contract while keeping transport validation and form validation separate.
+- Update `ABClass` persistence and transport so class metadata stores `cohortKey` and `yearGroupKey`, and ensure partial responses match the new contract.
 
 ### Constraints
 
-- Reuse `src/frontend/src/services/backendConfiguration.zod.ts` for transport shape validation, but tighten `backendUrl` there to use Zod URL validation instead of a plain string.
-- Keep form-specific rules in `backendSettingsForm.zod.ts`.
-- Mirror backend numeric ranges, enum values, and optional field rules exactly where the backend already provides a clear contract.
-- Normalise `backendUrl` by trimming before frontend form validation, use Zod URL validation for `backendUrl` in both the transport schema and the form schema, and record follow-on backend validator hardening so all layers converge on the same URL contract.
-- Prefer shared frontend error contracts/mappers; add feature-specific mapping only if genuinely necessary.
-- Keep API key handling to replacement or retention only.
-- Treat `revokeAuthTriggerSet` as read-only in the frontend and never include it in feature write payloads.
+- Keep `ABClass.toJSON()` and `ABClass.toPartialJSON()` as the canonical source of truth for persisted and transport shapes.
+- Preserve existing non-reference-data behaviour such as class-owner, teacher, and active-field handling.
+- Treat the key-based `ABClass` metadata shape as the only supported contract for this delivery.
 
 ### Acceptance criteria
 
-- `backendConfiguration.zod.ts` validates `backendUrl` with Zod URL validation at the transport boundary.
-- A dedicated `backendSettingsForm.zod.ts` exists and derives its TypeScript types from the schema.
-- A dedicated mapper converts between backend configuration payloads, form values, and write payloads without duplicating transport logic.
-- Form validation normalises `backendUrl` by trimming before enforcing the agreed URL rule, and enforces the agreed field rules for integer ranges, log-level enum, optional Drive folder ID, and API key conditional requirements.
-- API key handling preserves the stored-key/blank-field semantics described in `SETTINGS_PAGE_LAYOUT.md`.
-- Mapper logic only emits editable fields in the write payload and never sends `hasApiKey`, masked read `apiKey`, `loadError`, or `revokeAuthTriggerSet`.
-- Error mapping uses shared contracts/utilities where possible and only adds backend-settings-specific mapping if unique semantics appear.
+- `ABClass` serialisation and deserialisation use `cohortKey` and `yearGroupKey`.
+- `getABClassPartials` returns the updated shape without leaking storage metadata.
+- Backend API docs and data-shape docs are ready to reflect the changed class-partial contract.
+- Frontend service/schema code can parse the new partial shape.
 
 ### Required test cases (Red first)
 
 Backend model tests:
 
-1. None.
+1. `ABClass.toJSON()` emits `cohortKey` and `yearGroupKey`.
+2. `ABClass.toPartialJSON()` emits `cohortKey` and `yearGroupKey`.
+3. `ABClass.fromJSON()` reconstructs key-based metadata correctly.
 
 Backend controller tests:
 
-1. None.
+1. `ABClassController.getAllClassPartials()` normalises and returns the key-based partial shape.
+2. Partial upsert paths preserve the new metadata fields.
 
 API layer tests:
 
-1. Extend `tests/api/backendConfigApi.test.js` only if implementation reveals a real transport mismatch that must be fixed in backend configuration transport.
+1. `getABClassPartials` returns the updated payload shape through the transport layer.
 
 Frontend tests:
 
-1. `backendSettingsForm.zod.ts` accepts valid form values matching backend ranges and enums.
-2. `backendSettingsForm.zod.ts` rejects invalid URL, integer range, enum, and folder-ID inputs.
-3. API key validation requires a value only when `hasApiKey` is false.
-4. Mapper logic converts backend masked payloads into form values without leaking masked API key content into the input.
-5. Mapper logic omits `apiKey` from the write payload when a stored key exists and the field is left blank.
-6. Mapper logic includes `apiKey` when a replacement value is entered.
-7. Mapper logic never includes `revokeAuthTriggerSet`, `hasApiKey`, or `loadError` in the write payload.
-8. Error mapping uses shared contracts for generic transport/domain failures and only introduces feature-specific mapping when warranted.
+1. `classPartials` Zod schema accepts the new key-based partial shape.
+2. `classPartialsService` returns validated key-based partials.
 
 ### Section checks
 
-- `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts src/features/settings/backend/backendSettingsFormMapper.spec.ts src/services/backendConfigurationService.spec.ts`
+- `npm test -- tests/models/abclass*.test.js tests/controllers/abclass-*.test.js tests/api/abclassPartials.test.js`
+- `npm run frontend:test -- src/services/classPartials.zod.spec.ts src/services/classPartialsService.spec.ts`
+- `npm run lint`
 - `npm run frontend:lint`
-- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
-### Required `@remarks` JSDoc follow-through
+### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` to `backendSettingsForm.zod.ts` documenting why `backendUrl` is normalised by trimming before validation and why the frontend now uses Zod URL validation even though backend hardening is tracked as follow-up work.
-- Add `@remarks` to the mapper function(s) in `backendSettingsFormMapper.ts` that handle API key and write-payload shaping, explaining:
-  - why masked read `apiKey` values are never echoed back
-  - why blank `apiKey` means retention when `hasApiKey` is true
-  - why `revokeAuthTriggerSet`, `hasApiKey`, and `loadError` are excluded from writes
-- Add `@remarks` to any feature-specific error-mapping helper introduced here, clarifying why shared transport/domain mapping is preferred and when a backend-settings-specific mapper is justified.
+- Add `@remarks` where key-based partial-shape behaviour would otherwise be hard to infer.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No behavioural deviation from the plan in this section.
-- The frontend transport schema intentionally still allows blank `backendUrl` on read payloads so later sections can surface backend `loadError` partial-load states without failing the entire query.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
 
 ---
 
-## Section 3 — Hook orchestration and state model
-
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review initially found a frontend type-check blocker in the Ant Design mock inside `useBackendSettings.spec.ts` because `vi.importActual('antd')` was inferred as `unknown`. The test setup was tightened with an explicit `typeof Antd` cast so the suite fails only for the intended missing hook behaviour.
-- Red review clean. The reviewer confirmed the targeted hook spec now compiles, type-checks, and fails only on the missing Section 3 orchestration behaviour.
-- Green review initially found that the post-save refresh bypassed React Query by calling the service directly and mutating cache state manually. The hook was tightened so successful saves now refresh through the shared backend-config React Query path instead.
-- Green review clean. The reviewer confirmed the hook now keeps the refresh path inside React Query, publishes query-derived values for form rebasing, and satisfies the Section 3 state-model contract.
-
-### Verification log
-
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the red-phase mock typing fix.
-- `npm run frontend:lint` completed with warnings only and no errors during the red phase.
-- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts` failed as intended during the red phase, with `backendConfigurationService.spec.ts` passing and `useBackendSettings.spec.ts` failing on the expected missing-hook assertions.
-- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts` passed after the Section 3 implementation and refresh-path fix.
-- `npm run frontend:lint` completed with warnings only and no errors after the Section 3 implementation. Remaining warnings are the pre-existing schema warnings in `backendSettingsForm.zod.ts` and `backendConfiguration.zod.ts`.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the Section 3 implementation.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Code commit SHA: `baf4ecf`
-- Code commit message: `feat: add backend settings hook orchestration`
-- Plan commit SHA: `77071a3`
-- Plan commit message: `docs: record section 3 delivery status`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
+## Section 3 — `ABClass` mutation validation hardening
 
 ### Objective
 
-- Implement `useBackendSettings.ts` as the single orchestration point for load, save, state transitions, blocking rules, error mapping, React Query-backed read orchestration, and successful-save re-fetch behaviour.
+- Harden `upsertABClass`, `updateABClass`, and reference-data delete flows so they enforce the new key-based contracts and prevent invalid lifecycle mutations.
 
 ### Constraints
 
-- Keep all backend interaction inside the hook/service boundary.
-- Use the agreed hybrid data-loading approach: React Query for backend configuration reads, local Ant Design form state for editing, and service-layer writes followed by query-driven refresh.
-- Use the explicit state model from `SETTINGS_PAGE_LAYOUT.md` (`isInitialLoading`, `loadError`, `partialLoadError`, `isSaveBlocked`, `isSaving`, `saveError`, `hasApiKey`).
-- A complete initial load failure must fail fast and surface a top-level `Alert` state.
-- Partial-load warnings must block save without hiding the form.
-- Successful save must re-fetch current config from the backend and re-base the form.
-- Do not add a bespoke recovery workflow for hard load failures.
+- Keep API-layer methods thin; put behavioural rules in controllers and/or dedicated validation helpers.
+- Do not allow `active` updates to create missing classes.
+- Delete guards for cohorts and year groups must be backend-authoritative.
 
 ### Acceptance criteria
 
-- `useBackendSettings.ts` owns initial load, save submission, re-fetch after save, and error clearing rules.
-- The feature uses the agreed hybrid model: React Query owns the backend configuration read lifecycle, while the form keeps local edit state until save.
-- `BackendSettingsPanel.tsx` owns the Ant Design `FormInstance` and re-bases form state with `form.setFieldsValue(...)` when the hook publishes fresh values after load or save.
-- The hook consumes `backendConfigurationService.ts` only; no direct transport calls or backend globals are introduced.
-- Hard load failures map to a top-level failure state.
-- Partial-load warnings set a blocked-save state while keeping editable data visible, without introducing a separate thrown-error path for user submission.
-- Save submission uses the smallest safe write payload generated by the mapper.
-- Successful save clears stale save errors, shows success feedback, re-fetches config, and re-bases the form from the fresh payload via `form.setFieldsValue(...)`.
-- Save failures preserve current input state and map to persistent user-safe inline feedback.
+- `upsertABClass` accepts key-based metadata and rejects invalid keys.
+- `updateABClass` rejects `active` updates when the class does not already exist.
+- `deleteCohort` and `deleteYearGroup` fail when any stored `ABClass` still references the target key.
+- Failure cases map cleanly to transport errors without hidden fallback behaviour.
 
 ### Required test cases (Red first)
 
@@ -346,107 +219,59 @@ Backend model tests:
 
 Backend controller tests:
 
-1. None.
+1. `ABClassController.upsertABClass()` rejects unknown `cohortKey` or `yearGroupKey` values.
+2. `ABClassController.updateABClass()` rejects `active` patches for missing classes.
+3. `ReferenceDataController.deleteCohort()` rejects deletion of an in-use cohort key.
+4. `ReferenceDataController.deleteYearGroup()` rejects deletion of an in-use year-group key.
 
 API layer tests:
 
-1. None unless implementation reveals a real transport contract issue.
+1. `upsertABClass` surfaces invalid key payloads as transport errors.
+2. `updateABClass` surfaces invalid active-on-missing attempts as transport errors.
+3. `deleteCohort` and `deleteYearGroup` surface in-use deletion failures as transport errors.
 
 Frontend tests:
 
-1. Initial load enters `isInitialLoading` and resolves into editable state on success.
-2. Initial hard load failure sets `loadError`, prevents save, and exposes the top-level failure state.
-3. Successful read with backend `loadError` sets `partialLoadError` and `isSaveBlocked` while keeping form data available.
-4. Save submission sets `isSaving`, clears stale save error, and calls the mapper/service correctly without moving edit state into shared query cache.
-5. Successful save triggers `message.success`, re-fetches backend config, and re-bases the form from the returned payload via `form.setFieldsValue(...)`.
-6. Domain save failures (`{ success: false, error }`) map to persistent save error state.
-7. Transport/runtime failures map to the shared user-safe error path and keep current form values intact.
-8. API key branch logic behaves correctly for stored-key and no-key states.
-9. Hook state resets appropriately after a successful reload/save.
-10. React Query-backed reads and local form editing remain correctly separated in the hybrid model.
+1. Updated frontend services correctly surface the new invalid-request cases to callers.
 
 ### Section checks
 
-- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts src/services/backendConfigurationService.spec.ts`
+- `npm test -- tests/controllers/abclass-*.test.js tests/controllers/<reference-data-controller-targets>.test.js tests/api/abclassMutations.test.js tests/api/<reference-data-api-targets>.test.js`
+- `npm run frontend:test -- src/services/referenceDataService.spec.ts src/services/classPartialsService.spec.ts`
+- `npm run lint`
 - `npm run frontend:lint`
-- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
-### Required `@remarks` JSDoc follow-through
+### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` to `useBackendSettings.ts` documenting the chosen hybrid architecture: React Query owns backend-configuration reads/refresh, while the Ant Design form keeps local edit state so in-progress edits are not moved into shared query cache.
-- Add `@remarks` to the hook method(s) that publish fresh values after load/save, explaining why rebasing is done by the panel via `form.setFieldsValue(...)` rather than relying on `initialValues` or a keyed remount.
-- Add `@remarks` to any save handler or blocked-save guard, clarifying why partial-load warnings disable save while keeping the form visible instead of introducing a separate recovery workflow.
+- Add `@remarks` to any validation helper or controller method where the reject-on-active-update rule or in-use delete guard may surprise future maintainers.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No behavioural deviation from the plan in this section.
-- The hook now derives published form values directly from the shared backend-config query result so the panel can rebase from query-owned snapshots without effect-driven mirror state.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
 
 ---
 
-## Section 4 — Backend settings panel UI and accessibility
-
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review clean. The reviewer confirmed `BackendSettingsPanel.spec.tsx` is well scoped to the planned load states, field rendering, validation/focus behaviour, API key helper copy, and save-state affordances, and that the suite fails only because the current panel still renders the placeholder card.
-- Green review initially found a user-visible validation bug in `BackendSettingsPanel.tsx`: controlled inline field errors were never cleared after the field became valid or after the form rebased from fresh backend values. The panel now clears those controlled errors on valid field changes and on form rebase, and the missing `@remarks` follow-through was added for the helper-copy and submit-failure paths.
-- Green review clean. The reviewer confirmed the stale inline-error problem is resolved, the panel remains hook-driven and declarative, and the Section 4 implementation now satisfies the required UI and accessibility behaviour.
-
-### Verification log
-
-- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx` failed as intended during the red phase, with 11 of 11 tests failing because the planned Section 4 panel UI is not implemented yet.
-- `npm run frontend:lint` completed with existing warnings only and no errors during the red phase.
-- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed after the Section 4 implementation and stale-error fix, with 10 tests passing.
-- `npm run frontend:lint` completed with warnings only and no errors after the Section 4 implementation. Remaining warnings are the pre-existing schema warnings in `backendSettingsForm.zod.ts` and `backendConfiguration.zod.ts`.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed after the Section 4 implementation.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Code commit SHA: `edac4d2`
-- Code commit message: `feat: add backend settings panel ui`
-- Plan commit SHA: `23338b3`
-- Plan commit message: `docs: record section 4 delivery status`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
+## Section 4 — Frontend service, schema, and shared-query groundwork
 
 ### Objective
 
-- Build the presentational backend settings panel with sectioned Ant Design cards, clear labels, correct field bindings, and accessible failure/success feedback.
+- Add or update the frontend services, Zod schemas, React Query keys, and shared query definitions needed by the Classes CRUD feature.
 
 ### Constraints
 
-- Keep the panel declarative and drive behaviour from the hook.
-- Use the agreed Ant Design components and built-in features before adding custom behaviour.
-- Use a top-level `Alert` for hard initial load failure and inline `Alert` components for partial-load/save failures.
-- Use `scrollToFirstError={{ focus: true }}` and preserve visible labels and semantic grouping.
-- Keep save as the only user action in this iteration; do not add reset/reload controls.
+- Keep all backend access inside service modules that use `callApi(...)`.
+- Define shared query keys through `queryKeys.ts` only.
+- Runtime validation must happen at the service boundary before data is cached.
+- Keep startup warm-up and invalidation logic aligned with the canonical React Query policy docs.
 
 ### Acceptance criteria
 
-- `BackendSettingsPanel.tsx` renders the agreed cards/sections and field set from the layout plan.
-- Ant Design `Form` is vertical, named, and configured to focus/scroll to the first invalid field on submit failure.
-- The API key input behaves as a replacement-only field with stored-key helper text.
-- `jsonDbBackupOnInitialise` binds through `valuePropName="checked"`.
-- Hard load failures render a top-level `Alert`.
-- Partial-load warnings and save failures render persistent inline `Alert` feedback.
-- Save button loading/disabled state follows the hook state model.
-- Success feedback uses `App.useApp()`/`message.success` within the provided Ant Design `App` context.
-- The panel remains accessible with visible labels, semantic section grouping, and keyboard-friendly form behaviour.
+- A frontend `googleClassrooms` service and adjacent Zod schema exist.
+- Shared query helpers exist for `googleClassrooms`, `cohorts`, `yearGroups`, and `classPartials` as needed.
+- Startup warm-up can fetch `classPartials`, `cohorts`, and `yearGroups`.
+- Cohort and year-group mutations invalidate and refresh the relevant shared queries.
 
 ### Required test cases (Red first)
 
@@ -460,107 +285,53 @@ Backend controller tests:
 
 API layer tests:
 
-1. None.
+1. Extend backend transport tests only if the frontend work uncovers a genuine transport mismatch.
 
 Frontend tests:
 
-1. Component renders skeleton during initial load.
-2. Component renders top-level `Alert` for hard load failure.
-3. Component renders inline warning for partial-load `loadError`.
-4. Component renders all planned fields/cards with visible labels.
-5. Save button is disabled when `isSaveBlocked` or `isSaving` is true.
-6. Save button shows loading while save is in flight.
-7. Validation errors are rendered inline and associated with the correct fields.
-8. Submit failure focuses or scrolls to the first invalid field.
-9. API key helper text changes correctly based on `hasApiKey`.
-10. Boolean and numeric fields bind correctly to Ant Design form state.
+1. `googleClassrooms` Zod schema accepts valid rows and rejects malformed payloads.
+2. `googleClassroomsService` delegates to `callApi('getGoogleClassrooms')` and validates responses.
+3. Shared query helpers expose the correct query keys and query functions for `googleClassrooms`.
+4. Startup warm-up orchestration fetches `classPartials`, `cohorts`, and `yearGroups` after authorisation.
+5. Cohort and year-group mutation flows invalidate the correct shared queries.
 
 ### Section checks
 
-- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx`
+- `npm run frontend:test -- src/services/googleClassrooms*.spec.ts src/query/sharedQueries.query.spec.tsx src/features/auth/AppAuthGate*.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
-### Required `@remarks` JSDoc follow-through
+### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` to `BackendSettingsPanel.tsx` explaining that the component owns the Ant Design `FormInstance` for library-integration reasons, while orchestration remains in the hook.
-- Add `@remarks` to any helper that renders API key guidance copy, documenting the replacement-or-retention UX decision and why explicit key clearing is intentionally out of scope.
-- Add `@remarks` to any form-submit failure handler, clarifying why `scrollToFirstError={{ focus: true }}` is required for accessibility and browser-visible validation behaviour.
+- Add `@remarks` where warm-up policy or invalidation choices differ from the previous baseline and would not be obvious from the final code.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No behavioural deviation from the plan in this section.
-- Added a small `matchMedia` shim to the shared frontend test setup so Ant Design responsive observers behave consistently in jsdom-backed component tests.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
 
 ---
 
-## Section 5 — End-to-end-visible behaviour and cross-layer tests
-
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review initially found two blocking issues in the Section 5 test work: the new Playwright spec used invalid locator matcher APIs for alert assertions, and the successful-save browser journey did not assert the visible save-success feedback required by the frontend testing policy.
-- Red review also noted that the overlapping-save hook test did not fully model the post-save refetch path, which left a noisy React Query warning in the targeted test run.
-- The red-phase test suites were tightened to use valid Playwright locator assertions, cover the visible `Backend settings saved.` feedback in the successful-save journey, and fully model the successful-save refetch path in the overlapping-save hook test.
-- Red review clean. The reviewer confirmed the Section 5 test suites now satisfy the required Vitest/Playwright split, keep the transport assertions in the correct layers, and use behaviour-based names throughout.
-- Green review clean. The reviewer confirmed the only green-phase change was correcting the Playwright focus-order expectation to match the real accessible Ant Design tab-to-tabpanel sequence, and that no production-code change was required for Section 5.
-
-### Verification log
-
-- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed after the red-phase test additions.
-- `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts` passed after the red-review fixes, and the earlier React Query `Query data cannot be undefined` warning no longer appeared.
-- `npm test -- tests/api/backendConfigApi.test.js` passed during the red review.
-- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` could not run in this container because Playwright Chromium is missing required system libraries, including `libnspr4.so` and `libnss3.so`.
-- `npm run frontend:lint` passed with pre-existing warnings only.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
-- `npm --prefix src/frontend exec -- playwright install --with-deps chromium` installed Playwright Chromium plus the missing Debian runtime libraries so the browser suite could run in this dev container.
-- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed during green verification after correcting the browser-keyboard expectation.
-- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` passed during green verification after aligning the keyboard-focus assertions with the actual Ant Design tab-to-tabpanel focus sequence.
-- `npm run frontend:lint` passed during green verification with the same pre-existing warnings only.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed during green verification.
-- `npm test -- tests/api/backendConfigApi.test.js` passed during green verification.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Code commit SHA:
-- Code commit message:
-- Plan commit SHA:
-- Plan commit message:
-- Push confirmation:
+## Section 5 — Classes-page entry and merged view-model orchestration
 
 ### Objective
 
-- Add comprehensive automated coverage for the new backend settings feature using the repo’s Vitest/Playwright split and existing service/API test locations.
+- Replace the placeholder Classes page with a real feature entry that loads the shared datasets and builds the merged row view model.
 
 ### Constraints
 
-- Follow the authoritative Vitest vs Playwright split from `docs/developer/frontend/frontend-testing.md`.
-- Keep transport/service assertions in `src/frontend/src/services/backendConfigurationService.spec.ts`.
-- Keep backend configuration transport assertions in `tests/api/backendConfigApi.test.js`.
-- Every user-visible interaction must have Playwright coverage.
-- Prefer extending existing test helpers over copying setup logic.
+- Keep `ClassesPage.tsx` thin and move orchestration into a feature hook or view-model helper.
+- The merged row model must represent `active`, `inactive`, `notCreated`, and `orphaned` rows.
+- Sorting defaults must follow the agreed order.
+- This section must remain CRUD-only; do not add analysis or assessment-run behaviour.
 
 ### Acceptance criteria
 
-- Frontend unit/component tests cover validation, mapping, hook state transitions, rendering, accessibility attributes, error mapping, and the agreed hybrid read/edit split.
-- Playwright covers the visible user journey through Settings → Backend settings, including validation, save, blocked-save state, keyboard interaction, and success/failure feedback.
-- Transport-layer tests remain separated by responsibility between frontend service specs and backend API specs.
-- New tests use behaviour-based names rather than action-plan section labels.
+- The Classes page renders a real feature entry component.
+- The merged row view model correctly combines Google Classroom rows, stored `ABClass` partials, and reference-data lookups.
+- Default sort order is active, inactive, not created, then orphaned.
+- The page exposes the required loading and partial-load state needed for later UI sections.
 
 ### Required test cases (Red first)
 
@@ -574,195 +345,372 @@ Backend controller tests:
 
 API layer tests:
 
-1. `tests/api/backendConfigApi.test.js` still verifies the backend configuration transport contract relied on by the frontend.
-2. `tests/api/apiHandler.test.js` is updated only if dispatcher-level contract coverage must change.
+1. None.
 
 Frontend tests:
 
-1. `backendConfigurationService.spec.ts` continues to verify `callApi` usage and request/response validation boundaries.
-2. `BackendSettingsPanel.spec.tsx` covers visible rendering outcomes and accessibility structure.
-3. `useBackendSettings.spec.ts` covers invisible state transitions and orchestration.
-4. Playwright covers:
-   - navigation to Settings and the Backend settings tab
-   - initial skeleton state
-   - hard load failure top-level `Alert`
-   - keyboard-only data entry
-   - inline validation and first-invalid-field focus
-   - visible save-button disabled/loading affordances during blocked and saving states
-   - blocked save when partial-load warning exists
-   - API key retention with existing stored key
-   - API key requirement when no stored key exists
-   - successful save followed by visible refresh from backend data
-   - visible save failure feedback
+1. `ClassesPage` renders the Classes management feature entry.
+2. The merged view-model helper derives the correct status for active, inactive, not-created, and orphaned rows.
+3. The merged view-model helper resolves cohort and year-group names from keys.
+4. The default sort order is applied correctly.
+5. The feature hook exposes the expected loading, error, and data states.
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx`
-- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts`
+- `npm run frontend:test -- src/pages/ClassesPage.spec.tsx src/features/classes/*.spec.ts src/features/classes/**/*.spec.tsx`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
+### Optional `@remarks` JSDoc follow-through
+
+- Add `@remarks` to the merged view-model helper or hook if status resolution, sorting precedence, or orphaned-row semantics are non-obvious.
+
 ### Implementation notes / deviations / follow-up
 
-- Red-phase tests were added in the frontend service, hook, panel, and Playwright layers.
-- Red review is now complete and clean after tightening the Playwright matcher usage, adding visible browser coverage for the save-success feedback, and modelling the post-save refetch path more accurately in the hook tests.
-- Green required no production-code change. Once Playwright Chromium and its Debian dependencies were installed in this container, the browser failures reduced to an over-specific Playwright assumption about focus order.
-- The Playwright spec now reflects the actual accessible sequence after activating the Backend settings tab: focus remains on the selected tab, the next `Tab` moves into the tabpanel, and the following `Tab` lands on the first form field before keyboard-only data entry continues.
-- Complete.
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
+
+---
+
+## Section 6 — Main table rendering, selection, and status affordances
+
+### Objective
+
+- Implement the Ant Design table, row selection behaviour, status column, tooltips, and core read-only rendering rules for the Classes CRUD page.
+
+### Constraints
+
+- Use Ant Design table facilities such as `rowSelection` rather than bespoke checkbox wiring.
+- Keep cells declarative and move data shaping into view-model code.
+- Orphaned rows must be clearly identifiable and deletion-only.
+- Any user-visible interaction introduced here must receive Playwright coverage.
+
+### Acceptance criteria
+
+- The table renders the agreed columns and row states.
+- Not-created rows display unavailable fields as `—`.
+- Orphaned rows display a warning affordance with explanatory tooltip.
+- Row selection works correctly across eligible and ineligible states.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None.
+
+API layer tests:
+
+1. None.
+
+Frontend tests:
+
+1. Table renders the required columns and row content for each status.
+2. Selection state updates correctly when rows are toggled.
+3. Ineligible rows or actions surface the correct disabled states or tooltips.
+4. Orphaned rows show the correct warning affordance.
+5. Playwright covers the visible table render, sorting, and selection behaviour.
+
+### Section checks
+
+- `npm run frontend:test -- src/features/classes/**/*.spec.tsx`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add `@remarks` to any table column factory or selection helper where status-specific affordances or disabled-state rules may be non-obvious.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
+
+---
+
+## Section 7 — Bulk create, delete, and active-state workflows
+
+### Objective
+
+- Implement the first set of modal-driven bulk workflows: create `ABClass`, delete `ABClass`, and set active or inactive.
+
+### Constraints
+
+- Bulk actions must keep failed rows selected after partial failure.
+- Create uses `cohortKey`, `yearGroupKey`, and `courseLength` with default `1`.
+- Delete copy must make clear that both full and partial `ABClass` records are removed.
+- Active-state updates must never create missing classes.
+
+### Acceptance criteria
+
+- Bulk create works for `notCreated` rows only.
+- Bulk delete works for active, inactive, and orphaned rows.
+- Bulk set active or inactive works only for eligible existing rows.
+- Partial-success summaries are shown and failed rows remain selected.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None beyond those already added if no new backend behaviour is required in this section.
+
+API layer tests:
+
+1. Extend mutation transport tests only if the frontend workflow reveals a transport mismatch.
+
+Frontend tests:
+
+1. Bulk create modal validates required inputs and dispatches one mutation per selected row.
+2. Bulk delete confirmation text is correct and destructive flow works.
+3. Bulk active-state modal or action blocks ineligible selections.
+4. Partial failures keep failed rows selected and show summary feedback.
+5. Playwright covers the visible create, delete, and active-state user journeys.
+
+### Section checks
+
+- `npm run frontend:test -- src/features/classes/**/*.spec.tsx src/features/classes/**/*.spec.ts`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts -g "bulk"`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add `@remarks` where batch-processing semantics, failed-row retention, or modal-state handling could confuse future maintainers.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
+
+---
+
+## Section 8 — Bulk cohort/year-group updates and reference-data management modals
+
+### Objective
+
+- Implement the remaining class-metadata bulk actions plus the secondary modals for cohort and year-group CRUD.
+
+### Constraints
+
+- Cohort selectors must only offer active cohorts for assignment.
+- Reference-data delete actions must surface blocked states clearly when values are in use.
+- Reference-data modals must invalidate and refresh shared queries on successful mutation.
+- Visible modal interactions require Playwright coverage.
+
+### Acceptance criteria
+
+- Bulk set cohort and bulk set year group work for eligible active/inactive rows.
+- Cohort management modal supports create, edit, delete, and active-state changes.
+- Year-group management modal supports create, edit, and delete.
+- In-use delete attempts are surfaced clearly to the user.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None beyond any additional cases revealed by new modal-driven reference-data flows.
+
+API layer tests:
+
+1. Extend reference-data transport tests only if new payload-shape or error-mapping behaviour is introduced.
+
+Frontend tests:
+
+1. Bulk cohort modal offers only active cohorts and updates selected rows correctly.
+2. Bulk year-group modal uses key-based options correctly.
+3. Cohort management modal handles create, edit, delete, and active-state transitions.
+4. Year-group management modal handles create, edit, and delete.
+5. Blocked deletes surface the correct feedback.
+6. Playwright covers the visible reference-data and bulk-metadata flows.
+
+### Section checks
+
+- `npm run frontend:test -- src/features/classes/**/*.spec.tsx src/features/classes/**/*.spec.ts`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts -g "cohort|year group"`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add `@remarks` where reference-data invalidation, active-only cohort selection, or delete-blocked handling would not be obvious from the final code.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
+
+---
+
+## Section 9 — Error states, polish, and page-level integration completeness
+
+### Objective
+
+- Finish the page-level UX by adding blocking and partial-load alerts, empty states, mutation summary persistence, and any remaining integration glue.
+
+### Constraints
+
+- Use top-level Ant Design `Alert` for blocking failures by default.
+- Keep stale data visible where the shared-query policy calls for background refresh rather than hard replacement.
+- Do not widen scope into non-CRUD page functionality.
+
+### Acceptance criteria
+
+- Blocking load failures render a top-level `Alert`.
+- Partial-load failures keep usable data visible with a warning `Alert`.
+- Empty states are correct for no active Google Classrooms and first-run no-`ABClass` cases.
+- Mutation summaries persist clearly enough for users to understand partial success.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None.
+
+API layer tests:
+
+1. None.
+
+Frontend tests:
+
+1. Blocking load failure state renders correctly.
+2. Partial-load warning state renders correctly while leaving usable data visible.
+3. Empty states render correctly for the agreed scenarios.
+4. Mutation summary alerts render the correct counts and persistence behaviour.
+5. Playwright covers the main visible failure and empty-state journeys.
+
+### Section checks
+
+- `npm run frontend:test -- src/features/classes/**/*.spec.tsx`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts -g "error|empty|summary"`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Add `@remarks` if the final hook or page code contains non-obvious load-state or summary-state behaviour.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** describe actual changes made when done.
+- **Deviations from plan:** note any departures from the original section design.
+- **Follow-up implications for later sections:** record effects for downstream work.
 
 ---
 
 ## Regression and contract hardening
 
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Red review clean. The reviewer confirmed the regression sweep covered the required frontend service, hook, panel, Playwright, transport, lint, type-check, and coverage gates, and that no direct-backend-call regression exists outside the shared `apiService` transport boundary.
-- Green review clean. The reviewer confirmed this section was a valid no-op completion pass because the full regression and contract-hardening check set already passed and no implementation change was needed.
-
-### Verification log
-
-- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx` passed with 38 tests passing.
-- `npm test -- tests/api/backendConfigApi.test.js` passed with 10 tests passing.
-- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts` passed with 6 Playwright tests passing.
-- `npm run frontend:lint` passed with the existing schema warnings only and no errors.
-- `npm exec tsc -- -b src/frontend/tsconfig.json` passed.
-- `npm run frontend:test:coverage` passed with aggregate frontend coverage above threshold: statements 93.6%, branches 85.39%, functions 96.62%, lines 93.64%.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Code commit SHA:
-- Code commit message:
-- Plan commit SHA: `68f912684561f6a87ed90058aefdf7351ef76ede`
-- Plan commit message: `docs: record regression hardening status`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
-
 ### Objective
 
-- Verify the completed backend settings feature against transport contracts, lint/type-check standards, coverage requirements, and visible browser behaviour before considering the work complete.
+- Verify that the end-to-end Classes CRUD feature, its backend contracts, and its shared-query behaviour are stable after all sections are complete.
 
 ### Constraints
 
 - Prefer focused test runs before broader validation.
-- Keep transport coverage separated by layer responsibility.
-- Ensure frontend unit/component coverage remains at or above the repository threshold.
+- Include both invisible-behaviour and visible-behaviour checks in line with the frontend testing policy.
+- Run broader checks only after section-level failures are resolved.
 
 ### Acceptance criteria
 
-- Touched frontend service, hook, component, and e2e suites pass.
-- Any touched backend configuration transport suites pass.
-- Frontend lint, type-check, and coverage checks pass.
-- No direct-backend-call regressions are introduced in frontend code.
+- Touched backend model, controller, and API-layer tests pass.
+- Touched frontend service, hook, component, and view-model tests pass.
+- Required Playwright journeys for new user-visible behaviour pass.
+- Backend and frontend linting pass.
+- Frontend type-check passes.
 
 ### Required test cases/checks
 
-1. Run touched frontend service/unit/component suites.
-2. Run touched Playwright backend settings scenarios.
-3. Run `tests/api/backendConfigApi.test.js` if transport-facing behaviour changes.
-4. Run `npm run frontend:lint`.
-5. Run `npm exec tsc -- -b src/frontend/tsconfig.json`.
-6. Run `npm run frontend:test:coverage`.
-7. Run broader validation commands if section-level runs expose coupling.
+1. Run touched backend model/controller/API suites.
+2. Run touched frontend service/UI suites.
+3. Run backend and frontend lint commands.
+4. Run required Playwright tests for Classes CRUD interactions.
+5. Run frontend coverage if the touched suites need a confidence pass against the coverage gate.
+6. Run frontend type-check.
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/backendConfigurationService.spec.ts src/features/settings/backend/useBackendSettings.spec.ts src/features/settings/backend/BackendSettingsPanel.spec.tsx`
-- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts`
-- `npm run frontend:test:coverage`
+- `npm test -- tests/models/<model-test-path> tests/controllers/<controller-test-path> tests/api/<api-test-path>`
+- `npm run frontend:test -- src/features/classes/<feature-test-path> src/services/<service-test-path> src/query/<query-test-path>`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud.spec.ts`
+- `npm run lint`
 - `npm run frontend:lint`
+- `npm run frontend:test:coverage`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
-- `npm test -- tests/api/backendConfigApi.test.js`
-
-### Required `@remarks` JSDoc follow-through
-
-- During final review, confirm the non-obvious implementation decisions captured in earlier sections are reflected in `@remarks` on the relevant exported schemas, mappers, hooks, components, and shell wrappers before deleting this plan.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No implementation change was required in this section; the regression and contract-hardening sweep passed as-is once the Section 5 browser environment had already been repaired.
-- The frontend backend-settings feature still satisfies the intended transport boundary: `apiService.ts` remains the only production `google.script.run` integration point, while the backend settings service, hook, and panel stay on the frontend service/query boundary.
+- **Implementation notes:** summarise what was done during regression phase.
+- **Deviations from plan:** note any additional work discovered or done.
 
 ---
 
 ## Documentation and rollout notes
 
-### Delivery status
-
-- Current phase: Complete
-- Status: Complete
-- Checklist:
-  - [x] docs sync complete
-  - [x] docs review clean
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
-
-### Review findings log
-
-- Documentation pass confirmed `docs/developer/frontend/frontend-testing.md` already covered the Playwright browser install path; the wording now makes the fresh-machine prerequisite explicit.
-- `SETTINGS_PAGE_LAYOUT.md` was updated to match the shipped single-column panel layout and the hook-owned error-state mapping.
-- No AGENTS or frontend logging/error-handling updates were needed because the existing guidance still matches the implementation.
-- Docs review clean. The reviewer confirmed the documentation and JSDoc updates match the implemented backend settings behaviour and that no blocking documentation issues remain.
-
-### Delivery artefacts
-
-- Branch: `feat/SettingsPage`
-- Docs commit SHA: `c79c0ffdc6494e2194a2c6114cce8939d24d3be1`
-- Docs commit message: `docs: sync backend settings documentation`
-- Push confirmation: `git push` succeeded for `feat/SettingsPage`
-
 ### Objective
 
-- Keep implementation-facing documentation aligned with the completed feature and record any genuine deviations discovered during development.
+- Update docs to match the implemented feature and capture rollout implications for changed contracts and cached shared lookups.
 
 ### Constraints
 
 - Only modify documents relevant to the touched areas.
-- Do not backfill the implementation-notes fields in this plan until sections are actually worked.
+- Prefer canonical docs over duplicating policy text in multiple places.
+- Keep rollout notes explicit where contract or rollout caveats need to be preserved.
 
 ### Acceptance criteria
 
-- `SETTINGS_PAGE_LAYOUT.md` still reflects the implemented behaviour, or is updated if implementation uncovers a justified deviation.
-- Frontend agent guidance remains accurate if implementation confirms or refines transport/error-handling rules.
-- Any implementation caveats discovered during delivery are recorded in the relevant section notes of this plan.
-- No redundant new docs are added if existing docs already cover the implemented behaviour.
+- Documentation accurately reflects the final `ABClass`, cohort, and year-group data shapes.
+- API docs reflect any changed request and response payloads.
+- React Query/prefetch docs reflect the new startup warm-up and invalidation behaviour.
+- Any contract caveats or deferred follow-up items are documented.
 
 ### Required checks
 
-1. Verify the implemented feature still matches the agreed layout and constraint document.
-2. Verify transport/error-handling docs remain accurate for any new shared abstractions.
-3. Confirm implementation-notes/deviation fields are updated by the implementing agent as work progresses.
+1. Verify docs mention the final persistence and transport strategy for key-based metadata.
+2. Verify API docs list changed request and response shapes for `ABClass`, cohort, and year-group flows.
+3. Verify React Query docs describe the updated warm-up and invalidation behaviour.
+4. Confirm notes and deviations fields are filled during implementation.
+
+### Optional `@remarks` JSDoc review
+
+- Confirm whether any non-obvious design decisions, gotchas, or cross-component interactions discovered during implementation should be preserved in `@remarks` documentation.
+- If earlier sections planned `@remarks`, verify that the relevant code now contains them before deleting the action plan.
+- If no `@remarks` are needed, record `None`.
 
 ### Implementation notes / deviations / follow-up
 
-- Complete.
-- No implementation deviation was found during the final documentation pass.
-- `SETTINGS_PAGE_LAYOUT.md` remains the canonical backend-settings behaviour reference after syncing the layout and error-mapping details to the delivered feature.
-- `docs/developer/frontend/frontend-testing.md` now states the one-time Playwright Chromium install command explicitly for fresh machines, dev containers, and CI images.
+- ...
 
 ---
 
 ## Suggested implementation order
 
-1. Section 1 (frontend entry wiring and shell prerequisites)
-2. Section 2 (form contract, validation, and mapping)
-3. Section 3 (hook orchestration and state model)
-4. Section 4 (backend settings panel UI and accessibility)
-5. Section 5 (end-to-end-visible behaviour and cross-layer tests)
-6. Regression and contract hardening
-7. Documentation and rollout notes
+1. Section 1 — Reference-data key contract groundwork
+2. Section 2 — `ABClass` contract update and partial-shape refresh
+3. Section 3 — `ABClass` mutation validation hardening
+4. Section 4 — Frontend service, schema, and shared-query groundwork
+5. Section 5 — Classes-page entry and merged view-model orchestration
+6. Section 6 — Main table rendering, selection, and status affordances
+7. Section 7 — Bulk create, delete, and active-state workflows
+8. Section 8 — Bulk cohort/year-group updates and reference-data management modals
+9. Section 9 — Error states, polish, and page-level integration completeness
+10. Regression and contract hardening
+11. Documentation and rollout notes
