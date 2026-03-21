@@ -660,7 +660,7 @@ Still show all active Google Classrooms as `notCreated` rows.
 
 ### No orphaned classes
 
-No separate orphaned panel is needed; simply omit orphaned rows from the current filtered result if there are none.
+Orphaned rows, if any, will appear in the main table according to the specified sort order. No separate UI panel or section is needed to display them.
 
 ## Mutation refresh rules
 
