@@ -32,7 +32,7 @@ This document does **not** redefine backend contracts, data shapes, or rollout a
 1. Keep `SettingsPage.tsx` as a composition layer only.
 2. Keep the Classes feature inside the existing **Classes** tab; do not add a new top-level route for this work.
 3. Use one visible CRUD table rather than nested inner tabs.
-4. Use modal-driven workflows for create, bulk-edit, and reference-data management.
+4. Use modal-driven workflows for create, bulk-edit, and reference-data management; the same bulk modals are also the single-row edit path in v1.
 5. Use top-level `Alert` components for blocking and partial-load failures.
 6. Prefer built-in Ant Design behaviours before creating bespoke interaction patterns.
 7. Keep the tab readable in reduced-motion mode and avoid decorative motion that obscures status changes.
@@ -232,6 +232,7 @@ Menu items:
 - Set selected classes inactive
 - Set cohort
 - Set year group
+- Set course length
 
 ### States
 
@@ -245,6 +246,8 @@ Menu items:
    - disable bulk trigger and modal launchers
 4. **Ready state**
    - all launchers available subject to row-selection rules
+5. **Selection reset**
+   - after delete or tab re-entry, reset selection rather than trying to preserve invisible rows
 
 ## 4. Table card
 
@@ -275,7 +278,8 @@ Menu items:
 5. course length
 6. year group
 7. active flag
-8. row-level actions (only if needed after the bulk-first flow is stable)
+
+There are no separate row-level class-edit actions in v1; selecting one row uses the same bulk modal workflow.
 
 `classId` should remain the `rowKey` and an internal identifier for actions, but it does not need a visible column. `class owner` and `teachers` should stay out of the table because they are backend-managed Google Classroom metadata and are only populated after the stored `ABClass` exists.
 
@@ -317,6 +321,7 @@ Classes tab
 ├── BulkSetActiveStateConfirmModal
 ├── BulkSetCohortModal
 ├── BulkSetYearGroupModal
+├── BulkSetCourseLengthModal
 ├── ManageCohortsModal
 │   ├── CreateOrEditCohortModal
 │   └── DeleteCohortConfirmModal
@@ -332,7 +337,8 @@ Classes tab
 3. Keep one primary modal open at a time unless a secondary create/edit/delete modal is explicitly nested from a management modal.
 4. When a secondary modal closes successfully, return focus to the invoking button inside the parent modal.
 5. Use `destroyOnHidden` only when resetting state is desirable; otherwise keep parent modal state stable during child modal flows. In the current Ant Design Modal docs this is the supported prop, while `destroyOnClose` is shown as deprecated.
-6. Surface final mutation summaries in the top-level alert stack after the modal closes.
+6. For bulk partial-success flows, keep the modal open briefly with inline feedback, then close and surface the persistent summary in the top-level alert stack.
+7. If a successful mutation is followed by a required re-fetch failure, hide stale table data and surface an alert explaining that the update succeeded but the user must refresh the page to see changes.
 
 ## Modal state vocabulary
 
@@ -382,10 +388,13 @@ Create missing `ABClass` records for selected `notCreated` rows.
 4. **submitting**
    - OK button loading
    - form disabled
+   - dispatch one request per selected row in parallel
 5. **partial success**
-   - modal may either remain open to show failures or close and let the tab-level summary alert carry the result
-   - failed rows remain selected
+   - continue attempting every selected row even if some fail
+   - show inline warning feedback briefly
+   - failed rows remain selected after close if those rows still exist
 6. **success-close**
+   - newly created classes default to `active=true`
    - close modal
    - update top-level summary alert
 
@@ -415,6 +424,7 @@ Must state that the action deletes:
 2. **submitting**
    - confirm button loading/disabled
 3. **partial success**
+   - show inline warning briefly
    - close modal and show summary `Alert` in the tab
 4. **submission failure**
    - keep modal open only if the error is actionable in-place; otherwise close and show the alert stack result
@@ -439,7 +449,9 @@ Apply a status change to eligible existing rows.
    - confirmation text includes target state and affected count
 3. **submitting**
    - confirm button loading
+   - dispatch one request per selected row in parallel
 4. **partial success**
+   - show inline warning briefly
    - close modal and surface summary at tab level
 
 ## Bulk set cohort modal
@@ -463,7 +475,9 @@ Apply one cohort to multiple eligible existing rows.
    - missing selection or stale option
 3. **submitting**
    - form disabled, OK button loading
+   - dispatch one request per selected row in parallel
 4. **partial success**
+   - show inline warning briefly
    - same summary pattern as other bulk workflows
 
 ## Bulk set year group modal
@@ -481,9 +495,42 @@ Apply one year group to multiple eligible existing rows.
 ### States
 
 1. **ready**
+   - all selected rows eligible
 2. **validation error**
+   - missing selection or stale option
 3. **submitting**
+   - form disabled, OK button loading
+   - dispatch one request per selected row in parallel
 4. **partial success**
+   - show inline warning briefly
+   - same summary pattern as other bulk workflows
+
+## Bulk set course length modal
+
+### Purpose
+
+Apply one `courseLength` value to one or more existing `ABClass` rows.
+
+This is the supported edit workflow for `courseLength` in v1, including the single-row case.
+
+### Components
+
+- `Modal`
+- `Form`
+- `InputNumber`
+
+### States
+
+1. **ready**
+   - all selected rows eligible
+2. **validation error**
+   - missing or invalid integer input
+3. **submitting**
+   - form disabled, OK button loading
+   - dispatch one request per selected row in parallel
+4. **partial success**
+   - show inline warning briefly
+   - same summary pattern as other bulk workflows
 
 ## Manage cohorts modal
 
@@ -551,10 +598,16 @@ Components:
 - `Modal.confirm` or standard `Modal`
 - `Alert` when delete is blocked because the cohort is in use
 
+Behaviour:
+
+- render a disabled delete button when the cohort is blocked
+- show explanatory warning state inside the modal
+- keep the modal open with inline feedback until the user closes it
+
 States:
 
 - ready
-- blocked (in use)
+- blocked (in use, disabled destructive action)
 - submitting
 - success-close
 - submission failure
@@ -613,28 +666,35 @@ Components:
 - `Modal.confirm` or standard `Modal`
 - `Alert` when delete is blocked because the year group is in use
 
+Behaviour:
+
+- render a disabled delete button when the year group is blocked
+- show explanatory warning state inside the modal
+- keep the modal open with inline feedback until the user closes it
+
 States:
 
 - ready
-- blocked
+- blocked (in use, disabled destructive action)
 - submitting
 - success-close
 - submission failure
 
 ## Preferred tab-state matrix
 
-| State                            | Visible UI                        | Primary components                                 | Interaction rule                             |
-| -------------------------------- | --------------------------------- | -------------------------------------------------- | -------------------------------------------- |
-| Startup prefetch loading         | summary skeleton + disabled shell | `Skeleton`, disabled `Button`, empty `Card` shells | do not allow bulk actions                    |
-| Startup prefetch failure         | blocking error                    | `Alert`                                            | fail fast and block normal interaction       |
-| Google Classroom entry load      | table loading                     | `Table.loading`                                    | keep shell stable while tab-entry fetch runs |
-| Google Classroom entry failure   | blocking error                    | `Alert`                                            | do not masquerade as empty state             |
-| No active classrooms             | empty state                       | `Empty`                                            | keep management launchers visible            |
-| Ready, no selection              | normal table                      | `Table`, `Dropdown`, `Button`                      | bulk trigger disabled                        |
-| Ready, with selection            | normal table + selection summary  | `Badge`/text summary                               | enable only eligible actions                 |
-| Mutation in progress             | ready state with disabled actions | loading `Button` / `Modal` buttons                 | prevent double-submit                        |
-| Mutation summary success         | summary feedback                  | success `Alert`                                    | keep table visible                           |
-| Mutation summary partial failure | warning feedback                  | warning `Alert`                                    | failed rows remain selected                  |
+| State                            | Visible UI                        | Primary components                                 | Interaction rule                                   |
+| -------------------------------- | --------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| Startup prefetch loading         | summary skeleton + disabled shell | `Skeleton`, disabled `Button`, empty `Card` shells | do not allow bulk actions                          |
+| Startup prefetch failure         | blocking error                    | `Alert`                                            | fail fast and block normal interaction             |
+| Google Classroom entry load      | table loading                     | `Table.loading`                                    | keep shell stable while tab-entry fetch runs       |
+| Google Classroom entry failure   | blocking error                    | `Alert`                                            | hide stale table; do not masquerade as empty state |
+| No active classrooms             | empty state                       | `Empty`                                            | keep management launchers visible                  |
+| Ready, no selection              | normal table                      | `Table`, `Dropdown`, `Button`                      | bulk trigger disabled                              |
+| Ready, with selection            | normal table + selection summary  | `Badge`/text summary                               | enable only eligible actions                       |
+| Mutation in progress             | ready state with disabled actions | loading `Button` / `Modal` buttons                 | prevent double-submit                              |
+| Mutation summary success         | summary feedback                  | success `Alert`                                    | keep table visible                                 |
+| Mutation summary partial failure | warning feedback                  | warning `Alert`                                    | failed rows remain selected                        |
+| Mutation success + refresh fail  | mixed success/warning             | warning `Alert`                                    | hide stale table and instruct page refresh         |
 
 ## Accessibility and usability requirements
 
@@ -644,7 +704,8 @@ States:
 4. The first actionable field in each form modal should receive focus on open.
 5. Destructive confirmations must name the record count or the specific record where practical.
 6. Row selection changes should remain visible after partial failures.
-7. The tab must remain readable without animation when reduced motion is enabled.
+7. Selection should reset on tab re-entry rather than preserving invisible rows.
+8. The tab must remain readable without animation when reduced motion is enabled.
 
 ## Testing implications
 
@@ -659,6 +720,8 @@ Vitest should cover the invisible behaviour that drives every explicit state in 
 - toolbar action-eligibility logic for no-selection, mixed-selection, ready, and mutation-in-progress states
 - table-column configuration, row-status derivation, selection rules, and empty-state mapping
 - modal state transitions for opening, ready, validation error, submitting, success-close, submission failure, partial success, and blocked flows
+- bulk course-length modal validation and submission behaviour
+- selection reset behaviour on delete and tab re-entry
 - reference-data management modal list-state mapping for loading, empty, ready, mutation-in-progress, and reload-warning states
 - summary and error mapping that keeps failed rows selected after partial-success batch operations
 
@@ -671,21 +734,21 @@ Playwright should cover the visible browser flows that correspond to those same 
 3. verify no-selection, mixed-selection, and ready-with-selection toolbar states, including tooltip-backed disabled actions
 4. verify table rendering for active, inactive, `notCreated`, and orphaned rows
 5. open and complete Bulk create, Bulk delete, and Bulk set active/inactive flows, including partial-failure feedback where applicable
-6. open and complete Bulk set cohort and Bulk set year-group flows
+6. open and complete Bulk set cohort, Bulk set year-group, and Bulk set course-length flows
 7. open Manage cohorts and Manage year groups, then exercise create, edit, delete, active-state, and blocked-delete flows
 8. verify mutation-summary success and partial-failure alerts persist at tab level after modal close
+9. verify a successful mutation followed by failed refresh hides stale table data and instructs the user to refresh the page
 
 ### Suggested spec organisation
 
 Keep the frontend suites split by testing responsibility:
 
 - Vitest: feature hook, view-model, table, toolbar, alert-stack, and modal component or helper specs under `src/frontend/src/features/classes/**`
-- Playwright: visible Classes-tab journeys in `src/frontend/e2e-tests/classes-crud.spec.ts` with test names grouped by ready, error, empty, bulk-action, and reference-data-management flows
+- Playwright: visible Classes-tab journeys split into focused specs such as table, bulk core actions, cohort/year-group metadata actions, management modals, load states, and mutation-summary flows
 
 ## Open decisions intentionally left to implementation
 
 1. whether the management modals use inner `Table` components or `List` for very small datasets
 2. whether the destructive bulk-confirm flows use standard `Modal` or `Modal.confirm`
-3. whether partial-failure bulk flows keep the modal open briefly or always close immediately and rely solely on the top-level alert stack
 
 These may be refined during implementation, but the overall hierarchy and state model above should remain stable.

@@ -32,6 +32,7 @@ Current shared keys:
 - `classPartials`
 - `cohorts`
 - `yearGroups`
+- `googleClassrooms`
 
 Keep future invalidation and warm-up work aligned to these helpers.
 
@@ -50,17 +51,21 @@ Runtime validation should happen at the service boundary before data is cached.
 
 ## 4. Startup warm-up policy
 
-Startup warm-up is intentionally narrow in this phase.
+Startup warm-up uses the shared lookup datasets needed across the growing interface.
 
 Current policy:
 
-- startup-prefetched dataset: `classPartials` only
+- startup-prefetched datasets: `classPartials`, `cohorts`, and `yearGroups`
 - trigger point: after the shared auth query resolves to authorised
+- ownership: the app-level auth / warm-up boundary owns startup readiness
 - scheduling: fire-and-forget from an app-level boundary outside `App.tsx`
 - query API: `fetchQuery`, so orchestration can observe failures
+- readiness rule: startup is considered warmed only after all three shared datasets succeed
 - logging: debug-only orchestration context if warm-up fails
 
 Warm-up must not block initial render, shell paint, or navigation readiness.
+
+`googleClassrooms` remains a view-entry prefetch for the Classes tab rather than a startup-prefetched dataset.
 
 ## 5. Prefetch decision framework for future features
 
@@ -80,11 +85,12 @@ The current query-client defaults support that by avoiding eager refetch on focu
 
 Deferred invalidation notes:
 
-- future cohort mutations should invalidate the `cohorts` query when those screens migrate
-- future year-group mutations should invalidate the `yearGroups` query when those screens migrate
-- `classPartials` invalidation is deferred until there is a backend-supported notifier or update signal for `ABClass` changes
+- cohort mutations should invalidate the `cohorts` query and refresh active consumers
+- year-group mutations should invalidate the `yearGroups` query and refresh active consumers
+- `classPartials` refresh remains feature-driven after successful class mutations
+- if a required post-mutation refresh fails, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
 
-Do not add speculative invalidation wiring before those feature migrations exist.
+Do not add speculative invalidation wiring beyond the feature contracts that exist.
 
 ## 7. Sensitive data and cache persistence
 
