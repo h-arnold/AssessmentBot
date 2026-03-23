@@ -28,17 +28,22 @@ This page is **not** intended to host class analysis or assessment-run controls 
 6. The Google Classroom list should refresh on page load only; no manual refresh control is needed for now.
 7. Cohort and year-group management should use **secondary modals** for create, edit, and delete flows.
 8. Bulk editing should remain **modal-driven**, not inline.
-9. `courseLength` must be part of the create flow, with `1` accepted as the default.
-10. Active/inactive updates must **not** create missing `ABClass` records; frontend and backend validation must enforce this.
-11. Delete messaging should make clear that both the full and partial `ABClass` records are deleted.
-12. Bulk-action partial failures should keep failed rows selected and show a summary alert.
-13. Deleting cohorts or year groups that are still in use must be prevented.
-14. Cohort selection should:
+9. `courseLength` must be part of the create flow, with `1` accepted as the default, and existing classes must also support a modal-driven edit workflow for `courseLength`.
+10. Newly created `ABClass` records should default to `active=true`.
+11. Active/inactive updates must **not** create missing `ABClass` records; frontend and backend validation must enforce this.
+12. Delete messaging should make clear that both the full and partial `ABClass` records are deleted.
+13. Bulk-action partial failures should keep failed rows selected and show a summary alert.
+14. Deleting cohorts or year groups that are still in use must be prevented.
+15. Cohort selection should:
     - allow only active cohorts in create/edit selectors for new class flows
     - keep inactive cohorts visible in existing class data
     - keep inactive cohorts understandable when already assigned
-15. `cohorts` and `yearGroups` should be startup-prefetched alongside `classPartials` because they will become shared lookup data for querying and filtering across the frontend.
-16. Any create, edit, or delete operation affecting cohorts or year groups should invalidate the corresponding shared query and force a refresh.
+16. `cohorts` and `yearGroups` should be startup-prefetched alongside `classPartials` because they will become shared lookup data for querying and filtering across the frontend.
+17. The app-level auth / warm-up boundary should own startup readiness for `classPartials`, `cohorts`, and `yearGroups`.
+18. Any create, edit, or delete operation affecting cohorts or year groups should invalidate the corresponding shared query and force a refresh.
+19. Bulk actions are also the single-row edit path; selecting one row should use the same workflow as selecting many rows.
+20. Bulk requests should dispatch one request per selected row in parallel, continue across the full selection, and report failures per row in the original submitted row order.
+21. If a required re-fetch fails after a successful mutation, stale table data should not remain visible; the user should instead see an alert explaining that the update succeeded but a refresh is needed to see the latest state.
 
 ## Existing system constraints
 
@@ -204,7 +209,7 @@ The Settings-page **Classes** tab depends on four shared datasets:
 
 ### Startup
 
-Startup warm-up should prefetch:
+Startup warm-up should prefetch, under the app-level auth / warm-up boundary:
 
 - `classPartials`
 - `cohorts`
@@ -349,7 +354,14 @@ Display stored `ABClass` metadata resolved through the reference-data lookups wh
 
 ## Bulk-action specification
 
-Bulk actions are modal-driven only.
+Bulk actions are modal-driven only. They are also the supported single-row edit path in v1: selecting one row uses the same modal and transport behaviour as selecting many rows.
+
+Execution semantics for all bulk actions:
+
+- dispatch one request per selected row in parallel
+- continue attempting every selected row even if some requests fail
+- report success/failure counts in the submitted row order captured when the user confirms the modal
+- if the user closes a modal after requests have already been dispatched, those in-flight requests continue because cancellation is not supported in v1
 
 ## Bulk create `ABClass` records
 
@@ -365,9 +377,11 @@ Bulk actions are modal-driven only.
 
 ### Behaviour
 
-- submit one `upsertABClass` call per selected row
+- submit one `upsertABClass` call per selected row in parallel
+- newly created classes default to `active=true`
 - failed rows remain selected
 - successful rows are deselected
+- on partial success, keep the modal open briefly with inline feedback, then close and show a summary alert
 - show a summary alert after completion
 
 ## Bulk delete `ABClass` records
@@ -389,6 +403,7 @@ The confirmation should make clear that this deletes:
 
 - failed rows remain selected
 - successful rows are deselected
+- on partial success, keep the modal open briefly with inline feedback, then close and show summary alert
 - show summary alert
 
 ## Bulk set active / inactive
@@ -437,12 +452,34 @@ Rows in `notCreated` or `orphaned` status are not eligible in v1.
 
 - `yearGroupKey` select
 
+## Bulk set course length
+
+### Eligible rows
+
+- active rows
+- inactive rows
+
+Rows in `notCreated` or `orphaned` status are not eligible in v1.
+
+### Modal fields
+
+- `courseLength` (`InputNumber`, integer, min `1`)
+
+### Behaviour
+
+- this is the supported edit workflow for `courseLength` on existing classes
+- selecting one row uses the same workflow as selecting many rows
+- submit one `updateABClass` call per selected row in parallel
+
 ## Partial-success handling
 
 For all bulk actions:
 
-- keep failed rows selected
+- keep failed rows selected if those rows still exist after refresh
 - deselect successful rows
+- clear selection for rows that were deleted or are no longer visible
+- reset selection when the user leaves and re-enters the tab
+- keep the modal open briefly with inline feedback on partial success, then close and hand off to the persistent summary `Alert`
 - show a persistent summary `Alert`
 - include counts for attempted, succeeded, and failed rows
 
@@ -467,7 +504,7 @@ Deletion must be prevented when any persisted `ABClass` still references that co
 This safeguard should exist in both:
 
 - backend authoritative validation
-- frontend affordance or disabled state where feasible
+- a frontend confirmation modal that shows a disabled delete button plus explanatory warning state and remains open with inline feedback until the user closes it
 
 ## Year-group management modal
 
@@ -482,7 +519,7 @@ This safeguard should exist in both:
 
 Deletion must be prevented when any persisted `ABClass` still references that year-group key.
 
-As with cohorts, backend validation is authoritative.
+As with cohorts, backend validation is authoritative and the frontend should surface blocked deletes through the same confirmation-modal pattern, including a disabled delete button and inline warning state that remains open until the user closes it.
 
 ## Backend changes required to support agreed behaviour
 
@@ -542,12 +579,7 @@ The preferred implementation source for these in-use checks is the `abclass_part
 
 ## 5. Partial-response shaping
 
-Decide whether `getABClassPartials` should:
-
-1. return keys only and let the frontend resolve names, or
-2. return keys plus resolved display names for convenience
-
-The preferred initial approach is to keep storage and transport explicit by returning keys and resolving names in the frontend view model.
+`getABClassPartials` should return keys plus resolved display names for convenience. The transport contract should therefore expose explicit keys (`cohortKey`, `yearGroupKey`) alongside resolved labels (`cohortName`, `yearGroupName`).
 
 ## Frontend feature structure recommendation
 
@@ -608,7 +640,7 @@ The implementation plan should be organised around the following broad workstrea
 
 - add any controller helpers needed to resolve reference-data keys efficiently
 - ensure reference-data existence checks are shared rather than duplicated
-- review whether partial responses should expose keys only or keys plus resolved labels
+- return class partial responses with explicit keys plus resolved labels
 
 ## 5. Frontend service and schema work
 
@@ -633,7 +665,7 @@ The implementation plan should be organised around the following broad workstrea
 
 ## 8. Bulk-action workflows
 
-- implement bulk create, delete, set active or inactive, set cohort, and set year group flows
+- implement bulk create, delete, set active or inactive, set cohort, set year group, and set course length flows
 - add modal forms, validation, confirmation steps, and partial-success summaries
 - ensure failed rows remain selected after batch operations
 
@@ -670,11 +702,11 @@ If the Settings-page Classes tab cannot load any essential startup-prefetched da
 
 ## Partial-load failure
 
-If one dataset fails but others succeed:
+If one dataset fails but others succeed during a non-blocking refresh path:
 
-- keep usable data visible where practical
 - show a warning `Alert`
-- do not hide already-loaded table data unnecessarily
+- do not leave stale table data visible if the failed refresh is required to trust the current table state
+- if the failed refresh followed a successful mutation, tell the user the update succeeded but they must refresh the page to see changes
 
 ## Empty states
 
@@ -694,7 +726,7 @@ Orphaned rows, if any, will appear in the main table according to the specified 
 
 After successful mutations, refresh the relevant queries:
 
-- class create, update, delete -> refresh `classPartials`
+- class create, update, delete -> refresh `classPartials`; if that re-fetch fails after a successful mutation, show success-plus-refresh-needed guidance and do not keep stale table data visible
 - cohort create, edit, delete -> invalidate `cohorts` and force a refresh for active consumers
 - year-group create, edit, delete -> invalidate `yearGroups` and force a refresh for active consumers
 - Google Classrooms refreshes on page entry only in v1
@@ -705,7 +737,7 @@ After successful mutations, refresh the relevant queries:
 - orphaned state should be understandable by icon plus text or tooltip, not icon alone
 - modal forms should focus the first actionable field on open
 - destructive actions should require explicit confirmation
-- table selection state should remain predictable after partial failures
+- table selection state should remain predictable after partial failures and should reset on tab re-entry
 
 ## V1 scope recommendation
 
