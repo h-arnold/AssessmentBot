@@ -8,9 +8,9 @@ import { pathExists } from '../lib/fs.js';
 import type { BuilderPaths, ResolveJsonDbSourceResult } from '../types.js';
 
 const STAGE_ID = 'resolve-jsondb-source' as const;
-const JSON_DB_RELEASE_TAG = 'v0.1.0';
+const JSON_DB_RELEASE_TAG = 'v0.1.1';
 const JSON_DB_RELEASE_TARBALL_URL =
-  'https://github.com/h-arnold/JsonDbApp/archive/refs/tags/v0.1.0.tar.gz';
+  'https://github.com/h-arnold/JsonDbApp/archive/refs/tags/v0.1.1.tar.gz';
 const execFileAsync = promisify(execFile);
 const TAR_LISTING_NAME_START_COLUMN_INDEX = 5;
 

@@ -50,9 +50,9 @@ describe('runResolveJsonDbSource', () => {
     const result = await runResolveJsonDbSource(paths);
 
     expect(result.sourceFiles).toEqual(['src/a-first.js', 'src/nested/b-middle.js', 'src/z-last.js']);
-    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(path.join(paths.buildWorkDir, 'jsondbapp-v0.1.0'));
+    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(path.join(paths.buildWorkDir, 'jsondbapp-v0.1.1'));
     expect(paths.jsonDbAppManifestPath).toBe(
-      path.join(paths.buildWorkDir, 'jsondbapp-v0.1.0', 'appsscript.json'),
+      path.join(paths.buildWorkDir, 'jsondbapp-v0.1.1', 'appsscript.json'),
     );
     expect(paths.jsonDbAppSourceFiles).toEqual(result.sourceFiles);
   });

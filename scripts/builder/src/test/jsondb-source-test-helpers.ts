@@ -46,12 +46,12 @@ export async function createReleaseArchive(
   setup: (releaseFixtureRoot: string) => Promise<void>,
 ): Promise<Uint8Array> {
   const releaseFixtureDir = path.join(tempRoot, 'release-fixture');
-  const releaseFixtureRoot = path.join(releaseFixtureDir, 'JsonDbApp-0.1.0');
+  const releaseFixtureRoot = path.join(releaseFixtureDir, 'JsonDbApp-0.1.1');
   const archivePath = path.join(tempRoot, 'jsondbapp-release.tar.gz');
 
   await fs.mkdir(releaseFixtureRoot, { recursive: true });
   await setup(releaseFixtureRoot);
-  await execFileAsync('tar', ['-czf', archivePath, '-C', releaseFixtureDir, 'JsonDbApp-0.1.0']);
+  await execFileAsync('tar', ['-czf', archivePath, '-C', releaseFixtureDir, 'JsonDbApp-0.1.1']);
 
   return fs.readFile(archivePath);
 }
