@@ -57,9 +57,9 @@ The component choices below are aligned to the official Ant Design documentation
 SettingsPage
 └── TabbedPageSection
     ├── Classes tab
-    │   └── ClassesManagementPanel
-    │       ├── ClassesTabAlertStack
-    │       ├── ClassesTabSummaryCard
+    │   └── ClassesManagementPage
+    │       ├── ClassesAlertStack
+    │       ├── ClassesSummaryCard
     │       ├── ClassesToolbarCard
     │       │   ├── BulkActionsDropdown
     │       │   ├── ManageCohortsButton
@@ -87,7 +87,7 @@ Rationale:
 ## Recommended page skeleton
 
 ```text
-ClassesManagementPanel
+ClassesManagementPage
 └── Flex / Space (vertical)
     ├── Alert stack
     ├── Summary card
@@ -248,6 +248,8 @@ Menu items:
    - all launchers available subject to row-selection rules
 5. **Selection reset**
    - after delete or tab re-entry, reset selection rather than trying to preserve invisible rows
+   - implement reset via controlled `selectedRowKeys` updates in the feature shell
+   - keep `preserveSelectedRowKeys` disabled so removed/invisible rows are not retained implicitly
 
 ## 4. Table card
 
@@ -264,7 +266,9 @@ Menu items:
 
 - `rowKey="classId"`
 - `rowSelection`
+- controlled `rowSelection.selectedRowKeys`
 - explicit `columns`
+- column-level `sorter` and `filters` for user-facing data columns
 - `pagination` with sensible defaults for the expected row count
 - `locale.emptyText` for custom empty-state content
 - `scroll.x` if column width demands it
@@ -309,6 +313,7 @@ Use `Tooltip` for the orphaned explanation and any disabled state explanation.
 5. **Partial-load warning**
    - keep table visible
    - show warning `Alert` above the card
+   - if the failed refresh is required to trust current table state (for example mutation succeeded but required refresh failed), suppress stale table rows and show refresh-needed guidance
 6. **Blocking failure**
    - do not present the table as an interactive ready state
 
@@ -719,6 +724,7 @@ Vitest should cover the invisible behaviour that drives every explicit state in 
 - summary-card derivation for loading, ready-with-data, ready-with-zero-values, and blocked suppression states
 - toolbar action-eligibility logic for no-selection, mixed-selection, ready, and mutation-in-progress states
 - table-column configuration, row-status derivation, selection rules, and empty-state mapping
+- table-column sort and filter configuration, plus reset-to-default ordering behaviour
 - modal state transitions for opening, ready, validation error, submitting, success-close, submission failure, partial success, and blocked flows
 - bulk course-length modal validation and submission behaviour
 - selection reset behaviour on delete and tab re-entry
@@ -733,11 +739,12 @@ Playwright should cover the visible browser flows that correspond to those same 
 2. observe startup-prefetch failure, Google Classroom entry failure, partial-load warning, and no-active-classrooms empty states
 3. verify no-selection, mixed-selection, and ready-with-selection toolbar states, including tooltip-backed disabled actions
 4. verify table rendering for active, inactive, `notCreated`, and orphaned rows
-5. open and complete Bulk create, Bulk delete, and Bulk set active/inactive flows, including partial-failure feedback where applicable
-6. open and complete Bulk set cohort, Bulk set year-group, and Bulk set course-length flows
-7. open Manage cohorts and Manage year groups, then exercise create, edit, delete, active-state, and blocked-delete flows
-8. verify mutation-summary success and partial-failure alerts persist at tab level after modal close
-9. verify a successful mutation followed by failed refresh hides stale table data and instructs the user to refresh the page
+5. verify table column sorting and filtering interactions, including clearing controls back to default ordering
+6. open and complete Bulk create, Bulk delete, and Bulk set active/inactive flows, including partial-failure feedback where applicable
+7. open and complete Bulk set cohort, Bulk set year-group, and Bulk set course-length flows
+8. open Manage cohorts and Manage year groups, then exercise create, edit, delete, active-state, and blocked-delete flows
+9. verify mutation-summary success and partial-failure alerts persist at tab level after modal close
+10. verify a successful mutation followed by failed refresh hides stale table data and instructs the user to refresh the page
 
 ### Suggested spec organisation
 

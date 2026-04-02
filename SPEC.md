@@ -174,7 +174,7 @@ Proposed high-level tree:
 SettingsPage
 └── TabbedPageSection
     └── Classes tab
-        └── ClassesManagementPanel
+        └── ClassesManagementPage
             ├── PageHeader / summary
             ├── Alert region (load, partial-load, mutation summary)
             ├── ClassesToolbar
@@ -300,6 +300,7 @@ Default table sort order should be:
 4. orphaned
 
 This preserves the agreed priority order while still keeping unmanaged rows visible.
+Within each status group, apply a deterministic secondary sort by `className` ascending (case-insensitive).
 
 ## Main table specification
 
@@ -330,6 +331,15 @@ Recommended Ant Design components:
 7. `active`
 
 `classId` should remain available to the feature as the row key and hidden identifier, but it does not need a visible table column in the Classes-tab UI. `classOwner` and `teachers` should not be displayed in the table because they are backend-managed Google Classroom metadata and are populated only after the stored `ABClass` exists.
+
+## Column sorting and filtering
+
+The Classes table must provide user-facing column sorting and filtering controls in addition to the default merged-row ordering.
+
+- Sorting should be available on status, class name, cohort, course length, year group, and active columns.
+- Filtering should be available on status, class name, cohort, course length, year group, and active columns.
+- When sorting and filtering are cleared, the table should return to the default order: status priority then `className` ascending.
+- Sorting/filtering interactions must be deterministic and testable in both Vitest (column config/state mapping) and Playwright (visible browser behaviour).
 
 ## Rendering rules
 
@@ -482,6 +492,15 @@ For all bulk actions:
 - keep the modal open briefly with inline feedback on partial success, then close and hand off to the persistent summary `Alert`
 - show a persistent summary `Alert`
 - include counts for attempted, succeeded, and failed rows
+
+## Selection lifecycle contract
+
+Implement selection with controlled table selection state in the Classes feature shell.
+
+- Use controlled `selectedRowKeys` state (do not rely on implicit table-internal state across tab switches).
+- On Classes-tab entry/re-entry, reset selection to empty.
+- After destructive operations and required refresh, remove keys that are no longer visible.
+- Do not preserve invisible keys across tab re-entry cycles.
 
 ## Reference-data management specification
 
@@ -661,6 +680,7 @@ The implementation plan should be organised around the following broad workstrea
 - replace the current placeholder Classes-tab content in `SettingsPage` with a real feature entry component
 - build the merged row view model for active, inactive, not-created, and orphaned rows
 - implement default status sorting and row selection
+- implement column sorting and filtering controls for the main table
 - render the main Ant Design table and status affordances
 
 ## 8. Bulk-action workflows
@@ -685,7 +705,7 @@ The implementation plan should be organised around the following broad workstrea
 
 - add backend unit and API-layer coverage for the new contracts and guards
 - add frontend Vitest coverage for services, view-model mapping, hooks, and component logic
-- add Playwright coverage for user-visible interactions such as tab/page entry, row selection, modals, and bulk actions
+- add Playwright coverage for user-visible interactions such as tab/page entry, row selection, column sorting/filtering, modals, and bulk actions
 - keep test coverage aligned with the repo testing split and shared mock-helper rules
 
 ## 12. Documentation and rollout follow-through

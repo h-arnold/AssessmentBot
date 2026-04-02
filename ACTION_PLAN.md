@@ -30,7 +30,7 @@ Use this file as the index only.
    - Settings-page feature bootstrap
    - Classes shell and readiness plumbing
    - Merged row view-model
-   - Summary, toolbar, table, and load-state rendering
+   - Summary, toolbar, table (including column sorting/filtering), and load-state rendering
 
 4. [`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md`](ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md)
    - Shared batch mutation engine
@@ -53,6 +53,7 @@ Use this file as the index only.
 - Use Zod for all new or changed frontend contracts.
 - Treat the key-based contract as blank-slate only for this delivery.
 - Preserve the rollout note that downstream assessment flows still depend on numeric `ABClass.yearGroup`.
+- For frontend-visible behaviour changes, pair Vitest with Playwright coverage and extend the shared Classes CRUD harness instead of creating parallel harnesses.
 
 ## Exploration summary
 
@@ -75,7 +76,7 @@ The split above matches the largest codebase seams and the highest-risk gaps fou
 ### Feature-shell risks
 
 - `src/frontend/src/pages/SettingsPage.tsx` still renders a blank placeholder card for the Classes tab.
-- There is no `src/frontend/src/features/classes/` feature area yet.
+- `src/frontend/src/features/classes/` exists for Workstream 2 query-invalidation foundations, but still lacks the Classes shell/table components.
 - Current page tests cover tabs, not data-driven tab content or blocking readiness states.
 
 ### Bulk-workflow risks
