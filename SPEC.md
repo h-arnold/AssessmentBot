@@ -174,7 +174,7 @@ Proposed high-level tree:
 SettingsPage
 └── TabbedPageSection
     └── Classes tab
-        └── ClassesManagementPage
+        └── ClassesManagementPanel
             ├── PageHeader / summary
             ├── Alert region (load, partial-load, mutation summary)
             ├── ClassesToolbar
@@ -300,7 +300,8 @@ Default table sort order should be:
 4. orphaned
 
 This preserves the agreed priority order while still keeping unmanaged rows visible.
-Within each status group, apply a deterministic secondary sort by `className` ascending (case-insensitive).
+Within each status group, apply a deterministic secondary sort by `className` using case-insensitive `localeCompare` (`sensitivity: 'base'`).
+Treat missing/`null` `className` values as unnamed rows that sort after named rows; among unnamed rows, sort by `classId` ascending.
 
 ## Main table specification
 
@@ -338,7 +339,7 @@ The Classes table must provide user-facing column sorting and filtering controls
 
 - Sorting should be available on status, class name, cohort, course length, year group, and active columns.
 - Filtering should be available on status, class name, cohort, course length, year group, and active columns.
-- When sorting and filtering are cleared, the table should return to the default order: status priority then `className` ascending.
+- When sorting and filtering are cleared, the table should return to the default order: status priority then the documented `className` tie-break contract.
 - Sorting/filtering interactions must be deterministic and testable in both Vitest (column config/state mapping) and Playwright (visible browser behaviour).
 
 ## Rendering rules
@@ -606,8 +607,8 @@ Suggested new feature area:
 
 ```text
 src/frontend/src/features/classes/
-  ClassesManagementPage.tsx
-  ClassesManagementPage.spec.tsx
+  ClassesManagementPanel.tsx
+  ClassesManagementPanel.spec.tsx
   useClassesManagement.ts
   useClassesManagement.spec.ts
   classesManagementViewModel.ts

@@ -31,13 +31,13 @@ Acceptance:
 
 - Replace the placeholder Classes tab with a dedicated feature entry component.
 - Keep `SettingsPage.tsx` as composition only.
-- Create a shell hook boundary for data-driven tab state under spec-aligned naming (`ClassesManagementPage` + `useClassesManagement`).
+- Create a shell hook boundary for data-driven tab state under spec-aligned naming (`ClassesManagementPanel` + `useClassesManagement`).
 - Replace existing placeholder-only page/spec assertions (`Classes panel` empty region) with feature-state assertions owned by the new Classes feature entry.
 
 Tests:
 
 - `src/frontend/src/pages/SettingsPage.spec.tsx`
-- `src/frontend/src/features/classes/ClassesManagementPage.spec.tsx`
+- `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx`
 - `src/frontend/src/features/classes/useClassesManagement.spec.ts`
 
 ### 3.2 Merged row view-model
@@ -47,7 +47,8 @@ Acceptance:
 - Build the merged row model from `googleClassrooms`, `classPartials`, and resolved labels.
 - Support `active`, `inactive`, `notCreated`, and `orphaned` states.
 - Default sort order is active, inactive, not created, orphaned.
-- Within each status group, apply a deterministic secondary sort by `className` ascending (case-insensitive).
+- Within each status group, apply a deterministic secondary sort by `className` using case-insensitive `localeCompare` (`sensitivity: 'base'`).
+- Treat missing/`null` `className` values as unnamed rows that sort after named rows; among unnamed rows, sort by `classId` ascending.
 
 Tests:
 
@@ -67,7 +68,7 @@ Acceptance:
   - reset selection on Classes-tab re-entry
   - clear removed row keys after destructive changes/refresh
   - do not preserve invisible row keys across tab re-entry.
-- Add column sorting and filtering controls for the main table, with default view-model ordering preserved as status order plus `className` ascending tie-break.
+- Add column sorting and filtering controls for the main table, with default view-model ordering preserved as status order plus the documented `className` tie-break contract.
 - Column sorting and filtering should cover user-facing data columns (status, class name, cohort, course length, year group, active) with deterministic behaviour.
 
 Tests:
@@ -142,7 +143,7 @@ Tests:
    - Recommendation: controlled sorter/filter state so reset-to-default behaviour is deterministic.
 5. **Sorter/filter reset contract**
    - Decision: what “clear all” returns to.
-   - Recommendation: always reset to status-priority order with `className` ascending tie-break.
+   - Recommendation: always reset to status-priority order with the documented `className` tie-break contract (case-insensitive compare, unnamed rows last).
 6. **Selection lifecycle on tab re-entry and destructive changes**
    - Decision: whether to reset selection on tab re-entry and delete/remove flows.
    - Recommendation: reset on tab re-entry and after destructive row removal; do not preserve invisible rows.
@@ -158,7 +159,7 @@ Tests:
 
 ## Section checks
 
-- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/features/classes/ClassesManagementPage.spec.tsx src/features/classes/useClassesManagement.spec.ts src/features/classes/classesManagementViewModel.spec.ts src/features/classes/ClassesTable.spec.tsx src/features/classes/ClassesTableColumns.spec.tsx src/features/classes/ClassesToolbar.spec.tsx src/features/classes/selectionState.spec.ts src/features/classes/ClassesAlertStack.spec.tsx src/features/classes/ClassesSummaryCard.spec.tsx src/features/classes/ClassesEmptyStates.spec.tsx`
+- `npm run frontend:test -- src/pages/SettingsPage.spec.tsx src/features/classes/ClassesManagementPanel.spec.tsx src/features/classes/useClassesManagement.spec.ts src/features/classes/classesManagementViewModel.spec.ts src/features/classes/ClassesTable.spec.tsx src/features/classes/ClassesTableColumns.spec.tsx src/features/classes/ClassesToolbar.spec.tsx src/features/classes/selectionState.spec.ts src/features/classes/ClassesAlertStack.spec.tsx src/features/classes/ClassesSummaryCard.spec.tsx src/features/classes/ClassesEmptyStates.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts e2e-tests/classes-crud-table.spec.ts e2e-tests/classes-crud-load-states.spec.ts e2e-tests/classes-crud-table-controls.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`

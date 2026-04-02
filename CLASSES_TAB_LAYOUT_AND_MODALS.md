@@ -57,7 +57,7 @@ The component choices below are aligned to the official Ant Design documentation
 SettingsPage
 └── TabbedPageSection
     ├── Classes tab
-    │   └── ClassesManagementPage
+    │   └── ClassesManagementPanel
     │       ├── ClassesAlertStack
     │       ├── ClassesSummaryCard
     │       ├── ClassesToolbarCard
@@ -87,7 +87,7 @@ Rationale:
 ## Recommended page skeleton
 
 ```text
-ClassesManagementPage
+ClassesManagementPanel
 └── Flex / Space (vertical)
     ├── Alert stack
     ├── Summary card
