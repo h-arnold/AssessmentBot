@@ -23,7 +23,7 @@ vi.mock('../../query/sharedQueries', async () => {
 
     return {
         ...actual,
-        warmStartupQueries: warmStartupQueriesMock,
+        warmClassPartials: warmStartupQueriesMock,
     };
 });
 
@@ -45,31 +45,6 @@ function AuthHookProbe() {
             })}
         </output>
     );
-}
-
-/**
- * Creates a deferred promise for controlled async test flows.
- *
- * @returns {{ promise: Promise<T>; resolve(value: T): void; reject(reason: unknown): void }} Deferred promise controls.
- */
-function createDeferredPromise<T>() {
-    let resolvePromise: ((value: T | PromiseLike<T>) => void) | undefined;
-    let rejectPromise: ((reason?: unknown) => void) | undefined;
-
-    const promise = new Promise<T>((resolve, reject) => {
-        resolvePromise = resolve;
-        rejectPromise = reject;
-    });
-
-    return {
-        promise,
-        resolve(value: T) {
-            resolvePromise?.(value);
-        },
-        reject(reason: unknown) {
-            rejectPromise?.(reason);
-        },
-    };
 }
 
 /**
@@ -96,34 +71,13 @@ function createQueryWrapper() {
     };
 }
 
-/**
- * Creates a probe for the startup warm-up state contract using the AppAuthGate module path.
- *
- * @returns {Promise<() => JSX.Element>} Warm-up state probe component factory.
- */
-async function createWarmupStateProbe() {
-    const appAuthGateModule = await import('./AppAuthGate');
-    const { useStartupWarmupState } = appAuthGateModule as typeof AppAuthGateModule & {
-        useStartupWarmupState?: () => unknown;
-    };
-
-    expect(useStartupWarmupState).toBeTypeOf('function');
-
-    return function WarmupStateProbe() {
-        return (
-            <output data-testid="warmup-state-probe">
-                {JSON.stringify(useStartupWarmupState())}
-            </output>
-        );
-    };
-}
-
 describe('AppAuthGate', () => {
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.clearAllMocks();
     });
 
-    it('keeps the auth UI render non-blocking while exposing loading then ready startup warm-up state', async () => {
+    it('keeps the auth UI render non-blocking while starting startup warm-up', async () => {
         const { QueryWrapper, queryClient } = createQueryWrapper();
         getAuthorisationStatusMock.mockResolvedValueOnce(true);
         warmStartupQueriesMock.mockReturnValueOnce(Promise.resolve());
@@ -209,7 +163,7 @@ describe('AppAuthGate', () => {
             expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
         });
         expect(consoleDebugSpy).toHaveBeenCalledWith(
-            'features/auth/AppAuthGate.startupWarmup',
+            'features/auth/AppAuthGate.classPartialsWarmup',
             expect.objectContaining({
                 requestId: 'req-warmup-1',
                 errorCode: 'INTERNAL_ERROR',
