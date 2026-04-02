@@ -66,9 +66,9 @@ class ABClass {
         : {
             classId: arguments_[0],
             className: arguments_[1],
-            cohort: arguments_[2],
+            cohortKey: arguments_[2],
             courseLength: arguments_[3],
-            yearGroup: arguments_[4],
+            yearGroupKey: arguments_[4],
             classOwner: arguments_[5],
             teachers: arguments_[6],
             students: arguments_[7],
@@ -79,9 +79,11 @@ class ABClass {
     const {
       classId,
       className = null,
-      cohort = null,
+      cohortKey = null,
       courseLength = 1,
-      yearGroup = null,
+      yearGroupKey = null,
+      cohortLabel = null,
+      yearGroupLabel = null,
       classOwner = null,
       teachers = [],
       students = [],
@@ -96,18 +98,19 @@ class ABClass {
     // Explicit owner property (store as provided). Validation should be done via setClassOwner.
     this.classOwner = classOwner || null;
 
-    // Cohort can be a number (year) or string. Store as string for stability but expose helpers.
-    this.cohort = cohort !== undefined && cohort !== null ? String(cohort) : null;
+    const hasCohortKey = cohortKey === undefined || cohortKey === null;
+    this.cohortKey = hasCohortKey ? null : String(cohortKey);
 
     // courseLength in years (integer)
     this.courseLength = Number.isInteger(courseLength)
       ? courseLength
       : ABClass._parseNullableInt(courseLength, 1);
 
-    // yearGroup (integer), nullable
-    this.yearGroup = Number.isInteger(yearGroup)
-      ? yearGroup
-      : ABClass._parseNullableInt(yearGroup, null);
+    const hasYearGroupKey = yearGroupKey === undefined || yearGroupKey === null;
+    this.yearGroupKey = hasYearGroupKey ? null : String(yearGroupKey);
+
+    this.cohortLabel = cohortLabel ?? null;
+    this.yearGroupLabel = yearGroupLabel ?? null;
 
     // Arrays of domain objects; consumers may push instances or plain objects.
     this.teachers = Array.isArray(teachers) ? [...teachers] : [];
@@ -206,8 +209,8 @@ class ABClass {
    * @returns {number|null} The cohort start year, or null if not parseable
    */
   getCohortStartYear() {
-    if (!this.cohort) return null;
-    const number_ = Number.parseInt(this.cohort, 10);
+    if (!this.cohortLabel) return null;
+    const number_ = Number.parseInt(String(this.cohortLabel), 10);
     return Number.isNaN(number_) ? null : number_;
   }
 
@@ -343,9 +346,9 @@ class ABClass {
     return {
       classId: this.classId,
       className: this.className,
-      cohort: this.cohort,
+      cohortKey: this.cohortKey,
       courseLength: this.courseLength,
-      yearGroup: this.yearGroup,
+      yearGroupKey: this.yearGroupKey,
       classOwner: serialiseOwner(this.classOwner),
       teachers: serialiseArray(this.teachers),
       students: serialiseArray(this.students),
@@ -360,16 +363,26 @@ class ABClass {
    * @returns {Object} A partial object representation with class metadata and teachers, but no students or assignments
    */
   toPartialJSON() {
-    return {
+    const partial = {
       classId: this.classId,
       className: this.className,
-      cohort: this.cohort,
+      cohortKey: this.cohortKey,
       courseLength: this.courseLength,
-      yearGroup: this.yearGroup,
+      yearGroupKey: this.yearGroupKey,
       classOwner: serialiseOwner(this.classOwner),
       teachers: serialiseArray(this.teachers),
       active: this.active,
     };
+
+    if (this.cohortLabel !== null && this.cohortLabel !== undefined) {
+      partial.cohortLabel = this.cohortLabel;
+    }
+
+    if (this.yearGroupLabel !== null && this.yearGroupLabel !== undefined) {
+      partial.yearGroupLabel = this.yearGroupLabel;
+    }
+
+    return partial;
   }
 
   // fromJSON reconstructs an ABClass instance from previously serialized data.
@@ -383,13 +396,17 @@ class ABClass {
     const inst = Object.create(ABClass.prototype);
     inst.classId = json.classId;
     inst.className = json.className || null;
-    inst.cohort = json.cohort !== undefined && json.cohort !== null ? String(json.cohort) : null;
+    inst.cohortKey =
+      json.cohortKey !== undefined && json.cohortKey !== null ? String(json.cohortKey) : null;
     inst.courseLength = Number.isInteger(json.courseLength)
       ? json.courseLength
       : ABClass._parseNullableInt(json.courseLength, 1);
-    inst.yearGroup = Number.isInteger(json.yearGroup)
-      ? json.yearGroup
-      : ABClass._parseNullableInt(json.yearGroup, null);
+    inst.yearGroupKey =
+      json.yearGroupKey !== undefined && json.yearGroupKey !== null
+        ? String(json.yearGroupKey)
+        : null;
+    inst.cohortLabel = json.cohortLabel ?? null;
+    inst.yearGroupLabel = json.yearGroupLabel ?? null;
 
     // Restore explicit owner (attempt Teacher.fromJSON when available)
     try {

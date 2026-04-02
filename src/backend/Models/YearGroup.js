@@ -9,12 +9,37 @@
 class YearGroup {
   /**
    * Constructs a YearGroup instance.
+   * @param {string} key - Stable key for the year group
    * @param {string} name - The year-group display name
    */
-  constructor(name) {
-    Validate.requireParams({ name }, 'YearGroup.constructor');
+  constructor(key, name) {
+    Validate.requireParams({ key, name }, 'YearGroup.constructor');
+    this.key = '';
     this.name = '';
+    this.setKey(key);
     this.setName(name);
+  }
+
+  /**
+   * Gets the stable year-group key.
+   * @returns {string} Stable key identifier
+   */
+  getKey() {
+    return this.key;
+  }
+
+  /**
+   * Sets the stable year-group key.
+   * @param {string} key - Stable key identifier
+   */
+  setKey(key) {
+    Validate.requireParams({ key }, 'YearGroup.setKey');
+
+    if (!Validate.isNonEmptyString(key)) {
+      throw new TypeError('key must be a non-empty string.');
+    }
+
+    this.key = key.trim();
   }
 
   /**
@@ -45,6 +70,7 @@ class YearGroup {
    */
   toJSON() {
     return {
+      key: this.key,
       name: this.name,
     };
   }
@@ -61,7 +87,7 @@ class YearGroup {
       throw new TypeError('json must be an object.');
     }
 
-    return new YearGroup(json.name);
+    return new YearGroup(json.key, json.name);
   }
 }
 

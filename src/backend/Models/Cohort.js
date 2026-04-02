@@ -2,7 +2,17 @@
 
 /* global Validate */
 
-const CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE = 2;
+const ACADEMIC_YEAR_START_MONTH = 9;
+
+/**
+ * Resolves the academic-year start for a given date.
+ * @param {Date} [now] - Current date reference.
+ * @returns {number} Academic-year start year.
+ */
+function getCurrentAcademicYearStart(now = new Date()) {
+  const month = now.getMonth() + 1;
+  return month >= ACADEMIC_YEAR_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
+}
 
 /**
  * Represents a cohort reference record.
@@ -10,16 +20,47 @@ const CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE = 2;
 class Cohort {
   /**
    * Constructs a Cohort instance.
+   * @param {string} key - Stable key for the cohort
    * @param {string} name - The cohort display name
    * @param {boolean} [active] - Whether the cohort is active (defaults to true)
+   * @param {number} [startYear] - Academic year start
+   * @param {number} [startMonth] - Academic year start month
    */
-  constructor(name, active) {
-    Validate.requireParams({ name }, 'Cohort.constructor');
+  constructor(key, name, active, startYear, startMonth) {
+    Validate.requireParams({ key, name }, 'Cohort.constructor');
+    this.key = '';
     this.name = '';
     this.active = true;
+    this.startYear = getCurrentAcademicYearStart();
+    this.startMonth = ACADEMIC_YEAR_START_MONTH;
 
+    this.setKey(key);
     this.setName(name);
-    this.setActive(arguments.length < CONSTRUCTOR_ARG_COUNT_WITH_ACTIVE ? true : active);
+    this.setActive(active === undefined ? true : active);
+    this.setStartMonth(startMonth === undefined ? ACADEMIC_YEAR_START_MONTH : startMonth);
+    this.setStartYear(startYear === undefined ? getCurrentAcademicYearStart() : startYear);
+  }
+
+  /**
+   * Gets the cohort stable key.
+   * @returns {string} Stable key
+   */
+  getKey() {
+    return this.key;
+  }
+
+  /**
+   * Sets the cohort stable key.
+   * @param {string} key - Stable key
+   */
+  setKey(key) {
+    Validate.requireParams({ key }, 'Cohort.setKey');
+
+    if (!Validate.isNonEmptyString(key)) {
+      throw new TypeError('key must be a non-empty string.');
+    }
+
+    this.key = key.trim();
   }
 
   /**
@@ -67,13 +108,60 @@ class Cohort {
   }
 
   /**
+   * Gets the cohort start year.
+   * @returns {number} Academic year start
+   */
+  getStartYear() {
+    return this.startYear;
+  }
+
+  /**
+   * Sets the cohort start year.
+   * @param {number} startYear - Academic year start
+   */
+  setStartYear(startYear) {
+    Validate.requireParams({ startYear }, 'Cohort.setStartYear');
+
+    if (!Number.isInteger(startYear)) {
+      throw new TypeError('startYear must be an integer.');
+    }
+
+    this.startYear = startYear;
+  }
+
+  /**
+   * Gets the cohort start month.
+   * @returns {number} Academic year start month
+   */
+  getStartMonth() {
+    return this.startMonth;
+  }
+
+  /**
+   * Sets the cohort start month.
+   * @param {number} startMonth - Academic year start month
+   */
+  setStartMonth(startMonth) {
+    Validate.requireParams({ startMonth }, 'Cohort.setStartMonth');
+
+    if (!Number.isInteger(startMonth) || startMonth < 1 || startMonth > 12) {
+      throw new TypeError('startMonth must be an integer between 1 and 12.');
+    }
+
+    this.startMonth = startMonth;
+  }
+
+  /**
    * Serializes the Cohort instance to a JSON object.
    * @returns {Object} The JSON representation of the cohort
    */
   toJSON() {
     return {
+      key: this.key,
       name: this.name,
       active: this.active,
+      startYear: this.startYear,
+      startMonth: this.startMonth,
     };
   }
 
@@ -90,7 +178,14 @@ class Cohort {
     }
 
     const active = Object.hasOwn(json, 'active') ? json.active : true;
-    return new Cohort(json.name, active);
+    const startMonth = Object.hasOwn(json, 'startMonth')
+      ? json.startMonth
+      : ACADEMIC_YEAR_START_MONTH;
+    const startYear = Object.hasOwn(json, 'startYear')
+      ? json.startYear
+      : getCurrentAcademicYearStart();
+
+    return new Cohort(json.key, json.name, active, startYear, startMonth);
   }
 }
 

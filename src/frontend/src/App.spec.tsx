@@ -705,7 +705,7 @@ describe('App', () => {
       expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
     });
     expect(consoleDebugSpy.mock.calls[0]?.[0]).toBe(
-      'features/auth/AppAuthGate.classPartialsWarmup'
+      'features/auth/AppAuthGate.startupWarmup'
     );
   });
 });
