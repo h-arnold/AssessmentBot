@@ -48,7 +48,6 @@ Acceptance:
 - Support `active`, `inactive`, `notCreated`, and `orphaned` states.
 - Default sort order is active, inactive, not created, orphaned.
 - Within each status group, apply a deterministic secondary sort by `className` using case-insensitive `localeCompare` (`sensitivity: 'base'`).
-- Treat missing/`null` `className` values as unnamed rows that sort after named rows; among unnamed rows, sort by `classId` ascending.
 
 Tests:
 
@@ -143,7 +142,7 @@ Tests:
    - Recommendation: controlled sorter/filter state so reset-to-default behaviour is deterministic.
 5. **Sorter/filter reset contract**
    - Decision: what “clear all” returns to.
-   - Recommendation: always reset to status-priority order with the documented `className` tie-break contract (case-insensitive compare, unnamed rows last).
+   - Recommendation: always reset to status-priority order with the documented case-insensitive `className` tie-break contract.
 6. **Selection lifecycle on tab re-entry and destructive changes**
    - Decision: whether to reset selection on tab re-entry and delete/remove flows.
    - Recommendation: reset on tab re-entry and after destructive row removal; do not preserve invisible rows.
