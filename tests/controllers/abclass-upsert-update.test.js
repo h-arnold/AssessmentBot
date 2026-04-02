@@ -25,9 +25,9 @@ function buildExistingClassDoc(overrides = {}) {
   return {
     classId: 'class-001',
     className: '10A Computer Science',
-    cohort: '2025',
+    cohortKey: 'coh-2025',
     courseLength: 2,
-    yearGroup: 10,
+    yearGroupKey: 'yg-10',
     classOwner: {
       email: 'owner.previous@example.com',
       userId: 'owner-previous',
@@ -57,9 +57,9 @@ function buildExpectedSummary(overrides = {}) {
   return {
     classId: 'class-001',
     className: '10A Computer Science',
-    cohort: '2026',
+    cohortKey: 'coh-2026',
     courseLength: 2,
-    yearGroup: 10,
+    yearGroupKey: 'yg-10',
     classOwner: {
       email: 'owner.current@example.com',
       userId: 'owner-current',
@@ -163,7 +163,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('ABClassController upsert/update orchestration (Section 3 RED)', () => {
+describe('ABClassController upsert/update orchestration (key-based contract)', () => {
   it('upsertABClass creates a new class when the class is missing', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
@@ -172,8 +172,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
 
     const result = controller.upsertABClass({
       classId: 'class-001',
-      cohort: '2026',
-      yearGroup: 10,
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
 
@@ -202,8 +202,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
 
     const result = controller.upsertABClass({
       classId: 'class-001',
-      cohort: '2026',
-      yearGroup: 10,
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
 
@@ -226,8 +226,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
 
     controller.upsertABClass({
       classId: 'class-001',
-      cohort: '2026',
-      yearGroup: 10,
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
 
@@ -253,7 +253,7 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
 
     const result = controller.updateABClass({
       classId: 'class-001',
-      cohort: '2027',
+      cohortKey: 'coh-2027',
       courseLength: 3,
     });
 
@@ -266,14 +266,14 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
       { classId: 'class-001' },
       {
         $set: {
-          cohort: '2027',
+          cohortKey: 'coh-2027',
           courseLength: 3,
         },
       }
     );
     expect(result).toEqual(
       buildExpectedSummary({
-        cohort: '2027',
+        cohortKey: 'coh-2027',
         courseLength: 3,
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,
@@ -303,7 +303,7 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
     expect(partialsCollection.replaceOne).toHaveBeenCalledWith(
       { classId: 'class-001' },
       buildExpectedSummary({
-        cohort: '2025',
+        cohortKey: 'coh-2025',
         courseLength: 2,
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,
@@ -312,7 +312,7 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
     );
     expect(result).toEqual(
       buildExpectedSummary({
-        cohort: '2025',
+        cohortKey: 'coh-2025',
         courseLength: 2,
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,
@@ -323,32 +323,24 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
     expect(result).not.toHaveProperty('assignments');
   });
 
-  it('updateABClass uses upsert-on-update behaviour when the class is missing', () => {
+  it('updateABClass rejects active patch when the class is missing', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
 
     const controller = new ABClassController();
 
-    const result = controller.updateABClass({
-      classId: 'class-001',
-      cohort: '2028',
-      active: null,
-    });
-
-    expect(classroomApiClient.fetchCourse).toHaveBeenCalledWith('class-001');
+    expect(() =>
+      controller.updateABClass({
+        classId: 'class-001',
+        cohortKey: 'coh-2028',
+        active: false,
+      })
+    ).toThrow(/not found|missing|active/i);
     expect(controller.dbManager.getCollection).toHaveBeenCalledWith('class-001');
     expect(controller.dbManager.getCollection).toHaveBeenCalledWith('abclass_partials');
-    expect(classCollection.insertOne).toHaveBeenCalledTimes(1);
+    expect(classCollection.insertOne).not.toHaveBeenCalled();
     expect(classCollection.updateOne).not.toHaveBeenCalled();
-    expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(
-      buildExpectedSummary({
-        cohort: '2028',
-        courseLength: 1,
-        yearGroup: null,
-        active: null,
-      })
-    );
+    expect(partialsCollection.insertOne).not.toHaveBeenCalled();
   });
 
   it('updateABClass preserves write-through consistency between the full record and abclass_partials', () => {
@@ -360,8 +352,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
 
     controller.updateABClass({
       classId: 'class-001',
-      cohort: '2029',
-      yearGroup: 12,
+      cohortKey: 'coh-2029',
+      yearGroupKey: 'yg-12',
       courseLength: 4,
       active: false,
     });
@@ -372,8 +364,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
       { classId: 'class-001' },
       {
         $set: {
-          cohort: '2029',
-          yearGroup: 12,
+          cohortKey: 'coh-2029',
+          yearGroupKey: 'yg-12',
           courseLength: 4,
           active: false,
         },
@@ -382,8 +374,8 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
     expect(partialsCollection.replaceOne).toHaveBeenCalledWith(
       { classId: 'class-001' },
       buildExpectedSummary({
-        cohort: '2029',
-        yearGroup: 12,
+        cohortKey: 'coh-2029',
+        yearGroupKey: 'yg-12',
         courseLength: 4,
         classOwner: existingClassDoc.classOwner,
         teachers: existingClassDoc.teachers,

@@ -24,9 +24,9 @@ function buildClassSummary(overrides = {}) {
   return {
     classId: 'class-001',
     className: '10A Computer Science',
-    cohort: '2026',
+    cohortKey: 'coh-2026',
     courseLength: 2,
-    yearGroup: 10,
+    yearGroupKey: 'yg-10',
     classOwner: {
       email: 'owner@example.com',
       userId: 'owner-001',
@@ -100,12 +100,12 @@ describe('Api/abclassMutations exports', () => {
   });
 });
 
-describe('Api/abclassMutations direct handlers (Section 3)', () => {
+describe('Api/abclassMutations direct handlers (key-based contract)', () => {
   it('upsertABClass delegates valid params to controller and returns the controller summary payload', () => {
     const params = {
       classId: 'class-001',
-      cohort: '2026',
-      yearGroup: 10,
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     };
     const controllerResult = buildClassSummary();
@@ -131,14 +131,14 @@ describe('Api/abclassMutations direct handlers (Section 3)', () => {
   it('updateABClass delegates valid params to controller and returns the controller summary payload', () => {
     const params = {
       classId: 'class-001',
-      cohort: '2027',
-      yearGroup: 11,
+      cohortKey: 'coh-2027',
+      yearGroupKey: 'yg-11',
       courseLength: 3,
       active: false,
     };
     const controllerResult = buildClassSummary({
-      cohort: '2027',
-      yearGroup: 11,
+      cohortKey: 'coh-2027',
+      yearGroupKey: 'yg-11',
       courseLength: 3,
       active: false,
     });
@@ -162,10 +162,10 @@ describe('Api/abclassMutations direct handlers (Section 3)', () => {
   });
 
   it.each([
-    ['upsertABClass', { cohort: '2026', yearGroup: 10, courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', yearGroup: 10, courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', cohort: '2026', courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', cohort: '2026', yearGroup: 10 }],
+    ['upsertABClass', { cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 2 }],
+    ['upsertABClass', { classId: 'class-001', yearGroupKey: 'yg-10', courseLength: 2 }],
+    ['upsertABClass', { classId: 'class-001', cohortKey: 'coh-2026', courseLength: 2 }],
+    ['upsertABClass', { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10' }],
     ['updateABClass', {}],
   ])('throws ApiValidationError when required params are missing for %s', (methodName, params) => {
     const upsertSpy = vi.fn();
@@ -251,8 +251,14 @@ describe('Api/abclassMutations direct handlers (Section 3)', () => {
   });
 
   it.each([
-    ['upsertABClass', { classId: 'class-001', cohort: '2026', yearGroup: 10, courseLength: '2' }],
-    ['upsertABClass', { classId: 'class-001', cohort: '2026', yearGroup: 10, courseLength: 0 }],
+    [
+      'upsertABClass',
+      { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: '2' },
+    ],
+    [
+      'upsertABClass',
+      { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 0 },
+    ],
     ['updateABClass', { classId: 'class-001', courseLength: '2' }],
     ['updateABClass', { classId: 'class-001', courseLength: 0 }],
   ])('throws ApiValidationError when courseLength is invalid for %s', (methodName, params) => {
