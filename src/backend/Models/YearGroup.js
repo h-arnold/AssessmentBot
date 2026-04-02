@@ -35,11 +35,7 @@ class YearGroup {
   setKey(key) {
     Validate.requireParams({ key }, 'YearGroup.setKey');
 
-    if (!Validate.isNonEmptyString(key)) {
-      throw new TypeError('key must be a non-empty string.');
-    }
-
-    this.key = key.trim();
+    this.key = Validate.validateTrimmedNonEmptyString('key', key);
   }
 
   /**
@@ -57,11 +53,7 @@ class YearGroup {
   setName(name) {
     Validate.requireParams({ name }, 'YearGroup.setName');
 
-    if (!Validate.isNonEmptyString(name)) {
-      throw new TypeError('name must be a non-empty string.');
-    }
-
-    this.name = name.trim();
+    this.name = Validate.validateTrimmedNonEmptyString('name', name);
   }
 
   /**
@@ -83,11 +75,9 @@ class YearGroup {
   static fromJSON(json) {
     Validate.requireParams({ json }, 'YearGroup.fromJSON');
 
-    if (!json || typeof json !== 'object' || Array.isArray(json)) {
-      throw new TypeError('json must be an object.');
-    }
+    const yearGroupJson = Validate.validatePlainObject('json', json);
 
-    return new YearGroup(json.key, json.name);
+    return new YearGroup(yearGroupJson.key, yearGroupJson.name);
   }
 }
 

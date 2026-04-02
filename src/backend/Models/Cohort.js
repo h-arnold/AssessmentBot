@@ -56,11 +56,7 @@ class Cohort {
   setKey(key) {
     Validate.requireParams({ key }, 'Cohort.setKey');
 
-    if (!Validate.isNonEmptyString(key)) {
-      throw new TypeError('key must be a non-empty string.');
-    }
-
-    this.key = key.trim();
+    this.key = Validate.validateTrimmedNonEmptyString('key', key);
   }
 
   /**
@@ -78,11 +74,7 @@ class Cohort {
   setName(name) {
     Validate.requireParams({ name }, 'Cohort.setName');
 
-    if (!Validate.isNonEmptyString(name)) {
-      throw new TypeError('name must be a non-empty string.');
-    }
-
-    this.name = name.trim();
+    this.name = Validate.validateTrimmedNonEmptyString('name', name);
   }
 
   /**
@@ -173,19 +165,17 @@ class Cohort {
   static fromJSON(json) {
     Validate.requireParams({ json }, 'Cohort.fromJSON');
 
-    if (!json || typeof json !== 'object' || Array.isArray(json)) {
-      throw new TypeError('json must be an object.');
-    }
+    const cohortJson = Validate.validatePlainObject('json', json);
 
-    const active = Object.hasOwn(json, 'active') ? json.active : true;
-    const startMonth = Object.hasOwn(json, 'startMonth')
-      ? json.startMonth
+    const active = Object.hasOwn(cohortJson, 'active') ? cohortJson.active : true;
+    const startMonth = Object.hasOwn(cohortJson, 'startMonth')
+      ? cohortJson.startMonth
       : ACADEMIC_YEAR_START_MONTH;
-    const startYear = Object.hasOwn(json, 'startYear')
-      ? json.startYear
+    const startYear = Object.hasOwn(cohortJson, 'startYear')
+      ? cohortJson.startYear
       : getCurrentAcademicYearStart();
 
-    return new Cohort(json.key, json.name, active, startYear, startMonth);
+    return new Cohort(cohortJson.key, cohortJson.name, active, startYear, startMonth);
   }
 }
 
