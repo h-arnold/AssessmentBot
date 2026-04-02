@@ -77,6 +77,9 @@ class YearGroup {
 
     const yearGroupJson = Validate.validatePlainObject('json', json);
 
+    if (!Object.prototype.hasOwnProperty.call(json, 'key')) {
+      throw new TypeError('json.key is required.');
+    }
     return new YearGroup(yearGroupJson.key, yearGroupJson.name);
   }
 }
