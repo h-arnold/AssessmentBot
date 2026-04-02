@@ -163,6 +163,24 @@ Tests:
 - `src/frontend/src/query/sharedQueries.query.spec.tsx`
 - `src/frontend/src/features/classes/queryInvalidation.spec.ts`
 
+Completion status: Complete
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [x] commit created
+- [x] push completed
+
+Implementation notes:
+
+- Completed on `copilot/implement-part-2-of-action-plan` in commit `e7542d219c2b8dfbc0702672fb36233ec98efcfd` (`feat: add classes query invalidation helpers`).
+- Delivered shared query invalidation helpers for cohorts and year groups, plus a composite required-refresh outcome for class-partials refetch paths with transport-safe refresh failure metadata.
+- Deviation from plan: this package landed the helper/orchestration layer and tests only; the explicit user guidance and retry affordance for refresh-failure outcomes still depends on later Classes UI work consuming the helper contract.
+- Follow-up implication: later Classes mutation flows should call these helpers rather than duplicating invalidation logic, and should surface `refreshStatus: 'failed'` outcomes explicitly in the UI.
+
 ### 2.5 Browser harness groundwork
 
 Acceptance:
@@ -190,6 +208,24 @@ Implementation detail:
 Tests:
 
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts`
+
+Completion status: Complete
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [x] commit created
+- [x] push completed
+
+Implementation notes:
+
+- Completed on `copilot/implement-part-2-of-action-plan` in commit `00f500f020adb63f1a5fa02222ef5cd2b0eba7f2` (`feat: implement Classes CRUD E2E harness and tests (work package 2.5)`).
+- Added a reusable Playwright Classes harness on top of `googleScriptRunHarness`, with deterministic per-method response queues, fail-fast handling for unexpected backend calls, shared fixtures, and seven passing E2E scenarios.
+- Deviation from plan: because the Classes tab is still a placeholder, the harness currently proves startup, navigation, prefetch, empty-state, and failure-sequencing behaviour rather than real CRUD UI interactions or phase-specific visual assertions.
+- Follow-up implication: later Classes-tab sections can extend this harness to cover actual CRUD journeys and refresh-failure UI states without replacing the central scenario queue.
 
 ## Sequencing notes
 
