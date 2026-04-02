@@ -1,6 +1,7 @@
 import { Card } from 'antd';
 import type { TabsProps } from 'antd';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
+import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 import { TabbedPageSection } from './TabbedPageSection';
 import { pageContent } from './pageContent';
 
@@ -51,11 +52,14 @@ function SettingsPlaceholderPanel({ label }: Readonly<{ label: string }>) {
  */
 export function SettingsPage() {
   return (
-    <TabbedPageSection
-      defaultActiveKey="classes"
-      heading={pageContent.settings.heading}
-      summary={pageContent.settings.summary}
-      tabs={settingsTabs}
-    />
+    <>
+      <SettingsPageGoogleClassroomsPrefetch />
+      <TabbedPageSection
+        defaultActiveKey="classes"
+        heading={pageContent.settings.heading}
+        summary={pageContent.settings.summary}
+        tabs={settingsTabs}
+      />
+    </>
   );
 }
