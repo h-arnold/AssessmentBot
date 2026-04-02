@@ -20,14 +20,14 @@ describe('Api/referenceData - direct unit delegation tests', () => {
   beforeEach(() => {
     originalController = globalThis.ReferenceDataController;
     controllerMethods = {
-      listCohorts: vi.fn(() => [{ name: 'Cohort 2026', active: true }]),
+      listCohorts: vi.fn(() => [{ key: 'coh-2026', name: 'Cohort 2026', active: true }]),
       createCohort: vi.fn((record) => ({ ...record })),
       updateCohort: vi.fn((payload) => ({ ...payload.record })),
-      deleteCohort: vi.fn((name) => ({ transport: 'plain-data', name })),
-      listYearGroups: vi.fn(() => [{ name: 'Year 10' }]),
+      deleteCohort: vi.fn((key) => ({ transport: 'plain-data', key })),
+      listYearGroups: vi.fn(() => [{ key: 'yg-10', name: 'Year 10' }]),
       createYearGroup: vi.fn((record) => ({ ...record })),
       updateYearGroup: vi.fn((payload) => ({ ...payload.record })),
-      deleteYearGroup: vi.fn((name) => ({ transport: 'plain-data', name })),
+      deleteYearGroup: vi.fn((key) => ({ transport: 'plain-data', key })),
     };
 
     globalThis.ReferenceDataController = vi.fn(function StubReferenceDataController() {
@@ -42,7 +42,12 @@ describe('Api/referenceData - direct unit delegation tests', () => {
   });
 
   it.each([
-    ['getCohorts', 'listCohorts', undefined, [{ name: 'Cohort 2026', active: true }]],
+    [
+      'getCohorts',
+      'listCohorts',
+      undefined,
+      [{ key: 'coh-2026', name: 'Cohort 2026', active: true }],
+    ],
     [
       'createCohort',
       'createCohort',
@@ -52,25 +57,19 @@ describe('Api/referenceData - direct unit delegation tests', () => {
     [
       'updateCohort',
       'updateCohort',
-      {
-        originalName: 'Cohort 2025',
-        record: { name: 'Cohort 2026', active: false },
-      },
-      { name: 'Cohort 2026', active: false },
+      { key: 'coh-2025', record: { name: 'Cohort 2026', active: false, startYear: 2025 } },
+      { name: 'Cohort 2026', active: false, startYear: 2025 },
     ],
-    ['deleteCohort', 'deleteCohort', { name: 'Cohort 2026' }],
-    ['getYearGroups', 'listYearGroups', undefined, [{ name: 'Year 10' }]],
+    ['deleteCohort', 'deleteCohort', { key: 'coh-2026' }],
+    ['getYearGroups', 'listYearGroups', undefined, [{ key: 'yg-10', name: 'Year 10' }]],
     ['createYearGroup', 'createYearGroup', { record: { name: 'Year 10' } }, { name: 'Year 10' }],
     [
       'updateYearGroup',
       'updateYearGroup',
-      {
-        originalName: 'Year 9',
-        record: { name: 'Year 10' },
-      },
+      { key: 'yg-9', record: { name: 'Year 10' } },
       { name: 'Year 10' },
     ],
-    ['deleteYearGroup', 'deleteYearGroup', { name: 'Year 10' }],
+    ['deleteYearGroup', 'deleteYearGroup', { key: 'yg-10' }],
   ])(
     '%s() resolves ReferenceDataController and delegates to %s()',
     (handlerName, controllerMethodName, params, expectedResult) => {
@@ -87,7 +86,7 @@ describe('Api/referenceData - direct unit delegation tests', () => {
       } else if (handlerName === 'createCohort' || handlerName === 'createYearGroup') {
         expect(controllerMethods[controllerMethodName]).toHaveBeenCalledWith(params.record);
       } else if (handlerName === 'deleteCohort' || handlerName === 'deleteYearGroup') {
-        expect(controllerMethods[controllerMethodName]).toHaveBeenCalledWith(params.name);
+        expect(controllerMethods[controllerMethodName]).toHaveBeenCalledWith(params.key);
       } else {
         expect(controllerMethods[controllerMethodName]).toHaveBeenCalledWith(params);
       }

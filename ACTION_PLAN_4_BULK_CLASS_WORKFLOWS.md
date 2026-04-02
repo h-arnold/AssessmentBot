@@ -29,6 +29,7 @@
 ### 4.1 Shared batch mutation engine
 
 Acceptance:
+
 - One shared engine dispatches one request per selected row in parallel.
 - Result aggregation preserves submitted-row order, not promise-resolution order.
 - Failed rows remain selected when still present.
@@ -36,17 +37,20 @@ Acceptance:
 - No feature-specific retry loop is added on top of `callApi(...)`.
 
 Tests:
+
 - `src/frontend/src/features/classes/batchMutationEngine.spec.ts`
 
 ### 4.2 Bulk create, delete, and active-state flows
 
 Acceptance:
+
 - Bulk create only targets `notCreated` rows.
 - Create uses `cohortKey`, `yearGroupKey`, and `courseLength`, defaulting `courseLength` to `1`.
 - Delete copy explicitly states that full and partial records are removed.
 - Active/inactive flows reject ineligible rows before opening.
 
 Tests:
+
 - `src/frontend/src/features/classes/bulkCreate.spec.tsx`
 - `src/frontend/src/features/classes/bulkDelete.spec.tsx`
 - `src/frontend/src/features/classes/bulkActiveState.spec.tsx`
@@ -55,12 +59,14 @@ Tests:
 ### 4.3 Bulk cohort, year-group, and course-length flows
 
 Acceptance:
+
 - Cohort selector exposes active cohorts only.
 - Year-group flow uses keyed options and payloads.
 - Course-length flow validates integer `>= 1`.
 - All three reuse the shared batch mutation engine and summary handoff.
 
 Tests:
+
 - `src/frontend/src/features/classes/bulkSetCohort.spec.tsx`
 - `src/frontend/src/features/classes/bulkSetYearGroup.spec.tsx`
 - `src/frontend/src/features/classes/bulkSetCourseLength.spec.tsx`
@@ -69,11 +75,13 @@ Tests:
 ### 4.4 Mutation summary and refresh-failure UX
 
 Acceptance:
+
 - Partial-success modals stay open briefly, then hand off to persistent summary alerts.
 - If the mutation succeeds but required re-fetch fails, the UI reports success plus refresh-needed guidance.
 - Required refresh failure suppresses stale table data.
 
 Tests:
+
 - `src/frontend/src/features/classes/mutationSummary.spec.tsx`
 - `src/frontend/src/features/classes/refetchFailureState.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-mutation-summary.spec.ts`
@@ -86,7 +94,7 @@ Tests:
 ## Section checks
 
 - `npm test -- tests/controllers/abclass-upsert-update.test.js tests/controllers/abclass-delete.test.js tests/api/abclassMutations.test.js`
-- `npm run frontend:test -- src/frontend/src/features/classes/batchMutationEngine.spec.ts src/frontend/src/features/classes/bulkCreate.spec.tsx src/frontend/src/features/classes/bulkDelete.spec.tsx src/frontend/src/features/classes/bulkActiveState.spec.tsx src/frontend/src/features/classes/bulkSetCohort.spec.tsx src/frontend/src/features/classes/bulkSetYearGroup.spec.tsx src/frontend/src/features/classes/bulkSetCourseLength.spec.tsx src/frontend/src/features/classes/mutationSummary.spec.tsx src/frontend/src/features/classes/refetchFailureState.spec.tsx`
+- `npm run frontend:test -- src/features/classes/batchMutationEngine.spec.ts src/features/classes/bulkCreate.spec.tsx src/features/classes/bulkDelete.spec.tsx src/features/classes/bulkActiveState.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx src/features/classes/mutationSummary.spec.tsx src/features/classes/refetchFailureState.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts e2e-tests/classes-crud-bulk-cohort.spec.ts e2e-tests/classes-crud-bulk-year-group.spec.ts e2e-tests/classes-crud-bulk-course-length.spec.ts e2e-tests/classes-crud-mutation-summary.spec.ts`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
