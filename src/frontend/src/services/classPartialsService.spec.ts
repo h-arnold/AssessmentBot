@@ -23,14 +23,16 @@ describe('classPartialsService.getABClassPartials', () => {
         expect(callApiMock).toHaveBeenCalledTimes(1);
     });
 
-    it('resolves with the array of class partials returned by the backend', async () => {
+    it('resolves with class partials that use keyed cohort and year-group metadata plus resolved labels', async () => {
         const partials = [
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025',
+                cohortKey: 'coh-2026',
+                cohortLabel: '2025-2026',
                 courseLength: 2,
-                yearGroup: 10,
+                yearGroupKey: 'yg-10',
+                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -48,9 +50,11 @@ describe('classPartialsService.getABClassPartials', () => {
             {
                 classId: 'c2',
                 className: 'Class B',
-                cohort: '2024',
+                cohortKey: null,
+                cohortLabel: null,
                 courseLength: 1,
-                yearGroup: 9,
+                yearGroupKey: null,
+                yearGroupLabel: null,
                 classOwner: null,
                 teachers: [],
                 active: false,
@@ -63,16 +67,20 @@ describe('classPartialsService.getABClassPartials', () => {
         const result = await getABClassPartials();
 
         expect(result).toEqual(partials);
+        expect(result[0]).not.toHaveProperty('cohort');
+        expect(result[0]).not.toHaveProperty('yearGroup');
     });
 
-    it('normalises omitted teacherName fields to null for valid backend payloads', async () => {
+    it('normalises omitted teacherName fields to null for valid keyed backend payloads', async () => {
         callApiMock.mockResolvedValueOnce([
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025',
+                cohortKey: 'coh-2026',
+                cohortLabel: '2025-2026',
                 courseLength: 2,
-                yearGroup: 10,
+                yearGroupKey: 'yg-10',
+                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -93,9 +101,11 @@ describe('classPartialsService.getABClassPartials', () => {
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025',
+                cohortKey: 'coh-2026',
+                cohortLabel: '2025-2026',
                 courseLength: 2,
-                yearGroup: 10,
+                yearGroupKey: 'yg-10',
+                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -122,13 +132,13 @@ describe('classPartialsService.getABClassPartials', () => {
         await expect(getABClassPartials()).rejects.toThrow('Transport failure');
     });
 
-    it('rejects malformed payloads with incorrect field types through the dedicated schema', async () => {
+    it('rejects malformed payloads that still use legacy cohort/yearGroup fields instead of keyed metadata', async () => {
         callApiMock.mockResolvedValueOnce([
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025',
-                courseLength: '2',
+                cohort: '2025-2026',
+                courseLength: 2,
                 yearGroup: 10,
                 classOwner: null,
                 teachers: [],

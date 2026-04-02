@@ -16,71 +16,146 @@ import {
 const omittedBackendSuccessPayload = new Map<string, never>().get('missing');
 
 describe('referenceData.zod schemas', () => {
-    it('CohortSchema accepts { name: "Year 7", active: true }', () => {
-        expect(CohortSchema.parse({ name: 'Year 7', active: true })).toEqual({
-            name: 'Year 7',
+    it('CohortSchema accepts keyed cohort payloads with academic-year metadata', () => {
+        expect(
+            CohortSchema.parse({
+                key: 'coh-2026',
+                name: 'Cohort 2026',
+                active: true,
+                startYear: 2025,
+                startMonth: 9,
+            })
+        ).toEqual({
+            key: 'coh-2026',
+            name: 'Cohort 2026',
             active: true,
+            startYear: 2025,
+            startMonth: 9,
         });
     });
 
     it.each(['', '   '])('CohortSchema rejects empty or whitespace-only names: %j', (name) => {
-        expect(() => CohortSchema.parse({ name, active: true })).toThrow();
+        expect(() =>
+            CohortSchema.parse({
+                key: 'coh-2026',
+                name,
+                active: true,
+                startYear: 2025,
+                startMonth: 9,
+            })
+        ).toThrow();
     });
 
-    it('CohortSchema rejects missing active so parsed backend cohort payloads stay strict', () => {
-        expect(() => CohortSchema.parse({ name: 'Year 7' })).toThrow();
+    it.each([
+        [{ name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 }],
+        [{ key: 'coh-2026', active: true, startYear: 2025, startMonth: 9 }],
+        [{ key: 'coh-2026', name: 'Cohort 2026', active: true, startMonth: 9 }],
+        [{ key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025 }],
+    ])('CohortSchema rejects backend cohort payloads that omit keyed metadata: %j', (payload) => {
+        expect(() => CohortSchema.parse(payload)).toThrow();
     });
 
     it('CohortSchema rejects non-boolean active', () => {
-        expect(() => CohortSchema.parse({ name: 'Year 7', active: 'yes' })).toThrow();
+        expect(() =>
+            CohortSchema.parse({
+                key: 'coh-2026',
+                name: 'Cohort 2026',
+                active: 'yes',
+                startYear: 2025,
+                startMonth: 9,
+            })
+        ).toThrow();
     });
 
-    it('CohortListResponseSchema rejects cohort payloads that omit active', () => {
-        expect(() => CohortListResponseSchema.parse([{ name: 'Year 7' }])).toThrow();
+    it('CohortListResponseSchema rejects legacy cohort payloads without key and academic-year metadata', () => {
+        expect(() => CohortListResponseSchema.parse([{ name: 'Cohort 2026', active: true }])).toThrow();
     });
 
-    it('YearGroupSchema accepts { name: "Year 10" }', () => {
-        expect(YearGroupSchema.parse({ name: 'Year 10' })).toEqual({ name: 'Year 10' });
+    it('YearGroupSchema accepts keyed year-group payloads', () => {
+        expect(YearGroupSchema.parse({ key: 'yg-10', name: 'Year 10' })).toEqual({
+            key: 'yg-10',
+            name: 'Year 10',
+        });
     });
 
     it.each(['', '   '])('YearGroupSchema rejects empty or whitespace-only names: %j', (name) => {
-        expect(() => YearGroupSchema.parse({ name })).toThrow();
+        expect(() => YearGroupSchema.parse({ key: 'yg-10', name })).toThrow();
     });
 
-    it('CreateCohortInputSchema accepts omitted active', () => {
-        expect(CreateCohortInputSchema.parse({ record: { name: 'Year 7' } })).toEqual({
-            record: { name: 'Year 7' },
-        });
-    });
-
-    it('UpdateCohortInputSchema requires originalName and a valid cohort record payload', () => {
+    it('CreateCohortInputSchema preserves provided academic-year metadata', () => {
         expect(
-            UpdateCohortInputSchema.parse({
-                originalName: 'Year 7',
-                record: { name: 'Year 8', active: false },
+            CreateCohortInputSchema.parse({
+                record: {
+                    name: 'Cohort 2026',
+                    active: true,
+                    startYear: 2025,
+                    startMonth: 9,
+                },
             })
         ).toEqual({
-            originalName: 'Year 7',
-            record: { name: 'Year 8', active: false },
+            record: {
+                name: 'Cohort 2026',
+                active: true,
+                startYear: 2025,
+                startMonth: 9,
+            },
+        });
+    });
+
+    it('UpdateCohortInputSchema requires key-addressed payloads with the keyed cohort record shape', () => {
+        expect(
+            UpdateCohortInputSchema.parse({
+                key: 'coh-2026',
+                record: {
+                    name: 'Cohort 2027',
+                    active: false,
+                    startYear: 2026,
+                    startMonth: 9,
+                },
+            })
+        ).toEqual({
+            key: 'coh-2026',
+            record: {
+                name: 'Cohort 2027',
+                active: false,
+                startYear: 2026,
+                startMonth: 9,
+            },
         });
 
-        expect(() => UpdateCohortInputSchema.parse({ record: { name: 'Year 8', active: true } })).toThrow();
         expect(() =>
             UpdateCohortInputSchema.parse({
-                originalName: 'Year 7',
-                record: { name: '   ', active: true },
+                record: {
+                    name: 'Cohort 2027',
+                    active: true,
+                    startYear: 2026,
+                    startMonth: 9,
+                },
             })
         ).toThrow();
         expect(() =>
             UpdateCohortInputSchema.parse({
-                originalName: 'Year 7',
-                record: { name: 'Year 8' },
+                originalName: 'Cohort 2026',
+                record: {
+                    name: 'Cohort 2027',
+                    active: true,
+                    startYear: 2026,
+                    startMonth: 9,
+                },
+            })
+        ).toThrow();
+        expect(() =>
+            UpdateCohortInputSchema.parse({
+                key: 'coh-2026',
+                record: { name: 'Cohort 2027', active: true },
             })
         ).toThrow();
     });
 
-    it.each(['', '   '])('DeleteCohortInputSchema rejects empty names: %j', (name) => {
-        expect(() => DeleteCohortInputSchema.parse({ name })).toThrow();
+    it('DeleteCohortInputSchema accepts only key-addressed identity payloads', () => {
+        expect(DeleteCohortInputSchema.parse({ key: 'coh-2026' })).toEqual({ key: 'coh-2026' });
+        expect(() => DeleteCohortInputSchema.parse({ name: 'Cohort 2026' })).toThrow();
+        expect(() => DeleteCohortInputSchema.parse({ key: '   ' })).toThrow();
     });
 
     it('DeleteCohortResponseSchema accepts an omitted backend success payload', () => {
@@ -91,15 +166,22 @@ describe('referenceData.zod schemas', () => {
         expect(() => DeleteCohortResponseSchema.parse({ deleted: true })).toThrow();
     });
 
-    it('yearGroup create, update, and delete input schemas reject malformed names', () => {
+    it('yearGroup create, update, and delete input schemas require keyed identity for update and delete', () => {
         expect(() => CreateYearGroupInputSchema.parse({ record: { name: '   ' } })).toThrow();
         expect(() =>
             UpdateYearGroupInputSchema.parse({
-                originalName: 'Year 9',
+                key: 'yg-9',
                 record: { name: '' },
             })
         ).toThrow();
-        expect(() => DeleteYearGroupInputSchema.parse({ name: '   ' })).toThrow();
+        expect(() =>
+            UpdateYearGroupInputSchema.parse({
+                originalName: 'Year 9',
+                record: { name: 'Year 10' },
+            })
+        ).toThrow();
+        expect(DeleteYearGroupInputSchema.parse({ key: 'yg-10' })).toEqual({ key: 'yg-10' });
+        expect(() => DeleteYearGroupInputSchema.parse({ name: 'Year 10' })).toThrow();
     });
 
     it('DeleteYearGroupResponseSchema accepts an omitted backend success payload', () => {
