@@ -114,6 +114,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanupControllerTestMocks();
   vi.restoreAllMocks();
 });
@@ -186,7 +187,7 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     new ReferenceDataController().createCohort({ name: '2025 cohort', active: true });
 
     const persisted = cohortsCollection.insertOne.mock.calls[0][0];
-    expect(persisted.startYear).toBe(2025);
+    expect(persisted.startYear).toBe(expectedAcademicYearStart(new Date('2025-10-15')));
 
     vi.useRealTimers();
   });
@@ -199,7 +200,7 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     new ReferenceDataController().createCohort({ name: '2024 cohort', active: true });
 
     const persisted = cohortsCollection.insertOne.mock.calls[0][0];
-    expect(persisted.startYear).toBe(2024);
+    expect(persisted.startYear).toBe(expectedAcademicYearStart(new Date('2025-03-15')));
 
     vi.useRealTimers();
   });
