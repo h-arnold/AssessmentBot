@@ -15,9 +15,11 @@ export type TeacherSummary = z.infer<typeof TeacherSummarySchema>;
 export const ClassPartialSchema = z.object({
     classId: z.string(),
     className: z.string().nullable(),
-    cohort: z.string().nullable(),
+    cohortKey: z.string().nullable(),
+    cohortLabel: z.string().nullable(),
     courseLength: z.number(),
-    yearGroup: z.number().nullable(),
+    yearGroupKey: z.string().nullable(),
+    yearGroupLabel: z.string().nullable(),
     classOwner: TeacherSummarySchema.nullable(),
     teachers: z.array(TeacherSummarySchema),
     active: z.boolean().nullable(),

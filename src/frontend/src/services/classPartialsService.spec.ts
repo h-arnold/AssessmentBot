@@ -27,9 +27,11 @@ describe('classPartialsService.getABClassPartials', () => {
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025-2026',
+                cohortKey: 'cohort-2025',
+                cohortLabel: '2025-2026',
                 courseLength: 2,
-                yearGroup: 10,
+                yearGroupKey: 'year-10',
+                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -50,9 +52,11 @@ describe('classPartialsService.getABClassPartials', () => {
             {
                 classId: 'c1',
                 className: 'Class A',
-                cohort: '2025-2026',
+                cohortKey: 'cohort-2025',
+                cohortLabel: '2025-2026',
                 courseLength: 2,
-                yearGroup: 10,
+                yearGroupKey: 'year-10',
+                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -79,10 +83,56 @@ describe('classPartialsService.getABClassPartials', () => {
         await expect(getABClassPartials()).rejects.toThrow('Transport failure');
     });
 
-    it.todo(
-        'resolves with class partials that use keyed cohort and year-group metadata plus resolved labels'
-    );
-    it.todo(
-        'rejects malformed payloads that still use legacy cohort/yearGroup fields instead of keyed metadata'
-    );
+    it('resolves with class partials that use keyed cohort and year-group metadata plus resolved labels', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'c2',
+                className: 'Class B',
+                cohortKey: 'cohort-2026',
+                cohortLabel: '2026-2027',
+                courseLength: 3,
+                yearGroupKey: 'year-11',
+                yearGroupLabel: 'Year 11',
+                classOwner: null,
+                teachers: [],
+                active: false,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).resolves.toEqual([
+            {
+                classId: 'c2',
+                className: 'Class B',
+                cohortKey: 'cohort-2026',
+                cohortLabel: '2026-2027',
+                courseLength: 3,
+                yearGroupKey: 'year-11',
+                yearGroupLabel: 'Year 11',
+                classOwner: null,
+                teachers: [],
+                active: false,
+            },
+        ]);
+    });
+
+    it('rejects malformed payloads that still use legacy cohort/yearGroup fields instead of keyed metadata', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'c3',
+                className: 'Class C',
+                cohort: '2025-2026',
+                courseLength: 2,
+                yearGroup: 10,
+                classOwner: null,
+                teachers: [],
+                active: true,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).rejects.toThrow();
+    });
 });

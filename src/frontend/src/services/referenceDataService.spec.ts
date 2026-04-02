@@ -8,11 +8,14 @@ vi.mock('./apiService', () => ({
 }));
 
 const validCohorts = [
-    { name: '2025 Cohort', active: true },
-    { name: '2026 Cohort', active: false },
+    { key: 'cohort-2025', name: '2025 Cohort', active: true, startYear: 2025, startMonth: 9 },
+    { key: 'cohort-2026', name: '2026 Cohort', active: false, startYear: 2026, startMonth: 9 },
 ];
 
-const validYearGroups = [{ name: 'Year 10' }, { name: 'Year 11' }];
+const validYearGroups = [
+    { key: 'year-10', name: 'Year 10' },
+    { key: 'year-11', name: 'Year 11' },
+];
 
 const createCohortInput = {
     record: {
@@ -21,7 +24,7 @@ const createCohortInput = {
 };
 
 const updateCohortInput = {
-    originalName: '2024 Cohort',
+    key: 'cohort-2024',
     record: {
         name: '2025 Cohort',
         active: true,
@@ -29,7 +32,7 @@ const updateCohortInput = {
 };
 
 const deleteCohortInput = {
-    name: '2025 Cohort',
+    key: 'cohort-2025',
 };
 
 const createYearGroupInput = {
@@ -39,14 +42,14 @@ const createYearGroupInput = {
 };
 
 const updateYearGroupInput = {
-    originalName: 'Year 9',
+    key: 'year-9',
     record: {
         name: 'Year 10',
     },
 };
 
 const deleteYearGroupInput = {
-    name: 'Year 10',
+    key: 'year-10',
 };
 
 /**
@@ -88,13 +91,13 @@ function invokeServiceMethodForMalformedPayload(
     }
 }
 
-describe('referenceDataService current legacy contracts', () => {
+describe('referenceDataService keyed contracts', () => {
     afterEach(() => {
         callApiMock.mockReset();
         vi.resetModules();
     });
 
-    it('getCohorts() calls callApi with getCohorts and parses the current list response', async () => {
+    it('getCohorts() parses keyed cohort payloads with academic-year metadata before returning them', async () => {
         callApiMock.mockResolvedValueOnce(validCohorts);
         const { getCohorts } = await loadReferenceDataService();
 
@@ -103,7 +106,7 @@ describe('referenceDataService current legacy contracts', () => {
         expect(callApiMock).toHaveBeenCalledTimes(1);
     });
 
-    it('getYearGroups() calls callApi with getYearGroups and parses the current list response', async () => {
+    it('getYearGroups() parses keyed year-group payloads before returning them', async () => {
         callApiMock.mockResolvedValueOnce(validYearGroups);
         const { getYearGroups } = await loadReferenceDataService();
 
@@ -113,41 +116,113 @@ describe('referenceDataService current legacy contracts', () => {
     });
 
     it.each([
-        ['createCohort', createCohortInput, { name: '2025 Cohort', active: false }],
-        ['updateCohort', updateCohortInput, { name: '2025 Cohort', active: true }],
-        ['deleteCohort', deleteCohortInput, undefined],
-        ['createYearGroup', createYearGroupInput, { name: 'Year 10' }],
-        ['updateYearGroup', updateYearGroupInput, { name: 'Year 10' }],
-        ['deleteYearGroup', deleteYearGroupInput, undefined],
+        [
+            'createCohort',
+            createCohortInput,
+            { key: 'cohort-2025', name: '2025 Cohort', active: false, startYear: 2025, startMonth: 9 },
+        ],
+        [
+            'updateCohort',
+            updateCohortInput,
+            { key: 'cohort-2024', name: '2025 Cohort', active: true, startYear: 2025, startMonth: 9 },
+        ],
+        ['createYearGroup', createYearGroupInput, { key: 'year-10', name: 'Year 10' }],
+        ['updateYearGroup', updateYearGroupInput, { key: 'year-9', name: 'Year 10' }],
+    ])('%s() calls callApi with keyed input and parses keyed response', async (methodName, input, response) => {
+        callApiMock.mockResolvedValueOnce(response);
+        const service = await loadReferenceDataService();
+
+        await expect(
+            service[methodName as keyof typeof service](input as never) as Promise<unknown>
+        ).resolves.toEqual(response);
+        expect(callApiMock).toHaveBeenCalledWith(methodName, input);
+        expect(callApiMock).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+        ['deleteCohort', deleteCohortInput],
+        ['deleteYearGroup', deleteYearGroupInput],
     ])(
-        '%s() calls callApi with the current legacy payload shape',
-        async (methodName, input, response) => {
-            callApiMock.mockResolvedValueOnce(response);
+        '%s() calls callApi and handles void response',
+        async (methodName, input) => {
             const service = await loadReferenceDataService();
 
-            await expect(
-                service[methodName as keyof typeof service](input as never) as Promise<unknown>
-            ).resolves.toEqual(response);
+            await service[methodName as keyof typeof service](input as never);
             expect(callApiMock).toHaveBeenCalledWith(methodName, input);
             expect(callApiMock).toHaveBeenCalledTimes(1);
         }
     );
 
+    it('createCohort() preserves academic-year metadata in the request payload and parses the keyed response', async () => {
+        const inputWithMetadata = {
+            record: {
+                name: '2025 Cohort',
+                active: true,
+                startYear: 2025,
+                startMonth: 9,
+            },
+        };
+        const response = {
+            key: 'cohort-2025',
+            name: '2025 Cohort',
+            active: true,
+            startYear: 2025,
+            startMonth: 9,
+        };
+        callApiMock.mockResolvedValueOnce(response);
+        const { createCohort } = await loadReferenceDataService();
+
+        await expect(createCohort(inputWithMetadata)).resolves.toEqual(response);
+        expect(callApiMock).toHaveBeenCalledWith('createCohort', inputWithMetadata);
+    });
+
+    it('updateCohort() uses key-addressed identity instead of originalName and parses keyed responses', async () => {
+        const response = {
+            key: 'cohort-2024',
+            name: '2025 Cohort',
+            active: true,
+            startYear: 2024,
+            startMonth: 9,
+        };
+        callApiMock.mockResolvedValueOnce(response);
+        const { updateCohort } = await loadReferenceDataService();
+
+        await expect(updateCohort(updateCohortInput)).resolves.toEqual(response);
+        expect(callApiMock).toHaveBeenCalledWith('updateCohort', updateCohortInput);
+    });
+
+    it('deleteCohort() sends the cohort key rather than a display name', async () => {
+        const { deleteCohort } = await loadReferenceDataService();
+
+        await deleteCohort(deleteCohortInput);
+        expect(callApiMock).toHaveBeenCalledWith('deleteCohort', deleteCohortInput);
+    });
+
+    it('deleteYearGroup() sends the year-group key rather than the display name', async () => {
+        const { deleteYearGroup } = await loadReferenceDataService();
+
+        await deleteYearGroup(deleteYearGroupInput);
+        expect(callApiMock).toHaveBeenCalledWith('deleteYearGroup', deleteYearGroupInput);
+    });
+
     it.each([
         ['createCohort', { record: { name: '   ' } }],
-        ['updateCohort', { originalName: '', record: { name: '2025 Cohort', active: true } }],
-        ['deleteCohort', { name: '   ' }],
+        ['updateCohort', { key: '', record: { name: '2025 Cohort', active: true } }],
+        ['deleteCohort', { key: '   ' }],
         ['createYearGroup', { record: { name: '   ' } }],
-        ['updateYearGroup', { originalName: 'Year 9', record: { name: '   ' } }],
-        ['deleteYearGroup', { name: '' }],
-    ])('%s() rejects malformed legacy request payloads before transport', async (methodName, input) => {
-        const service = await loadReferenceDataService();
+        ['updateYearGroup', { key: 'year-9', record: { name: '   ' } }],
+        ['deleteYearGroup', { key: '' }],
+    ])(
+        '%s() rejects malformed request payloads before calling callApi',
+        async (methodName, input) => {
+            const service = await loadReferenceDataService();
 
-        await expect(
-            service[methodName as keyof typeof service](input as never) as Promise<unknown>
-        ).rejects.toBeInstanceOf(ZodError);
-        expect(callApiMock).not.toHaveBeenCalled();
-    });
+            await expect(
+                service[methodName as keyof typeof service](input as never) as Promise<unknown>
+            ).rejects.toBeInstanceOf(ZodError);
+            expect(callApiMock).not.toHaveBeenCalled();
+        }
+    );
 
     it.each(['getCohorts', 'createYearGroup'])(
         '%s() propagates transport failures unchanged',
@@ -165,27 +240,21 @@ describe('referenceDataService current legacy contracts', () => {
     );
 
     it.each([
-        ['getCohorts', validCohorts.map((cohort) => ({ ...cohort, active: 'yes' }))],
-        ['createCohort', { name: '2025 Cohort' }],
+        [
+            'getCohorts',
+            validCohorts.map((cohort) => ({ ...cohort, active: 'yes' })),
+        ],
+        ['createCohort', { key: 'cohort-2025', name: '2025 Cohort' }],
         ['getYearGroups', [{ active: true }]],
         ['deleteYearGroup', { deleted: true }],
-    ])('%s() rejects malformed legacy success payloads', async (methodName, response) => {
-        callApiMock.mockResolvedValueOnce(response);
-        const service = await loadReferenceDataService();
-        const invocation = invokeServiceMethodForMalformedPayload(service, methodName);
+    ])(
+        'keyed methods reject malformed success payloads: %s()',
+        async (methodName, response) => {
+            callApiMock.mockResolvedValueOnce(response);
+            const service = await loadReferenceDataService();
+            const invocation = invokeServiceMethodForMalformedPayload(service, methodName);
 
-        await expect(invocation).rejects.toBeInstanceOf(ZodError);
-    });
-});
-
-describe('referenceDataService future keyed contracts', () => {
-    it.todo('getCohorts() parses keyed cohort payloads with academic-year metadata before returning them');
-    it.todo('createCohort() preserves academic-year metadata in the request payload and parses the keyed response');
-    it.todo('updateCohort() uses key-addressed identity instead of originalName and parses keyed responses');
-    it.todo('deleteCohort() sends the cohort key rather than a display name');
-    it.todo('getYearGroups() parses keyed year-group payloads before returning them');
-    it.todo('createYearGroup() and updateYearGroup() use keyed year-group contracts');
-    it.todo('deleteYearGroup() sends the year-group key rather than the display name');
-    it.todo('keyed methods reject legacy name-addressed identity payloads before calling callApi');
-    it.todo('keyed methods reject malformed success payloads when the backend still returns the legacy unkeyed shape');
+            await expect(invocation).rejects.toBeInstanceOf(ZodError);
+        }
+    );
 });

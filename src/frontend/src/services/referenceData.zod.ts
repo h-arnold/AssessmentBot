@@ -2,19 +2,29 @@ import { z } from 'zod';
 
 const NonEmptyNameSchema = z.string().trim().min(1);
 
+const MIN_VALID_MONTH = 1;
+const MAX_VALID_MONTH = 12;
+
 const CohortRecordInputSchema = z.object({
     name: NonEmptyNameSchema,
     active: z.boolean().optional(),
+    startYear: z.number().int().optional(),
+    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
 });
 
 const UpdateCohortRecordInputSchema = z.object({
     name: NonEmptyNameSchema,
     active: z.boolean(),
+    startYear: z.number().int().optional(),
+    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH).optional(),
 });
 
 export const CohortSchema = z.object({
+    key: NonEmptyNameSchema,
     name: NonEmptyNameSchema,
     active: z.boolean(),
+    startYear: z.number().int(),
+    startMonth: z.number().int().min(MIN_VALID_MONTH).max(MAX_VALID_MONTH),
 });
 
 export type Cohort = z.infer<typeof CohortSchema>;
@@ -42,19 +52,20 @@ export const CreateCohortInputSchema = z.object({
 export type CreateCohortInput = z.infer<typeof CreateCohortInputSchema>;
 
 export const UpdateCohortInputSchema = z.object({
-    originalName: NonEmptyNameSchema,
+    key: NonEmptyNameSchema,
     record: UpdateCohortRecordInputSchema,
 });
 
 export type UpdateCohortInput = z.infer<typeof UpdateCohortInputSchema>;
 
 export const DeleteCohortInputSchema = z.object({
-    name: NonEmptyNameSchema,
+    key: NonEmptyNameSchema,
 });
 
 export type DeleteCohortInput = z.infer<typeof DeleteCohortInputSchema>;
 
 export const YearGroupSchema = z.object({
+    key: NonEmptyNameSchema,
     name: NonEmptyNameSchema,
 });
 
@@ -85,7 +96,7 @@ export const CreateYearGroupInputSchema = z.object({
 export type CreateYearGroupInput = z.infer<typeof CreateYearGroupInputSchema>;
 
 export const UpdateYearGroupInputSchema = z.object({
-    originalName: NonEmptyNameSchema,
+    key: NonEmptyNameSchema,
     record: z.object({
         name: NonEmptyNameSchema,
     }),
@@ -94,7 +105,7 @@ export const UpdateYearGroupInputSchema = z.object({
 export type UpdateYearGroupInput = z.infer<typeof UpdateYearGroupInputSchema>;
 
 export const DeleteYearGroupInputSchema = z.object({
-    name: NonEmptyNameSchema,
+    key: NonEmptyNameSchema,
 });
 
 export type DeleteYearGroupInput = z.infer<typeof DeleteYearGroupInputSchema>;
