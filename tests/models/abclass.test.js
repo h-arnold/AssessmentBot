@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ABClass } from '../../src/backend/Models/ABClass.js';
 
-describe('ABClass model', () => {
+describe('ABClass model – key-based metadata contract', () => {
   let origConfigMgr;
 
   beforeEach(() => {
@@ -9,31 +9,70 @@ describe('ABClass model', () => {
   });
 
   afterEach(() => {
-    // restore original global ConfigurationManager (may be undefined)
     globalThis.ConfigurationManager = origConfigMgr;
   });
 
   it('uses provided classId when present', () => {
-    const c = new ABClass('cid-1', 'Class Name', 2025, 1, 7, ['t1'], ['s1'], ['a1']);
+    const c = new ABClass({
+      classId: 'cid-1',
+      className: 'Class Name',
+      cohortKey: 'coh-uuid-001',
+      courseLength: 1,
+      yearGroupKey: 'yg-uuid-007',
+    });
     expect(c.getClassId()).toBe('cid-1');
     expect(c.getClassName()).toBe('Class Name');
-    expect(c.cohort).toBe('2025');
+    expect(c.cohortKey).toBe('coh-uuid-001');
     expect(c.courseLength).toBe(1);
-    expect(c.yearGroup).toBe(7);
+    expect(c.yearGroupKey).toBe('yg-uuid-007');
   });
 
   it('throws when classId is missing', () => {
-    expect(() => new ABClass(undefined)).toThrow(TypeError);
+    expect(() => new ABClass({})).toThrow(TypeError);
+    expect(() => new ABClass({ classId: undefined })).toThrow(TypeError);
   });
 
-  it('cohort helpers and year ranges work as expected', () => {
-    const c = new ABClass('id-2', null, 2023, 2);
-    expect(c.getCohortStartYear()).toBe(2023);
-    expect(c.getCohortYearRanges()).toEqual(['2023-2024', '2024-2025']);
+  it('toJSON() emits cohortKey and yearGroupKey (not legacy cohort/yearGroup)', () => {
+    const c = new ABClass({
+      classId: 'id-json',
+      cohortKey: 'coh-uuid-002',
+      yearGroupKey: 'yg-uuid-002',
+      courseLength: 2,
+      active: true,
+    });
+
+    const json = c.toJSON();
+
+    expect(json).toHaveProperty('cohortKey', 'coh-uuid-002');
+    expect(json).toHaveProperty('yearGroupKey', 'yg-uuid-002');
+    expect(json).not.toHaveProperty('cohort');
+    expect(json).not.toHaveProperty('yearGroup');
   });
 
-  it('add/remove/find for teachers, students and assignments and serialization', () => {
-    const c = new ABClass('id-3');
+  it('fromJSON() restores cohortKey and yearGroupKey', () => {
+    const data = {
+      classId: 'id-restore',
+      className: 'Restored Class',
+      cohortKey: 'coh-uuid-003',
+      yearGroupKey: 'yg-uuid-003',
+      courseLength: 1,
+      active: false,
+      teachers: [],
+      students: [],
+      assignments: [],
+      classOwner: null,
+    };
+
+    const restored = ABClass.fromJSON(data);
+
+    expect(restored.classId).toBe('id-restore');
+    expect(restored.cohortKey).toBe('coh-uuid-003');
+    expect(restored.yearGroupKey).toBe('yg-uuid-003');
+    expect(restored.active).toBe(false);
+  });
+
+  it('add/remove/find for teachers, students and assignments and serialisation round-trip', () => {
+    const c = new ABClass({ classId: 'id-3' });
 
     const teacher = { uid: 't-1' };
     c.addTeacher(teacher);
@@ -50,13 +89,28 @@ describe('ABClass model', () => {
     expect(c.findAssignment((a) => a.uid === 'a-1')).toBe(assignment);
     expect(c.removeAssignment((a) => a.uid === 'a-1')).toBe(assignment);
 
-    // Serialization roundtrip
     c.addStudent({ uid: 's-2' });
     c.addTeacher({ uid: 't-2' });
+
     const json = c.toJSON();
     const restored = ABClass.fromJSON(json);
     expect(restored.classId).toBe(c.classId);
     expect(restored.students.length).toBeGreaterThanOrEqual(1);
     expect(restored.teachers.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('toJSON() → fromJSON() round-trip preserves cohortKey and yearGroupKey', () => {
+    const original = new ABClass({
+      classId: 'id-roundtrip',
+      cohortKey: 'coh-uuid-rt',
+      yearGroupKey: 'yg-uuid-rt',
+      courseLength: 3,
+      active: true,
+    });
+
+    const restored = ABClass.fromJSON(original.toJSON());
+
+    expect(restored.cohortKey).toBe('coh-uuid-rt');
+    expect(restored.yearGroupKey).toBe('yg-uuid-rt');
   });
 });

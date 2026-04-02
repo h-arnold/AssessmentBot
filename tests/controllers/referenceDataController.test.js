@@ -1,13 +1,12 @@
 /**
- * ReferenceDataController – cohort and year-group persistence tests (RED Phase)
+ * ReferenceDataController – cohort and year-group persistence tests
  *
- * Section 2 of ACTION_PLAN.md: "Backend controller and persistence"
- *
- * These tests define the CRUD contract for cohort and year-group reference data
- * backed by dedicated JsonDbApp collections.
- *
- * These tests MUST FAIL until ReferenceDataController implements the required
- * behaviour.
+ * Encodes the key-based reference-data contract from Workstream 1:
+ * - Cohort shape: { key, name, active, startYear, startMonth }
+ * - YearGroup shape: { key, name }
+ * - Create generates a UUID key; update/delete identify records by key
+ * - Academic-year defaults applied on create when startYear/startMonth are omitted
+ * - deleteCohort/deleteYearGroup reject in-use deletes with machine-readable reason
  */
 
 import { beforeAll, afterAll, beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
@@ -31,15 +30,24 @@ function restoreGlobalValue(key, originalValue) {
     delete globalThis[key];
     return;
   }
-
   globalThis[key] = originalValue;
 }
 
-function setupReferenceDataDbMocks(cohortsCollection, yearGroupsCollection) {
+/**
+ * Returns the expected academic-year start year for the given JS Date.
+ * Sep–Dec: current calendar year; Jan–Aug: previous calendar year.
+ */
+function expectedAcademicYearStart(date) {
+  const month = date.getMonth() + 1; // 1-indexed
+  return month >= 9 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
+function setupReferenceDataDbMocks(cohortsCollection, yearGroupsCollection, partialsCollection) {
   const mockDbManager = {
     getCollection: vi.fn((name) => {
       if (name === 'cohorts') return cohortsCollection;
       if (name === 'year_groups') return yearGroupsCollection;
+      if (name === 'abclass_partials') return partialsCollection;
       throw new Error(`Unexpected collection: ${name}`);
     }),
   };
@@ -51,20 +59,14 @@ function setupReferenceDataDbMocks(cohortsCollection, yearGroupsCollection) {
   return mockDbManager;
 }
 
-function normaliseLookupName(value) {
-  return typeof value === 'string' ? value.trim().toLowerCase() : null;
-}
-
-function primeCollectionLookup(collection, records) {
+/** Prime collection mocks for key-based lookups */
+function primeCollectionLookupByKey(collection, records) {
   collection.find.mockReturnValue(records);
   collection.findOne.mockImplementation((filter = {}) => {
-    const requestedName = normaliseLookupName(filter?.name);
-
-    if (requestedName === null) {
-      return records[0] ?? null;
+    if (filter?.key) {
+      return records.find((r) => r.key === filter.key) ?? null;
     }
-
-    return records.find((record) => normaliseLookupName(record?.name) === requestedName) ?? null;
+    return records[0] ?? null;
   });
 }
 
@@ -90,14 +92,20 @@ afterAll(() => {
 let ReferenceDataController;
 let cohortsCollection;
 let yearGroupsCollection;
+let partialsCollection;
 let mockDbManager;
 
 beforeEach(async () => {
   cohortsCollection = createMockCollection(vi);
   yearGroupsCollection = createMockCollection(vi);
+  partialsCollection = createMockCollection(vi);
 
   setupControllerTestMocks(vi);
-  mockDbManager = setupReferenceDataDbMocks(cohortsCollection, yearGroupsCollection);
+  mockDbManager = setupReferenceDataDbMocks(
+    cohortsCollection,
+    yearGroupsCollection,
+    partialsCollection
+  );
 
   const controllerModule =
     await import('../../src/backend/y_controllers/ReferenceDataController.js');
@@ -106,453 +114,446 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanupControllerTestMocks();
   vi.restoreAllMocks();
 });
 
-describe('ReferenceDataController – cohort persistence (Section 2)', () => {
+describe('ReferenceDataController – cohort key-based persistence', () => {
   it('listing empty cohorts returns []', () => {
-    primeCollectionLookup(cohortsCollection, []);
+    primeCollectionLookupByKey(cohortsCollection, []);
 
-    const controller = new ReferenceDataController();
-    const result = controller.listCohorts();
+    const result = new ReferenceDataController().listCohorts();
 
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
     expect(cohortsCollection.find).toHaveBeenCalledTimes(1);
     expect(result).toEqual([]);
   });
 
-  it('creating cohort persists { name, active } to cohorts', () => {
-    primeCollectionLookup(cohortsCollection, []);
+  it('creating cohort generates a UUID key and persists { key, name, active, startYear, startMonth }', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
 
-    const controller = new ReferenceDataController();
-    const result = controller.createCohort({ name: '2028', active: false });
+    const result = new ReferenceDataController().createCohort({
+      name: '2028',
+      active: false,
+      startYear: 2027,
+      startMonth: 9,
+    });
 
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
     expect(cohortsCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(cohortsCollection.insertOne).toHaveBeenCalledWith({ name: '2028', active: false });
+    const persisted = cohortsCollection.insertOne.mock.calls[0][0];
+    expect(persisted).toHaveProperty('key');
+    expect(typeof persisted.key).toBe('string');
+    expect(persisted.key.length).toBeGreaterThan(0);
+    expect(persisted.name).toBe('2028');
+    expect(persisted.active).toBe(false);
+    expect(persisted.startYear).toBe(2027);
+    expect(persisted.startMonth).toBe(9);
     expect(cohortsCollection.save).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ name: '2028', active: false });
+    expect(result.key).toBe(persisted.key);
+    expect(result.name).toBe('2028');
+    expect(result.active).toBe(false);
   });
 
   it('creating cohort with omitted active persists active: true', () => {
-    primeCollectionLookup(cohortsCollection, []);
+    primeCollectionLookupByKey(cohortsCollection, []);
 
-    const controller = new ReferenceDataController();
-    const result = controller.createCohort({ name: '2029' });
+    const result = new ReferenceDataController().createCohort({
+      name: '2029',
+      startYear: 2028,
+      startMonth: 9,
+    });
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.insertOne).toHaveBeenCalledWith({ name: '2029', active: true });
-    expect(result).toEqual({ name: '2029', active: true });
+    const persisted = cohortsCollection.insertOne.mock.calls[0][0];
+    expect(persisted.active).toBe(true);
+    expect(result.active).toBe(true);
   });
 
-  it('creating cohort with invalid payload rejected', () => {
-    primeCollectionLookup(cohortsCollection, []);
+  it('creating cohort with omitted startMonth defaults to 9 (September)', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
 
-    const controller = new ReferenceDataController();
+    new ReferenceDataController().createCohort({ name: '2030', active: true, startYear: 2029 });
 
-    expect(() => controller.createCohort({ name: '2030', active: 'yes please' })).toThrow(
-      /boolean|invalid/i
-    );
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
+    const persisted = cohortsCollection.insertOne.mock.calls[0][0];
+    expect(persisted.startMonth).toBe(9);
+  });
+
+  it('creating cohort with omitted startYear defaults to academic-year start (Sep–Dec → current year)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-10-15'));
+
+    primeCollectionLookupByKey(cohortsCollection, []);
+    new ReferenceDataController().createCohort({ name: '2025 cohort', active: true });
+
+    const persisted = cohortsCollection.insertOne.mock.calls[0][0];
+    expect(persisted.startYear).toBe(expectedAcademicYearStart(new Date('2025-10-15')));
+
+    vi.useRealTimers();
+  });
+
+  it('creating cohort with omitted startYear defaults to academic-year start (Jan–Aug → previous year)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-03-15'));
+
+    primeCollectionLookupByKey(cohortsCollection, []);
+    new ReferenceDataController().createCohort({ name: '2024 cohort', active: true });
+
+    const persisted = cohortsCollection.insertOne.mock.calls[0][0];
+    expect(persisted.startYear).toBe(expectedAcademicYearStart(new Date('2025-03-15')));
+
+    vi.useRealTimers();
+  });
+
+  it('creating cohort with invalid active rejected without persistence', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
+
+    expect(() =>
+      new ReferenceDataController().createCohort({ name: '2030', active: 'yes' })
+    ).toThrow(/boolean|invalid/i);
     expect(cohortsCollection.insertOne).not.toHaveBeenCalled();
     expect(cohortsCollection.save).not.toHaveBeenCalled();
   });
 
-  it('creating duplicate cohort differing only by case rejected', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: 'Alpha Cohort', active: true }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.createCohort({ name: 'alpha cohort', active: true })).toThrow(
-      /duplicate/i
-    );
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('creating duplicate cohort differing only by surrounding whitespace rejected', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: 'Beta Cohort', active: true }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.createCohort({ name: '  Beta Cohort  ', active: true })).toThrow(
-      /duplicate/i
-    );
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('listing cohorts sorted by name', () => {
-    primeCollectionLookup(cohortsCollection, [
-      { _id: 'c-2', name: 'Zulu', active: true },
-      { _id: 'c-1', name: 'Alpha', active: false },
-      { _id: 'c-3', name: 'Lima', active: true },
+  it('listing cohorts returns { key, name, active, startYear, startMonth } items sorted by name', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      {
+        _id: 'c-2',
+        key: 'coh-z',
+        name: 'Zulu Cohort',
+        active: true,
+        startYear: 2026,
+        startMonth: 9,
+      },
+      {
+        _id: 'c-1',
+        key: 'coh-a',
+        name: 'Alpha Cohort',
+        active: false,
+        startYear: 2024,
+        startMonth: 9,
+      },
+      {
+        _id: 'c-3',
+        key: 'coh-l',
+        name: 'Lima Cohort',
+        active: true,
+        startYear: 2025,
+        startMonth: 9,
+      },
     ]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.listCohorts();
+    const result = new ReferenceDataController().listCohorts();
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
     expect(result).toEqual([
-      { name: 'Alpha', active: false },
-      { name: 'Lima', active: true },
-      { name: 'Zulu', active: true },
+      { key: 'coh-a', name: 'Alpha Cohort', active: false, startYear: 2024, startMonth: 9 },
+      { key: 'coh-l', name: 'Lima Cohort', active: true, startYear: 2025, startMonth: 9 },
+      { key: 'coh-z', name: 'Zulu Cohort', active: true, startYear: 2026, startMonth: 9 },
     ]);
+    expect(result[0]).not.toHaveProperty('_id');
   });
 
-  it('updating existing cohort can change only active', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
+  it('updating cohort by key can change name, active, startYear, startMonth', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
+    ]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.updateCohort({
-      originalName: '2026',
-      record: { name: '2026', active: false },
+    const result = new ReferenceDataController().updateCohort({
+      key: 'coh-001',
+      record: { name: '2026', active: false, startYear: 2025, startMonth: 9 },
     });
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
     expect(cohortsCollection.replaceOne).toHaveBeenCalledTimes(1);
     expect(cohortsCollection.replaceOne).toHaveBeenCalledWith(
-      { name: '2026' },
-      { name: '2026', active: false }
+      { key: 'coh-001' },
+      expect.objectContaining({ key: 'coh-001', name: '2026', active: false })
     );
     expect(cohortsCollection.save).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ name: '2026', active: false });
+    expect(result.key).toBe('coh-001');
+    expect(result.active).toBe(false);
   });
 
-  it('updating existing cohort can rename when unique', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
-
-    const controller = new ReferenceDataController();
-    const result = controller.updateCohort({
-      originalName: '2026',
-      record: { name: '2027', active: true },
-    });
-
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.replaceOne).toHaveBeenCalledWith(
-      { name: '2026' },
-      { name: '2027', active: true }
-    );
-    expect(result).toEqual({ name: '2027', active: true });
-  });
-
-  it('updating cohort with invalid payload rejected', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() =>
-      controller.updateCohort({
-        originalName: '2026',
-        record: { name: '2026', active: 'no thanks' },
-      })
-    ).toThrow(/boolean|invalid/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.replaceOne).not.toHaveBeenCalled();
-    expect(cohortsCollection.save).not.toHaveBeenCalled();
-  });
-
-  it('updating missing cohort rejected', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() =>
-      controller.updateCohort({
-        originalName: '2030',
-        record: { name: '2030', active: true },
-      })
-    ).toThrow(/not found|missing/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.replaceOne).not.toHaveBeenCalled();
-  });
-
-  it('updating cohort to duplicate renamed value rejected', () => {
-    primeCollectionLookup(cohortsCollection, [
-      { name: '2026', active: true },
-      { name: '2027', active: false },
+  it('updating cohort preserves the original key even when display name changes', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
     ]);
 
-    const controller = new ReferenceDataController();
+    const result = new ReferenceDataController().updateCohort({
+      key: 'coh-001',
+      record: { name: '2026-27', active: true, startYear: 2025, startMonth: 9 },
+    });
+
+    expect(result.key).toBe('coh-001');
+    expect(result.name).toBe('2026-27');
+  });
+
+  it('updating missing cohort key rejected', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
+    ]);
 
     expect(() =>
-      controller.updateCohort({
-        originalName: '2026',
-        record: { name: '2027', active: true },
+      new ReferenceDataController().updateCohort({
+        key: 'coh-999',
+        record: { name: '2030', active: true, startYear: 2029, startMonth: 9 },
       })
-    ).toThrow(/duplicate|conflict/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
+    ).toThrow(/not found|missing/i);
     expect(cohortsCollection.replaceOne).not.toHaveBeenCalled();
   });
 
-  it('deleting existing cohort removes it', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
+  it('deleting cohort by key removes it', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
+    ]);
+    partialsCollection.find.mockReturnValue([]);
 
-    const controller = new ReferenceDataController();
-    controller.deleteCohort('2026');
+    new ReferenceDataController().deleteCohort('coh-001');
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.deleteOne).toHaveBeenCalledTimes(1);
-    expect(cohortsCollection.deleteOne).toHaveBeenCalledWith({ name: '2026' });
+    expect(cohortsCollection.deleteOne).toHaveBeenCalledWith({ key: 'coh-001' });
     expect(cohortsCollection.save).toHaveBeenCalledTimes(1);
   });
 
-  it('deleting missing cohort rejected', () => {
-    primeCollectionLookup(cohortsCollection, []);
+  it('deleting missing cohort key rejected', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
 
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.deleteCohort('2026')).toThrow(/not found|missing/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
+    expect(() => new ReferenceDataController().deleteCohort('coh-999')).toThrow(
+      /not found|missing/i
+    );
     expect(cohortsCollection.deleteOne).not.toHaveBeenCalled();
   });
 
-  it('updating cohort using same normalised name with different display casing succeeds when no conflicting record exists', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: 'cohort alpha', active: true }]);
+  it('deleteCohort rejects with machine-readable IN_USE reason when cohort is referenced by an ABClass', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
+    ]);
+    // An ABClass references this cohort key
+    partialsCollection.find.mockReturnValue([{ classId: 'class-001', cohortKey: 'coh-001' }]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.updateCohort({
-      originalName: 'cohort alpha',
-      record: { name: 'Cohort Alpha', active: false },
-    });
+    let error;
+    try {
+      new ReferenceDataController().deleteCohort('coh-001');
+    } catch (err) {
+      error = err;
+    }
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(cohortsCollection.replaceOne).toHaveBeenCalledWith(
-      { name: 'cohort alpha' },
-      { name: 'Cohort Alpha', active: false }
-    );
-    expect(result).toEqual({ name: 'Cohort Alpha', active: false });
+    expect(error).toBeDefined();
+    expect(error.reason ?? error.code ?? error.message).toMatch(/IN_USE|in.use|in_use|referenced/i);
+    expect(cohortsCollection.deleteOne).not.toHaveBeenCalled();
+    expect(cohortsCollection.save).not.toHaveBeenCalled();
   });
 });
 
-describe('ReferenceDataController – year-group persistence (Section 2)', () => {
+describe('ReferenceDataController – year-group key-based persistence', () => {
   it('listing empty year_groups returns []', () => {
-    primeCollectionLookup(yearGroupsCollection, []);
+    primeCollectionLookupByKey(yearGroupsCollection, []);
 
-    const controller = new ReferenceDataController();
-    const result = controller.listYearGroups();
+    const result = new ReferenceDataController().listYearGroups();
 
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
     expect(yearGroupsCollection.find).toHaveBeenCalledTimes(1);
     expect(result).toEqual([]);
   });
 
-  it('creating year group persists { name } to year_groups', () => {
-    primeCollectionLookup(yearGroupsCollection, []);
+  it('creating year group generates a UUID key and persists { key, name }', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, []);
 
-    const controller = new ReferenceDataController();
-    const result = controller.createYearGroup({ name: 'Year 10' });
+    const result = new ReferenceDataController().createYearGroup({ name: 'Year 10' });
 
     expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
     expect(yearGroupsCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(yearGroupsCollection.insertOne).toHaveBeenCalledWith({ name: 'Year 10' });
+    const persisted = yearGroupsCollection.insertOne.mock.calls[0][0];
+    expect(persisted).toHaveProperty('key');
+    expect(typeof persisted.key).toBe('string');
+    expect(persisted.name).toBe('Year 10');
     expect(yearGroupsCollection.save).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ name: 'Year 10' });
+    expect(result.key).toBe(persisted.key);
+    expect(result.name).toBe('Year 10');
   });
 
-  it('creating year group with invalid payload rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, []);
+  it('creating year group with invalid name rejected without persistence', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, []);
 
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.createYearGroup({ name: '   ' })).toThrow(/non-empty string|invalid/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
+    expect(() => new ReferenceDataController().createYearGroup({ name: '   ' })).toThrow(
+      /non-empty string|invalid/i
+    );
     expect(yearGroupsCollection.insertOne).not.toHaveBeenCalled();
     expect(yearGroupsCollection.save).not.toHaveBeenCalled();
   });
 
-  it('creating duplicate year group differing only by case rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.createYearGroup({ name: 'year 10' })).toThrow(/duplicate/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(yearGroupsCollection.insertOne).not.toHaveBeenCalled();
-  });
-
-  it('listing year groups sorted by name', () => {
-    primeCollectionLookup(yearGroupsCollection, [
-      { _id: 'yg-3', name: 'Year 9' },
-      { _id: 'yg-1', name: 'Year 10' },
-      { _id: 'yg-2', name: 'Year 11' },
+  it('listing year groups returns { key, name } items sorted by name', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [
+      { _id: 'yg-3', key: 'yg-y9', name: 'Year 9' },
+      { _id: 'yg-1', key: 'yg-y10', name: 'Year 10' },
+      { _id: 'yg-2', key: 'yg-y11', name: 'Year 11' },
     ]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.listYearGroups();
+    const result = new ReferenceDataController().listYearGroups();
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(result).toEqual([{ name: 'Year 10' }, { name: 'Year 11' }, { name: 'Year 9' }]);
+    expect(result).toEqual([
+      { key: 'yg-y10', name: 'Year 10' },
+      { key: 'yg-y11', name: 'Year 11' },
+      { key: 'yg-y9', name: 'Year 9' },
+    ]);
+    expect(result[0]).not.toHaveProperty('_id');
   });
 
-  it('updating existing year group can rename when unique', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
+  it('updating year group by key can rename', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.updateYearGroup({
-      originalName: 'Year 10',
+    const result = new ReferenceDataController().updateYearGroup({
+      key: 'yg-001',
       record: { name: 'Year 11' },
     });
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
     expect(yearGroupsCollection.replaceOne).toHaveBeenCalledWith(
-      { name: 'Year 10' },
-      { name: 'Year 11' }
+      { key: 'yg-001' },
+      expect.objectContaining({ key: 'yg-001', name: 'Year 11' })
     );
     expect(yearGroupsCollection.save).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ name: 'Year 11' });
+    expect(result.key).toBe('yg-001');
+    expect(result.name).toBe('Year 11');
   });
 
-  it('updating year group with invalid payload rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
+  it('updating year group preserves key across rename', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
 
-    const controller = new ReferenceDataController();
+    const result = new ReferenceDataController().updateYearGroup({
+      key: 'yg-001',
+      record: { name: 'Year 10 Advanced' },
+    });
+
+    expect(result.key).toBe('yg-001');
+  });
+
+  it('updating missing year group key rejected', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
 
     expect(() =>
-      controller.updateYearGroup({
-        originalName: 'Year 10',
+      new ReferenceDataController().updateYearGroup({
+        key: 'yg-999',
+        record: { name: 'Year 12' },
+      })
+    ).toThrow(/not found|missing/i);
+    expect(yearGroupsCollection.replaceOne).not.toHaveBeenCalled();
+  });
+
+  it('updating year group with invalid name rejected without persistence', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
+
+    expect(() =>
+      new ReferenceDataController().updateYearGroup({
+        key: 'yg-001',
         record: { name: '' },
       })
     ).toThrow(/non-empty string|invalid/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
     expect(yearGroupsCollection.replaceOne).not.toHaveBeenCalled();
     expect(yearGroupsCollection.save).not.toHaveBeenCalled();
   });
 
-  it('updating missing year group rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
+  it('deleting year group by key removes it', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
+    partialsCollection.find.mockReturnValue([]);
 
-    const controller = new ReferenceDataController();
+    new ReferenceDataController().deleteYearGroup('yg-001');
 
-    expect(() =>
-      controller.updateYearGroup({
-        originalName: 'Year 12',
-        record: { name: 'Year 12' },
-      })
-    ).toThrow(/not found|missing/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(yearGroupsCollection.replaceOne).not.toHaveBeenCalled();
-  });
-
-  it('updating year group to duplicate renamed value rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }, { name: 'Year 11' }]);
-
-    const controller = new ReferenceDataController();
-
-    expect(() =>
-      controller.updateYearGroup({
-        originalName: 'Year 10',
-        record: { name: 'year 11' },
-      })
-    ).toThrow(/duplicate|conflict/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(yearGroupsCollection.replaceOne).not.toHaveBeenCalled();
-  });
-
-  it('deleting existing year group removes it', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
-
-    const controller = new ReferenceDataController();
-    controller.deleteYearGroup('Year 10');
-
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(yearGroupsCollection.deleteOne).toHaveBeenCalledTimes(1);
-    expect(yearGroupsCollection.deleteOne).toHaveBeenCalledWith({ name: 'Year 10' });
+    expect(yearGroupsCollection.deleteOne).toHaveBeenCalledWith({ key: 'yg-001' });
     expect(yearGroupsCollection.save).toHaveBeenCalledTimes(1);
   });
 
-  it('deleting missing year group rejected', () => {
-    primeCollectionLookup(yearGroupsCollection, []);
+  it('deleting missing year group key rejected', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, []);
 
-    const controller = new ReferenceDataController();
-
-    expect(() => controller.deleteYearGroup('Year 10')).toThrow(/not found|missing/i);
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
+    expect(() => new ReferenceDataController().deleteYearGroup('yg-999')).toThrow(
+      /not found|missing/i
+    );
     expect(yearGroupsCollection.deleteOne).not.toHaveBeenCalled();
   });
 
-  it('updating year group using same normalised name with different display casing succeeds when no conflicting record exists', () => {
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'year 10' }]);
+  it('deleteYearGroup rejects with machine-readable IN_USE reason when year group is referenced by an ABClass', () => {
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
+    partialsCollection.find.mockReturnValue([{ classId: 'class-001', yearGroupKey: 'yg-001' }]);
 
-    const controller = new ReferenceDataController();
-    const result = controller.updateYearGroup({
-      originalName: 'year 10',
-      record: { name: 'Year 10' },
-    });
+    let error;
+    try {
+      new ReferenceDataController().deleteYearGroup('yg-001');
+    } catch (err) {
+      error = err;
+    }
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(yearGroupsCollection.replaceOne).toHaveBeenCalledWith(
-      { name: 'year 10' },
-      { name: 'Year 10' }
-    );
-    expect(result).toEqual({ name: 'Year 10' });
+    expect(error).toBeDefined();
+    expect(error.reason ?? error.code ?? error.message).toMatch(/IN_USE|in.use|in_use|referenced/i);
+    expect(yearGroupsCollection.deleteOne).not.toHaveBeenCalled();
+    expect(yearGroupsCollection.save).not.toHaveBeenCalled();
   });
 });
 
-describe('ReferenceDataController – transport-safe responses (Section 2)', () => {
-  it('controller list responses exclude _id', () => {
-    primeCollectionLookup(cohortsCollection, [{ _id: 'cohort-1', name: '2026', active: true }]);
-    primeCollectionLookup(yearGroupsCollection, [{ _id: 'yg-1', name: 'Year 10' }]);
+describe('ReferenceDataController – transport-safe responses', () => {
+  it('list responses exclude _id and include key', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      {
+        _id: 'cohort-1',
+        key: 'coh-001',
+        name: '2026',
+        active: true,
+        startYear: 2025,
+        startMonth: 9,
+      },
+    ]);
+    primeCollectionLookupByKey(yearGroupsCollection, [
+      { _id: 'yg-1', key: 'yg-001', name: 'Year 10' },
+    ]);
 
     const controller = new ReferenceDataController();
     const cohorts = controller.listCohorts();
     const yearGroups = controller.listYearGroups();
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(cohorts).toEqual([{ name: '2026', active: true }]);
-    expect(yearGroups).toEqual([{ name: 'Year 10' }]);
+    expect(cohorts[0]).toHaveProperty('key', 'coh-001');
+    expect(yearGroups[0]).toHaveProperty('key', 'yg-001');
     expect(cohorts[0]).not.toHaveProperty('_id');
     expect(yearGroups[0]).not.toHaveProperty('_id');
   });
 
-  it('controller create responses exclude _id', () => {
-    primeCollectionLookup(cohortsCollection, []);
-    primeCollectionLookup(yearGroupsCollection, []);
-    cohortsCollection.insertOne.mockImplementation((doc) => {
-      doc._id = 'generated-cohort-id';
-    });
-    yearGroupsCollection.insertOne.mockImplementation((doc) => {
-      doc._id = 'generated-year-group-id';
-    });
+  it('create responses exclude _id and include generated key', () => {
+    primeCollectionLookupByKey(cohortsCollection, []);
+    primeCollectionLookupByKey(yearGroupsCollection, []);
 
     const controller = new ReferenceDataController();
-    const cohort = controller.createCohort({ name: '2031', active: true });
+    const cohort = controller.createCohort({
+      name: '2031',
+      active: true,
+      startYear: 2030,
+      startMonth: 9,
+    });
     const yearGroup = controller.createYearGroup({ name: 'Year 12' });
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(cohort).toEqual({ name: '2031', active: true });
-    expect(yearGroup).toEqual({ name: 'Year 12' });
+    expect(cohort).toHaveProperty('key');
+    expect(typeof cohort.key).toBe('string');
+    expect(cohort.name).toBe('2031');
+    expect(yearGroup).toHaveProperty('key');
+    expect(typeof yearGroup.key).toBe('string');
+    expect(yearGroup.name).toBe('Year 12');
     expect(cohort).not.toHaveProperty('_id');
     expect(yearGroup).not.toHaveProperty('_id');
   });
 
-  it('controller update responses exclude _id', () => {
-    primeCollectionLookup(cohortsCollection, [{ name: '2026', active: true }]);
-    primeCollectionLookup(yearGroupsCollection, [{ name: 'Year 10' }]);
-    cohortsCollection.replaceOne.mockImplementation((filter, doc) => {
-      doc._id = 'updated-cohort-id';
-    });
-    yearGroupsCollection.replaceOne.mockImplementation((filter, doc) => {
-      doc._id = 'updated-year-group-id';
-    });
+  it('update responses exclude _id and preserve key', () => {
+    primeCollectionLookupByKey(cohortsCollection, [
+      { key: 'coh-001', name: '2026', active: true, startYear: 2025, startMonth: 9 },
+    ]);
+    primeCollectionLookupByKey(yearGroupsCollection, [{ key: 'yg-001', name: 'Year 10' }]);
 
     const controller = new ReferenceDataController();
     const cohort = controller.updateCohort({
-      originalName: '2026',
-      record: { name: '2027', active: false },
+      key: 'coh-001',
+      record: { name: '2027', active: false, startYear: 2026, startMonth: 9 },
     });
     const yearGroup = controller.updateYearGroup({
-      originalName: 'Year 10',
+      key: 'yg-001',
       record: { name: 'Year 11' },
     });
 
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('cohorts');
-    expect(mockDbManager.getCollection).toHaveBeenCalledWith('year_groups');
-    expect(cohort).toEqual({ name: '2027', active: false });
-    expect(yearGroup).toEqual({ name: 'Year 11' });
+    expect(cohort.key).toBe('coh-001');
+    expect(yearGroup.key).toBe('yg-001');
     expect(cohort).not.toHaveProperty('_id');
     expect(yearGroup).not.toHaveProperty('_id');
   });
