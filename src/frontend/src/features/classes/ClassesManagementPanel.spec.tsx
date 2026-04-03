@@ -10,9 +10,16 @@ vi.mock('./useClassesManagement', () => ({
 describe('ClassesManagementPanel', () => {
   it('renders a loading feature state shell while classes data resolves', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'loading',
       classesCount: null,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
@@ -24,9 +31,16 @@ describe('ClassesManagementPanel', () => {
 
   it('renders an error feature state message when classes management fails', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: 'Classes failed to load.',
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Classes failed to load.',
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
@@ -34,14 +48,18 @@ describe('ClassesManagementPanel', () => {
     render(<ClassesManagementPanel />);
 
     expect(screen.getByText('Classes feature is unavailable.')).toBeInTheDocument();
-    expect(screen.getByText('Classes failed to load.')).toBeInTheDocument();
+    expect(screen.getAllByText('Classes failed to load.')).toHaveLength(1);
   });
 
   it('renders a ready feature state summary once classes are available', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: 3,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: [],
       selectedRowKeys: [],
       onSelectedRowKeysChange: vi.fn(),

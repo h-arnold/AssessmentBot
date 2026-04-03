@@ -37,7 +37,7 @@ type ClassesCrudRuntimeScenario = Readonly<{
 const settingsMenuLabel = 'Settings';
 const settingsPageHeading = 'Settings';
 const classesTabLabel = 'Classes';
-const classesPanelLabel = 'Classes panel';
+const classesPanelLabel = 'Classes management panel';
 const unexpectedCallWaitTimeoutMs = 500;
 
 const baseCohorts: Cohort[] = [
@@ -287,14 +287,16 @@ async function openClassesTab(page: Page) {
 }
 
 /**
- * Asserts that the classes tab shows the placeholder panel (no content yet).
+ * Asserts that the classes tab shows the classes feature shell.
  *
  * @param {Page} page The Playwright page under test.
  * @returns {Promise<void>} A promise that resolves after assertions complete.
  */
-async function assertClassesPlaceholderShown(page: Page) {
+async function assertClassesFeatureShellShown(page: Page) {
   await expect(page.getByRole('region', { name: classesPanelLabel })).toBeVisible();
-  await expect(page.getByRole('region', { name: classesPanelLabel })).toBeEmpty();
+  await expect(page.getByText('Classes table')).toBeVisible();
+  await expect(page.getByText('Summary')).toBeVisible();
+  await expect(page.getByText('Bulk actions')).toBeVisible();
 }
 
 /**
@@ -356,7 +358,7 @@ test.describe('Classes CRUD harness journey', () => {
     await assertAuthorisedState(page);
 
     await openClassesTab(page);
-    await assertClassesPlaceholderShown(page);
+    await assertClassesFeatureShellShown(page);
   });
 
   test('shows unauthorised state when startup warm-up is blocked by auth failure', async ({
@@ -419,7 +421,7 @@ test.describe('Classes CRUD harness journey', () => {
     await assertAuthorisedState(page);
 
     await openClassesTab(page);
-    await assertClassesPlaceholderShown(page);
+    await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
   });
 
   test('handles Google Classrooms prefetch failure gracefully without blocking navigation', async ({
@@ -463,7 +465,7 @@ test.describe('Classes CRUD harness journey', () => {
     await assertAuthorisedState(page);
 
     await openClassesTab(page);
-    await assertClassesPlaceholderShown(page);
+    await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
   });
 
   test('supports empty datasets and navigates to classes tab successfully', async ({ page }) => {
@@ -504,7 +506,7 @@ test.describe('Classes CRUD harness journey', () => {
     await assertAuthorisedState(page);
 
     await openClassesTab(page);
-    await assertClassesPlaceholderShown(page);
+    await expect(page.getByText('No active Google Classrooms are available.')).toBeVisible();
   });
 
   test('proves the representative partial-success transport sequence with deterministic call order', async ({
@@ -548,7 +550,7 @@ test.describe('Classes CRUD harness journey', () => {
     await assertAuthorisedState(page);
 
     await openClassesTab(page);
-    await assertClassesPlaceholderShown(page);
+    await expect(page.getByText('Classes feature is unavailable.')).toBeVisible();
   });
 
   test('fails fast when an unexpected backend call is made outside the scenario queue', async ({

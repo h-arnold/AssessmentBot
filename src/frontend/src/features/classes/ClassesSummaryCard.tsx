@@ -15,6 +15,8 @@ export interface ClassesSummaryCardProperties {
 export function ClassesSummaryCard(properties: Readonly<ClassesSummaryCardProperties>) {
   const activeCount = properties.rows.filter((row) => row.status === 'active').length;
   const inactiveCount = properties.rows.filter((row) => row.status === 'inactive').length;
+  const notCreatedCount = properties.rows.filter((row) => row.status === 'notCreated').length;
+  const orphanedCount = properties.rows.filter((row) => row.status === 'orphaned').length;
 
   return (
     <Card size="small" title="Summary">
@@ -22,6 +24,8 @@ export function ClassesSummaryCard(properties: Readonly<ClassesSummaryCardProper
         <Statistic title="Total rows" value={properties.rows.length} />
         <Statistic title="Active" value={activeCount} />
         <Statistic title="Inactive" value={inactiveCount} />
+        <Statistic title="Not created" value={notCreatedCount} />
+        <Statistic title="Orphaned" value={orphanedCount} />
       </Space>
       <Typography.Text>{`Selected rows: ${properties.selectedCount}`}</Typography.Text>
     </Card>

@@ -121,7 +121,7 @@ Tests:
 
 ## Progress tracker (Sections 3.2-3.5)
 
-### 3.2 Merged row view-model — complete (awaiting commit/push)
+### 3.2 Merged row view-model — complete
 
 - [x] Red tests added
 - [x] Red review clean
@@ -129,14 +129,14 @@ Tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 Implementation note: merged row model implemented in `classesManagementViewModel.ts` with status mapping and deterministic ordering.
 
-### 3.3 Summary, toolbar, and table rendering — not started
+### 3.3 Summary, toolbar, and table rendering — in progress
 
-- [ ] Red tests added
+- [x] Red tests added
 - [ ] Red review clean
 - [ ] Green implementation complete
 - [ ] Green review clean
@@ -145,9 +145,9 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 - [ ] Commit created
 - [ ] Push completed
 
-### 3.4 Load, error, and empty states — not started
+### 3.4 Load, error, and empty states — in progress
 
-- [ ] Red tests added
+- [x] Red tests added
 - [ ] Red review clean
 - [ ] Green implementation complete
 - [ ] Green review clean
@@ -156,9 +156,9 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 - [ ] Commit created
 - [ ] Push completed
 
-### 3.5 Browser journeys — not started
+### 3.5 Browser journeys — in progress
 
-- [ ] Red tests added
+- [x] Red tests added
 - [ ] Red review clean
 - [ ] Green implementation complete
 - [ ] Green review clean

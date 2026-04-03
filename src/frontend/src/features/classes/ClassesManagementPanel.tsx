@@ -1,4 +1,5 @@
-import { Alert, Card, Flex, Typography } from 'antd';
+import { Card, Flex, Typography } from 'antd';
+import { ClassesAlertStack } from './ClassesAlertStack';
 import { ClassesSummaryCard } from './ClassesSummaryCard';
 import { ClassesTable } from './ClassesTable';
 import { ClassesToolbar } from './ClassesToolbar';
@@ -19,19 +20,21 @@ export function ClassesManagementPanel() {
       {classesManagement.classesManagementViewState === 'loading' ? (
         <Typography.Text>Classes feature is loading.</Typography.Text>
       ) : null}
-      {classesManagement.classesManagementViewState === 'error' ? (
-        <Alert
-          title="Classes feature is unavailable."
-          description={classesManagement.errorMessage}
-          type="error"
-          showIcon
-        />
+      <ClassesAlertStack
+        blockingErrorMessage={classesManagement.blockingErrorMessage}
+        nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
+        refreshRequiredMessage={classesManagement.refreshRequiredMessage}
+      />
+      {classesManagement.classesManagementViewState === 'error' &&
+      classesManagement.blockingErrorMessage === null ? (
+        <Typography.Text>{classesManagement.errorMessage}</Typography.Text>
       ) : null}
       {classesManagement.classesManagementViewState === 'ready' ? (
         <Flex vertical gap={12}>
           <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
           <ClassesToolbar rows={classesManagement.rows} selectedRowKeys={classesManagement.selectedRowKeys} />
           <ClassesTable
+            hideRowsForRefreshRequired={classesManagement.hideRowsForRefreshRequired}
             rows={classesManagement.rows}
             selectedRowKeys={classesManagement.selectedRowKeys}
             onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}

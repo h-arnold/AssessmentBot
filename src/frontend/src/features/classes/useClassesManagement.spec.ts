@@ -13,6 +13,15 @@ vi.mock('@tanstack/react-query', () => ({
   queryOptions: <TOptions>(options: TOptions) => options,
 }));
 
+vi.mock('../auth/startupWarmupState', () => ({
+  useStartupWarmupState: () => ({
+    isFailed: false,
+    isLoading: false,
+    isReady: true,
+    warmupState: 'ready',
+  }),
+}));
+
 describe('useClassesManagement', () => {
   it('maps successful classes data to a ready feature state with a visible count', () => {
     useQueryMock
@@ -43,8 +52,12 @@ describe('useClassesManagement', () => {
     const { result } = renderHook(() => useClassesManagement());
 
     expect(result.current.classesManagementViewState).toBe('ready');
+    expect(result.current.blockingErrorMessage).toBeNull();
     expect(result.current.classesCount).toBe(readyClassesCount);
     expect(result.current.errorMessage).toBeNull();
+    expect(result.current.hideRowsForRefreshRequired).toBe(false);
+    expect(result.current.nonBlockingWarningMessage).toBeNull();
+    expect(result.current.refreshRequiredMessage).toBeNull();
     expect(result.current.rows).toEqual([
       expect.objectContaining({
         classId: 'class-1',
@@ -94,8 +107,12 @@ describe('useClassesManagement', () => {
     const { result } = renderHook(() => useClassesManagement());
 
     expect(result.current.classesManagementViewState).toBe('error');
+    expect(result.current.blockingErrorMessage).toBe('Unable to load active Google Classrooms right now.');
     expect(result.current.classesCount).toBeNull();
     expect(result.current.errorMessage).toBe('Unable to load classes right now.');
+    expect(result.current.hideRowsForRefreshRequired).toBe(false);
+    expect(result.current.nonBlockingWarningMessage).toBeNull();
+    expect(result.current.refreshRequiredMessage).toBeNull();
     expect(result.current.rows).toEqual([]);
     expect(result.current.selectedRowKeys).toEqual([]);
     expect(result.current.onSelectedRowKeysChange).toBeTypeOf('function');

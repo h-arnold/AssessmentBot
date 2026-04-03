@@ -59,9 +59,13 @@ const rowsForOrdering = [
 describe('ClassesTableColumns', () => {
   it('renders deterministic user-facing column headers', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: rowsForOrdering.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: rowsForOrdering,
       selectedRowKeys: [],
       onSelectedRowKeysChange: vi.fn(),
@@ -84,9 +88,13 @@ describe('ClassesTableColumns', () => {
 
   it('renders notCreated unavailable cohort/courseLength/yearGroup/active cells as em dash', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: rowsForOrdering.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: rowsForOrdering,
       selectedRowKeys: [],
       onSelectedRowKeysChange: vi.fn(),
@@ -103,9 +111,13 @@ describe('ClassesTableColumns', () => {
 
   it('uses deterministic status+className default ordering and reset restores it after filters/sorts', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: rowsForOrdering.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: rowsForOrdering,
       selectedRowKeys: [],
       onSelectedRowKeysChange: vi.fn(),

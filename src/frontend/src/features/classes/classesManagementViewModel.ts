@@ -38,19 +38,13 @@ const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
 function resolveLabel(
   key: string | null,
   fallbackLabel: string | null,
-  labelsByKey: Readonly<Record<string, string>>,
+  labelsByKey: ReadonlyMap<string, string>,
 ): string | null {
   if (key === null) {
     return fallbackLabel;
   }
 
-  for (const [labelKey, labelValue] of Object.entries(labelsByKey)) {
-    if (labelKey === key) {
-      return labelValue;
-    }
-  }
-
-  return fallbackLabel;
+  return labelsByKey.get(key) ?? fallbackLabel;
 }
 
 /**
@@ -62,6 +56,8 @@ function resolveLabel(
 export function buildClassesManagementRows(
   input: BuildClassesManagementRowsInput,
 ): ClassesManagementRow[] {
+  const cohortLabelsByKey = new Map(Object.entries(input.cohortLabelsByKey));
+  const yearGroupLabelsByKey = new Map(Object.entries(input.yearGroupLabelsByKey));
   const partialsByClassId = new Map(input.classPartials.map((classPartial) => [classPartial.classId, classPartial]));
   const googleByClassId = new Map(input.googleClassrooms.map((googleClassroom) => [googleClassroom.classId, googleClassroom]));
 
@@ -86,8 +82,8 @@ export function buildClassesManagementRows(
       classId: googleClassroom.classId,
       className: googleClassroom.className,
       status: classPartial.active === true ? 'active' : 'inactive',
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, input.cohortLabelsByKey),
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, input.yearGroupLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });
@@ -102,8 +98,8 @@ export function buildClassesManagementRows(
       classId: classPartial.classId,
       className: classPartial.className ?? classPartial.classId,
       status: 'orphaned',
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, input.cohortLabelsByKey),
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, input.yearGroupLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });

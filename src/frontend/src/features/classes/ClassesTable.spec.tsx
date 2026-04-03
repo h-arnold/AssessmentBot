@@ -49,11 +49,16 @@ const representativeRows = [
 describe('ClassesTable', () => {
   it('renders representative active/inactive/notCreated/orphaned rows as explicit contracts', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: representativeRows.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: representativeRows,
       selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
@@ -71,11 +76,16 @@ describe('ClassesTable', () => {
 
   it('uses each row classId as the exact rowKey value (not a prefix heuristic)', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: representativeRows.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: representativeRows,
       selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');

@@ -6,6 +6,7 @@ import {
   getGoogleClassroomsQueryOptions,
   getYearGroupsQueryOptions,
 } from '../../query/sharedQueries';
+import { useStartupWarmupState } from '../auth/startupWarmupState';
 import type { ClassPartial } from '../../services/classPartialsService';
 import type { GoogleClassroom } from '../../services/googleClassroomsService';
 import type { Cohort, YearGroup } from '../../services/referenceData.zod';
@@ -15,9 +16,13 @@ import { pruneSelectedRowKeys } from './selectionState';
 export type ClassesManagementViewState = 'loading' | 'ready' | 'error';
 
 export type ClassesManagementState = Readonly<{
+  blockingErrorMessage: string | null;
   classesManagementViewState: ClassesManagementViewState;
   classesCount: number | null;
   errorMessage: string | null;
+  hideRowsForRefreshRequired: boolean;
+  nonBlockingWarningMessage: string | null;
+  refreshRequiredMessage: string | null;
   rows: ClassesManagementRow[];
   selectedRowKeys: string[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
@@ -36,10 +41,10 @@ type ClassesQuerySnapshot = Readonly<{
 }>;
 
 type ReadyClassesQueryState = Readonly<{
-  classPartials: readonly ClassPartial[];
-  cohorts: readonly Cohort[];
-  googleClassrooms: readonly GoogleClassroom[];
-  yearGroups: readonly YearGroup[];
+  classPartials: ClassPartial[];
+  cohorts: Cohort[];
+  googleClassrooms: GoogleClassroom[];
+  yearGroups: YearGroup[];
 }>;
 
 /**
@@ -87,10 +92,10 @@ function getReadyClassesQueryState(queryState: Readonly<{
   }
 
   return {
-    classPartials: queryState.classPartialsQuery.data as readonly ClassPartial[],
-    cohorts: queryState.cohortsQuery.data as readonly Cohort[],
-    googleClassrooms: queryState.googleClassroomsQuery.data as readonly GoogleClassroom[],
-    yearGroups: queryState.yearGroupsQuery.data as readonly YearGroup[],
+    classPartials: queryState.classPartialsQuery.data as ClassPartial[],
+    cohorts: queryState.cohortsQuery.data as Cohort[],
+    googleClassrooms: queryState.googleClassroomsQuery.data as GoogleClassroom[],
+    yearGroups: queryState.yearGroupsQuery.data as YearGroup[],
   };
 }
 
@@ -106,8 +111,8 @@ function buildRowsForReadyState(readyQueryState: ReadyClassesQueryState | null):
   }
 
   return buildClassesManagementRows({
-    googleClassrooms: [...readyQueryState.googleClassrooms],
-    classPartials: [...readyQueryState.classPartials],
+    googleClassrooms: readyQueryState.googleClassrooms,
+    classPartials: readyQueryState.classPartials,
     cohortLabelsByKey: toLabelsByKey(readyQueryState.cohorts),
     yearGroupLabelsByKey: toLabelsByKey(readyQueryState.yearGroups),
   });
@@ -137,6 +142,7 @@ function createClassesQueriesState(
  * @returns {ClassesManagementState} The current Classes management state.
  */
 export function useClassesManagement(): ClassesManagementState {
+  const startupWarmupState = useStartupWarmupState();
   const googleClassroomsQuery = useQuery(getGoogleClassroomsQueryOptions());
   const classPartialsQuery = useQuery(getClassPartialsQueryOptions());
   const cohortsQuery = useQuery(getCohortsQueryOptions());
@@ -159,9 +165,28 @@ export function useClassesManagement(): ClassesManagementState {
 
   if (queryState.hasPendingStartupDataset) {
     return {
+      blockingErrorMessage: null,
       classesManagementViewState: 'loading',
       classesCount: null,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys,
+      onSelectedRowKeysChange: setSelectedRowKeys,
+    };
+  }
+
+  if (startupWarmupState.isFailed) {
+    return {
+      blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
+      classesManagementViewState: 'error',
+      classesCount: null,
+      errorMessage: 'Unable to load classes right now.',
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: [],
       selectedRowKeys,
       onSelectedRowKeysChange: setSelectedRowKeys,
@@ -170,9 +195,13 @@ export function useClassesManagement(): ClassesManagementState {
 
   if (queryState.hasErrorStartupDataset) {
     return {
+      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Unable to load classes right now.',
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows: [],
       selectedRowKeys,
       onSelectedRowKeysChange: setSelectedRowKeys,
@@ -183,9 +212,13 @@ export function useClassesManagement(): ClassesManagementState {
   const visibleSelectedRowKeys = pruneSelectedRowKeys(selectedRowKeys, rows);
 
   return {
+    blockingErrorMessage: null,
     classesManagementViewState: 'ready',
     classesCount: rows.length,
     errorMessage: null,
+    hideRowsForRefreshRequired: false,
+    nonBlockingWarningMessage: null,
+    refreshRequiredMessage: null,
     rows,
     selectedRowKeys: visibleSelectedRowKeys,
     onSelectedRowKeysChange: setSelectedRowKeys,

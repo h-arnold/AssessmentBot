@@ -2,6 +2,7 @@ import { Button, Card, Select, Space, Table, type TableProps } from 'antd';
 import { useMemo, useState } from 'react';
 import type { ClassesManagementRow, ClassesManagementStatus } from './classesManagementViewModel';
 import { getClassesTableColumns } from './ClassesTableColumns';
+import { ClassesNoActiveClassroomsEmptyState } from './ClassesEmptyStates';
 
 const STATUS_ORDER_BY_STATUS: Readonly<Record<ClassesManagementStatus, number>> = {
   active: 0,
@@ -35,6 +36,7 @@ function getDefaultSortedRows(rows: readonly ClassesManagementRow[]): ClassesMan
 
 export interface ClassesTableProperties {
   rows: readonly ClassesManagementRow[];
+  hideRowsForRefreshRequired?: boolean;
   selectedRowKeys: readonly string[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
 }
@@ -55,6 +57,10 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   );
 
   const visibleRows = useMemo(() => {
+    if (properties.hideRowsForRefreshRequired === true) {
+      return [];
+    }
+
     const statusFilteredRows = statusFilter === 'all'
       ? defaultRows
       : defaultRows.filter((row) => row.status === statusFilter);
@@ -71,7 +77,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
 
       return left.classId.localeCompare(right.classId);
     });
-  }, [classNameSortOrder, defaultRows, statusFilter]);
+  }, [classNameSortOrder, defaultRows, properties.hideRowsForRefreshRequired, statusFilter]);
 
   const columns = useMemo(() => getClassesTableColumns(), []);
 
@@ -80,6 +86,10 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
     onChange: (selectedKeys) =>
       properties.onSelectedRowKeysChange(selectedKeys as string[]),
   };
+
+  const hasActiveGoogleClassroom = properties.rows.some(
+    (row) => row.status === 'active' || row.status === 'inactive' || row.status === 'notCreated'
+  );
 
   return (
     <Card
@@ -132,6 +142,9 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
         aria-label="Classes table"
         columns={columns}
         dataSource={visibleRows}
+        locale={{
+          emptyText: hasActiveGoogleClassroom ? undefined : <ClassesNoActiveClassroomsEmptyState />,
+        }}
         pagination={false}
         rowKey="classId"
         rowSelection={rowSelection}

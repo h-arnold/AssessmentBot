@@ -31,11 +31,16 @@ const rows = [
 describe('ClassesToolbar', () => {
   it('enables Delete but disables non-delete actions for orphaned-only selection', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: rows.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows,
       selectedRowKeys: ['orphaned-1'],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
@@ -51,11 +56,16 @@ describe('ClassesToolbar', () => {
 
   it('keeps mixed orphaned/non-orphaned selection behaviour explicit and deterministic', async () => {
     classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: null,
       classesManagementViewState: 'ready',
       classesCount: rows.length,
       errorMessage: null,
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
       rows,
       selectedRowKeys: ['active-1', 'orphaned-1'],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
