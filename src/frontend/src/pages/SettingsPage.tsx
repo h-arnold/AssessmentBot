@@ -21,10 +21,27 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
   },
 ];
 
+/**
+ * Resolves the rendered child component for a settings tab key.
+ *
+ * @param {string} key Settings tab key.
+ * @returns {JSX.Element} The tab child component.
+ */
+function getSettingsTabChild(key: string): JSX.Element {
+  switch (key) {
+    case 'classes':
+      return <ClassesManagementPanel />;
+    case 'backend-settings':
+      return <BackendSettingsPanel />;
+    default:
+      throw new Error(`Unsupported settings tab key: ${key}`);
+  }
+}
+
 const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
   key,
   label,
-  children: key === 'backend-settings' ? <BackendSettingsPanel /> : <ClassesManagementPanel />,
+  children: getSettingsTabChild(key),
 })) satisfies NonNullable<TabsProps['items']>;
 
 /**
