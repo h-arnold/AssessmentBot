@@ -6,6 +6,7 @@ import { useClassesManagement } from './useClassesManagement';
 const { useQueryMock } = vi.hoisted(() => ({
   useQueryMock: vi.fn(),
 }));
+const readyClassesCount = 2;
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: useQueryMock,
@@ -42,7 +43,7 @@ describe('useClassesManagement', () => {
     const { result } = renderHook(() => useClassesManagement());
 
     expect(result.current.classesManagementViewState).toBe('ready');
-    expect(result.current.classesCount).toBe(2);
+    expect(result.current.classesCount).toBe(readyClassesCount);
     expect(result.current.errorMessage).toBeNull();
     expect(result.current.rows).toEqual([
       expect.objectContaining({

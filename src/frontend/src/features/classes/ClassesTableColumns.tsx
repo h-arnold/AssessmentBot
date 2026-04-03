@@ -9,14 +9,22 @@ const STATUS_ORDER: Record<ClassesManagementStatus, number> = {
   notCreated: 2,
   orphaned: 3,
 };
+const NULL_SORT_SENTINEL = -1;
 
+/**
+ * Compares nullable text values using case-insensitive locale ordering.
+ *
+ * @param {string | null} left Left value.
+ * @param {string | null} right Right value.
+ * @returns {number} Comparison result for sorting.
+ */
 function compareNullableText(left: string | null, right: string | null): number {
   if (left === null && right === null) {
     return 0;
   }
 
   if (left === null) {
-    return -1;
+    return NULL_SORT_SENTINEL;
   }
 
   if (right === null) {
@@ -26,13 +34,20 @@ function compareNullableText(left: string | null, right: string | null): number 
   return left.localeCompare(right, undefined, { sensitivity: 'base' });
 }
 
+/**
+ * Compares nullable numeric values for deterministic ordering.
+ *
+ * @param {number | null} left Left value.
+ * @param {number | null} right Right value.
+ * @returns {number} Comparison result for sorting.
+ */
 function compareNullableNumber(left: number | null, right: number | null): number {
   if (left === null && right === null) {
     return 0;
   }
 
   if (left === null) {
-    return -1;
+    return NULL_SORT_SENTINEL;
   }
 
   if (right === null) {
@@ -42,7 +57,17 @@ function compareNullableNumber(left: number | null, right: number | null): numbe
   return left - right;
 }
 
-function getNotCreatedAwareValue<TValue>(row: ClassesManagementRow, value: TValue | null): TValue | string {
+/**
+ * Resolves the displayed cell value, using em dash for unavailable values.
+ *
+ * @param {ClassesManagementRow} row Row context.
+ * @param {unknown} value Raw column value.
+ * @returns {string | number | boolean} Rendered cell value.
+ */
+function getNotCreatedAwareValue(
+  row: ClassesManagementRow,
+  value: string | number | boolean | null
+): string | number | boolean {
   if (row.status === 'notCreated' && value === null) {
     return UNAVAILABLE_VALUE;
   }
@@ -75,8 +100,6 @@ export function getClassesTableColumns(): TableColumnsType<ClassesManagementRow>
       dataIndex: 'className',
       key: 'className',
       sorter: (left, right) => left.className.localeCompare(right.className, undefined, { sensitivity: 'base' }),
-      filters: [],
-      onFilter: (_value, _row) => true,
     },
     {
       title: 'Cohort',

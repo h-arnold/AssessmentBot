@@ -82,8 +82,8 @@ describe('ClassesTable', () => {
 
     const { container } = render(<ClassesManagementPanel />);
 
-    const renderedKeys = Array.from(container.querySelectorAll('tbody tr[data-row-key]')).map(
-      (row) => row.getAttribute('data-row-key') ?? '',
+    const renderedKeys = [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+      (row) => (row as HTMLElement).dataset.rowKey ?? '',
     );
 
     expect(renderedKeys).toEqual(representativeRows.map((row) => row.classId));

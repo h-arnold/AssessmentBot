@@ -1,11 +1,25 @@
 import { Button, Card, Space, Typography } from 'antd';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
-export interface ClassesToolbarProps {
+export interface ClassesToolbarProperties {
   rows: readonly ClassesManagementRow[];
   selectedRowKeys: readonly string[];
 }
 
+type ClassesToolbarEligibility = Readonly<{
+  canCreate: boolean;
+  canDelete: boolean;
+  canSetActive: boolean;
+  canSetInactive: boolean;
+  selectedRows: readonly ClassesManagementRow[];
+}>;
+
+/**
+ * Returns user-facing guidance for mixed eligibility in the current selection.
+ *
+ * @param {readonly ClassesManagementRow[]} selectedRows Selected row records.
+ * @returns {string | null} Guidance message when needed.
+ */
 function getSelectionMessage(selectedRows: readonly ClassesManagementRow[]): string | null {
   if (selectedRows.length === 0) {
     return null;
@@ -25,30 +39,55 @@ function getSelectionMessage(selectedRows: readonly ClassesManagementRow[]): str
 }
 
 /**
- * Renders bulk-action eligibility state for selected rows.
+ * Evaluates bulk action eligibility from the selected rows.
  *
- * @param {ClassesToolbarProps} props Toolbar inputs.
- * @returns {JSX.Element} Toolbar card.
+ * @param {readonly ClassesManagementRow[]} selectedRows Selected row records.
+ * @returns {ClassesToolbarEligibility} Eligibility contract.
  */
-export function ClassesToolbar(props: ClassesToolbarProps) {
-  const selectedRows = props.rows.filter((row) => props.selectedRowKeys.includes(row.classId));
+function getBulkActionEligibility(
+  selectedRows: readonly ClassesManagementRow[]
+): ClassesToolbarEligibility {
   const hasSelection = selectedRows.length > 0;
   const includesOrphaned = selectedRows.some((row) => row.status === 'orphaned');
+  const hasNotCreatedOnly =
+    hasSelection && selectedRows.every((row) => row.status === 'notCreated');
+  const hasInactiveOnly =
+    hasSelection && selectedRows.every((row) => row.status === 'inactive');
+  const hasActiveOnly =
+    hasSelection && selectedRows.every((row) => row.status === 'active');
 
-  const canDelete = hasSelection;
-  const canCreate = hasSelection && !includesOrphaned && selectedRows.every((row) => row.status === 'notCreated');
-  const canSetActive = hasSelection && !includesOrphaned && selectedRows.every((row) => row.status === 'inactive');
-  const canSetInactive = hasSelection && !includesOrphaned && selectedRows.every((row) => row.status === 'active');
+  return {
+    canCreate: hasNotCreatedOnly && !includesOrphaned,
+    canDelete: hasSelection,
+    canSetActive: hasInactiveOnly && !includesOrphaned,
+    canSetInactive: hasActiveOnly && !includesOrphaned,
+    selectedRows,
+  };
+}
+
+/**
+ * Renders bulk-action eligibility state for selected rows.
+ *
+ * @param {Readonly<ClassesToolbarProperties>} properties Toolbar inputs.
+ * @returns {JSX.Element} Toolbar card.
+ */
+export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
+  const selectedRows = properties.rows.filter((row) =>
+    properties.selectedRowKeys.includes(row.classId)
+  );
+  const eligibility = getBulkActionEligibility(selectedRows);
 
   return (
     <Card size="small" title="Bulk actions">
       <Space wrap>
-        <Button disabled={!canCreate}>Create ABClass</Button>
-        <Button disabled={!canSetActive}>Set active</Button>
-        <Button disabled={!canSetInactive}>Set inactive</Button>
-        <Button danger disabled={!canDelete}>Delete ABClass</Button>
+        <Button disabled={!eligibility.canCreate}>Create ABClass</Button>
+        <Button disabled={!eligibility.canSetActive}>Set active</Button>
+        <Button disabled={!eligibility.canSetInactive}>Set inactive</Button>
+        <Button danger disabled={!eligibility.canDelete}>Delete ABClass</Button>
       </Space>
-      {getSelectionMessage(selectedRows) ? <Typography.Text>{getSelectionMessage(selectedRows)}</Typography.Text> : null}
+      {getSelectionMessage(eligibility.selectedRows) ? (
+        <Typography.Text>{getSelectionMessage(eligibility.selectedRows)}</Typography.Text>
+      ) : null}
     </Card>
   );
 }

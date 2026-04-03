@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 const classesManagementStateMock = vi.fn();
+const unavailableCellCount = 4;
 
 vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
@@ -95,9 +96,9 @@ describe('ClassesTableColumns', () => {
 
     render(<ClassesManagementPanel />);
 
-    const notCreatedRow = screen.getByRole('row', { name: /notCreated\s+Zeta/i });
+    const notCreatedRow = screen.getByRole('row', { name: /notcreated\s+zeta/i });
     expect(within(notCreatedRow).getByText('notCreated')).toBeInTheDocument();
-    expect(within(notCreatedRow).getAllByText('—')).toHaveLength(4);
+    expect(within(notCreatedRow).getAllByText('—')).toHaveLength(unavailableCellCount);
   });
 
   it('uses deterministic status+className default ordering and reset restores it after filters/sorts', async () => {
@@ -114,7 +115,11 @@ describe('ClassesTableColumns', () => {
 
     const { container } = render(<ClassesManagementPanel />);
 
-    expect(Array.from(container.querySelectorAll('tbody tr[data-row-key]')).map((row) => row.getAttribute('data-row-key'))).toEqual([
+    expect(
+      [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+        (row) => (row as HTMLElement).dataset.rowKey
+      )
+    ).toEqual([
       'active-alpha',
       'active-beta',
       'inactive-gamma',
@@ -125,7 +130,11 @@ describe('ClassesTableColumns', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Class name' }));
     fireEvent.click(screen.getByRole('button', { name: 'Reset sort and filters' }));
 
-    expect(Array.from(container.querySelectorAll('tbody tr[data-row-key]')).map((row) => row.getAttribute('data-row-key'))).toEqual([
+    expect(
+      [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+        (row) => (row as HTMLElement).dataset.rowKey
+      )
+    ).toEqual([
       'active-alpha',
       'active-beta',
       'inactive-gamma',

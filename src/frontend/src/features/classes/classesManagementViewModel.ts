@@ -27,6 +27,14 @@ const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
   orphaned: 3,
 };
 
+/**
+ * Resolves the preferred display label for a reference-data key.
+ *
+ * @param {string | null} key Reference-data key.
+ * @param {string | null} fallbackLabel Backend-provided fallback label.
+ * @param {Readonly<Record<string, string>>} labelsByKey Labels indexed by key.
+ * @returns {string | null} Display label.
+ */
 function resolveLabel(
   key: string | null,
   fallbackLabel: string | null,
@@ -36,9 +44,21 @@ function resolveLabel(
     return fallbackLabel;
   }
 
-  return labelsByKey[key] ?? fallbackLabel;
+  for (const [labelKey, labelValue] of Object.entries(labelsByKey)) {
+    if (labelKey === key) {
+      return labelValue;
+    }
+  }
+
+  return fallbackLabel;
 }
 
+/**
+ * Builds merged Classes table rows from shared query datasets.
+ *
+ * @param {BuildClassesManagementRowsInput} input Source datasets.
+ * @returns {ClassesManagementRow[]} Merged and sorted rows.
+ */
 export function buildClassesManagementRows(
   input: BuildClassesManagementRowsInput,
 ): ClassesManagementRow[] {

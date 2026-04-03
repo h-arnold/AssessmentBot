@@ -3,16 +3,23 @@ import { useMemo, useState } from 'react';
 import type { ClassesManagementRow, ClassesManagementStatus } from './classesManagementViewModel';
 import { getClassesTableColumns } from './ClassesTableColumns';
 
-const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
+const STATUS_ORDER_BY_STATUS: Readonly<Record<ClassesManagementStatus, number>> = {
   active: 0,
   inactive: 1,
   notCreated: 2,
   orphaned: 3,
 };
 
+/**
+ * Returns rows sorted by the default view-model order contract.
+ *
+ * @param {readonly ClassesManagementRow[]} rows Rows to sort.
+ * @returns {ClassesManagementRow[]} Sorted rows.
+ */
 function getDefaultSortedRows(rows: readonly ClassesManagementRow[]): ClassesManagementRow[] {
-  return [...rows].sort((left, right) => {
-    const statusComparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
+  return [...rows].toSorted((left, right) => {
+    const statusComparison =
+      STATUS_ORDER_BY_STATUS[left.status] - STATUS_ORDER_BY_STATUS[right.status];
     if (statusComparison !== 0) {
       return statusComparison;
     }
@@ -26,7 +33,7 @@ function getDefaultSortedRows(rows: readonly ClassesManagementRow[]): ClassesMan
   });
 }
 
-export interface ClassesTableProps {
+export interface ClassesTableProperties {
   rows: readonly ClassesManagementRow[];
   selectedRowKeys: readonly string[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
@@ -35,14 +42,17 @@ export interface ClassesTableProps {
 /**
  * Renders the classes table and deterministic sort/filter controls.
  *
- * @param {ClassesTableProps} props Table inputs.
+ * @param {Readonly<ClassesTableProperties>} properties Table inputs.
  * @returns {JSX.Element} Table card.
  */
-export function ClassesTable(props: ClassesTableProps) {
+export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   const [statusFilter, setStatusFilter] = useState<ClassesManagementStatus | 'all'>('all');
   const [classNameSortOrder, setClassNameSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
 
-  const defaultRows = useMemo(() => getDefaultSortedRows(props.rows), [props.rows]);
+  const defaultRows = useMemo(
+    () => getDefaultSortedRows(properties.rows),
+    [properties.rows]
+  );
 
   const visibleRows = useMemo(() => {
     const statusFilteredRows = statusFilter === 'all'
@@ -53,7 +63,7 @@ export function ClassesTable(props: ClassesTableProps) {
       return statusFilteredRows;
     }
 
-    return [...statusFilteredRows].sort((left, right) => {
+    return [...statusFilteredRows].toSorted((left, right) => {
       const comparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
       if (comparison !== 0) {
         return classNameSortOrder === 'asc' ? comparison : -comparison;
@@ -66,11 +76,9 @@ export function ClassesTable(props: ClassesTableProps) {
   const columns = useMemo(() => getClassesTableColumns(), []);
 
   const rowSelection: TableProps<ClassesManagementRow>['rowSelection'] = {
-    selectedRowKeys: [...props.selectedRowKeys],
-    onChange: (selectedKeys) => props.onSelectedRowKeysChange(selectedKeys as string[]),
-    getCheckboxProps: (record) => ({
-      'aria-label': `Select row ${record.classId}`,
-    }),
+    selectedRowKeys: [...properties.selectedRowKeys],
+    onChange: (selectedKeys) =>
+      properties.onSelectedRowKeysChange(selectedKeys as string[]),
   };
 
   return (

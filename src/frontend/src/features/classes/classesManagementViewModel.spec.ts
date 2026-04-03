@@ -4,6 +4,21 @@ import type { GoogleClassroom } from '../../services/googleClassroomsService';
 
 type LabelsByKey = Readonly<Record<string, string>>;
 
+/**
+ * Builds rows through the production view-model helper.
+ *
+ * @param {Readonly<{
+ *   googleClassrooms: GoogleClassroom[];
+ *   classPartials: ClassPartial[];
+ *   cohortLabelsByKey: LabelsByKey;
+ *   yearGroupLabelsByKey: LabelsByKey;
+ * }>} input Source datasets.
+ * @param {GoogleClassroom[]} input.googleClassrooms Source Google Classrooms.
+ * @param {ClassPartial[]} input.classPartials Source class partials.
+ * @param {LabelsByKey} input.cohortLabelsByKey Cohort labels by key.
+ * @param {LabelsByKey} input.yearGroupLabelsByKey Year-group labels by key.
+ * @returns {Promise<ReturnType<typeof import('./classesManagementViewModel').buildClassesManagementRows>>} Built rows.
+ */
 async function buildRows(input: {
   googleClassrooms: GoogleClassroom[];
   classPartials: ClassPartial[];

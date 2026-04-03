@@ -1,4 +1,5 @@
 import type { TabsProps } from 'antd';
+import type { ReactElement } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
@@ -27,14 +28,17 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
  * @param {string} key Settings tab key.
  * @returns {JSX.Element} The tab child component.
  */
-function getSettingsTabChild(key: string): JSX.Element {
+function getSettingsTabChild(key: string): ReactElement {
   switch (key) {
-    case 'classes':
+    case 'classes': {
       return <ClassesManagementPanel />;
-    case 'backend-settings':
+    }
+    case 'backend-settings': {
       return <BackendSettingsPanel />;
-    default:
+    }
+    default: {
       throw new Error(`Unsupported settings tab key: ${key}`);
+    }
   }
 }
 
