@@ -337,7 +337,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
       })
     ).toThrow(/not found|missing|active/i);
     expect(controller.dbManager.getCollection).toHaveBeenCalledWith('class-001');
-    expect(controller.dbManager.getCollection).toHaveBeenCalledWith('abclass_partials');
+    expect(controller.dbManager.getCollection).toHaveBeenCalledTimes(1);
     expect(classCollection.insertOne).not.toHaveBeenCalled();
     expect(classCollection.updateOne).not.toHaveBeenCalled();
     expect(partialsCollection.insertOne).not.toHaveBeenCalled();

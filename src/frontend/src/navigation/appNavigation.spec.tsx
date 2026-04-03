@@ -1,7 +1,9 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import type { AppNavigationKey } from './appNavigation';
 import { navigationItems, pageRenderers } from './appNavigation';
 import { pageExpectations } from '../test/pageExpectations';
+import { createAppQueryClient } from '../query/queryClient';
 
 describe('app navigation config', () => {
   it('contains exact four page entries with stable keys', () => {
@@ -37,7 +39,10 @@ describe('app navigation config', () => {
 
   it('page switch map resolves keys to correct component', () => {
     for (const { heading, key, summary } of pageExpectations) {
-      const { unmount } = render(<>{pageRenderers[key]()}</>);
+      const queryClient = createAppQueryClient();
+      const { unmount } = render(
+        <QueryClientProvider client={queryClient}>{pageRenderers[key]()}</QueryClientProvider>
+      );
 
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();

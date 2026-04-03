@@ -106,8 +106,8 @@ function validateUpsertABClassParameters(parameters) {
   requireParameters(
     {
       classId: parameters.classId,
-      cohort: parameters.cohort,
-      yearGroup: parameters.yearGroup,
+      cohortKey: parameters.cohortKey,
+      yearGroupKey: parameters.yearGroupKey,
       courseLength: parameters.courseLength,
     },
     methodName

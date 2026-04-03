@@ -214,6 +214,36 @@ const Validate = {
   },
 
   /**
+   * Validates that a value is a non-empty string and returns a trimmed value.
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @returns {string} The validated, trimmed string value.
+   * @throws {TypeError} If value is not a non-empty string.
+   */
+  validateTrimmedNonEmptyString(label, value) {
+    if (!Validate.isNonEmptyString(value)) {
+      throw new TypeError(`${label} must be a non-empty string.`);
+    }
+
+    return value.trim();
+  },
+
+  /**
+   * Validates that a value is a plain object (non-null and not an array).
+   * @param {string} label - Human-readable label for error messaging.
+   * @param {*} value - Value to validate.
+   * @returns {Object} The validated plain object value.
+   * @throws {TypeError} If value is not a plain object.
+   */
+  validatePlainObject(label, value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new TypeError(`${label} must be an object.`);
+    }
+
+    return value;
+  },
+
+  /**
    * Validates that a value is a valid URL string.
    * @param {string} label - Human-readable label for error messaging.
    * @param {*} value - Value to validate.
