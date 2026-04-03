@@ -29,6 +29,7 @@ export type ClassesManagementState = Readonly<{
 }>;
 
 type ClassesQueriesState = Readonly<{
+  hasAnyBlockingDataGap: boolean;
   hasErrorStartupDataset: boolean;
   hasPendingStartupDataset: boolean;
   readyQueryState: ReadyClassesQueryState | null;
@@ -130,6 +131,7 @@ function createClassesQueriesState(
   readyQueryState: ReadyClassesQueryState | null
 ): ClassesQueriesState {
   return {
+    hasAnyBlockingDataGap: querySnapshots.some((querySnapshot) => querySnapshot.data === undefined),
     hasErrorStartupDataset: querySnapshots.some((querySnapshot) => querySnapshot.isError),
     hasPendingStartupDataset: querySnapshots.some((querySnapshot) => querySnapshot.isPending),
     readyQueryState,
@@ -178,9 +180,9 @@ export function useClassesManagement(): ClassesManagementState {
     };
   }
 
-  if (startupWarmupState.isFailed) {
+  if (queryState.hasAnyBlockingDataGap) {
     return {
-      blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
+      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Unable to load classes right now.',
@@ -193,9 +195,9 @@ export function useClassesManagement(): ClassesManagementState {
     };
   }
 
-  if (queryState.hasErrorStartupDataset) {
+  if (startupWarmupState.isFailed) {
     return {
-      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
+      blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Unable to load classes right now.',

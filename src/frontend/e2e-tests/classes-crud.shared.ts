@@ -1,0 +1,234 @@
+import { expect, type Page } from '@playwright/test';
+import type { ClassPartial } from '../src/services/classPartials.zod';
+import type { Cohort, YearGroup } from '../src/services/referenceData.zod';
+import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
+import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+
+type ClassesCrudApiResponseScenario = Readonly<
+  | {
+      kind: 'success';
+      data: unknown;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
+  | {
+      kind: 'transportFailure';
+      message: string;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
+  | {
+      kind: 'failureEnvelope';
+      code?: string;
+      message: string;
+      delayMs?: number;
+      releaseSignal?: string;
+    }
+>;
+
+export type ClassesCrudRuntimeScenario = Readonly<{
+  getAuthorisationStatus: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getABClassPartials: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getCohorts: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getYearGroups: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  getGoogleClassrooms: ReadonlyArray<ClassesCrudApiResponseScenario>;
+}>;
+
+export const baseCohorts: Cohort[] = [
+  {
+    key: 'cohort-2024',
+    name: 'Cohort 2024',
+    active: true,
+    startYear: 2024,
+    startMonth: 9,
+  },
+  {
+    key: 'cohort-2023',
+    name: 'Cohort 2023',
+    active: false,
+    startYear: 2023,
+    startMonth: 9,
+  },
+];
+
+export const baseYearGroups: YearGroup[] = [
+  {
+    key: 'year-7',
+    name: 'Year 7',
+  },
+  {
+    key: 'year-8',
+    name: 'Year 8',
+  },
+];
+
+export const baseClassPartials: ClassPartial[] = [
+  {
+    classId: 'class-101',
+    className: 'Maths Year 7A',
+    cohortKey: 'cohort-2024',
+    cohortLabel: 'Cohort 2024',
+    courseLength: 30,
+    yearGroupKey: 'year-7',
+    yearGroupLabel: 'Year 7',
+    classOwner: {
+      userId: 'teacher-001',
+      email: 'teacher1@example.com',
+      teacherName: 'Ms Smith',
+    },
+    teachers: [],
+    active: true,
+  },
+  {
+    classId: 'class-102',
+    className: 'Science Year 8B',
+    cohortKey: 'cohort-2023',
+    cohortLabel: 'Cohort 2023',
+    courseLength: 25,
+    yearGroupKey: 'year-8',
+    yearGroupLabel: 'Year 8',
+    classOwner: null,
+    teachers: [
+      {
+        userId: 'teacher-002',
+        email: 'teacher2@example.com',
+        teacherName: 'Mr Jones',
+      },
+    ],
+    active: false,
+  },
+];
+
+export const baseGoogleClassrooms: GoogleClassroom[] = [
+  {
+    classId: 'gc-class-201',
+    className: 'English Year 7C',
+  },
+  {
+    classId: 'gc-class-202',
+    className: 'History Year 8D',
+  },
+];
+
+/**
+ * Installs a browser-side `google.script.run` mock for the Classes CRUD feature.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @param {ClassesCrudRuntimeScenario} scenario The runtime scenario defining backend responses.
+ * @returns {Promise<void>} A promise that resolves when the init script is installed.
+ */
+export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRuntimeScenario) {
+  await page.addInitScript(`
+    (() => {
+      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
+      const mockScenario = ${JSON.stringify(scenario)};
+      const callCounts = {
+        getAuthorisationStatus: 0,
+        getABClassPartials: 0,
+        getCohorts: 0,
+        getYearGroups: 0,
+        getGoogleClassrooms: 0,
+      };
+      const responseQueues = {
+        getAuthorisationStatus: mockScenario.getAuthorisationStatus,
+        getABClassPartials: mockScenario.getABClassPartials,
+        getCohorts: mockScenario.getCohorts,
+        getYearGroups: mockScenario.getYearGroups,
+        getGoogleClassrooms: mockScenario.getGoogleClassrooms,
+      };
+
+      function isClassesCrudTransportRequest(request) {
+        return typeof request === 'object' && request !== null && typeof request.method === 'string';
+      }
+
+      function sendSuccess(handler, data, requestId) {
+        if (handler !== undefined) {
+          handler({ ok: true, requestId, data });
+        }
+      }
+
+      function sendFailureEnvelope(handler, requestId, code, message) {
+        if (handler !== undefined) {
+          handler({
+            ok: false,
+            requestId,
+            error: {
+              code,
+              message,
+              retriable: false,
+            },
+          });
+        }
+      }
+
+      function handleClassesCrudResponse(method, responseIndex, callbacks) {
+        const responseQueue = responseQueues[method];
+        const response = responseQueue[responseIndex];
+
+        if (response === undefined) {
+          callbacks.failureHandler?.(new Error(\`Unexpected call to \${method} (call index \${responseIndex})\`));
+          return;
+        }
+
+        if (response.kind === 'transportFailure') {
+          callbacks.failureHandler?.(new Error(response.message));
+          return;
+        }
+
+        if (response.kind === 'failureEnvelope') {
+          sendFailureEnvelope(
+            callbacks.successHandler,
+            \`req-\${method}-\${responseIndex}\`,
+            response.code ?? 'INTERNAL_ERROR',
+            response.message
+          );
+          return;
+        }
+
+        sendSuccess(callbacks.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
+      }
+
+      const run = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+        if (!isClassesCrudTransportRequest(request)) {
+          callbacks.failureHandler?.(new Error('Invalid transport request payload.'));
+          return;
+        }
+
+        const method = request.method;
+
+        if (
+          method !== 'getAuthorisationStatus' &&
+          method !== 'getABClassPartials' &&
+          method !== 'getCohorts' &&
+          method !== 'getYearGroups' &&
+          method !== 'getGoogleClassrooms'
+        ) {
+          callbacks.failureHandler?.(new Error(\`Unsupported method: \${method}\`));
+          return;
+        }
+
+        const responseIndex = callCounts[method];
+        callCounts[method] = responseIndex + 1;
+        handleClassesCrudResponse(method, responseIndex, callbacks);
+      });
+
+      globalThis.google = {
+        script: {
+          run,
+        },
+      };
+    })();
+  `);
+}
+
+/**
+ * Opens the settings page and activates the classes tab.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @returns {Promise<void>} A promise that resolves once the tab is active.
+ */
+export async function openClassesTab(page: Page) {
+  await page.getByRole('menuitem', { name: 'Settings' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Settings' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Classes' }).click();
+}

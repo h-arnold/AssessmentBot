@@ -117,4 +117,35 @@ describe('useClassesManagement', () => {
     expect(result.current.selectedRowKeys).toEqual([]);
     expect(result.current.onSelectedRowKeysChange).toBeTypeOf('function');
   });
+
+  it('treats query error as blocking classes state when active dataset cannot be trusted', () => {
+    useQueryMock
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: true,
+        data: undefined,
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      });
+
+    const { result } = renderHook(() => useClassesManagement());
+
+    expect(result.current.classesManagementViewState).toBe('error');
+    expect(result.current.blockingErrorMessage).toBe('Unable to load active Google Classrooms right now.');
+    expect(result.current.nonBlockingWarningMessage).toBeNull();
+    expect(result.current.rows).toHaveLength(0);
+  });
 });

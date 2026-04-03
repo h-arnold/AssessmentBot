@@ -72,4 +72,26 @@ describe('ClassesManagementPanel', () => {
     expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
   });
+
+  it('renders a blocking alert message for classes errors', async () => {
+    classesManagementStateMock.mockReturnValue({
+      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
+      classesManagementViewState: 'error',
+      classesCount: null,
+      errorMessage: 'Unable to load classes right now.',
+      hideRowsForRefreshRequired: false,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
+    });
+
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+
+    render(<ClassesManagementPanel />);
+
+    expect(screen.getByText('Classes feature is unavailable.')).toBeInTheDocument();
+    expect(screen.getByText('Unable to load active Google Classrooms right now.')).toBeInTheDocument();
+  });
 });

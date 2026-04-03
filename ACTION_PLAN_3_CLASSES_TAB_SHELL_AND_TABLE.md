@@ -137,33 +137,33 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 ### 3.3 Summary, toolbar, and table rendering — in progress
 
 - [x] Red tests added
-- [ ] Red review clean
-- [ ] Green implementation complete
-- [ ] Green review clean
-- [ ] Checks passed
-- [ ] Action plan updated
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
 - [ ] Commit created
 - [ ] Push completed
 
 ### 3.4 Load, error, and empty states — in progress
 
 - [x] Red tests added
-- [ ] Red review clean
-- [ ] Green implementation complete
-- [ ] Green review clean
-- [ ] Checks passed
-- [ ] Action plan updated
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
 - [ ] Commit created
 - [ ] Push completed
 
 ### 3.5 Browser journeys — in progress
 
 - [x] Red tests added
-- [ ] Red review clean
-- [ ] Green implementation complete
-- [ ] Green review clean
-- [ ] Checks passed
-- [ ] Action plan updated
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
 - [ ] Commit created
 - [ ] Push completed
 
