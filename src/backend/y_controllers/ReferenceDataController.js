@@ -1,6 +1,5 @@
 /* global Cohort, DbManager, Validate, YearGroup */
 
-const ACADEMIC_YEAR_START_MONTH = 9;
 let fallbackKeyCounter = 0;
 
 /**
@@ -14,16 +13,6 @@ function generateStableKey() {
 
   fallbackKeyCounter += 1;
   return `${Date.now()}-${fallbackKeyCounter}`;
-}
-
-/**
- * Resolves the current academic-year start year.
- * @param {Date} [now] - Current date reference.
- * @returns {number} Academic-year start year.
- */
-function resolveAcademicYearStart(now = new Date()) {
-  const month = now.getMonth() + 1;
-  return month >= ACADEMIC_YEAR_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
 }
 
 /**
@@ -169,11 +158,6 @@ class ReferenceDataController {
     const serialisedRecord = this._buildRecord(config, {
       ...record,
       key: generateStableKey(),
-      active: Object.hasOwn(record, 'active') ? record.active : true,
-      startMonth: Object.hasOwn(record, 'startMonth')
-        ? record.startMonth
-        : ACADEMIC_YEAR_START_MONTH,
-      startYear: Object.hasOwn(record, 'startYear') ? record.startYear : resolveAcademicYearStart(),
     });
     const normalisedName = this._normaliseName(serialisedRecord.name);
 
@@ -205,13 +189,9 @@ class ReferenceDataController {
     }
 
     const serialisedRecord = this._buildRecord(config, {
+      ...existingRecord,
       ...record,
       key: trimmedKey,
-      active: Object.hasOwn(record, 'active') ? record.active : existingRecord.active,
-      startYear: Object.hasOwn(record, 'startYear') ? record.startYear : existingRecord.startYear,
-      startMonth: Object.hasOwn(record, 'startMonth')
-        ? record.startMonth
-        : existingRecord.startMonth,
     });
     const normalisedReplacementName = this._normaliseName(serialisedRecord.name);
     const conflictingRecord = this._findByNormalisedName(storedRecords, normalisedReplacementName);

@@ -824,7 +824,6 @@ class ABClassController {
 
     if (!existingDocument) {
       if (Object.hasOwn(patch, 'active')) {
-        this.dbManager.getCollection('abclass_partials');
         throw new Error('updateABClass: active patch requires an existing class');
       }
 
