@@ -82,7 +82,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   const columns = useMemo(() => getClassesTableColumns(), []);
 
   const rowSelection: TableProps<ClassesManagementRow>['rowSelection'] = {
-    selectedRowKeys: [...properties.selectedRowKeys],
+    selectedRowKeys: properties.selectedRowKeys as string[],
     onChange: (selectedKeys) =>
       properties.onSelectedRowKeysChange(selectedKeys as string[]),
   };

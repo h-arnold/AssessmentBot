@@ -1,4 +1,4 @@
-import { Alert, Space } from 'antd';
+import { Alert, Flex } from 'antd';
 
 export interface ClassesAlertStackProperties {
   blockingErrorMessage: string | null;
@@ -23,7 +23,7 @@ export function ClassesAlertStack(properties: Readonly<ClassesAlertStackProperti
   }
 
   return (
-    <Space orientation="vertical" style={{ width: '100%' }}>
+    <Flex vertical gap="small" style={{ width: '100%' }}>
       {properties.blockingErrorMessage === null ? null : (
         <Alert
           type="error"
@@ -48,6 +48,6 @@ export function ClassesAlertStack(properties: Readonly<ClassesAlertStackProperti
           description={properties.refreshRequiredMessage}
         />
       )}
-    </Space>
+    </Flex>
   );
 }
