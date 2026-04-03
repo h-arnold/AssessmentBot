@@ -1,5 +1,31 @@
 /* global Cohort, DbManager, Validate, YearGroup */
 
+const ACADEMIC_YEAR_START_MONTH = 9;
+let fallbackKeyCounter = 0;
+
+/**
+ * Generates a stable key for reference-data records.
+ * @returns {string} Stable key.
+ */
+function generateStableKey() {
+  if (typeof Utilities !== 'undefined' && typeof Utilities.getUuid === 'function') {
+    return Utilities.getUuid();
+  }
+
+  fallbackKeyCounter += 1;
+  return `${Date.now()}-${fallbackKeyCounter}`;
+}
+
+/**
+ * Resolves the current academic-year start year.
+ * @param {Date} [now] - Current date reference.
+ * @returns {number} Academic-year start year.
+ */
+function resolveAcademicYearStart(now = new Date()) {
+  const month = now.getMonth() + 1;
+  return month >= ACADEMIC_YEAR_START_MONTH ? now.getFullYear() : now.getFullYear() - 1;
+}
+
 /**
  * ReferenceDataController
  *
@@ -16,7 +42,7 @@ class ReferenceDataController {
 
   /**
    * Retrieves all cohort records from storage.
-   * @returns {Array<{name: string, active: boolean}>} List of all cohorts sorted by name.
+   * @returns {Array<{key: string, name: string, active: boolean, startYear: number, startMonth: number}>} List of all cohorts sorted by name.
    */
   listCohorts() {
     return this._listRecords(this._getConfig('cohort'));
@@ -24,8 +50,8 @@ class ReferenceDataController {
 
   /**
    * Creates a new cohort record in storage.
-   * @param {{name: string, active?: boolean}} record - The cohort data to create.
-   * @returns {{name: string, active: boolean}} The persisted cohort record.
+   * @param {{name: string, active?: boolean, startYear?: number, startMonth?: number}} record - The cohort data to create.
+   * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The persisted cohort record.
    */
   createCohort(record) {
     Validate.requireParams({ record }, 'ReferenceDataController.createCohort');
@@ -34,29 +60,29 @@ class ReferenceDataController {
 
   /**
    * Updates an existing cohort record in storage.
-   * @param {{originalName: string, record: {name: string, active?: boolean}}} payload - Object containing the original name and updated record data.
-   * @returns {{name: string, active: boolean}} The updated cohort record.
+   * @param {{key: string, record: {name: string, active?: boolean, startYear?: number, startMonth?: number}}} payload - Object containing key and updated record data.
+   * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The updated cohort record.
    */
   updateCohort(payload) {
     Validate.requireParams({ payload }, 'ReferenceDataController.updateCohort');
-    const { originalName, record } = payload;
-    Validate.requireParams({ originalName, record }, 'ReferenceDataController.updateCohort');
-    return this._updateRecord(this._getConfig('cohort'), originalName, record);
+    const { key, record } = payload;
+    Validate.requireParams({ key, record }, 'ReferenceDataController.updateCohort');
+    return this._updateRecord(this._getConfig('cohort'), key, record);
   }
 
   /**
    * Deletes a cohort record from storage.
-   * @param {string} name - The name of the cohort to delete.
+   * @param {string} key - The key of the cohort to delete.
    * @returns {void}
    */
-  deleteCohort(name) {
-    Validate.requireParams({ name }, 'ReferenceDataController.deleteCohort');
-    this._deleteRecord(this._getConfig('cohort'), name);
+  deleteCohort(key) {
+    Validate.requireParams({ key }, 'ReferenceDataController.deleteCohort');
+    this._deleteRecord(this._getConfig('cohort'), key);
   }
 
   /**
    * Retrieves all year group records from storage.
-   * @returns {Array<{name: string}>} List of all year groups sorted by name.
+   * @returns {Array<{key: string, name: string}>} List of all year groups sorted by name.
    */
   listYearGroups() {
     return this._listRecords(this._getConfig('yearGroup'));
@@ -65,7 +91,7 @@ class ReferenceDataController {
   /**
    * Creates a new year group record in storage.
    * @param {{name: string}} record - The year group data to create.
-   * @returns {{name: string}} The persisted year group record.
+   * @returns {{key: string, name: string}} The persisted year group record.
    */
   createYearGroup(record) {
     Validate.requireParams({ record }, 'ReferenceDataController.createYearGroup');
@@ -74,40 +100,37 @@ class ReferenceDataController {
 
   /**
    * Updates an existing year group record in storage.
-   * @param {{originalName: string, record: {name: string}}} payload - Object containing the original name and updated record data.
-   * @returns {{name: string}} The updated year group record.
+   * @param {{key: string, record: {name: string}}} payload - Object containing key and updated record data.
+   * @returns {{key: string, name: string}} The updated year group record.
    */
   updateYearGroup(payload) {
     Validate.requireParams({ payload }, 'ReferenceDataController.updateYearGroup');
-    const { originalName, record } = payload;
-    Validate.requireParams({ originalName, record }, 'ReferenceDataController.updateYearGroup');
-    return this._updateRecord(this._getConfig('yearGroup'), originalName, record);
+    const { key, record } = payload;
+    Validate.requireParams({ key, record }, 'ReferenceDataController.updateYearGroup');
+    return this._updateRecord(this._getConfig('yearGroup'), key, record);
   }
 
   /**
    * Deletes a year group record from storage.
-   * @param {string} name - The name of the year group to delete.
+   * @param {string} key - The key of the year group to delete.
    * @returns {void}
    */
-  deleteYearGroup(name) {
-    Validate.requireParams({ name }, 'ReferenceDataController.deleteYearGroup');
-    this._deleteRecord(this._getConfig('yearGroup'), name);
+  deleteYearGroup(key) {
+    Validate.requireParams({ key }, 'ReferenceDataController.deleteYearGroup');
+    this._deleteRecord(this._getConfig('yearGroup'), key);
   }
 
   /**
-   * Retrieves configuration object for a resource type (cohort or yearGroup).
-   * Contains collection name and model class to use for that resource.
-   *
-   * @param {string} resourceType - Resource type identifier ('cohort' or 'yearGroup').
-   * @returns {{collectionName: string, modelClass: Function}} Configuration object.
-   * @throws {Error} If resourceType is not supported.
-   * @private
+   * Returns config for a supported resource type.
+   * @param {string} resourceType - Supported reference-data resource.
+   * @returns {{collectionName: string, modelClass: Function, partialsReferenceField: string}} Resource config.
    */
   _getConfig(resourceType) {
     if (resourceType === 'cohort') {
       return {
         collectionName: 'cohorts',
         modelClass: Cohort,
+        partialsReferenceField: 'cohortKey',
       };
     }
 
@@ -115,6 +138,7 @@ class ReferenceDataController {
       return {
         collectionName: 'year_groups',
         modelClass: YearGroup,
+        partialsReferenceField: 'yearGroupKey',
       };
     }
 
@@ -122,12 +146,9 @@ class ReferenceDataController {
   }
 
   /**
-   * Retrieves all records from a collection and normalises them.
-   * Records are sorted by name ascending and storage metadata is stripped.
-   *
-   * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
-   * @returns {Array<Object>} Plain record objects sorted by name.
-   * @private
+   * Lists and sorts records by name.
+   * @param {{collectionName: string}} config - Resource configuration.
+   * @returns {Array<Object>} Sorted plain records.
    */
   _listRecords(config) {
     const collection = this.dbManager.getCollection(config.collectionName);
@@ -137,19 +158,23 @@ class ReferenceDataController {
   }
 
   /**
-   * Creates a new record in the collection.
-   * Validates for duplicates (by normalised name) before insertion.
-   *
+   * Creates and persists a new keyed record.
    * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
-   * @param {Object} record - The record to create.
-   * @returns {Object} The persisted record as a plain object.
-   * @throws {Error} If a duplicate record (by normalised name) already exists.
-   * @private
+   * @param {Object} record - Incoming record payload.
+   * @returns {Object} Persisted plain record.
    */
   _createRecord(config, record) {
     const collection = this.dbManager.getCollection(config.collectionName);
     const storedRecords = collection.find({});
-    const serialisedRecord = this._buildRecord(config, record);
+    const serialisedRecord = this._buildRecord(config, {
+      ...record,
+      key: generateStableKey(),
+      active: Object.hasOwn(record, 'active') ? record.active : true,
+      startMonth: Object.hasOwn(record, 'startMonth')
+        ? record.startMonth
+        : ACADEMIC_YEAR_START_MONTH,
+      startYear: Object.hasOwn(record, 'startYear') ? record.startYear : resolveAcademicYearStart(),
+    });
     const normalisedName = this._normaliseName(serialisedRecord.name);
 
     if (this._findByNormalisedName(storedRecords, normalisedName)) {
@@ -163,70 +188,86 @@ class ReferenceDataController {
   }
 
   /**
-   * Updates an existing record by name.
-   * Validates for duplicates (by normalised name) before replacement, excluding the original record.
-   *
+   * Updates and persists an existing keyed record.
    * @param {{collectionName: string, modelClass: Function}} config - Resource configuration.
-   * @param {string} originalName - The original record name to find and replace.
-   * @param {Object} record - The updated record data.
-   * @returns {Object} The updated record as a plain object.
-   * @throws {Error} If the original record is not found or a duplicate exists.
-   * @private
+   * @param {string} key - Stable key to update.
+   * @param {Object} record - Update payload.
+   * @returns {Object} Persisted plain record.
    */
-  _updateRecord(config, originalName, record) {
+  _updateRecord(config, key, record) {
     const collection = this.dbManager.getCollection(config.collectionName);
     const storedRecords = collection.find({});
-    const trimmedOriginalName = this._trimName(originalName);
-    const existingRecord = this._findByExactName(storedRecords, trimmedOriginalName);
+    const trimmedKey = this._trimKey(key);
+    const existingRecord = this._findByKey(storedRecords, trimmedKey);
 
     if (!existingRecord) {
-      throw new Error(`${config.collectionName} record not found: ${trimmedOriginalName}`);
+      throw new Error(`${config.collectionName} record not found: ${trimmedKey}`);
     }
 
-    const serialisedRecord = this._buildRecord(config, record);
+    const serialisedRecord = this._buildRecord(config, {
+      ...record,
+      key: trimmedKey,
+      active: Object.hasOwn(record, 'active') ? record.active : existingRecord.active,
+      startYear: Object.hasOwn(record, 'startYear') ? record.startYear : existingRecord.startYear,
+      startMonth: Object.hasOwn(record, 'startMonth')
+        ? record.startMonth
+        : existingRecord.startMonth,
+    });
     const normalisedReplacementName = this._normaliseName(serialisedRecord.name);
     const conflictingRecord = this._findByNormalisedName(storedRecords, normalisedReplacementName);
 
-    if (conflictingRecord && conflictingRecord.name !== existingRecord.name) {
+    if (conflictingRecord && conflictingRecord.key !== existingRecord.key) {
       throw new Error(`Duplicate ${config.collectionName} record: ${serialisedRecord.name}`);
     }
 
-    collection.replaceOne({ name: trimmedOriginalName }, serialisedRecord);
+    collection.replaceOne({ key: trimmedKey }, serialisedRecord);
     collection.save();
 
     return this._toPlainObject(serialisedRecord);
   }
 
   /**
-   * Deletes an existing record by name.
-   *
-   * @param {{collectionName: string}} config - Resource configuration.
-   * @param {string} name - The record name to find and delete.
-   * @throws {Error} If the record is not found.
-   * @private
+   * Deletes a keyed record if unused by class partials.
+   * @param {{collectionName: string, partialsReferenceField: string}} config - Resource configuration.
+   * @param {string} key - Stable key to delete.
+   * @returns {void}
    */
-  _deleteRecord(config, name) {
+  _deleteRecord(config, key) {
     const collection = this.dbManager.getCollection(config.collectionName);
     const storedRecords = collection.find({});
-    const trimmedName = this._trimName(name);
-    const existingRecord = this._findByExactName(storedRecords, trimmedName);
+    const trimmedKey = this._trimKey(key);
+    const existingRecord = this._findByKey(storedRecords, trimmedKey);
 
     if (!existingRecord) {
-      throw new Error(`${config.collectionName} record not found: ${trimmedName}`);
+      throw new Error(`${config.collectionName} record not found: ${trimmedKey}`);
     }
 
-    collection.deleteOne({ name: trimmedName });
+    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    const partials = partialsCollection.find({});
+    const isInUse = partials.some(
+      (partial) =>
+        partial &&
+        typeof partial === 'object' &&
+        partial[config.partialsReferenceField] === trimmedKey
+    );
+
+    if (isInUse) {
+      const error = new Error(
+        `${config.collectionName} record is referenced by one or more classes`
+      );
+      error.reason = 'IN_USE';
+      throw error;
+    }
+
+    collection.deleteOne({ key: trimmedKey });
     collection.save();
   }
 
   /**
-   * Builds a record by deserialising from JSON and reserialising.
-   * Ensures the record conforms to the model class serialisation format.
-   *
+   * Builds a canonical serialised record through the model contract.
    * @param {{modelClass: Function}} config - Resource configuration.
-   * @param {Object} record - The record data to build.
-   * @returns {Object} The built (serialised) record.
-   * @private
+   * @param {Object} record - Raw record data.
+   * @returns {Object} Canonical serialised record.
    */
   _buildRecord(config, record) {
     const modelInstance = config.modelClass.fromJSON(record);
@@ -234,63 +275,59 @@ class ReferenceDataController {
   }
 
   /**
-   * Trims whitespace from a name string.
-   *
-   * @param {string} name - The name to trim.
-   * @returns {string} The trimmed name.
-   * @throws {TypeError} If name is not a string.
-   * @private
+   * Trims and validates a key.
+   * @param {string} key - Key to trim.
+   * @returns {string} Trimmed key.
    */
-  _trimName(name) {
-    Validate.requireParams({ name }, 'ReferenceDataController._trimName');
+  _trimKey(key) {
+    Validate.requireParams({ key }, 'ReferenceDataController._trimKey');
+
+    if (!Validate.isString(key)) {
+      throw new TypeError('key must be a string.');
+    }
+
+    return key.trim();
+  }
+
+  /**
+   * Normalises a name for duplicate checks.
+   * @param {string} name - Name to normalise.
+   * @returns {string} Lower-case trimmed name.
+   */
+  _normaliseName(name) {
+    Validate.requireParams({ name }, 'ReferenceDataController._normaliseName');
+
     if (!Validate.isString(name)) {
       throw new TypeError('name must be a string.');
     }
-    return name.trim();
+
+    return name.trim().toLowerCase();
   }
 
   /**
-   * Normalises a name by trimming and converting to lowercase for comparison purposes.
-   *
-   * @param {string} name - The name to normalise.
-   * @returns {string} The normalised name.
-   * @private
+   * Finds a record by key.
+   * @param {Array<Object>} records - Source records.
+   * @param {string} key - Key to match.
+   * @returns {Object|null} Matching record.
    */
-  _normaliseName(name) {
-    return this._trimName(name).toLowerCase();
+  _findByKey(records, key) {
+    return records.find((record) => this._trimKey(record.key) === key) || null;
   }
 
   /**
-   * Finds a record by exact (trimmed) name match from a list.
-   *
-   * @param {Array<Object>} records - List of records to search.
-   * @param {string} name - The exact name to find (with trimming).
-   * @returns {Object|null} The matching record or null if not found.
-   * @private
-   */
-  _findByExactName(records, name) {
-    return records.find((record) => this._trimName(record.name) === name) || null;
-  }
-
-  /**
-   * Finds a record by normalised name match from a list.
-   * Useful for case-insensitive duplicate detection.
-   *
-   * @param {Array<Object>} records - List of records to search.
-   * @param {string} normalisedName - The normalised name to find.
-   * @returns {Object|null} The matching record or null if not found.
-   * @private
+   * Finds a record by normalised name.
+   * @param {Array<Object>} records - Source records.
+   * @param {string} normalisedName - Normalised name.
+   * @returns {Object|null} Matching record.
    */
   _findByNormalisedName(records, normalisedName) {
     return records.find((record) => this._normaliseName(record.name) === normalisedName) || null;
   }
 
   /**
-   * Converts a record to a plain object, stripping storage-only metadata (e.g. _id).
-   *
-   * @param {Object} record - The record to convert.
-   * @returns {Object} Plain object without storage metadata.
-   * @private
+   * Removes storage-only metadata from a record.
+   * @param {Object} record - Stored record.
+   * @returns {Object} Plain record.
    */
   _toPlainObject(record) {
     const plainObject = {};
@@ -305,11 +342,9 @@ class ReferenceDataController {
   }
 
   /**
-   * Sorts records by name using merge sort algorithm.
-   *
+   * Sorts records by name using merge sort.
    * @param {Array<Object>} records - Records to sort.
-   * @returns {Array<Object>} Sorted records by name ascending.
-   * @private
+   * @returns {Array<Object>} Sorted records.
    */
   _sortRecordsByName(records) {
     const minimumMergeSortPartitionSize = 2;
@@ -319,39 +354,28 @@ class ReferenceDataController {
     }
 
     const midpoint = Math.floor(records.length / minimumMergeSortPartitionSize);
-    const leftRecords = [];
-    const rightRecords = [];
+    const left = this._sortRecordsByName(records.slice(0, midpoint));
+    const right = this._sortRecordsByName(records.slice(midpoint));
 
-    for (const [index, record] of records.entries()) {
-      if (index < midpoint) {
-        leftRecords.push(record);
-      } else {
-        rightRecords.push(record);
-      }
-    }
-
-    return this._mergeSortedRecords(
-      this._sortRecordsByName(leftRecords),
-      this._sortRecordsByName(rightRecords)
-    );
+    return this._mergeByName(left, right);
   }
 
   /**
-   * Merges two sorted record arrays by name in ascending order.
-   * Used by merge sort to combine sorted partitions.
-   *
+   * Merges two sorted record lists by name.
    * @param {Array<Object>} leftRecords - Left sorted partition.
    * @param {Array<Object>} rightRecords - Right sorted partition.
    * @returns {Array<Object>} Merged sorted records.
-   * @private
    */
-  _mergeSortedRecords(leftRecords, rightRecords) {
+  _mergeByName(leftRecords, rightRecords) {
     const mergedRecords = [];
     let leftIndex = 0;
     let rightIndex = 0;
 
     while (leftIndex < leftRecords.length && rightIndex < rightRecords.length) {
-      if (leftRecords[leftIndex].name.localeCompare(rightRecords[rightIndex].name) <= 0) {
+      const leftName = leftRecords[leftIndex].name;
+      const rightName = rightRecords[rightIndex].name;
+
+      if (leftName.localeCompare(rightName) <= 0) {
         mergedRecords.push(leftRecords[leftIndex]);
         leftIndex += 1;
       } else {
@@ -374,6 +398,6 @@ class ReferenceDataController {
   }
 }
 
-if (typeof module !== 'undefined') {
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = ReferenceDataController;
 }

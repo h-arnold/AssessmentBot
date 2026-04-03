@@ -165,9 +165,11 @@ class ABClassController {
     return {
       classId: partialDocument.classId,
       className: partialDocument.className,
-      cohort: partialDocument.cohort,
+      cohortKey: partialDocument.cohortKey,
+      cohortLabel: partialDocument.cohortLabel,
       courseLength: partialDocument.courseLength,
-      yearGroup: partialDocument.yearGroup,
+      yearGroupKey: partialDocument.yearGroupKey,
+      yearGroupLabel: partialDocument.yearGroupLabel,
       classOwner: partialDocument.classOwner,
       teachers: [...partialDocument.teachers],
       active: partialDocument.active,
@@ -580,13 +582,13 @@ class ABClassController {
    * Initialises an ABClass instance by populating data that can be fetched using
    * the classId (Google Classroom courseId) alone. Populates: className,
    * classOwner, teachers and students. Additional properties (assignments,
-   * cohort, courseLength, yearGroup) may be provided via options.
+   * cohortKey, courseLength, yearGroupKey) may be provided via options.
    *
    * @param {string} classId - The Classroom course ID.
    * @param {Object} [options={}] - Optional configuration for class properties.
-   * @param {string|number} [options.cohort] - Cohort value for the class.
+   * @param {string} [options.cohortKey] - Cohort key value for the class.
    * @param {number} [options.courseLength] - Course duration in weeks.
-   * @param {number} [options.yearGroup] - Academic year group.
+   * @param {string} [options.yearGroupKey] - Academic year-group key.
    * @param {Assignment[]} [options.assignments] - Assignments to add to the class.
    * @returns {ABClass} Populated ABClass instance with roster data.
    * @throws {TypeError} If classId is missing.
@@ -598,18 +600,16 @@ class ABClassController {
     const abClass = new ABClass({ classId });
 
     // Apply straightforward options first
-    if (options.cohort !== undefined) {
-      abClass.cohort = options.cohort === null ? null : String(options.cohort);
+    if (options.cohortKey !== undefined) {
+      abClass.cohortKey = options.cohortKey === null ? null : String(options.cohortKey);
     }
     if (options.courseLength !== undefined) {
       abClass.courseLength = Number.isInteger(options.courseLength)
         ? options.courseLength
         : ABClass._parseNullableInt(options.courseLength, abClass.courseLength);
     }
-    if (options.yearGroup !== undefined) {
-      abClass.yearGroup = Number.isInteger(options.yearGroup)
-        ? options.yearGroup
-        : ABClass._parseNullableInt(options.yearGroup, abClass.yearGroup);
+    if (options.yearGroupKey !== undefined) {
+      abClass.yearGroupKey = options.yearGroupKey === null ? null : String(options.yearGroupKey);
     }
     if (options.assignments?.length) {
       options.assignments.forEach((assignment) => abClass.addAssignment(assignment));
@@ -688,8 +688,8 @@ class ABClassController {
   /**
    * Builds a patch object from update parameters for selective field updates.
    * @param {Object} parameters - The update parameters object.
-   * @param {*} [parameters.cohort] - Optional cohort value.
-   * @param {*} [parameters.yearGroup] - Optional year group value.
+   * @param {*} [parameters.cohortKey] - Optional cohort key value.
+   * @param {*} [parameters.yearGroupKey] - Optional year group key value.
    * @param {*} [parameters.courseLength] - Optional course length (validated).
    * @param {boolean} [parameters.active] - Optional active flag.
    * @returns {Object} Patch object containing only provided fields.
@@ -698,12 +698,13 @@ class ABClassController {
   _buildUpdatePatch(parameters) {
     const patch = {};
 
-    if (Object.hasOwn(parameters, 'cohort')) {
-      patch.cohort = parameters.cohort === null ? null : String(parameters.cohort);
+    if (Object.hasOwn(parameters, 'cohortKey')) {
+      patch.cohortKey = parameters.cohortKey === null ? null : String(parameters.cohortKey);
     }
 
-    if (Object.hasOwn(parameters, 'yearGroup')) {
-      patch.yearGroup = parameters.yearGroup;
+    if (Object.hasOwn(parameters, 'yearGroupKey')) {
+      patch.yearGroupKey =
+        parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
     }
 
     if (Object.hasOwn(parameters, 'courseLength')) {
@@ -725,12 +726,12 @@ class ABClassController {
    * @private
    */
   _applyPatchToClass(abClass, patch) {
-    if (Object.hasOwn(patch, 'cohort')) {
-      abClass.cohort = patch.cohort;
+    if (Object.hasOwn(patch, 'cohortKey')) {
+      abClass.cohortKey = patch.cohortKey;
     }
 
-    if (Object.hasOwn(patch, 'yearGroup')) {
-      abClass.yearGroup = patch.yearGroup;
+    if (Object.hasOwn(patch, 'yearGroupKey')) {
+      abClass.yearGroupKey = patch.yearGroupKey;
     }
 
     if (Object.hasOwn(patch, 'courseLength')) {
@@ -757,11 +758,11 @@ class ABClassController {
   /**
    * Creates a new ABClass or updates an existing one with fresh classroom data and custom metadata.
    * Validates all required parameters, then either creates a new class or refreshes an existing one,
-   * applying the provided metadata (cohort, yearGroup, courseLength).
+   * applying the provided metadata (cohortKey, yearGroupKey, courseLength).
    * @param {Object} parameters - Update parameters.
    * @param {string} parameters.classId - Classroom course identifier (required).
-   * @param {*} parameters.cohort - User-managed cohort value (required).
-   * @param {*} parameters.yearGroup - User-managed year group value (required).
+   * @param {*} parameters.cohortKey - User-managed cohort key (required).
+   * @param {*} parameters.yearGroupKey - User-managed year-group key (required).
    * @param {number} parameters.courseLength - Required course length, validated as an integer >= 1 (required).
    * @returns {Object} Partial ABClass summary from toPartialJSON().
    * @throws {Error} If required parameters are missing or validation fails.
@@ -770,8 +771,8 @@ class ABClassController {
     Validate.requireParams(
       {
         classId: parameters?.classId,
-        cohort: parameters?.cohort,
-        yearGroup: parameters?.yearGroup,
+        cohortKey: parameters?.cohortKey,
+        yearGroupKey: parameters?.yearGroupKey,
         courseLength: parameters?.courseLength,
       },
       'upsertABClass'
@@ -785,14 +786,15 @@ class ABClassController {
 
     if (existingDocument) {
       abClass = ABClass.fromJSON(existingDocument);
-      abClass.cohort = parameters.cohort === null ? null : String(parameters.cohort);
-      abClass.yearGroup = parameters.yearGroup;
+      abClass.cohortKey = parameters.cohortKey === null ? null : String(parameters.cohortKey);
+      abClass.yearGroupKey =
+        parameters.yearGroupKey === null ? null : String(parameters.yearGroupKey);
       abClass.courseLength = courseLength;
       this._refreshRoster(abClass, classId);
     } else {
       abClass = this.initialise(classId, {
-        cohort: parameters.cohort,
-        yearGroup: parameters.yearGroup,
+        cohortKey: parameters.cohortKey,
+        yearGroupKey: parameters.yearGroupKey,
         courseLength: courseLength,
       });
     }
@@ -806,8 +808,8 @@ class ABClassController {
    * If the class does not yet exist, initialises it first using the supplied patch fields.
    * @param {Object} parameters - Patch parameters object.
    * @param {string} parameters.classId - Classroom course identifier (required).
-   * @param {*} [parameters.cohort] - Optional cohort replacement.
-   * @param {*} [parameters.yearGroup] - Optional year-group replacement.
+   * @param {*} [parameters.cohortKey] - Optional cohort-key replacement.
+   * @param {*} [parameters.yearGroupKey] - Optional year-group-key replacement.
    * @param {*} [parameters.courseLength] - Optional validated course length.
    * @param {boolean|null} [parameters.active] - Optional active-state replacement.
    * @returns {Object} Partial ABClass summary from toPartialJSON().
@@ -821,15 +823,16 @@ class ABClassController {
     const existingDocument = collection.findOne({ classId: classId });
 
     if (!existingDocument) {
+      if (Object.hasOwn(patch, 'active')) {
+        this.dbManager.getCollection('abclass_partials');
+        throw new Error('updateABClass: active patch requires an existing class');
+      }
+
       const abClass = this.initialise(classId, {
-        cohort: Object.hasOwn(patch, 'cohort') ? patch.cohort : undefined,
-        yearGroup: Object.hasOwn(patch, 'yearGroup') ? patch.yearGroup : undefined,
+        cohortKey: Object.hasOwn(patch, 'cohortKey') ? patch.cohortKey : undefined,
+        yearGroupKey: Object.hasOwn(patch, 'yearGroupKey') ? patch.yearGroupKey : undefined,
         courseLength: Object.hasOwn(patch, 'courseLength') ? patch.courseLength : undefined,
       });
-
-      if (Object.hasOwn(patch, 'active')) {
-        abClass.active = patch.active;
-      }
 
       this.saveClass(abClass);
       return this._buildClassSummary(abClass);
