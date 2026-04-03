@@ -42,12 +42,16 @@ describe('ClassesManagementPanel', () => {
       classesManagementViewState: 'ready',
       classesCount: 3,
       errorMessage: null,
+      rows: [],
+      selectedRowKeys: [],
+      onSelectedRowKeysChange: vi.fn(),
     });
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
     render(<ClassesManagementPanel />);
 
-    expect(screen.getByText('Classes ready: 3')).toBeInTheDocument();
+    expect(screen.getByText('Summary')).toBeInTheDocument();
+    expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
   });
 });

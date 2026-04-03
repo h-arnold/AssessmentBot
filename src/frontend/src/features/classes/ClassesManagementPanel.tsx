@@ -1,4 +1,7 @@
-import { Alert, Card, Typography } from 'antd';
+import { Alert, Card, Flex, Typography } from 'antd';
+import { ClassesSummaryCard } from './ClassesSummaryCard';
+import { ClassesTable } from './ClassesTable';
+import { ClassesToolbar } from './ClassesToolbar';
 import { useClassesManagement } from './useClassesManagement';
 
 export const classesManagementPanelRegionLabel = 'Classes management panel';
@@ -25,7 +28,15 @@ export function ClassesManagementPanel() {
         />
       ) : null}
       {classesManagement.classesManagementViewState === 'ready' ? (
-        <Typography.Text>{`Classes ready: ${classesManagement.classesCount}`}</Typography.Text>
+        <Flex vertical gap={12}>
+          <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
+          <ClassesToolbar rows={classesManagement.rows} selectedRowKeys={classesManagement.selectedRowKeys} />
+          <ClassesTable
+            rows={classesManagement.rows}
+            selectedRowKeys={classesManagement.selectedRowKeys}
+            onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}
+          />
+        </Flex>
       ) : null}
     </Card>
   );
