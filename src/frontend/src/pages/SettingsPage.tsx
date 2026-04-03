@@ -1,5 +1,5 @@
-import { Card } from 'antd';
 import type { TabsProps } from 'antd';
+import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 import { TabbedPageSection } from './TabbedPageSection';
@@ -24,22 +24,8 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
 const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
   key,
   label,
-  children: key === 'backend-settings' ? (
-    <BackendSettingsPanel />
-  ) : (
-    <SettingsPlaceholderPanel label={label} />
-  ),
+  children: key === 'backend-settings' ? <BackendSettingsPanel /> : <ClassesManagementPanel />,
 })) satisfies NonNullable<TabsProps['items']>;
-
-/**
- * Renders a blank placeholder panel for a settings section.
- *
- * @param {Readonly<{ label: string }>} properties Placeholder panel properties.
- * @returns {JSX.Element} The placeholder panel.
- */
-function SettingsPlaceholderPanel({ label }: Readonly<{ label: string }>) {
-  return <Card className="settings-tab-panel" role="region" aria-label={`${label} panel`} />;
-}
 
 /**
  * Renders the settings page with reusable Ant Design tabs for each section.

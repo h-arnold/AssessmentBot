@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { createAppQueryClient } from '../query/queryClient';
+import { classesManagementPanelRegionLabel } from '../features/classes/ClassesManagementPanel';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
 
@@ -14,6 +15,19 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
     return (
       <div role="region" aria-label={backendSettingsFeatureEntryRegionLabel}>
         {backendSettingsFeatureEntryText}
+      </div>
+    );
+  },
+}));
+
+const classesManagementFeatureEntryText = 'Classes management feature entry';
+
+vi.mock('../features/classes/ClassesManagementPanel', () => ({
+  classesManagementPanelRegionLabel: 'Classes management panel',
+  ClassesManagementPanel() {
+    return (
+      <div role="region" aria-label={classesManagementPanelRegionLabel}>
+        {classesManagementFeatureEntryText}
       </div>
     );
   },
@@ -71,7 +85,10 @@ describe('SettingsPage', () => {
     const { prefetchQuerySpy } = renderSettingsPage(queryClient);
 
     expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('region', { name: 'Classes panel' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: classesManagementPanelRegionLabel })
+    ).toBeInTheDocument();
+    expect(screen.getByText(classesManagementFeatureEntryText)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledWith(
