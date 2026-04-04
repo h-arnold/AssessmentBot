@@ -202,7 +202,7 @@ test.describe('app shell', () => {
     const backendSettingsTab = page.getByRole('tab', { name: 'Backend settings' });
 
     await expect(classesTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('region', { name: 'Classes panel' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Classes management panel' })).toBeVisible();
 
     await backendSettingsTab.click();
 
