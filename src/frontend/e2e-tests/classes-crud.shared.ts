@@ -34,6 +34,13 @@ export type ClassesCrudRuntimeScenario = Readonly<{
   getGoogleClassrooms: ReadonlyArray<ClassesCrudApiResponseScenario>;
 }>;
 
+export type ClassesCrudDataBundle = Readonly<{
+  classPartials: readonly ClassPartial[];
+  cohorts: readonly Cohort[];
+  googleClassrooms: readonly GoogleClassroom[];
+  yearGroups: readonly YearGroup[];
+}>;
+
 export const baseCohorts: Cohort[] = [
   {
     key: 'cohort-2024',
@@ -109,6 +116,54 @@ export const baseGoogleClassrooms: GoogleClassroom[] = [
     className: 'History Year 8D',
   },
 ];
+
+export const matchedGoogleClassrooms: GoogleClassroom[] = [
+  { classId: 'gc-class-201', className: 'English Year 7C' },
+  { classId: 'gc-class-202', className: 'History Year 8D' },
+];
+
+export const matchedClassPartials: ClassPartial[] = [
+  {
+    classId: 'gc-class-201',
+    className: 'English Year 7C',
+    cohortKey: 'cohort-2024',
+    cohortLabel: 'Cohort 2024',
+    courseLength: 30,
+    yearGroupKey: 'year-7',
+    yearGroupLabel: 'Year 7',
+    classOwner: null,
+    teachers: [],
+    active: true,
+  },
+  {
+    classId: 'gc-class-202',
+    className: 'History Year 8D',
+    cohortKey: 'cohort-2023',
+    cohortLabel: 'Cohort 2023',
+    courseLength: 25,
+    yearGroupKey: 'year-8',
+    yearGroupLabel: 'Year 8',
+    classOwner: null,
+    teachers: [],
+    active: false,
+  },
+];
+
+/**
+ * Builds a success scenario for all classes-related API methods.
+ *
+ * @param {ClassesCrudDataBundle} data Successful data payloads.
+ * @returns {ClassesCrudRuntimeScenario} Fully successful scenario.
+ */
+export function createSuccessfulClassesScenario(data: ClassesCrudDataBundle): ClassesCrudRuntimeScenario {
+  return {
+    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    getABClassPartials: [{ kind: 'success', data: [...data.classPartials] }],
+    getCohorts: [{ kind: 'success', data: [...data.cohorts] }],
+    getYearGroups: [{ kind: 'success', data: [...data.yearGroups] }],
+    getGoogleClassrooms: [{ kind: 'success', data: [...data.googleClassrooms] }],
+  };
+}
 
 /**
  * Installs a browser-side `google.script.run` mock for the Classes CRUD feature.
@@ -231,4 +286,20 @@ export async function openClassesTab(page: Page) {
   await page.getByRole('menuitem', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Settings' })).toBeVisible();
   await page.getByRole('tab', { name: 'Classes' }).click();
+}
+
+/**
+ * Applies a runtime scenario and opens the Classes tab.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @param {ClassesCrudRuntimeScenario} scenario The scenario to apply.
+ * @returns {Promise<void>} A promise that resolves once the tab is active.
+ */
+export async function openClassesTabWithScenario(
+  page: Page,
+  scenario: ClassesCrudRuntimeScenario
+) {
+  await mockClassesCrudRuntime(page, scenario);
+  await page.goto('/');
+  await openClassesTab(page);
 }

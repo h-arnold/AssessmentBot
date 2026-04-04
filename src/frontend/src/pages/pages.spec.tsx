@@ -1,8 +1,7 @@
-import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { pageExpectations } from '../test/pageExpectations';
-import { createAppQueryClient } from '../query/queryClient';
+import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
 type AppNavigationKey = (typeof pageExpectations)[number]['key'];
 
@@ -31,17 +30,10 @@ describe('page components', () => {
     async ({ heading, key, summary }) => {
       const PageComponent = await pageComponentLoaders[key]();
 
-      const queryClient = createAppQueryClient();
-
-      render(
-        <QueryClientProvider client={queryClient}>
-          <PageComponent />
-        </QueryClientProvider>
-      );
+      renderWithFrontendProviders(<PageComponent />);
 
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();
     }
   );
 });
-
