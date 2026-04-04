@@ -8,7 +8,7 @@ import {
   openClassesTabWithScenario,
 } from './classes-crud.shared';
 
-const deterministicRowCount = 2;
+const matchedClassPartialCount = 2;
 
 test.describe('Classes CRUD table controls', () => {
   test('filters to active rows and reset returns full deterministic row set', async ({
@@ -25,10 +25,10 @@ test.describe('Classes CRUD table controls', () => {
     );
 
     await page.getByRole('button', { name: 'Class name' }).click();
-    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(deterministicRowCount);
+    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(matchedClassPartialCount);
 
     await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(deterministicRowCount);
+    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(matchedClassPartialCount);
   });
 
   test('toolbar remains delete-only for orphaned selection and mixed orphaned selection', async ({

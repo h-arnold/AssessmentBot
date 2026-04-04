@@ -9,7 +9,7 @@ import {
 import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
 
 const rowCountForAllStatuses = 4;
-const tableGoogleClassrooms: GoogleClassroom[] = [
+const extendedGoogleClassrooms: GoogleClassroom[] = [
   { classId: 'gc-class-201', className: 'English Year 7C' },
   { classId: 'gc-class-202', className: 'History Year 8D' },
   { classId: 'gc-class-303', className: 'Geography Year 7E' },
@@ -24,7 +24,7 @@ test.describe('Classes CRUD table interactions', () => {
         classPartials: matchedClassPartials,
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
-        googleClassrooms: tableGoogleClassrooms,
+        googleClassrooms: extendedGoogleClassrooms,
       }),
       getABClassPartials: [
         {
@@ -58,7 +58,7 @@ test.describe('Classes CRUD table interactions', () => {
         classPartials: matchedClassPartials,
         cohorts: baseCohorts,
         yearGroups: baseYearGroups,
-        googleClassrooms: tableGoogleClassrooms,
+        googleClassrooms: extendedGoogleClassrooms,
       })
     );
 
