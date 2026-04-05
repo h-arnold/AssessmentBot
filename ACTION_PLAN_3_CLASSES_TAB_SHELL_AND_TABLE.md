@@ -119,6 +119,54 @@ Tests:
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-load-states.spec.ts`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-table-controls.spec.ts`
 
+## Progress tracker (Sections 3.2-3.5)
+
+### 3.2 Merged row view-model — complete
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [x] Commit created
+- [x] Push completed
+
+Implementation note: merged row model implemented in `classesManagementViewModel.ts` with status mapping and deterministic ordering.
+
+### 3.3 Summary, toolbar, and table rendering — in progress
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
+### 3.4 Load, error, and empty states — in progress
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
+### 3.5 Browser journeys — in progress
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
 ## Sequencing notes
 
 - Keep this workstream split internally as bootstrap first, then pure view-model, then rendering.

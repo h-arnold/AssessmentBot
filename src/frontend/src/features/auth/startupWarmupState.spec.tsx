@@ -30,6 +30,12 @@ function renderWarmupState(warmupState: StartupWarmupStatus) {
 }
 
 describe('StartupWarmupStateProvider', () => {
+  it('throws when useStartupWarmupState is called outside the provider', () => {
+    expect(() => render(<StartupWarmupProbe />)).toThrow(
+      'useStartupWarmupState must be used within StartupWarmupStateProvider.'
+    );
+  });
+
   it('provides warmupState: loading', () => {
     renderWarmupState('loading');
 

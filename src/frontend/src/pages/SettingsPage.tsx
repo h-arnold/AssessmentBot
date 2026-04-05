@@ -1,5 +1,6 @@
-import { Card } from 'antd';
 import type { TabsProps } from 'antd';
+import type { ReactElement } from 'react';
+import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 import { TabbedPageSection } from './TabbedPageSection';
@@ -21,25 +22,31 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
   },
 ];
 
+/**
+ * Resolves the rendered child component for a settings tab key.
+ *
+ * @param {string} key Settings tab key.
+ * @returns {JSX.Element} The tab child component.
+ */
+function getSettingsTabChild(key: string): ReactElement {
+  switch (key) {
+    case 'classes': {
+      return <ClassesManagementPanel />;
+    }
+    case 'backend-settings': {
+      return <BackendSettingsPanel />;
+    }
+    default: {
+      throw new Error(`Unsupported settings tab key: ${key}`);
+    }
+  }
+}
+
 const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
   key,
   label,
-  children: key === 'backend-settings' ? (
-    <BackendSettingsPanel />
-  ) : (
-    <SettingsPlaceholderPanel label={label} />
-  ),
+  children: getSettingsTabChild(key),
 })) satisfies NonNullable<TabsProps['items']>;
-
-/**
- * Renders a blank placeholder panel for a settings section.
- *
- * @param {Readonly<{ label: string }>} properties Placeholder panel properties.
- * @returns {JSX.Element} The placeholder panel.
- */
-function SettingsPlaceholderPanel({ label }: Readonly<{ label: string }>) {
-  return <Card className="settings-tab-panel" role="region" aria-label={`${label} panel`} />;
-}
 
 /**
  * Renders the settings page with reusable Ant Design tabs for each section.
