@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getClassesTableColumns, UNAVAILABLE_VALUE } from './ClassesTableColumns';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const classesManagementStateMock = vi.fn();
 const unavailableCellCount = 4;
@@ -57,7 +58,7 @@ const rowsForOrdering = [
   },
 ] as const;
 
-const notCreatedRow = {
+const notCreatedRow: ClassesManagementRow = {
   classId: 'not-created-row',
   className: 'Zeta',
   status: 'notCreated',
@@ -65,9 +66,9 @@ const notCreatedRow = {
   courseLength: null,
   yearGroupLabel: null,
   active: null,
-} as const;
+};
 
-const activeRow = {
+const activeRow: ClassesManagementRow = {
   classId: 'active-row',
   className: 'Alpha',
   status: 'active',
@@ -75,9 +76,9 @@ const activeRow = {
   courseLength: 2,
   yearGroupLabel: 'Year 10',
   active: true,
-} as const;
+};
 
-const inactiveRow = {
+const inactiveRow: ClassesManagementRow = {
   classId: 'inactive-row',
   className: 'beta',
   status: 'inactive',
@@ -85,16 +86,16 @@ const inactiveRow = {
   courseLength: 1,
   yearGroupLabel: 'Year 11',
   active: false,
-} as const;
+};
 
 const [statusColumn, classNameColumn, cohortColumn, courseLengthColumn, yearGroupColumn, activeColumn] =
   getClassesTableColumns();
 
 describe('ClassesTableColumns', () => {
   it('supports deterministic status and class-name sorting and filtering', () => {
-    const statusOnFilter = statusColumn.onFilter as (value: string | number | boolean, row: typeof activeRow) => boolean;
-    const statusSorter = statusColumn.sorter as (left: typeof activeRow, right: typeof inactiveRow) => number;
-    const classNameSorter = classNameColumn.sorter as (left: typeof activeRow, right: typeof inactiveRow) => number;
+    const statusOnFilter = statusColumn.onFilter as (value: string | number | boolean, row: ClassesManagementRow) => boolean;
+    const statusSorter = statusColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
+    const classNameSorter = classNameColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
 
     expect(statusOnFilter('active', activeRow)).toBe(true);
     expect(statusOnFilter('orphaned', activeRow)).toBe(false);
@@ -103,12 +104,12 @@ describe('ClassesTableColumns', () => {
   });
 
   it('supports deterministic nullable text and number sorting for not-created rows', () => {
-    const cohortSorter = cohortColumn.sorter as (left: typeof notCreatedRow, right: typeof activeRow) => number;
-    const cohortRender = cohortColumn.render as (value: unknown, row: typeof activeRow | typeof notCreatedRow, index: number) => unknown;
-    const courseLengthSorter = courseLengthColumn.sorter as (left: typeof notCreatedRow, right: typeof activeRow) => number;
-    const courseLengthRender = courseLengthColumn.render as (value: unknown, row: typeof activeRow | typeof notCreatedRow, index: number) => unknown;
-    const yearGroupSorter = yearGroupColumn.sorter as (left: typeof notCreatedRow, right: typeof activeRow) => number;
-    const yearGroupRender = yearGroupColumn.render as (value: unknown, row: typeof activeRow | typeof notCreatedRow, index: number) => unknown;
+    const cohortSorter = cohortColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
+    const cohortRender = cohortColumn.render as (value: unknown, row: ClassesManagementRow, index: number) => unknown;
+    const courseLengthSorter = courseLengthColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
+    const courseLengthRender = courseLengthColumn.render as (value: unknown, row: ClassesManagementRow, index: number) => unknown;
+    const yearGroupSorter = yearGroupColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
+    const yearGroupRender = yearGroupColumn.render as (value: unknown, row: ClassesManagementRow, index: number) => unknown;
 
     expect(cohortSorter(notCreatedRow, activeRow)).toBeLessThan(0);
     expect(cohortSorter(activeRow, notCreatedRow)).toBeGreaterThan(0);
@@ -130,8 +131,8 @@ describe('ClassesTableColumns', () => {
   });
 
   it('renders active values and orders active booleans deterministically', () => {
-    const activeSorter = activeColumn.sorter as (left: typeof notCreatedRow | typeof activeRow, right: typeof notCreatedRow | typeof inactiveRow) => number;
-    const activeRender = activeColumn.render as (value: unknown, row: typeof notCreatedRow | typeof activeRow | typeof inactiveRow, index: number) => unknown;
+    const activeSorter = activeColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
+    const activeRender = activeColumn.render as (value: unknown, row: ClassesManagementRow, index: number) => unknown;
 
     expect(activeSorter(notCreatedRow, activeRow)).toBeLessThan(0);
     expect(activeSorter(activeRow, notCreatedRow)).toBeGreaterThan(0);
