@@ -131,6 +131,7 @@ describe('ClassesTableColumns', () => {
     expect(activeOnFilter('true', activeRow)).toBe(true);
     expect(activeOnFilter('false', inactiveRow)).toBe(true);
     expect(activeOnFilter('null', notCreatedRow)).toBe(true);
+    expect(activeOnFilter(true, activeRow)).toBe(true);
   });
 
   it('supports deterministic nullable text and number sorting for not-created rows', () => {
@@ -176,11 +177,13 @@ describe('ClassesTableColumns', () => {
     const unsortedRows = [
       { ...activeRow, classId: 'beta-id', className: 'beta' },
       { ...activeRow, classId: 'alpha-id', className: 'Alpha' },
+      { ...activeRow, classId: 'alpha-id-2', className: 'alpha' },
       { ...inactiveRow },
     ];
 
     expect(unsortedRows.toSorted(compareRowsByDefaultPriority).map((row) => row.classId)).toEqual([
       'alpha-id',
+      'alpha-id-2',
       'beta-id',
       'inactive-row',
     ]);
