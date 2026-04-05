@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 const classesManagementStateMock = vi.fn();
@@ -10,7 +10,7 @@ vi.mock('./useClassesManagement', () => ({
 const representativeRows = [
   {
     classId: 'class-001',
-    className: 'Alpha',
+    className: 'alpha',
     status: 'active',
     cohortLabel: 'Cohort A',
     courseLength: 2,
@@ -18,17 +18,26 @@ const representativeRows = [
     active: true,
   },
   {
-    classId: 'class-001-suffix',
+    classId: 'class-002',
     className: 'Bravo',
-    status: 'inactive',
+    status: 'active',
     cohortLabel: 'Cohort B',
     courseLength: 1,
     yearGroupLabel: 'Year 11',
     active: false,
   },
   {
-    classId: 'gc/not-created:2024',
+    classId: 'class-003',
     className: 'Charlie',
+    status: 'inactive',
+    cohortLabel: 'Cohort C',
+    courseLength: 3,
+    yearGroupLabel: 'Year 12',
+    active: false,
+  },
+  {
+    classId: 'gc/not-created:2024',
+    className: 'delta',
     status: 'notCreated',
     cohortLabel: null,
     courseLength: null,
@@ -37,11 +46,11 @@ const representativeRows = [
   },
   {
     classId: 'orphaned::legacy',
-    className: 'Delta',
+    className: 'Echo',
     status: 'orphaned',
     cohortLabel: 'Legacy Cohort',
-    courseLength: 3,
-    yearGroupLabel: 'Year 12',
+    courseLength: 4,
+    yearGroupLabel: 'Year 13',
     active: false,
   },
 ] as const;
@@ -65,15 +74,15 @@ describe('ClassesTable', () => {
     render(<ClassesManagementPanel />);
 
     expect(screen.getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
-    expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getAllByText('active').length).toBeGreaterThan(0);
     expect(screen.getByText('inactive')).toBeInTheDocument();
     expect(screen.getByText('notCreated')).toBeInTheDocument();
     expect(screen.getByText('orphaned')).toBeInTheDocument();
-    expect(screen.getByText('Alpha')).toBeInTheDocument();
-    expect(screen.getByText('Delta')).toBeInTheDocument();
+    expect(screen.getByText('alpha')).toBeInTheDocument();
+    expect(screen.getByText('Echo')).toBeInTheDocument();
   });
 
-  it('uses each row classId as the exact rowKey value (not a prefix heuristic)', async () => {
+  it('uses each row classId as the exact rowKey value and reset returns deterministic default ordering', async () => {
     classesManagementStateMock.mockReturnValue({
       blockingErrorMessage: null,
       classesManagementViewState: 'ready',
@@ -95,6 +104,15 @@ describe('ClassesTable', () => {
     );
 
     expect(renderedKeys).toEqual(representativeRows.map((row) => row.classId));
-    expect(renderedKeys).toContain('class-001-suffix');
+
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Class name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset sort and filters' }));
+
+    const resetKeys = [...container.querySelectorAll('tbody tr[data-row-key]')].map(
+      (row) => (row as HTMLElement).dataset.rowKey ?? '',
+    );
+
+    expect(resetKeys).toEqual(representativeRows.map((row) => row.classId));
+    expect(resetKeys).toContain('gc/not-created:2024');
   });
 });

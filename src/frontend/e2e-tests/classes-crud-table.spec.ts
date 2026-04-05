@@ -68,7 +68,7 @@ test.describe('Classes CRUD table interactions', () => {
       .getAttribute('data-row-key');
     expect(initialRowKey).not.toBeNull();
 
-    await page.getByRole('button', { name: 'Class name' }).click();
+    await page.getByRole('columnheader', { name: 'Class name' }).click();
     await page.getByRole('button', { name: 'Reset sort and filters' }).click();
     await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(rowCountForAllStatuses - 1);
     await expect(page.locator('tbody tr[data-row-key]').first()).toHaveAttribute(
