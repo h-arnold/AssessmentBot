@@ -34,7 +34,6 @@ export function ClassesManagementPanel() {
           <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
           <ClassesToolbar rows={classesManagement.rows} selectedRowKeys={classesManagement.selectedRowKeys} />
           <ClassesTable
-            hideRowsForRefreshRequired={classesManagement.hideRowsForRefreshRequired}
             rows={classesManagement.rows}
             selectedRowKeys={classesManagement.selectedRowKeys}
             onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}

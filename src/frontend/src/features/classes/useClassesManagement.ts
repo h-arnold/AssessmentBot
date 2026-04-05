@@ -20,7 +20,6 @@ export type ClassesManagementState = Readonly<{
   classesManagementViewState: ClassesManagementViewState;
   classesCount: number | null;
   errorMessage: string | null;
-  hideRowsForRefreshRequired: boolean;
   nonBlockingWarningMessage: string | null;
   refreshRequiredMessage: string | null;
   rows: ClassesManagementRow[];
@@ -171,7 +170,6 @@ export function useClassesManagement(): ClassesManagementState {
       classesManagementViewState: 'loading',
       classesCount: null,
       errorMessage: null,
-      hideRowsForRefreshRequired: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -186,7 +184,6 @@ export function useClassesManagement(): ClassesManagementState {
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Unable to load classes right now.',
-      hideRowsForRefreshRequired: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -201,7 +198,6 @@ export function useClassesManagement(): ClassesManagementState {
       classesManagementViewState: 'error',
       classesCount: null,
       errorMessage: 'Unable to load classes right now.',
-      hideRowsForRefreshRequired: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -218,7 +214,6 @@ export function useClassesManagement(): ClassesManagementState {
     classesManagementViewState: 'ready',
     classesCount: rows.length,
     errorMessage: null,
-    hideRowsForRefreshRequired: false,
     nonBlockingWarningMessage: null,
     refreshRequiredMessage: null,
     rows,

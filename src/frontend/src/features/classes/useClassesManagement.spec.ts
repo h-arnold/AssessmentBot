@@ -55,7 +55,6 @@ describe('useClassesManagement', () => {
     expect(result.current.blockingErrorMessage).toBeNull();
     expect(result.current.classesCount).toBe(readyClassesCount);
     expect(result.current.errorMessage).toBeNull();
-    expect(result.current.hideRowsForRefreshRequired).toBe(false);
     expect(result.current.nonBlockingWarningMessage).toBeNull();
     expect(result.current.refreshRequiredMessage).toBeNull();
     expect(result.current.rows).toEqual([
@@ -110,7 +109,6 @@ describe('useClassesManagement', () => {
     expect(result.current.blockingErrorMessage).toBe('Unable to load active Google Classrooms right now.');
     expect(result.current.classesCount).toBeNull();
     expect(result.current.errorMessage).toBe('Unable to load classes right now.');
-    expect(result.current.hideRowsForRefreshRequired).toBe(false);
     expect(result.current.nonBlockingWarningMessage).toBeNull();
     expect(result.current.refreshRequiredMessage).toBeNull();
     expect(result.current.rows).toEqual([]);

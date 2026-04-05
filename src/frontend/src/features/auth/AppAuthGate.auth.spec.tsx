@@ -214,6 +214,54 @@ describe('AppAuthGate', () => {
     );
   });
 
+  it('reuses an in-flight warm-up cycle across remounts and moves to failed when that shared cycle rejects', async () => {
+    const deferredWarmup = createDeferredPromise<void>();
+    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const { QueryWrapper, queryClient } = createQueryWrapper();
+    getAuthorisationStatusMock.mockResolvedValue(true);
+    warmStartupQueriesMock.mockReturnValue(deferredWarmup.promise);
+
+    const { unmount } = render(
+      <AppAuthGate>
+        <StartupWarmupProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
+    });
+
+    unmount();
+
+    render(
+      <AppAuthGate>
+        <StartupWarmupProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    deferredWarmup.rejectPromise(new Error('Warm-up remount failure.'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+        JSON.stringify({
+          warmupState: 'failed',
+          isLoading: false,
+          isReady: false,
+          isFailed: true,
+        })
+      );
+    });
+
+    expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
+    expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves the failure auth UI behaviour without starting startup warm-up', async () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockRejectedValueOnce(

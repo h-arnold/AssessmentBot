@@ -36,7 +36,6 @@ function getDefaultSortedRows(rows: readonly ClassesManagementRow[]): ClassesMan
 
 export interface ClassesTableProperties {
   rows: readonly ClassesManagementRow[];
-  hideRowsForRefreshRequired?: boolean;
   selectedRowKeys: readonly string[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
 }
@@ -57,10 +56,6 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   );
 
   const visibleRows = useMemo(() => {
-    if (properties.hideRowsForRefreshRequired === true) {
-      return [];
-    }
-
     const statusFilteredRows = statusFilter === 'all'
       ? defaultRows
       : defaultRows.filter((row) => row.status === statusFilter);
@@ -77,7 +72,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
 
       return left.classId.localeCompare(right.classId);
     });
-  }, [classNameSortOrder, defaultRows, properties.hideRowsForRefreshRequired, statusFilter]);
+  }, [classNameSortOrder, defaultRows, statusFilter]);
 
   const columns = useMemo(() => getClassesTableColumns(), []);
 
