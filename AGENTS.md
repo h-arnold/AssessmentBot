@@ -39,6 +39,7 @@ If rules conflict, prefer the stricter rule and preserve runtime compatibility.
   - `Testing Specialist` (`.github/agents/Testing.agent.md`) for test implementation and test debugging.
   - `Code Reviewer` (`.github/agents/code-reviewer.agent.md`) for code review and standards checks.
   - `Implementation` (`.github/agents/implementation.agent.md`) for focused implementation tasks.
+  - `De-Sloppification` (`.github/agents/de-sloppification.agent.md`) for slop review and simplification.
 
 Sub-agents are stateless. Provide explicit context in prompts:
 

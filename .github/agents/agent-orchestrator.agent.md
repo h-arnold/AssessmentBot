@@ -174,9 +174,27 @@ At the end of each completed section:
 Do not start the next section until the current section's code, plan updates, commit artefacts, and push are complete.
 Do not treat commit and push as implied. They are incomplete until explicitly recorded.
 
-## 6. Final Documentation Pass
+## 6. Mandatory De-Sloppification Pass
 
-After all sections are complete:
+After all sections are complete and before any final documentation work, run a compulsory clean-up phase with `De-Sloppification`.
+
+Required actions:
+1. Gather the final changed files, the latest `ACTION_PLAN.md` state, and either the relevant action plan section or a detailed description of the changes made.
+2. Delegate the clean-up pass to `De-Sloppification`.
+3. Pass the agent the final diff context, the active section summaries, known constraints, and any review findings or residual risks so it can make good choices about what is genuinely slop versus intentional structure.
+4. If the de-sloppifier identifies concrete cleanup work, delegate the minimal fix set to `Implementation`, keep the changes local, and re-run `Code Reviewer` until the cleanup is clean.
+5. Update `ACTION_PLAN.md` with the clean-up outcome before proceeding.
+
+Required evidence to record before moving on:
+- de-sloppification findings or confirmation that no slop remains
+- any cleanup commit SHA(s) if cleanup changed files
+- confirmation that the branch state is ready for documentation sync
+
+Do not start the final documentation pass until this phase is complete.
+
+## 7. Final Documentation Pass
+
+After all sections are complete and the mandatory De-Sloppification pass is complete:
 
 1. Gather the changed files and diff against the working branch base.
 2. Delegate documentation sync to `Docs`.
@@ -191,7 +209,7 @@ Prioritise:
 - public API documentation
 - testing documentation if test behaviour changed
 
-## 7. Guardrails
+## 8. Guardrails
 
 - No speculative scope expansion.
 - One section at a time.
@@ -202,7 +220,7 @@ Prioritise:
 - Do not mark work complete before a clean review pass.
 - Do not mark a section complete before commit SHA(s) and successful push confirmation are recorded.
 
-## 8. Final Output
+## 9. Final Output
 
 When the full plan is complete, provide:
 - sections completed
