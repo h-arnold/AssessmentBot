@@ -190,6 +190,14 @@ When a frontend test needs to mock `google.script.run.apiHandler`, you must use 
 
 Do not introduce new ad-hoc `google.script.run` mocks that mutate one shared runner object or store handlers on shared mutable state. Each mocked call must model GAS-style per-call callback isolation so overlapping requests cannot overwrite one another's success or failure handlers.
 
+### Classes CRUD harness continuity rule
+
+For Settings-page Classes CRUD browser tests, extend the existing scenario harness in `src/frontend/e2e-tests/classes-crud.harness.spec.ts` and its shared queue/helpers.
+
+- Do not create a parallel Classes CRUD harness with duplicate backend queueing logic.
+- Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
+- New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
+
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`

@@ -3,8 +3,21 @@ import { getAuthorisationStatus } from '../services/authService';
 import { getBackendConfig } from '../services/backendConfigurationService';
 import type { ClassPartial } from '../services/classPartialsService';
 import { getABClassPartials } from '../services/classPartialsService';
+import { getGoogleClassrooms } from '../services/googleClassroomsService';
 import { getCohorts, getYearGroups } from '../services/referenceDataService';
+import type {
+  CohortListResponse,
+  YearGroupListResponse,
+} from '../services/referenceData.zod';
 import { queryKeys } from './queryKeys';
+
+const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQueriesResult>>();
+
+export type StartupWarmupQueriesResult = Readonly<{
+  classPartials: ClassPartial[];
+  cohorts: CohortListResponse;
+  yearGroups: YearGroupListResponse;
+}>;
 
 /**
  * Returns the shared auth query definition for the current session.
@@ -55,6 +68,18 @@ export function getCohortsQueryOptions() {
 }
 
 /**
+ * Returns the shared Google Classrooms query definition.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared Google Classrooms query options.
+ */
+export function getGoogleClassroomsQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.googleClassrooms(),
+    queryFn: getGoogleClassrooms,
+  });
+}
+
+/**
  * Returns the shared year-groups query definition.
  *
  * @returns {ReturnType<typeof queryOptions>} Shared year-groups query options.
@@ -74,4 +99,42 @@ export function getYearGroupsQueryOptions() {
  */
 export function warmClassPartials(queryClient: QueryClient): Promise<ClassPartial[]> {
   return queryClient.fetchQuery(getClassPartialsQueryOptions());
+}
+
+/**
+ * Warms the shared startup datasets in parallel through the provided query client.
+ *
+ * Repeated calls reuse the same in-flight warm-up promise for a given query client.
+ * Once the cycle settles, future callers can start a new cycle, but failed cycles are not
+ * retried automatically by the shared app-level orchestration.
+ *
+ * @param {QueryClient} queryClient Query client to warm.
+ * @returns {Promise<StartupWarmupQueriesResult>} Promise resolving when startup datasets are warm.
+ */
+export function warmStartupQueries(
+  queryClient: QueryClient
+): Promise<StartupWarmupQueriesResult> {
+  const existingWarmupPromise = startupWarmupPromises.get(queryClient);
+
+  if (existingWarmupPromise) {
+    return existingWarmupPromise;
+  }
+
+  const warmupPromise = Promise.all([
+    queryClient.fetchQuery(getClassPartialsQueryOptions()),
+    queryClient.fetchQuery(getCohortsQueryOptions()),
+    queryClient.fetchQuery(getYearGroupsQueryOptions()),
+  ])
+    .then(([classPartials, cohorts, yearGroups]) => ({
+      classPartials,
+      cohorts,
+      yearGroups,
+    }))
+    .finally(() => {
+      startupWarmupPromises.delete(queryClient);
+    });
+
+  startupWarmupPromises.set(queryClient, warmupPromise);
+
+  return warmupPromise;
 }

@@ -7,11 +7,11 @@ import { ApiTransportError } from '../../errors/apiTransportError';
 import { createAppQueryClient } from '../../query/queryClient';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
-import { useAuthorisationStatus } from './useAuthorisationStatus';
+import { useStartupWarmupState } from './startupWarmupState';
 
-const { getAuthorisationStatusMock, warmClassPartialsMock } = vi.hoisted(() => ({
+const { getAuthorisationStatusMock, warmStartupQueriesMock } = vi.hoisted(() => ({
   getAuthorisationStatusMock: vi.fn(),
-  warmClassPartialsMock: vi.fn(),
+  warmStartupQueriesMock: vi.fn(),
 }));
 
 vi.mock('../../services/authService', () => ({
@@ -23,44 +23,53 @@ vi.mock('../../query/sharedQueries', async () => {
 
   return {
     ...actual,
-    warmClassPartials: warmClassPartialsMock,
+    warmStartupQueries: warmStartupQueriesMock,
   };
 });
 
 /**
- * Exposes the shared auth-hook result for gate-adjacent assertions.
+ * Creates a deferred promise for async test control.
  *
- * @returns {JSX.Element} The rendered auth hook probe.
+ * @template T
+ * @returns {{ promise: Promise<T>; resolvePromise: (value: T) => void; rejectPromise: (error: unknown) => void }} Deferred promise helpers.
  */
-function AuthHookProbe() {
-  const { authViewState, authError, isAuthResolved, isAuthorised } = useAuthorisationStatus();
+function createDeferredPromise<T>() {
+  let resolvePromise!: (value: T) => void;
+  let rejectPromise!: (error: unknown) => void;
+  const promise = new Promise<T>((resolve, reject) => {
+    resolvePromise = resolve;
+    rejectPromise = reject;
+  });
 
-  return (
-    <output data-testid="auth-hook-probe">
-      {JSON.stringify({
-        authViewState,
-        authError,
-        isAuthResolved,
-        isAuthorised,
-      })}
-    </output>
-  );
+  return {
+    promise,
+    resolvePromise,
+    rejectPromise,
+  };
 }
 
 /**
- * Creates a fresh React Query wrapper for each test.
+ * Probes the startup warm-up hook state for assertions.
  *
- * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; QueryWrapper: (properties: Readonly<PropsWithChildren>) => JSX.Element; }} The query client and wrapper component for the test.
+ * @returns {JSX.Element} Serialised hook state.
+ */
+function StartupWarmupProbe() {
+  return <output data-testid="startup-warmup-probe">{JSON.stringify(useStartupWarmupState())}</output>;
+}
+
+/**
+ * Creates a query-client wrapper for React Query tests.
+ *
+ * @returns {{ queryClient: ReturnType<typeof createAppQueryClient>; QueryWrapper(properties: Readonly<PropsWithChildren>): JSX.Element }} Query wrapper helpers.
  */
 function createQueryWrapper() {
   const queryClient = createAppQueryClient();
 
   /**
-   * Provides the per-test query client to rendered children.
- *
- * @param {{ children: PropsWithChildren['children'] }} root0 - The wrapper properties.
- * @param {PropsWithChildren['children']} root0.children - The wrapped children.
- * @returns {JSX.Element} The query wrapper.
+   * Wraps children in the shared test query client.
+   *
+   * @param {Readonly<PropsWithChildren>} properties Wrapper properties.
+   * @returns {JSX.Element} Wrapped children.
    */
   function QueryWrapper({ children }: Readonly<PropsWithChildren>) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
@@ -74,18 +83,21 @@ function createQueryWrapper() {
 
 describe('AppAuthGate', () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
-  it('shares the resolved auth result with the auth UI without a second auth request', async () => {
+  it('keeps the auth UI render non-blocking while warm-up state moves from loading to ready', async () => {
+    const deferredWarmup = createDeferredPromise<void>();
     const { QueryWrapper, queryClient } = createQueryWrapper();
     getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmClassPartialsMock.mockResolvedValueOnce([]);
+    warmStartupQueriesMock.mockReturnValueOnce(deferredWarmup.promise);
 
     render(
       <AppAuthGate>
         <AuthStatusCard />
-        <AuthHookProbe />
+        <StartupWarmupProbe />
       </AppAuthGate>,
       {
         wrapper: QueryWrapper,
@@ -93,27 +105,46 @@ describe('AppAuthGate', () => {
     );
 
     expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+      JSON.stringify({
+        warmupState: 'loading',
+        isLoading: true,
+        isReady: false,
+        isFailed: false,
+      })
+    );
+
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
+    expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+      JSON.stringify({
+        warmupState: 'loading',
+        isLoading: true,
+        isReady: false,
+        isFailed: false,
+      })
+    );
 
     await waitFor(() => {
-      expect(screen.getByTestId('auth-hook-probe')).toHaveTextContent(
-        JSON.stringify({
-          authViewState: 'authorised',
-          authError: null,
-          isAuthResolved: true,
-          isAuthorised: true,
-        })
-      );
+      expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
     });
 
+    deferredWarmup.resolvePromise();
+
     await waitFor(() => {
-      expect(warmClassPartialsMock).toHaveBeenCalledWith(queryClient);
+      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+        JSON.stringify({
+          warmupState: 'ready',
+          isLoading: false,
+          isReady: true,
+          isFailed: false,
+        })
+      );
     });
 
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves the unauthorised auth UI behaviour without starting warm-up', async () => {
+  it('preserves the unauthorised auth UI behaviour without starting startup warm-up', async () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockResolvedValueOnce(false);
 
@@ -128,11 +159,110 @@ describe('AppAuthGate', () => {
 
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
     expect(screen.queryByText('Checking authorisation status...')).not.toBeInTheDocument();
-    expect(warmClassPartialsMock).not.toHaveBeenCalled();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves the failure auth UI behaviour without starting warm-up', async () => {
+  it('publishes failed startup warm-up state and logs one debug event for the failed cycle without breaking auth UI', async () => {
+    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const { QueryWrapper, queryClient } = createQueryWrapper();
+    const warmupError = new ApiTransportError({
+      requestId: 'req-warmup-1',
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Warm-up failed.',
+      },
+    });
+    getAuthorisationStatusMock.mockResolvedValueOnce(true);
+    warmStartupQueriesMock.mockRejectedValueOnce(warmupError);
+
+    render(
+      <AppAuthGate>
+        <AuthStatusCard />
+        <StartupWarmupProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    expect(await screen.findByText('Authorised')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+        JSON.stringify({
+          warmupState: 'failed',
+          isLoading: false,
+          isReady: false,
+          isFailed: true,
+        })
+      );
+    });
+    expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+    expect(consoleDebugSpy).toHaveBeenCalledWith(
+      'features/auth/AppAuthGate.startupWarmup',
+      expect.objectContaining({
+        requestId: 'req-warmup-1',
+        errorCode: 'INTERNAL_ERROR',
+        metadata: expect.objectContaining({
+          datasets: ['classPartials', 'cohorts', 'yearGroups'],
+        }),
+      })
+    );
+  });
+
+  it('reuses an in-flight warm-up cycle across remounts and moves to failed when that shared cycle rejects', async () => {
+    const deferredWarmup = createDeferredPromise<void>();
+    const consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const { QueryWrapper, queryClient } = createQueryWrapper();
+    getAuthorisationStatusMock.mockResolvedValue(true);
+    warmStartupQueriesMock.mockReturnValue(deferredWarmup.promise);
+
+    const { unmount } = render(
+      <AppAuthGate>
+        <StartupWarmupProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    await waitFor(() => {
+      expect(warmStartupQueriesMock).toHaveBeenCalledWith(queryClient);
+    });
+
+    unmount();
+
+    render(
+      <AppAuthGate>
+        <StartupWarmupProbe />
+      </AppAuthGate>,
+      {
+        wrapper: QueryWrapper,
+      }
+    );
+
+    deferredWarmup.rejectPromise(new Error('Warm-up remount failure.'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
+        JSON.stringify({
+          warmupState: 'failed',
+          isLoading: false,
+          isReady: false,
+          isFailed: true,
+        })
+      );
+    });
+
+    expect(warmStartupQueriesMock).toHaveBeenCalledTimes(1);
+    expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the failure auth UI behaviour without starting startup warm-up', async () => {
     const { QueryWrapper } = createQueryWrapper();
     getAuthorisationStatusMock.mockRejectedValueOnce(
       new ApiTransportError({
@@ -158,7 +288,7 @@ describe('AppAuthGate', () => {
     expect(
       await screen.findByText('The service is busy. Please try again shortly.')
     ).toBeInTheDocument();
-    expect(warmClassPartialsMock).not.toHaveBeenCalled();
+    expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });
 });

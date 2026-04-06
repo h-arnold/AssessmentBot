@@ -8,7 +8,10 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const callApiMock = vi.fn();
+// vi.hoisted is required here because bulkCreateFlow is imported statically above,
+// causing the vi.mock factory to run during module initialisation — before a plain
+// `const callApiMock = vi.fn()` would be initialised.
+const callApiMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/apiService', () => ({
   callApi: callApiMock,
@@ -88,21 +91,21 @@ describe('bulkCreate', () => {
 
     await bulkCreate(rows, {
       cohortKey: '2025',
-      yearGroupKey: 10,
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
 
     expect(callApiMock).toHaveBeenCalledTimes(TWO_ROWS);
     expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
       classId: 'gcr-001',
-      cohort: '2025',
-      yearGroup: 10,
+      cohortKey: '2025',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
     expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
       classId: 'gcr-002',
-      cohort: '2025',
-      yearGroup: 10,
+      cohortKey: '2025',
+      yearGroupKey: 'yg-10',
       courseLength: 2,
     });
   });
@@ -114,12 +117,12 @@ describe('bulkCreate', () => {
       makeRow({ rowKey: 'r5', classId: 'gcr-005' }),
     ];
 
-    await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 9 });
+    await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-9' });
 
     expect(callApiMock).toHaveBeenCalledWith('upsertABClass', {
       classId: 'gcr-005',
-      cohort: '2025',
-      yearGroup: 9,
+      cohortKey: '2025',
+      yearGroupKey: 'yg-9',
       courseLength: 1,
     });
   });
@@ -136,7 +139,7 @@ describe('bulkCreate', () => {
       makeRow({ rowKey: 'r3', classId: 'gcr-003' }),
     ];
 
-    const batchPromise = bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 10 });
+    const batchPromise = bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
     // Resolve out of order: third, first, second
     resolvers[2]({ classId: 'gcr-003' });
@@ -157,14 +160,14 @@ describe('bulkCreate', () => {
 
     const rows: ClassTableRow[] = [makeRow({ rowKey: 'r1', classId: 'gcr-001' })];
 
-    const results = await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 10 });
+    const results = await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ status: 'rejected', row: rows[0] });
   });
 
   it('returns an empty result array and makes no API calls when given an empty row list', async () => {
-    const results = await bulkCreate([], { cohortKey: '2025', yearGroupKey: 10 });
+    const results = await bulkCreate([], { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
     expect(results).toEqual([]);
     expect(callApiMock).not.toHaveBeenCalled();

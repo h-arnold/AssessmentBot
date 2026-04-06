@@ -125,13 +125,21 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
 }
 
 /**
- * Installs a `google.script.run.apiHandler` mock that leaves auth status pending.
+ * Installs a `google.script.run.apiHandler` mock that leaves auth status and
+ * class-partials queries both pending.
+ *
+ * Mocking class-partials as pending suppresses noisy transport errors that
+ * would otherwise fire when tests navigate to the Classes page while auth is
+ * still unresolved (ClassesPanel calls useQuery for class partials regardless
+ * of auth state).  The class-partials call count remains 0 in tests that do
+ * not navigate to the Classes page.
  *
  * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
 function installPendingApiHandlerMock() {
   return installApiHandlerMock({
     [authStatusMethodName]: 'pending',
+    [classPartialsMethodName]: 'pending',
   });
 }
 
@@ -705,7 +713,7 @@ describe('App', () => {
       expect(consoleDebugSpy).toHaveBeenCalledTimes(1);
     });
     expect(consoleDebugSpy.mock.calls[0]?.[0]).toBe(
-      'features/auth/AppAuthGate.classPartialsWarmup'
+      'features/auth/AppAuthGate.startupWarmup'
     );
   });
 });

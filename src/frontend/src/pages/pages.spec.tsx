@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { pageExpectations } from '../test/pageExpectations';
+import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
 type AppNavigationKey = (typeof pageExpectations)[number]['key'];
 
@@ -29,11 +30,10 @@ describe('page components', () => {
     async ({ heading, key, summary }) => {
       const PageComponent = await pageComponentLoaders[key]();
 
-      render(<PageComponent />);
+      renderWithFrontendProviders(<PageComponent />);
 
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();
     }
   );
 });
-

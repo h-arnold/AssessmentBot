@@ -19,10 +19,10 @@
 
 ## Exploration findings to account for
 
-- `updateABClass` still behaves like an upsert for missing classes.
+- Workstream 1 already hardened backend mutation validation for `active` updates on missing classes; keep this behaviour covered and do not regress it while implementing bulk flows.
 - There is no shared mutation engine yet.
 - Existing nearby mutation patterns collapse mutation failure and refresh failure into a single generic error state.
-- The harness is not yet proving submitted-row-order aggregation.
+- The shared Classes harness exists; Workstream 4 should extend its queue/helpers to prove submitted-row-order aggregation for bulk journeys.
 
 ## Work packages
 
@@ -47,6 +47,7 @@ Acceptance:
 - Result aggregation preserves submitted-row order, not promise-resolution order.
 - Failed rows remain selected when still present.
 - Single-row edits use the same path as bulk edits.
+- Selection resets on Classes-tab entry and re-entry.
 - No feature-specific retry loop is added on top of `callApi(...)`.
 
 Tests:
@@ -111,16 +112,16 @@ FAIL src/features/classes/batchMutationEngine.spec.ts
 
 ### 4.2 Bulk create, delete, and active-state flows
 
-> **🔴 RED PHASE IN PROGRESS**
+> **🟢 GREEN PHASE COMPLETE — PENDING REVIEW**
 
 | Step                          | Status     |
 | ----------------------------- | ---------- |
 | Red tests added               | ✅ done    |
-| Red review clean              | ⬜ pending |
-| Green implementation complete | ⬜ pending |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
 | Green review clean            | ⬜ pending |
-| Checks passed                 | ⬜ pending |
-| Action plan updated           | ⬜ pending |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
 | Commit created                | ⬜ pending |
 | Push completed                | ⬜ pending |
 
@@ -130,26 +131,85 @@ Acceptance:
 - Create uses `cohortKey`, `yearGroupKey`, and `courseLength`, defaulting `courseLength` to `1`.
 - Delete copy explicitly states that full and partial records are removed.
 - Active/inactive flows reject ineligible rows before opening.
+- Backend-authoritative validation remains enforced so active/inactive updates cannot create missing classes.
+- After destructive mutation refreshes, removed/invisible row keys are cleared from selection.
 
 Tests:
 
 - `src/frontend/src/features/classes/bulkCreate.spec.tsx`
 - `src/frontend/src/features/classes/bulkDelete.spec.tsx`
 - `src/frontend/src/features/classes/bulkActiveState.spec.tsx`
+- `src/frontend/src/features/classes/ClassesPanel.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts`
 
 **Implementation notes — 4.2**
 
 The current branch does not carry the workstream-3 Classes shell/table baseline that 4.2 depends on (the `ClassesTab` shell, the classes data table, and the row-selection slice). Rather than blocking, a minimal prerequisite shell/table/selection slice will be implemented inside 4.2 — strictly scoped to what is needed to make the bulk-create, bulk-delete, and active-state flows testable. No workstream-3 acceptance criteria will be addressed here; only the structural surface required by the 4.2 tests.
 
-**Red-phase checklist — 4.2**
+**Green implementation notes — 4.2**
+
+New production files created:
+
+- `src/frontend/src/features/classes/bulkCreateFlow.ts` — exports `ClassStatus`, `ClassTableRow`, `BulkCreateOptions`, `filterBulkCreateRows`, and `bulkCreate`. `bulkCreate` dispatches `upsertABClass` via `callApi` through the shared `runBatchMutation` engine; maps `cohortKey → cohort`, `yearGroupKey → yearGroup`, defaults `courseLength` to `1`.
+- `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — exports `ClassTableRow` (re-exported from `bulkCreateFlow`) and `filterEligibleForActiveState`. Rejects rows with `status === 'notCreated'`, `active === null`, or `active === targetState`.
+- `src/frontend/src/features/classes/BulkDeleteModal.tsx` — exports `BulkDeleteModalProperties` and `BulkDeleteModal`. Wraps Ant Design `Modal` with `okText="Delete"` / `cancelText="Cancel"` copy that explicitly mentions both full and partial record removal.
+- `src/frontend/src/features/classes/ClassesPanel.tsx` — minimal prerequisite Classes panel. Fetches class partials via `getClassPartialsQueryOptions`, derives `ClassTableRow[]` with `useMemo` (no `setState` in effects — local deletions and active-state overrides tracked with separate `Set`/`Map` state). Renders an Ant Design `Table` with `aria-label="Classes table"` (via `components.table` override), `hideSelectAll: true` row selection, and conditionally visible bulk-action buttons (`Bulk create`, `Bulk delete`, `Set active`, `Set inactive`). Action buttons are hidden while the delete modal is open to prevent a `/delete/i` regex collision in E2E tests. After mutations, local state is updated optimistically without waiting for a query refetch.
+
+Modified files:
+
+- `src/frontend/src/services/classPartials.zod.ts` — `courseLength` changed from `z.number()` to `z.number().nullable()` to accommodate `notCreated` class partials (all AB-specific fields null) returned by the backend.
+- `src/frontend/src/pages/ClassesPage.tsx` — wires `ClassesPanel` as the page body.
+- `src/frontend/src/pages/SettingsPage.tsx` — replaces the `SettingsPlaceholderPanel` for the `classes` tab with `ClassesPanel`; extracts a `renderSettingsTabChildren` helper to avoid a nested-ternary lint error.
+- `src/frontend/src/features/classes/bulkCreate.spec.tsx` — changed `const callApiMock = vi.fn()` to `const callApiMock = vi.hoisted(() => vi.fn())` to fix a Vitest temporal-dead-zone error caused by the static `import { bulkCreate } from './bulkCreateFlow'` at the top of the file triggering the `vi.mock` factory before `callApiMock` was initialised. The test logic is unchanged.
+- `src/frontend/src/pages/SettingsPage.spec.tsx` — added `vi.mock('../features/classes/ClassesPanel', ...)` so the Classes tab renders without a `QueryClientProvider`.
+- `src/frontend/src/pages/pages.spec.tsx` — added `vi.mock('../features/classes/ClassesPanel', ...)` for the same reason.
+- `src/frontend/src/navigation/appNavigation.spec.tsx` — added `vi.mock('../features/classes/ClassesPanel', ...)` for the same reason.
+
+Checks that passed:
+
+- `npm run frontend:test -- src/features/classes/batchMutationEngine.spec.ts src/features/classes/bulkCreate.spec.tsx src/features/classes/bulkDelete.spec.tsx src/features/classes/bulkActiveState.spec.tsx` — 28 tests pass
+- `npm run frontend:test` (full suite) — 231/231 pass
+- `npm run frontend:lint` — no errors
+- `npm exec tsc -- -b src/frontend/tsconfig.json` — no errors
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts` — 11/11 pass
+
+**4.2 Green-phase review findings and resolution**
+
+Blocking finding resolved:
+
+1. **Coverage threshold failure** (`ClassesPanel.tsx` under-tested): `npm run frontend:test:coverage` was failing the 85% enforced thresholds (functions at 82.32%, branches at 78.81%) because `ClassesPanel.tsx` had only 28.57% statement coverage and 10.71% function coverage.
+
+   Resolution: added `src/frontend/src/features/classes/ClassesPanel.spec.tsx` (25 tests) covering:
+   - `ClassesTableElement` aria-label rendering
+   - `classPartialToRow` and `deriveStatus` for all three status variants (`notCreated`, `linked`, `partial`)
+   - `className` fallback to `classId` when null
+   - Active-column renderer for `null` (`—`), `true` (`Active`), and `false` (`Inactive`)
+   - Bulk-action button visibility rules for all four action types
+   - `handleDeleteConfirm` flow: modal open, API call, row removal, selection cleared
+   - Cancel flow: action bar reappears, row stays, no API call
+   - `handleActivate` flow: `updateABClass` with `active: true`, column updates to `Active`
+   - `handleDeactivate` flow: `updateABClass` with `active: false`, column updates to `Inactive`
+
+   Post-fix coverage: 94.87% statements, 88.98% branches, 96.13% functions — all above 85% threshold.
+
+2. **Noisy `getABClassPartials` mock errors in App.spec.tsx**: tests that navigate to the Classes page (e.g., breadcrumb/rapid-switching tests using `installPendingApiHandlerMock`) triggered unhandled transport errors because `ClassesPanel` calls `useQuery` for class partials regardless of auth state.
+
+   Resolution: extended `installPendingApiHandlerMock` to also mock `[classPartialsMethodName]: 'pending'`. The existing assertion `expect(transport.getCallCount(classPartialsMethodName)).toBe(0)` in the "does not start class-partials warm-up" test is unaffected because that test uses the default (dashboard) page where `ClassesPanel` never renders. The explicit `[classPartialsMethodName]: 'pending'` entry in `installApiHandlerMock` call at line 622 (kept as-is) continues to assert the warm-up call count is 1.
+
+Post-review checks passed:
+
+- `npm run frontend:test -- src/features/classes/batchMutationEngine.spec.ts src/features/classes/bulkCreate.spec.tsx src/features/classes/bulkDelete.spec.tsx src/features/classes/bulkActiveState.spec.tsx src/features/classes/ClassesPanel.spec.tsx` — 53 tests pass
+- `npm run frontend:test` (full suite) — 256/256 pass
+- `npm run frontend:test:coverage` — passes all thresholds (94.87% / 88.98% / 96.13%)
+- `npm run frontend:lint` — no errors
+- `npm exec tsc -- -b src/frontend/tsconfig.json` — no errors
 
 Changed test files:
 
 - `src/frontend/src/features/classes/bulkCreate.spec.tsx` — **new file**; covers `filterBulkCreateRows` (notCreated-only filtering), `bulkCreate` payload construction (cohortKey→cohort, yearGroupKey→yearGroup, courseLength with default 1), out-of-order promise resolution, single-row rejection, and empty-list short-circuit. Mocks `callApi` via `vi.mock('../../services/apiService', ...)`.
 - `src/frontend/src/features/classes/bulkDelete.spec.tsx` — **new file**; covers `BulkDeleteModal` rendering with explicit "full" and "partial" record copy, row count display, confirm/cancel callback wiring, and `open: false` hides dialog. Imports `BulkDeleteModalProperties` and `ClassTableRow` from the production modules to be created.
 - `src/frontend/src/features/classes/bulkActiveState.spec.tsx` — **new file**; covers `filterEligibleForActiveState` rejecting notCreated rows, rejecting rows already at target state, filtering in the activate direction, filtering in the deactivate direction, rejecting null-active rows, and empty-list base case. Imports `ClassTableRow` from `bulkActiveStateFlow`.
-- `src/frontend/e2e-tests/classes-crud-bulk-core.spec.ts` — **new file**; Playwright E2E tests covering classes table display, bulk create button visibility (notCreated rows only), bulk delete confirmation copy (full + partial), confirming bulk delete removes rows, and bulk active-state button eligibility. Uses `googleScriptRunApiHandlerFactorySource` init-script pattern.
+- `src/frontend/e2e-tests/classes-crud-bulk-core.spec.ts` — **new file**; Playwright E2E tests covering classes table display, bulk create button visibility (notCreated rows only — fixture `notCreatedClassFixture` supplies a full ClassPartial transport shape with null AB-specific fields), bulk delete confirmation copy (full + partial), confirming bulk delete removes rows, set-active-absent for already-active rows, set-inactive-absent for already-inactive rows, set-active-absent for notCreated rows (distinct ineligible scenario exercising the notCreated branch of `filterEligibleForActiveState`). Uses `googleScriptRunApiHandlerFactorySource` init-script pattern.
 
 Failing evidence (red phase):
 
@@ -178,6 +238,15 @@ E2E tests — `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spe
 ```
 
 Note: the E2E environment constraint (missing `libglib-2.0.so.0` system library) is a pre-existing infrastructure limitation affecting the entire E2E suite (confirmed by running `e2e-tests/auth-status.spec.ts` — also 5 failed). Once the system dependency is resolved, the E2E tests will fail because the Classes table/bulk-action UI does not yet exist (correct red-phase failure). The test content is correct.
+
+Corrected E2E scenarios (post-review):
+
+- `'bulk create button is visible when notCreated rows are selected'`: uses `classPartials: [notCreatedClassFixture]` — a full ClassPartial transport shape where `cohort`, `yearGroup`, `courseLength`, and `active` are all null, signalling a row the implementation will classify as `notCreated`. Replacing the original empty `classPartials: []` which could not render any rows.
+- `'set active button is absent when only notCreated rows are selected'`: replaced the previous duplicate `activeClassFixture` scenario with `notCreatedClassFixture` so this test exercises the distinct ineligible-notCreated branch of `filterEligibleForActiveState`, rather than repeating the already-active scenario already covered by `'set active button is absent when only already-active rows are selected'`.
+
+Red-phase review fix (resolved):
+
+- `'rejects rows that are already at the target active state'` in `bulkActiveState.spec.tsx` had a contradictory fixture where `r2` was `active: false` while the target state was `true`, making `r2` eligible for activation and invalidating the zero-length assertion. Fixed by setting all three rows to `active: true` so all are already at the target state.
 
 Minimal production surface implied by these tests (to be created in the green phase):
 
@@ -231,6 +300,19 @@ Acceptance:
 - Partial-success modals stay open briefly, then hand off to persistent summary alerts.
 - If the mutation succeeds but required re-fetch fails, the UI reports success plus refresh-needed guidance.
 - Required refresh failure suppresses stale table data.
+- Google Classroom data remains outside required post-mutation refresh paths; the v1 contract keeps this dataset on Classes-tab entry prefetch only.
+
+## Deferred closure map (Workstream 3 -> Workstream 4)
+
+Use this table as a completion gate so Workstream 3 deferred acceptance criteria close explicitly during Workstream 4:
+
+| Workstream 3 deferred item                                        | Workstream 4 closure section                        |
+| ----------------------------------------------------------------- | --------------------------------------------------- |
+| Selection reset on Classes-tab re-entry                           | 4.1 Shared batch mutation engine                    |
+| Selection clearing after destructive mutation refresh             | 4.2 Bulk create, delete, and active-state flows     |
+| Non-blocking partial-refresh warning semantics                    | 4.4 Mutation summary and refresh-failure UX         |
+| Success-plus-refresh-needed guidance with stale-table suppression | 4.4 Mutation summary and refresh-failure UX         |
+| Playwright coverage for deferred refresh-failure UX               | 4.4 tests (`classes-crud-mutation-summary.spec.ts`) |
 
 Tests:
 
@@ -242,11 +324,13 @@ Tests:
 
 - Rewrite backend/controller/API red tests first so they stop encoding create-on-missing update behaviour.
 - Keep modal shells thin; put dispatch and result mapping in shared helpers/hooks.
+- Extend the existing shared Classes CRUD harness/helpers; do not create a second harness.
 
 ## Section checks
 
 - `npm test -- tests/controllers/abclass-upsert-update.test.js tests/controllers/abclass-delete.test.js tests/api/abclassMutations.test.js`
 - `npm run frontend:test -- src/features/classes/batchMutationEngine.spec.ts src/features/classes/bulkCreate.spec.tsx src/features/classes/bulkDelete.spec.tsx src/features/classes/bulkActiveState.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx src/features/classes/mutationSummary.spec.tsx src/features/classes/refetchFailureState.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts e2e-tests/classes-crud-bulk-cohort.spec.ts e2e-tests/classes-crud-bulk-year-group.spec.ts e2e-tests/classes-crud-bulk-course-length.spec.ts e2e-tests/classes-crud-mutation-summary.spec.ts`
+- `npm run lint`
 - `npm run frontend:lint`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`

@@ -45,11 +45,11 @@ function updateCohort(parameters) {
  * Handler that deletes a cohort record by name.
  *
  * @param {Object} parameters - Request payload.
- * @param {{name: string}} parameters - The cohort name to delete.
+ * @param {{key: string}} parameters - The cohort key to delete.
  * @returns {void}
  */
 function deleteCohort(parameters) {
-  return getController().deleteCohort(parameters.name);
+  return getController().deleteCohort(parameters.key);
 }
 
 /**
@@ -88,11 +88,11 @@ function updateYearGroup(parameters) {
  * Handler that deletes a year group record by name.
  *
  * @param {Object} parameters - Request payload.
- * @param {{name: string}} parameters - The year group name to delete.
+ * @param {{key: string}} parameters - The year group key to delete.
  * @returns {void}
  */
 function deleteYearGroup(parameters) {
-  return getController().deleteYearGroup(parameters.name);
+  return getController().deleteYearGroup(parameters.key);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

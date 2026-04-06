@@ -27,7 +27,7 @@ function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
     status: 'linked',
     classId: 'class-001',
     cohortKey: '2025',
-    yearGroupKey: 10,
+    yearGroupKey: 'yg-10',
     courseLength: 1,
     active: false,
     className: 'Year 10 Maths',
@@ -51,7 +51,7 @@ describe('filterEligibleForActiveState', () => {
   it('rejects rows that are already at the target active state', () => {
     const rows: ClassTableRow[] = [
       makeRow({ rowKey: 'r1', status: 'linked', active: true }),
-      makeRow({ rowKey: 'r2', status: 'linked', active: false }),
+      makeRow({ rowKey: 'r2', status: 'linked', active: true }),
       makeRow({ rowKey: 'r3', status: 'linked', active: true }),
     ];
 

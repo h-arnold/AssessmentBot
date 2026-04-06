@@ -72,19 +72,18 @@ afterEach(() => {
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe('ABClassController – getAllClassPartials() read path (Section 4)', () => {
-  // -------------------------------------------------------------------------
-  // Test 1: returns all documents from abclass_partials
-  // -------------------------------------------------------------------------
-  it('getAllClassPartials() returns all documents from abclass_partials', () => {
+describe('ABClassController – getAllClassPartials() read path', () => {
+  it('getAllClassPartials() returns all documents from abclass_partials with key-based metadata shape', () => {
     const docs = [
       {
         _id: 'doc-1',
         classId: 'class-001',
         className: 'Alpha',
-        cohort: '2025',
+        cohortKey: 'coh-uuid-001',
+        cohortLabel: '2025-2026',
+        yearGroupKey: 'yg-uuid-010',
+        yearGroupLabel: 'Year 10',
         courseLength: 2,
-        yearGroup: 10,
         classOwner: { userId: 'owner-1' },
         teachers: [{ userId: 'teacher-1' }],
         students: [{ userId: 'student-1' }],
@@ -96,9 +95,11 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
         _id: 'doc-2',
         classId: 'class-002',
         className: 'Beta',
-        cohort: '2024',
+        cohortKey: 'coh-uuid-002',
+        cohortLabel: '2024-2025',
+        yearGroupKey: 'yg-uuid-009',
+        yearGroupLabel: 'Year 9',
         courseLength: 1,
-        yearGroup: 9,
         classOwner: null,
         teachers: [],
         active: false,
@@ -108,7 +109,6 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
 
     const controller = new ABClassController();
 
-    // RED: getAllClassPartials does not exist yet — this will throw or fail
     const result = controller.getAllClassPartials();
 
     expect(partialsCollection.find).toHaveBeenCalledTimes(1);
@@ -116,9 +116,11 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
       {
         classId: 'class-001',
         className: 'Alpha',
-        cohort: '2025',
+        cohortKey: 'coh-uuid-001',
+        cohortLabel: '2025-2026',
+        yearGroupKey: 'yg-uuid-010',
+        yearGroupLabel: 'Year 10',
         courseLength: 2,
-        yearGroup: 10,
         classOwner: { userId: 'owner-1' },
         teachers: [{ userId: 'teacher-1' }],
         active: true,
@@ -126,9 +128,11 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
       {
         classId: 'class-002',
         className: 'Beta',
-        cohort: '2024',
+        cohortKey: 'coh-uuid-002',
+        cohortLabel: '2024-2025',
+        yearGroupKey: 'yg-uuid-009',
+        yearGroupLabel: 'Year 9',
         courseLength: 1,
-        yearGroup: 9,
         classOwner: null,
         teachers: [],
         active: false,
@@ -138,52 +142,40 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
     expect(result[0]).not.toHaveProperty('students');
     expect(result[0]).not.toHaveProperty('assignments');
     expect(result[0]).not.toHaveProperty('metadataVersion');
+    expect(result[0]).not.toHaveProperty('cohort');
+    expect(result[0]).not.toHaveProperty('yearGroup');
   });
 
-  // -------------------------------------------------------------------------
-  // Test 2: returns [] when the collection has no documents
-  // -------------------------------------------------------------------------
   it('getAllClassPartials() returns [] when the collection has no documents', () => {
     partialsCollection.find.mockReturnValue([]);
 
-    const controller = new ABClassController();
-
-    // RED: getAllClassPartials does not exist yet
-    const result = controller.getAllClassPartials();
+    const result = new ABClassController().getAllClassPartials();
 
     expect(result).toEqual([]);
     expect(Array.isArray(result)).toBe(true);
   });
 
-  // -------------------------------------------------------------------------
-  // Test 3: throws on collection read failure
-  // -------------------------------------------------------------------------
   it('getAllClassPartials() throws when the abclass_partials collection read fails', () => {
     partialsCollection.find.mockImplementation(() => {
       throw new Error('abclass_partials read failure');
     });
 
-    const controller = new ABClassController();
-
-    // RED: getAllClassPartials does not exist yet.
-    // The additional assertion on find ensures the test fails until the method
-    // actually delegates to the collection (rather than passing because any
-    // call to a missing method throws a TypeError).
-    expect(() => controller.getAllClassPartials()).toThrow('abclass_partials read failure');
+    expect(() => new ABClassController().getAllClassPartials()).toThrow(
+      'abclass_partials read failure'
+    );
     expect(partialsCollection.find).toHaveBeenCalledTimes(1);
   });
 
-  // -------------------------------------------------------------------------
-  // Test 4: return value is a plain array (suitable for transport)
-  // -------------------------------------------------------------------------
   it('getAllClassPartials() return value is an Array', () => {
     const docs = [
       {
         classId: 'class-003',
         className: 'Gamma',
-        cohort: '2023',
+        cohortKey: 'coh-uuid-003',
+        cohortLabel: '2023-2024',
+        yearGroupKey: 'yg-uuid-008',
+        yearGroupLabel: 'Year 8',
         courseLength: 1,
-        yearGroup: 8,
         classOwner: null,
         teachers: [],
         active: true,
@@ -191,11 +183,34 @@ describe('ABClassController – getAllClassPartials() read path (Section 4)', ()
     ];
     partialsCollection.find.mockReturnValue(docs);
 
-    const controller = new ABClassController();
+    expect(Array.isArray(new ABClassController().getAllClassPartials())).toBe(true);
+  });
 
-    // RED: getAllClassPartials does not exist yet
-    const result = controller.getAllClassPartials();
+  it('_normaliseClassPartial: stored partial missing cohortLabel/yearGroupLabel uses null, not undefined', () => {
+    // Simulate a document persisted before label fields were added (fields simply absent)
+    const docs = [
+      {
+        classId: 'class-no-labels',
+        className: 'NoLabels',
+        cohortKey: 'coh-uuid-004',
+        // cohortLabel intentionally absent
+        yearGroupKey: 'yg-uuid-007',
+        // yearGroupLabel intentionally absent
+        courseLength: 1,
+        classOwner: null,
+        teachers: [],
+        active: true,
+      },
+    ];
+    partialsCollection.find.mockReturnValue(docs);
 
-    expect(Array.isArray(result)).toBe(true);
+    const [result] = new ABClassController().getAllClassPartials();
+
+    // Must be null (Zod z.string().nullable() accepts null but rejects undefined)
+    expect(result.cohortLabel).toBeNull();
+    expect(result.yearGroupLabel).toBeNull();
+    // Sanity: other fields are still correct
+    expect(result.cohortKey).toBe('coh-uuid-004');
+    expect(result.yearGroupKey).toBe('yg-uuid-007');
   });
 });

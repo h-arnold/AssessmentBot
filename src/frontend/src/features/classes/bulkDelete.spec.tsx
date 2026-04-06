@@ -25,7 +25,7 @@ function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
     status: 'partial',
     classId: 'class-001',
     cohortKey: '2025',
-    yearGroupKey: 10,
+    yearGroupKey: 'yg-10',
     courseLength: 1,
     active: null,
     className: 'Year 10 Maths',
