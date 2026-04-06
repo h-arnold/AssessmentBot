@@ -1,6 +1,7 @@
 ---
 name: 'Agent Orchestrator'
 description: 'Orchestrates the other agents to implement an action plan'
+model: gpt-5.4
 
 tools: ['read/readFile', 'read/file_search', 'read/list_dir', 'execute/run_in_terminal', 'search/search', 'vscode/get_changed_files', 'edit/editFiles', 'edit/createFile', 'todo', 'agent']
 ---

@@ -2,6 +2,7 @@
 name: 'Testing Specialist'
 description: 'Creates, runs and debugs tests'
 user-invocable: true
+model: gpt-5.4-mini
 tools: [vscode/getProjectSetupInfo, vscode/runCommand, execute, read/problems, read/readFile, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, search, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile, todo]
 ---
 

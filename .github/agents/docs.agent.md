@@ -2,6 +2,7 @@
 name: 'Docs'
 description: 'Reviews changed code and updates developer documentation, AGENTS guidance, and JSDoc accuracy'
 user-invocable: true
+model: gpt-5.4
 tools: [execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, edit/createFile, edit/editFiles, edit/rename, search, web, vscode.mermaid-chat-features/renderMermaidDiagram, todo]
 ---
 
