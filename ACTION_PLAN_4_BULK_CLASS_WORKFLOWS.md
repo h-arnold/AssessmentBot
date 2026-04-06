@@ -28,18 +28,18 @@
 
 ### 4.1 Shared batch mutation engine
 
-> **✅ COMPLETE — all pre-commit steps done; commit and push pending**
+> **✅ COMPLETE**
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status  |
+| ----------------------------- | ------- |
+| Red tests added               | ✅ done |
+| Red review clean              | ✅ done |
+| Green implementation complete | ✅ done |
+| Green review clean            | ✅ done |
+| Checks passed                 | ✅ done |
+| Action plan updated           | ✅ done |
+| Commit created                | ✅ done |
+| Push completed                | ✅ done |
 
 Acceptance:
 
@@ -103,6 +103,11 @@ FAIL src/features/classes/batchMutationEngine.spec.ts
     - `npm run frontend:test -- src/features/classes/batchMutationEngine.spec.ts` — all tests pass
     - `npm run frontend:lint` — no lint errors
     - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors
+- Delivery evidence:
+  - Branch: `feat/ws4-bulk-class-workflows`
+  - Commit SHA: `275eabbdf3c7fd3f615105cc63f9c72087a31d55`
+  - Commit message: `feat(ws4): implement shared batch mutation engine and missing-class update contract`
+  - Push: succeeded — upstream `origin/feat/ws4-bulk-class-workflows`
 
 ### 4.2 Bulk create, delete, and active-state flows
 
