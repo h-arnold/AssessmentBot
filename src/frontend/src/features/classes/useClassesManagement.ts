@@ -107,6 +107,13 @@ function getReadyClassesQueryState(queryState: Readonly<{
  * @param {ReadyClassesQueryState | null} readyQueryState Typed ready-state query data.
  * @returns {ClassesManagementRow[]} Merged rows when ready, otherwise empty rows.
  */
+
+/**
+ * Builds merged rows when all required datasets are available.
+ *
+ * @param {ReadyClassesQueryState | null} readyQueryState Typed ready-state query data.
+ * @returns {ClassesManagementRow[]} Merged rows when ready, otherwise empty rows.
+ */
 function buildRowsForReadyState(readyQueryState: ReadyClassesQueryState | null): ClassesManagementRow[] {
   if (readyQueryState === null) {
     return [];

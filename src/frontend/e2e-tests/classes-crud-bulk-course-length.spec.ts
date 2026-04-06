@@ -125,7 +125,7 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await expect(page.getByText('Course length must be an integer greater than or equal to 1.')).toBeVisible();
   });
 
-  test('keeps the course-length modal open, refreshes successful rows, and reselects only failed rows after a partial failure', async ({
+  test('hands off partial course-length updates to the summary alert, refreshes successful rows, and reselects only failed rows', async ({
     page,
   }) => {
     await openClassesTabWithScenario(page, {
@@ -149,7 +149,8 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await page.getByRole('spinbutton', { name: 'Course length' }).fill('40');
     await page.getByRole('dialog', { name: 'Set course length' }).getByRole('button', { name: 'OK' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Set course length' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Set course length' })).toHaveCount(0);
+    await expect(page.getByText('Some selected classes were not updated.')).toBeVisible();
     await expect(page.getByText(/selected classes could not be updated/i)).toBeVisible();
     await expect(getRow(page, 'gc-active')).toContainText('40');
     await expect(getRow(page, 'gc-active').getByRole('checkbox')).not.toBeChecked();

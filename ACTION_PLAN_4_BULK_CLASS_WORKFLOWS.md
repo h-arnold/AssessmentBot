@@ -259,16 +259,16 @@ Minimal production surface implied by these tests (to be created in the green ph
 
 > **✅ COMPLETE**
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status                                               |
+| ----------------------------- | ---------------------------------------------------- |
+| Red tests added               | ✅ done                                              |
+| Red review clean              | ✅ done                                              |
+| Green implementation complete | ✅ done                                              |
+| Green review clean            | ✅ done                                              |
+| Checks passed                 | ✅ done                                              |
+| Action plan updated           | ✅ done                                              |
+| Commit created                | ✅ done (`194a2aa475cbbf80946e45a267d69f7ac55298b6`) |
+| Push completed                | ✅ done (`origin/feat/ws4-bulk-class-workflows`)     |
 
 Acceptance:
 
@@ -336,23 +336,55 @@ Checks that passed:
 
 ### 4.4 Mutation summary and refresh-failure UX
 
+> **✅ COMPLETE (reviewer-clean; commit/push pending)**
+
 | Step                          | Status     |
 | ----------------------------- | ---------- |
-| Red tests added               | ⬜ pending |
-| Red review clean              | ⬜ pending |
-| Green implementation complete | ⬜ pending |
-| Green review clean            | ⬜ pending |
-| Checks passed                 | ⬜ pending |
-| Action plan updated           | ⬜ pending |
+| Red tests added               | ✅ done    |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
+| Green review clean            | ✅ done    |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
 | Commit created                | ⬜ pending |
 | Push completed                | ⬜ pending |
 
 Acceptance:
 
-- Partial-success modals stay open briefly, then hand off to persistent summary alerts.
+- Partial-success modals close and hand off to persistent summary alerts.
 - If the mutation succeeds but required re-fetch fails, the UI reports success plus refresh-needed guidance.
 - Required refresh failure suppresses stale table data.
 - Google Classroom data remains outside required post-mutation refresh paths; the v1 contract keeps this dataset on Classes-tab entry prefetch only.
+
+**Implementation notes — 4.4**
+
+Changed production files:
+
+- `src/frontend/src/features/classes/queryInvalidation.ts` — adds the required class-partials refresh outcome helper so successful mutations can hand refresh-failure metadata back to the UI without treating the mutation itself as failed.
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — hands modal-scoped mutation results off to persistent summary alerts, surfaces refresh-required guidance after successful mutations whose class-partials refresh fails, suppresses stale table rendering while that guidance is active, and keeps post-mutation refreshes scoped to `classPartials` rather than Google Classroom data.
+- `src/frontend/src/features/classes/useClassesManagement.ts` — preserves `refreshRequiredMessage` in the management state so refresh-failure guidance can keep stale rows hidden on subsequent renders.
+
+Changed test files:
+
+- `src/frontend/src/features/classes/queryInvalidation.spec.ts` — covers composite mutation-success/refresh-failure outcomes and user-safe refresh guidance mapping.
+- `src/frontend/src/features/classes/mutationSummary.spec.tsx` — proves partial metadata failures close the modal and hand off to the persistent summary alert, plus refresh-required copy when the required refresh fails.
+- `src/frontend/src/features/classes/refetchFailureState.spec.tsx` — proves refresh-required state suppresses stale table rows.
+- `src/frontend/e2e-tests/classes-crud-mutation-summary.spec.ts` — covers persistent summary handoff after partial cohort updates and delete refresh-failure UX, including the contract that post-mutation refreshes do not re-fetch Google Classrooms.
+
+Completion notes:
+
+- Persistent mutation summary handoff is now explicit for modal-driven metadata updates.
+- Refresh-required guidance is shown when the mutation succeeds but the required class-partials refresh fails.
+- Stale-table suppression hides the Classes table while refresh-required guidance is active.
+- No Google Classroom post-mutation refresh is triggered; only `classPartials` participates in the required refresh path.
+- Final review state — CLEAN.
+
+Checks that passed:
+
+- `npm run frontend:test -- src/features/classes/queryInvalidation.spec.ts src/features/classes/mutationSummary.spec.tsx src/features/classes/refetchFailureState.spec.tsx`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud-mutation-summary.spec.ts`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
 ## Deferred closure map (Workstream 3 -> Workstream 4)
 

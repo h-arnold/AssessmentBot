@@ -33,6 +33,7 @@ export type ClassesCrudRuntimeScenario = Readonly<{
   getYearGroups: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getGoogleClassrooms: ReadonlyArray<ClassesCrudApiResponseScenario>;
   updateABClass?: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  deleteABClass?: ReadonlyArray<ClassesCrudApiResponseScenario>;
 }>;
 
 export type ClassesCrudDataBundle = Readonly<{
@@ -186,6 +187,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getYearGroups: 0,
         getGoogleClassrooms: 0,
         updateABClass: 0,
+        deleteABClass: 0,
       };
       const responseQueues = {
         getAuthorisationStatus: mockScenario.getAuthorisationStatus,
@@ -194,6 +196,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getYearGroups: mockScenario.getYearGroups,
         getGoogleClassrooms: mockScenario.getGoogleClassrooms,
         updateABClass: mockScenario.updateABClass ?? [],
+        deleteABClass: mockScenario.deleteABClass ?? [],
       };
 
       function isClassesCrudTransportRequest(request) {
@@ -261,7 +264,8 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
           method !== 'getCohorts' &&
           method !== 'getYearGroups' &&
           method !== "getGoogleClassrooms" &&
-          method !== "updateABClass"
+          method !== "updateABClass" &&
+          method !== "deleteABClass"
         ) {
           callbacks.failureHandler?.(new Error(\`Unsupported method: \${method}\`));
           return;

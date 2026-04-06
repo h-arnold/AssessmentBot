@@ -150,7 +150,7 @@ test.describe('Classes CRUD bulk cohort flow', () => {
     await expect(page.getByRole('option', { name: 'Cohort 2023' })).toHaveCount(0);
   });
 
-  test('keeps the cohort modal open, refreshes successful rows, and reselects only failed rows after a partial failure', async ({
+  test('hands off partial cohort updates to the summary alert, refreshes successful rows, and reselects only failed rows', async ({
     page,
   }) => {
     await openClassesTabWithScenario(page, {
@@ -175,7 +175,8 @@ test.describe('Classes CRUD bulk cohort flow', () => {
     await page.getByRole('option', { name: 'Cohort 2025' }).click();
     await page.getByRole('dialog', { name: 'Set cohort' }).getByRole('button', { name: 'OK' }).click();
 
-    await expect(page.getByRole('dialog', { name: 'Set cohort' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Set cohort' })).toHaveCount(0);
+    await expect(page.getByText('Some selected classes were not updated.')).toBeVisible();
     await expect(page.getByText(/selected classes could not be updated/i)).toBeVisible();
     await expect(getRow(page, 'gc-active')).toContainText('Cohort 2025');
     await expect(getRow(page, 'gc-active').getByRole('checkbox')).not.toBeChecked();

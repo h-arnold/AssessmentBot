@@ -1,5 +1,6 @@
 import { Alert, Card, Flex, Typography } from 'antd';
 import { useMemo, useState } from 'react';
+import { mapRequiredClassPartialsRefreshFailureToUserMessage, runMutationWithRequiredClassPartialsRefresh, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
 import { queryKeys } from '../../query/queryKeys';
@@ -31,6 +32,7 @@ import {
   type RowMutationResult,
 } from './batchMutationEngine';
 import { useClassesManagement } from './useClassesManagement';
+import type { ClassesManagementState } from './useClassesManagement';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 export const classesManagementPanelRegionLabel = 'Classes management panel';
@@ -86,6 +88,17 @@ function getRejectedRowResults<TData>(
   );
 }
 
+/**
+ * Determines whether any mutation result fulfilled.
+ *
+ * @template TData Mutation success payload type.
+ * @param {RowMutationResult<ClassTableRow, TData>[]} results Settled batch results.
+ * @returns {boolean} True when at least one result fulfilled.
+ */
+function hasAnyFulfilledRowResult<TData>(results: RowMutationResult<ClassTableRow, TData>[]): boolean {
+  return results.some((result) => result.status === 'fulfilled');
+}
+
 type BulkActionOutcomeAlert = Readonly<{
   description: string;
   title: string;
@@ -95,24 +108,184 @@ type BulkActionOutcomeAlert = Readonly<{
 type BulkFailureMessageCopy = Readonly<{
   allFailure: (totalCount: number) => string;
   partialFailure: (failedCount: number, totalCount: number) => string;
+  partialRefreshFailure: (failedCount: number, totalCount: number) => string;
   singleFailure: string;
 }>;
+
+/**
+ * Chooses the alert title for a bulk outcome.
+ *
+ * @param {number} failedCount Failed row count.
+ * @param {number} totalCount Total attempted row count.
+ * @param {string} fullFailureTitle Full-failure title.
+ * @param {string} partialFailureTitle Partial-failure title.
+ * @returns {string} Selected alert title.
+ */
+function getBulkOutcomeTitle(
+  failedCount: number,
+  totalCount: number,
+  fullFailureTitle: string,
+  partialFailureTitle: string,
+): string {
+  if (failedCount === totalCount) {
+    return fullFailureTitle;
+  }
+
+  return partialFailureTitle;
+}
+
+type TopLevelBulkMutationResolution = Readonly<{
+  alert: BulkActionOutcomeAlert | null;
+  refreshRequiredMessage: string | null;
+  selectedRowKeys: string[];
+  shouldCloseSurface: boolean;
+  suppressStaleTableData: boolean;
+}>;
+
+type MetadataBulkMutationResolution = Readonly<{
+  alert: BulkActionOutcomeAlert | null;
+  errorMessage: string | null;
+  refreshRequiredMessage: string | null;
+  selectedRowKeys: string[];
+  shouldCloseModal: boolean;
+  suppressStaleTableData: boolean;
+}>;
+
+/**
+ * Resolves the UI outcome for a top-level bulk mutation.
+ *
+ * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+ *   Settled batch results and refresh outcome.
+ * @param {Readonly<{
+ *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
+ *   fullFailureTitle: string;
+ *   partialFailureTitle: string;
+ * }>} options Action-specific copy.
+ * @returns {TopLevelBulkMutationResolution} Derived UI state.
+ */
+function buildTopLevelBulkMutationResolution(
+  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+  options: Readonly<{
+    createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
+    fullFailureTitle: string;
+    partialFailureTitle: string;
+  }>,
+): TopLevelBulkMutationResolution {
+  const rejectedResults = getRejectedRowResults(outcome.mutationResult);
+  const hasAnyFulfilledResults = hasAnyFulfilledRowResult(outcome.mutationResult);
+  const hasRefreshFailure = hasAnyFulfilledResults && outcome.refreshStatus === 'failed';
+  const refreshRequiredMessage = hasRefreshFailure
+    ? mapRequiredClassPartialsRefreshFailureToUserMessage(outcome.refreshError)
+    : null;
+
+  if (rejectedResults.length === 0) {
+    return {
+      alert: null,
+      refreshRequiredMessage,
+      selectedRowKeys: [],
+      shouldCloseSurface: true,
+      suppressStaleTableData: hasRefreshFailure,
+    };
+  }
+
+  const failedCount = rejectedResults.length;
+
+  return {
+    alert: {
+      description: options.createFailureMessage(failedCount, outcome.mutationResult.length, hasRefreshFailure),
+      title: getBulkOutcomeTitle(
+        failedCount,
+        outcome.mutationResult.length,
+        options.fullFailureTitle,
+        options.partialFailureTitle,
+      ),
+      type: failedCount === outcome.mutationResult.length ? 'error' : 'warning',
+    },
+    refreshRequiredMessage,
+    selectedRowKeys: rejectedResults.map((result) => result.row.classId),
+    shouldCloseSurface: true,
+    suppressStaleTableData: hasRefreshFailure,
+  };
+}
+
+/**
+ * Resolves the UI outcome for a bulk metadata mutation.
+ *
+ * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+ *   Settled batch results and refresh outcome.
+ * @returns {MetadataBulkMutationResolution} Derived UI state.
+ */
+function buildMetadataBulkMutationResolution(
+  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+): MetadataBulkMutationResolution {
+  const rejectedResults = getRejectedRowResults(outcome.mutationResult);
+  const hasAnyFulfilledResults = hasAnyFulfilledRowResult(outcome.mutationResult);
+  const hasRefreshFailure = hasAnyFulfilledResults && outcome.refreshStatus === 'failed';
+  const refreshRequiredMessage = hasRefreshFailure
+    ? mapRequiredClassPartialsRefreshFailureToUserMessage(outcome.refreshError)
+    : null;
+
+  if (rejectedResults.length === 0) {
+    return {
+      alert: null,
+      errorMessage: null,
+      refreshRequiredMessage,
+      selectedRowKeys: [],
+      shouldCloseModal: true,
+      suppressStaleTableData: hasRefreshFailure,
+    };
+  }
+
+  const failedCount = rejectedResults.length;
+  const selectedRowKeys = rejectedResults.map((result) => result.row.classId);
+
+  if (failedCount === outcome.mutationResult.length) {
+    return {
+      alert: null,
+      errorMessage: createBulkMetadataFailureMessage(failedCount, outcome.mutationResult.length, hasRefreshFailure),
+      refreshRequiredMessage,
+      selectedRowKeys,
+      shouldCloseModal: false,
+      suppressStaleTableData: hasRefreshFailure,
+    };
+  }
+
+  return {
+    alert: {
+      description: createBulkMetadataFailureMessage(failedCount, outcome.mutationResult.length, hasRefreshFailure),
+      title: 'Some selected classes were not updated.',
+      type: 'warning',
+    },
+    errorMessage: null,
+    refreshRequiredMessage,
+    selectedRowKeys,
+    shouldCloseModal: true,
+    suppressStaleTableData: hasRefreshFailure,
+  };
+}
+
 
 /**
  * Builds user-facing failure copy for a bulk action.
  *
  * @param {number} failedCount Failed row count.
  * @param {number} totalCount Total attempted row count.
+ * @param {boolean} hasRefreshFailure Whether the refresh branch failed.
  * @param {BulkFailureMessageCopy} copy Action-specific failure copy.
  * @returns {string} User-facing failure copy.
  */
 function createBulkFailureMessage(
   failedCount: number,
   totalCount: number,
+  hasRefreshFailure: boolean,
   copy: BulkFailureMessageCopy,
 ): string {
   if (failedCount === totalCount) {
     return totalCount === 1 ? copy.singleFailure : copy.allFailure(totalCount);
+  }
+
+  if (hasRefreshFailure) {
+    return copy.partialRefreshFailure(failedCount, totalCount);
   }
 
   return copy.partialFailure(failedCount, totalCount);
@@ -123,15 +296,22 @@ function createBulkFailureMessage(
  *
  * @param {number} failedCount Failed row count.
  * @param {number} totalCount Total attempted row count.
+ * @param {boolean} hasRefreshFailure Whether the refresh branch failed.
  * @returns {string} User-facing failure copy.
  */
-function createBulkMetadataFailureMessage(failedCount: number, totalCount: number): string {
-  return createBulkFailureMessage(failedCount, totalCount, {
+function createBulkMetadataFailureMessage(
+  failedCount: number,
+  totalCount: number,
+  hasRefreshFailure: boolean,
+): string {
+  return createBulkFailureMessage(failedCount, totalCount, hasRefreshFailure, {
     singleFailure: 'Unable to update the selected class. Please review the remaining selection and try again.',
     allFailure: (attemptedRowCount) =>
       'Unable to update any of the ' + attemptedRowCount + ' selected classes. Please review the remaining selection and try again.',
     partialFailure: (rejectedRowCount, attemptedRowCount) =>
       rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be updated. Successful rows were refreshed. Please review the remaining selection and try again.',
+    partialRefreshFailure: (rejectedRowCount, attemptedRowCount) =>
+      rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be updated. The update completed, but the classes could not be refreshed right now. Please reload the page and review the remaining selection.',
   });
 }
 
@@ -140,15 +320,22 @@ function createBulkMetadataFailureMessage(failedCount: number, totalCount: numbe
  *
  * @param {number} failedCount Failed row count.
  * @param {number} totalCount Total attempted row count.
+ * @param {boolean} hasRefreshFailure Whether the refresh branch failed.
  * @returns {string} User-facing failure copy.
  */
-function createBulkDeleteFailureMessage(failedCount: number, totalCount: number): string {
-  return createBulkFailureMessage(failedCount, totalCount, {
+function createBulkDeleteFailureMessage(
+  failedCount: number,
+  totalCount: number,
+  hasRefreshFailure: boolean,
+): string {
+  return createBulkFailureMessage(failedCount, totalCount, hasRefreshFailure, {
     singleFailure: 'Unable to delete the selected class. Please review the remaining selection and try again.',
     allFailure: (attemptedRowCount) =>
       'Unable to delete any of the ' + attemptedRowCount + ' selected classes. Please review the remaining selection and try again.',
     partialFailure: (rejectedRowCount, attemptedRowCount) =>
       rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.',
+    partialRefreshFailure: (rejectedRowCount, attemptedRowCount) =>
+      rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be deleted. The update completed, but the classes could not be refreshed right now. Please reload the page and review the remaining selection.',
   });
 }
 
@@ -157,15 +344,22 @@ function createBulkDeleteFailureMessage(failedCount: number, totalCount: number)
  *
  * @param {number} failedCount Failed row count.
  * @param {number} totalCount Total attempted row count.
+ * @param {boolean} hasRefreshFailure Whether the refresh branch failed.
  * @returns {string} User-facing failure copy.
  */
-function createBulkSetActiveFailureMessage(failedCount: number, totalCount: number): string {
-  return createBulkFailureMessage(failedCount, totalCount, {
+function createBulkSetActiveFailureMessage(
+  failedCount: number,
+  totalCount: number,
+  hasRefreshFailure: boolean,
+): string {
+  return createBulkFailureMessage(failedCount, totalCount, hasRefreshFailure, {
     singleFailure: 'Unable to set the selected class to active. Please review the remaining selection and try again.',
     allFailure: (attemptedRowCount) =>
       'Unable to set any of the ' + attemptedRowCount + ' selected classes to active. Please review the remaining selection and try again.',
     partialFailure: (rejectedRowCount, attemptedRowCount) =>
       rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.',
+    partialRefreshFailure: (rejectedRowCount, attemptedRowCount) =>
+      rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be set to active. The update completed, but the classes could not be refreshed right now. Please reload the page and review the remaining selection.',
   });
 }
 
@@ -174,16 +368,54 @@ function createBulkSetActiveFailureMessage(failedCount: number, totalCount: numb
  *
  * @param {number} failedCount Failed row count.
  * @param {number} totalCount Total attempted row count.
+ * @param {boolean} hasRefreshFailure Whether the refresh branch failed.
  * @returns {string} User-facing failure copy.
  */
-function createBulkSetInactiveFailureMessage(failedCount: number, totalCount: number): string {
-  return createBulkFailureMessage(failedCount, totalCount, {
+function createBulkSetInactiveFailureMessage(
+  failedCount: number,
+  totalCount: number,
+  hasRefreshFailure: boolean,
+): string {
+  return createBulkFailureMessage(failedCount, totalCount, hasRefreshFailure, {
     singleFailure: 'Unable to set the selected class to inactive. Please review the remaining selection and try again.',
     allFailure: (attemptedRowCount) =>
       'Unable to set any of the ' + attemptedRowCount + ' selected classes to inactive. Please review the remaining selection and try again.',
     partialFailure: (rejectedRowCount, attemptedRowCount) =>
       rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be set to inactive. Successful rows were refreshed. Please review the remaining selection and try again.',
+    partialRefreshFailure: (rejectedRowCount, attemptedRowCount) =>
+      rejectedRowCount + ' of ' + attemptedRowCount + ' selected classes could not be set to inactive. The update completed, but the classes could not be refreshed right now. Please reload the page and review the remaining selection.',
   });
+}
+
+/**
+ * Renders the Classes feature entry shell.
+ *
+ * Wires bulk-action handlers via the shared batch mutation engine and invalidates
+ * the classPartials query after each successful batch so the table reflects the
+ * updated state.
+ *
+ * @returns {JSX.Element} The Classes feature panel shell.
+ */
+/**
+ * Renders a bulk-action outcome alert banner.
+ *
+ * @param {Readonly<{ alert: BulkActionOutcomeAlert | null }>} properties Alert state.
+ * @returns {JSX.Element | null} Alert banner when available.
+ */
+function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkActionOutcomeAlert | null }>) {
+  if (properties.alert === null) {
+    return null;
+  }
+
+  return (
+    <Alert
+      type={properties.alert.type}
+      showIcon
+      title={properties.alert.title}
+      description={properties.alert.description}
+      style={{ marginBottom: 16 }}
+    />
+  );
 }
 
 /**
@@ -207,6 +439,8 @@ export function ClassesManagementPanel() {
   const [setYearGroupSubmitting, setSetYearGroupSubmitting] = useState(false);
   const [setCourseLengthSubmitting, setSetCourseLengthSubmitting] = useState(false);
   const [bulkActionOutcomeAlert, setBulkActionOutcomeAlert] = useState<BulkActionOutcomeAlert | null>(null);
+  const [refreshRequiredMessage, setRefreshRequiredMessage] = useState<string | null>(null);
+  const [suppressStaleTableData, setSuppressStaleTableData] = useState(false);
 
   const selectedRows = useMemo(
     () => classesManagement.rows.filter((row) => classesManagement.selectedRowKeys.includes(row.classId)),
@@ -225,21 +459,25 @@ export function ClassesManagementPanel() {
     [classesManagement.yearGroups],
   );
 
+  const effectiveRefreshRequiredMessage = classesManagement.refreshRequiredMessage ?? refreshRequiredMessage;
+  const shouldSuppressStaleTableData = suppressStaleTableData || classesManagement.refreshRequiredMessage !== null;
+
   /**
-   * Invalidates the shared class-partials query so table data refreshes after a mutation.
+   * Invalidates the shared class-partials query after a mutation.
    *
    * @returns {Promise<void>} Completion signal.
    */
   async function invalidateClassPartialsQuery(): Promise<void> {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials() });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
   }
 
   /**
    * Resolves post-mutation UI state for a top-level bulk action.
    *
-   * @param {RowMutationResult<ClassTableRow, unknown>[]} results Settled batch results.
+   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+   *   Settled batch results and refresh outcome.
    * @param {Readonly<{
-   *   createFailureMessage: (failedCount: number, totalCount: number) => string;
+   *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
    *   fullFailureTitle: string;
    *   partialFailureTitle: string;
    *   closeSurface?: () => void;
@@ -247,36 +485,24 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleTopLevelBulkMutationResult(
-    results: RowMutationResult<ClassTableRow, unknown>[],
+    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
     options: Readonly<{
-      createFailureMessage: (failedCount: number, totalCount: number) => string;
+      createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
       fullFailureTitle: string;
       partialFailureTitle: string;
       closeSurface?: () => void;
     }>,
   ): Promise<void> {
-    const rejectedResults = getRejectedRowResults(results);
+    const resolution = buildTopLevelBulkMutationResolution(outcome, options);
 
-    if (rejectedResults.length === 0) {
-      setBulkActionOutcomeAlert(null);
-      classesManagement.onSelectedRowKeysChange([]);
+    setRefreshRequiredMessage(resolution.refreshRequiredMessage);
+    setSuppressStaleTableData(resolution.suppressStaleTableData);
+    setBulkActionOutcomeAlert(resolution.alert);
+    classesManagement.onSelectedRowKeysChange(resolution.selectedRowKeys);
+
+    if (resolution.shouldCloseSurface) {
       options.closeSurface?.();
-      await invalidateClassPartialsQuery();
-      return;
     }
-
-    options.closeSurface?.();
-    await invalidateClassPartialsQuery();
-    classesManagement.onSelectedRowKeysChange(
-      rejectedResults.map((result) => result.row.classId),
-    );
-
-    const failedCount = rejectedResults.length;
-    setBulkActionOutcomeAlert({
-      description: options.createFailureMessage(failedCount, results.length),
-      title: failedCount === results.length ? options.fullFailureTitle : options.partialFailureTitle,
-      type: failedCount === results.length ? 'error' : 'warning',
-    });
   }
 
   /**
@@ -287,12 +513,17 @@ export function ClassesManagementPanel() {
   async function handleDeleteConfirm() {
     setDeleteSubmitting(true);
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
     try {
-      const results = await runBatchMutation(selectedTableRows, (row) =>
-        callApi('deleteABClass', { classId: row.classId }),
-      );
-      await handleTopLevelBulkMutationResult(results, {
+      const outcome = await runMutationWithRequiredClassPartialsRefresh({
+        mutate: () => runBatchMutation(selectedTableRows, (row) =>
+          callApi('deleteABClass', { classId: row.classId }),
+        ),
+        queryClient,
+      });
+      await invalidateClassPartialsQuery();
+      await handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkDeleteFailureMessage,
         fullFailureTitle: 'Could not delete selected classes.',
         partialFailureTitle: 'Some selected classes were not deleted.',
@@ -314,11 +545,16 @@ export function ClassesManagementPanel() {
       (row) => row.status !== 'notCreated' && row.active !== null && row.active !== true
     );
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
-    const results = await runBatchMutation(eligible, (row) =>
-      callApi('updateABClass', { classId: row.classId, active: true }),
-    );
-    await handleTopLevelBulkMutationResult(results, {
+    const outcome = await runMutationWithRequiredClassPartialsRefresh({
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: true }),
+      ),
+      queryClient,
+    });
+    await invalidateClassPartialsQuery();
+    await handleTopLevelBulkMutationResult(outcome, {
       createFailureMessage: createBulkSetActiveFailureMessage,
       fullFailureTitle: 'Could not set selected classes to active.',
       partialFailureTitle: 'Some selected classes were not set to active.',
@@ -336,11 +572,16 @@ export function ClassesManagementPanel() {
       (row) => row.status !== 'notCreated' && row.active !== null && row.active !== false
     );
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
-    const results = await runBatchMutation(eligible, (row) =>
-      callApi('updateABClass', { classId: row.classId, active: false }),
-    );
-    await handleTopLevelBulkMutationResult(results, {
+    const outcome = await runMutationWithRequiredClassPartialsRefresh({
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: false }),
+      ),
+      queryClient,
+    });
+    await invalidateClassPartialsQuery();
+    await handleTopLevelBulkMutationResult(outcome, {
       createFailureMessage: createBulkSetInactiveFailureMessage,
       fullFailureTitle: 'Could not set selected classes to inactive.',
       partialFailureTitle: 'Some selected classes were not set to inactive.',
@@ -350,28 +591,29 @@ export function ClassesManagementPanel() {
   /**
    * Resolves post-mutation UI state for a bulk metadata batch.
    *
-   * @param {RowMutationResult<ClassTableRow, unknown>[]} results Settled batch results.
-   * @param {() => void} closeModal Closes the active metadata modal on full success.
+   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+   *   Settled batch results and refresh outcome.
+   * @param {() => void} closeModal Closes the active metadata modal when the batch can hand off.
    * @returns {Promise<void>} Completion signal.
    */
   async function handleBulkMetadataMutationResult(
-    results: RowMutationResult<ClassTableRow, unknown>[],
+    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
     closeModal: () => void,
   ): Promise<void> {
-    const rejectedResults = getRejectedRowResults(results);
+    const resolution = buildMetadataBulkMutationResolution(outcome);
 
-    if (rejectedResults.length === 0) {
-      classesManagement.onSelectedRowKeysChange([]);
+    setRefreshRequiredMessage(resolution.refreshRequiredMessage);
+    setSuppressStaleTableData(resolution.suppressStaleTableData);
+    setBulkActionOutcomeAlert(resolution.alert);
+    classesManagement.onSelectedRowKeysChange(resolution.selectedRowKeys);
+
+    if (resolution.shouldCloseModal) {
       closeModal();
-      await invalidateClassPartialsQuery();
-      return;
     }
 
-    await invalidateClassPartialsQuery();
-    classesManagement.onSelectedRowKeysChange(
-      rejectedResults.map((result) => result.row.classId),
-    );
-    throw new Error(createBulkMetadataFailureMessage(rejectedResults.length, results.length));
+    if (resolution.errorMessage !== null) {
+      throw new Error(resolution.errorMessage);
+    }
   }
 
   /**
@@ -383,13 +625,18 @@ export function ClassesManagementPanel() {
   async function handleSetCohort(cohortKey: string): Promise<void> {
     setSetCohortSubmitting(true);
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
     try {
-      const results = await bulkSetCohort(
-        filterEligibleForBulkSetCohort(selectedTableRows),
-        cohortKey,
-      );
-      await handleBulkMetadataMutationResult(results, () => setSetCohortModalOpen(false));
+      const outcome = await runMutationWithRequiredClassPartialsRefresh({
+        mutate: () => bulkSetCohort(
+          filterEligibleForBulkSetCohort(selectedTableRows),
+          cohortKey,
+        ),
+        queryClient,
+      });
+      await invalidateClassPartialsQuery();
+      await handleBulkMetadataMutationResult(outcome, () => setSetCohortModalOpen(false));
     } finally {
       setSetCohortSubmitting(false);
     }
@@ -404,13 +651,18 @@ export function ClassesManagementPanel() {
   async function handleSetYearGroup(yearGroupKey: string): Promise<void> {
     setSetYearGroupSubmitting(true);
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
     try {
-      const results = await bulkSetYearGroup(
-        filterEligibleForBulkSetYearGroup(selectedTableRows),
-        yearGroupKey,
-      );
-      await handleBulkMetadataMutationResult(results, () => setSetYearGroupModalOpen(false));
+      const outcome = await runMutationWithRequiredClassPartialsRefresh({
+        mutate: () => bulkSetYearGroup(
+          filterEligibleForBulkSetYearGroup(selectedTableRows),
+          yearGroupKey,
+        ),
+        queryClient,
+      });
+      await invalidateClassPartialsQuery();
+      await handleBulkMetadataMutationResult(outcome, () => setSetYearGroupModalOpen(false));
     } finally {
       setSetYearGroupSubmitting(false);
     }
@@ -425,89 +677,179 @@ export function ClassesManagementPanel() {
   async function handleSetCourseLength(courseLength: number): Promise<void> {
     setSetCourseLengthSubmitting(true);
     setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
 
     try {
-      const results = await bulkSetCourseLength(
-        filterEligibleForBulkSetCourseLength(selectedTableRows),
-        courseLength,
-      );
-      await handleBulkMetadataMutationResult(results, () => setSetCourseLengthModalOpen(false));
+      const outcome = await runMutationWithRequiredClassPartialsRefresh({
+        mutate: () => bulkSetCourseLength(
+          filterEligibleForBulkSetCourseLength(selectedTableRows),
+          courseLength,
+        ),
+        queryClient,
+      });
+      await invalidateClassPartialsQuery();
+      await handleBulkMetadataMutationResult(outcome, () => setSetCourseLengthModalOpen(false));
     } finally {
       setSetCourseLengthSubmitting(false);
     }
   }
 
+  return renderClassesManagementPanelContent({
+    bulkActionOutcomeAlert,
+    classesManagement,
+    cohortOptions,
+    deleteModalOpen,
+    deleteSubmitting,
+    effectiveRefreshRequiredMessage,
+    handleDeleteConfirm,
+    handleSetActive,
+    handleSetCohort,
+    handleSetCourseLength,
+    handleSetInactive,
+    handleSetYearGroup,
+    onBulkDeleteOpen: () => setDeleteModalOpen(true),
+    onDeleteCancel: () => setDeleteModalOpen(false),
+    onSetCohortCancel: () => setSetCohortModalOpen(false),
+    onSetCohortOpen: () => setSetCohortModalOpen(true),
+    onSetCourseLengthCancel: () => setSetCourseLengthModalOpen(false),
+    onSetCourseLengthOpen: () => setSetCourseLengthModalOpen(true),
+    onSetYearGroupCancel: () => setSetYearGroupModalOpen(false),
+    onSetYearGroupOpen: () => setSetYearGroupModalOpen(true),
+    selectedTableRows,
+    setCohortModalOpen,
+    setCohortSubmitting,
+    setCourseLengthModalOpen,
+    setCourseLengthSubmitting,
+    setYearGroupModalOpen,
+    setYearGroupSubmitting,
+    shouldSuppressStaleTableData,
+    yearGroupOptions,
+  });
+}
+
+/**
+ * Renders the Classes management panel for the current state.
+ *
+ * @param {Readonly<object>} properties Panel properties.
+ * @returns {JSX.Element} Panel content.
+ */
+function renderClassesManagementPanelContent(properties: Readonly<{
+  bulkActionOutcomeAlert: BulkActionOutcomeAlert | null;
+  classesManagement: ClassesManagementState;
+  cohortOptions: ReturnType<typeof getActiveCohortOptions>;
+  deleteModalOpen: boolean;
+  deleteSubmitting: boolean;
+  effectiveRefreshRequiredMessage: string | null;
+  handleDeleteConfirm: () => void;
+  handleSetActive: () => void;
+  handleSetCohort: (cohortKey: string) => Promise<void>;
+  handleSetCourseLength: (courseLength: number) => Promise<void>;
+  handleSetInactive: () => void;
+  handleSetYearGroup: (yearGroupKey: string) => Promise<void>;
+  onBulkDeleteOpen: () => void;
+  onDeleteCancel: () => void;
+  onSetCohortCancel: () => void;
+  onSetCohortOpen: () => void;
+  onSetCourseLengthCancel: () => void;
+  onSetCourseLengthOpen: () => void;
+  onSetYearGroupCancel: () => void;
+  onSetYearGroupOpen: () => void;
+  selectedTableRows: ClassTableRow[];
+  setCohortModalOpen: boolean;
+  setCohortSubmitting: boolean;
+  setCourseLengthModalOpen: boolean;
+  setCourseLengthSubmitting: boolean;
+  setYearGroupModalOpen: boolean;
+  setYearGroupSubmitting: boolean;
+  shouldSuppressStaleTableData: boolean;
+  yearGroupOptions: ReturnType<typeof getYearGroupOptions>;
+}>) {
+  if (properties.classesManagement.classesManagementViewState === 'loading') {
+    return (
+      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
+        <Typography.Text>Classes feature is loading.</Typography.Text>
+        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
+        <ClassesAlertStack
+          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
+          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
+          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
+        />
+      </Card>
+    );
+  }
+
+  if (properties.classesManagement.classesManagementViewState === 'error') {
+    return (
+      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
+        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
+        <ClassesAlertStack
+          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
+          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
+          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
+        />
+        {properties.classesManagement.blockingErrorMessage === null ? (
+          <Typography.Text>{properties.classesManagement.errorMessage}</Typography.Text>
+        ) : null}
+      </Card>
+    );
+  }
+
   return (
     <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-      {classesManagement.classesManagementViewState === 'loading' ? (
-        <Typography.Text>Classes feature is loading.</Typography.Text>
-      ) : null}
-      {bulkActionOutcomeAlert === null ? null : (
-        <Alert
-          type={bulkActionOutcomeAlert.type}
-          showIcon
-          title={bulkActionOutcomeAlert.title}
-          description={bulkActionOutcomeAlert.description}
-          style={{ marginBottom: 16 }}
-        />
-      )}
+      <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
       <ClassesAlertStack
-        blockingErrorMessage={classesManagement.blockingErrorMessage}
-        nonBlockingWarningMessage={classesManagement.nonBlockingWarningMessage}
-        refreshRequiredMessage={classesManagement.refreshRequiredMessage}
+        blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
+        nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
+        refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
       />
-      {classesManagement.classesManagementViewState === 'error' &&
-      classesManagement.blockingErrorMessage === null ? (
-        <Typography.Text>{classesManagement.errorMessage}</Typography.Text>
-      ) : null}
-      {classesManagement.classesManagementViewState === 'ready' ? (
+      {properties.shouldSuppressStaleTableData === false ? (
         <Flex vertical gap={12}>
-          <ClassesSummaryCard rows={classesManagement.rows} selectedCount={classesManagement.selectedRowKeys.length} />
+          <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
           <ClassesToolbar
-            rows={classesManagement.rows}
-            selectedRowKeys={classesManagement.selectedRowKeys}
-            onBulkDelete={() => setDeleteModalOpen(true)}
-            onSetActive={() => void handleSetActive()}
-            onSetInactive={() => void handleSetInactive()}
-            onSetCohort={() => setSetCohortModalOpen(true)}
-            onSetYearGroup={() => setSetYearGroupModalOpen(true)}
-            onSetCourseLength={() => setSetCourseLengthModalOpen(true)}
+            rows={properties.classesManagement.rows}
+            selectedRowKeys={properties.classesManagement.selectedRowKeys}
+            onBulkDelete={properties.onBulkDeleteOpen}
+            onSetActive={() => { properties.handleSetActive(); }}
+            onSetInactive={() => { properties.handleSetInactive(); }}
+            onSetCohort={properties.onSetCohortOpen}
+            onSetYearGroup={properties.onSetYearGroupOpen}
+            onSetCourseLength={properties.onSetCourseLengthOpen}
           />
           <ClassesTable
-            rows={classesManagement.rows}
-            selectedRowKeys={classesManagement.selectedRowKeys}
-            onSelectedRowKeysChange={classesManagement.onSelectedRowKeysChange}
+            rows={properties.classesManagement.rows}
+            selectedRowKeys={properties.classesManagement.selectedRowKeys}
+            onSelectedRowKeysChange={properties.classesManagement.onSelectedRowKeysChange}
           />
           <BulkDeleteModal
-            open={deleteModalOpen}
-            selectedRows={selectedTableRows}
-            onConfirm={() => void handleDeleteConfirm()}
-            onCancel={() => setDeleteModalOpen(false)}
-            confirmLoading={deleteSubmitting}
+            open={properties.deleteModalOpen}
+            selectedRows={properties.selectedTableRows}
+            onConfirm={() => { properties.handleDeleteConfirm(); }}
+            onCancel={properties.onDeleteCancel}
+            confirmLoading={properties.deleteSubmitting}
           />
           <BulkSetSelectModal
-            open={setCohortModalOpen}
+            open={properties.setCohortModalOpen}
             title="Set cohort"
             fieldLabel="Cohort"
-            options={cohortOptions}
-            confirmLoading={setCohortSubmitting}
-            onConfirm={handleSetCohort}
-            onCancel={() => setSetCohortModalOpen(false)}
+            options={properties.cohortOptions}
+            confirmLoading={properties.setCohortSubmitting}
+            onConfirm={properties.handleSetCohort}
+            onCancel={properties.onSetCohortCancel}
           />
           <BulkSetSelectModal
-            open={setYearGroupModalOpen}
+            open={properties.setYearGroupModalOpen}
             title="Set year group"
             fieldLabel="Year group"
-            options={yearGroupOptions}
-            confirmLoading={setYearGroupSubmitting}
-            onConfirm={handleSetYearGroup}
-            onCancel={() => setSetYearGroupModalOpen(false)}
+            options={properties.yearGroupOptions}
+            confirmLoading={properties.setYearGroupSubmitting}
+            onConfirm={properties.handleSetYearGroup}
+            onCancel={properties.onSetYearGroupCancel}
           />
           <BulkSetCourseLengthModal
-            open={setCourseLengthModalOpen}
-            confirmLoading={setCourseLengthSubmitting}
-            onConfirm={handleSetCourseLength}
-            onCancel={() => setSetCourseLengthModalOpen(false)}
+            open={properties.setCourseLengthModalOpen}
+            confirmLoading={properties.setCourseLengthSubmitting}
+            onConfirm={properties.handleSetCourseLength}
+            onCancel={properties.onSetCourseLengthCancel}
           />
         </Flex>
       ) : null}

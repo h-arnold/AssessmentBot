@@ -198,21 +198,23 @@ async function submitCourseLengthModal(courseLength: string) {
  * @param {'Set cohort' | 'Set year group' | 'Set course length'} dialogName Active dialog name.
  * @param {ReturnType<typeof vi.fn>} onSelectedRowKeysChange Selection callback spy.
  * @param {MockInstance} invalidateQueriesSpy Query invalidation spy.
+ * @param {string[]} expectedSelectedRowKeys Expected row keys to keep selected.
  * @returns {Promise<void>} Completion signal.
  */
 async function expectFailureState(
   dialogName: 'Set cohort' | 'Set year group' | 'Set course length',
   onSelectedRowKeysChange: ReturnType<typeof vi.fn>,
   invalidateQueriesSpy: MockInstance,
+  expectedSelectedRowKeys: string[],
 ) {
   expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument();
   expect(
-    await screen.findByText(/selected classes could not be updated|unable to update the selected class/i),
+    await screen.findByText(/unable to update any of the 2 selected classes|unable to update the selected class/i),
   ).toBeInTheDocument();
   await waitFor(() =>
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: queryKeys.classPartials() }),
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })),
   );
-  expect(onSelectedRowKeysChange).toHaveBeenCalledWith(['inactive-1']);
+  expect(onSelectedRowKeysChange).toHaveBeenCalledWith(expectedSelectedRowKeys);
   expect(onSelectedRowKeysChange).not.toHaveBeenCalledWith([]);
 }
 
@@ -221,10 +223,10 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
     vi.clearAllMocks();
   });
 
-  it('keeps the cohort modal open with inline feedback and reselects only failed rows after a partial failure', async () => {
+  it('keeps the cohort modal open with inline feedback and reselects all failed rows after a full failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
     bulkSetCohortMock.mockResolvedValue([
-      { status: 'fulfilled', row: toClassTableRow(rows[0]), data: { ok: true } },
+      { status: 'rejected', row: toClassTableRow(rows[0]), error: new Error('Update failed.') },
       { status: 'rejected', row: toClassTableRow(rows[1]), error: new Error('Update failed.') },
     ]);
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
@@ -237,13 +239,13 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
         'cohort-2025',
       ),
     );
-    await expectFailureState('Set cohort', onSelectedRowKeysChange, invalidateQueriesSpy);
+    await expectFailureState('Set cohort', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 
-  it('keeps the year-group modal open with inline feedback and reselects only failed rows after a partial failure', async () => {
+  it('keeps the year-group modal open with inline feedback and reselects all failed rows after a full failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
     bulkSetYearGroupMock.mockResolvedValue([
-      { status: 'fulfilled', row: toClassTableRow(rows[0]), data: { ok: true } },
+      { status: 'rejected', row: toClassTableRow(rows[0]), error: new Error('Update failed.') },
       { status: 'rejected', row: toClassTableRow(rows[1]), error: new Error('Update failed.') },
     ]);
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
@@ -256,13 +258,13 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
         'year-8',
       ),
     );
-    await expectFailureState('Set year group', onSelectedRowKeysChange, invalidateQueriesSpy);
+    await expectFailureState('Set year group', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 
-  it('keeps the course-length modal open with inline feedback and reselects only failed rows after a partial failure', async () => {
+  it('keeps the course-length modal open with inline feedback and reselects all failed rows after a full failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
     bulkSetCourseLengthMock.mockResolvedValue([
-      { status: 'fulfilled', row: toClassTableRow(rows[0]), data: { ok: true } },
+      { status: 'rejected', row: toClassTableRow(rows[0]), error: new Error('Update failed.') },
       { status: 'rejected', row: toClassTableRow(rows[1]), error: new Error('Update failed.') },
     ]);
     const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
@@ -275,6 +277,6 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
         UPDATED_COURSE_LENGTH,
       ),
     );
-    await expectFailureState('Set course length', onSelectedRowKeysChange, invalidateQueriesSpy);
+    await expectFailureState('Set course length', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 });

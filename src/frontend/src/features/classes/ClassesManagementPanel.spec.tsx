@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
 import type { RowMutationResult } from './batchMutationEngine';
 import type { ClassTableRow } from './bulkCreateFlow';
@@ -297,7 +298,7 @@ describe('ClassesManagementPanel', () => {
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: queryKeys.classPartials() });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
   });
 
   it('shows a top-level warning and keeps failed rows selected when setting active partially fails', async () => {
@@ -328,7 +329,7 @@ describe('ClassesManagementPanel', () => {
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['inactive-2']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: queryKeys.classPartials() });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
   });
 
   it('shows a top-level error and keeps failed rows selected when setting inactive fully fails', async () => {
@@ -359,6 +360,46 @@ describe('ClassesManagementPanel', () => {
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['active-1', 'active-2']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: queryKeys.classPartials() });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+  });
+
+  it('shows refresh-failure-specific guidance and hides stale rows when a partial delete refresh fails', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    classesManagementStateMock.mockReturnValue(
+      buildReadyClassesManagementState({
+        selectedRowKeys: ['active-1', 'orphaned-1'],
+        onSelectedRowKeysChange,
+      }),
+    );
+    runBatchMutationMock.mockResolvedValue([
+      createFulfilledResult('active-1'),
+      createRejectedResult('orphaned-1'),
+    ]);
+
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    vi.spyOn(queryClient, 'refetchQueries').mockRejectedValueOnce(new ApiTransportError({
+      requestId: 'request-refresh',
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Transport refresh text.',
+        retriable: true,
+      },
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+    expect(await screen.findByText('Some selected classes were not deleted.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '1 of 2 selected classes could not be deleted. The update completed, but the classes could not be refreshed right now. Please reload the page and review the remaining selection.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('The classes are busy updating right now. Please try again shortly.')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Classes table' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Transport refresh text.')).not.toBeInTheDocument();
+    expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
   });
 });
