@@ -803,7 +803,7 @@ class ABClassController {
 
   /**
    * Applies a lightweight patch to editable ABClass fields and returns the persisted partial class summary.
-   * If the class does not yet exist, initialises it first using the supplied patch fields.
+   * Throws a `RangeError` if the class does not exist; it does not create a new class.
    * @param {Object} parameters - Patch parameters object.
    * @param {string} parameters.classId - Classroom course identifier (required).
    * @param {*} [parameters.cohort] - Optional cohort replacement.
@@ -811,6 +811,7 @@ class ABClassController {
    * @param {*} [parameters.courseLength] - Optional validated course length.
    * @param {boolean|null} [parameters.active] - Optional active-state replacement.
    * @returns {Object} Partial ABClass summary from toPartialJSON().
+   * @throws {RangeError} When no stored document exists for the given classId.
    */
   updateABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
@@ -821,18 +822,7 @@ class ABClassController {
     const existingDocument = collection.findOne({ classId: classId });
 
     if (!existingDocument) {
-      const abClass = this.initialise(classId, {
-        cohort: Object.hasOwn(patch, 'cohort') ? patch.cohort : undefined,
-        yearGroup: Object.hasOwn(patch, 'yearGroup') ? patch.yearGroup : undefined,
-        courseLength: Object.hasOwn(patch, 'courseLength') ? patch.courseLength : undefined,
-      });
-
-      if (Object.hasOwn(patch, 'active')) {
-        abClass.active = patch.active;
-      }
-
-      this.saveClass(abClass);
-      return this._buildClassSummary(abClass);
+      throw new RangeError(`updateABClass: class '${classId}' does not exist`);
     }
 
     const abClass = this._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);

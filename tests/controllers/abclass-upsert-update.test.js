@@ -163,7 +163,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('ABClassController upsert/update orchestration (Section 3 RED)', () => {
+describe('ABClassController upsert and update orchestration', () => {
   it('upsertABClass creates a new class when the class is missing', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
@@ -323,32 +323,24 @@ describe('ABClassController upsert/update orchestration (Section 3 RED)', () => 
     expect(result).not.toHaveProperty('assignments');
   });
 
-  it('updateABClass uses upsert-on-update behaviour when the class is missing', () => {
+  it('updateABClass throws when the class does not exist rather than creating it', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
 
     const controller = new ABClassController();
 
-    const result = controller.updateABClass({
-      classId: 'class-001',
-      cohort: '2028',
-      active: null,
-    });
-
-    expect(classroomApiClient.fetchCourse).toHaveBeenCalledWith('class-001');
-    expect(controller.dbManager.getCollection).toHaveBeenCalledWith('class-001');
-    expect(controller.dbManager.getCollection).toHaveBeenCalledWith('abclass_partials');
-    expect(classCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(classCollection.updateOne).not.toHaveBeenCalled();
-    expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(
-      buildExpectedSummary({
+    expect(() =>
+      controller.updateABClass({
+        classId: 'class-001',
         cohort: '2028',
-        courseLength: 1,
-        yearGroup: null,
         active: null,
       })
-    );
+    ).toThrow(new RangeError("updateABClass: class 'class-001' does not exist"));
+
+    expect(classroomApiClient.fetchCourse).not.toHaveBeenCalled();
+    expect(classCollection.insertOne).not.toHaveBeenCalled();
+    expect(classCollection.updateOne).not.toHaveBeenCalled();
+    expect(partialsCollection.insertOne).not.toHaveBeenCalled();
   });
 
   it('updateABClass preserves write-through consistency between the full record and abclass_partials', () => {

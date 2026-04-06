@@ -100,7 +100,7 @@ describe('Api/abclassMutations exports', () => {
   });
 });
 
-describe('Api/abclassMutations direct handlers (Section 3)', () => {
+describe('Api/abclassMutations direct handlers', () => {
   it('upsertABClass delegates valid params to controller and returns the controller summary payload', () => {
     const params = {
       classId: 'class-001',
