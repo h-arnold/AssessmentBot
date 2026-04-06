@@ -81,9 +81,9 @@ The split above matches the largest codebase seams and the highest-risk gaps fou
 
 ### Bulk-workflow risks
 
-- `updateABClass` still behaves like an upsert for missing classes.
+- Workstream 1 hardened backend validation for missing-class `active` updates; Workstream 4 must preserve this behaviour while adding bulk flows.
 - There is no shared batch mutation engine yet.
-- The current test harness does not yet prove submitted-row ordering or partial-failure aggregation.
+- The shared Classes harness exists, but Workstream 4 still needs explicit bulk-journey assertions for submitted-row ordering and partial-failure aggregation.
 
 ### Reference-data modal and sign-off risks
 
