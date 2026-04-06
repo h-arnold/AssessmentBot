@@ -77,7 +77,7 @@ Acceptance:
 - Add `googleClassrooms.zod.ts` and `googleClassroomsService.ts`.
 - Add `queryKeys.googleClassrooms()`.
 - Add `getGoogleClassroomsQueryOptions()`.
-- Trigger this dataset prefetch when the Settings page loads.
+- Trigger this dataset prefetch when the Classes tab is entered.
 - Keep this dataset prefetch non-blocking and outside startup warm-up.
 
 Implementation detail:
@@ -91,7 +91,7 @@ Implementation detail:
    - `queryKeys.googleClassrooms()`
    - `getGoogleClassroomsQueryOptions()`
 4. Prefetch trigger location
-   - Trigger `queryClient.prefetchQuery(getGoogleClassroomsQueryOptions())` when the Settings page loads.
+   - Trigger `queryClient.prefetchQuery(getGoogleClassroomsQueryOptions())` when the Classes tab is entered.
    - Keep this prefetch fire-and-forget (non-blocking), with no startup gating dependency.
 5. Error handling
    - Prefetch failures are logged for diagnostics and surfaced only where the Classes experience consumes the dataset.
