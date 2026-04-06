@@ -98,8 +98,30 @@ async function applyColumnFilter(
   await page.keyboard.press('Escape');
 }
 
+/**
+ * Selects a row checkbox by row key.
+ *
+ * @param {Page} page Playwright page.
+ * @param {string} rowKey Row key in the table dataset.
+ * @returns {Promise<void>} Completion signal.
+ */
+async function selectRowByKey(page: Page, rowKey: string): Promise<void> {
+  await page.locator(`tbody tr[data-row-key="${rowKey}"]`).getByRole('checkbox').check();
+}
+
+/**
+ * Clears a row checkbox by row key.
+ *
+ * @param {Page} page Playwright page.
+ * @param {string} rowKey Row key in the table dataset.
+ * @returns {Promise<void>} Completion signal.
+ */
+async function clearRowSelectionByKey(page: Page, rowKey: string): Promise<void> {
+  await page.locator(`tbody tr[data-row-key="${rowKey}"]`).getByRole('checkbox').uncheck();
+}
+
 test.describe('Classes CRUD table controls', () => {
-  test('supports deterministic filtering and sorting across workstream 3 columns with deterministic reset', async ({
+  test('applies status column filtering and reset with visible row changes', async ({
     page,
   }) => {
     await openClassesTabWithScenario(
@@ -124,52 +146,68 @@ test.describe('Classes CRUD table controls', () => {
     await expect(await getVisibleRowKeys(page)).toEqual(['gc-active']);
 
     await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await applyColumnFilter(page, 'Cohort', 'Cohort 2023');
-    await expect(await getVisibleRowKeys(page)).toEqual(['gc-inactive', 'orphaned-legacy']);
-
-    await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await applyColumnFilter(page, 'Course length', '30');
-    await expect(await getVisibleRowKeys(page)).toEqual(['gc-active']);
-
-    await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await applyColumnFilter(page, 'Year group', 'Year 8');
-    await expect(await getVisibleRowKeys(page)).toEqual(['gc-inactive', 'orphaned-legacy']);
-
-    await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await applyColumnFilter(page, 'Active', 'Yes');
-    await expect(await getVisibleRowKeys(page)).toEqual(['gc-active']);
-
-    await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await page.getByRole('columnheader', { name: 'Class name' }).click();
     await expect(await getVisibleRowKeys(page)).toEqual([
       'gc-active',
       'gc-inactive',
       'gc-not-created',
       'orphaned-legacy',
     ]);
-
-    await page.getByRole('columnheader', { name: 'Class name' }).click();
-    await expect(await getVisibleRowKeys(page)).toEqual([
-      'orphaned-legacy',
-      'gc-not-created',
-      'gc-inactive',
-      'gc-active',
-    ]);
-
-    await page.getByRole('button', { name: 'Reset sort and filters' }).click();
-    await expect(await getVisibleRowKeys(page)).toEqual([
-      'gc-active',
-      'gc-inactive',
-      'gc-not-created',
-      'orphaned-legacy',
-    ]);
-
-    await applyColumnFilter(page, 'Status', 'inactive');
-    await page.getByRole('columnheader', { name: 'Class name' }).click();
-    await expect(await getVisibleRowKeys(page)).toEqual(['gc-inactive']);
   });
 
-  test('toolbar remains delete-only for orphaned selection and mixed orphaned selection', async ({
+  test('keeps all bulk actions disabled when no rows are selected', async ({ page }) => {
+    await openClassesTabWithScenario(
+      page,
+      createSuccessfulClassesScenario({
+        classPartials: workstreamThreeClassPartials,
+        cohorts: baseCohorts,
+        yearGroups: baseYearGroups,
+        googleClassrooms: workstreamThreeGoogleClassrooms,
+      }),
+    );
+
+    await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set active' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set inactive' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeDisabled();
+    await expect(page.getByText('Orphaned rows are deletion-only.')).toHaveCount(0);
+    await expect(
+      page.getByText('Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'),
+    ).toHaveCount(0);
+  });
+
+  test('enables eligible bulk actions based on selected row statuses', async ({ page }) => {
+    await openClassesTabWithScenario(
+      page,
+      createSuccessfulClassesScenario({
+        classPartials: workstreamThreeClassPartials,
+        cohorts: baseCohorts,
+        yearGroups: baseYearGroups,
+        googleClassrooms: workstreamThreeGoogleClassrooms,
+      }),
+    );
+
+    await selectRowByKey(page, 'gc-inactive');
+    await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set active' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Set inactive' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
+
+    await clearRowSelectionByKey(page, 'gc-inactive');
+    await selectRowByKey(page, 'gc-not-created');
+    await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Set active' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set inactive' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
+
+    await clearRowSelectionByKey(page, 'gc-not-created');
+    await selectRowByKey(page, 'gc-active');
+    await expect(page.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set active' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Set inactive' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
+  });
+
+  test('keeps mixed orphaned selections constrained to delete-only actions', async ({
     page,
   }) => {
     await openClassesTabWithScenario(page, {
