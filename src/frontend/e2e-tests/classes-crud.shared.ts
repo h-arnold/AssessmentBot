@@ -32,6 +32,7 @@ export type ClassesCrudRuntimeScenario = Readonly<{
   getCohorts: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getYearGroups: ReadonlyArray<ClassesCrudApiResponseScenario>;
   getGoogleClassrooms: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  updateABClass?: ReadonlyArray<ClassesCrudApiResponseScenario>;
 }>;
 
 export type ClassesCrudDataBundle = Readonly<{
@@ -162,6 +163,7 @@ export function createSuccessfulClassesScenario(data: ClassesCrudDataBundle): Cl
     getCohorts: [{ kind: 'success', data: [...data.cohorts] }],
     getYearGroups: [{ kind: 'success', data: [...data.yearGroups] }],
     getGoogleClassrooms: [{ kind: 'success', data: [...data.googleClassrooms] }],
+    updateABClass: [],
   };
 }
 
@@ -183,6 +185,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getCohorts: 0,
         getYearGroups: 0,
         getGoogleClassrooms: 0,
+        updateABClass: 0,
       };
       const responseQueues = {
         getAuthorisationStatus: mockScenario.getAuthorisationStatus,
@@ -190,6 +193,7 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         getCohorts: mockScenario.getCohorts,
         getYearGroups: mockScenario.getYearGroups,
         getGoogleClassrooms: mockScenario.getGoogleClassrooms,
+        updateABClass: mockScenario.updateABClass ?? [],
       };
 
       function isClassesCrudTransportRequest(request) {
@@ -256,7 +260,8 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
           method !== 'getABClassPartials' &&
           method !== 'getCohorts' &&
           method !== 'getYearGroups' &&
-          method !== 'getGoogleClassrooms'
+          method !== "getGoogleClassrooms" &&
+          method !== "updateABClass"
         ) {
           callbacks.failureHandler?.(new Error(\`Unsupported method: \${method}\`));
           return;

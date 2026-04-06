@@ -257,14 +257,16 @@ Minimal production surface implied by these tests (to be created in the green ph
 
 ### 4.3 Bulk cohort, year-group, and course-length flows
 
+> **✅ COMPLETE**
+
 | Step                          | Status     |
 | ----------------------------- | ---------- |
-| Red tests added               | ⬜ pending |
-| Red review clean              | ⬜ pending |
-| Green implementation complete | ⬜ pending |
-| Green review clean            | ⬜ pending |
-| Checks passed                 | ⬜ pending |
-| Action plan updated           | ⬜ pending |
+| Red tests added               | ✅ done    |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
+| Green review clean            | ✅ done    |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
 | Commit created                | ⬜ pending |
 | Push completed                | ⬜ pending |
 
@@ -281,6 +283,56 @@ Tests:
 - `src/frontend/src/features/classes/bulkSetYearGroup.spec.tsx`
 - `src/frontend/src/features/classes/bulkSetCourseLength.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-cohort.spec.ts e2e-tests/classes-crud-bulk-year-group.spec.ts e2e-tests/classes-crud-bulk-course-length.spec.ts`
+
+**Implementation notes — 4.3**
+
+Changed production files:
+
+- `src/frontend/src/features/classes/bulkSetCohortFlow.ts` — new shared cohort-update helper; filters eligible existing rows, exposes active-cohort-only select options, and dispatches keyed `updateABClass` mutations through `runBatchMutation(...)`.
+- `src/frontend/src/features/classes/bulkSetYearGroupFlow.ts` — new keyed year-group update helper; reuses the shared batch engine and preserves stable key values in selector options and mutation payloads.
+- `src/frontend/src/features/classes/bulkSetCourseLengthFlow.ts` — new course-length update helper; validates integer `>= 1` via Zod before dispatching per-row updates through the shared batch engine.
+- `src/frontend/src/features/classes/bulkEditValidation.zod.ts` — new shared Zod validation module for reference-data keys and course-length validation copy.
+- `src/frontend/src/features/classes/BulkSetSelectModal.tsx` — new reusable select-driven modal for cohort and year-group updates.
+- `src/frontend/src/features/classes/BulkSetCourseLengthModal.tsx` — new course-length modal using Ant `InputNumber` and shared validation.
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — wires the three new modals/actions into the merged WS3 shell, threads keyed row data into the WS4 adapter, and now handles settled batch results for metadata, delete, and active-state flows so partial/full failures are visible instead of being treated as success.
+- `src/frontend/src/features/classes/ClassesToolbar.tsx` — adds `Set cohort`, `Set year group`, and `Set course length` actions with existing-row-only eligibility (`active`/`inactive` only).
+- `src/frontend/src/features/classes/classesManagementViewModel.ts` — carries `cohortKey` and `yearGroupKey` through the merged table row view-model so bulk edits can submit stable keys.
+- `src/frontend/src/features/classes/useClassesManagement.ts` — exposes `cohorts` and `yearGroups` to the panel so the new bulk-edit modals can render current selector options.
+- `src/frontend/src/features/classes/BulkDeleteModal.tsx` — extended with `confirmLoading` so delete failure handling can keep the surface consistent while requests are in flight.
+
+Changed test files:
+
+- `src/frontend/src/features/classes/bulkSetCohort.spec.tsx` — new RED/GREEN unit coverage for eligibility, active-cohort option filtering, keyed payloads, and single-row reuse of the batch path.
+- `src/frontend/src/features/classes/bulkSetYearGroup.spec.tsx` — new RED/GREEN unit coverage for eligibility, keyed selector options, keyed payloads, and single-row reuse.
+- `src/frontend/src/features/classes/bulkSetCourseLength.spec.tsx` — new RED/GREEN unit coverage for eligibility, integer `>= 1` validation, keyed batch dispatch, and single-row reuse.
+- `src/frontend/src/features/classes/ClassesToolbar.spec.tsx` — extended to lock the new edit-action eligibility for orphaned, notCreated, active, inactive, and mixed active+inactive selections.
+- `src/frontend/src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx` — new integration coverage proving metadata partial failures keep the modal open, refresh successful rows, and reselect only failed rows.
+- `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx` — extended to cover top-level failure feedback for delete, set-active, and set-inactive partial/full failures.
+- `src/frontend/e2e-tests/classes-crud-bulk-cohort.spec.ts` — new browser journey coverage for cohort modal eligibility, active-only cohort options, and partial-failure reselection/refresh behaviour.
+- `src/frontend/e2e-tests/classes-crud-bulk-year-group.spec.ts` — new browser journey coverage for year-group modal eligibility, keyed option usage, and partial-failure reselection/refresh behaviour.
+- `src/frontend/e2e-tests/classes-crud-bulk-course-length.spec.ts` — new browser journey coverage for course-length modal eligibility, validation, and partial-failure reselection/refresh behaviour.
+- `src/frontend/e2e-tests/classes-crud-bulk-core.spec.ts` — extended core-flow browser coverage for partial delete failure and adjacent active-state failure handling.
+- `src/frontend/e2e-tests/classes-crud.shared.ts` — extended shared Classes CRUD harness to queue `updateABClass` responses for browser-side failure-path journeys.
+
+Red-phase review findings / resolutions:
+
+- **[blocking — resolved]** Initial RED suite only proved single-row eligibility. Added mixed active+inactive coverage in both unit and browser tests so an implementation that blocked inactive rows or mixed existing selections could not pass.
+- **[blocking — resolved]** Course-length validation copy conflicted between unit and browser tests. Aligned both on the canonical message `Course length must be an integer greater than or equal to 1.`.
+- Final RED review — CLEAN.
+
+Green-phase review findings / resolutions:
+
+- **[blocking — resolved]** Metadata bulk-edit handlers originally treated settled batch failures as success because they ignored `runBatchMutation(...)` rejected-row results. Fixed by keeping metadata modals open on partial/full failure, refreshing class partials, and reselecting only failed rows.
+- **[blocking — resolved]** The same settled-result bug still affected adjacent delete and active-state flows. Generalised top-level settled-result handling so delete, set-active, and set-inactive now refresh, preserve failed-row selection, and surface visible warning/error alerts instead of silently clearing state.
+- Final green review — CLEAN (no remaining blockers).
+
+Checks that passed:
+
+- `npm run frontend:test -- src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx src/features/classes/ClassesToolbar.spec.tsx`
+- `npm run frontend:test -- src/features/classes/ClassesManagementPanel.spec.tsx src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+- `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts e2e-tests/classes-crud-bulk-cohort.spec.ts e2e-tests/classes-crud-bulk-year-group.spec.ts e2e-tests/classes-crud-bulk-course-length.spec.ts`
+- `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
 
 ### 4.4 Mutation summary and refresh-failure UX
 

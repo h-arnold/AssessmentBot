@@ -19,6 +19,8 @@ export type BulkDeleteModalProperties = {
   onConfirm: () => void;
   /** Called when the user cancels the operation. */
   onCancel: () => void;
+  /** Whether the confirmation action is in progress. */
+  confirmLoading?: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ export function BulkDeleteModal({
   selectedRows,
   onConfirm,
   onCancel,
+  confirmLoading,
 }: Readonly<BulkDeleteModalProperties>) {
   const count = selectedRows.length;
   const classWord = count === 1 ? 'class' : 'classes';
@@ -46,8 +49,10 @@ export function BulkDeleteModal({
       title="Delete classes"
       okText="Delete"
       cancelText="Cancel"
+      confirmLoading={confirmLoading}
       onOk={onConfirm}
       onCancel={onCancel}
+      cancelButtonProps={{ disabled: confirmLoading }}
     >
       <p>
         You are about to delete {count} {classWord} from AssessmentBot. This will permanently

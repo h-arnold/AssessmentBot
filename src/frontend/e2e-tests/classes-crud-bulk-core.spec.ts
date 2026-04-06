@@ -62,9 +62,38 @@ const activeClassPartial = {
   active: true,
 };
 
+const secondInactiveGCR = { classId: 'gcr-class-linked-002', className: 'Year 8 Science' };
+const secondInactiveClassPartial = {
+  ...linkedClassPartial,
+  classId: 'gcr-class-linked-002',
+  className: 'Year 8 Science',
+};
+const secondActiveGCR = { classId: 'gcr-class-active-002', className: 'Year 7 Art' };
+const secondActiveClassPartial = {
+  ...activeClassPartial,
+  classId: 'gcr-class-active-002',
+  className: 'Year 7 Art',
+};
+
 // ---------------------------------------------------------------------------
 // Mock runtime helper
 // ---------------------------------------------------------------------------
+
+type BulkCoreMutationScenario = Readonly<
+  | {
+      kind: 'success';
+      data?: unknown;
+    }
+  | {
+      kind: 'transportFailure';
+      message: string;
+    }
+  | {
+      kind: 'failureEnvelope';
+      code?: string;
+      message: string;
+    }
+>;
 
 type BulkCoreScenario = Readonly<{
   /** Google Classrooms to return for all getGoogleClassrooms calls. */
@@ -76,6 +105,10 @@ type BulkCoreScenario = Readonly<{
    * getABClassPartials call (e.g. after a mutation + refetch).
    */
   classPartialsAfterMutation?: readonly unknown[];
+  /** Optional queued delete responses. Defaults to success when omitted. */
+  deleteABClass?: readonly BulkCoreMutationScenario[];
+  /** Optional queued update responses. Defaults to success when omitted. */
+  updateABClass?: readonly BulkCoreMutationScenario[];
 }>;
 
 /**
@@ -92,11 +125,68 @@ async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Prom
       const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
       const scenario = ${JSON.stringify(scenario)};
       let classPartialsCallCount = 0;
+      const mutationCallCounts = {
+        deleteABClass: 0,
+        updateABClass: 0,
+      };
 
       function sendSuccess(successHandler, data, requestId) {
         if (successHandler !== undefined) {
           successHandler({ ok: true, requestId, data });
         }
+      }
+
+      function sendFailureEnvelope(successHandler, requestId, code, message) {
+        if (successHandler !== undefined) {
+          successHandler({
+            ok: false,
+            requestId,
+            error: {
+              code,
+              message,
+              retriable: false,
+            },
+          });
+        }
+      }
+
+      function handleQueuedMutation(method, callbacks) {
+        const responseQueue = scenario[method];
+
+        if (Array.isArray(responseQueue) === false || responseQueue.length === 0) {
+          sendSuccess(callbacks.successHandler, { ok: true }, 'req-' + method + '-default');
+          return;
+        }
+
+        const responseIndex = mutationCallCounts[method];
+        mutationCallCounts[method] = responseIndex + 1;
+        const response = responseQueue[responseIndex];
+
+        if (response === undefined) {
+          callbacks.failureHandler?.(new Error('Unexpected call to ' + method + ' (call index ' + responseIndex + ')'));
+          return;
+        }
+
+        if (response.kind === 'transportFailure') {
+          callbacks.failureHandler?.(new Error(response.message));
+          return;
+        }
+
+        if (response.kind === 'failureEnvelope') {
+          sendFailureEnvelope(
+            callbacks.successHandler,
+            'req-' + method + '-' + responseIndex,
+            response.code ?? 'INTERNAL_ERROR',
+            response.message,
+          );
+          return;
+        }
+
+        sendSuccess(
+          callbacks.successHandler,
+          response.data ?? { ok: true },
+          'req-' + method + '-' + responseIndex,
+        );
       }
 
       globalThis.google = {
@@ -134,13 +224,13 @@ async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Prom
               return;
             }
 
-            // Mutation methods — always succeed.
-            if (
-              method === 'deleteABClass' ||
-              method === 'updateABClass' ||
-              method === 'upsertABClass'
-            ) {
-              sendSuccess(callbacks.successHandler, { ok: true }, 'req-mutation');
+            if (method === 'deleteABClass' || method === 'updateABClass') {
+              handleQueuedMutation(method, callbacks);
+              return;
+            }
+
+            if (method === 'upsertABClass') {
+              sendSuccess(callbacks.successHandler, { ok: true }, 'req-upsert-default');
               return;
             }
 
@@ -301,6 +391,39 @@ test.describe('bulk delete flow', () => {
   });
 });
 
+test.describe('bulk delete failure feedback', () => {
+  test('partial bulk delete failure closes the dialog, keeps failed rows selected, and shows a warning', async ({ page }) => {
+    const orphanedPartial = {
+      ...linkedClassPartial,
+      classId: 'orphaned-class-001',
+      className: 'Orphaned Class',
+    };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR],
+      classPartials: [activeClassPartial, orphanedPartial],
+      classPartialsAfterMutation: [orphanedPartial],
+      deleteABClass: [
+        { kind: 'success' },
+        { kind: 'failureEnvelope', message: 'Delete failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeleteButtonLabel }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText('Some selected classes were not deleted.')).toBeVisible();
+    await expect(page.getByText('1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 1')).toBeVisible();
+  });
+});
+
 test.describe('bulk active-state flow', () => {
   test('Set active button is disabled when only already-active rows are selected', async ({
     page,
@@ -374,6 +497,54 @@ test.describe('bulk active-state flow', () => {
 
     // After activation + refetch, the status column should reflect active state
     await expect(table).toContainText(/active/i);
+  });
+
+  test('partial Set active failure keeps failed rows selected and shows a warning', async ({ page }) => {
+    const activatedPartial = { ...linkedClassPartial, active: true };
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [linkedGCR, secondInactiveGCR],
+      classPartials: [linkedClassPartial, secondInactiveClassPartial],
+      classPartialsAfterMutation: [activatedPartial, secondInactiveClassPartial],
+      updateABClass: [
+        { kind: 'success' },
+        { kind: 'failureEnvelope', message: 'Activation failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkActivateButtonLabel }).click();
+
+    await expect(page.getByText('Some selected classes were not set to active.')).toBeVisible();
+    await expect(page.getByText('1 of 2 selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 1')).toBeVisible();
+  });
+
+  test('full Set inactive failure keeps failed rows selected and shows an error', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [activeGCR, secondActiveGCR],
+      classPartials: [activeClassPartial, secondActiveClassPartial],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'Deactivation failed.' },
+        { kind: 'failureEnvelope', message: 'Deactivation failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+
+    await page.getByRole('button', { name: bulkDeactivateButtonLabel }).click();
+
+    await expect(page.getByText('Could not set selected classes to inactive.')).toBeVisible();
+    await expect(page.getByText('Unable to set any of the 2 selected classes to inactive. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Selected rows: 2')).toBeVisible();
   });
 });
 

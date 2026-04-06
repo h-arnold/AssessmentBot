@@ -7,7 +7,9 @@ export interface ClassesManagementRow {
   classId: string;
   className: string;
   status: ClassesManagementStatus;
+  cohortKey?: string | null;
   cohortLabel: string | null;
+  yearGroupKey?: string | null;
   yearGroupLabel: string | null;
   courseLength: number | null;
   active: boolean | null;
@@ -70,7 +72,9 @@ export function buildClassesManagementRows(
         classId: googleClassroom.classId,
         className: googleClassroom.className,
         status: 'notCreated',
+        cohortKey: null,
         cohortLabel: null,
+        yearGroupKey: null,
         yearGroupLabel: null,
         courseLength: null,
         active: null,
@@ -82,7 +86,9 @@ export function buildClassesManagementRows(
       classId: googleClassroom.classId,
       className: googleClassroom.className,
       status: classPartial.active === true ? 'active' : 'inactive',
+      cohortKey: classPartial.cohortKey,
       cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      yearGroupKey: classPartial.yearGroupKey,
       yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
@@ -98,7 +104,9 @@ export function buildClassesManagementRows(
       classId: classPartial.classId,
       className: classPartial.className ?? classPartial.classId,
       status: 'orphaned',
+      cohortKey: classPartial.cohortKey,
       cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      yearGroupKey: classPartial.yearGroupKey,
       yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
