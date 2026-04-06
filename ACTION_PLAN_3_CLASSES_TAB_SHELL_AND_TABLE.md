@@ -134,7 +134,7 @@ Tests:
 
 Implementation note: merged row model implemented in `classesManagementViewModel.ts` with status mapping and deterministic ordering.
 
-### 3.3 Summary, toolbar, and table rendering — in progress
+### 3.3 Summary, toolbar, and table rendering — partial (merged)
 
 - [x] Red tests added
 - [x] Red review clean
@@ -142,21 +142,15 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
-### 3.4 Load, error, and empty states — in progress
+Open acceptance criteria:
 
-- [x] Red tests added
-- [x] Red review clean
-- [x] Green implementation complete
-- [x] Green review clean
-- [x] Checks passed
-- [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [ ] Selection reset on Classes-tab re-entry remains open and should be verified/closed with bulk-workflow state transitions in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md`).
+- [ ] Selection clearing after destructive mutation refresh is deferred until destructive flows land in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#42-bulk-create-delete-and-active-state-flows`).
 
-### 3.5 Browser journeys — in progress
+### 3.4 Load, error, and empty states — partial (merged)
 
 - [x] Red tests added
 - [x] Red review clean
@@ -164,8 +158,46 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
+
+Open acceptance criteria:
+
+- [ ] Non-blocking partial-refresh warning alert semantics remain open and are deferred to Workstream 4 mutation/refresh orchestration (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+- [ ] Success-plus-refresh-needed guidance with stale-table suppression after successful mutation remains open and is deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+
+### 3.5 Browser journeys — complete (merged)
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [x] Commit created
+- [x] Push completed
+
+Open acceptance criteria:
+
+- [ ] Add Playwright coverage for the deferred refresh-failure UX once Workstream 4 ships the UI contract (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+
+## Completion summary (Workstream 3.3-3.5)
+
+### Complete
+
+- 3.3 core summary/toolbar/table rendering, deterministic sorting/filtering controls, and base selection wiring are merged.
+- 3.4 blocking load/error/empty-state handling for startup readiness and Google Classroom availability is merged.
+- 3.5 browser journeys for tab entry, load/error/empty states, table rendering, and table controls are merged.
+
+### Partial
+
+- 3.3 selection lifecycle behaviour that depends on destructive mutation flows is only partially complete and requires Workstream 4 integration.
+- 3.4 alert-stack semantics for mutation-success + refresh-failure pathways are only partially complete pending Workstream 4.
+
+### Deferred
+
+- Refresh-failure user guidance, stale-data suppression, and related browser journeys are deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+- Destructive-flow-dependent selection reset/cleanup behaviour is deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#42-bulk-create-delete-and-active-state-flows`).
 
 ## Sequencing notes
 
