@@ -338,16 +338,16 @@ Checks that passed:
 
 > **✅ COMPLETE (reviewer-clean; commit/push pending)**
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status                                           |
+| ----------------------------- | ------------------------------------------------ |
+| Red tests added               | ✅ done                                          |
+| Red review clean              | ✅ done                                          |
+| Green implementation complete | ✅ done                                          |
+| Green review clean            | ✅ done                                          |
+| Checks passed                 | ✅ done                                          |
+| Action plan updated           | ✅ done                                          |
+| Commit created                | ✅ done (`7636283`)                              |
+| Push completed                | ✅ done (`origin/feat/ws4-bulk-class-workflows`) |
 
 Acceptance:
 
