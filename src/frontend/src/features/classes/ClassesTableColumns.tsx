@@ -4,7 +4,7 @@ import type { ClassesManagementRow, ClassesManagementStatus } from './classesMan
 
 export const UNAVAILABLE_VALUE = '—';
 
-const STATUS_ORDER: Record<ClassesManagementStatus, number> = {
+export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
   active: 0,
   inactive: 1,
   notCreated: 2,
@@ -39,7 +39,7 @@ export interface ClassesTableColumnOptions {
 /**
  * Converts a filter value to string form for deterministic comparisons.
  *
- * @param {string | number | boolean} value Filter value.
+ * @param {Key | boolean} value Filter value.
  * @returns {string} String value.
  */
 function asFilterValue(value: Key | boolean): string {

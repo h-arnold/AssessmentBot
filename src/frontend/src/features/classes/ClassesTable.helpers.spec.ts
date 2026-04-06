@@ -49,6 +49,7 @@ describe('ClassesTable helper coverage', () => {
       order: 'ascend',
     });
     expect(classesTableHelpers.getPrimarySorter([])).toBeNull();
+    expect(classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: null })).toBeNull();
 
     expect(classesTableHelpers.normaliseFilters()).toEqual({
       status: null,

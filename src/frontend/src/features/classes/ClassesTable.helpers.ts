@@ -3,6 +3,7 @@ import type { FilterValue, SortOrder, SorterResult } from 'antd/es/table/interfa
 import type { ClassesManagementRow } from './classesManagementViewModel';
 import {
   compareRowsByDefaultPriority,
+  STATUS_ORDER,
   type ClassesColumnFilterOption,
   type ClassesFilterColumnKey,
   type ClassesSortableColumnKey,
@@ -10,7 +11,7 @@ import {
 
 export interface SortState {
   columnKey: ClassesSortableColumnKey;
-  order: SortOrder;
+  order: Exclude<SortOrder, null>;
 }
 
 export interface ClassesTableFilterState {
@@ -22,6 +23,11 @@ export interface ClassesTableFilterState {
 }
 
 type TableSorterPayload = SorterResult<ClassesManagementRow> | SorterResult<ClassesManagementRow>[];
+
+interface ActiveColumnFilter {
+  onFilter: NonNullable<TableColumnsType<ClassesManagementRow>[number]['onFilter']>;
+  selectedValues: FilterValue;
+}
 
 export const EMPTY_FILTER_STATE: ClassesTableFilterState = {
   status: null,
@@ -90,7 +96,11 @@ export function getFilterOptions(rows: readonly ClassesManagementRow[]) {
 export function getPrimarySorter(sorter: TableSorterPayload): SortState | null {
   const normalisedSorter = Array.isArray(sorter) ? sorter[0] : sorter;
 
-  if (normalisedSorter?.columnKey === undefined || normalisedSorter?.order === undefined) {
+  if (
+    normalisedSorter?.columnKey === undefined
+    || normalisedSorter?.order === undefined
+    || normalisedSorter.order === null
+  ) {
     return null;
   }
 
@@ -198,6 +208,34 @@ export function getControlledColumns(
 }
 
 /**
+ * Resolves active table filters so row filtering can avoid per-row column scans.
+ *
+ * @param {TableColumnsType<ClassesManagementRow>} columns Current columns.
+ * @param {ClassesTableFilterState} filters Current filters.
+ * @returns {ActiveColumnFilter[]} Active filter descriptors.
+ */
+function getActiveColumnFilters(
+  columns: TableColumnsType<ClassesManagementRow>,
+  filters: ClassesTableFilterState,
+): ActiveColumnFilter[] {
+  return columns.flatMap((column) => {
+    if (!isFilterColumnKey(column.key) || column.onFilter === undefined) {
+      return [];
+    }
+
+    const selectedValues = getSelectedFilterValues(filters, column.key);
+    if (selectedValues === null || selectedValues.length === 0) {
+      return [];
+    }
+
+    return [{
+      onFilter: column.onFilter,
+      selectedValues,
+    }];
+  });
+}
+
+/**
  * Applies active column filters to rows.
  *
  * @param {readonly ClassesManagementRow[]} rows Source rows.
@@ -210,20 +248,15 @@ export function applyColumnFilters(
   columns: TableColumnsType<ClassesManagementRow>,
   filters: ClassesTableFilterState,
 ): ClassesManagementRow[] {
+  const activeColumnFilters = getActiveColumnFilters(columns, filters);
+  if (activeColumnFilters.length === 0) {
+    return [...rows];
+  }
+
   return rows.filter((row) =>
-    columns.every((column) => {
-      const columnKey = column.key;
-      if (!isFilterColumnKey(columnKey)) {
-        return true;
-      }
-
-      const selectedValues = getSelectedFilterValues(filters, columnKey);
-      if (selectedValues === null || selectedValues.length === 0 || column.onFilter === undefined) {
-        return true;
-      }
-
-      return selectedValues.some((value) => column.onFilter?.(value, row));
-    }),
+    activeColumnFilters.every(({ onFilter, selectedValues }) =>
+      selectedValues.some((value) => onFilter(value, row)),
+    ),
   );
 }
 
@@ -236,16 +269,9 @@ export function applyColumnFilters(
 export function getSortComparator(
   columnKey: ClassesSortableColumnKey,
 ): (left: ClassesManagementRow, right: ClassesManagementRow) => number {
-  const statusOrder: Record<ClassesManagementRow['status'], number> = {
-    active: 0,
-    inactive: 1,
-    notCreated: 2,
-    orphaned: 3,
-  };
-
   switch (columnKey) {
     case 'status': {
-      return (left, right) => statusOrder[left.status] - statusOrder[right.status];
+      return (left, right) => STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
     }
 
     case 'className': {
@@ -257,7 +283,13 @@ export function getSortComparator(
     }
 
     case 'courseLength': {
-      return (left, right) => (left.courseLength ?? Number.NEGATIVE_INFINITY) - (right.courseLength ?? Number.NEGATIVE_INFINITY);
+      return (left, right) => {
+        if (left.courseLength === right.courseLength) {
+          return 0;
+        }
+
+        return (left.courseLength ?? Number.NEGATIVE_INFINITY) - (right.courseLength ?? Number.NEGATIVE_INFINITY);
+      };
     }
 
     case 'yearGroupLabel': {
@@ -265,8 +297,14 @@ export function getSortComparator(
     }
 
     default: {
-      return (left, right) => (left.active === null ? Number.NEGATIVE_INFINITY : Number(left.active))
-        - (right.active === null ? Number.NEGATIVE_INFINITY : Number(right.active));
+      return (left, right) => {
+        if (left.active === right.active) {
+          return 0;
+        }
+
+        return (left.active === null ? Number.NEGATIVE_INFINITY : Number(left.active))
+          - (right.active === null ? Number.NEGATIVE_INFINITY : Number(right.active));
+      };
     }
   }
 }
@@ -293,8 +331,10 @@ export function getSortedRows(
     return getDefaultSortedRows(rows);
   }
 
+  const sortComparator = getSortComparator(sortState.columnKey);
+
   return [...rows].toSorted((left, right) => {
-    const comparison = getSortComparator(sortState.columnKey)(left, right);
+    const comparison = sortComparator(left, right);
     const directionalComparison = sortState.order === 'ascend' ? comparison : -comparison;
     if (directionalComparison !== 0) {
       return directionalComparison;
