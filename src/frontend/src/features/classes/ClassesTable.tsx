@@ -1,38 +1,21 @@
-import { Button, Card, Select, Space, Table, type TableProps } from 'antd';
+import { Button, Card, Space, Table, type TableProps } from 'antd';
 import { useMemo, useState } from 'react';
-import type { ClassesManagementRow, ClassesManagementStatus } from './classesManagementViewModel';
-import { getClassesTableColumns } from './ClassesTableColumns';
+import {
+  applyColumnFilters,
+  EMPTY_FILTER_STATE,
+  getControlledColumns,
+  getFilterOptions,
+  getPrimarySorter,
+  getSortedRows,
+  normaliseFilters,
+  type ClassesTableFilterState,
+  type SortState,
+} from './ClassesTable.helpers';
+import {
+  getClassesTableColumns,
+} from './ClassesTableColumns';
 import { ClassesNoActiveClassroomsEmptyState } from './ClassesEmptyStates';
-
-const STATUS_ORDER_BY_STATUS: Readonly<Record<ClassesManagementStatus, number>> = {
-  active: 0,
-  inactive: 1,
-  notCreated: 2,
-  orphaned: 3,
-};
-
-/**
- * Returns rows sorted by the default view-model order contract.
- *
- * @param {readonly ClassesManagementRow[]} rows Rows to sort.
- * @returns {ClassesManagementRow[]} Sorted rows.
- */
-function getDefaultSortedRows(rows: readonly ClassesManagementRow[]): ClassesManagementRow[] {
-  return [...rows].toSorted((left, right) => {
-    const statusComparison =
-      STATUS_ORDER_BY_STATUS[left.status] - STATUS_ORDER_BY_STATUS[right.status];
-    if (statusComparison !== 0) {
-      return statusComparison;
-    }
-
-    const classNameComparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
-    if (classNameComparison !== 0) {
-      return classNameComparison;
-    }
-
-    return left.classId.localeCompare(right.classId);
-  });
-}
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 export interface ClassesTableProperties {
   rows: readonly ClassesManagementRow[];
@@ -47,34 +30,23 @@ export interface ClassesTableProperties {
  * @returns {JSX.Element} Table card.
  */
 export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
-  const [statusFilter, setStatusFilter] = useState<ClassesManagementStatus | 'all'>('all');
-  const [classNameSortOrder, setClassNameSortOrder] = useState<'default' | 'asc' | 'desc'>('default');
+  const [filters, setFilters] = useState<ClassesTableFilterState>(EMPTY_FILTER_STATE);
+  const [sortState, setSortState] = useState<SortState | null>(null);
 
-  const defaultRows = useMemo(
-    () => getDefaultSortedRows(properties.rows),
-    [properties.rows]
+  const filterOptions = useMemo(() => getFilterOptions(properties.rows), [properties.rows]);
+  const baseColumns = useMemo(
+    () => getClassesTableColumns({ filterOptions }),
+    [filterOptions],
+  );
+  const columns = useMemo(
+    () => getControlledColumns(baseColumns, filters, sortState),
+    [baseColumns, filters, sortState],
   );
 
   const visibleRows = useMemo(() => {
-    const statusFilteredRows = statusFilter === 'all'
-      ? defaultRows
-      : defaultRows.filter((row) => row.status === statusFilter);
-
-    if (classNameSortOrder === 'default') {
-      return statusFilteredRows;
-    }
-
-    return [...statusFilteredRows].toSorted((left, right) => {
-      const comparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
-      if (comparison !== 0) {
-        return classNameSortOrder === 'asc' ? comparison : -comparison;
-      }
-
-      return left.classId.localeCompare(right.classId);
-    });
-  }, [classNameSortOrder, defaultRows, statusFilter]);
-
-  const columns = useMemo(() => getClassesTableColumns(), []);
+    const filteredRows = applyColumnFilters(properties.rows, baseColumns, filters);
+    return getSortedRows(filteredRows, baseColumns, sortState);
+  }, [baseColumns, filters, properties.rows, sortState]);
 
   const rowSelection: TableProps<ClassesManagementRow>['rowSelection'] = {
     selectedRowKeys: properties.selectedRowKeys as string[],
@@ -83,7 +55,7 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
   };
 
   const hasActiveGoogleClassroom = properties.rows.some(
-    (row) => row.status === 'active' || row.status === 'inactive' || row.status === 'notCreated'
+    (row) => row.status === 'active' || row.status === 'inactive' || row.status === 'notCreated',
   );
 
   return (
@@ -92,40 +64,10 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
       title="Classes table"
       extra={(
         <Space>
-          <Select
-            aria-label="Status filter"
-            value={statusFilter}
-            options={[
-              { label: 'all', value: 'all' },
-              { label: 'active', value: 'active' },
-              { label: 'inactive', value: 'inactive' },
-              { label: 'notCreated', value: 'notCreated' },
-              { label: 'orphaned', value: 'orphaned' },
-            ]}
-            onChange={(value) => setStatusFilter(value)}
-            style={{ minWidth: 160 }}
-          />
           <Button
             onClick={() => {
-              if (classNameSortOrder === 'default') {
-                setClassNameSortOrder('asc');
-                return;
-              }
-
-              if (classNameSortOrder === 'asc') {
-                setClassNameSortOrder('desc');
-                return;
-              }
-
-              setClassNameSortOrder('default');
-            }}
-          >
-            Class name
-          </Button>
-          <Button
-            onClick={() => {
-              setStatusFilter('all');
-              setClassNameSortOrder('default');
+              setFilters(EMPTY_FILTER_STATE);
+              setSortState(null);
             }}
           >
             Reset sort and filters
@@ -143,6 +85,10 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
         pagination={false}
         rowKey="classId"
         rowSelection={rowSelection}
+        onChange={(_, nextFilters, sorter) => {
+          setFilters(normaliseFilters(nextFilters));
+          setSortState(getPrimarySorter(sorter));
+        }}
       />
     </Card>
   );

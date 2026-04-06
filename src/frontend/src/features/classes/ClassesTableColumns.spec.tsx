@@ -1,6 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { getClassesTableColumns, UNAVAILABLE_VALUE } from './ClassesTableColumns';
+import {
+  compareRowsByDefaultPriority,
+  getClassesTableColumns,
+  UNAVAILABLE_VALUE,
+} from './ClassesTableColumns';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const classesManagementStateMock = vi.fn();
@@ -88,12 +92,21 @@ const inactiveRow: ClassesManagementRow = {
   active: false,
 };
 
+type FilterPredicate = (value: string | number | boolean, row: ClassesManagementRow) => boolean;
+
 const [statusColumn, classNameColumn, cohortColumn, courseLengthColumn, yearGroupColumn, activeColumn] =
-  getClassesTableColumns();
+  getClassesTableColumns({
+    filterOptions: {
+      cohortLabel: [{ text: 'Cohort A', value: 'Cohort A' }],
+      courseLength: [{ text: '2', value: '2' }],
+      yearGroupLabel: [{ text: 'Year 10', value: 'Year 10' }],
+      active: [{ text: 'Yes', value: 'true' }],
+    },
+  });
 
 describe('ClassesTableColumns', () => {
   it('supports deterministic status and class-name sorting and filtering', () => {
-    const statusOnFilter = statusColumn.onFilter as (value: string | number | boolean, row: ClassesManagementRow) => boolean;
+    const statusOnFilter = statusColumn.onFilter as FilterPredicate;
     const statusSorter = statusColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
     const classNameSorter = classNameColumn.sorter as (left: ClassesManagementRow, right: ClassesManagementRow) => number;
 
@@ -101,6 +114,24 @@ describe('ClassesTableColumns', () => {
     expect(statusOnFilter('orphaned', activeRow)).toBe(false);
     expect(statusSorter(activeRow, inactiveRow)).toBeLessThan(0);
     expect(classNameSorter(activeRow, inactiveRow)).toBeLessThan(0);
+  });
+
+  it('supports cohort/course length/year group/active filter predicates for workstream 3 columns', () => {
+    const cohortOnFilter = cohortColumn.onFilter as FilterPredicate;
+    const courseLengthOnFilter = courseLengthColumn.onFilter as FilterPredicate;
+    const yearGroupOnFilter = yearGroupColumn.onFilter as FilterPredicate;
+    const activeOnFilter = activeColumn.onFilter as FilterPredicate;
+
+    expect(cohortOnFilter('Cohort A', activeRow)).toBe(true);
+    expect(cohortOnFilter('null', notCreatedRow)).toBe(true);
+    expect(courseLengthOnFilter('2', activeRow)).toBe(true);
+    expect(courseLengthOnFilter('null', notCreatedRow)).toBe(true);
+    expect(yearGroupOnFilter('Year 10', activeRow)).toBe(true);
+    expect(yearGroupOnFilter('null', notCreatedRow)).toBe(true);
+    expect(activeOnFilter('true', activeRow)).toBe(true);
+    expect(activeOnFilter('false', inactiveRow)).toBe(true);
+    expect(activeOnFilter('null', notCreatedRow)).toBe(true);
+    expect(activeOnFilter(true, activeRow)).toBe(true);
   });
 
   it('supports deterministic nullable text and number sorting for not-created rows', () => {
@@ -140,6 +171,22 @@ describe('ClassesTableColumns', () => {
     expect(activeRender(null, notCreatedRow, 0)).toBe(UNAVAILABLE_VALUE);
     expect(activeRender(null, activeRow, 0)).toBe('Yes');
     expect(activeRender(null, inactiveRow, 0)).toBe('No');
+  });
+
+  it('applies status-priority then case-insensitive class-name tie-break ordering', () => {
+    const unsortedRows = [
+      { ...activeRow, classId: 'beta-id', className: 'beta' },
+      { ...activeRow, classId: 'alpha-id', className: 'Alpha' },
+      { ...activeRow, classId: 'alpha-id-2', className: 'alpha' },
+      { ...inactiveRow },
+    ];
+
+    expect(unsortedRows.toSorted(compareRowsByDefaultPriority).map((row) => row.classId)).toEqual([
+      'alpha-id',
+      'alpha-id-2',
+      'beta-id',
+      'inactive-row',
+    ]);
   });
 
   it('renders deterministic user-facing column headers', async () => {
@@ -187,53 +234,8 @@ describe('ClassesTableColumns', () => {
 
     render(<ClassesManagementPanel />);
 
-    const notCreatedRow = screen.getByRole('row', { name: /notcreated\s+zeta/i });
-    expect(within(notCreatedRow).getByText('notCreated')).toBeInTheDocument();
-    expect(within(notCreatedRow).getAllByText('—')).toHaveLength(unavailableCellCount);
-  });
-
-  it('uses deterministic status+className default ordering and reset restores it after filters/sorts', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: rowsForOrdering.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: rowsForOrdering,
-      selectedRowKeys: [],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    const { container } = render(<ClassesManagementPanel />);
-
-    expect(
-      [...container.querySelectorAll('tbody tr[data-row-key]')].map(
-        (row) => (row as HTMLElement).dataset.rowKey
-      )
-    ).toEqual([
-      'active-alpha',
-      'active-beta',
-      'inactive-gamma',
-      'not-created-zeta',
-      'orphaned-omega',
-    ]);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Class name' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reset sort and filters' }));
-
-    expect(
-      [...container.querySelectorAll('tbody tr[data-row-key]')].map(
-        (row) => (row as HTMLElement).dataset.rowKey
-      )
-    ).toEqual([
-      'active-alpha',
-      'active-beta',
-      'inactive-gamma',
-      'not-created-zeta',
-      'orphaned-omega',
-    ]);
+    const notCreatedTableRow = screen.getByRole('row', { name: /notcreated\s+zeta/i });
+    expect(within(notCreatedTableRow).getByText('notCreated')).toBeInTheDocument();
+    expect(within(notCreatedTableRow).getAllByText('—')).toHaveLength(unavailableCellCount);
   });
 });

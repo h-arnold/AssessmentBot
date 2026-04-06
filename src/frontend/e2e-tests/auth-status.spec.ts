@@ -82,7 +82,7 @@ test.describe('auth status flow', () => {
     await mockGoogleScriptRun(page, {
       kind: 'success',
       result: true,
-      delayMs: 150,
+      delayMs: 1000,
     });
 
     await page.goto('/');
