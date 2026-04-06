@@ -232,18 +232,8 @@ test.describe('Classes CRUD table controls', () => {
       ],
     });
 
-    await page
-      .locator('tbody tr[data-row-key]')
-      .filter({ hasText: 'orphaned' })
-      .getByRole('checkbox')
-      .first()
-      .check();
-    await page
-      .locator('tbody tr[data-row-key]')
-      .filter({ hasText: 'active' })
-      .first()
-      .getByRole('checkbox')
-      .check();
+    await selectRowByKey(page, 'orphaned-legacy');
+    await selectRowByKey(page, 'gc-active');
     await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
     await expect(
       page.getByText('Mixed selection includes orphaned rows. Delete is the only allowed bulk action.'),
