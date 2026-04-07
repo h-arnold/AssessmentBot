@@ -70,7 +70,7 @@ export async function runFrontendHtmlServiceTransform(
   });
 
   let inlinedScriptCount = 0;
-  const moduleScriptPattern = /<script\b([^>]*)><\/script>/gim;
+  const moduleScriptPattern = /<script\b([^>]*)><\/script\s*>/gim;
   html = await replaceAsync(html, moduleScriptPattern, async (match: string, attributes: string) => {
     const type = readAttributeValue(attributes, 'type');
     if (type?.toLowerCase() !== 'module') {
@@ -219,7 +219,7 @@ function hasUnresolvedAssetAttributeReference(html: string): boolean {
  * @returns {boolean} `true` when a module script still has a `src` attribute.
  */
 function hasUnresolvedExternalModuleScriptReference(html: string): boolean {
-  const pattern = /<script\b([^>]*)><\/script>/gim;
+  const pattern = /<script\b([^>]*)><\/script\s*>/gim;
   let match;
   while ((match = pattern.exec(html))) {
     const attributes = match[1];

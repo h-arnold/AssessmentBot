@@ -1,11 +1,14 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
-import type { RowMutationResult } from './batchMutationEngine';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
+import {
+  buildClassesManagementState,
+  createFulfilledClassResult,
+  createRejectedClassResult,
+} from './classesTestHelpers';
 import type { ClassesManagementRow } from './classesManagementViewModel';
-import type { ClassesManagementState } from './useClassesManagement';
 
 const classesManagementStateMock = vi.fn();
 const runBatchMutationMock = vi.fn();
@@ -51,156 +54,36 @@ vi.mock('./BulkCreateModal', () => ({
   BulkCreateModal: bulkCreateModalMock,
 }));
 
-const readyRows = [
-  {
-    classId: 'active-1',
-    className: 'Alpha',
-    status: 'active',
-    cohortKey: 'cohort-a',
-    cohortLabel: 'Cohort A',
-    courseLength: 2,
-    yearGroupKey: 'year-10',
-    yearGroupLabel: 'Year 10',
-    active: true,
-  },
-  {
-    classId: 'active-2',
-    className: 'Atlas',
-    status: 'active',
-    cohortKey: 'cohort-a',
-    cohortLabel: 'Cohort A',
-    courseLength: 2,
-    yearGroupKey: 'year-10',
-    yearGroupLabel: 'Year 10',
-    active: true,
-  },
-  {
-    classId: 'inactive-1',
-    className: 'Bravo',
-    status: 'inactive',
-    cohortKey: 'cohort-b',
-    cohortLabel: 'Cohort B',
-    courseLength: 1,
-    yearGroupKey: 'year-9',
-    yearGroupLabel: 'Year 9',
-    active: false,
-  },
-  {
-    classId: 'inactive-2',
-    className: 'Beta',
-    status: 'inactive',
-    cohortKey: 'cohort-b',
-    cohortLabel: 'Cohort B',
-    courseLength: 1,
-    yearGroupKey: 'year-9',
-    yearGroupLabel: 'Year 9',
-    active: false,
-  },
-  {
-    classId: 'not-created-1',
-    className: 'Charlie',
-    status: 'notCreated',
-    cohortKey: null,
-    cohortLabel: null,
-    courseLength: null,
-    yearGroupKey: null,
-    yearGroupLabel: null,
-    active: null,
-  },
-  {
-    classId: 'orphaned-1',
-    className: 'Legacy',
-    status: 'orphaned',
-    cohortKey: 'cohort-c',
-    cohortLabel: 'Cohort C',
-    courseLength: 3,
-    yearGroupKey: 'year-12',
-    yearGroupLabel: 'Year 12',
-    active: false,
-  },
-] as const;
-
 /**
- * Renders a component wrapped in a fresh QueryClientProvider for tests that
- * need access to the React Query context.
+ * Installs the mocked classes-management hook state for one test.
  *
- * @param {React.ReactElement} ui The component to render.
- * @returns {{
- *   queryClient: QueryClient;
- * } & ReturnType<typeof render>} Testing Library render result plus query client.
+ * @param {Parameters<typeof buildClassesManagementState>[0]} [overrides] Hook-state overrides.
+ * @returns {void}
  */
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
-  return {
-    queryClient,
-    ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>),
-  };
+function mockClassesManagementState(overrides = {}) {
+  classesManagementStateMock.mockReturnValue(buildClassesManagementState(overrides));
 }
 
 /**
- * Builds a ready-state classes-management response for the panel.
+ * Loads and renders the panel with shared frontend providers.
  *
- * @param {Partial<ClassesManagementState>} overrides Per-test overrides.
- * @returns {ClassesManagementState} Ready-state hook response.
+ * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result plus query client.
  */
-function buildReadyClassesManagementState(
-  overrides: Partial<ClassesManagementState> = {},
-): ClassesManagementState {
-  return {
-    blockingErrorMessage: null,
-    classesManagementViewState: 'ready' as const,
-    classesCount: readyRows.length,
-    cohorts: [],
-    errorMessage: null,
-    nonBlockingWarningMessage: null,
-    refreshRequiredMessage: null,
-    rows: [...readyRows],
-    selectedRowKeys: [],
-    yearGroups: [],
-    onSelectedRowKeysChange: vi.fn(),
-    ...overrides,
-  };
+async function renderPanel() {
+  const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+  return renderWithFrontendProviders(<ClassesManagementPanel />);
 }
 
 /**
- * Builds a fulfilled batch result for one test row.
+ * Asserts that class partials were invalidated with the expected refetch mode.
  *
- * @param {string} classId Selected test row id.
- * @returns {RowMutationResult<ClassesManagementRow, unknown>} Fulfilled row result.
+ * @param {MockInstance} invalidateQueriesSpy Query invalidation spy.
+ * @returns {void}
  */
-function createFulfilledResult(classId: string): RowMutationResult<ClassesManagementRow, unknown> {
-  const row = readyRows.find((candidate) => candidate.classId === classId);
-
-  if (row === undefined) {
-    throw new Error('Unknown test row: ' + classId);
-  }
-
-  return {
-    status: 'fulfilled',
-    row,
-    data: undefined,
-  };
-}
-
-/**
- * Builds a rejected batch result for one test row.
- *
- * @param {string} classId Selected test row id.
- * @returns {RowMutationResult<ClassesManagementRow, unknown>} Rejected row result.
- */
-function createRejectedResult(classId: string): RowMutationResult<ClassesManagementRow, unknown> {
-  const row = readyRows.find((candidate) => candidate.classId === classId);
-
-  if (row === undefined) {
-    throw new Error('Unknown test row: ' + classId);
-  }
-
-  return {
-    status: 'rejected',
-    row,
-    error: new Error('Mutation failed for ' + classId),
-  };
+function expectClassPartialsInvalidated(invalidateQueriesSpy: MockInstance) {
+  expect(invalidateQueriesSpy).toHaveBeenCalledWith(
+    expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }),
+  );
 }
 
 beforeEach(() => {
@@ -210,169 +93,108 @@ beforeEach(() => {
 
 describe('ClassesManagementPanel', () => {
   it('renders a loading feature state shell while classes data resolves', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'loading',
-      classesCount: null,
-      cohorts: [],
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: [],
-      selectedRowKeys: [],
-      yearGroups: [],
-      onSelectedRowKeysChange: vi.fn(),
-    });
+    mockClassesManagementState({ classesManagementViewState: 'loading', classesCount: null, rows: [] });
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    renderWithQueryClient(<ClassesManagementPanel />);
+    await renderPanel();
 
     expect(screen.getByText('Classes feature is loading.')).toBeInTheDocument();
   });
 
-  it('renders an error feature state message when classes management fails', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: 'Classes failed to load.',
+  it.each([
+    ['Classes failed to load.', 'Classes failed to load.'],
+    ['Unable to load active Google Classrooms right now.', 'Unable to load classes right now.'],
+  ])('renders an error feature state message when classes management fails: %s', async (blockingErrorMessage, errorMessage) => {
+    mockClassesManagementState({
+      blockingErrorMessage,
       classesManagementViewState: 'error',
       classesCount: null,
-      cohorts: [],
-      errorMessage: 'Classes failed to load.',
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
+      errorMessage,
       rows: [],
-      selectedRowKeys: [],
-      yearGroups: [],
-      onSelectedRowKeysChange: vi.fn(),
     });
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    renderWithQueryClient(<ClassesManagementPanel />);
+    await renderPanel();
 
     expect(screen.getByText('Classes feature is unavailable.')).toBeInTheDocument();
-    expect(screen.getAllByText('Classes failed to load.')).toHaveLength(1);
+    expect(screen.getAllByText(blockingErrorMessage)).toHaveLength(1);
   });
 
   it('renders a ready feature state summary once classes are available', async () => {
-    classesManagementStateMock.mockReturnValue(buildReadyClassesManagementState());
+    mockClassesManagementState();
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    renderWithQueryClient(<ClassesManagementPanel />);
+    await renderPanel();
 
     expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
   });
 
-  it('renders a blocking alert message for classes errors', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
-      classesManagementViewState: 'error',
-      classesCount: null,
-      cohorts: [],
-      errorMessage: 'Unable to load classes right now.',
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: [],
-      selectedRowKeys: [],
-      yearGroups: [],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    renderWithQueryClient(<ClassesManagementPanel />);
-
-    expect(screen.getByText('Classes feature is unavailable.')).toBeInTheDocument();
-    expect(screen.getByText('Unable to load active Google Classrooms right now.')).toBeInTheDocument();
-  });
-
   it('shows a top-level warning and keeps failed rows selected when bulk delete partially fails', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        selectedRowKeys: ['active-1', 'orphaned-1'],
-        onSelectedRowKeysChange,
-      }),
-    );
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'orphaned-1'],
+    });
     runBatchMutationMock.mockResolvedValue([
-      createFulfilledResult('active-1'),
-      createRejectedResult('orphaned-1'),
+      createFulfilledClassResult('active-1'),
+      createRejectedClassResult('orphaned-1'),
     ]);
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { queryClient } = await renderPanel();
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
-    const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
-    expect(
-      await screen.findByText('Some selected classes were not deleted.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Some selected classes were not deleted.')).toBeInTheDocument();
     expect(
       screen.getByText(
         '1 of 2 selected classes could not be deleted. Successful rows were refreshed. Please review the remaining selection and try again.',
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+    expectClassPartialsInvalidated(invalidateQueriesSpy);
   });
 
   it('shows a top-level warning and keeps failed rows selected when setting active partially fails', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        selectedRowKeys: ['inactive-1', 'inactive-2'],
-        onSelectedRowKeysChange,
-      }),
-    );
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['inactive-1', 'inactive-2'],
+    });
     runBatchMutationMock.mockResolvedValue([
-      createFulfilledResult('inactive-1'),
-      createRejectedResult('inactive-2'),
+      createFulfilledClassResult('inactive-1'),
+      createRejectedClassResult('inactive-2'),
     ]);
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { queryClient } = await renderPanel();
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     fireEvent.click(screen.getByRole('button', { name: 'Set active' }));
 
-    expect(
-      await screen.findByText('Some selected classes were not set to active.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Some selected classes were not set to active.')).toBeInTheDocument();
     expect(
       screen.getByText(
         '1 of 2 selected classes could not be set to active. Successful rows were refreshed. Please review the remaining selection and try again.',
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['inactive-2']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+    expectClassPartialsInvalidated(invalidateQueriesSpy);
   });
 
   it('opens bulk create and dispatches create requests for selected notCreated rows', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        cohorts: [
-          { key: 'cohort-2025', name: 'Cohort 2025', active: true, startYear: 2025, startMonth: 9 },
-        ],
-        selectedRowKeys: ['not-created-1'],
-        yearGroups: [{ key: 'year-11', name: 'Year 11' }],
-        onSelectedRowKeysChange,
-      }),
-    );
-    runBatchMutationMock.mockResolvedValue([createFulfilledResult('not-created-1')]);
+    mockClassesManagementState({
+      cohorts: [{ key: 'cohort-2025', name: 'Cohort 2025', active: true, startYear: 2025, startMonth: 9 }],
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['not-created-1'],
+      yearGroups: [{ key: 'year-11', name: 'Year 11' }],
+    });
+    runBatchMutationMock.mockResolvedValue([createFulfilledClassResult('not-created-1')]);
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { queryClient } = await renderPanel();
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     fireEvent.click(screen.getByRole('button', { name: 'Create ABClass' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Create ABClass' });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Create ABClass' })).getByRole('button', { name: 'OK' }));
 
     await waitFor(() => expect(runBatchMutationMock).toHaveBeenCalledTimes(1));
     const submittedRows = runBatchMutationMock.mock.calls[0][0] as ClassesManagementRow[];
@@ -380,27 +202,25 @@ describe('ClassesManagementPanel', () => {
     expect(submittedRows[0]?.classId).toBe('not-created-1');
     expect(submittedRows[0]?.status).toBe('notCreated');
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith([]);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+    expectClassPartialsInvalidated(invalidateQueriesSpy);
   });
 
   it('disables set-active while its batch mutation is in flight', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        selectedRowKeys: ['inactive-1'],
-        onSelectedRowKeysChange,
-      }),
-    );
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['inactive-1'],
+    });
 
-    let resolveBatch!: (results: RowMutationResult<ClassesManagementRow, unknown>[]) => void;
+    let resolveBatch!: (results: Array<ReturnType<typeof createFulfilledClassResult>>) => void;
     runBatchMutationMock.mockImplementationOnce(
-      () => new Promise<RowMutationResult<ClassesManagementRow, unknown>[]>((resolve) => {
-        resolveBatch = resolve;
-      }),
+      () =>
+        new Promise<Array<ReturnType<typeof createFulfilledClassResult>>>((resolve) => {
+          resolveBatch = resolve;
+        }),
     );
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    renderWithQueryClient(<ClassesManagementPanel />);
+    await renderPanel();
 
     const setActiveButton = screen.getByRole('button', { name: 'Set active' });
     expect(setActiveButton).toBeEnabled();
@@ -408,68 +228,61 @@ describe('ClassesManagementPanel', () => {
     fireEvent.click(setActiveButton);
     await waitFor(() => expect(setActiveButton).toBeDisabled());
 
-    resolveBatch([createFulfilledResult('inactive-1')]);
+    resolveBatch([createFulfilledClassResult('inactive-1')]);
     await waitFor(() => expect(onSelectedRowKeysChange).toHaveBeenCalledWith([]));
   });
 
   it('shows a top-level error and keeps failed rows selected when setting inactive fully fails', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        selectedRowKeys: ['active-1', 'active-2'],
-        onSelectedRowKeysChange,
-      }),
-    );
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'active-2'],
+    });
     runBatchMutationMock.mockResolvedValue([
-      createRejectedResult('active-1'),
-      createRejectedResult('active-2'),
+      createRejectedClassResult('active-1'),
+      createRejectedClassResult('active-2'),
     ]);
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { queryClient } = await renderPanel();
     const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     fireEvent.click(screen.getByRole('button', { name: 'Set inactive' }));
 
-    expect(
-      await screen.findByText('Could not set selected classes to inactive.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Could not set selected classes to inactive.')).toBeInTheDocument();
     expect(
       screen.getByText(
         'Unable to set any of the 2 selected classes to inactive. Please review the remaining selection and try again.',
       ),
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['active-1', 'active-2']);
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+    expectClassPartialsInvalidated(invalidateQueriesSpy);
   });
 
   it('shows refresh-failure-specific guidance and hides stale rows when a partial delete refresh fails', async () => {
     const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue(
-      buildReadyClassesManagementState({
-        selectedRowKeys: ['active-1', 'orphaned-1'],
-        onSelectedRowKeysChange,
-      }),
-    );
+    mockClassesManagementState({
+      onSelectedRowKeysChange,
+      selectedRowKeys: ['active-1', 'orphaned-1'],
+    });
     runBatchMutationMock.mockResolvedValue([
-      createFulfilledResult('active-1'),
-      createRejectedResult('orphaned-1'),
+      createFulfilledClassResult('active-1'),
+      createRejectedClassResult('orphaned-1'),
     ]);
 
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
-    vi.spyOn(queryClient, 'refetchQueries').mockRejectedValueOnce(new ApiTransportError({
-      requestId: 'request-refresh',
-      error: {
-        code: 'RATE_LIMITED',
-        message: 'Transport refresh text.',
-        retriable: true,
-      },
-    }));
+    const { queryClient } = await renderPanel();
+    vi.spyOn(queryClient, 'refetchQueries').mockRejectedValueOnce(
+      new ApiTransportError({
+        requestId: 'request-refresh',
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Transport refresh text.',
+          retriable: true,
+        },
+      }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete ABClass' }));
-    const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
     expect(await screen.findByText('Some selected classes were not deleted.')).toBeInTheDocument();
     expect(

@@ -35,6 +35,9 @@ on:
       - 'config/eslint/ts-base-rules.cjs'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   frontend-checks:
     name: Frontend checks

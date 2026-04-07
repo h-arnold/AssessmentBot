@@ -562,9 +562,9 @@ class ABClassController {
    *
    * @param {string} classId - The Classroom course ID.
    * @param {Object} [options={}] - Optional configuration for class properties.
-   * @param {string} [options.cohortKey] - Cohort key value for the class.
+   * @param {string|null} [options.cohortKey] - Cohort key value for the class.
    * @param {number} [options.courseLength] - Course duration in weeks.
-   * @param {string} [options.yearGroupKey] - Academic year-group key.
+   * @param {string|null} [options.yearGroupKey] - Academic year-group key.
    * @param {Assignment[]} [options.assignments] - Assignments to add to the class.
    * @returns {ABClass} Populated ABClass instance with roster data.
    * @throws {TypeError} If classId is missing.

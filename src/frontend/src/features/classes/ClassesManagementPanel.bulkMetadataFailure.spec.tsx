@@ -1,13 +1,18 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import type { ReactElement } from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { queryKeys } from '../../query/queryKeys';
+import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
 import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 import type * as BulkSetYearGroupFlowModule from './bulkSetYearGroupFlow';
 import type * as BulkSetCourseLengthFlowModule from './bulkSetCourseLengthFlow';
-import type { ClassesManagementRow } from './classesManagementViewModel';
+import {
+  activeCohortOptions,
+  buildClassesManagementRow,
+  buildClassesManagementState,
+  yearGroupOptions,
+} from './classesTestHelpers';
 
 const classesManagementStateMock = vi.fn();
 const bulkSetCohortMock = vi.hoisted(() => vi.fn());
@@ -201,58 +206,29 @@ vi.mock('./BulkSetCourseLengthModal', () => ({
   BulkSetCourseLengthModal: bulkSetCourseLengthModalMock,
 }));
 
-const rows: ClassesManagementRow[] = [
-  {
+const rows = [
+  buildClassesManagementRow({
     classId: 'active-1',
-    className: 'Alpha',
-    status: 'active',
     cohortKey: 'cohort-2024',
     cohortLabel: 'Cohort 2024',
     yearGroupKey: 'year-7',
     yearGroupLabel: 'Year 7',
-    courseLength: 2,
-    active: true,
-  },
-  {
+  }),
+  buildClassesManagementRow({
+    active: false,
     classId: 'inactive-1',
     className: 'Bravo',
-    status: 'inactive',
     cohortKey: 'cohort-2024',
     cohortLabel: 'Cohort 2024',
+    courseLength: 3,
+    status: 'inactive',
     yearGroupKey: 'year-7',
     yearGroupLabel: 'Year 7',
-    courseLength: 3,
-    active: false,
-  },
+  }),
 ];
-
-const cohorts = [
-  {
-    key: 'cohort-2024',
-    name: 'Cohort 2024',
-    active: true,
-    startYear: 2024,
-    startMonth: 9,
-  },
-  {
-    key: 'cohort-2025',
-    name: 'Cohort 2025',
-    active: true,
-    startYear: 2025,
-    startMonth: 9,
-  },
-] as const;
-
-const yearGroups = [
-  {
-    key: 'year-7',
-    name: 'Year 7',
-  },
-  {
-    key: 'year-8',
-    name: 'Year 8',
-  },
-] as const;
+const selectedMetadataYearGroups = yearGroupOptions.filter(
+  ({ key }) => key === 'year-7' || key === 'year-8',
+);
 
 /**
  * Renders the panel with a mocked classes-management state and query client.
@@ -262,24 +238,18 @@ const yearGroups = [
  * @returns {{ invalidateQueriesSpy: MockInstance; onSelectedRowKeysChange: ReturnType<typeof vi.fn> }} Render spies.
  */
 function renderPanel(ui: ReactElement, onSelectedRowKeysChange = vi.fn()) {
-  classesManagementStateMock.mockReturnValue({
-    blockingErrorMessage: null,
-    classesManagementViewState: 'ready',
-    classesCount: rows.length,
-    cohorts,
-    errorMessage: null,
-    nonBlockingWarningMessage: null,
-    refreshRequiredMessage: null,
-    rows,
-    selectedRowKeys: ['active-1', 'inactive-1'],
-    yearGroups,
-    onSelectedRowKeysChange,
-  });
+  classesManagementStateMock.mockReturnValue(
+    buildClassesManagementState({
+      cohorts: activeCohortOptions,
+      onSelectedRowKeysChange,
+      rows,
+      selectedRowKeys: ['active-1', 'inactive-1'],
+      yearGroups: selectedMetadataYearGroups,
+    }),
+  );
 
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { queryClient } = renderWithFrontendProviders(ui);
   const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
-
-  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 
   return {
     invalidateQueriesSpy,
