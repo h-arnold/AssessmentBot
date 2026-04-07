@@ -10,17 +10,19 @@
 
 ## Touched code
 
-- `src/backend/y_controllers/ReferenceDataController.js`
+- `src/backend/z_Api/apiHandler.js`
+- `tests/api/apiHandler.test.js`
 - `src/frontend/src/services/referenceDataService.ts`
-- New `src/frontend/src/features/classes/**`
+- Existing `src/frontend/src/features/classes/**` (extend with reference-data management modals and supporting helpers)
+- `src/frontend/e2e-tests/classes-crud.shared.ts` and focused Classes CRUD Playwright specs
 - `docs/developer/frontend/frontend-testing.md`
 - `docs/developer/frontend/frontend-react-query-and-prefetch.md`
 
 ## Exploration findings to account for
 
-- Delete-blocked modal UX currently has no backend-authoritative contract.
-- The current docs do not match the real warm-up/query-key state.
-- Browser harness coverage exists at the transport layer, but not yet as a reusable Classes CRUD fixture set.
+- `ReferenceDataController` already blocks in-use deletes with `reason = 'IN_USE'`; however, the API envelope currently maps these runtime errors to `INTERNAL_ERROR`. Workstream 5 must add an API-level machine-readable contract for delete-blocked states that the frontend can depend on.
+- React Query and frontend testing docs are currently aligned with query-key, startup warm-up, and shared-harness behaviour; keep them aligned as implementation lands.
+- Shared Classes CRUD harness primitives already exist; extend them instead of introducing a parallel harness.
 - There is no dedicated `tests/api/referenceData*.test.js` suite; transport coverage currently lives in `tests/backend-api/referenceData.unit.test.js`.
 - Keep the Classes query invalidation surface limited to the live `runMutationWithRequiredClassPartialsRefresh()` helper; do not reintroduce `invalidateCohortsAfterMutation` or `invalidateYearGroupsAfterMutation` wrappers.
 
@@ -30,6 +32,7 @@
 
 Acceptance:
 
+- Launches from the Classes tab as a secondary management workflow.
 - Supports list, create, edit, delete, and active-state changes.
 - Delete-blocked state is explicit and remains open with inline explanation.
 - Successful mutations invalidate and refresh `cohorts`.
@@ -44,6 +47,7 @@ Tests:
 
 Acceptance:
 
+- Launches from the Classes tab as a secondary management workflow.
 - Supports list, create, edit, and delete.
 - Delete-blocked state is explicit and remains open with inline explanation.
 - Successful mutations invalidate and refresh `yearGroups`.
@@ -58,6 +62,7 @@ Tests:
 
 Acceptance:
 
+- Delete-blocked cohort/year-group API failures expose a machine-readable contract suitable for frontend blocked-state rendering (rather than collapsing to generic internal errors).
 - Touched backend model/controller/API suites pass.
 - Touched frontend service/hook/component suites pass.
 - Required Playwright journeys pass.
@@ -66,7 +71,7 @@ Acceptance:
 Checks:
 
 - `npm test -- tests/models/<target> tests/controllers/<target> tests/api/<target> tests/backend-api/<target>`
-- `npm run frontend:test -- src/frontend/src/features/classes/<target> src/frontend/src/services/<target> src/frontend/src/query/<target>`
+- `npm run frontend:test -- src/features/classes/<target> src/services/<target> src/query/<target>`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-*.spec.ts`
 - `npm run lint`
 - `npm run frontend:lint`
