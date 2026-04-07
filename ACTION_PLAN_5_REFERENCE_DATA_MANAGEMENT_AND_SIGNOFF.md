@@ -45,16 +45,24 @@ Tests:
 
 > **🟢 GREEN PHASE COMPLETE** — implementation merged and verified passing; commit and push are next.
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status  |
+| ----------------------------- | ------- |
+| Red tests added               | ✅ done |
+| Red review clean              | ✅ done |
+| Green implementation complete | ✅ done |
+| Green review clean            | ✅ done |
+| Checks passed                 | ✅ done |
+| Action plan updated           | ✅ done |
+| Commit created                | ✅ done |
+| Push completed                | ✅ done |
+
+**Delivery evidence — 5.1**
+
+- **Branch:** `ws5-doc-update`
+- **Code commit SHA:** `f21a87ed240e041334eaab9d95ce687f4802968d`
+- **Code commit message:** `feat(ws5): implement cohort management modal`
+- **Push:** succeeded to `origin/ws5-doc-update`
+- **Notes:** commit also included the 5.1 test suite and action-plan updates
 
 **Implementation notes — 5.1**
 
