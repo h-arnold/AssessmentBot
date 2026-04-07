@@ -175,6 +175,47 @@ Checks:
 - `npm run frontend:test:coverage`
 - `npm exec tsc -- -b src/frontend/tsconfig.json`
 
+> **🟢 GREEN PHASE COMPLETE — checks passed, ready for commit/push**
+
+| Step                          | Status     |
+| ----------------------------- | ---------- |
+| Red tests added               | ✅ done    |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
+| Green review clean            | ✅ done    |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
+| Commit created                | ⬜ pending |
+| Push completed                | ⬜ pending |
+
+**Implementation notes — 5.3**
+
+- This section hardens the machine-readable delete-blocked contract and related regressions across backend and frontend. The goal is to ensure that any `IN_USE` deletion failure is surfaced as a first-class, typed API error rather than collapsing silently into a generic response.
+- Current identified gap: `ReferenceDataController` already throws with `reason = 'IN_USE'` at the controller level, but `apiHandler` still maps these runtime failures to `INTERNAL_ERROR` in the API envelope. The red-phase work will add tests that assert the machine-readable contract end-to-end, and the green phase will fix `apiHandler` to propagate the typed `IN_USE` reason correctly.
+- Touched checks will include backend API tests (targeting `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js`) plus the frontend service, query, and component suites (targeting `src/services/referenceDataService`, related query hooks, and the cohort/year-group management modal components).
+
+**Red-phase record — 5.3**
+
+- Test files updated in the red phase: `tests/api/apiHandler.test.js` (backend) and `src/frontend/src/services/referenceDataService.spec.ts` (frontend).
+- Backend tests now pin the contract: an error thrown with `reason = 'IN_USE'` must produce `error.code = 'IN_USE'` in the API envelope; a plain `Error` (no `reason`) must still produce `INTERNAL_ERROR`.
+- Frontend service tests confirm that delete-cohort and delete-year-group transport failures carrying `ApiTransportError.code = 'IN_USE'` are propagated to the caller unchanged (not swallowed or remapped).
+- Intended failing evidence at end of red phase: exactly two backend `apiHandler` tests fail because the transport mapping that converts `reason = 'IN_USE'` into `error.code = 'IN_USE'` is not yet implemented; all other existing tests remain green.
+
+**Green-phase record — 5.3**
+
+- **Production file changed:** `src/backend/z_Api/apiHandler.js`
+- **What changed:** `IN_USE` was added to the API error-code mapping in `apiHandler`. `error.reason === 'IN_USE'` now maps directly to the machine-readable transport code `IN_USE` in the API error envelope. Generic plain `Error` objects (no `reason` field, or an unrecognised `reason`) still fall back to `INTERNAL_ERROR`, preserving existing behaviour for all other error paths.
+- **Checks that passed:**
+  - Targeted backend tests: `tests/api/apiHandler.test.js` and `tests/backend-api/referenceData.unit.test.js` — all pass, including the two previously-failing `IN_USE` contract assertions.
+  - Targeted frontend service / delete tests: `src/frontend/src/services/referenceDataService.spec.ts` — all pass.
+  - Both manage-delete Playwright journeys: `e2e-tests/classes-crud-cohorts.spec.ts` and `e2e-tests/classes-crud-year-groups.spec.ts` — all pass.
+  - `npm run lint` — clean.
+  - `npm run frontend:lint` — clean.
+  - `npm run frontend:test:coverage` — coverage thresholds met.
+  - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors.
+- **Reviewer note:** the new `IN_USE` mapping still depends on the calling controller supplying a non-empty `message` alongside `reason`. This invariant is already enforced by `ReferenceDataController`; it is an accepted minimal-scope assumption rather than a follow-up code change.
+- **Section completion status:** green implementation and review are complete; all checks pass. Commit and push are the only remaining steps.
+
 ### 5.4 Documentation and rollout notes
 
 Acceptance:

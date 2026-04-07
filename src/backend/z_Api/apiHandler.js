@@ -22,6 +22,7 @@ const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
   INVALID_REQUEST: 'INVALID_REQUEST',
   UNKNOWN_METHOD: 'UNKNOWN_METHOD',
+  IN_USE: 'IN_USE',
 };
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
@@ -383,6 +384,9 @@ class ApiDispatcher extends BaseSingleton {
       default: {
         break;
       }
+    }
+    if (!candidateCode && error?.reason === 'IN_USE') {
+      candidateCode = API_ERROR_CODE_MAP.IN_USE;
     }
     const hasMessage = typeof error?.message === 'string' && error.message.trim().length > 0;
     const mappedCode = candidateCode && hasMessage ? candidateCode : 'INTERNAL_ERROR';

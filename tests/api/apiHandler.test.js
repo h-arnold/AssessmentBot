@@ -790,6 +790,82 @@ describe('Api/apiHandler dispatcher', () => {
     expect(response.requestId).toEqual(expect.any(String));
   });
 
+  it('maps a plain Error with reason = IN_USE from deleteCohort to error.code = IN_USE (delete-blocked contract)', () => {
+    const blockedError = new Error('Cohort record is referenced by one or more classes');
+    blockedError.reason = 'IN_USE';
+    globalThis.deleteCohort.mockImplementation(() => {
+      throw blockedError;
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'deleteCohort',
+      params: buildReferenceDataParams('deleteCohort'),
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code: 'IN_USE',
+        message: expect.any(String),
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
+  it('maps a plain Error with reason = IN_USE from deleteYearGroup to error.code = IN_USE (delete-blocked contract)', () => {
+    const blockedError = new Error('Year group record is referenced by one or more classes');
+    blockedError.reason = 'IN_USE';
+    globalThis.deleteYearGroup.mockImplementation(() => {
+      throw blockedError;
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'deleteYearGroup',
+      params: buildReferenceDataParams('deleteYearGroup'),
+    });
+
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code: 'IN_USE',
+        message: expect.any(String),
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+  });
+
+  it('does not map a plain Error without reason = IN_USE to IN_USE (generic errors remain INTERNAL_ERROR)', () => {
+    globalThis.deleteCohort.mockImplementation(() => {
+      throw new Error('Something else exploded');
+    });
+
+    const { ApiDispatcher } = loadApiHandlerModule();
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const response = dispatcher.handle({
+      method: 'deleteCohort',
+      params: buildReferenceDataParams('deleteCohort'),
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        retriable: false,
+      },
+    });
+  });
+
   it('maps unexpected controller failures for reference-data handlers to the existing API failure envelope', () => {
     globalThis.updateYearGroup.mockImplementation(() => {
       throw new Error('year-group update exploded');
