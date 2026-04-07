@@ -785,3 +785,4 @@ Defer from v1:
 - assessment-run controls on this page
 - broader assignment workflows
 - fetching all Google Classrooms, including archived classes, to refine orphaned-row labelling
+- numeric `yearGroup` mapping: parts of the legacy assessment workflow depend on `ABClass.yearGroup` as a numeric academic-year field; when this is addressed it must be handled via downstream mapping/projection only — transport contracts must remain key-based (`yearGroupKey`) and no legacy fallback fields must be reintroduced

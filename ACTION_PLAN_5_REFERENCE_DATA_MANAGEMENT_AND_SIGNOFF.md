@@ -243,6 +243,53 @@ Documents to update:
 - `docs/developer/frontend/frontend-testing.md`
 - Any backend API/data-shape documentation touched by the final contract
 
+> **🟢 GREEN PHASE COMPLETE** — docs/rollout section authored and reviewed; all checks passed; commit/push remain pending.
+
+| Step                          | Status                                 |
+| ----------------------------- | -------------------------------------- |
+| Red tests added               | N/A — docs-only section, no test files |
+| Red review clean              | N/A — docs-only section, no test files |
+| Green implementation complete | ✅ done                                |
+| Green review clean            | ✅ done                                |
+| Checks passed                 | ✅ done                                |
+| Action plan updated           | ✅ done                                |
+| Commit created                | ⏳ pending                             |
+| Push completed                | ⏳ pending                             |
+
+**Implementation notes — 5.4**
+
+- **Docs to align:**
+  - `CLASSES_TAB_LAYOUT_AND_MODALS.md` — update to reflect the implemented inline child-dialog pattern (see below).
+  - `docs/developer/frontend/frontend-react-query-and-prefetch.md` — align with real startup warm-up and invalidation behaviour as landed across workstream 5.
+  - Any rollout-note surface (e.g., a section within an existing doc) that needs the notes below; do **not** create a new standalone markdown file for this purpose.
+- **Known mismatch to resolve:** The earlier wording in `CLASSES_TAB_LAYOUT_AND_MODALS.md` described manage-cohorts and manage-year-groups flows using nested-modal language. The implemented pattern uses an inline child-dialog launched from the Classes toolbar; the layout doc must be updated to reflect this rather than the earlier nested-modal description.
+- **Rollout notes to preserve (do not remove or weaken):**
+  - The destructive-reset assumption: any reference-data reset operation is destructive and must be communicated clearly to operators before rollout.
+  - The deferred numeric `yearGroup` mapping/projection: downstream mapping must remain frontend/backend transport-contract-safe (`yearGroupKey` only); no legacy fallback fields should be reintroduced. The numeric `yearGroup` follow-up is explicitly deferred and must be handled via downstream mapping/projection only.
+
+**Green-phase completion notes — 5.4**
+
+- **Doc files changed:**
+  - `CLASSES_TAB_LAYOUT_AND_MODALS.md` — updated to reflect the inline child-dialog pattern (launched from the Classes toolbar) replacing the earlier nested-modal description for manage-cohorts and manage-year-groups flows.
+  - `SPEC.md` — updated to reflect the final key-based reference-data contract (`cohortKey`, `yearGroupKey`) and the `IN_USE` API error code for blocked deletes.
+  - `docs/developer/backend/api-layer.md` — updated to document the key-based cohort/year-group payload shapes (`{ key, name, active, startYear, startMonth }` / `{ key, name }`) and the `IN_USE` error code contract for destructive-reset protection.
+- **Docs intentionally left unchanged (already aligned):**
+  - `docs/developer/frontend/frontend-react-query-and-prefetch.md` — content already reflects the real startup warm-up and invalidation behaviour as landed; no further changes needed.
+  - `docs/developer/frontend/frontend-testing.md` — content already covers the unit and E2E test patterns used in this section; no further changes needed.
+- **What was documented:**
+  - Inline child-dialog pattern for manage-cohorts and manage-year-groups, launched from the Classes toolbar rather than as nested modals.
+  - Key-based reference-data contract: cohorts carry `{ key, name, active, startYear, startMonth }` and year groups carry `{ key, name }`; name-based contract is retired.
+  - `IN_USE` API error code returned by the backend when a delete is blocked because the cohort or year group is referenced by existing classes; frontend surfaces this to the user without a destructive fallback.
+  - Destructive-reset assumption: any reset operation is destructive and must be communicated clearly to operators before rollout.
+  - Deferred numeric `yearGroup` mapping/projection note: the follow-up is explicitly deferred; frontend/backend transport contracts must remain key-based (`yearGroupKey`) with no legacy fallback fields reintroduced; numeric mapping must be handled via downstream projection only.
+- **Checks that passed:**
+  - 4 manage-modal unit specs (`manageCohorts.spec.tsx`, `manageCohortDelete.spec.tsx`, `manageYearGroups.spec.tsx`, `manageYearGroupDelete.spec.tsx`) — all green.
+  - 2 E2E specs (`classes-crud-manage-cohorts.spec.ts`, `classes-crud-manage-year-groups.spec.ts`) — all green.
+  - `npm run lint` — clean.
+  - `npm run frontend:lint` — clean.
+  - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors.
+- **Section status:** 5.4 green phase is complete. Commit and push are the only remaining steps.
+
 ## Sequencing notes
 
 - Keep delete-blocked UX aligned with backend-authoritative rules.

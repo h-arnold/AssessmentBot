@@ -329,19 +329,19 @@ Classes tab
 ├── BulkSetCohortModal
 ├── BulkSetYearGroupModal
 ├── BulkSetCourseLengthModal
-├── ManageCohortsModal
-│   ├── CreateOrEditCohortModal
-│   └── DeleteCohortConfirmModal
-└── ManageYearGroupsModal
-    ├── CreateOrEditYearGroupModal
-    └── DeleteYearGroupConfirmModal
+├── ManageCohortsModal (outer Ant Design Modal)
+│   ├── inline create/edit child dialog (role="dialog" panel inside outer Modal body)
+│   └── inline delete confirmation child dialog (role="dialog" panel inside outer Modal body)
+└── ManageYearGroupsModal (outer Ant Design Modal)
+    ├── inline create/edit child dialog (role="dialog" panel inside outer Modal body)
+    └── inline delete confirmation child dialog (role="dialog" panel inside outer Modal body)
 ```
 
 ## General modal rules
 
 1. Use Ant Design `Modal` for all form-driven workflows.
 2. Use `Modal.confirm` only for simple destructive confirmation where no extra fields are required.
-3. Keep one primary modal open at a time unless a secondary create/edit/delete modal is explicitly nested from a management modal.
+3. Keep one primary modal open at a time. Management modals (`ManageCohortsModal`, `ManageYearGroupsModal`) surface create/edit/delete flows as inline child-dialog panels (`role="dialog"`) rendered inside the outer Ant Design Modal body, not as separate nested Ant Design Modal instances.
 4. When a secondary modal closes successfully, return focus to the invoking button inside the parent modal.
 5. Use `destroyOnHidden` only when resetting state is desirable; otherwise keep parent modal state stable during child modal flows. In the current Ant Design Modal docs this is the supported prop, while `destroyOnClose` is shown as deprecated.
 6. For bulk partial-success flows, keep the modal open briefly with inline feedback, then close and surface the persistent summary in the top-level alert stack.
@@ -413,7 +413,7 @@ Delete active, inactive, or orphaned `ABClass` rows.
 
 ### Components
 
-- `Modal.confirm` or standard `Modal`
+- Standard `Modal` (implemented as `BulkDeleteModal`)
 - `Alert` inside the body only if there is a destructive-operation warning that must not be missed
 - optional `List` for selected class names if the selection is small enough to be readable
 
@@ -576,14 +576,14 @@ Provide CRUD management for cohort reference data without leaving the Classes ta
 5. **list reload warning**
    - show warning `Alert` inside modal while keeping current rows visible
 
-### Child modal flows
+### Inline child-dialog panels
 
-#### Create/Edit cohort modal
+Create, edit, and delete flows are rendered as inline `role="dialog"` panels inside the outer Modal body. This avoids portal async-render issues in jsdom unit tests while maintaining full ARIA semantics and correct Playwright behaviour. These are not separate Ant Design Modal instances.
 
-Components:
+#### Create/edit cohort panel
 
-- `Modal`
-- `Form`
+Fields:
+
 - `Input` for name
 - `InputNumber` or `Select` for start month
 - `InputNumber` for start year
@@ -598,18 +598,17 @@ States:
 - success-close
 - submission failure
 
-#### Delete cohort confirmation modal
+#### Delete cohort confirmation panel
 
 Components:
 
-- `Modal.confirm` or standard `Modal`
-- `Alert` when delete is blocked because the cohort is in use
+- `Alert` when delete is blocked because the cohort is in use (signalled by `IN_USE` API transport code)
 
 Behaviour:
 
 - render a disabled delete button when the cohort is blocked
-- show explanatory warning state inside the modal
-- keep the modal open with inline feedback until the user closes it
+- show explanatory inline `Alert` and keep the panel open until the user closes it explicitly
+- keep the destructive confirm button enabled (not disabled) on a generic non-blocked failure so the user can retry
 
 States:
 
@@ -647,14 +646,14 @@ Provide CRUD management for year-group reference data without leaving the Classe
 4. **mutation in progress**
 5. **list reload warning**
 
-### Child modal flows
+### Inline child-dialog panels
 
-#### Create/Edit year group modal
+Create, edit, and delete flows follow the same inline `role="dialog"` panel pattern as `ManageCohortsModal`: rendered inside the outer Modal body, not as separate Ant Design Modal instances.
 
-Components:
+#### Create/edit year group panel
 
-- `Modal`
-- `Form`
+Fields:
+
 - `Input` for name
 
 States:
@@ -666,18 +665,17 @@ States:
 - success-close
 - submission failure
 
-#### Delete year group confirmation modal
+#### Delete year group confirmation panel
 
 Components:
 
-- `Modal.confirm` or standard `Modal`
-- `Alert` when delete is blocked because the year group is in use
+- `Alert` when delete is blocked because the year group is in use (signalled by `IN_USE` API transport code)
 
 Behaviour:
 
 - render a disabled delete button when the year group is blocked
-- show explanatory warning state inside the modal
-- keep the modal open with inline feedback until the user closes it
+- show explanatory inline `Alert` and keep the panel open until the user closes it explicitly
+- keep the destructive confirm button enabled (not disabled) on a generic non-blocked failure so the user can retry
 
 States:
 
@@ -755,9 +753,18 @@ Keep the frontend suites split by testing responsibility:
 - Vitest: feature hook, view-model, table, toolbar, alert-stack, and modal component or helper specs under `src/frontend/src/features/classes/**`
 - Playwright: visible Classes-tab journeys split into focused specs such as table, bulk core actions, cohort/year-group metadata actions, management modals, load states, and mutation-summary flows
 
-## Open decisions intentionally left to implementation
+## Implementation decisions resolved
 
-1. whether the management modals use inner `Table` components or `List` for very small datasets
-2. whether the destructive bulk-confirm flows use standard `Modal` or `Modal.confirm`
+1. Management modals (`ManageCohortsModal`, `ManageYearGroupsModal`) use inner `Table` components for the reference-data list.
+2. Create/edit and delete flows inside management modals are rendered as inline `role="dialog"` panels inside the outer Ant Design Modal body, not as separate nested Ant Design Modal instances.
+3. Destructive bulk-confirm flows use a standard `Modal` component, not `Modal.confirm`. The bulk delete flow is implemented as `BulkDeleteModal` (a standard Ant Design `Modal`).
 
-These may be refined during implementation, but the overall hierarchy and state model above should remain stable.
+## Rollout notes
+
+### Destructive-reset assumption
+
+Reference-data management is destructive when **editing or deleting** cohorts or year groups whose keys are already held by existing `ABClass` records. Creating a new cohort or year group does not affect existing `ABClass` records. There is no automatic undo for reference-data mutations. Operators must be informed before rollout that reassigning or removing cohorts or year groups from class records requires a deliberate migration step; the UI does not provide a revert mechanism.
+
+### Deferred numeric `yearGroup` follow-up
+
+Parts of the legacy assessment workflow depend on `ABClass.yearGroup` as a numeric academic-year field. That follow-up refactor is explicitly deferred from v1. When it is addressed, it must be handled via downstream mapping/projection only. Frontend and backend transport contracts must remain key-based (`yearGroupKey`) with no legacy fallback fields reintroduced. See `SPEC.md` for the full deferred-items list.
