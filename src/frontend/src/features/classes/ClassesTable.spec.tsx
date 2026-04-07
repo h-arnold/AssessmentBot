@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,18 @@ const classesManagementStateMock = vi.fn();
 vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
+
+/**
+ * Renders a component wrapped in a fresh QueryClientProvider for tests that
+ * need access to the React Query context.
+ *
+ * @param {React.ReactElement} ui The component to render.
+ * @returns {ReturnType<typeof render>} Testing Library render result.
+ */
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 const representativeRows = [
   {
@@ -83,7 +96,7 @@ describe('ClassesTable', () => {
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
-    render(<ClassesManagementPanel />);
+    renderWithQueryClient(<ClassesManagementPanel />);
 
     expect(screen.getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
     expect(screen.getAllByText('active').length).toBeGreaterThan(0);
@@ -109,7 +122,7 @@ describe('ClassesTable', () => {
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
-    const { container } = render(<ClassesManagementPanel />);
+    const { container } = renderWithQueryClient(<ClassesManagementPanel />);
 
     const renderedKeys = getRenderedRowKeys(container);
 
@@ -140,7 +153,7 @@ describe('ClassesTable', () => {
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
-    const { container } = render(<ClassesManagementPanel />);
+    const { container } = renderWithQueryClient(<ClassesManagementPanel />);
     const table = screen.getByRole('table', { name: 'Classes table' });
 
     fireEvent.click(screen.getByRole('columnheader', { name: 'Class name' }));

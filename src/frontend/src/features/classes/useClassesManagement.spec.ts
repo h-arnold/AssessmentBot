@@ -146,4 +146,44 @@ describe('useClassesManagement', () => {
     expect(result.current.nonBlockingWarningMessage).toBeNull();
     expect(result.current.rows).toHaveLength(0);
   });
+
+
+  it('does not surface refresh guidance from a later class-partials query error when data is already available', () => {
+    useQueryMock
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: true,
+        error: new ApiTransportError({
+          requestId: 'request-classes-refresh',
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'Class partials refetch failed.',
+            retriable: false,
+          },
+        }),
+        data: [
+          { classId: 'class-1', className: 'Alpha' },
+        ],
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isPending: false,
+        isError: false,
+        data: [],
+      });
+
+    const { result } = renderHook(() => useClassesManagement());
+
+    expect(result.current.classesManagementViewState).toBe('ready');
+    expect(result.current.refreshRequiredMessage).toBeNull();
+  });
 });

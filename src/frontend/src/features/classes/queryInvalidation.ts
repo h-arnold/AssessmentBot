@@ -18,6 +18,30 @@ type ReferenceDataQueryKey =
   | ReturnType<typeof queryKeys.cohorts>
   | ReturnType<typeof queryKeys.yearGroups>;
 
+const refreshRateLimitedMessage = 'The classes are busy updating right now. Please try again shortly.';
+const refreshInvalidRequestMessage = 'Unable to refresh the classes right now. Please review the selection and try again.';
+const refreshGenericFailureMessage = 'The classes could not be refreshed right now. Please reload the page and try again.';
+
+/**
+ * Maps required-refresh failures to user-safe copy.
+ *
+ * @param {RefreshErrorMetadata} refreshError Refresh failure metadata.
+ * @returns {string} User-safe refresh guidance.
+ */
+export function mapRequiredClassPartialsRefreshFailureToUserMessage(
+  refreshError: RefreshErrorMetadata
+): string {
+  if (refreshError.code === 'RATE_LIMITED') {
+    return refreshRateLimitedMessage;
+  }
+
+  if (refreshError.code === 'INVALID_REQUEST') {
+    return refreshInvalidRequestMessage;
+  }
+
+  return refreshGenericFailureMessage;
+}
+
 export type RequiredClassPartialsRefreshOutcome<TResult> =
   | Readonly<{
       mutationResult: TResult;
@@ -165,6 +189,7 @@ function buildRequiredClassPartialsRefreshFailureOutcome<TResult>(
   return {
     ...outcome,
     mutationResult,
+    refreshError: outcome.refreshError,
   };
 }
 

@@ -166,10 +166,10 @@ class ABClassController {
       classId: partialDocument.classId,
       className: partialDocument.className,
       cohortKey: partialDocument.cohortKey,
-      cohortLabel: partialDocument.cohortLabel,
+      cohortLabel: partialDocument.cohortLabel ?? null,
       courseLength: partialDocument.courseLength,
       yearGroupKey: partialDocument.yearGroupKey,
-      yearGroupLabel: partialDocument.yearGroupLabel,
+      yearGroupLabel: partialDocument.yearGroupLabel ?? null,
       classOwner: partialDocument.classOwner,
       teachers: [...partialDocument.teachers],
       active: partialDocument.active,
@@ -805,7 +805,7 @@ class ABClassController {
 
   /**
    * Applies a lightweight patch to editable ABClass fields and returns the persisted partial class summary.
-   * If the class does not yet exist, initialises it first using the supplied patch fields.
+   * Throws a `RangeError` if the class does not exist; it does not create a new class.
    * @param {Object} parameters - Patch parameters object.
    * @param {string} parameters.classId - Classroom course identifier (required).
    * @param {*} [parameters.cohortKey] - Optional cohort-key replacement.
@@ -813,6 +813,7 @@ class ABClassController {
    * @param {*} [parameters.courseLength] - Optional validated course length.
    * @param {boolean|null} [parameters.active] - Optional active-state replacement.
    * @returns {Object} Partial ABClass summary from toPartialJSON().
+   * @throws {RangeError} When no stored document exists for the given classId.
    */
   updateABClass(parameters) {
     Validate.requireParams({ classId: parameters?.classId }, 'updateABClass');
@@ -823,18 +824,7 @@ class ABClassController {
     const existingDocument = collection.findOne({ classId: classId });
 
     if (!existingDocument) {
-      if (Object.hasOwn(patch, 'active')) {
-        throw new Error('updateABClass: active patch requires an existing class');
-      }
-
-      const abClass = this.initialise(classId, {
-        cohortKey: Object.hasOwn(patch, 'cohortKey') ? patch.cohortKey : undefined,
-        yearGroupKey: Object.hasOwn(patch, 'yearGroupKey') ? patch.yearGroupKey : undefined,
-        courseLength: Object.hasOwn(patch, 'courseLength') ? patch.courseLength : undefined,
-      });
-
-      this.saveClass(abClass);
-      return this._buildClassSummary(abClass);
+      throw new RangeError(`updateABClass: class '${classId}' does not exist`);
     }
 
     const abClass = this._applyPatchToClass(ABClass.fromJSON(existingDocument), patch);

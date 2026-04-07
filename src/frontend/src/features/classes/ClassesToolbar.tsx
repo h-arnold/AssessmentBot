@@ -4,6 +4,15 @@ import type { ClassesManagementRow } from './classesManagementViewModel';
 export interface ClassesToolbarProperties {
   rows: readonly ClassesManagementRow[];
   selectedRowKeys: readonly string[];
+  onBulkCreate?: () => void;
+  onBulkDelete?: () => void;
+  onSetActive?: () => void;
+  onSetInactive?: () => void;
+  onSetCohort?: () => void;
+  onSetYearGroup?: () => void;
+  onSetCourseLength?: () => void;
+  setActiveLoading?: boolean;
+  setInactiveLoading?: boolean;
 }
 
 type ClassesToolbarEligibility = Readonly<{
@@ -11,6 +20,9 @@ type ClassesToolbarEligibility = Readonly<{
   canDelete: boolean;
   canSetActive: boolean;
   canSetInactive: boolean;
+  canSetCohort: boolean;
+  canSetYearGroup: boolean;
+  canSetCourseLength: boolean;
   selectedRows: readonly ClassesManagementRow[];
 }>;
 
@@ -39,6 +51,20 @@ function getSelectionMessage(selectedRows: readonly ClassesManagementRow[]): str
 }
 
 /**
+ * Returns true when every selected row has one of the supplied statuses.
+ *
+ * @param {readonly ClassesManagementRow[]} selectedRows Selected row records.
+ * @param {readonly ClassesManagementRow['status'][]} statuses Allowed statuses.
+ * @returns {boolean} True when the selection matches the allowed statuses only.
+ */
+function hasOnlyStatuses(
+  selectedRows: readonly ClassesManagementRow[],
+  statuses: readonly ClassesManagementRow['status'][],
+): boolean {
+  return selectedRows.length > 0 && selectedRows.every((row) => statuses.includes(row.status));
+}
+
+/**
  * Evaluates bulk action eligibility from the selected rows.
  *
  * @param {readonly ClassesManagementRow[]} selectedRows Selected row records.
@@ -47,20 +73,19 @@ function getSelectionMessage(selectedRows: readonly ClassesManagementRow[]): str
 function getBulkActionEligibility(
   selectedRows: readonly ClassesManagementRow[]
 ): ClassesToolbarEligibility {
-  const hasSelection = selectedRows.length > 0;
-  const includesOrphaned = selectedRows.some((row) => row.status === 'orphaned');
-  const hasNotCreatedOnly =
-    hasSelection && selectedRows.every((row) => row.status === 'notCreated');
-  const hasInactiveOnly =
-    hasSelection && selectedRows.every((row) => row.status === 'inactive');
-  const hasActiveOnly =
-    hasSelection && selectedRows.every((row) => row.status === 'active');
+  const canCreate = hasOnlyStatuses(selectedRows, ['notCreated']);
+  const canSetActive = hasOnlyStatuses(selectedRows, ['inactive']);
+  const canSetInactive = hasOnlyStatuses(selectedRows, ['active']);
+  const canEditExisting = hasOnlyStatuses(selectedRows, ['active', 'inactive']);
 
   return {
-    canCreate: hasNotCreatedOnly && !includesOrphaned,
-    canDelete: hasSelection,
-    canSetActive: hasInactiveOnly && !includesOrphaned,
-    canSetInactive: hasActiveOnly && !includesOrphaned,
+    canCreate,
+    canDelete: selectedRows.length > 0,
+    canSetActive,
+    canSetInactive,
+    canSetCohort: canEditExisting,
+    canSetYearGroup: canEditExisting,
+    canSetCourseLength: canEditExisting,
     selectedRows,
   };
 }
@@ -76,17 +101,44 @@ export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
     properties.selectedRowKeys.includes(row.classId)
   );
   const eligibility = getBulkActionEligibility(selectedRows);
+  const selectionMessage = getSelectionMessage(eligibility.selectedRows);
+  const activeStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
 
   return (
     <Card size="small" title="Bulk actions">
       <Space wrap>
-        <Button disabled={!eligibility.canCreate}>Create ABClass</Button>
-        <Button disabled={!eligibility.canSetActive}>Set active</Button>
-        <Button disabled={!eligibility.canSetInactive}>Set inactive</Button>
-        <Button danger disabled={!eligibility.canDelete}>Delete ABClass</Button>
+        <Button disabled={!eligibility.canCreate} onClick={properties.onBulkCreate}>
+          Create ABClass
+        </Button>
+        <Button
+          loading={properties.setActiveLoading}
+          disabled={!eligibility.canSetActive || activeStateMutationInFlight}
+          onClick={properties.onSetActive}
+        >
+          Set active
+        </Button>
+        <Button
+          loading={properties.setInactiveLoading}
+          disabled={!eligibility.canSetInactive || activeStateMutationInFlight}
+          onClick={properties.onSetInactive}
+        >
+          Set inactive
+        </Button>
+        <Button disabled={!eligibility.canSetCohort} onClick={properties.onSetCohort}>
+          Set cohort
+        </Button>
+        <Button disabled={!eligibility.canSetYearGroup} onClick={properties.onSetYearGroup}>
+          Set year group
+        </Button>
+        <Button disabled={!eligibility.canSetCourseLength} onClick={properties.onSetCourseLength}>
+          Set course length
+        </Button>
+        <Button danger disabled={!eligibility.canDelete} onClick={properties.onBulkDelete}>
+          Delete ABClass
+        </Button>
       </Space>
-      {getSelectionMessage(eligibility.selectedRows) ? (
-        <Typography.Text>{getSelectionMessage(eligibility.selectedRows)}</Typography.Text>
+      {selectionMessage ? (
+        <Typography.Text>{selectionMessage}</Typography.Text>
       ) : null}
     </Card>
   );

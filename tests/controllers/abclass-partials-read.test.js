@@ -185,4 +185,32 @@ describe('ABClassController – getAllClassPartials() read path', () => {
 
     expect(Array.isArray(new ABClassController().getAllClassPartials())).toBe(true);
   });
+
+  it('_normaliseClassPartial: stored partial missing cohortLabel/yearGroupLabel uses null, not undefined', () => {
+    // Simulate a document persisted before label fields were added (fields simply absent)
+    const docs = [
+      {
+        classId: 'class-no-labels',
+        className: 'NoLabels',
+        cohortKey: 'coh-uuid-004',
+        // cohortLabel intentionally absent
+        yearGroupKey: 'yg-uuid-007',
+        // yearGroupLabel intentionally absent
+        courseLength: 1,
+        classOwner: null,
+        teachers: [],
+        active: true,
+      },
+    ];
+    partialsCollection.find.mockReturnValue(docs);
+
+    const [result] = new ABClassController().getAllClassPartials();
+
+    // Must be null (Zod z.string().nullable() accepts null but rejects undefined)
+    expect(result.cohortLabel).toBeNull();
+    expect(result.yearGroupLabel).toBeNull();
+    // Sanity: other fields are still correct
+    expect(result.cohortKey).toBe('coh-uuid-004');
+    expect(result.yearGroupKey).toBe('yg-uuid-007');
+  });
 });

@@ -323,7 +323,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
     expect(result).not.toHaveProperty('assignments');
   });
 
-  it('updateABClass rejects active patch when the class is missing', () => {
+  it('updateABClass throws when the class is missing', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
 
@@ -335,7 +335,8 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
         cohortKey: 'coh-2028',
         active: false,
       })
-    ).toThrow(/not found|missing|active/i);
+    ).toThrow(new RangeError("updateABClass: class 'class-001' does not exist"));
+
     expect(controller.dbManager.getCollection).toHaveBeenCalledWith('class-001');
     expect(controller.dbManager.getCollection).toHaveBeenCalledTimes(1);
     expect(classCollection.insertOne).not.toHaveBeenCalled();

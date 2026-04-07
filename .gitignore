@@ -10,3 +10,4 @@
 /scripts/builder/node_modules/
 build
 coverage
+nohup.out

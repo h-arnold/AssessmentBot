@@ -9,6 +9,7 @@ import { pageContent } from './pageContent';
 
 const backendSettingsFeatureEntryText = 'Backend settings feature entry';
 const backendSettingsFeatureEntryRegionLabel = 'Backend settings feature entry';
+const classesManagementFeatureEntryText = 'Classes management feature entry';
 
 vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   BackendSettingsPanel() {
@@ -20,13 +21,11 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   },
 }));
 
-const classesManagementFeatureEntryText = 'Classes management feature entry';
-
 vi.mock('../features/classes/ClassesManagementPanel', () => ({
   classesManagementPanelRegionLabel: 'Classes management panel',
   ClassesManagementPanel() {
     return (
-      <div role="region" aria-label={classesManagementPanelRegionLabel}>
+      <div role="region" aria-label="Classes management panel">
         {classesManagementFeatureEntryText}
       </div>
     );

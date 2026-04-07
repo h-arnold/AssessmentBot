@@ -2,6 +2,7 @@
 name: 'Code Reviewer'
 description: 'Reviews code for quality, standards adherence, and bugs'
 user-invocable: true
+model: gpt-5.4
 tools: [vscode/askQuestions, vscode/runCommand, execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/createAndRunTask, execute/runTests, execute/testFailure, execute/runInTerminal, read/terminalSelection, read/terminalLastCommand, read/problems, read/readFile, browser, search, todo, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/labels_fetch, github.vscode-pull-request-github/notification_fetch, github.vscode-pull-request-github/doSearch, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/pullRequestStatusChecks, github.vscode-pull-request-github/openPullRequest, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_analyzeFile]
 ---
 

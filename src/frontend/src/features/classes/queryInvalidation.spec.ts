@@ -23,6 +23,11 @@ type QueryInvalidationModule = Readonly<{
     queryClient: ReturnType<typeof createAppQueryClient>,
     options?: Readonly<{ requireImmediateConsistency?: boolean }>
   ) => Promise<void>;
+  mapRequiredClassPartialsRefreshFailureToUserMessage: (refreshError: Readonly<{
+    code?: string;
+    requestId?: string;
+    retriable?: boolean;
+  }>) => string;
   runMutationWithRequiredClassPartialsRefresh: <TResult>(options: Readonly<{
     mutate: () => Promise<TResult>;
     queryClient: ReturnType<typeof createAppQueryClient>;
@@ -226,6 +231,30 @@ describe('query invalidation orchestration', () => {
     expect(getABClassPartialsMock).toHaveBeenCalledTimes(initialAndRefreshCallCount);
 
     unsubscribe();
+  });
+
+  it('maps rate-limited refresh failures to user-safe guidance', async () => {
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
+
+    expect(
+      mapRequiredClassPartialsRefreshFailureToUserMessage({
+        code: 'RATE_LIMITED',
+        requestId: 'request-123',
+        retriable: true,
+      })
+    ).toBe('The classes are busy updating right now. Please try again shortly.');
+  });
+
+  it('falls back to generic refresh guidance for unknown refresh failures', async () => {
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
+
+    expect(
+      mapRequiredClassPartialsRefreshFailureToUserMessage({
+        code: 'INTERNAL_ERROR',
+        requestId: 'request-456',
+        retriable: false,
+      })
+    ).toBe('The classes could not be refreshed right now. Please reload the page and try again.');
   });
 
   it('propagates mutation failure before attempting a required class-partials refetch', async () => {

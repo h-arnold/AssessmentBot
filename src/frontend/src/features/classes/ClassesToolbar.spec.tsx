@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,17 @@ const classesManagementStateMock = vi.fn();
 vi.mock('./useClassesManagement', () => ({
   useClassesManagement: classesManagementStateMock,
 }));
+
+/**
+ * Renders UI with a fresh QueryClient for each toolbar assertion.
+ *
+ * @param {React.ReactElement} ui Rendered element.
+ * @returns {ReturnType<typeof render>} Testing Library render result.
+ */
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 const rows = [
   {
@@ -18,6 +30,24 @@ const rows = [
     active: true,
   },
   {
+    classId: 'inactive-1',
+    className: 'Bravo',
+    status: 'inactive',
+    cohortLabel: 'Cohort B',
+    courseLength: 1,
+    yearGroupLabel: 'Year 9',
+    active: false,
+  },
+  {
+    classId: 'not-created-1',
+    className: 'Charlie',
+    status: 'notCreated',
+    cohortLabel: null,
+    courseLength: null,
+    yearGroupLabel: null,
+    active: null,
+  },
+  {
     classId: 'orphaned-1',
     className: 'Legacy',
     status: 'orphaned',
@@ -28,52 +58,99 @@ const rows = [
   },
 ] as const;
 
+/**
+ * Configures the mocked classes-management hook for a selection scenario.
+ *
+ * @param {string[]} selectedRowKeys Selected row identifiers.
+ */
+function renderPanelWithSelection(selectedRowKeys: string[]) {
+  classesManagementStateMock.mockReturnValue({
+    blockingErrorMessage: null,
+    classesManagementViewState: 'ready',
+    classesCount: rows.length,
+    errorMessage: null,
+    nonBlockingWarningMessage: null,
+    refreshRequiredMessage: null,
+    rows,
+    selectedRowKeys,
+    onSelectedRowKeysChange: vi.fn(),
+  });
+}
+
 describe('ClassesToolbar', () => {
   it('enables Delete but disables non-delete actions for orphaned-only selection', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: rows.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows,
-      selectedRowKeys: ['orphaned-1'],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
+    renderPanelWithSelection(['orphaned-1']);
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
-    render(<ClassesManagementPanel />);
+    renderWithQueryClient(<ClassesManagementPanel />);
 
     expect(screen.getByText('Orphaned rows are deletion-only.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Set active' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Set inactive' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeDisabled();
   });
 
-  it('keeps mixed orphaned/non-orphaned selection behaviour explicit and deterministic', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: rows.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows,
-      selectedRowKeys: ['active-1', 'orphaned-1'],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
+  it('keeps mixed orphaned and non-orphaned selection behaviour explicit and deterministic', async () => {
+    renderPanelWithSelection(['active-1', 'orphaned-1']);
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
 
-    render(<ClassesManagementPanel />);
+    renderWithQueryClient(<ClassesManagementPanel />);
 
     expect(screen.getByRole('button', { name: 'Delete ABClass' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Set active' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Set inactive' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeDisabled();
     expect(screen.getByText('Mixed selection includes orphaned rows. Delete is the only allowed bulk action.')).toBeInTheDocument();
+  });
+
+  it('enables cohort, year-group, and course-length edits for a single eligible existing row', async () => {
+    renderPanelWithSelection(['active-1']);
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+
+    renderWithQueryClient(<ClassesManagementPanel />);
+
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeEnabled();
+  });
+
+  it('keeps cohort, year-group, and course-length edits disabled for notCreated selections', async () => {
+    renderPanelWithSelection(['not-created-1']);
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+
+    renderWithQueryClient(<ClassesManagementPanel />);
+
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeDisabled();
+  });
+
+  it('enables the same edit actions for inactive existing rows', async () => {
+    renderPanelWithSelection(['inactive-1']);
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+
+    renderWithQueryClient(<ClassesManagementPanel />);
+
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeEnabled();
+  });
+
+  it('enables the same edit actions for mixed active and inactive existing rows', async () => {
+    renderPanelWithSelection(['active-1', 'inactive-1']);
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+
+    renderWithQueryClient(<ClassesManagementPanel />);
+
+    expect(screen.getByRole('button', { name: 'Set cohort' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set year group' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Set course length' })).toBeEnabled();
   });
 });

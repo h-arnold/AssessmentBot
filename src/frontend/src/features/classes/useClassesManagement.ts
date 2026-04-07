@@ -19,11 +19,13 @@ export type ClassesManagementState = Readonly<{
   blockingErrorMessage: string | null;
   classesManagementViewState: ClassesManagementViewState;
   classesCount: number | null;
+  cohorts: Cohort[];
   errorMessage: string | null;
   nonBlockingWarningMessage: string | null;
   refreshRequiredMessage: string | null;
   rows: ClassesManagementRow[];
   selectedRowKeys: string[];
+  yearGroups: YearGroup[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
 }>;
 
@@ -138,6 +140,74 @@ function createClassesQueriesState(
 }
 
 /**
+ * Builds the non-ready shell state when startup data is still loading or blocked.
+ *
+ * @param {Readonly<{
+ *   queryState: ClassesQueriesState;
+ *   selectedRowKeys: string[];
+ *   setSelectedRowKeys: (selectedRowKeys: string[]) => void;
+ *   startupWarmupFailed: boolean;
+ * }>} options Derived readiness inputs.
+ * @returns {ClassesManagementState | null} Non-ready state, or null when ready.
+ */
+function getNonReadyClassesManagementState(options: Readonly<{
+  queryState: ClassesQueriesState;
+  selectedRowKeys: string[];
+  setSelectedRowKeys: (selectedRowKeys: string[]) => void;
+  startupWarmupFailed: boolean;
+}>): ClassesManagementState | null {
+  if (options.queryState.hasPendingStartupDataset) {
+    return {
+      blockingErrorMessage: null,
+      classesManagementViewState: 'loading',
+      classesCount: null,
+      cohorts: [],
+      errorMessage: null,
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: options.selectedRowKeys,
+      yearGroups: [],
+      onSelectedRowKeysChange: options.setSelectedRowKeys,
+    };
+  }
+
+  if (options.queryState.hasAnyBlockingDataGap) {
+    return {
+      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
+      classesManagementViewState: 'error',
+      classesCount: null,
+      cohorts: [],
+      errorMessage: 'Unable to load classes right now.',
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: options.selectedRowKeys,
+      yearGroups: [],
+      onSelectedRowKeysChange: options.setSelectedRowKeys,
+    };
+  }
+
+  if (options.startupWarmupFailed) {
+    return {
+      blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
+      classesManagementViewState: 'error',
+      classesCount: null,
+      cohorts: [],
+      errorMessage: 'Unable to load classes right now.',
+      nonBlockingWarningMessage: null,
+      refreshRequiredMessage: null,
+      rows: [],
+      selectedRowKeys: options.selectedRowKeys,
+      yearGroups: [],
+      onSelectedRowKeysChange: options.setSelectedRowKeys,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Provides shell state for the Classes management feature.
  *
  * @returns {ClassesManagementState} The current Classes management state.
@@ -163,47 +233,15 @@ export function useClassesManagement(): ClassesManagementState {
     yearGroupsQuery,
   });
   const queryState = createClassesQueriesState(querySnapshots, readyQueryState);
+  const nonReadyState = getNonReadyClassesManagementState({
+    queryState,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    startupWarmupFailed: startupWarmupState.isFailed,
+  });
 
-  if (queryState.hasPendingStartupDataset) {
-    return {
-      blockingErrorMessage: null,
-      classesManagementViewState: 'loading',
-      classesCount: null,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: [],
-      selectedRowKeys,
-      onSelectedRowKeysChange: setSelectedRowKeys,
-    };
-  }
-
-  if (queryState.hasAnyBlockingDataGap) {
-    return {
-      blockingErrorMessage: 'Unable to load active Google Classrooms right now.',
-      classesManagementViewState: 'error',
-      classesCount: null,
-      errorMessage: 'Unable to load classes right now.',
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: [],
-      selectedRowKeys,
-      onSelectedRowKeysChange: setSelectedRowKeys,
-    };
-  }
-
-  if (startupWarmupState.isFailed) {
-    return {
-      blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
-      classesManagementViewState: 'error',
-      classesCount: null,
-      errorMessage: 'Unable to load classes right now.',
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: [],
-      selectedRowKeys,
-      onSelectedRowKeysChange: setSelectedRowKeys,
-    };
+  if (nonReadyState !== null) {
+    return nonReadyState;
   }
 
   const rows = buildRowsForReadyState(queryState.readyQueryState);
@@ -213,11 +251,13 @@ export function useClassesManagement(): ClassesManagementState {
     blockingErrorMessage: null,
     classesManagementViewState: 'ready',
     classesCount: rows.length,
+    cohorts: queryState.readyQueryState?.cohorts ?? [],
     errorMessage: null,
     nonBlockingWarningMessage: null,
     refreshRequiredMessage: null,
     rows,
     selectedRowKeys: visibleSelectedRowKeys,
+    yearGroups: queryState.readyQueryState?.yearGroups ?? [],
     onSelectedRowKeysChange: setSelectedRowKeys,
   };
 }
