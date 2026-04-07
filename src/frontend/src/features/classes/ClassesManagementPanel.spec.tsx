@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
@@ -69,6 +69,17 @@ const readyRows = [
     active: false,
   },
   {
+    classId: 'not-created-1',
+    className: 'Charlie',
+    status: 'notCreated',
+    cohortKey: null,
+    cohortLabel: null,
+    courseLength: null,
+    yearGroupKey: null,
+    yearGroupLabel: null,
+    active: null,
+  },
+  {
     classId: 'orphaned-1',
     className: 'Legacy',
     status: 'orphaned',
@@ -131,14 +142,21 @@ function buildReadyClassesManagementState(
  * @returns {ClassTableRow} Adapted batch row.
  */
 function toBatchResultRow(row: (typeof readyRows)[number]): ClassTableRow {
+  let mappedStatus: ClassTableRow['status'] = 'linked';
+  if (row.status === 'notCreated') {
+    mappedStatus = 'notCreated';
+  } else if (row.status === 'orphaned') {
+    mappedStatus = 'partial';
+  }
+
   return {
     rowKey: row.classId,
     classId: row.classId,
     className: row.className,
-    status: row.status === 'orphaned' ? 'partial' : 'linked',
+    status: mappedStatus,
     cohortKey: row.cohortKey,
     yearGroupKey: row.yearGroupKey,
-    courseLength: row.courseLength,
+    courseLength: row.courseLength ?? 1,
     active: row.active,
   };
 }
@@ -330,6 +348,73 @@ describe('ClassesManagementPanel', () => {
     ).toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['inactive-2']);
     expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+  });
+
+  it('opens bulk create and dispatches create requests for selected notCreated rows', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    classesManagementStateMock.mockReturnValue(
+      buildReadyClassesManagementState({
+        cohorts: [
+          { key: 'cohort-2025', name: 'Cohort 2025', active: true, startYear: 2025, startMonth: 9 },
+        ],
+        selectedRowKeys: ['not-created-1'],
+        yearGroups: [{ key: 'year-11', name: 'Year 11' }],
+        onSelectedRowKeysChange,
+      }),
+    );
+    runBatchMutationMock.mockResolvedValue([createFulfilledResult('not-created-1')]);
+
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+    const { queryClient } = renderWithQueryClient(<ClassesManagementPanel />);
+    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create ABClass' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Create ABClass' });
+    fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Cohort' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Cohort 2025' }));
+    fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Year group' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Year 11' }));
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'Course length' }), {
+      target: { value: '3' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
+
+    await waitFor(() => expect(runBatchMutationMock).toHaveBeenCalledTimes(1));
+    const submittedRows = runBatchMutationMock.mock.calls[0][0] as ClassTableRow[];
+    expect(submittedRows).toHaveLength(1);
+    expect(submittedRows[0]?.classId).toBe('not-created-1');
+    expect(submittedRows[0]?.status).toBe('notCreated');
+    expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith([]);
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' }));
+  });
+
+  it('disables set-active while its batch mutation is in flight', async () => {
+    const onSelectedRowKeysChange = vi.fn();
+    classesManagementStateMock.mockReturnValue(
+      buildReadyClassesManagementState({
+        selectedRowKeys: ['inactive-1'],
+        onSelectedRowKeysChange,
+      }),
+    );
+
+    let resolveBatch!: (results: RowMutationResult<ClassTableRow, unknown>[]) => void;
+    runBatchMutationMock.mockImplementationOnce(
+      () => new Promise<RowMutationResult<ClassTableRow, unknown>[]>((resolve) => {
+        resolveBatch = resolve;
+      }),
+    );
+
+    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
+    renderWithQueryClient(<ClassesManagementPanel />);
+
+    const setActiveButton = screen.getByRole('button', { name: 'Set active' });
+    expect(setActiveButton).toBeEnabled();
+
+    fireEvent.click(setActiveButton);
+    await waitFor(() => expect(setActiveButton).toBeDisabled());
+
+    resolveBatch([createFulfilledResult('inactive-1')]);
+    await waitFor(() => expect(onSelectedRowKeysChange).toHaveBeenCalledWith([]));
   });
 
   it('shows a top-level error and keeps failed rows selected when setting inactive fully fails', async () => {

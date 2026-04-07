@@ -11,6 +11,8 @@ export interface ClassesToolbarProperties {
   onSetCohort?: () => void;
   onSetYearGroup?: () => void;
   onSetCourseLength?: () => void;
+  setActiveLoading?: boolean;
+  setInactiveLoading?: boolean;
 }
 
 type ClassesToolbarEligibility = Readonly<{
@@ -100,17 +102,40 @@ export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
   );
   const eligibility = getBulkActionEligibility(selectedRows);
   const selectionMessage = getSelectionMessage(eligibility.selectedRows);
+  const activeStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
 
   return (
     <Card size="small" title="Bulk actions">
       <Space wrap>
-        <Button disabled={!eligibility.canCreate} onClick={properties.onBulkCreate}>Create ABClass</Button>
-        <Button disabled={!eligibility.canSetActive} onClick={properties.onSetActive}>Set active</Button>
-        <Button disabled={!eligibility.canSetInactive} onClick={properties.onSetInactive}>Set inactive</Button>
-        <Button disabled={!eligibility.canSetCohort} onClick={properties.onSetCohort}>Set cohort</Button>
-        <Button disabled={!eligibility.canSetYearGroup} onClick={properties.onSetYearGroup}>Set year group</Button>
-        <Button disabled={!eligibility.canSetCourseLength} onClick={properties.onSetCourseLength}>Set course length</Button>
-        <Button danger disabled={!eligibility.canDelete} onClick={properties.onBulkDelete}>Delete ABClass</Button>
+        <Button disabled={!eligibility.canCreate} onClick={properties.onBulkCreate}>
+          Create ABClass
+        </Button>
+        <Button
+          loading={properties.setActiveLoading}
+          disabled={!eligibility.canSetActive || activeStateMutationInFlight}
+          onClick={properties.onSetActive}
+        >
+          Set active
+        </Button>
+        <Button
+          loading={properties.setInactiveLoading}
+          disabled={!eligibility.canSetInactive || activeStateMutationInFlight}
+          onClick={properties.onSetInactive}
+        >
+          Set inactive
+        </Button>
+        <Button disabled={!eligibility.canSetCohort} onClick={properties.onSetCohort}>
+          Set cohort
+        </Button>
+        <Button disabled={!eligibility.canSetYearGroup} onClick={properties.onSetYearGroup}>
+          Set year group
+        </Button>
+        <Button disabled={!eligibility.canSetCourseLength} onClick={properties.onSetCourseLength}>
+          Set course length
+        </Button>
+        <Button danger disabled={!eligibility.canDelete} onClick={properties.onBulkDelete}>
+          Delete ABClass
+        </Button>
       </Space>
       {selectionMessage ? (
         <Typography.Text>{selectionMessage}</Typography.Text>

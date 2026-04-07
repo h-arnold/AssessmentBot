@@ -323,7 +323,7 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
     expect(result).not.toHaveProperty('assignments');
   });
 
-  it('updateABClass rejects active patch when the class is missing', () => {
+  it('updateABClass throws when the class is missing', () => {
     classCollection.findOne.mockReturnValue(null);
     partialsCollection.findOne.mockReturnValue(null);
 

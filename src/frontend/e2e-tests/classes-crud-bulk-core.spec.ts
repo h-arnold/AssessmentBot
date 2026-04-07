@@ -100,6 +100,10 @@ type BulkCoreScenario = Readonly<{
   googleClassrooms: readonly unknown[];
   /** Initial class partials. */
   classPartials: readonly unknown[];
+  /** Cohorts returned for getCohorts. */
+  cohorts?: readonly unknown[];
+  /** Year groups returned for getYearGroups. */
+  yearGroups?: readonly unknown[];
   /**
    * Optional second class partials response, served on the second
    * getABClassPartials call (e.g. after a mutation + refetch).
@@ -215,12 +219,12 @@ async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Prom
             }
 
             if (method === 'getCohorts') {
-              sendSuccess(callbacks.successHandler, [], 'req-cohorts');
+              sendSuccess(callbacks.successHandler, scenario.cohorts ?? [], 'req-cohorts');
               return;
             }
 
             if (method === 'getYearGroups') {
-              sendSuccess(callbacks.successHandler, [], 'req-year-groups');
+              sendSuccess(callbacks.successHandler, scenario.yearGroups ?? [], 'req-year-groups');
               return;
             }
 
@@ -302,6 +306,63 @@ test.describe('bulk create flow', () => {
     await table.getByRole('checkbox').first().check();
 
     await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeEnabled();
+  });
+
+  test('submitting bulk create creates selected rows and closes the modal', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+      classPartialsAfterMutation: [
+        {
+          classId: notCreatedGCR.classId,
+          className: notCreatedGCR.className,
+          cohortKey: 'cohort-2025',
+          cohortLabel: 'Cohort 2025',
+          courseLength: 2,
+          yearGroupKey: 'year-11',
+          yearGroupLabel: 'Year 11',
+          classOwner: null,
+          teachers: [],
+          active: true,
+        },
+      ],
+      cohorts: [
+        {
+          key: 'cohort-2025',
+          name: 'Cohort 2025',
+          active: true,
+          startYear: 2025,
+          startMonth: 9,
+        },
+      ],
+      yearGroups: [
+        {
+          key: 'year-11',
+          name: 'Year 11',
+        },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+    await page.getByRole('button', { name: bulkCreateButtonLabel }).click();
+
+    const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('combobox', { name: 'Cohort' }).click();
+    await page.getByRole('option', { name: 'Cohort 2025' }).click();
+    await dialog.getByRole('combobox', { name: 'Year group' }).click();
+    await page.getByRole('option', { name: 'Year 11' }).click();
+    await dialog.getByRole('spinbutton', { name: 'Course length' }).fill('2');
+    await dialog.getByRole('button', { name: 'OK' }).click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Cohort 2025');
+    await expect(page.getByRole('table', { name: classesTableAriaLabel })).toContainText('Year 11');
+    await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeDisabled();
   });
 
   test('Create ABClass button is disabled when only already-created rows are selected', async ({
@@ -547,4 +608,3 @@ test.describe('bulk active-state flow', () => {
     await expect(page.getByText('Selected rows: 2')).toBeVisible();
   });
 });
-
