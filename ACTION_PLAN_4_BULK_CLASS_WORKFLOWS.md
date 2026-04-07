@@ -415,6 +415,7 @@ Tests:
 - Rewrite backend/controller/API red tests first so they stop encoding create-on-missing update behaviour.
 - Keep modal shells thin; put dispatch and result mapping in shared helpers/hooks.
 - Extend the existing shared Classes CRUD harness/helpers; do not create a second harness.
+- Future bulk-action additions in `ClassesManagementPanel` should reuse `runBulkMutationOrchestration(...)` rather than copying another bespoke submitting/clear-feedback/refresh/invalidate/finally skeleton.
 
 ## Section checks
 

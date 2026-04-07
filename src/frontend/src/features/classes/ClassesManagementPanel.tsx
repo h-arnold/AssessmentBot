@@ -1,9 +1,9 @@
 import { Alert, Card, Flex, Typography } from 'antd';
 import { useMemo, useState } from 'react';
-import { mapRequiredClassPartialsRefreshFailureToUserMessage, runMutationWithRequiredClassPartialsRefresh, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
-import { queryKeys } from '../../query/queryKeys';
+import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
+import { runBulkMutationOrchestration } from './bulkMutationOrchestration';
 import { ClassesAlertStack } from './ClassesAlertStack';
 import { ClassesSummaryCard } from './ClassesSummaryCard';
 import { ClassesTable } from './ClassesTable';
@@ -444,12 +444,13 @@ export function ClassesManagementPanel() {
   const shouldSuppressStaleTableData = suppressStaleTableData || classesManagement.refreshRequiredMessage !== null;
 
   /**
-   * Invalidates the shared class-partials query after a mutation.
+   * Clears the transient bulk-action feedback before another mutation starts.
    *
-   * @returns {Promise<void>} Completion signal.
+   * @returns {void} No return value.
    */
-  async function invalidateClassPartialsQuery(): Promise<void> {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
+  function clearBulkActionFeedback(): void {
+    setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
   }
 
   /**
@@ -492,27 +493,20 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all deletions have settled.
    */
   async function handleDeleteConfirm() {
-    setDeleteSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(selectedRows, (row) =>
-          callApi('deleteABClass', { classId: row.classId }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkDeleteFailureMessage,
         fullFailureTitle: 'Could not delete selected classes.',
         partialFailureTitle: 'Some selected classes were not deleted.',
         closeSurface: () => setDeleteModalOpen(false),
-      });
-    } finally {
-      setDeleteSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(selectedRows, (row) =>
+        callApi('deleteABClass', { classId: row.classId }),
+      ),
+      queryClient,
+      setSubmitting: setDeleteSubmitting,
+    });
   }
 
   /**
@@ -522,25 +516,18 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all create calls have settled.
    */
   async function handleBulkCreate(options: BulkCreateOptions): Promise<void> {
-    setCreateSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkCreate(filterBulkCreateRows(selectedRows), options),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkCreateFailureMessage,
         fullFailureTitle: 'Could not create selected classes.',
         partialFailureTitle: 'Some selected classes were not created.',
         closeSurface: () => setCreateModalOpen(false),
-      });
-    } finally {
-      setCreateSubmitting(false);
-    }
+      }),
+      mutate: () => bulkCreate(filterBulkCreateRows(selectedRows), options),
+      queryClient,
+      setSubmitting: setCreateSubmitting,
+    });
   }
 
   /**
@@ -551,26 +538,20 @@ export function ClassesManagementPanel() {
    */
   async function handleSetActive() {
     const eligible = filterEligibleForActiveState(selectedRows, true);
-    setSetActiveSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
 
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(eligible, (row) =>
-          callApi('updateABClass', { classId: row.classId, active: true }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkSetActiveFailureMessage,
         fullFailureTitle: 'Could not set selected classes to active.',
         partialFailureTitle: 'Some selected classes were not set to active.',
-      });
-    } finally {
-      setSetActiveSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: true }),
+      ),
+      queryClient,
+      setSubmitting: setSetActiveSubmitting,
+    });
   }
 
   /**
@@ -581,26 +562,20 @@ export function ClassesManagementPanel() {
    */
   async function handleSetInactive() {
     const eligible = filterEligibleForActiveState(selectedRows, false);
-    setSetInactiveSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
 
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(eligible, (row) =>
-          callApi('updateABClass', { classId: row.classId, active: false }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkSetInactiveFailureMessage,
         fullFailureTitle: 'Could not set selected classes to inactive.',
         partialFailureTitle: 'Some selected classes were not set to inactive.',
-      });
-    } finally {
-      setSetInactiveSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: false }),
+      ),
+      queryClient,
+      setSubmitting: setSetInactiveSubmitting,
+    });
   }
 
   /**
@@ -638,23 +613,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetCohort(cohortKey: string): Promise<void> {
-    setSetCohortSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetCohort(
-          filterEligibleForBulkSetCohort(selectedRows),
-          cohortKey,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetCohortModalOpen(false));
-    } finally {
-      setSetCohortSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetCohortModalOpen(false)),
+      mutate: () => bulkSetCohort(
+        filterEligibleForBulkSetCohort(selectedRows),
+        cohortKey,
+      ),
+      queryClient,
+      setSubmitting: setSetCohortSubmitting,
+    });
   }
 
   /**
@@ -664,23 +632,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetYearGroup(yearGroupKey: string): Promise<void> {
-    setSetYearGroupSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetYearGroup(
-          filterEligibleForBulkSetYearGroup(selectedRows),
-          yearGroupKey,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetYearGroupModalOpen(false));
-    } finally {
-      setSetYearGroupSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetYearGroupModalOpen(false)),
+      mutate: () => bulkSetYearGroup(
+        filterEligibleForBulkSetYearGroup(selectedRows),
+        yearGroupKey,
+      ),
+      queryClient,
+      setSubmitting: setSetYearGroupSubmitting,
+    });
   }
 
   /**
@@ -690,23 +651,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetCourseLength(courseLength: number): Promise<void> {
-    setSetCourseLengthSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetCourseLength(
-          filterEligibleForBulkSetCourseLength(selectedRows),
-          courseLength,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetCourseLengthModalOpen(false));
-    } finally {
-      setSetCourseLengthSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetCourseLengthModalOpen(false)),
+      mutate: () => bulkSetCourseLength(
+        filterEligibleForBulkSetCourseLength(selectedRows),
+        courseLength,
+      ),
+      queryClient,
+      setSubmitting: setSetCourseLengthSubmitting,
+    });
   }
 
   return renderClassesManagementPanelContent({
