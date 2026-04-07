@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Cohort } from '../../services/referenceData.zod';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
+import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 
 const callApiMock = vi.hoisted(() => vi.fn());
 const TWO_CALLS = 2;
@@ -9,41 +10,32 @@ vi.mock('../../services/apiService', () => ({
   callApi: callApiMock,
 }));
 
-type BulkSetCohortFlowModule = Readonly<{
-  filterEligibleForBulkSetCohort: (rows: ClassTableRow[]) => ClassTableRow[];
-  getActiveCohortOptions: (cohorts: Cohort[]) => Array<{ label: string; value: string }>;
-  bulkSetCohort: (
-    rows: ClassTableRow[],
-    cohortKey: string,
-  ) => Promise<Array<{ status: string; row: ClassTableRow }>>;
-}>;
-
 /**
- * Loads the future bulk cohort flow module lazily so this RED spec can compile
- * before the implementation exists.
+ * Loads the bulk cohort flow lazily so the test can import the current implementation shape.
  *
- * @returns {Promise<BulkSetCohortFlowModule>} The bulk cohort flow module.
+ * @returns {Promise<typeof BulkSetCohortFlowModule>} The cohort flow module.
  */
-function loadBulkSetCohortFlow(): Promise<BulkSetCohortFlowModule> {
-  return import('./bulkSetCohortFlow') as Promise<BulkSetCohortFlowModule>;
+function loadBulkSetCohortFlow(): Promise<typeof BulkSetCohortFlowModule> {
+  return import('./bulkSetCohortFlow');
 }
 
 /**
- * Builds a representative existing class row for flow tests.
+ * Builds a canonical classes-management row for cohort flow tests.
  *
- * @param {Partial<ClassTableRow>} overrides Optional field overrides.
- * @returns {ClassTableRow} The composed class row.
+ * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
+ * @returns {ClassesManagementRow} The composed test row.
  */
-function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
+function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
   return {
-    rowKey: 'row-001',
-    status: 'linked',
     classId: 'class-001',
+    className: 'Year 10 Maths',
+    status: 'active',
     cohortKey: 'cohort-current',
+    cohortLabel: 'Cohort Current',
     yearGroupKey: 'year-10',
+    yearGroupLabel: 'Year 10',
     courseLength: 2,
     active: true,
-    className: 'Year 10 Maths',
     ...overrides,
   };
 }
@@ -53,19 +45,18 @@ describe('bulkSetCohortFlow', () => {
     vi.clearAllMocks();
   });
 
-  it('returns only active and inactive existing rows for bulk cohort editing', async () => {
+  it('keeps active and inactive rows eligible while excluding orphaned and notCreated rows', async () => {
     const { filterEligibleForBulkSetCohort } = await loadBulkSetCohortFlow();
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'linked-active', classId: 'class-active', active: true }),
-      makeRow({ rowKey: 'linked-inactive', classId: 'class-inactive', active: false }),
-      makeRow({ rowKey: 'not-created', classId: 'class-missing', status: 'notCreated', active: null }),
-      makeRow({ rowKey: 'orphaned', classId: 'class-orphaned', status: 'partial', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'active-1', status: 'active', active: true }),
+      makeRow({ classId: 'inactive-1', status: 'inactive', active: false }),
+      makeRow({ classId: 'orphaned-1', status: 'orphaned', active: false }),
+      makeRow({ classId: 'missing-1', status: 'notCreated', active: null, cohortKey: null, cohortLabel: null, yearGroupKey: null, yearGroupLabel: null, courseLength: null }),
     ];
 
-    expect(filterEligibleForBulkSetCohort(rows).map((row) => row.classId)).toEqual([
-      'class-active',
-      'class-inactive',
-    ]);
+    const eligibleRows = filterEligibleForBulkSetCohort(rows);
+
+    expect(eligibleRows.map((row) => row.classId)).toEqual(['active-1', 'inactive-1']);
   });
 
   it('builds cohort selector options from active cohorts only', async () => {
@@ -95,9 +86,9 @@ describe('bulkSetCohortFlow', () => {
   it('updates each selected class with the chosen cohort key through updateABClass', async () => {
     const { bulkSetCohort } = await loadBulkSetCohortFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', classId: 'class-001' }),
-      makeRow({ rowKey: 'r2', classId: 'class-002', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'class-001', status: 'active' }),
+      makeRow({ classId: 'class-002', status: 'inactive', active: false }),
     ];
 
     const results = await bulkSetCohort(rows, 'cohort-2025');
@@ -117,7 +108,7 @@ describe('bulkSetCohortFlow', () => {
   it('uses the same batch path for a single selected row edit', async () => {
     const { bulkSetCohort } = await loadBulkSetCohortFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const row = makeRow({ classId: 'class-single' });
+    const row = makeRow({ classId: 'class-single', status: 'inactive', active: false });
 
     const results = await bulkSetCohort([row], 'cohort-2026');
 

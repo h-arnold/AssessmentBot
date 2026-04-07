@@ -4,16 +4,16 @@ import {
   bulkCourseLengthSchema,
   courseLengthValidationMessage,
 } from './bulkEditValidation.zod';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
  * Returns only existing active or inactive rows for bulk course-length editing.
  *
- * @param {ClassTableRow[]} rows Candidate rows.
- * @returns {ClassTableRow[]} Eligible rows.
+ * @param {ClassesManagementRow[]} rows Candidate rows.
+ * @returns {ClassesManagementRow[]} Eligible rows.
  */
-export function filterEligibleForBulkSetCourseLength(rows: ClassTableRow[]): ClassTableRow[] {
-  return rows.filter((row) => row.status === 'linked' && row.active !== null);
+export function filterEligibleForBulkSetCourseLength(rows: ClassesManagementRow[]): ClassesManagementRow[] {
+  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
 }
 
 /**
@@ -35,14 +35,14 @@ function parseCourseLength(courseLength: number): number {
 /**
  * Applies a validated course length to each supplied class row via the shared batch mutation engine.
  *
- * @param {ClassTableRow[]} rows Rows to update.
+ * @param {ClassesManagementRow[]} rows Rows to update.
  * @param {number} courseLength Selected course length.
- * @returns {Promise<RowMutationResult<ClassTableRow, unknown>[]>} Settled row results.
+ * @returns {Promise<RowMutationResult<ClassesManagementRow, unknown>[]>} Settled row results.
  */
 export async function bulkSetCourseLength(
-  rows: ClassTableRow[],
+  rows: ClassesManagementRow[],
   courseLength: number,
-): Promise<RowMutationResult<ClassTableRow, unknown>[]> {
+): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
   const parsedCourseLength = parseCourseLength(courseLength);
 
   return runBatchMutation(rows, (row) =>

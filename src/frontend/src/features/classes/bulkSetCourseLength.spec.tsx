@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
+import type * as BulkSetCourseLengthFlowModule from './bulkSetCourseLengthFlow';
 
 const callApiMock = vi.hoisted(() => vi.fn());
 const INVALID_FRACTIONAL_COURSE_LENGTH = 1.5;
@@ -11,40 +12,32 @@ vi.mock('../../services/apiService', () => ({
   callApi: callApiMock,
 }));
 
-type BulkSetCourseLengthFlowModule = Readonly<{
-  filterEligibleForBulkSetCourseLength: (rows: ClassTableRow[]) => ClassTableRow[];
-  bulkSetCourseLength: (
-    rows: ClassTableRow[],
-    courseLength: number,
-  ) => Promise<Array<{ status: string; row: ClassTableRow }>>;
-}>;
-
 /**
- * Loads the future bulk course-length flow module lazily so this RED spec can
- * compile before the implementation exists.
+ * Loads the bulk course-length flow lazily so the test can import the current implementation shape.
  *
- * @returns {Promise<BulkSetCourseLengthFlowModule>} The bulk course-length flow module.
+ * @returns {Promise<typeof BulkSetCourseLengthFlowModule>} The course-length flow module.
  */
-function loadBulkSetCourseLengthFlow(): Promise<BulkSetCourseLengthFlowModule> {
-  return import('./bulkSetCourseLengthFlow') as Promise<BulkSetCourseLengthFlowModule>;
+function loadBulkSetCourseLengthFlow(): Promise<typeof BulkSetCourseLengthFlowModule> {
+  return import('./bulkSetCourseLengthFlow');
 }
 
 /**
- * Builds a representative existing class row for flow tests.
+ * Builds a canonical classes-management row for course-length flow tests.
  *
- * @param {Partial<ClassTableRow>} overrides Optional field overrides.
- * @returns {ClassTableRow} The composed class row.
+ * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
+ * @returns {ClassesManagementRow} The composed test row.
  */
-function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
+function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
   return {
-    rowKey: 'row-001',
-    status: 'linked',
     classId: 'class-001',
+    className: 'Year 10 Maths',
+    status: 'active',
     cohortKey: 'cohort-current',
+    cohortLabel: 'Cohort Current',
     yearGroupKey: 'year-10',
+    yearGroupLabel: 'Year 10',
     courseLength: 2,
     active: true,
-    className: 'Year 10 Maths',
     ...overrides,
   };
 }
@@ -54,25 +47,29 @@ describe('bulkSetCourseLengthFlow', () => {
     vi.clearAllMocks();
   });
 
-  it('returns only active and inactive existing rows for bulk course-length editing', async () => {
+  it('keeps active and inactive rows eligible while excluding orphaned and notCreated rows', async () => {
     const { filterEligibleForBulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'linked-active', classId: 'class-active', active: true }),
-      makeRow({ rowKey: 'linked-inactive', classId: 'class-inactive', active: false }),
-      makeRow({ rowKey: 'not-created', classId: 'class-missing', status: 'notCreated', active: null }),
-      makeRow({ rowKey: 'orphaned', classId: 'class-orphaned', status: 'partial', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'active-1', status: 'active', active: true }),
+      makeRow({ classId: 'inactive-1', status: 'inactive', active: false }),
+      makeRow({ classId: 'orphaned-1', status: 'orphaned', active: false }),
+      makeRow({ classId: 'missing-1', status: 'notCreated', active: null, cohortKey: null, cohortLabel: null, yearGroupKey: null, yearGroupLabel: null, courseLength: null }),
     ];
 
-    expect(filterEligibleForBulkSetCourseLength(rows).map((row) => row.classId)).toEqual([
-      'class-active',
-      'class-inactive',
-    ]);
+    const eligibleRows = filterEligibleForBulkSetCourseLength(rows);
+
+    expect(eligibleRows.map((row) => row.classId)).toEqual(['active-1', 'inactive-1']);
   });
 
   it('rejects course-length values below 1 before dispatching any mutations', async () => {
     const { bulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
 
-    await expect(bulkSetCourseLength([makeRow()], 0)).rejects.toThrow(
+    await expect(
+      bulkSetCourseLength(
+        [makeRow()] as Parameters<typeof bulkSetCourseLength>[0],
+        0,
+      ),
+    ).rejects.toThrow(
       'Course length must be an integer greater than or equal to 1.',
     );
     expect(callApiMock).not.toHaveBeenCalled();
@@ -82,7 +79,10 @@ describe('bulkSetCourseLengthFlow', () => {
     const { bulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
 
     await expect(
-      bulkSetCourseLength([makeRow()], INVALID_FRACTIONAL_COURSE_LENGTH),
+      bulkSetCourseLength(
+        [makeRow()] as Parameters<typeof bulkSetCourseLength>[0],
+        INVALID_FRACTIONAL_COURSE_LENGTH,
+      ),
     ).rejects.toThrow('Course length must be an integer greater than or equal to 1.');
     expect(callApiMock).not.toHaveBeenCalled();
   });
@@ -90,9 +90,9 @@ describe('bulkSetCourseLengthFlow', () => {
   it('updates each selected class with a validated integer courseLength', async () => {
     const { bulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', classId: 'class-001' }),
-      makeRow({ rowKey: 'r2', classId: 'class-002', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'class-001', status: 'active' }),
+      makeRow({ classId: 'class-002', status: 'inactive', active: false }),
     ];
 
     const results = await bulkSetCourseLength(rows, MUTATED_COURSE_LENGTH);
@@ -112,7 +112,7 @@ describe('bulkSetCourseLengthFlow', () => {
   it('uses the same batch path for a single selected row edit', async () => {
     const { bulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const row = makeRow({ classId: 'class-single' });
+    const row = makeRow({ classId: 'class-single', status: 'inactive', active: false });
 
     const results = await bulkSetCourseLength([row], SINGLE_ROW_COURSE_LENGTH);
 

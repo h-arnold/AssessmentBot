@@ -2,16 +2,16 @@ import { callApi } from '../../services/apiService';
 import type { YearGroup } from '../../services/referenceData.zod';
 import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
 import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
  * Returns only existing active or inactive rows for bulk year-group editing.
  *
- * @param {ClassTableRow[]} rows Candidate rows.
- * @returns {ClassTableRow[]} Eligible rows.
+ * @param {ClassesManagementRow[]} rows Candidate rows.
+ * @returns {ClassesManagementRow[]} Eligible rows.
  */
-export function filterEligibleForBulkSetYearGroup(rows: ClassTableRow[]): ClassTableRow[] {
-  return rows.filter((row) => row.status === 'linked' && row.active !== null);
+export function filterEligibleForBulkSetYearGroup(rows: ClassesManagementRow[]): ClassesManagementRow[] {
+  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
 }
 
 /**
@@ -30,14 +30,14 @@ export function getYearGroupOptions(yearGroups: YearGroup[]): Array<{ label: str
 /**
  * Applies a year-group key to each supplied class row via the shared batch mutation engine.
  *
- * @param {ClassTableRow[]} rows Rows to update.
+ * @param {ClassesManagementRow[]} rows Rows to update.
  * @param {string} yearGroupKey Selected year-group key.
- * @returns {Promise<RowMutationResult<ClassTableRow, unknown>[]>} Settled row results.
+ * @returns {Promise<RowMutationResult<ClassesManagementRow, unknown>[]>} Settled row results.
  */
 export async function bulkSetYearGroup(
-  rows: ClassTableRow[],
+  rows: ClassesManagementRow[],
   yearGroupKey: string,
-): Promise<RowMutationResult<ClassTableRow, unknown>[]> {
+): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
   const parsedYearGroupKey = bulkReferenceKeySchema.parse(yearGroupKey);
 
   return runBatchMutation(rows, (row) =>

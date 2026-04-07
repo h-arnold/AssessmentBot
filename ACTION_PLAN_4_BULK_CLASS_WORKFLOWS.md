@@ -156,10 +156,10 @@ At the point when 4.2 first landed, the branch did not yet carry the full Workst
 
 New production files created:
 
-- `src/frontend/src/features/classes/bulkCreateFlow.ts` — exports `ClassStatus`, `ClassTableRow`, `BulkCreateOptions`, `filterBulkCreateRows`, and `bulkCreate`. `bulkCreate` dispatches `upsertABClass` via `callApi` through the shared `runBatchMutation` engine; maps `cohortKey → cohort`, `yearGroupKey → yearGroup`, defaults `courseLength` to `1`.
-- `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — exports `ClassTableRow` (re-exported from `bulkCreateFlow`) and `filterEligibleForActiveState`. Rejects rows with `status === 'notCreated'`, `active === null`, or `active === targetState`.
+- `src/frontend/src/features/classes/bulkCreateFlow.ts` — consumes `ClassesManagementRow` from `classesManagementViewModel.ts`, exports `BulkCreateOptions`, `filterBulkCreateRows`, and `bulkCreate`. `bulkCreate` dispatches `upsertABClass` via `callApi` through the shared `runBatchMutation` engine; maps `cohortKey → cohort`, `yearGroupKey → yearGroup`, defaults `courseLength` to `1`.
+- `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — consumes `ClassesManagementRow` directly from `classesManagementViewModel.ts` and exports `filterEligibleForActiveState`. Rejects rows with `status === 'notCreated'`/`'orphaned'`, `active === null`, or `active === targetState`.
 - `src/frontend/src/features/classes/BulkDeleteModal.tsx` — exports `BulkDeleteModalProperties` and `BulkDeleteModal`. Wraps Ant Design `Modal` with `okText="Delete"` / `cancelText="Cancel"` copy that explicitly mentions both full and partial record removal.
-- `src/frontend/src/features/classes/ClassesPanel.tsx` — minimal prerequisite Classes panel. Fetches class partials via `getClassPartialsQueryOptions`, derives `ClassTableRow[]` with `useMemo` (no `setState` in effects — local deletions and active-state overrides tracked with separate `Set`/`Map` state). Renders an Ant Design `Table` with `aria-label="Classes table"` (via `components.table` override), `hideSelectAll: true` row selection, and conditionally visible bulk-action buttons (`Bulk create`, `Bulk delete`, `Set active`, `Set inactive`). Action buttons are hidden while the delete modal is open to prevent a `/delete/i` regex collision in E2E tests. After mutations, local state is updated optimistically without waiting for a query refetch.
+- `src/frontend/src/features/classes/ClassesPanel.tsx` — minimal prerequisite Classes panel. Fetches class partials via `getClassPartialsQueryOptions`, consumes `ClassesManagementRow[]` from the canonical view-model contract with `useMemo` (no `setState` in effects — local deletions and active-state overrides tracked with separate `Set`/`Map` state). Renders an Ant Design `Table` with `aria-label="Classes table"` (via `components.table` override), `hideSelectAll: true` row selection, and conditionally visible bulk-action buttons (`Bulk create`, `Bulk delete`, `Set active`, `Set inactive`). Action buttons are hidden while the delete modal is open to prevent a `/delete/i` regex collision in E2E tests. After mutations, local state is updated optimistically without waiting for a query refetch.
 
 Modified files:
 
@@ -187,7 +187,7 @@ Blocking finding resolved:
 
    Resolution: added `src/frontend/src/features/classes/ClassesPanel.spec.tsx` (25 tests) covering:
    - `ClassesTableElement` aria-label rendering
-   - `classPartialToRow` and `deriveStatus` for all three status variants (`notCreated`, `linked`, `partial`)
+   - row rendering and status handling for the canonical `ClassesManagementRow` contract
    - `className` fallback to `classId` when null
    - Active-column renderer for `null` (`—`), `true` (`Active`), and `false` (`Inactive`)
    - Bulk-action button visibility rules for all four action types
@@ -213,8 +213,8 @@ Post-review checks passed:
 Changed test files:
 
 - `src/frontend/src/features/classes/bulkCreate.spec.tsx` — **new file**; covers `filterBulkCreateRows` (notCreated-only filtering), `bulkCreate` payload construction (cohortKey→cohort, yearGroupKey→yearGroup, courseLength with default 1), out-of-order promise resolution, single-row rejection, and empty-list short-circuit. Mocks `callApi` via `vi.mock('../../services/apiService', ...)`.
-- `src/frontend/src/features/classes/bulkDelete.spec.tsx` — **new file**; covers `BulkDeleteModal` rendering with explicit "full" and "partial" record copy, row count display, confirm/cancel callback wiring, and `open: false` hides dialog. Imports `BulkDeleteModalProperties` and `ClassTableRow` from the production modules to be created.
-- `src/frontend/src/features/classes/bulkActiveState.spec.tsx` — **new file**; covers `filterEligibleForActiveState` rejecting notCreated rows, rejecting rows already at target state, filtering in the activate direction, filtering in the deactivate direction, rejecting null-active rows, and empty-list base case. Imports `ClassTableRow` from `bulkActiveStateFlow`.
+- `src/frontend/src/features/classes/bulkDelete.spec.tsx` — **new file**; covers `BulkDeleteModal` rendering with explicit "full" and "partial" record copy, row count display, confirm/cancel callback wiring, and `open: false` hides dialog. Imports `BulkDeleteModalProperties` and the canonical `ClassesManagementRow` contract.
+- `src/frontend/src/features/classes/bulkActiveState.spec.tsx` — **new file**; covers `filterEligibleForActiveState` rejecting notCreated/orphaned rows, rejecting rows already at target state, filtering in the activate direction, filtering in the deactivate direction, rejecting null-active rows, and empty-list base case. Uses the canonical `ClassesManagementRow` contract directly.
 - `src/frontend/e2e-tests/classes-crud-bulk-core.spec.ts` — **new file**; Playwright E2E tests covering classes table display, bulk create button visibility (notCreated rows only — fixture `notCreatedClassFixture` supplies a full ClassPartial transport shape with null AB-specific fields), bulk delete confirmation copy (full + partial), confirming bulk delete removes rows, set-active-absent for already-active rows, set-inactive-absent for already-inactive rows, set-active-absent for notCreated rows (distinct ineligible scenario exercising the notCreated branch of `filterEligibleForActiveState`). Uses `googleScriptRunApiHandlerFactorySource` init-script pattern.
 
 Failing evidence (red phase):
@@ -256,9 +256,9 @@ Red-phase review fix (resolved):
 
 Minimal interim production surface implied by these tests at that stage (later superseded by the Settings-page Classes tab and now removed):
 
-- `src/frontend/src/features/classes/bulkCreateFlow.ts` — exports `ClassTableRow` type, `ClassStatus` type, `filterBulkCreateRows`, `bulkCreate`
+- `src/frontend/src/features/classes/bulkCreateFlow.ts` — consumes the canonical `ClassesManagementRow` type from `classesManagementViewModel.ts`, `filterBulkCreateRows`, `bulkCreate`
 - `src/frontend/src/features/classes/BulkDeleteModal.tsx` — exports `BulkDeleteModalProperties` type, `BulkDeleteModal` component
-- `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — exports `ClassTableRow` type (shared with bulkCreateFlow), `filterEligibleForActiveState`
+- `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — consumes the canonical `ClassesManagementRow` type from `classesManagementViewModel.ts`, `filterEligibleForActiveState`
 - A minimal interim `ClassesPage`/`ClassesTab` update with a table (`aria-label="Classes table"`), row checkboxes, and bulk-action buttons that respond to selection state
 
 ### 4.3 Bulk cohort, year-group, and course-length flows
@@ -300,7 +300,7 @@ Changed production files:
 - `src/frontend/src/features/classes/bulkEditValidation.zod.ts` — new shared Zod validation module for reference-data keys and course-length validation copy.
 - `src/frontend/src/features/classes/BulkSetSelectModal.tsx` — new reusable select-driven modal for cohort and year-group updates.
 - `src/frontend/src/features/classes/BulkSetCourseLengthModal.tsx` — new course-length modal using Ant `InputNumber` and shared validation.
-- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — wires the three new modals/actions into the merged WS3 shell, threads keyed row data into the WS4 adapter, and now handles settled batch results for metadata, delete, and active-state flows so partial/full failures are visible instead of being treated as success.
+- `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — wires the three new modals/actions into the merged WS3 shell, consumes `ClassesManagementRow` directly in the WS4 helpers, and now handles settled batch results for metadata, delete, and active-state flows so partial/full failures are visible instead of being treated as success.
 - `src/frontend/src/features/classes/ClassesToolbar.tsx` — adds `Set cohort`, `Set year group`, and `Set course length` actions with existing-row-only eligibility (`active`/`inactive` only).
 - `src/frontend/src/features/classes/classesManagementViewModel.ts` — carries `cohortKey` and `yearGroupKey` through the merged table row view-model so bulk edits can submit stable keys.
 - `src/frontend/src/features/classes/useClassesManagement.ts` — exposes `cohorts` and `yearGroups` to the panel so the new bulk-edit modals can render current selector options.

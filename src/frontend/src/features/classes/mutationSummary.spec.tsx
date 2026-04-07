@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 import type { ClassesManagementState } from './useClassesManagement';
-import type { ClassTableRow } from './bulkCreateFlow';
 
 const classesManagementStateMock = vi.fn();
 const bulkSetCohortMock = vi.fn();
@@ -65,24 +64,6 @@ const activeCohorts = [
 ];
 
 /**
- * Resolves the bulk-row status for the test adapter.
- *
- * @param {ClassesManagementState['rows'][number]} row Source row.
- * @returns {ClassTableRow['status']} Bulk row status.
- */
-function deriveBulkRowStatus(row: ClassesManagementState['rows'][number]): ClassTableRow['status'] {
-  if (row.status === 'orphaned') {
-    return 'partial';
-  }
-
-  if (row.status === 'notCreated') {
-    return 'notCreated';
-  }
-
-  return 'linked';
-}
-
-/**
  * Builds a ready-state shell for the panel test.
  *
  * @param {Partial<ClassesManagementState>} overrides State overrides.
@@ -102,25 +83,6 @@ function buildReadyClassesManagementState(overrides: Partial<ClassesManagementSt
     yearGroups: [],
     onSelectedRowKeysChange: vi.fn(),
     ...overrides,
-  };
-}
-
-/**
- * Adapts a classes-management row to the shared bulk-flow test row.
- *
- * @param {ClassesManagementState['rows'][number]} row Source row.
- * @returns {ClassTableRow} Bulk-flow row.
- */
-function toClassTableRow(row: ClassesManagementState['rows'][number]): ClassTableRow {
-  return {
-    rowKey: row.classId,
-    classId: row.classId,
-    className: row.className,
-    status: deriveBulkRowStatus(row),
-    cohortKey: row.cohortKey ?? null,
-    yearGroupKey: row.yearGroupKey ?? null,
-    courseLength: row.courseLength ?? 1,
-    active: row.active,
   };
 }
 
@@ -148,8 +110,8 @@ describe('mutationSummary', () => {
   it('hands partial metadata updates off to the persistent summary alert without refresh guidance', async () => {
     classesManagementStateMock.mockReturnValue(buildReadyClassesManagementState());
     bulkSetCohortMock.mockResolvedValue([
-      { status: 'fulfilled', row: toClassTableRow(readyRows[0]), data: { ok: true } },
-      { status: 'rejected', row: toClassTableRow(readyRows[1]), error: new Error('Cohort update failed.') },
+      { status: 'fulfilled', row: readyRows[0], data: { ok: true } },
+      { status: 'rejected', row: readyRows[1], error: new Error('Cohort update failed.') },
     ]);
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
@@ -170,8 +132,8 @@ describe('mutationSummary', () => {
   it('uses refresh-failure guidance when a partial metadata update cannot be refreshed', async () => {
     classesManagementStateMock.mockReturnValue(buildReadyClassesManagementState());
     bulkSetCohortMock.mockResolvedValue([
-      { status: 'fulfilled', row: toClassTableRow(readyRows[0]), data: { ok: true } },
-      { status: 'rejected', row: toClassTableRow(readyRows[1]), error: new Error('Cohort update failed.') },
+      { status: 'fulfilled', row: readyRows[0], data: { ok: true } },
+      { status: 'rejected', row: readyRows[1], error: new Error('Cohort update failed.') },
     ]);
 
     const { ClassesManagementPanel } = await import('./ClassesManagementPanel');

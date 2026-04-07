@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
 import type { RowMutationResult } from './batchMutationEngine';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 import type { ClassesManagementState } from './useClassesManagement';
 
 const classesManagementStateMock = vi.fn();
@@ -22,6 +22,34 @@ vi.mock('./batchMutationEngine', async () => {
     runBatchMutation: runBatchMutationMock,
   };
 });
+
+const bulkCreateModalMock = vi.hoisted(() =>
+  vi.fn((properties: {
+    open: boolean;
+    onConfirm: (options: { cohortKey: string; yearGroupKey: string; courseLength?: number }) => Promise<void>;
+  }) => {
+    if (!properties.open) {
+      return null;
+    }
+
+    return (
+      <div role="dialog" aria-label="Create ABClass">
+        <button
+          type="button"
+          onClick={() => {
+            void properties.onConfirm({ cohortKey: 'cohort-2025', yearGroupKey: 'year-11', courseLength: 3 });
+          }}
+        >
+          OK
+        </button>
+      </div>
+    );
+  }),
+);
+
+vi.mock('./BulkCreateModal', () => ({
+  BulkCreateModal: bulkCreateModalMock,
+}));
 
 const readyRows = [
   {
@@ -136,38 +164,12 @@ function buildReadyClassesManagementState(
 }
 
 /**
- * Adapts the shared test row shape to the ClassTableRow contract used by batch results.
- *
- * @param {typeof readyRows[number]} row Source row.
- * @returns {ClassTableRow} Adapted batch row.
- */
-function toBatchResultRow(row: (typeof readyRows)[number]): ClassTableRow {
-  let mappedStatus: ClassTableRow['status'] = 'linked';
-  if (row.status === 'notCreated') {
-    mappedStatus = 'notCreated';
-  } else if (row.status === 'orphaned') {
-    mappedStatus = 'partial';
-  }
-
-  return {
-    rowKey: row.classId,
-    classId: row.classId,
-    className: row.className,
-    status: mappedStatus,
-    cohortKey: row.cohortKey,
-    yearGroupKey: row.yearGroupKey,
-    courseLength: row.courseLength ?? 1,
-    active: row.active,
-  };
-}
-
-/**
  * Builds a fulfilled batch result for one test row.
  *
  * @param {string} classId Selected test row id.
- * @returns {RowMutationResult<ClassTableRow, unknown>} Fulfilled row result.
+ * @returns {RowMutationResult<ClassesManagementRow, unknown>} Fulfilled row result.
  */
-function createFulfilledResult(classId: string): RowMutationResult<ClassTableRow, unknown> {
+function createFulfilledResult(classId: string): RowMutationResult<ClassesManagementRow, unknown> {
   const row = readyRows.find((candidate) => candidate.classId === classId);
 
   if (row === undefined) {
@@ -176,7 +178,7 @@ function createFulfilledResult(classId: string): RowMutationResult<ClassTableRow
 
   return {
     status: 'fulfilled',
-    row: toBatchResultRow(row),
+    row,
     data: undefined,
   };
 }
@@ -185,9 +187,9 @@ function createFulfilledResult(classId: string): RowMutationResult<ClassTableRow
  * Builds a rejected batch result for one test row.
  *
  * @param {string} classId Selected test row id.
- * @returns {RowMutationResult<ClassTableRow, unknown>} Rejected row result.
+ * @returns {RowMutationResult<ClassesManagementRow, unknown>} Rejected row result.
  */
-function createRejectedResult(classId: string): RowMutationResult<ClassTableRow, unknown> {
+function createRejectedResult(classId: string): RowMutationResult<ClassesManagementRow, unknown> {
   const row = readyRows.find((candidate) => candidate.classId === classId);
 
   if (row === undefined) {
@@ -196,7 +198,7 @@ function createRejectedResult(classId: string): RowMutationResult<ClassTableRow,
 
   return {
     status: 'rejected',
-    row: toBatchResultRow(row),
+    row,
     error: new Error('Mutation failed for ' + classId),
   };
 }
@@ -370,17 +372,10 @@ describe('ClassesManagementPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create ABClass' }));
     const dialog = await screen.findByRole('dialog', { name: 'Create ABClass' });
-    fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Cohort' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Cohort 2025' }));
-    fireEvent.mouseDown(within(dialog).getByRole('combobox', { name: 'Year group' }));
-    fireEvent.click(await screen.findByRole('option', { name: 'Year 11' }));
-    fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'Course length' }), {
-      target: { value: '3' },
-    });
     fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
 
     await waitFor(() => expect(runBatchMutationMock).toHaveBeenCalledTimes(1));
-    const submittedRows = runBatchMutationMock.mock.calls[0][0] as ClassTableRow[];
+    const submittedRows = runBatchMutationMock.mock.calls[0][0] as ClassesManagementRow[];
     expect(submittedRows).toHaveLength(1);
     expect(submittedRows[0]?.classId).toBe('not-created-1');
     expect(submittedRows[0]?.status).toBe('notCreated');
@@ -397,9 +392,9 @@ describe('ClassesManagementPanel', () => {
       }),
     );
 
-    let resolveBatch!: (results: RowMutationResult<ClassTableRow, unknown>[]) => void;
+    let resolveBatch!: (results: RowMutationResult<ClassesManagementRow, unknown>[]) => void;
     runBatchMutationMock.mockImplementationOnce(
-      () => new Promise<RowMutationResult<ClassTableRow, unknown>[]>((resolve) => {
+      () => new Promise<RowMutationResult<ClassesManagementRow, unknown>[]>((resolve) => {
         resolveBatch = resolve;
       }),
     );

@@ -139,7 +139,7 @@ Tests:
 - [x] Commit created
 - [x] Push completed
 
-Implementation note: merged row model implemented in `classesManagementViewModel.ts` with status mapping and deterministic ordering.
+Implementation note: `classesManagementViewModel.ts` owns the canonical ClassesManagementRow contract, merged row model, status mapping, and deterministic ordering.
 
 ### 3.3 Summary, toolbar, and table rendering — complete
 
