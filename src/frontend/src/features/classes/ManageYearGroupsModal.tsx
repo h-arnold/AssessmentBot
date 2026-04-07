@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Input, Modal, Space, Table, Typography, type TableColumnType } from 'antd';
+import { Alert, Button, Flex, Form, Input, Modal, Space, Table, type TableColumnType } from 'antd';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
@@ -24,7 +24,8 @@ import {
 } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { InlineDialog } from './InlineDialog';
+import { isInUseError, getDeleteErrorMessage } from './manageReferenceDataHelpers';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;
@@ -55,70 +56,6 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 
 const FORM_DIALOG_LABEL_ID = 'manage-year-groups-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
-
-/**
- * Returns true when the API transport error signals that a record is in use.
- *
- * @param {unknown} error Error caught from a service call.
- * @returns {boolean} True when the error code is IN_USE.
- */
-function isInUseError(error: unknown): boolean {
-  return error instanceof ApiTransportError && error.code === 'IN_USE';
-}
-
-/**
- * Derives a user-facing delete error message from the thrown error.
- *
- * @param {unknown} error Error caught from the delete service call.
- * @param {boolean} blocked Whether the error was an IN_USE block.
- * @returns {string} User-facing error message.
- */
-function getDeleteErrorMessage(error: unknown, blocked: boolean): string {
-  if (blocked) {
-    return 'This year group is in use by one or more classes and cannot be deleted.';
-  }
-
-  return error instanceof Error ? error.message : 'Unable to delete the year group.';
-}
-
-/**
- * Renders an inline dialog section with a labelled title.
- *
- * Uses a native div with role="dialog" so tests can locate it by role and name
- * without relying on portal-based Ant Design Modal rendering in jsdom.
- *
- * @param {Readonly<{
- *   labelId: string;
- *   title: string;
- *   children: React.ReactNode;
- * }>} properties Component properties.
- * @returns {JSX.Element} The rendered inline dialog.
- */
-function InlineDialog(properties: Readonly<{
-  labelId: string;
-  title: string;
-  children: React.ReactNode;
-}>) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={properties.labelId}
-      style={{
-        border: '1px solid #d9d9d9',
-        borderRadius: 8,
-        padding: 24,
-        marginTop: 16,
-        background: '#fff',
-      }}
-    >
-      <Typography.Title level={5} id={properties.labelId} style={{ marginTop: 0 }}>
-        {properties.title}
-      </Typography.Title>
-      {properties.children}
-    </div>
-  );
-}
 
 type YearGroupFormSectionProperties = Readonly<{
   editingYearGroup: YearGroup | null;
@@ -353,7 +290,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       setDeleteState((previous) => ({
         ...previous,
         submitting: false,
-        error: getDeleteErrorMessage(error, blocked),
+        error: getDeleteErrorMessage(error, blocked, 'year group'),
         blocked,
       }));
     }

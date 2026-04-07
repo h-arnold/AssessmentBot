@@ -298,6 +298,14 @@ Documents to update:
 - **Push:** succeeded to `origin/ws5-doc-update`
 - **Note:** commit also included the 5.4 action-plan update
 
+## De-sloppification outcome — Workstream 5 (sections 5.1–5.4)
+
+Completed after section 5.4 green phase; reviewed clean.
+
+- **Shared helper extraction:** duplicated reference-data modal helpers (field-reset logic, error-display utilities, confirm-dialog wrappers) that had been copy-pasted across the manage-cohorts and manage-year-groups feature files were consolidated into shared frontend helpers/components, removing the duplication.
+- **Stale comment removal:** red-phase `TODO` / `DEFERRED` / placeholder comments that had accumulated in the manage-modal unit specs (`manageCohorts.spec.tsx`, `manageCohortDelete.spec.tsx`, `manageYearGroups.spec.tsx`, `manageYearGroupDelete.spec.tsx`) and the two E2E specs (`classes-crud-manage-cohorts.spec.ts`, `classes-crud-manage-year-groups.spec.ts`) were removed; all retained comments reflect current, passing behaviour.
+- **Branch state:** `ws5-doc-update` is clean — lint, type-check, unit tests, and E2E tests all pass; branch is ready for final documentation sync.
+
 ## Sequencing notes
 
 - Keep delete-blocked UX aligned with backend-authoritative rules.

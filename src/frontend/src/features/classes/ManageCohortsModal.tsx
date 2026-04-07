@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Input, Modal, Space, Switch, Table, Typography, type TableColumnType } from 'antd';
+import { Alert, Button, Flex, Form, Input, Modal, Space, Switch, Table, type TableColumnType } from 'antd';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
@@ -24,7 +24,8 @@ import {
 } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
-import { ApiTransportError } from '../../errors/apiTransportError';
+import { InlineDialog } from './InlineDialog';
+import { isInUseError, getDeleteErrorMessage } from './manageReferenceDataHelpers';
 
 export type ManageCohortsModalProperties = Readonly<{
   open: boolean;
@@ -55,70 +56,6 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 
 const FORM_DIALOG_LABEL_ID = 'manage-cohorts-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
-
-/**
- * Returns true when the API transport error signals that a record is in use.
- *
- * @param {unknown} error Error caught from a service call.
- * @returns {boolean} True when the error code is IN_USE.
- */
-function isInUseError(error: unknown): boolean {
-  return error instanceof ApiTransportError && error.code === 'IN_USE';
-}
-
-/**
- * Derives a user-facing delete error message from the thrown error.
- *
- * @param {unknown} error Error caught from the delete service call.
- * @param {boolean} blocked Whether the error was an IN_USE block.
- * @returns {string} User-facing error message.
- */
-function getDeleteErrorMessage(error: unknown, blocked: boolean): string {
-  if (blocked) {
-    return 'This cohort is in use by one or more classes and cannot be deleted.';
-  }
-
-  return error instanceof Error ? error.message : 'Unable to delete the cohort.';
-}
-
-/**
- * Renders an inline dialog section with a labelled title.
- *
- * Uses a native div with role="dialog" so tests can locate it by role and name
- * without relying on portal-based Ant Design Modal rendering in jsdom.
- *
- * @param {Readonly<{
- *   labelId: string;
- *   title: string;
- *   children: React.ReactNode;
- * }>} properties Component properties.
- * @returns {JSX.Element} The rendered inline dialog.
- */
-function InlineDialog(properties: Readonly<{
-  labelId: string;
-  title: string;
-  children: React.ReactNode;
-}>) {
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={properties.labelId}
-      style={{
-        border: '1px solid #d9d9d9',
-        borderRadius: 8,
-        padding: 24,
-        marginTop: 16,
-        background: '#fff',
-      }}
-    >
-      <Typography.Title level={5} id={properties.labelId} style={{ marginTop: 0 }}>
-        {properties.title}
-      </Typography.Title>
-      {properties.children}
-    </div>
-  );
-}
 
 type CohortFormSectionProperties = Readonly<{
   editingCohort: Cohort | null;
@@ -321,15 +258,6 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   }
 
   /**
-   * Invalidates the cohorts query so the list refreshes after a mutation.
-   *
-   * @returns {Promise<void>} Resolves when the invalidation is queued.
-   */
-  async function invalidateCohorts(): Promise<void> {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
-  }
-
-  /**
    * Submits the create or edit form and invalidates cohorts on success.
    *
    * @param {CohortFormValues} values Validated form values.
@@ -358,7 +286,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
         });
       }
 
-      await invalidateCohorts();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
       closeFormDialog();
     } catch (error: unknown) {
       setFormError(error instanceof Error ? error.message : 'Unable to save the cohort.');
@@ -390,7 +318,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
           startMonth: cohort.startMonth,
         },
       });
-      await invalidateCohorts();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
     } catch (error: unknown) {
       setToggleError(error instanceof Error ? error.message : 'Unable to update the cohort active state.');
     }
@@ -410,7 +338,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
 
     try {
       await deleteCohort({ key: deleteState.cohort.key });
-      await invalidateCohorts();
+      await queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
       setDeleteState(INITIAL_DELETE_STATE);
     } catch (error: unknown) {
       const blocked = isInUseError(error);
@@ -418,7 +346,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       setDeleteState((previous) => ({
         ...previous,
         submitting: false,
-        error: getDeleteErrorMessage(error, blocked),
+        error: getDeleteErrorMessage(error, blocked, 'cohort'),
         blocked,
       }));
     }

@@ -290,6 +290,5 @@ describe('referenceDataService keyed contracts', () => {
             await expect(deleteYearGroup(deleteYearGroupInput)).rejects.toBe(inUseError);
         });
 
-
     });
 });

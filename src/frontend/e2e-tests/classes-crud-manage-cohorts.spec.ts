@@ -10,10 +10,6 @@
  * - Active-state toggle
  * - Delete cohort flow (successful)
  * - Blocked delete (IN_USE) — modal stays open with inline Alert
- *
- * RED PHASE: ManageCohortsModal, its launcher button, and API transport for IN_USE
- * do not yet exist. All tests are expected to fail until the green-phase
- * implementation is complete.
  */
 
 import { expect, test } from '@playwright/test';
@@ -283,10 +279,6 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
   test('keeps the delete dialog open with an inline Alert when delete is blocked because the cohort is in use', async ({
     page,
   }) => {
-    // NOTE: The API currently collapses IN_USE to INTERNAL_ERROR at the envelope level.
-    // This test expects a machine-readable IN_USE code in the failure envelope, which
-    // is the deferred contract fix from workstream 5.3. Until that fix lands the
-    // frontend will not receive IN_USE and this test will fail on the blocked-state assertion.
     await openClassesTabWithScenario(page, {
       ...createSuccessfulClassesScenario({
         classPartials: baseClassPartials,

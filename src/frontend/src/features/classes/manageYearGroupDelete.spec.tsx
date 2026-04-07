@@ -5,13 +5,6 @@
  * delete-blocked (IN_USE) state keeping the modal open with an inline Alert and a
  * disabled destructive button, and generic failure rendering.
  *
- * RED PHASE: ManageYearGroupsModal does not yet exist; these tests are expected to fail
- * with module-not-found errors until the component is implemented.
- *
- * Additionally, the blocked-delete branch depends on the API envelope propagating a
- * machine-readable IN_USE code rather than collapsing it to INTERNAL_ERROR. That
- * production gap is captured here as a failing test; the API transport fix is deferred
- * to workstream 5.3.
  */
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -21,7 +14,6 @@ import { ApiTransportError } from '../../errors/apiTransportError';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-// RED: ManageYearGroupsModal does not yet exist — import fails in the red phase.
 import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const deleteYearGroupMock = vi.hoisted(() => vi.fn());
