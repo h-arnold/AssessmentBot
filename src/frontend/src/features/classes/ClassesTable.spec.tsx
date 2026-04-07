@@ -1,26 +1,9 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { ClassesTable } from './ClassesTable';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
-const classesManagementStateMock = vi.fn();
-
-vi.mock('./useClassesManagement', () => ({
-  useClassesManagement: classesManagementStateMock,
-}));
-
-/**
- * Renders a component wrapped in a fresh QueryClientProvider for tests that
- * need access to the React Query context.
- *
- * @param {React.ReactElement} ui The component to render.
- * @returns {ReturnType<typeof render>} Testing Library render result.
- */
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
-}
-
-const representativeRows = [
+const representativeRows: ClassesManagementRow[] = [
   {
     classId: 'class-001',
     className: 'alpha',
@@ -66,7 +49,7 @@ const representativeRows = [
     yearGroupLabel: 'Year 13',
     active: false,
   },
-] as const;
+];
 
 /**
  * Reads rendered table row keys in visual order.
@@ -76,27 +59,36 @@ const representativeRows = [
  */
 function getRenderedRowKeys(container: HTMLElement): string[] {
   return [...container.querySelectorAll('tbody tr[data-row-key]')].map(
-    (row) => (row as HTMLElement).dataset.rowKey ?? '',
+    (row) => (row as HTMLElement).dataset.rowKey ?? ''
   );
 }
 
+/**
+ * Renders the classes table for one selection scenario.
+ *
+ * @param {string[]} selectedRowKeys Selected row identifiers.
+ * @param {(selectedRowKeys: string[]) => void} [onSelectedRowKeysChange] Selection callback.
+ * @returns {ReturnType<typeof render>} Testing Library render result.
+ */
+function renderClassesTable(
+  selectedRowKeys: string[] = [],
+  onSelectedRowKeysChange = vi.fn()
+) {
+  return {
+    onSelectedRowKeysChange,
+    ...render(
+      <ClassesTable
+        rows={representativeRows}
+        selectedRowKeys={selectedRowKeys}
+        onSelectedRowKeysChange={onSelectedRowKeysChange}
+      />
+    ),
+  };
+}
+
 describe('ClassesTable', () => {
-  it('renders representative active/inactive/notCreated/orphaned rows as explicit contracts', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: representativeRows.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: representativeRows,
-      selectedRowKeys: [],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    renderWithQueryClient(<ClassesManagementPanel />);
+  it('renders representative active/inactive/notCreated/orphaned rows as explicit contracts', () => {
+    renderClassesTable();
 
     expect(screen.getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
     expect(screen.getAllByText('active').length).toBeGreaterThan(0);
@@ -108,21 +100,7 @@ describe('ClassesTable', () => {
   });
 
   it('uses each row classId as the exact rowKey value and reset returns deterministic default ordering', async () => {
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: representativeRows.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: representativeRows,
-      selectedRowKeys: [],
-      onSelectedRowKeysChange: vi.fn(),
-    });
-
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    const { container } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { container } = renderClassesTable();
 
     const renderedKeys = getRenderedRowKeys(container);
 
@@ -131,29 +109,13 @@ describe('ClassesTable', () => {
     fireEvent.click(screen.getByRole('columnheader', { name: 'Class name' }));
     fireEvent.click(screen.getByRole('button', { name: 'Reset sort and filters' }));
 
-    const resetKeys = getRenderedRowKeys(container);
-
-    expect(resetKeys).toEqual(representativeRows.map((row) => row.classId));
-    expect(resetKeys).toContain('gc/not-created:2024');
+    await waitFor(() => {
+      expect(getRenderedRowKeys(container)).toEqual(representativeRows.map((row) => row.classId));
+    });
   });
 
   it('notifies row selection changes and keeps deterministic order after sorter toggles', async () => {
-    const onSelectedRowKeysChange = vi.fn();
-    classesManagementStateMock.mockReturnValue({
-      blockingErrorMessage: null,
-      classesManagementViewState: 'ready',
-      classesCount: representativeRows.length,
-      errorMessage: null,
-      nonBlockingWarningMessage: null,
-      refreshRequiredMessage: null,
-      rows: representativeRows,
-      selectedRowKeys: [],
-      onSelectedRowKeysChange,
-    });
-
-    const { ClassesManagementPanel } = await import('./ClassesManagementPanel');
-
-    const { container } = renderWithQueryClient(<ClassesManagementPanel />);
+    const { container, onSelectedRowKeysChange } = renderClassesTable();
     const table = screen.getByRole('table', { name: 'Classes table' });
 
     fireEvent.click(screen.getByRole('columnheader', { name: 'Class name' }));

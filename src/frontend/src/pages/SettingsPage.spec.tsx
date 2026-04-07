@@ -1,5 +1,6 @@
+import * as React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from '../query/queryClient';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
@@ -8,14 +9,35 @@ import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders
 const backendSettingsFeatureEntryText = 'Backend settings feature entry';
 const backendSettingsFeatureEntryRegionLabel = 'Backend settings feature entry';
 
-const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
-  () => ({
-    getABClassPartialsMock: vi.fn(),
-    getCohortsMock: vi.fn(),
-    getGoogleClassroomsMock: vi.fn(),
-    getYearGroupsMock: vi.fn(),
-  })
-);
+vi.mock('../features/classes/ClassesManagementPanel', () => ({
+  ClassesManagementPanel() {
+    const [selectedRows, setSelectedRows] = React.useState(0);
+
+    return (
+      <div role="region" aria-label="Classes management panel">
+        <div>Summary</div>
+        <div>Bulk actions</div>
+        <div role="table" aria-label="Classes table">
+          <label>
+            <input
+              aria-label="Select Year 10 Maths"
+              checked={selectedRows === 1}
+              onChange={(event) => {
+                setSelectedRows(event.currentTarget.checked ? 1 : 0);
+              }}
+              type="checkbox"
+            />
+            Year 10 Maths
+          </label>
+        </div>
+        <div>{`Selected rows: ${selectedRows}`}</div>
+        <button disabled type="button">
+          Create ABClass
+        </button>
+      </div>
+    );
+  },
+}));
 
 vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   BackendSettingsPanel() {
@@ -26,55 +48,6 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
     );
   },
 }));
-
-vi.mock('../services/classPartialsService', () => ({
-  getABClassPartials: getABClassPartialsMock,
-}));
-
-vi.mock('../services/googleClassroomsService', () => ({
-  getGoogleClassrooms: getGoogleClassroomsMock,
-}));
-
-vi.mock('../services/referenceDataService', () => ({
-  getCohorts: getCohortsMock,
-  getYearGroups: getYearGroupsMock,
-}));
-
-const classesManagementGoogleClassroom = [{ classId: 'class-1', className: 'Year 10 Maths' }];
-const classesManagementClassPartial = [
-  {
-    classId: 'class-1',
-    className: 'Year 10 Maths',
-    cohortKey: 'cohort-2025',
-    cohortLabel: null,
-    courseLength: 2,
-    yearGroupKey: 'year-10',
-    yearGroupLabel: null,
-    classOwner: null,
-    teachers: [],
-    active: true,
-  },
-];
-
-beforeEach(() => {
-  getABClassPartialsMock.mockResolvedValue(classesManagementClassPartial);
-  getCohortsMock.mockResolvedValue([
-    {
-      key: 'cohort-2025',
-      name: 'Cohort 2025',
-      active: true,
-      startYear: 2025,
-      startMonth: 9,
-    },
-  ]);
-  getGoogleClassroomsMock.mockResolvedValue(classesManagementGoogleClassroom);
-  getYearGroupsMock.mockResolvedValue([
-    {
-      key: 'year-10',
-      name: 'Year 10',
-    },
-  ]);
-});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -121,8 +94,8 @@ describe('SettingsPage', () => {
   it('resets the Classes selection when leaving and re-entering the tab', async () => {
     renderSettingsPage();
 
-    const classesTable = await screen.findByRole('table', { name: 'Classes table' });
-    fireEvent.click(within(classesTable).getAllByRole('checkbox')[1]);
+    const classesTable = screen.getByRole('table', { name: 'Classes table' });
+    fireEvent.click(within(classesTable).getByRole('checkbox', { name: 'Select Year 10 Maths' }));
 
     await waitFor(() => {
       expect(screen.getByText('Selected rows: 1')).toBeInTheDocument();
@@ -141,7 +114,7 @@ describe('SettingsPage', () => {
     const { prefetchQuerySpy } = renderSettingsPage(queryClient);
 
     expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByText('Summary')).toBeInTheDocument();
+    expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(screen.getByText('Bulk actions')).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
     expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();

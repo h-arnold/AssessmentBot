@@ -402,9 +402,9 @@ function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkAc
 /**
  * Renders the Classes feature entry shell.
  *
- * Wires bulk-action handlers via the shared batch mutation engine and invalidates
- * the classPartials query after each successful batch so the table reflects the
- * updated state.
+ * Wires bulk-action handlers via the shared bulk-mutation orchestration helper.
+ * Successful mutation paths perform the required class-partials refresh and then
+ * mark `classPartials` stale so the table can reconcile with the updated state.
  *
  * @returns {JSX.Element} The Classes feature panel shell.
  */
@@ -488,7 +488,8 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls deleteABClass for each selected row then invalidates classPartials.
+   * Calls deleteABClass for each selected row through the shared bulk-mutation
+   * orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all deletions have settled.
    */
@@ -510,7 +511,8 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls upsertABClass for each selected notCreated row then invalidates classPartials.
+   * Calls upsertABClass for each selected notCreated row through the shared
+   * bulk-mutation orchestration helper.
    *
    * @param {BulkCreateOptions} options Cohort/year-group/course-length selection.
    * @returns {Promise<void>} Resolves when all create calls have settled.
@@ -531,8 +533,8 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls updateABClass with active: true for each eligible selected row then
-   * invalidates classPartials.
+   * Calls updateABClass with active: true for each eligible selected row through
+   * the shared bulk-mutation orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all activations have settled.
    */
@@ -555,8 +557,8 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls updateABClass with active: false for each eligible selected row then
-   * invalidates classPartials.
+   * Calls updateABClass with active: false for each eligible selected row through
+   * the shared bulk-mutation orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all deactivations have settled.
    */

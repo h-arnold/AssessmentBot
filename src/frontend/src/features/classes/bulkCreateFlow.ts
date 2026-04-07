@@ -33,8 +33,8 @@ export function filterBulkCreateRows(rows: ClassesManagementRow[]): ClassesManag
 
 /**
  * Dispatches an upsertABClass call for each supplied row using the shared batch
- * mutation engine. Uses `cohortKey → cohort`, `yearGroupKey → yearGroup`, and
- * `courseLength` (defaulting to `1` when not provided).
+ * mutation engine with `cohortKey`, `yearGroupKey`, and `courseLength`
+ * (defaulting to `1` when not provided).
  *
  * @param {ClassesManagementRow[]} rows Rows to create; an empty array returns immediately.
  * @param {BulkCreateOptions} options Cohort, year group, and optional course length.

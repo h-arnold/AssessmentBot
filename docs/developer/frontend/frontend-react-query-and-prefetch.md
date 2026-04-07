@@ -83,10 +83,11 @@ Do not add startup prefetch only to exercise React Query.
 Active screens should keep stale data visible while a background refresh runs.
 The current query-client defaults support that by avoiding eager refetch on focus or reconnect and only refetching on mount when data is stale.
 
-Deferred invalidation notes:
+Current invalidation rules:
 
 - cohort mutations should invalidate the `cohorts` query and refresh active consumers
 - year-group mutations should invalidate the `yearGroups` query and refresh active consumers
+- use shared `queryKeys` directly for `cohorts`/`yearGroups`; do not reintroduce feature-local invalidation wrapper helpers
 - `classPartials` refresh remains feature-driven after successful class mutations
 - if a required post-mutation refresh fails, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
 

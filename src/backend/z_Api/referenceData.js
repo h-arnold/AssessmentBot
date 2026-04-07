@@ -12,7 +12,6 @@ function getController() {
 /**
  * Handler that retrieves all cohort records.
  *
- * @param {*} parameters - Optional; currently unused.
  * @returns {Array<{key: string, name: string, active: boolean, startYear: number, startMonth: number}>} List of all cohorts.
  */
 function getCohorts() {
@@ -55,7 +54,6 @@ function deleteCohort(parameters) {
 /**
  * Handler that retrieves all year group records.
  *
- * @param {*} parameters - Optional; currently unused.
  * @returns {Array<{key: string, name: string}>} List of all year groups.
  */
 function getYearGroups() {

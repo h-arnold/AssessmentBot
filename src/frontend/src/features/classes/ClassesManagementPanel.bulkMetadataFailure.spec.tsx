@@ -20,7 +20,7 @@ vi.mock('./useClassesManagement', () => ({
 }));
 
 vi.mock('./bulkSetCohortFlow', async () => {
-  const actual = await vi.importActual('./bulkSetCohortFlow') as typeof BulkSetCohortFlowModule;
+  const actual = (await vi.importActual('./bulkSetCohortFlow')) as typeof BulkSetCohortFlowModule;
   return {
     ...actual,
     bulkSetCohort: bulkSetCohortMock,
@@ -28,7 +28,7 @@ vi.mock('./bulkSetCohortFlow', async () => {
 });
 
 vi.mock('./bulkSetYearGroupFlow', async () => {
-  const actual = await vi.importActual('./bulkSetYearGroupFlow') as typeof BulkSetYearGroupFlowModule;
+  const actual = (await vi.importActual('./bulkSetYearGroupFlow')) as typeof BulkSetYearGroupFlowModule;
   return {
     ...actual,
     bulkSetYearGroup: bulkSetYearGroupMock,
@@ -36,12 +36,58 @@ vi.mock('./bulkSetYearGroupFlow', async () => {
 });
 
 vi.mock('./bulkSetCourseLengthFlow', async () => {
-  const actual = await vi.importActual('./bulkSetCourseLengthFlow') as typeof BulkSetCourseLengthFlowModule;
+  const actual = (await vi.importActual('./bulkSetCourseLengthFlow')) as typeof BulkSetCourseLengthFlowModule;
   return {
     ...actual,
     bulkSetCourseLength: bulkSetCourseLengthMock,
   };
 });
+
+vi.mock('./ClassesSummaryCard', () => ({
+  ClassesSummaryCard() {
+    return <div>Summary</div>;
+  },
+}));
+
+vi.mock('./ClassesToolbar', () => ({
+  ClassesToolbar(properties: Readonly<{
+    onSetCohort?: () => void;
+    onSetCourseLength?: () => void;
+    onSetYearGroup?: () => void;
+  }>) {
+    return (
+      <div>
+        <button onClick={properties.onSetCohort} type="button">
+          Set cohort
+        </button>
+        <button onClick={properties.onSetYearGroup} type="button">
+          Set year group
+        </button>
+        <button onClick={properties.onSetCourseLength} type="button">
+          Set course length
+        </button>
+      </div>
+    );
+  },
+}));
+
+vi.mock('./ClassesTable', () => ({
+  ClassesTable() {
+    return <div aria-label="Classes table" role="table" />;
+  },
+}));
+
+vi.mock('./BulkCreateModal', () => ({
+  BulkCreateModal() {
+    return null;
+  },
+}));
+
+vi.mock('./BulkDeleteModal', () => ({
+  BulkDeleteModal() {
+    return null;
+  },
+}));
 
 /**
  * Renders a light-weight select modal stub for the bulk metadata failure tests.
@@ -54,12 +100,14 @@ vi.mock('./bulkSetCourseLengthFlow', async () => {
  * }>} properties Modal properties.
  * @returns {JSX.Element | null} Stub modal output.
  */
-function BulkSetSelectModalStub(properties: Readonly<{
-  open: boolean;
-  title: string;
-  options: ReadonlyArray<{ label: string; value: string }>;
-  onConfirm: (value: string) => Promise<void>;
-}>) {
+function BulkSetSelectModalStub(
+  properties: Readonly<{
+    open: boolean;
+    title: string;
+    options: ReadonlyArray<{ label: string; value: string }>;
+    onConfirm: (value: string) => Promise<void>;
+  }>
+) {
   const [submissionError, setSubmissionError] = React.useState<string | null>(null);
 
   if (!properties.open) {
@@ -80,7 +128,11 @@ function BulkSetSelectModalStub(properties: Readonly<{
             try {
               await properties.onConfirm(selectedValue);
             } catch (error: unknown) {
-              setSubmissionError(error instanceof Error ? error.message : 'Unable to update the selected classes.');
+              setSubmissionError(
+                error instanceof Error
+                  ? error.message
+                  : 'Unable to update the selected classes.'
+              );
             }
           })();
         }}
@@ -100,10 +152,12 @@ function BulkSetSelectModalStub(properties: Readonly<{
  * }>} properties Modal properties.
  * @returns {JSX.Element | null} Stub modal output.
  */
-function BulkSetCourseLengthModalStub(properties: Readonly<{
-  open: boolean;
-  onConfirm: (value: number) => Promise<void>;
-}>) {
+function BulkSetCourseLengthModalStub(
+  properties: Readonly<{
+    open: boolean;
+    onConfirm: (value: number) => Promise<void>;
+  }>
+) {
   const [submissionError, setSubmissionError] = React.useState<string | null>(null);
 
   if (!properties.open) {
@@ -121,7 +175,11 @@ function BulkSetCourseLengthModalStub(properties: Readonly<{
             try {
               await properties.onConfirm(UPDATED_COURSE_LENGTH);
             } catch (error: unknown) {
-              setSubmissionError(error instanceof Error ? error.message : 'Unable to update the selected classes.');
+              setSubmissionError(
+                error instanceof Error
+                  ? error.message
+                  : 'Unable to update the selected classes.'
+              );
             }
           })();
         }}
@@ -274,16 +332,18 @@ async function expectFailureState(
   dialogName: 'Set cohort' | 'Set year group' | 'Set course length',
   onSelectedRowKeysChange: ReturnType<typeof vi.fn>,
   invalidateQueriesSpy: MockInstance,
-  expectedSelectedRowKeys: string[],
+  expectedSelectedRowKeys: string[]
 ) {
   expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument();
   expect(
     await screen.findByText(
-      'Unable to update any of the 2 selected classes. Please review the remaining selection and try again.',
-    ),
+      'Unable to update any of the 2 selected classes. Please review the remaining selection and try again.'
+    )
   ).toBeInTheDocument();
   await waitFor(() =>
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })),
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })
+    )
   );
   expect(onSelectedRowKeysChange).toHaveBeenCalledWith(expectedSelectedRowKeys);
   expect(onSelectedRowKeysChange).not.toHaveBeenCalledWith([]);
@@ -304,10 +364,15 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
     await submitSelectModal('Set cohort');
 
-    await waitFor(() =>
-      expect(bulkSetCohortMock).toHaveBeenCalledWith(rows, 'cohort-2025'),
+    await waitFor(() => {
+      expect(bulkSetCohortMock).toHaveBeenCalledWith(rows, 'cohort-2025');
+    });
+    await expectFailureState(
+      'Set cohort',
+      onSelectedRowKeysChange,
+      invalidateQueriesSpy,
+      ['active-1', 'inactive-1']
     );
-    await expectFailureState('Set cohort', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 
   it('keeps the year-group modal open with inline feedback and reselects all failed rows after a full failure', async () => {
@@ -320,10 +385,15 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
     await submitSelectModal('Set year group');
 
-    await waitFor(() =>
-      expect(bulkSetYearGroupMock).toHaveBeenCalledWith(rows, 'year-8'),
+    await waitFor(() => {
+      expect(bulkSetYearGroupMock).toHaveBeenCalledWith(rows, 'year-8');
+    });
+    await expectFailureState(
+      'Set year group',
+      onSelectedRowKeysChange,
+      invalidateQueriesSpy,
+      ['active-1', 'inactive-1']
     );
-    await expectFailureState('Set year group', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 
   it('keeps the course-length modal open with inline feedback and reselects all failed rows after a full failure', async () => {
@@ -336,9 +406,14 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
 
     await submitCourseLengthModal();
 
-    await waitFor(() =>
-      expect(bulkSetCourseLengthMock).toHaveBeenCalledWith(rows, UPDATED_COURSE_LENGTH),
+    await waitFor(() => {
+      expect(bulkSetCourseLengthMock).toHaveBeenCalledWith(rows, UPDATED_COURSE_LENGTH);
+    });
+    await expectFailureState(
+      'Set course length',
+      onSelectedRowKeysChange,
+      invalidateQueriesSpy,
+      ['active-1', 'inactive-1']
     );
-    await expectFailureState('Set course length', onSelectedRowKeysChange, invalidateQueriesSpy, ['active-1', 'inactive-1']);
   });
 });

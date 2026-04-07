@@ -177,9 +177,9 @@ Completion status: Complete
 Implementation notes:
 
 - Completed on `copilot/implement-part-2-of-action-plan` in commit `e7542d219c2b8dfbc0702672fb36233ec98efcfd` (`feat: add classes query invalidation helpers`).
-- Delivered shared query invalidation helpers for cohorts and year groups, plus a composite required-refresh outcome for class-partials refetch paths with transport-safe refresh failure metadata.
-- Deviation from plan: this package landed the helper/orchestration layer and tests only; the explicit user guidance and retry affordance for refresh-failure outcomes still depends on later Classes UI work consuming the helper contract.
-- Follow-up implication: later Classes mutation flows should call these helpers rather than duplicating invalidation logic, and should surface `refreshStatus: 'failed'` outcomes explicitly in the UI.
+- Delivered the composite required-refresh outcome contract for class-partials refetch paths with transport-safe refresh failure metadata.
+- Later Classes UI work consumed that contract for bulk-mutation flows.
+- Final branch cleanup removed the unused cohort/year-group invalidation wrapper exports, so live reference-data invalidation should use shared query keys directly at the active mutation surface.
 
 ### 2.5 Browser harness groundwork
 
