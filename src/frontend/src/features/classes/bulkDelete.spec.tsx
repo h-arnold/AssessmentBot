@@ -9,26 +9,27 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BulkDeleteModal, type BulkDeleteModalProperties } from './BulkDeleteModal';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const TWO_SELECTED_ROWS = 2;
 
 /**
- * Builds a test ClassTableRow with sensible defaults and optional overrides.
+ * Builds a test ClassesManagementRow with sensible defaults and optional overrides.
  *
- * @param {Partial<ClassTableRow>} overrides Field overrides for the returned row.
- * @returns {ClassTableRow} The composed test row.
+ * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
+ * @returns {ClassesManagementRow} The composed test row.
  */
-function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
+function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
   return {
-    rowKey: 'row-001',
-    status: 'partial',
     classId: 'class-001',
-    cohortKey: '2025',
-    yearGroupKey: 'yg-10',
-    courseLength: 1,
-    active: null,
     className: 'Year 10 Maths',
+    status: 'active',
+    cohortKey: '2025',
+    cohortLabel: 'Cohort 2025',
+    yearGroupKey: 'yg-10',
+    yearGroupLabel: 'Year 10',
+    courseLength: 1,
+    active: true,
     ...overrides,
   };
 }
@@ -66,7 +67,7 @@ describe('BulkDeleteModal', () => {
 
   it('shows the count of selected rows to be deleted', () => {
     renderBulkDeleteModal({
-      selectedRows: [makeRow({ rowKey: 'r1' }), makeRow({ rowKey: 'r2' })],
+      selectedRows: [makeRow({ classId: 'class-001' }), makeRow({ classId: 'class-002' })],
     });
 
     expect(screen.getByRole('dialog')).toHaveTextContent(String(TWO_SELECTED_ROWS));

@@ -19,7 +19,7 @@ This page is **not** intended to host class analysis or assessment-run controls 
 
 ## Agreed product decisions
 
-1. The **Classes** tab in the top-level **Settings** page is the correct home for this feature.
+1. The **Classes** tab in the top-level **Settings** page is the single canonical home for this feature; do not add or restore a separate top-level Classes route, page, or navigation entry.
 2. This page is for **CRUD operations on `ABClass` entities only**.
 3. Orphaned `ABClass` records should remain visible on the same page and should support **deletion only**.
 4. The page should use a **single table** with status as a visible column.
@@ -64,7 +64,7 @@ The current transport layer already exposes:
 - `getGoogleClassrooms` returns only `classId` and `className` for active Google Classrooms.
 - `getABClassPartials` returns only persisted `ABClass` partials.
 - First-run behaviour must therefore be driven by a merged view model, because there may be zero persisted partials while active Google Classrooms still exist.
-- Current reference-data transport is name-based, which makes renaming cohorts and year groups harder once they are already assigned to `ABClass` records.
+- Current reference-data transport is key-based (`key` plus display `name`), so frontend and backend changes must preserve stable keys rather than reintroducing name-based compatibility paths.
 
 ### Frontend architecture constraints
 
@@ -164,7 +164,7 @@ The UI table should resolve keys to human-readable names by joining:
 
 ## Page architecture
 
-The composition root for this feature should live under `SettingsPage` in the **Classes** tab rather than on the top-level `ClassesPage` shell route.
+The composition root for this feature lives under `SettingsPage` in the **Classes** tab. Do not add or restore a separate top-level `ClassesPage`, route, or navigation entry for the same CRUD surface.
 
 For the detailed tab layout, modal hierarchy, component selection, and state design, use `CLASSES_TAB_LAYOUT_AND_MODALS.md` alongside this spec.
 
@@ -498,7 +498,7 @@ For all bulk actions:
 Implement selection with controlled table selection state in the Classes feature shell.
 
 - Use controlled `selectedRowKeys` state (do not rely on implicit table-internal state across tab switches).
-- On Classes-tab entry/re-entry, reset selection to empty.
+- On Classes-tab entry/re-entry, reset selection to empty via explicit Settings-tab lifecycle handling rather than by assuming inactive tab panes unmount automatically.
 - After destructive operations and required refresh, remove keys that are no longer visible.
 - Do not preserve invisible keys across tab re-entry cycles.
 
@@ -677,7 +677,7 @@ The implementation plan should be organised around the following broad workstrea
 
 ## 7. Settings-page Classes-tab feature implementation
 
-- replace the current placeholder Classes-tab content in `SettingsPage` with a real feature entry component
+- keep `SettingsPage` wired to the real Classes feature entry component; do not reintroduce placeholder content or a parallel top-level Classes page
 - build the merged row view model for active, inactive, not-created, and orphaned rows
 - implement default status sorting and row selection
 - implement column sorting and filtering controls for the main table

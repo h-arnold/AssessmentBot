@@ -5,7 +5,7 @@ import { pageExpectations } from '../test/pageExpectations';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
 describe('app navigation config', () => {
-  it('contains exact four page entries with stable keys', () => {
+  it('contains exact page entries with stable keys', () => {
     expect(
       navigationItems.map(({ key, label, children }) => ({
         key,
@@ -14,7 +14,6 @@ describe('app navigation config', () => {
       }))
     ).toEqual([
       { key: 'dashboard', label: 'Dashboard', children: [] },
-      { key: 'classes', label: 'Classes', children: [] },
       { key: 'assignments', label: 'Assignments', children: [] },
       { key: 'settings', label: 'Settings', children: [] },
     ]);
@@ -23,7 +22,6 @@ describe('app navigation config', () => {
   it('selected key drives active page renderer mapping deterministically', () => {
     expect(Object.keys(pageRenderers).toSorted((a, b) => a.localeCompare(b))).toEqual([
       'assignments',
-      'classes',
       'dashboard',
       'settings',
     ]);

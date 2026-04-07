@@ -172,9 +172,6 @@ function renderSelectedPage(key: AppNavigationKey, dashboardContent?: ReactNode)
     case 'dashboard': {
       return pageRenderers.dashboard(dashboardContent);
     }
-    case 'classes': {
-      return pageRenderers.classes(dashboardContent);
-    }
     case 'assignments': {
       return pageRenderers.assignments(dashboardContent);
     }

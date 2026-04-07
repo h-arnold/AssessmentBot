@@ -2,7 +2,6 @@ import { QueryObserver } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { createAppQueryClient } from '../../query/queryClient';
-import { queryKeys } from '../../query/queryKeys';
 
 const { getABClassPartialsMock } = vi.hoisted(() => ({
   getABClassPartialsMock: vi.fn(),
@@ -15,14 +14,6 @@ vi.mock('../../services/classPartialsService', () => ({
 const initialAndRefreshCallCount = 2;
 
 type QueryInvalidationModule = Readonly<{
-  invalidateCohortsAfterMutation: (
-    queryClient: ReturnType<typeof createAppQueryClient>,
-    options?: Readonly<{ requireImmediateConsistency?: boolean }>
-  ) => Promise<void>;
-  invalidateYearGroupsAfterMutation: (
-    queryClient: ReturnType<typeof createAppQueryClient>,
-    options?: Readonly<{ requireImmediateConsistency?: boolean }>
-  ) => Promise<void>;
   mapRequiredClassPartialsRefreshFailureToUserMessage: (refreshError: Readonly<{
     code?: string;
     requestId?: string;
@@ -87,86 +78,6 @@ describe('query invalidation orchestration', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-  });
-
-  it('invalidates cohorts without refetching when immediate consistency is not required', async () => {
-    const queryClient = createAppQueryClient();
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
-    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
-    const { invalidateCohortsAfterMutation } = await loadQueryInvalidationModule();
-
-    await invalidateCohortsAfterMutation(queryClient);
-
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.cohorts(),
-      })
-    );
-    expect(refetchQueriesSpy).not.toHaveBeenCalled();
-  });
-
-  it('invalidates and refetches cohorts when immediate consistency is required', async () => {
-    const queryClient = createAppQueryClient();
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
-    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
-    const { invalidateCohortsAfterMutation } = await loadQueryInvalidationModule();
-
-    await invalidateCohortsAfterMutation(queryClient, { requireImmediateConsistency: true });
-
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.cohorts(),
-      })
-    );
-    expect(refetchQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.cohorts(),
-        type: 'active',
-      })
-    );
-  });
-
-  it('invalidates year groups without refetching when immediate consistency is not required', async () => {
-    const queryClient = createAppQueryClient();
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
-    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
-    const { invalidateYearGroupsAfterMutation } = await loadQueryInvalidationModule();
-
-    await invalidateYearGroupsAfterMutation(queryClient);
-
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.yearGroups(),
-      })
-    );
-    expect(refetchQueriesSpy).not.toHaveBeenCalled();
-  });
-
-  it('invalidates and refetches year groups when immediate consistency is required', async () => {
-    const queryClient = createAppQueryClient();
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries');
-    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
-    const { invalidateYearGroupsAfterMutation } = await loadQueryInvalidationModule();
-
-    await invalidateYearGroupsAfterMutation(queryClient, { requireImmediateConsistency: true });
-
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.yearGroups(),
-      })
-    );
-    expect(refetchQueriesSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exact: true,
-        queryKey: queryKeys.yearGroups(),
-        type: 'active',
-      })
-    );
   });
 
   it('returns a composite success outcome after a required class-partials refetch succeeds', async () => {
@@ -243,6 +154,18 @@ describe('query invalidation orchestration', () => {
         retriable: true,
       })
     ).toBe('The classes are busy updating right now. Please try again shortly.');
+  });
+
+  it('maps invalid-request refresh failures to user-safe guidance', async () => {
+    const { mapRequiredClassPartialsRefreshFailureToUserMessage } = await loadQueryInvalidationModule();
+
+    expect(
+      mapRequiredClassPartialsRefreshFailureToUserMessage({
+        code: 'INVALID_REQUEST',
+        requestId: 'request-456',
+        retriable: false,
+      })
+    ).toBe('Unable to refresh the classes right now. Please review the selection and try again.');
   });
 
   it('falls back to generic refresh guidance for unknown refresh failures', async () => {

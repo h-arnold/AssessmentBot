@@ -10,14 +10,6 @@ import {
   type RequiredClassPartialsRefreshSuccessOutcomeBase,
 } from './queryInvalidation.zod';
 
-type ImmediateConsistencyOptions = Readonly<{
-  requireImmediateConsistency?: boolean;
-}>;
-
-type ReferenceDataQueryKey =
-  | ReturnType<typeof queryKeys.cohorts>
-  | ReturnType<typeof queryKeys.yearGroups>;
-
 const refreshRateLimitedMessage = 'The classes are busy updating right now. Please try again shortly.';
 const refreshInvalidRequestMessage = 'Unable to refresh the classes right now. Please review the selection and try again.';
 const refreshGenericFailureMessage = 'The classes could not be refreshed right now. Please reload the page and try again.';
@@ -51,34 +43,6 @@ export type RequiredClassPartialsRefreshOutcome<TResult> =
       mutationResult: TResult;
     }> &
       RequiredClassPartialsRefreshFailureOutcomeBase;
-
-/**
- * Invalidates the shared cohorts query after a successful cohort mutation.
- *
- * @param {QueryClient} queryClient Shared query client.
- * @param {ImmediateConsistencyOptions} [options] Optional consistency controls.
- * @returns {Promise<void>} Promise resolving when the invalidation flow completes.
- */
-export async function invalidateCohortsAfterMutation(
-  queryClient: QueryClient,
-  options?: ImmediateConsistencyOptions
-): Promise<void> {
-  await invalidateReferenceDataAfterMutation(queryClient, queryKeys.cohorts(), options);
-}
-
-/**
- * Invalidates the shared year-groups query after a successful year-group mutation.
- *
- * @param {QueryClient} queryClient Shared query client.
- * @param {ImmediateConsistencyOptions} [options] Optional consistency controls.
- * @returns {Promise<void>} Promise resolving when the invalidation flow completes.
- */
-export async function invalidateYearGroupsAfterMutation(
-  queryClient: QueryClient,
-  options?: ImmediateConsistencyOptions
-): Promise<void> {
-  await invalidateReferenceDataAfterMutation(queryClient, queryKeys.yearGroups(), options);
-}
 
 /**
  * Runs a successful mutation followed by a required active class-partials refresh.
@@ -115,36 +79,6 @@ export async function runMutationWithRequiredClassPartialsRefresh<TResult>(optio
       extractRefreshErrorMetadata(error)
     );
   }
-}
-
-/**
- * Invalidates shared reference data and optionally refetches active consumers immediately.
- *
- * @param {QueryClient} queryClient Shared query client.
- * @param {ReferenceDataQueryKey} queryKey Shared reference-data query key.
- * @param {ImmediateConsistencyOptions} [options] Optional consistency controls.
- * @returns {Promise<void>} Promise resolving when the invalidation flow completes.
- */
-async function invalidateReferenceDataAfterMutation(
-  queryClient: QueryClient,
-  queryKey: ReferenceDataQueryKey,
-  options?: ImmediateConsistencyOptions
-): Promise<void> {
-  await queryClient.invalidateQueries({
-    exact: true,
-    queryKey,
-    refetchType: 'none',
-  });
-
-  if (!options?.requireImmediateConsistency) {
-    return;
-  }
-
-  await queryClient.refetchQueries({
-    exact: true,
-    queryKey,
-    type: 'active',
-  });
 }
 
 /**

@@ -2,16 +2,16 @@ import { callApi } from '../../services/apiService';
 import type { Cohort } from '../../services/referenceData.zod';
 import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
 import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
  * Returns only existing active or inactive rows for bulk cohort editing.
  *
- * @param {ClassTableRow[]} rows Candidate rows.
- * @returns {ClassTableRow[]} Eligible rows.
+ * @param {ClassesManagementRow[]} rows Candidate rows.
+ * @returns {ClassesManagementRow[]} Eligible rows.
  */
-export function filterEligibleForBulkSetCohort(rows: ClassTableRow[]): ClassTableRow[] {
-  return rows.filter((row) => row.status === 'linked' && row.active !== null);
+export function filterEligibleForBulkSetCohort(rows: ClassesManagementRow[]): ClassesManagementRow[] {
+  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
 }
 
 /**
@@ -32,14 +32,14 @@ export function getActiveCohortOptions(cohorts: Cohort[]): Array<{ label: string
 /**
  * Applies a cohort key to each supplied class row via the shared batch mutation engine.
  *
- * @param {ClassTableRow[]} rows Rows to update.
+ * @param {ClassesManagementRow[]} rows Rows to update.
  * @param {string} cohortKey Selected cohort key.
- * @returns {Promise<RowMutationResult<ClassTableRow, unknown>[]>} Settled row results.
+ * @returns {Promise<RowMutationResult<ClassesManagementRow, unknown>[]>} Settled row results.
  */
 export async function bulkSetCohort(
-  rows: ClassTableRow[],
+  rows: ClassesManagementRow[],
   cohortKey: string,
-): Promise<RowMutationResult<ClassTableRow, unknown>[]> {
+): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
   const parsedCohortKey = bulkReferenceKeySchema.parse(cohortKey);
 
   return runBatchMutation(rows, (row) =>

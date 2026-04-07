@@ -1,4 +1,3 @@
-import { App as AntdApp } from 'antd';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
@@ -38,16 +37,12 @@ vi.mock('./useBackendSettings', () => ({
 }));
 
 /**
- * Renders the backend settings panel within the Ant Design app context.
+ * Renders the backend settings panel for one test scenario.
  *
  * @returns {ReturnType<typeof render>} The render result.
  */
 function renderBackendSettingsPanel() {
-  return render(
-    <AntdApp>
-      <BackendSettingsPanel />
-    </AntdApp>
-  );
+  return render(<BackendSettingsPanel />);
 }
 
 /**
@@ -291,11 +286,7 @@ describe('BackendSettingsPanel', () => {
       hasApiKey: false,
     }));
 
-    rerender(
-      <AntdApp>
-        <BackendSettingsPanel />
-      </AntdApp>
-    );
+    rerender(<BackendSettingsPanel />);
 
     expect(screen.queryByText(/stored api key already exists/i)).not.toBeInTheDocument();
     expect(screen.getByText(/enter a new api key/i)).toBeInTheDocument();

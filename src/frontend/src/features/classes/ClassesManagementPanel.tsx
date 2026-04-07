@@ -1,9 +1,9 @@
 import { Alert, Card, Flex, Typography } from 'antd';
 import { useMemo, useState } from 'react';
-import { mapRequiredClassPartialsRefreshFailureToUserMessage, runMutationWithRequiredClassPartialsRefresh, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
-import { queryKeys } from '../../query/queryKeys';
+import { mapRequiredClassPartialsRefreshFailureToUserMessage, type RequiredClassPartialsRefreshOutcome } from './queryInvalidation';
+import { runBulkMutationOrchestration } from './bulkMutationOrchestration';
 import { ClassesAlertStack } from './ClassesAlertStack';
 import { ClassesSummaryCard } from './ClassesSummaryCard';
 import { ClassesTable } from './ClassesTable';
@@ -26,7 +26,8 @@ import {
   filterEligibleForBulkSetYearGroup,
   getYearGroupOptions,
 } from './bulkSetYearGroupFlow';
-import { bulkCreate, filterBulkCreateRows, type BulkCreateOptions, type ClassTableRow } from './bulkCreateFlow';
+import { bulkCreate, filterBulkCreateRows, type BulkCreateOptions } from './bulkCreateFlow';
+import { filterEligibleForActiveState } from './bulkActiveStateFlow';
 import {
   runBatchMutation,
   type RejectedRowResult,
@@ -39,53 +40,17 @@ import type { ClassesManagementRow } from './classesManagementViewModel';
 export const classesManagementPanelRegionLabel = 'Classes management panel';
 
 /**
- * Maps a WS3 ClassesManagementStatus to the WS4 ClassStatus used by bulk-flow helpers.
- *
- * @param {string} status WS3 row status.
- * @returns {'notCreated' | 'partial' | 'linked'} WS4 ClassStatus.
- */
-function deriveClassTableRowStatus(status: string): 'notCreated' | 'partial' | 'linked' {
-  if (status === 'notCreated') {
-    return 'notCreated';
-  }
-  if (status === 'orphaned') {
-    return 'partial';
-  }
-  return 'linked';
-}
-
-/**
- * Adapts a ClassesManagementRow to a ClassTableRow so bulk-flow helpers can be
- * reused against the WS3 row type.
- *
- * @param {ClassesManagementRow} row WS3 row record.
- * @returns {ClassTableRow} Adapted row for bulk-flow helpers.
- */
-function toClassTableRow(row: ClassesManagementRow): ClassTableRow {
-  return {
-    rowKey: row.classId,
-    classId: row.classId,
-    className: row.className,
-    status: deriveClassTableRowStatus(row.status),
-    cohortKey: row.cohortKey ?? null,
-    yearGroupKey: row.yearGroupKey ?? null,
-    courseLength: row.courseLength ?? 1,
-    active: row.active,
-  };
-}
-
-/**
  * Returns the rejected row results from a settled batch.
  *
  * @template TData Mutation success payload type.
- * @param {RowMutationResult<ClassTableRow, TData>[]} results Settled batch results.
- * @returns {RejectedRowResult<ClassTableRow>[]} Rejected row results only.
+ * @param {RowMutationResult<ClassesManagementRow, TData>[]} results Settled batch results.
+ * @returns {RejectedRowResult<ClassesManagementRow>[]} Rejected row results only.
  */
 function getRejectedRowResults<TData>(
-  results: RowMutationResult<ClassTableRow, TData>[],
-): RejectedRowResult<ClassTableRow>[] {
+  results: RowMutationResult<ClassesManagementRow, TData>[],
+): RejectedRowResult<ClassesManagementRow>[] {
   return results.filter(
-    (result): result is RejectedRowResult<ClassTableRow> => result.status === 'rejected',
+    (result): result is RejectedRowResult<ClassesManagementRow> => result.status === 'rejected',
   );
 }
 
@@ -93,10 +58,10 @@ function getRejectedRowResults<TData>(
  * Determines whether any mutation result fulfilled.
  *
  * @template TData Mutation success payload type.
- * @param {RowMutationResult<ClassTableRow, TData>[]} results Settled batch results.
+ * @param {RowMutationResult<ClassesManagementRow, TData>[]} results Settled batch results.
  * @returns {boolean} True when at least one result fulfilled.
  */
-function hasAnyFulfilledRowResult<TData>(results: RowMutationResult<ClassTableRow, TData>[]): boolean {
+function hasAnyFulfilledRowResult<TData>(results: RowMutationResult<ClassesManagementRow, TData>[]): boolean {
   return results.some((result) => result.status === 'fulfilled');
 }
 
@@ -155,7 +120,7 @@ type MetadataBulkMutationResolution = Readonly<{
 /**
  * Resolves the UI outcome for a top-level bulk mutation.
  *
- * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+ * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
  *   Settled batch results and refresh outcome.
  * @param {Readonly<{
  *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
@@ -165,7 +130,7 @@ type MetadataBulkMutationResolution = Readonly<{
  * @returns {TopLevelBulkMutationResolution} Derived UI state.
  */
 function buildTopLevelBulkMutationResolution(
-  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
   options: Readonly<{
     createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
     fullFailureTitle: string;
@@ -212,12 +177,12 @@ function buildTopLevelBulkMutationResolution(
 /**
  * Resolves the UI outcome for a bulk metadata mutation.
  *
- * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+ * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
  *   Settled batch results and refresh outcome.
  * @returns {MetadataBulkMutationResolution} Derived UI state.
  */
 function buildMetadataBulkMutationResolution(
-  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+  outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
 ): MetadataBulkMutationResolution {
   const rejectedResults = getRejectedRowResults(outcome.mutationResult);
   const hasAnyFulfilledResults = hasAnyFulfilledRowResult(outcome.mutationResult);
@@ -437,9 +402,9 @@ function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkAc
 /**
  * Renders the Classes feature entry shell.
  *
- * Wires bulk-action handlers via the shared batch mutation engine and invalidates
- * the classPartials query after each successful batch so the table reflects the
- * updated state.
+ * Wires bulk-action handlers via the shared bulk-mutation orchestration helper.
+ * Successful mutation paths perform the required class-partials refresh and then
+ * mark `classPartials` stale so the table can reconcile with the updated state.
  *
  * @returns {JSX.Element} The Classes feature panel shell.
  */
@@ -466,10 +431,6 @@ export function ClassesManagementPanel() {
     () => classesManagement.rows.filter((row) => classesManagement.selectedRowKeys.includes(row.classId)),
     [classesManagement.rows, classesManagement.selectedRowKeys],
   );
-  const selectedTableRows = useMemo(
-    () => selectedRows.map((row) => toClassTableRow(row)),
-    [selectedRows],
-  );
   const cohortOptions = useMemo(
     () => getActiveCohortOptions(classesManagement.cohorts ?? []),
     [classesManagement.cohorts],
@@ -483,18 +444,19 @@ export function ClassesManagementPanel() {
   const shouldSuppressStaleTableData = suppressStaleTableData || classesManagement.refreshRequiredMessage !== null;
 
   /**
-   * Invalidates the shared class-partials query after a mutation.
+   * Clears the transient bulk-action feedback before another mutation starts.
    *
-   * @returns {Promise<void>} Completion signal.
+   * @returns {void} No return value.
    */
-  async function invalidateClassPartialsQuery(): Promise<void> {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.classPartials(), refetchType: 'none' });
+  function clearBulkActionFeedback(): void {
+    setBulkActionOutcomeAlert(null);
+    setRefreshRequiredMessage(null);
   }
 
   /**
    * Resolves post-mutation UI state for a top-level bulk action.
    *
-   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
    *   Settled batch results and refresh outcome.
    * @param {Readonly<{
    *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
@@ -505,7 +467,7 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleTopLevelBulkMutationResult(
-    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
     options: Readonly<{
       createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
       fullFailureTitle: string;
@@ -526,136 +488,108 @@ export function ClassesManagementPanel() {
   }
 
   /**
-   * Calls deleteABClass for each selected row then invalidates classPartials.
+   * Calls deleteABClass for each selected row through the shared bulk-mutation
+   * orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all deletions have settled.
    */
   async function handleDeleteConfirm() {
-    setDeleteSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(selectedTableRows, (row) =>
-          callApi('deleteABClass', { classId: row.classId }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkDeleteFailureMessage,
         fullFailureTitle: 'Could not delete selected classes.',
         partialFailureTitle: 'Some selected classes were not deleted.',
         closeSurface: () => setDeleteModalOpen(false),
-      });
-    } finally {
-      setDeleteSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(selectedRows, (row) =>
+        callApi('deleteABClass', { classId: row.classId }),
+      ),
+      queryClient,
+      setSubmitting: setDeleteSubmitting,
+    });
   }
 
   /**
-   * Calls upsertABClass for each selected notCreated row then invalidates classPartials.
+   * Calls upsertABClass for each selected notCreated row through the shared
+   * bulk-mutation orchestration helper.
    *
    * @param {BulkCreateOptions} options Cohort/year-group/course-length selection.
    * @returns {Promise<void>} Resolves when all create calls have settled.
    */
   async function handleBulkCreate(options: BulkCreateOptions): Promise<void> {
-    setCreateSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkCreate(filterBulkCreateRows(selectedTableRows), options),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkCreateFailureMessage,
         fullFailureTitle: 'Could not create selected classes.',
         partialFailureTitle: 'Some selected classes were not created.',
         closeSurface: () => setCreateModalOpen(false),
-      });
-    } finally {
-      setCreateSubmitting(false);
-    }
+      }),
+      mutate: () => bulkCreate(filterBulkCreateRows(selectedRows), options),
+      queryClient,
+      setSubmitting: setCreateSubmitting,
+    });
   }
 
   /**
-   * Calls updateABClass with active: true for each eligible selected row then
-   * invalidates classPartials.
+   * Calls updateABClass with active: true for each eligible selected row through
+   * the shared bulk-mutation orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all activations have settled.
    */
   async function handleSetActive() {
-    const eligible = selectedTableRows.filter(
-      (row) => row.status !== 'notCreated' && row.active !== null && row.active !== true
-    );
-    setSetActiveSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
+    const eligible = filterEligibleForActiveState(selectedRows, true);
 
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(eligible, (row) =>
-          callApi('updateABClass', { classId: row.classId, active: true }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkSetActiveFailureMessage,
         fullFailureTitle: 'Could not set selected classes to active.',
         partialFailureTitle: 'Some selected classes were not set to active.',
-      });
-    } finally {
-      setSetActiveSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: true }),
+      ),
+      queryClient,
+      setSubmitting: setSetActiveSubmitting,
+    });
   }
 
   /**
-   * Calls updateABClass with active: false for each eligible selected row then
-   * invalidates classPartials.
+   * Calls updateABClass with active: false for each eligible selected row through
+   * the shared bulk-mutation orchestration helper.
    *
    * @returns {Promise<void>} Resolves when all deactivations have settled.
    */
   async function handleSetInactive() {
-    const eligible = selectedTableRows.filter(
-      (row) => row.status !== 'notCreated' && row.active !== null && row.active !== false
-    );
-    setSetInactiveSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
+    const eligible = filterEligibleForActiveState(selectedRows, false);
 
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => runBatchMutation(eligible, (row) =>
-          callApi('updateABClass', { classId: row.classId, active: false }),
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleTopLevelBulkMutationResult(outcome, {
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, {
         createFailureMessage: createBulkSetInactiveFailureMessage,
         fullFailureTitle: 'Could not set selected classes to inactive.',
         partialFailureTitle: 'Some selected classes were not set to inactive.',
-      });
-    } finally {
-      setSetInactiveSubmitting(false);
-    }
+      }),
+      mutate: () => runBatchMutation(eligible, (row) =>
+        callApi('updateABClass', { classId: row.classId, active: false }),
+      ),
+      queryClient,
+      setSubmitting: setSetInactiveSubmitting,
+    });
   }
 
   /**
    * Resolves post-mutation UI state for a bulk metadata batch.
    *
-   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>} outcome
+   * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
    *   Settled batch results and refresh outcome.
    * @param {() => void} closeModal Closes the active metadata modal when the batch can hand off.
    * @returns {Promise<void>} Completion signal.
    */
   async function handleBulkMetadataMutationResult(
-    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassTableRow, unknown>[]>,
+    outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
     closeModal: () => void,
   ): Promise<void> {
     const resolution = buildMetadataBulkMutationResolution(outcome);
@@ -681,23 +615,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetCohort(cohortKey: string): Promise<void> {
-    setSetCohortSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetCohort(
-          filterEligibleForBulkSetCohort(selectedTableRows),
-          cohortKey,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetCohortModalOpen(false));
-    } finally {
-      setSetCohortSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetCohortModalOpen(false)),
+      mutate: () => bulkSetCohort(
+        filterEligibleForBulkSetCohort(selectedRows),
+        cohortKey,
+      ),
+      queryClient,
+      setSubmitting: setSetCohortSubmitting,
+    });
   }
 
   /**
@@ -707,23 +634,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetYearGroup(yearGroupKey: string): Promise<void> {
-    setSetYearGroupSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetYearGroup(
-          filterEligibleForBulkSetYearGroup(selectedTableRows),
-          yearGroupKey,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetYearGroupModalOpen(false));
-    } finally {
-      setSetYearGroupSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetYearGroupModalOpen(false)),
+      mutate: () => bulkSetYearGroup(
+        filterEligibleForBulkSetYearGroup(selectedRows),
+        yearGroupKey,
+      ),
+      queryClient,
+      setSubmitting: setSetYearGroupSubmitting,
+    });
   }
 
   /**
@@ -733,23 +653,16 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Completion signal.
    */
   async function handleSetCourseLength(courseLength: number): Promise<void> {
-    setSetCourseLengthSubmitting(true);
-    setBulkActionOutcomeAlert(null);
-    setRefreshRequiredMessage(null);
-
-    try {
-      const outcome = await runMutationWithRequiredClassPartialsRefresh({
-        mutate: () => bulkSetCourseLength(
-          filterEligibleForBulkSetCourseLength(selectedTableRows),
-          courseLength,
-        ),
-        queryClient,
-      });
-      await invalidateClassPartialsQuery();
-      await handleBulkMetadataMutationResult(outcome, () => setSetCourseLengthModalOpen(false));
-    } finally {
-      setSetCourseLengthSubmitting(false);
-    }
+    await runBulkMutationOrchestration({
+      clearFeedback: clearBulkActionFeedback,
+      handleOutcome: (outcome) => handleBulkMetadataMutationResult(outcome, () => setSetCourseLengthModalOpen(false)),
+      mutate: () => bulkSetCourseLength(
+        filterEligibleForBulkSetCourseLength(selectedRows),
+        courseLength,
+      ),
+      queryClient,
+      setSubmitting: setSetCourseLengthSubmitting,
+    });
   }
 
   return renderClassesManagementPanelContent({
@@ -778,7 +691,7 @@ export function ClassesManagementPanel() {
     onSetCourseLengthOpen: () => setSetCourseLengthModalOpen(true),
     onSetYearGroupCancel: () => setSetYearGroupModalOpen(false),
     onSetYearGroupOpen: () => setSetYearGroupModalOpen(true),
-    selectedTableRows,
+    selectedRows,
     setCohortModalOpen,
     setCohortSubmitting,
     setCourseLengthModalOpen,
@@ -824,7 +737,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
   onSetCourseLengthOpen: () => void;
   onSetYearGroupCancel: () => void;
   onSetYearGroupOpen: () => void;
-  selectedTableRows: ClassTableRow[];
+  selectedRows: ClassesManagementRow[];
   setCohortModalOpen: boolean;
   setCohortSubmitting: boolean;
   setCourseLengthModalOpen: boolean;
@@ -905,7 +818,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
           />
           <BulkDeleteModal
             open={properties.deleteModalOpen}
-            selectedRows={properties.selectedTableRows}
+            selectedRows={properties.selectedRows}
             onConfirm={properties.handleDeleteConfirm}
             onCancel={properties.onDeleteCancel}
             confirmLoading={properties.deleteSubmitting}

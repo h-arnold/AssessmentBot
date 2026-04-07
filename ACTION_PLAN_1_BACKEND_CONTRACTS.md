@@ -18,7 +18,14 @@
 - `src/backend/z_Api/abclassPartials.js`
 - `src/backend/z_Api/abclassMutations.js`
 
-## Exploration findings to account for
+## Current status note
+
+- Cleanup follow-up now landed on `chore/slop-cleanup-ws1-4`:
+  - `abclassMutations.js` now applies the unsafe-path `classId` guard consistently in `upsertABClass`, `updateABClass`, and `deleteABClass`.
+  - `abclassPartials.js` is back to the GAS-native pattern: it instantiates `ABClassController` inside `getABClassPartials()` and keeps only the minimal guarded export block at end of file.
+- The exploration findings below are historical planning notes, not the current code state.
+
+## Historical exploration findings to account for
 
 - `referenceData.js` dereferences payloads before validating shape.
 - `abclassPartials.js` is load-order fragile because controller resolution happens at module load.
@@ -30,9 +37,11 @@
 ### 1.1 Reference-data key contract
 
 Objective:
+
 - Replace name-addressed cohort and year-group contracts with keyed contracts.
 
 Acceptance:
+
 - Cohort shape is `{ key, name, active, startYear, startMonth }`.
 - Year-group shape is `{ key, name }`.
 - Create/update/delete payloads identify records by `key`, not mutable names.
@@ -47,6 +56,7 @@ Acceptance:
 - Under no circumstances should compatibility paths, fallback reads, dual-write logic, or legacy name-based handling be introduced in production code.
 
 Tests:
+
 - `tests/models/cohortYearGroup.test.js`
 - `tests/controllers/referenceDataController.test.js`
 - `tests/backend-api/referenceData.unit.test.js`
@@ -54,16 +64,20 @@ Tests:
 ### 1.2 `ABClass` contract and partial refresh
 
 Objective:
+
 - Move persisted metadata to `cohortKey` and `yearGroupKey`.
 
 Acceptance:
+
 - `ABClass.toJSON()` emits key-based metadata.
 - `ABClass.toPartialJSON()` emits keys plus resolved labels.
 - `getABClassPartials` returns the new partial transport shape without storage metadata.
+- `abclassPartials.js` remains GAS-native in production: instantiate `ABClassController` at call time and keep only the guarded export block at end of file for Node tests.
 - Persisted `ABClass` metadata uses `cohortKey` and `yearGroupKey` only.
 - Under no circumstances should production code read, derive from, or fall back to legacy name-based `ABClass` metadata once this slice lands.
 
 Tests:
+
 - `tests/models/abclass.test.js`
 - `tests/models/abclass.partial.test.js`
 - `tests/controllers/abclass-partials-read.test.js`
@@ -74,9 +88,11 @@ Tests:
 ### 1.3 Mutation validation hardening
 
 Objective:
+
 - Make backend lifecycle rules authoritative before the frontend bulk flows exist.
 
 Acceptance:
+
 - `upsertABClass` validates reference-data keys and defaults new classes to `active=true`.
 - `updateABClass` rejects `active` updates for missing classes.
 - `deleteCohort` and `deleteYearGroup` reject in-use deletes.
@@ -87,6 +103,7 @@ Acceptance:
 - Existing `ABClass` records that already reference inactive cohorts remain readable; this does not permit new assignments to inactive cohorts.
 
 Tests:
+
 - `tests/controllers/abclass-upsert-update.test.js`
 - `tests/controllers/abclass-delete.test.js`
 - `tests/controllers/referenceDataController.test.js`

@@ -1,13 +1,15 @@
+import { useMemo, useState, type ReactElement } from 'react';
 import type { TabsProps } from 'antd';
-import type { ReactElement } from 'react';
 import { ClassesManagementPanel } from '../features/classes/ClassesManagementPanel';
 import { BackendSettingsPanel } from '../features/settings/backend/BackendSettingsPanel';
 import { SettingsPageGoogleClassroomsPrefetch } from './SettingsPageGoogleClassroomsPrefetch';
 import { TabbedPageSection } from './TabbedPageSection';
 import { pageContent } from './pageContent';
 
+type SettingsTabKey = 'classes' | 'backend-settings';
+
 type SettingsTabDefinition = Readonly<{
-  key: string;
+  key: SettingsTabKey;
   label: string;
 }>;
 
@@ -25,13 +27,14 @@ const settingsTabDefinitions: SettingsTabDefinition[] = [
 /**
  * Resolves the rendered child component for a settings tab key.
  *
- * @param {string} key Settings tab key.
+ * @param {SettingsTabKey} key Settings tab key.
+ * @param {number} classesPanelInstanceKey Remount token for the Classes panel.
  * @returns {JSX.Element} The tab child component.
  */
-function getSettingsTabChild(key: string): ReactElement {
+function getSettingsTabChild(key: SettingsTabKey, classesPanelInstanceKey: number): ReactElement {
   switch (key) {
     case 'classes': {
-      return <ClassesManagementPanel />;
+      return <ClassesManagementPanel key={`classes-management-panel-${classesPanelInstanceKey}`} />;
     }
     case 'backend-settings': {
       return <BackendSettingsPanel />;
@@ -42,11 +45,19 @@ function getSettingsTabChild(key: string): ReactElement {
   }
 }
 
-const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
-  key,
-  label,
-  children: getSettingsTabChild(key),
-})) satisfies NonNullable<TabsProps['items']>;
+/**
+ * Builds the settings tab items, remounting the Classes panel only when required.
+ *
+ * @param {number} classesPanelInstanceKey Remount token for the Classes panel.
+ * @returns {NonNullable<TabsProps['items']>} The tab items.
+ */
+function getSettingsTabs(classesPanelInstanceKey: number) {
+  return settingsTabDefinitions.map(({ key, label }) => ({
+    key,
+    label,
+    children: getSettingsTabChild(key, classesPanelInstanceKey),
+  })) satisfies NonNullable<TabsProps['items']>;
+}
 
 /**
  * Renders the settings page with reusable Ant Design tabs for each section.
@@ -58,12 +69,29 @@ const settingsTabs = settingsTabDefinitions.map(({ key, label }) => ({
  * @returns {JSX.Element} The settings page.
  */
 export function SettingsPage() {
+  const [activeTabKey, setActiveTabKey] = useState<SettingsTabKey>('classes');
+  const [classesPanelInstanceKey, setClassesPanelInstanceKey] = useState(0);
+
+  const settingsTabs = useMemo(() => getSettingsTabs(classesPanelInstanceKey), [classesPanelInstanceKey]);
+
+  const handleTabChange: NonNullable<TabsProps['onChange']> = (nextActiveKey) => {
+    const nextSettingsTabKey = nextActiveKey as SettingsTabKey;
+
+    if (activeTabKey === 'classes' && nextSettingsTabKey !== 'classes') {
+      setClassesPanelInstanceKey((currentClassesPanelInstanceKey) => currentClassesPanelInstanceKey + 1);
+    }
+
+    setActiveTabKey(nextSettingsTabKey);
+  };
+
   return (
     <>
       <SettingsPageGoogleClassroomsPrefetch />
       <TabbedPageSection
+        activeKey={activeTabKey}
         defaultActiveKey="classes"
         heading={pageContent.settings.heading}
+        onChange={handleTabChange}
         summary={pageContent.settings.summary}
         tabs={settingsTabs}
       />

@@ -1,41 +1,53 @@
 /**
- * Unit test for src/backend/z_Api/abclassPartials.js
- * Verifies that the API handler delegates to ABClassController.getAllClassPartials().
+ * Unit tests for src/backend/z_Api/abclassPartials.js.
+ * Verifies the handler still delegates through the normal harness global and
+ * that the production file does not retain top-of-file Node compatibility wiring.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
-describe('Api/abclassPartials – direct unit delegation test', () => {
-  const modulePath = '../../src/backend/z_Api/abclassPartials.js';
-  let originalController;
+const modulePath = '../../src/backend/z_Api/abclassPartials.js';
 
-  beforeEach(() => {
-    // Stub controller on global so the module under test uses it.
-    originalController = globalThis.ABClassController;
-    // Use a constructable function (not arrow) so `new` works.
-    const ctor = vi.fn(function StubController() {
-      this.getAllClassPartials = vi.fn(() => [{ classId: 'cX', className: 'Delegated' }]);
-    });
-    globalThis.ABClassController = ctor;
-  });
+function loadAbclassPartialsModule() {
+  delete require.cache[require.resolve(modulePath)];
+  return require(modulePath);
+}
+
+describe('Api/abclassPartials delegation', () => {
+  const originalABClassController = globalThis.ABClassController;
 
   afterEach(() => {
-    if (originalController === undefined) delete globalThis.ABClassController;
-    else globalThis.ABClassController = originalController;
+    if (originalABClassController === undefined) {
+      delete globalThis.ABClassController;
+    } else {
+      globalThis.ABClassController = originalABClassController;
+    }
+
     vi.restoreAllMocks();
   });
 
-  it('getABClassPartials() constructs ABClassController and calls getAllClassPartials()', () => {
-    // Fresh import so it picks up our stubbed global
+  it('getABClassPartials() constructs the harness-provided controller and delegates to getAllClassPartials()', () => {
+    const partials = [{ classId: 'cX', className: 'Delegated' }];
+    const getAllClassPartials = vi.fn(() => partials);
 
-    delete require.cache[require.resolve(modulePath)];
-    const api = require(modulePath);
+    globalThis.ABClassController = vi.fn(function StubABClassController() {
+      this.getAllClassPartials = getAllClassPartials;
+    });
 
-    const result = api.getABClassPartials();
+    const { getABClassPartials } = loadAbclassPartialsModule();
 
-    // Constructor should have been invoked exactly once
+    expect(getABClassPartials()).toEqual(partials);
     expect(globalThis.ABClassController).toHaveBeenCalledTimes(1);
-    // The returned value should match the stubbed implementation
-    expect(result).toEqual([{ classId: 'cX', className: 'Delegated' }]);
+    expect(getAllClassPartials).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Api/abclassPartials source contract', () => {
+  it('does not keep top-of-file Node compatibility require wiring for ABClassController', () => {
+    const source = readFileSync(new URL(modulePath, import.meta.url), 'utf8');
+
+    expect(source).not.toMatch(/require\('\.\.\/y_controllers\/ABClassController\.js'\)/);
+    expect(source).not.toMatch(/let\s+ControllerCtor;/);
   });
 });

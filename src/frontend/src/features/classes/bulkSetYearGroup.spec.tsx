@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { YearGroup } from '../../services/referenceData.zod';
-import type { ClassTableRow } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
+import type * as BulkSetYearGroupFlowModule from './bulkSetYearGroupFlow';
 
 const callApiMock = vi.hoisted(() => vi.fn());
 const TWO_CALLS = 2;
@@ -9,41 +10,32 @@ vi.mock('../../services/apiService', () => ({
   callApi: callApiMock,
 }));
 
-type BulkSetYearGroupFlowModule = Readonly<{
-  filterEligibleForBulkSetYearGroup: (rows: ClassTableRow[]) => ClassTableRow[];
-  getYearGroupOptions: (yearGroups: YearGroup[]) => Array<{ label: string; value: string }>;
-  bulkSetYearGroup: (
-    rows: ClassTableRow[],
-    yearGroupKey: string,
-  ) => Promise<Array<{ status: string; row: ClassTableRow }>>;
-}>;
-
 /**
- * Loads the future bulk year-group flow module lazily so this RED spec can
- * compile before the implementation exists.
+ * Loads the bulk year-group flow lazily so the test can import the current implementation shape.
  *
- * @returns {Promise<BulkSetYearGroupFlowModule>} The bulk year-group flow module.
+ * @returns {Promise<typeof BulkSetYearGroupFlowModule>} The year-group flow module.
  */
-function loadBulkSetYearGroupFlow(): Promise<BulkSetYearGroupFlowModule> {
-  return import('./bulkSetYearGroupFlow') as Promise<BulkSetYearGroupFlowModule>;
+function loadBulkSetYearGroupFlow(): Promise<typeof BulkSetYearGroupFlowModule> {
+  return import('./bulkSetYearGroupFlow');
 }
 
 /**
- * Builds a representative existing class row for flow tests.
+ * Builds a canonical classes-management row for year-group flow tests.
  *
- * @param {Partial<ClassTableRow>} overrides Optional field overrides.
- * @returns {ClassTableRow} The composed class row.
+ * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
+ * @returns {ClassesManagementRow} The composed test row.
  */
-function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
+function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
   return {
-    rowKey: 'row-001',
-    status: 'linked',
     classId: 'class-001',
+    className: 'Year 10 Maths',
+    status: 'active',
     cohortKey: 'cohort-current',
+    cohortLabel: 'Cohort Current',
     yearGroupKey: 'year-10',
+    yearGroupLabel: 'Year 10',
     courseLength: 2,
     active: true,
-    className: 'Year 10 Maths',
     ...overrides,
   };
 }
@@ -53,19 +45,18 @@ describe('bulkSetYearGroupFlow', () => {
     vi.clearAllMocks();
   });
 
-  it('returns only active and inactive existing rows for bulk year-group editing', async () => {
+  it('keeps active and inactive rows eligible while excluding orphaned and notCreated rows', async () => {
     const { filterEligibleForBulkSetYearGroup } = await loadBulkSetYearGroupFlow();
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'linked-active', classId: 'class-active', active: true }),
-      makeRow({ rowKey: 'linked-inactive', classId: 'class-inactive', active: false }),
-      makeRow({ rowKey: 'not-created', classId: 'class-missing', status: 'notCreated', active: null }),
-      makeRow({ rowKey: 'orphaned', classId: 'class-orphaned', status: 'partial', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'active-1', status: 'active', active: true }),
+      makeRow({ classId: 'inactive-1', status: 'inactive', active: false }),
+      makeRow({ classId: 'orphaned-1', status: 'orphaned', active: false }),
+      makeRow({ classId: 'missing-1', status: 'notCreated', active: null, cohortKey: null, cohortLabel: null, yearGroupKey: null, yearGroupLabel: null, courseLength: null }),
     ];
 
-    expect(filterEligibleForBulkSetYearGroup(rows).map((row) => row.classId)).toEqual([
-      'class-active',
-      'class-inactive',
-    ]);
+    const eligibleRows = filterEligibleForBulkSetYearGroup(rows);
+
+    expect(eligibleRows.map((row) => row.classId)).toEqual(['active-1', 'inactive-1']);
   });
 
   it('builds year-group selector options with stable keys as option values', async () => {
@@ -84,9 +75,9 @@ describe('bulkSetYearGroupFlow', () => {
   it('updates each selected class with the chosen yearGroupKey rather than the display label', async () => {
     const { bulkSetYearGroup } = await loadBulkSetYearGroupFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', classId: 'class-001', yearGroupKey: 'year-10' }),
-      makeRow({ rowKey: 'r2', classId: 'class-002', yearGroupKey: 'year-9', active: false }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'class-001', status: 'active' }),
+      makeRow({ classId: 'class-002', status: 'inactive', active: false }),
     ];
 
     const results = await bulkSetYearGroup(rows, 'year-11');
@@ -106,7 +97,7 @@ describe('bulkSetYearGroupFlow', () => {
   it('uses the same batch path for a single selected row edit', async () => {
     const { bulkSetYearGroup } = await loadBulkSetYearGroupFlow();
     callApiMock.mockResolvedValue({ ok: true });
-    const row = makeRow({ classId: 'class-single' });
+    const row = makeRow({ classId: 'class-single', status: 'inactive', active: false });
 
     const results = await bulkSetYearGroup([row], 'year-12');
 

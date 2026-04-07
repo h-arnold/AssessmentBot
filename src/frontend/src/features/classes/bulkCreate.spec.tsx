@@ -8,9 +8,6 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// vi.hoisted is required here because bulkCreateFlow is imported statically above,
-// causing the vi.mock factory to run during module initialisation — before a plain
-// `const callApiMock = vi.fn()` would be initialised.
 const callApiMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/apiService', () => ({
@@ -20,52 +17,54 @@ vi.mock('../../services/apiService', () => ({
 import {
   filterBulkCreateRows,
   bulkCreate,
-  type ClassTableRow,
 } from './bulkCreateFlow';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const TWO_ROWS = 2;
 const THREE_ROWS = 3;
 
 /**
- * Builds a test ClassTableRow with sensible defaults and optional overrides.
+ * Builds a test ClassesManagementRow with sensible defaults and optional overrides.
  *
- * @param {Partial<ClassTableRow>} overrides Field overrides for the returned row.
- * @returns {ClassTableRow} The composed test row.
+ * @param {Partial<ClassesManagementRow>} overrides Field overrides for the returned row.
+ * @returns {ClassesManagementRow} The composed test row.
  */
-function makeRow(overrides: Partial<ClassTableRow> = {}): ClassTableRow {
+function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManagementRow {
   return {
-    rowKey: 'row-001',
-    status: 'notCreated',
     classId: 'gcr-class-001',
-    cohortKey: null,
-    yearGroupKey: null,
-    courseLength: 1,
-    active: null,
     className: 'Year 10 Maths',
+    status: 'notCreated',
+    cohortKey: null,
+    cohortLabel: null,
+    yearGroupKey: null,
+    yearGroupLabel: null,
+    courseLength: null,
+    active: null,
     ...overrides,
   };
 }
 
 describe('filterBulkCreateRows', () => {
   it('returns only rows with notCreated status', () => {
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', status: 'notCreated', classId: 'gcr-001' }),
-      makeRow({ rowKey: 'r2', status: 'partial', classId: 'gcr-002' }),
-      makeRow({ rowKey: 'r3', status: 'linked', classId: 'gcr-003' }),
-      makeRow({ rowKey: 'r4', status: 'notCreated', classId: 'gcr-004' }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'gcr-001', status: 'notCreated' }),
+      makeRow({ classId: 'gcr-002', status: 'active', active: true, cohortKey: 'cohort-a', cohortLabel: 'Cohort A', yearGroupKey: 'year-10', yearGroupLabel: 'Year 10', courseLength: 2 }),
+      makeRow({ classId: 'gcr-003', status: 'inactive', active: false, cohortKey: 'cohort-b', cohortLabel: 'Cohort B', yearGroupKey: 'year-11', yearGroupLabel: 'Year 11', courseLength: 3 }),
+      makeRow({ classId: 'gcr-004', status: 'orphaned', active: false, cohortKey: 'cohort-c', cohortLabel: 'Cohort C', yearGroupKey: 'year-12', yearGroupLabel: 'Year 12', courseLength: 4 }),
+      makeRow({ classId: 'gcr-005', status: 'notCreated' }),
     ];
 
     const result = filterBulkCreateRows(rows);
 
     expect(result).toHaveLength(TWO_ROWS);
     expect(result[0].classId).toBe('gcr-001');
-    expect(result[1].classId).toBe('gcr-004');
+    expect(result[1].classId).toBe('gcr-005');
   });
 
   it('returns an empty array when no rows have notCreated status', () => {
-    const rows: ClassTableRow[] = [
-      makeRow({ status: 'partial' }),
-      makeRow({ status: 'linked' }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ status: 'active', active: true, cohortKey: 'cohort-a', cohortLabel: 'Cohort A', yearGroupKey: 'year-10', yearGroupLabel: 'Year 10', courseLength: 2 }),
+      makeRow({ status: 'inactive', active: false, cohortKey: 'cohort-b', cohortLabel: 'Cohort B', yearGroupKey: 'year-11', yearGroupLabel: 'Year 11', courseLength: 3 }),
     ];
 
     expect(filterBulkCreateRows(rows)).toEqual([]);
@@ -84,9 +83,9 @@ describe('bulkCreate', () => {
   it('calls upsertABClass for each row using cohortKey, yearGroupKey, and courseLength', async () => {
     callApiMock.mockResolvedValue({ classId: 'gcr-001' });
 
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', classId: 'gcr-001' }),
-      makeRow({ rowKey: 'r2', classId: 'gcr-002' }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'gcr-001' }),
+      makeRow({ classId: 'gcr-002' }),
     ];
 
     await bulkCreate(rows, {
@@ -113,8 +112,8 @@ describe('bulkCreate', () => {
   it('defaults courseLength to 1 when not supplied in options', async () => {
     callApiMock.mockResolvedValue({ classId: 'gcr-005' });
 
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r5', classId: 'gcr-005' }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'gcr-005' }),
     ];
 
     await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-9' });
@@ -133,15 +132,14 @@ describe('bulkCreate', () => {
       () => new Promise((resolve) => resolvers.push(resolve)),
     );
 
-    const rows: ClassTableRow[] = [
-      makeRow({ rowKey: 'r1', classId: 'gcr-001' }),
-      makeRow({ rowKey: 'r2', classId: 'gcr-002' }),
-      makeRow({ rowKey: 'r3', classId: 'gcr-003' }),
+    const rows: ClassesManagementRow[] = [
+      makeRow({ classId: 'gcr-001' }),
+      makeRow({ classId: 'gcr-002' }),
+      makeRow({ classId: 'gcr-003' }),
     ];
 
     const batchPromise = bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
 
-    // Resolve out of order: third, first, second
     resolvers[2]({ classId: 'gcr-003' });
     resolvers[0]({ classId: 'gcr-001' });
     resolvers[1]({ classId: 'gcr-002' });
@@ -158,7 +156,7 @@ describe('bulkCreate', () => {
     const failureError = new Error('upsertABClass failed: class not found');
     callApiMock.mockRejectedValue(failureError);
 
-    const rows: ClassTableRow[] = [makeRow({ rowKey: 'r1', classId: 'gcr-001' })];
+    const rows: ClassesManagementRow[] = [makeRow({ classId: 'gcr-001' })];
 
     const results = await bulkCreate(rows, { cohortKey: '2025', yearGroupKey: 'yg-10' });
 

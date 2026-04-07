@@ -44,6 +44,10 @@ Use this file as the index only.
    - Regression and contract hardening
    - Documentation and rollout notes
 
+## Final de-sloppification outcome
+
+- Final branch-wide cleanup removed the last stale reference-data contract notes and misleading inline comments so the pushed branch no longer documents the retired name-based payloads or removed adapter-era wording.
+
 ## Cross-cutting rules
 
 - TDD-first for every work package.
@@ -55,41 +59,41 @@ Use this file as the index only.
 - Preserve the rollout note that downstream assessment flows still depend on numeric `ABClass.yearGroup`.
 - For frontend-visible behaviour changes, pair Vitest with Playwright coverage and extend the shared Classes CRUD harness instead of creating parallel harnesses.
 
-## Exploration summary
+## Exploration summary (historical planning context)
 
-The split above matches the largest codebase seams and the highest-risk gaps found during exploration.
+The split above matches the largest codebase seams and the highest-risk gaps found during the original planning sweep. Several of the risks below have since been resolved in delivered work and later cleanup; use the workstream documents above for the current implementation state.
 
 ### Backend contract risks
 
-- `src/backend/z_Api/referenceData.js` still dereferences request payloads before validating shape.
-- `src/backend/z_Api/abclassPartials.js` resolves `ABClassController` at module load, which is fragile under bundle/load-order changes.
-- `src/backend/z_Api/abclassMutations.js` sanitises `classId` on delete but not consistently on create/update paths.
-- Current controller/model tests still encode old name-based and create-on-missing behaviour.
+- During the original planning sweep, `src/backend/z_Api/referenceData.js` was still dereferencing request payloads before validating shape.
+- During the original planning sweep, `src/backend/z_Api/abclassPartials.js` resolved `ABClassController` at module load, which was fragile under bundle/load-order changes.
+- During the original planning sweep, `src/backend/z_Api/abclassMutations.js` sanitised `classId` on delete but not consistently on create/update paths.
+- The original controller/model test baseline still encoded old name-based and create-on-missing behaviour.
 
 ### Frontend data/query risks
 
-- `src/frontend/src/features/auth/AppAuthGate.tsx` only warms `classPartials` and currently fails open.
-- `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/classPartials.zod.ts` still encode the old transport shapes.
-- There is no frontend `googleClassrooms` service or query definition yet.
-- There is no shared refresh-failure contract for “mutation succeeded, refresh failed”.
+- At planning time, `src/frontend/src/features/auth/AppAuthGate.tsx` only warmed `classPartials` and failed open.
+- At planning time, `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/classPartials.zod.ts` still encoded the old transport shapes.
+- The initial delivery gap included the absence of a frontend `googleClassrooms` service or query definition.
+- The original plan also tracked the lack of a shared refresh-failure contract for “mutation succeeded, refresh failed”.
 
 ### Feature-shell risks
 
-- `src/frontend/src/pages/SettingsPage.tsx` still renders a blank placeholder card for the Classes tab.
-- `src/frontend/src/features/classes/` exists for Workstream 2 query-invalidation foundations, but still lacks the Classes shell/table components.
-- Current page tests cover tabs, not data-driven tab content or blocking readiness states.
+- At planning time, `src/frontend/src/pages/SettingsPage.tsx` still rendered a blank placeholder card for the Classes tab.
+- At planning time, `src/frontend/src/features/classes/` existed for Workstream 2 query-invalidation foundations, but still lacked the Classes shell/table components.
+- The original page-test baseline covered tabs, not data-driven tab content or blocking readiness states.
 
 ### Bulk-workflow risks
 
-- Workstream 1 hardened backend validation for missing-class `active` updates; Workstream 4 must preserve this behaviour while adding bulk flows.
-- There is no shared batch mutation engine yet.
-- The shared Classes harness exists, but Workstream 4 still needs explicit bulk-journey assertions for submitted-row ordering and partial-failure aggregation.
+- Workstream 1 hardened backend validation for missing-class `active` updates; the planned Workstream 4 follow-on needed to preserve this behaviour while adding bulk flows.
+- The original bulk-workflow plan noted that a shared batch mutation engine had not been introduced yet.
+- The shared Classes harness already existed, but the Workstream 4 plan still called for explicit bulk-journey assertions for submitted-row ordering and partial-failure aggregation.
 
 ### Reference-data modal and sign-off risks
 
-- Delete-blocked UX has no backend-authoritative contract yet.
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md` no longer matches the actual warm-up/query-key implementation.
-- There is no dedicated `tests/api/referenceData*.test.js` suite; transport coverage currently lives in `tests/backend-api/referenceData.unit.test.js`.
+- The original sign-off plan noted that delete-blocked UX did not yet have a backend-authoritative contract.
+- The planning sweep also recorded that `docs/developer/frontend/frontend-react-query-and-prefetch.md` had fallen out of sync with the warm-up/query-key implementation of that time.
+- The original test-gap note was that there was no dedicated `tests/api/referenceData*.test.js` suite, with transport coverage instead living in `tests/backend-api/referenceData.unit.test.js`.
 
 ## Recommended implementation order
 

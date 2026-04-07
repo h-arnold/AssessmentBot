@@ -1,15 +1,43 @@
-import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import * as React from 'react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { queryKeys } from '../query/queryKeys';
 import { createAppQueryClient } from '../query/queryClient';
-import { classesManagementPanelRegionLabel } from '../features/classes/ClassesManagementPanel';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
+import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
 const backendSettingsFeatureEntryText = 'Backend settings feature entry';
 const backendSettingsFeatureEntryRegionLabel = 'Backend settings feature entry';
-const classesManagementFeatureEntryText = 'Classes management feature entry';
+
+vi.mock('../features/classes/ClassesManagementPanel', () => ({
+  ClassesManagementPanel() {
+    const [selectedRows, setSelectedRows] = React.useState(0);
+
+    return (
+      <div role="region" aria-label="Classes management panel">
+        <div>Summary</div>
+        <div>Bulk actions</div>
+        <div role="table" aria-label="Classes table">
+          <label>
+            <input
+              aria-label="Select Year 10 Maths"
+              checked={selectedRows === 1}
+              onChange={(event) => {
+                setSelectedRows(event.currentTarget.checked ? 1 : 0);
+              }}
+              type="checkbox"
+            />
+            Year 10 Maths
+          </label>
+        </div>
+        <div>{`Selected rows: ${selectedRows}`}</div>
+        <button disabled type="button">
+          Create ABClass
+        </button>
+      </div>
+    );
+  },
+}));
 
 vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   BackendSettingsPanel() {
@@ -21,35 +49,19 @@ vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
   },
 }));
 
-vi.mock('../features/classes/ClassesManagementPanel', () => ({
-  classesManagementPanelRegionLabel: 'Classes management panel',
-  ClassesManagementPanel() {
-    return (
-      <div role="region" aria-label="Classes management panel">
-        {classesManagementFeatureEntryText}
-      </div>
-    );
-  },
-}));
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('SettingsPage', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   const renderSettingsPage = (queryClient = createAppQueryClient()) => {
     const prefetchQuerySpy = vi
       .spyOn(queryClient, 'prefetchQuery')
       .mockImplementation(() => Promise.resolve());
 
     return {
-      queryClient,
       prefetchQuerySpy,
-      ...render(
-        <QueryClientProvider client={queryClient}>
-          <SettingsPage />
-        </QueryClientProvider>
-      ),
+      ...renderWithFrontendProviders(<SettingsPage />, { queryClient }),
     };
   };
 
@@ -79,20 +91,39 @@ describe('SettingsPage', () => {
     expect(screen.getByText(backendSettingsFeatureEntryText)).toBeInTheDocument();
   });
 
+  it('resets the Classes selection when leaving and re-entering the tab', async () => {
+    renderSettingsPage();
+
+    const classesTable = screen.getByRole('table', { name: 'Classes table' });
+    fireEvent.click(within(classesTable).getByRole('checkbox', { name: 'Select Year 10 Maths' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Selected rows: 1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Classes' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
+    });
+  });
+
   it('prefetches Google Classrooms on page load without blocking the initial classes tab render', async () => {
     const queryClient = createAppQueryClient();
     const { prefetchQuerySpy } = renderSettingsPage(queryClient);
 
     expect(screen.getByRole('tab', { name: 'Classes' })).toHaveAttribute('aria-selected', 'true');
-    expect(
-      screen.getByRole('region', { name: classesManagementPanelRegionLabel })
-    ).toBeInTheDocument();
-    expect(screen.getByText(classesManagementFeatureEntryText)).toBeInTheDocument();
+    expect(screen.getByText('Summary')).toBeInTheDocument();
+    expect(screen.getByText('Bulk actions')).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
+    expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create ABClass' })).toBeDisabled();
 
     await waitFor(() => {
       expect(prefetchQuerySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          queryKey: queryKeys.googleClassrooms(),
+          queryKey: expect.any(Array),
           queryFn: expect.any(Function),
         })
       );

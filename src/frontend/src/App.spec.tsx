@@ -297,13 +297,13 @@ describe('App', () => {
     await renderPendingApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
-    const classesLabel = getNavigationLabel('classes');
+    const assignmentsLabel = getNavigationLabel('assignments');
 
     act(() => {
-      fireEvent.click(within(navigation).getByRole('menuitem', { name: classesLabel }));
+      fireEvent.click(within(navigation).getByRole('menuitem', { name: assignmentsLabel }));
     });
 
-    expectBreadcrumbLabels([appBreadcrumbBaseLabel, classesLabel]);
+    expectBreadcrumbLabels([appBreadcrumbBaseLabel, assignmentsLabel]);
   });
 
   it('breadcrumb labels are sourced from shared metadata (single source of truth)', async () => {
@@ -330,7 +330,7 @@ describe('App', () => {
     await renderPendingApp();
 
     const navigation = screen.getByRole('navigation', { name: primaryNavigationLabel });
-    const rapidSelectionKeys: AppNavigationKey[] = ['classes', 'assignments', 'settings'];
+    const rapidSelectionKeys: AppNavigationKey[] = ['assignments', 'settings'];
 
     act(() => {
       for (const key of rapidSelectionKeys) {
@@ -345,7 +345,6 @@ describe('App', () => {
     const breadcrumb = getBreadcrumbElement();
 
     expectBreadcrumbLabels([appBreadcrumbBaseLabel, getNavigationLabel('settings')]);
-    expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('classes'));
     expect(breadcrumb).not.toHaveTextContent(getNavigationLabel('assignments'));
   });
 
@@ -485,7 +484,7 @@ describe('App', () => {
     act(() => {
       fireEvent.click(themeModeSwitch);
       fireEvent.click(
-        within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') })
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
       );
       fireEvent.click(
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
@@ -679,7 +678,7 @@ describe('App', () => {
 
     act(() => {
       fireEvent.click(
-        within(navigation).getByRole('menuitem', { name: getNavigationLabel('classes') })
+        within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })
       );
       fireEvent.click(
         within(navigation).getByRole('menuitem', { name: getNavigationLabel('assignments') })

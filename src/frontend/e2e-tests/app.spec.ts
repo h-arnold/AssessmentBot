@@ -6,7 +6,7 @@ const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
 const breadcrumbNavigationName = 'Breadcrumb';
 const defaultNavigationLabel = 'Dashboard';
 const expectedNavigationItemCount = pageExpectations.length;
-const assignmentsNavigationItemIndex = 2;
+const assignmentsNavigationItemIndex = 1;
 const collapseExpandCycles = 2;
 const themeSwitchLabel = 'Dark mode';
 const lastPageExpectationOffset = -1;
@@ -15,7 +15,7 @@ const primaryNavigationLabel = 'Primary navigation';
 const collapseNavigationButtonLabel = 'Collapse navigation';
 const expandNavigationButtonLabel = 'Expand navigation';
 const settingsLabel = 'Settings';
-const navigationMenuLabels = ['Dashboard', 'Classes', 'Assignments', settingsLabel];
+const navigationMenuLabels = pageExpectations.map(({ heading }) => heading);
 const backendSettingsFixture = {
   backendAssessorBatchSize: 30,
   apiKey: '****cdef',
@@ -131,7 +131,7 @@ test.describe('app shell', () => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
-    for (const heading of ['Classes', 'Assignments', settingsLabel]) {
+    for (const heading of ['Assignments', settingsLabel, 'Dashboard']) {
       await page.getByRole('menuitem', { name: heading }).click();
       await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, heading]);
     }
@@ -150,7 +150,7 @@ test.describe('app shell', () => {
     await expectBreadcrumbLabels(page, [appBreadcrumbBaseLabel, settingsLabel]);
   });
 
-  test('user can navigate to Dashboard, Classes, Assignments, and Settings via menu clicks', async ({
+  test('user can navigate to the top-level pages via menu clicks', async ({
     page,
   }) => {
     await mockPendingGoogleScriptRun(page);
@@ -284,14 +284,14 @@ test.describe('app shell', () => {
     await page.goto('/');
 
     const dashboardItem = page.getByRole('menuitem', { name: 'Dashboard' });
-    const classesItem = page.getByRole('menuitem', { name: 'Classes' });
+    const assignmentsItem = page.getByRole('menuitem', { name: 'Assignments' });
 
     await dashboardItem.click();
     await expect(dashboardItem).toHaveClass(/ant-menu-item-selected/);
 
-    await classesItem.click();
+    await assignmentsItem.click();
 
-    await expect(classesItem).toHaveClass(/ant-menu-item-selected/);
+    await expect(assignmentsItem).toHaveClass(/ant-menu-item-selected/);
     await expect(dashboardItem).not.toHaveClass(/ant-menu-item-selected/);
   });
 
@@ -325,7 +325,7 @@ test.describe('app shell', () => {
     await expect.poll(async () => getHeaderBackgroundColour(page)).toBe(initialHeaderBackground);
   });
 
-  test('theme toggle works after navigating across all four pages', async ({ page }) => {
+  test('theme toggle works after navigating across all pages', async ({ page }) => {
     await mockPendingGoogleScriptRun(page);
     await page.goto('/');
 
