@@ -17,7 +17,13 @@
 - `src/frontend/src/query/sharedQueries.ts`
 - `src/frontend/src/test/googleScriptRunHarness.ts`
 
-## Exploration findings to account for
+## Current status note
+
+- The live Classes bulk-workflow surface now exists only inside `SettingsPage` -> `Classes` via `ClassesManagementPanel`. The interim `ClassesPage` / `ClassesPanel` surfaces mentioned below were transitional and have been removed.
+- Selection reset on Classes-tab re-entry is now implemented through controlled Settings-tab state in `SettingsPage`, which remounts `ClassesManagementPanel` when the user leaves the Classes tab.
+- Historical journal entries below keep older file names only where needed to explain earlier delivery stages; they are not instructions to recreate those surfaces.
+
+## Historical exploration findings to account for
 
 - Workstream 1 already hardened backend mutation validation for `active` updates on missing classes; keep this behaviour covered and do not regress it while implementing bulk flows.
 - There is no shared mutation engine yet.
@@ -142,11 +148,11 @@ Tests:
 - `src/frontend/src/features/classes/ClassesPanel.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-bulk-core.spec.ts`
 
-**Implementation notes — 4.2**
+**Historical implementation notes — 4.2**
 
-The current branch does not carry the workstream-3 Classes shell/table baseline that 4.2 depends on (the `ClassesTab` shell, the classes data table, and the row-selection slice). Rather than blocking, a minimal prerequisite shell/table/selection slice will be implemented inside 4.2 — strictly scoped to what is needed to make the bulk-create, bulk-delete, and active-state flows testable. No workstream-3 acceptance criteria will be addressed here; only the structural surface required by the 4.2 tests.
+At the point when 4.2 first landed, the branch did not yet carry the full Workstream 3 Classes shell/table baseline. A minimal prerequisite shell/table/selection slice therefore landed inside 4.2 so the bulk-create, bulk-delete, and active-state flows could be tested. That interim surface was later superseded by the merged `ClassesManagementPanel` implementation under `SettingsPage` and has now been removed.
 
-**Green implementation notes — 4.2**
+**Historical green implementation notes — 4.2**
 
 New production files created:
 
@@ -158,7 +164,7 @@ New production files created:
 Modified files:
 
 - `src/frontend/src/services/classPartials.zod.ts` — `courseLength` changed from `z.number()` to `z.number().nullable()` to accommodate `notCreated` class partials (all AB-specific fields null) returned by the backend.
-- `src/frontend/src/pages/ClassesPage.tsx` — wires `ClassesPanel` as the page body.
+- Historical interim file removed during later cleanup: `src/frontend/src/pages/ClassesPage.tsx` — previously wired `ClassesPanel` as the page body. Do not recreate this surface; the live entrypoint is `SettingsPage` -> `Classes` -> `ClassesManagementPanel`.
 - `src/frontend/src/pages/SettingsPage.tsx` — replaces the `SettingsPlaceholderPanel` for the `classes` tab with `ClassesPanel`; extracts a `renderSettingsTabChildren` helper to avoid a nested-ternary lint error.
 - `src/frontend/src/features/classes/bulkCreate.spec.tsx` — changed `const callApiMock = vi.fn()` to `const callApiMock = vi.hoisted(() => vi.fn())` to fix a Vitest temporal-dead-zone error caused by the static `import { bulkCreate } from './bulkCreateFlow'` at the top of the file triggering the `vi.mock` factory before `callApiMock` was initialised. The test logic is unchanged.
 - `src/frontend/src/pages/SettingsPage.spec.tsx` — added `vi.mock('../features/classes/ClassesPanel', ...)` so the Classes tab renders without a `QueryClientProvider`.
@@ -248,12 +254,12 @@ Red-phase review fix (resolved):
 
 - `'rejects rows that are already at the target active state'` in `bulkActiveState.spec.tsx` had a contradictory fixture where `r2` was `active: false` while the target state was `true`, making `r2` eligible for activation and invalidating the zero-length assertion. Fixed by setting all three rows to `active: true` so all are already at the target state.
 
-Minimal production surface implied by these tests (to be created in the green phase):
+Minimal interim production surface implied by these tests at that stage (later superseded by the Settings-page Classes tab and now removed):
 
 - `src/frontend/src/features/classes/bulkCreateFlow.ts` — exports `ClassTableRow` type, `ClassStatus` type, `filterBulkCreateRows`, `bulkCreate`
 - `src/frontend/src/features/classes/BulkDeleteModal.tsx` — exports `BulkDeleteModalProperties` type, `BulkDeleteModal` component
 - `src/frontend/src/features/classes/bulkActiveStateFlow.ts` — exports `ClassTableRow` type (shared with bulkCreateFlow), `filterEligibleForActiveState`
-- A minimal `ClassesPage`/`ClassesTab` update with a table (`aria-label="Classes table"`), row checkboxes, and bulk-action buttons that respond to selection state
+- A minimal interim `ClassesPage`/`ClassesTab` update with a table (`aria-label="Classes table"`), row checkboxes, and bulk-action buttons that respond to selection state
 
 ### 4.3 Bulk cohort, year-group, and course-length flows
 
@@ -390,13 +396,13 @@ Checks that passed:
 
 Use this table as a completion gate so Workstream 3 deferred acceptance criteria close explicitly during Workstream 4:
 
-| Workstream 3 deferred item                                        | Workstream 4 closure section                        |
-| ----------------------------------------------------------------- | --------------------------------------------------- |
-| Selection reset on Classes-tab re-entry                           | 4.1 Shared batch mutation engine                    |
-| Selection clearing after destructive mutation refresh             | 4.2 Bulk create, delete, and active-state flows     |
-| Non-blocking partial-refresh warning semantics                    | 4.4 Mutation summary and refresh-failure UX         |
-| Success-plus-refresh-needed guidance with stale-table suppression | 4.4 Mutation summary and refresh-failure UX         |
-| Playwright coverage for deferred refresh-failure UX               | 4.4 tests (`classes-crud-mutation-summary.spec.ts`) |
+| Workstream 3 deferred item                                        | Workstream 4 closure section                                            |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Selection reset on Classes-tab re-entry                           | 4.1 Shared batch mutation engine + later Settings-tab cleanup follow-up |
+| Selection clearing after destructive mutation refresh             | 4.2 Bulk create, delete, and active-state flows                         |
+| Non-blocking partial-refresh warning semantics                    | 4.4 Mutation summary and refresh-failure UX                             |
+| Success-plus-refresh-needed guidance with stale-table suppression | 4.4 Mutation summary and refresh-failure UX                             |
+| Playwright coverage for deferred refresh-failure UX               | 4.4 tests (`classes-crud-mutation-summary.spec.ts`)                     |
 
 Tests:
 

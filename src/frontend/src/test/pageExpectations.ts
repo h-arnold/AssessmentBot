@@ -7,11 +7,6 @@ export const pageExpectations = [
     summary: 'Review your assessment overview and recent activity.',
   },
   {
-    key: 'classes',
-    heading: 'Classes',
-    summary: 'Organise class cohorts and monitor assessment progress.',
-  },
-  {
     key: 'assignments',
     heading: 'Assignments',
     summary: 'Track assignment status and upcoming marking tasks.',

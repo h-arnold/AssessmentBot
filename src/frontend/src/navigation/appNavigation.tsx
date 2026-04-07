@@ -1,18 +1,16 @@
 import {
   AppstoreOutlined,
-  BookOutlined,
   HomeOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 import { AssignmentsPage } from '../pages/AssignmentsPage';
-import { ClassesPage } from '../pages/ClassesPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { pageContent } from '../pages/pageContent';
 
-export type AppNavigationKey = 'dashboard' | 'classes' | 'assignments' | 'settings';
+export type AppNavigationKey = 'dashboard' | 'assignments' | 'settings';
 
 type AppNavigationPageRenderer = (contentSlot?: ReactNode) => ReactNode;
 
@@ -57,11 +55,6 @@ const navigationDefinitions: readonly AppNavigationDefinition[] = [
     icon: renderNavigationIcon(HomeOutlined),
   },
   {
-    key: 'classes',
-    label: pageContent.classes.heading,
-    icon: renderNavigationIcon(BookOutlined),
-  },
-  {
     key: 'assignments',
     label: pageContent.assignments.heading,
     icon: renderNavigationIcon(AppstoreOutlined),
@@ -104,7 +97,6 @@ function buildUnknownPageKeyError(key: string) {
 
 const pageRendererMap: Record<AppNavigationKey, AppNavigationPageRenderer> = {
   dashboard: (contentSlot) => <DashboardPage contentSlot={contentSlot} />,
-  classes: () => <ClassesPage />,
   assignments: () => <AssignmentsPage />,
   settings: () => <SettingsPage />,
 };

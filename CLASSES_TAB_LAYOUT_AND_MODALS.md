@@ -30,7 +30,7 @@ This document does **not** redefine backend contracts, data shapes, or rollout a
 ## Design principles
 
 1. Keep `SettingsPage.tsx` as a composition layer only.
-2. Keep the Classes feature inside the existing **Classes** tab; do not add a new top-level route for this work.
+2. Keep the Classes feature inside the existing **Settings** -> **Classes** tab; do not add or restore a parallel top-level Classes route, page, or navigation entry.
 3. Use one visible CRUD table rather than nested inner tabs.
 4. Use modal-driven workflows for create, bulk-edit, and reference-data management; the same bulk modals are also the single-row edit path in v1.
 5. Use top-level `Alert` components for blocking and partial-load failures.
@@ -70,6 +70,8 @@ SettingsPage
     └── Backend settings tab
         └── BackendSettingsPanel
 ```
+
+The Settings-page Classes tab is the only supported entrypoint for this feature. Do not duplicate it with a standalone `ClassesPage` or a separate top-level menu item.
 
 ## No nested tabs inside the Classes tab
 
@@ -248,7 +250,7 @@ Menu items:
    - all launchers available subject to row-selection rules
 5. **Selection reset**
    - after delete or tab re-entry, reset selection rather than trying to preserve invisible rows
-   - implement reset via controlled `selectedRowKeys` updates in the feature shell
+   - implement reset via controlled `selectedRowKeys` updates in the feature shell and explicit Settings-tab lifecycle handling; do not rely on Ant Design tab panes unmounting by default
    - keep `preserveSelectedRowKeys` disabled so removed/invisible rows are not retained implicitly
 
 ## 4. Table card

@@ -55,9 +55,9 @@ Use this file as the index only.
 - Preserve the rollout note that downstream assessment flows still depend on numeric `ABClass.yearGroup`.
 - For frontend-visible behaviour changes, pair Vitest with Playwright coverage and extend the shared Classes CRUD harness instead of creating parallel harnesses.
 
-## Exploration summary
+## Exploration summary (historical planning context)
 
-The split above matches the largest codebase seams and the highest-risk gaps found during exploration.
+The split above matches the largest codebase seams and the highest-risk gaps found during the original planning sweep. Several of the risks below have since been resolved in delivered work and later cleanup; use the workstream documents above for the current implementation state.
 
 ### Backend contract risks
 

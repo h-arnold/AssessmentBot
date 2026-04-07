@@ -3,8 +3,10 @@ import type { TabsProps } from 'antd';
 import { PageSection } from './PageSection';
 
 type TabbedPageSectionProperties = Readonly<{
+  activeKey?: string;
   defaultActiveKey: string;
   heading: string;
+  onChange?: TabsProps['onChange'];
   summary: string;
   tabs: NonNullable<TabsProps['items']>;
 }>;
@@ -16,11 +18,17 @@ type TabbedPageSectionProperties = Readonly<{
  * @returns {JSX.Element} The tabbed page section.
  */
 export function TabbedPageSection(properties: TabbedPageSectionProperties) {
-  const { defaultActiveKey, heading, summary, tabs } = properties;
+  const { activeKey, defaultActiveKey, heading, onChange, summary, tabs } = properties;
 
   return (
     <PageSection heading={heading} summary={summary}>
-      <Tabs className="app-tabbed-page" defaultActiveKey={defaultActiveKey} items={tabs} />
+      <Tabs
+        className="app-tabbed-page"
+        activeKey={activeKey}
+        defaultActiveKey={defaultActiveKey}
+        items={tabs}
+        onChange={onChange}
+      />
     </PageSection>
   );
 }

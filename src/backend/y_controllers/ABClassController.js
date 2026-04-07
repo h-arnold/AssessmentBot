@@ -176,30 +176,6 @@ class ABClassController {
     };
   }
 
-  // Metadata-driven refresh is currently disabled while Issue #88 is being investigated;
-  // keep the helper for future use once the issue is resolved.
-  /**
-   * Determines whether a roster needs updating based on course modification time.
-   * Currently disabled pending Issue #88 investigation.
-   *
-   * @param {Object} metadata - Collection metadata including lastUpdated timestamp.
-   * @param {string} classId - The Classroom course ID.
-   * @returns {boolean} True if the course has been updated since the last fetch.
-   * @private
-   */
-  _shouldRefreshRoster(metadata, classId) {
-    if (!metadata?.lastUpdated) return false;
-
-    const lastUpdated =
-      metadata.lastUpdated instanceof Date ? metadata.lastUpdated : new Date(metadata.lastUpdated);
-    if (!(lastUpdated instanceof Date) || Number.isNaN(lastUpdated.getTime())) return false;
-
-    const courseUpdatedAt = ClassroomApiClient.fetchCourseUpdateTime(classId);
-    if (!(courseUpdatedAt instanceof Date) || Number.isNaN(courseUpdatedAt.getTime())) return false;
-
-    return courseUpdatedAt.getTime() > lastUpdated.getTime();
-  }
-
   /**
    * Clears and refreshes all roster data (owner, teachers, students) for a class.
    * Fetches latest data from the Classroom API.
@@ -876,11 +852,10 @@ class ABClassController {
   }
 
   /**
-   * Load an ABClass by its classId. Returns an ABClass instance or null if not found.
-   * Reads all documents from the collection named by classId, deserialises the first document,
-   * and optionally refreshes roster data from Classroom API.
+   * Load an ABClass by its classId. If no stored collection or document exists, initialises a new class.
+   * Reads the stored document when present, deserialises it, and refreshes roster data from Classroom API before returning.
    * @param {string} classId - The Classroom course identifier.
-   * @returns {ABClass|null} The loaded class instance, or null if not found.
+   * @returns {ABClass} The loaded or newly initialised class instance.
    */
   loadClass(classId) {
     if (!classId) throw new TypeError('classId is required');
@@ -906,22 +881,11 @@ class ABClassController {
       return newClass;
     }
 
-    // Metadata-driven refresh is currently disabled while Issue #88 is being
-    // investigated; keep the helper for future use but force a refresh here so
-    // persisted ABClass objects are kept up-to-date with live Classroom data.
-    const needsRefresh = true; // retained helper: this._shouldRefreshRoster(metadata, classId);
-    // Deserialize the document into an ABClass instance
     const abClass = ABClass.fromJSON(document);
-    if (needsRefresh) {
-      logger.info('loadClass: metadata indicates refresh required - refreshing roster', {
-        classId,
-      });
-      this._refreshRoster(abClass, classId);
-      this._persistRoster(collection, document, abClass);
-      logger.info('loadClass: refresh completed and roster persisted', { classId });
-    } else {
-      logger.info('loadClass: loaded class from collection without refresh', { classId });
-    }
+    logger.info('loadClass: refreshing roster before returning class', { classId });
+    this._refreshRoster(abClass, classId);
+    this._persistRoster(collection, document, abClass);
+    logger.info('loadClass: refresh completed and roster persisted', { classId });
     return abClass;
   }
 

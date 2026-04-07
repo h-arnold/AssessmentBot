@@ -16,7 +16,14 @@
 - `src/frontend/src/features/auth/AppAuthGate.tsx`
 - Existing and new `src/frontend/src/features/classes/**`
 
-## Exploration findings to account for
+## Current status note
+
+- The Classes CRUD surface now lives only under `SettingsPage` -> `Classes`; the obsolete top-level Classes navigation entry and placeholder page have been removed.
+- `SettingsPage` now controls the active settings tab and remounts `ClassesManagementPanel` when leaving the Classes tab, so selection resets on tab re-entry.
+- Browser and unit coverage now treat Classes as a Settings-tab feature, not a standalone page.
+- The exploration findings below are historical planning notes, not the current code state.
+
+## Historical exploration findings to account for
 
 - The Classes tab is still a blank `Card`.
 - `features/classes` now exists for query-invalidation foundations from Workstream 2, but there is still no Classes-tab shell/table implementation.
@@ -134,7 +141,7 @@ Tests:
 
 Implementation note: merged row model implemented in `classesManagementViewModel.ts` with status mapping and deterministic ordering.
 
-### 3.3 Summary, toolbar, and table rendering — partial (merged)
+### 3.3 Summary, toolbar, and table rendering — complete
 
 - [x] Red tests added
 - [x] Red review clean
@@ -145,12 +152,12 @@ Implementation note: merged row model implemented in `classesManagementViewModel
 - [x] Commit created
 - [x] Push completed
 
-Open acceptance criteria:
+Closed during Workstream 4 and cleanup follow-up:
 
-- [ ] Selection reset on Classes-tab re-entry remains open and should be verified/closed with bulk-workflow state transitions in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md`).
-- [ ] Selection clearing after destructive mutation refresh is deferred until destructive flows land in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#42-bulk-create-delete-and-active-state-flows`).
+- [x] Selection reset on Classes-tab re-entry is now implemented via controlled Settings-tab state plus `ClassesManagementPanel` remount on exit from the Classes tab.
+- [x] Selection clearing after destructive mutation refresh landed in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#42-bulk-create-delete-and-active-state-flows`).
 
-### 3.4 Load, error, and empty states — partial (merged)
+### 3.4 Load, error, and empty states — complete
 
 - [x] Red tests added
 - [x] Red review clean
@@ -161,10 +168,10 @@ Open acceptance criteria:
 - [x] Commit created
 - [x] Push completed
 
-Open acceptance criteria:
+Closed during Workstream 4:
 
-- [ ] Non-blocking partial-refresh warning alert semantics remain open and are deferred to Workstream 4 mutation/refresh orchestration (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
-- [ ] Success-plus-refresh-needed guidance with stale-table suppression after successful mutation remains open and is deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+- [x] Non-blocking partial-refresh warning alert semantics landed in Workstream 4 mutation/refresh orchestration (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+- [x] Success-plus-refresh-needed guidance with stale-table suppression after successful mutation landed in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
 
 ### 3.5 Browser journeys — complete (merged)
 
@@ -177,27 +184,21 @@ Open acceptance criteria:
 - [x] Commit created
 - [x] Push completed
 
-Open acceptance criteria:
+Closed during Workstream 4:
 
-- [ ] Add Playwright coverage for the deferred refresh-failure UX once Workstream 4 ships the UI contract (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
+- [x] Playwright coverage for the refresh-failure UX landed in Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
 
 ## Completion summary (Workstream 3.3-3.5)
 
 ### Complete
 
-- 3.3 core summary/toolbar/table rendering, deterministic sorting/filtering controls, and base selection wiring are merged.
-- 3.4 blocking load/error/empty-state handling for startup readiness and Google Classroom availability is merged.
-- 3.5 browser journeys for tab entry, load/error/empty states, table rendering, and table controls are merged.
+- 3.3 core summary/toolbar/table rendering, deterministic sorting/filtering controls, base selection wiring, and tab re-entry selection reset are merged.
+- 3.4 blocking load/error/empty-state handling for startup readiness and Google Classroom availability, including refresh-required guidance and stale-table suppression, is merged.
+- 3.5 browser journeys for tab entry, load/error/empty states, table rendering, table controls, and refresh-failure UX are merged.
 
-### Partial
+### Historical note
 
-- 3.3 selection lifecycle behaviour that depends on destructive mutation flows is only partially complete and requires Workstream 4 integration.
-- 3.4 alert-stack semantics for mutation-success + refresh-failure pathways are only partially complete pending Workstream 4.
-
-### Deferred
-
-- Refresh-failure user guidance, stale-data suppression, and related browser journeys are deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#44-mutation-summary-and-refresh-failure-ux`).
-- Destructive-flow-dependent selection reset/cleanup behaviour is deferred to Workstream 4 (`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md#42-bulk-create-delete-and-active-state-flows`).
+- Workstream 3 originally left some lifecycle and refresh-failure items for Workstream 4. Those closures have now landed and should not be treated as open follow-up work.
 
 ## Sequencing notes
 

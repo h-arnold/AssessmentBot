@@ -125,6 +125,7 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
 - `getABClassPartials` — returns all class partial documents from the `abclass_partials` registry.
   Source: `src/backend/z_Api/abclassPartials.js`. Delegates to `ABClassController.getAllClassPartials()`.
   Frontend wrapper: `src/frontend/src/services/classPartialsService.ts` (`getABClassPartials()`).
+  Handler behaviour: instantiates `ABClassController` inside `getABClassPartials()` at call time; the production file keeps only the standard guarded export block at end of file for Node unit tests.
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
@@ -139,23 +140,25 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
 
 - `upsertABClass` — creates a new ABClass or refreshes an existing one using Classroom data plus user-supplied metadata.
   Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController.js`.
-  Required request fields: `classId`, `cohort`, `yearGroup`, `courseLength`.
-  Validation: `courseLength` must be an integer greater than or equal to `1`.
+  Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
+  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`; `courseLength` must be an integer greater than or equal to `1`.
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments`.
   Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
   Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request field: `classId`.
-  Optional patch fields: `cohort`, `yearGroup`, `courseLength`, `active`.
+  Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`.
   Forbidden request fields: `classOwner`, `teachers`, `students`, `assignments`.
+  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`; `active` must be boolean or `null` when supplied.
   Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields.
-  Missing-class behaviour: initialises a new class using upsert-on-update semantics. Unspecified fields keep the `ABClass` model defaults (`courseLength: 1`, `yearGroup: null`, `active: null`).
+  Missing-class behaviour: throws `RangeError`; `updateABClass` is not an upsert path.
   Response data: the same partial class summary shape used by `upsertABClass()`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
   Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request field: `classId`.
+  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
   Response data: `{ classId, fullClassDeleted, partialDeleted }`.
   Idempotency: repeated deletes succeed and the boolean flags report what was deleted in that call only.

@@ -60,7 +60,7 @@ function validateClassId(classId, methodName) {
 }
 
 /**
- * Validates a classId for deletion, disallowing unsafe path characters.
+ * Validates a mutation classId, disallowing unsafe path characters.
  *
  * @param {*} classId - The class ID to validate.
  * @param {string} methodName - Name of the calling method (for error messages).
@@ -112,7 +112,7 @@ function validateUpsertABClassParameters(parameters) {
     },
     methodName
   );
-  validateClassId(parameters.classId, methodName);
+  validateDeleteClassId(parameters.classId, methodName);
   validateCourseLength(parameters.courseLength, methodName);
 }
 
@@ -129,7 +129,7 @@ function validateUpdateABClassParameters(parameters) {
 
   validateParametersObject(parameters, methodName);
   requireParameters({ classId: parameters.classId }, methodName);
-  validateClassId(parameters.classId, methodName);
+  validateDeleteClassId(parameters.classId, methodName);
 
   if (Object.hasOwn(parameters, 'courseLength')) {
     validateCourseLength(parameters.courseLength, methodName);
@@ -174,7 +174,7 @@ function validateDeleteABClassParameters(parameters) {
  * Thin transport handler for ABClass create or refresh operations.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId, cohort, yearGroup, and courseLength.
+ * @param {Object} parameters - Request payload with classId, cohortKey, yearGroupKey, and courseLength.
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
  */
@@ -187,7 +187,7 @@ function upsertABClass(parameters) {
  * Thin transport handler for editable ABClass field updates.
  * Delegates to controller after validating request parameters.
  *
- * @param {Object} parameters - Request payload with classId and optional editable patch fields.
+ * @param {Object} parameters - Request payload with classId and optional editable patch fields (`cohortKey`, `yearGroupKey`, `courseLength`, `active`).
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
  */
