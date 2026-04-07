@@ -253,8 +253,8 @@ Documents to update:
 | Green review clean            | ✅ done                                |
 | Checks passed                 | ✅ done                                |
 | Action plan updated           | ✅ done                                |
-| Commit created                | ⏳ pending                             |
-| Push completed                | ⏳ pending                             |
+| Commit created                | ✅ done                                |
+| Push completed                | ✅ done                                |
 
 **Implementation notes — 5.4**
 
@@ -289,6 +289,14 @@ Documents to update:
   - `npm run frontend:lint` — clean.
   - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors.
 - **Section status:** 5.4 green phase is complete. Commit and push are the only remaining steps.
+
+**Delivery evidence — 5.4**
+
+- **Branch:** `ws5-doc-update`
+- **Code commit SHA:** `329936ac76d50883c0bbb857897d3f2301c8f963`
+- **Code commit message:** `docs(ws5): update rollout and modal documentation`
+- **Push:** succeeded to `origin/ws5-doc-update`
+- **Note:** commit also included the 5.4 action-plan update
 
 ## Sequencing notes
 
