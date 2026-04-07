@@ -578,16 +578,15 @@ Provide CRUD management for cohort reference data without leaving the Classes ta
 
 ### Inline child-dialog panels
 
-Create, edit, and delete flows are rendered as inline `role="dialog"` panels inside the outer Modal body. This avoids portal async-render issues in jsdom unit tests while maintaining full ARIA semantics and correct Playwright behaviour. These are not separate Ant Design Modal instances.
+Create, edit, and delete flows are rendered as inline `role="dialog"` panels inside the outer Modal body using the `InlineDialog` component (`src/frontend/src/features/classes/InlineDialog.tsx`). This avoids portal async-render issues in jsdom unit tests while maintaining full ARIA semantics and correct Playwright behaviour. These are not separate Ant Design Modal instances.
 
 #### Create/edit cohort panel
 
 Fields:
 
 - `Input` for name
-- `InputNumber` or `Select` for start month
-- `InputNumber` for start year
-- `Switch` for active
+
+`active` is toggled via a `Switch` rendered in the table row, not inside this form panel. `startYear` and `startMonth` are displayed as read-only table columns and are not editable through the current implementation.
 
 States:
 
@@ -648,7 +647,7 @@ Provide CRUD management for year-group reference data without leaving the Classe
 
 ### Inline child-dialog panels
 
-Create, edit, and delete flows follow the same inline `role="dialog"` panel pattern as `ManageCohortsModal`: rendered inside the outer Modal body, not as separate Ant Design Modal instances.
+Create, edit, and delete flows follow the same inline `role="dialog"` panel pattern as `ManageCohortsModal`, using the shared `InlineDialog` component: rendered inside the outer Modal body, not as separate Ant Design Modal instances.
 
 #### Create/edit year group panel
 
@@ -756,8 +755,9 @@ Keep the frontend suites split by testing responsibility:
 ## Implementation decisions resolved
 
 1. Management modals (`ManageCohortsModal`, `ManageYearGroupsModal`) use inner `Table` components for the reference-data list.
-2. Create/edit and delete flows inside management modals are rendered as inline `role="dialog"` panels inside the outer Ant Design Modal body, not as separate nested Ant Design Modal instances.
+2. Create/edit and delete flows inside management modals are rendered as inline `role="dialog"` panels inside the outer Ant Design Modal body, not as separate nested Ant Design Modal instances. The shared `InlineDialog` component (`src/frontend/src/features/classes/InlineDialog.tsx`) encapsulates the border/title markup.
 3. Destructive bulk-confirm flows use a standard `Modal` component, not `Modal.confirm`. The bulk delete flow is implemented as `BulkDeleteModal` (a standard Ant Design `Modal`).
+4. `isInUseError` and `getDeleteErrorMessage` are extracted into `src/frontend/src/features/classes/manageReferenceDataHelpers.ts` to avoid duplicating identical IN_USE handling logic across both modal modules.
 
 ## Rollout notes
 
