@@ -111,16 +111,16 @@ Tests:
 
 > **✅ GREEN PHASE COMPLETE — ready for commit/push**
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status  |
+| ----------------------------- | ------- |
+| Red tests added               | ✅ done |
+| Red review clean              | ✅ done |
+| Green implementation complete | ✅ done |
+| Green review clean            | ✅ done |
+| Checks passed                 | ✅ done |
+| Action plan updated           | ✅ done |
+| Commit created                | ✅ done |
+| Push completed                | ✅ done |
 
 **Implementation notes — 5.2**
 
@@ -146,6 +146,14 @@ Tests:
   - `npm exec tsc -- -b src/frontend/tsconfig.json` — type-check passes with no errors.
   - `npm run lint` (root) — clean (warning-only acceptable, no errors).
 - Section 5.2 is complete. Commit creation and push are the only remaining steps.
+
+**Delivery evidence — 5.2**
+
+- **Branch:** `ws5-doc-update`
+- **Code commit SHA:** `9ba0b3ab2ec4f6579a688493276963fc0ddceff7`
+- **Code commit message:** `feat(ws5): implement year-group management modal`
+- **Push:** succeeded to `origin/ws5-doc-update`
+- **Notes:** commit also included the 5.2 test suite and action-plan updates
 
 ### 5.3 Regression and contract hardening
 
