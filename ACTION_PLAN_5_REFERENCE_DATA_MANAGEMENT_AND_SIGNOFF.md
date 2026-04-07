@@ -109,6 +109,44 @@ Tests:
 - `src/frontend/src/features/classes/manageYearGroupDelete.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-year-groups.spec.ts`
 
+> **✅ GREEN PHASE COMPLETE — ready for commit/push**
+
+| Step                          | Status     |
+| ----------------------------- | ---------- |
+| Red tests added               | ✅ done    |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
+| Green review clean            | ✅ done    |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
+| Commit created                | ⬜ pending |
+| Push completed                | ⬜ pending |
+
+**Implementation notes — 5.2**
+
+- This section parallels the 5.1 cohort-management workflow but targets year groups instead of cohorts: the modal will launch from the Classes tab toolbar, support list, create, edit, and delete flows, surface delete-blocked states inline, and invalidate/refresh the `yearGroups` query on successful mutations.
+- Red-phase test files added:
+  - `src/frontend/src/features/classes/manageYearGroups.spec.tsx` — unit tests for the `ManageYearGroupsModal` component (list, create, edit flows).
+  - `src/frontend/src/features/classes/manageYearGroupDelete.spec.tsx` — unit tests for delete and delete-blocked flows within the modal.
+  - `e2e-tests/classes-crud-manage-year-groups.spec.ts` — E2E spec covering the full manage-year-groups workflow from the Classes tab toolbar.
+- `classes-crud.shared.ts` was extended with shared E2E helpers for `createYearGroup`, `updateYearGroup`, and `deleteYearGroup`, keeping E2E setup DRY across the new spec and any future year-group tests.
+- Review finding resolved: in the delete-failure (non-blocked) path, the destructive confirm button is now explicitly kept **enabled**, making a retriable generic failure visually distinct from a blocked delete where the button is disabled with an inline explanation. This distinction is now part of the red-phase test assertions.
+
+**Green-phase notes — 5.2**
+
+- Production files added/changed:
+  - `src/frontend/src/features/classes/ManageYearGroupsModal.tsx` — new component implementing the full year-group management modal (list, create, edit, delete, delete-blocked flows) with `yearGroups` query invalidation on successful mutations.
+  - `src/frontend/src/features/classes/ClassesToolbar.tsx` — updated to wire the "Manage year groups" toolbar button to launch `ManageYearGroupsModal`.
+  - `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — updated to host and render the `ManageYearGroupsModal` alongside the existing cohort-management modal.
+- Reviewer outcome: implementation is clean and stays within the simpler year-group contract (`{ key, name }` — no active-state flow). No legacy or active-state fields were introduced; the component mirrors the cohort modal pattern only where appropriate and deliberately omits the active-toggle behaviour that cohorts carry.
+- Checks that passed:
+  - `npm run frontend:test -- manageYearGroups manageYearGroupDelete` — targeted unit tests all green.
+  - `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-year-groups.spec.ts` — E2E journey passes end-to-end.
+  - `npm run frontend:lint` — clean (no errors; any pre-existing warnings are warning-only and do not block).
+  - `npm exec tsc -- -b src/frontend/tsconfig.json` — type-check passes with no errors.
+  - `npm run lint` (root) — clean (warning-only acceptable, no errors).
+- Section 5.2 is complete. Commit creation and push are the only remaining steps.
+
 ### 5.3 Regression and contract hardening
 
 Acceptance:

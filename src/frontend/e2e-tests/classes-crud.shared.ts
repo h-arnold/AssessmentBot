@@ -40,6 +40,12 @@ export type ClassesCrudRuntimeScenario = Readonly<{
   updateCohort?: ReadonlyArray<ClassesCrudApiResponseScenario>;
   /** Responses queued for deleteCohort calls (cohort management modal). */
   deleteCohort?: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  /** Responses queued for createYearGroup calls (year-group management modal). */
+  createYearGroup?: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  /** Responses queued for updateYearGroup calls (year-group management modal). */
+  updateYearGroup?: ReadonlyArray<ClassesCrudApiResponseScenario>;
+  /** Responses queued for deleteYearGroup calls (year-group management modal). */
+  deleteYearGroup?: ReadonlyArray<ClassesCrudApiResponseScenario>;
 }>;
 
 export type ClassesCrudDataBundle = Readonly<{
@@ -197,6 +203,9 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         createCohort: 0,
         updateCohort: 0,
         deleteCohort: 0,
+        createYearGroup: 0,
+        updateYearGroup: 0,
+        deleteYearGroup: 0,
       };
       const responseQueues = {
         getAuthorisationStatus: mockScenario.getAuthorisationStatus,
@@ -209,6 +218,9 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         createCohort: mockScenario.createCohort ?? [],
         updateCohort: mockScenario.updateCohort ?? [],
         deleteCohort: mockScenario.deleteCohort ?? [],
+        createYearGroup: mockScenario.createYearGroup ?? [],
+        updateYearGroup: mockScenario.updateYearGroup ?? [],
+        deleteYearGroup: mockScenario.deleteYearGroup ?? [],
       };
 
       function isClassesCrudTransportRequest(request) {
@@ -280,7 +292,10 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
           method !== "deleteABClass" &&
           method !== "createCohort" &&
           method !== "updateCohort" &&
-          method !== "deleteCohort"
+          method !== "deleteCohort" &&
+          method !== "createYearGroup" &&
+          method !== "updateYearGroup" &&
+          method !== "deleteYearGroup"
         ) {
           callbacks.failureHandler?.(new Error(\`Unsupported method: \${method}\`));
           return;

@@ -13,6 +13,7 @@ import { BulkDeleteModal } from './BulkDeleteModal';
 import { BulkSetCourseLengthModal } from './BulkSetCourseLengthModal';
 import { BulkSetSelectModal } from './BulkSetSelectModal';
 import { ManageCohortsModal } from './ManageCohortsModal';
+import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 import {
   bulkSetCohort,
   filterEligibleForBulkSetCohort,
@@ -418,6 +419,7 @@ export function ClassesManagementPanel() {
   const [setYearGroupModalOpen, setSetYearGroupModalOpen] = useState(false);
   const [setCourseLengthModalOpen, setSetCourseLengthModalOpen] = useState(false);
   const [manageCohortsModalOpen, setManageCohortsModalOpen] = useState(false);
+  const [manageYearGroupsModalOpen, setManageYearGroupsModalOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [setActiveSubmitting, setSetActiveSubmitting] = useState(false);
@@ -684,12 +686,15 @@ export function ClassesManagementPanel() {
     handleSetInactive,
     handleSetYearGroup,
     manageCohortsModalOpen,
+    manageYearGroupsModalOpen,
     onBulkCreateCancel: () => setCreateModalOpen(false),
     onBulkCreateOpen: () => setCreateModalOpen(true),
     onBulkDeleteOpen: () => setDeleteModalOpen(true),
     onDeleteCancel: () => setDeleteModalOpen(false),
     onManageCohortsClose: () => setManageCohortsModalOpen(false),
     onManageCohortsOpen: () => setManageCohortsModalOpen(true),
+    onManageYearGroupsClose: () => setManageYearGroupsModalOpen(false),
+    onManageYearGroupsOpen: () => setManageYearGroupsModalOpen(true),
     onSetCohortCancel: () => setSetCohortModalOpen(false),
     onSetCohortOpen: () => setSetCohortModalOpen(true),
     onSetCourseLengthCancel: () => setSetCourseLengthModalOpen(false),
@@ -733,12 +738,15 @@ function renderClassesManagementPanelContent(properties: Readonly<{
   handleSetInactive: () => void;
   handleSetYearGroup: (yearGroupKey: string) => Promise<void>;
   manageCohortsModalOpen: boolean;
+  manageYearGroupsModalOpen: boolean;
   onBulkCreateCancel: () => void;
   onBulkCreateOpen: () => void;
   onBulkDeleteOpen: () => void;
   onDeleteCancel: () => void;
   onManageCohortsClose: () => void;
   onManageCohortsOpen: () => void;
+  onManageYearGroupsClose: () => void;
+  onManageYearGroupsOpen: () => void;
   onSetCohortCancel: () => void;
   onSetCohortOpen: () => void;
   onSetCourseLengthCancel: () => void;
@@ -809,6 +817,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
             onSetYearGroup={properties.onSetYearGroupOpen}
             onSetCourseLength={properties.onSetCourseLengthOpen}
             onManageCohorts={properties.onManageCohortsOpen}
+            onManageYearGroups={properties.onManageYearGroupsOpen}
             setActiveLoading={properties.setActiveSubmitting}
             setInactiveLoading={properties.setInactiveSubmitting}
           />
@@ -859,6 +868,10 @@ function renderClassesManagementPanelContent(properties: Readonly<{
           <ManageCohortsModal
             open={properties.manageCohortsModalOpen}
             onClose={properties.onManageCohortsClose}
+          />
+          <ManageYearGroupsModal
+            open={properties.manageYearGroupsModalOpen}
+            onClose={properties.onManageYearGroupsClose}
           />
         </Flex>
       ) : null}

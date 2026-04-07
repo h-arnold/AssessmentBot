@@ -12,6 +12,7 @@ export interface ClassesToolbarProperties {
   onSetYearGroup?: () => void;
   onSetCourseLength?: () => void;
   onManageCohorts?: () => void;
+  onManageYearGroups?: () => void;
   setActiveLoading?: boolean;
   setInactiveLoading?: boolean;
 }
@@ -139,6 +140,9 @@ export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
         </Button>
         <Button onClick={properties.onManageCohorts}>
           Manage Cohorts
+        </Button>
+        <Button onClick={properties.onManageYearGroups}>
+          Manage Year Groups
         </Button>
       </Space>
       {selectionMessage ? (
