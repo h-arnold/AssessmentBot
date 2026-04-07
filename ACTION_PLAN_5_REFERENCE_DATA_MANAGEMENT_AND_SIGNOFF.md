@@ -177,16 +177,16 @@ Checks:
 
 > **🟢 GREEN PHASE COMPLETE — checks passed, ready for commit/push**
 
-| Step                          | Status     |
-| ----------------------------- | ---------- |
-| Red tests added               | ✅ done    |
-| Red review clean              | ✅ done    |
-| Green implementation complete | ✅ done    |
-| Green review clean            | ✅ done    |
-| Checks passed                 | ✅ done    |
-| Action plan updated           | ✅ done    |
-| Commit created                | ⬜ pending |
-| Push completed                | ⬜ pending |
+| Step                          | Status  |
+| ----------------------------- | ------- |
+| Red tests added               | ✅ done |
+| Red review clean              | ✅ done |
+| Green implementation complete | ✅ done |
+| Green review clean            | ✅ done |
+| Checks passed                 | ✅ done |
+| Action plan updated           | ✅ done |
+| Commit created                | ✅ done |
+| Push completed                | ✅ done |
 
 **Implementation notes — 5.3**
 
@@ -215,6 +215,14 @@ Checks:
   - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors.
 - **Reviewer note:** the new `IN_USE` mapping still depends on the calling controller supplying a non-empty `message` alongside `reason`. This invariant is already enforced by `ReferenceDataController`; it is an accepted minimal-scope assumption rather than a follow-up code change.
 - **Section completion status:** green implementation and review are complete; all checks pass. Commit and push are the only remaining steps.
+
+**Delivery evidence — 5.3**
+
+- **Branch:** `ws5-doc-update`
+- **Code commit SHA:** `5a1a9a5b48d3df65539d9e054f7f25ccbf988a6d`
+- **Code commit message:** `fix(ws5): harden delete-blocked api contract`
+- **Push:** succeeded to `origin/ws5-doc-update`
+- **Notes:** commit also included the 5.3 test updates and action-plan updates
 
 ### 5.4 Documentation and rollout notes
 
