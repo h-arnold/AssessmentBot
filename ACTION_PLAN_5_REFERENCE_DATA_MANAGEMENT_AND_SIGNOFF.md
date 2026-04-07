@@ -43,6 +43,49 @@ Tests:
 - `src/frontend/src/features/classes/manageCohortDelete.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud-manage-cohorts.spec.ts`
 
+> **🟢 GREEN PHASE COMPLETE** — implementation merged and verified passing; commit and push are next.
+
+| Step                          | Status     |
+| ----------------------------- | ---------- |
+| Red tests added               | ✅ done    |
+| Red review clean              | ✅ done    |
+| Green implementation complete | ✅ done    |
+| Green review clean            | ✅ done    |
+| Checks passed                 | ✅ done    |
+| Action plan updated           | ✅ done    |
+| Commit created                | ⬜ pending |
+| Push completed                | ⬜ pending |
+
+**Implementation notes — 5.1**
+
+- Baseline repo validation was clean before section work began (lint, type-check, and test suites all passing).
+- Current identified gaps: no cohort management modal component, no unit tests (`manageCohorts.spec.tsx`, `manageCohortDelete.spec.tsx`), no E2E spec (`classes-crud-manage-cohorts.spec.ts`), and the API envelope does not yet expose a machine-readable contract for delete-blocked cohort states (controller-level `reason: 'IN_USE'` currently collapses to `INTERNAL_ERROR` at the API layer).
+- **Red-phase test files added:** `manageCohorts.spec.tsx` (unit — modal rendering, create, edit, toggle-active flows), `manageCohortDelete.spec.tsx` (unit — delete-blocked and delete-confirmed flows), and `e2e-tests/classes-crud-manage-cohorts.spec.ts` (E2E — full CRUD journey via toolbar launcher).
+- **Shared helper extended:** `classes-crud.shared.ts` was extended with `createCohort`, `updateCohort`, and `deleteCohort` helper utilities used by the E2E spec.
+- **Red-review findings resolved:** duplicate-text assertion bug (scoped queries to modal container); payload assertions strengthened to verify exact request body rather than call count alone; selector ambiguity resolved by using accessible-role queries; `z.void()` mock corrected to return `undefined` instead of `null` (Zod `void` parses to `undefined`); invalidation assertions made await-safe with `waitFor` wrappers.
+- **Intended failing evidence:** all new tests fail because `ManageCohortsModal` and its toolbar launcher button do not yet exist — this is the expected red-phase outcome confirming tests are genuinely exercising unimplemented behaviour.
+
+**Green-phase notes — 5.1**
+
+- **Production files added/changed:**
+  - `src/frontend/src/features/classes/ManageCohortsModal.tsx` — new modal component implementing list, create, edit, toggle-active, and delete-blocked/delete-confirmed flows for cohorts.
+  - `src/frontend/src/features/classes/ClassesToolbar.tsx` — extended with a "Manage Cohorts" launcher button that opens `ManageCohortsModal`.
+  - `src/frontend/src/features/classes/ClassesManagementPanel.tsx` — updated to mount `ManageCohortsModal` and pass required state/handlers through.
+
+- **Green-review findings resolved:**
+  - **Toggle-active error surface:** a toggle-active mutation failure was previously swallowed silently; updated `ManageCohortsModal` to surface the error as an inline alert within the modal rather than losing it.
+  - **Toolbar spec coverage:** `ClassesToolbar.spec.tsx` was extended to cover the "Manage Cohorts" launcher button render and click interaction, filling a gap identified during green review.
+  - **Impossible edit submit guard:** an explicit early-return guard was added to `handleFormFinish` inside `ManageCohortsModal` to handle the logically impossible state where the form is submitted in edit mode but no cohort is currently selected, preventing a silent no-op mutation with a stale or undefined payload.
+
+- **Checks that passed:**
+  - Targeted frontend unit tests (`manageCohorts.spec.tsx`, `manageCohortDelete.spec.tsx`, `ClassesToolbar.spec.tsx`) — all green.
+  - E2E suite (`classes-crud-manage-cohorts.spec.ts`) — all scenarios passing.
+  - `npm run frontend:lint` — clean (no errors; any pre-existing warnings are warning-only and do not block).
+  - `npm exec tsc -- -b src/frontend/tsconfig.json` — no type errors.
+  - `npm run lint` (root) — clean (warning-only output acceptable; no errors).
+
+- **Section 5.1 is complete.** Commit creation and push to remote are the remaining steps.
+
 ### 5.2 Year-group management modal
 
 Acceptance:

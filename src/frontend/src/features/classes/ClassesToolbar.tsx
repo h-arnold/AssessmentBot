@@ -11,6 +11,7 @@ export interface ClassesToolbarProperties {
   onSetCohort?: () => void;
   onSetYearGroup?: () => void;
   onSetCourseLength?: () => void;
+  onManageCohorts?: () => void;
   setActiveLoading?: boolean;
   setInactiveLoading?: boolean;
 }
@@ -135,6 +136,9 @@ export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
         </Button>
         <Button danger disabled={!eligibility.canDelete} onClick={properties.onBulkDelete}>
           Delete ABClass
+        </Button>
+        <Button onClick={properties.onManageCohorts}>
+          Manage Cohorts
         </Button>
       </Space>
       {selectionMessage ? (

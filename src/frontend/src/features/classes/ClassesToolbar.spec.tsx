@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { ClassesToolbar } from './ClassesToolbar';
 import { statusCoverageRows } from './classesTestHelpers';
 
@@ -78,5 +78,40 @@ describe('ClassesToolbar', () => {
   it('keeps metadata edits disabled for notCreated selections', () => {
     renderToolbar(['not-created-1']);
     expectButtonsDisabled(metadataActionNames);
+  });
+
+  describe('Manage Cohorts launcher', () => {
+    it('renders the Manage Cohorts button regardless of selection state', () => {
+      renderToolbar([]);
+
+      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeInTheDocument();
+    });
+
+    it('keeps the Manage Cohorts button enabled at all times', () => {
+      renderToolbar([]);
+
+      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
+    });
+
+    it('keeps the Manage Cohorts button enabled when rows are selected', () => {
+      renderToolbar(['active-1', 'inactive-1']);
+
+      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
+    });
+
+    it('calls onManageCohorts when the Manage Cohorts button is clicked', () => {
+      const onManageCohorts = vi.fn();
+      render(
+        <ClassesToolbar
+          rows={statusCoverageRows}
+          selectedRowKeys={[]}
+          onManageCohorts={onManageCohorts}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Manage Cohorts' }));
+
+      expect(onManageCohorts).toHaveBeenCalledOnce();
+    });
   });
 });
