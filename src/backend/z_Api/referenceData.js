@@ -13,7 +13,7 @@ function getController() {
  * Handler that retrieves all cohort records.
  *
  * @param {*} parameters - Optional; currently unused.
- * @returns {Array<{name: string, active: boolean}>} List of all cohorts.
+ * @returns {Array<{key: string, name: string, active: boolean, startYear: number, startMonth: number}>} List of all cohorts.
  */
 function getCohorts() {
   return getController().listCohorts();
@@ -23,8 +23,8 @@ function getCohorts() {
  * Handler that creates a new cohort record.
  *
  * @param {Object} parameters - Request payload.
- * @param {{record: {name: string, active?: boolean}}} parameters - Contains the cohort record to create.
- * @returns {{name: string, active: boolean}} The created cohort record.
+ * @param {{record: {name: string, active?: boolean, startYear?: number, startMonth?: number}}} parameters - Contains the cohort record to create.
+ * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The created cohort record.
  */
 function createCohort(parameters) {
   return getController().createCohort(parameters.record);
@@ -34,15 +34,15 @@ function createCohort(parameters) {
  * Handler that updates an existing cohort record.
  *
  * @param {Object} parameters - Request payload.
- * @param {{originalName: string, record: {name: string, active?: boolean}}} parameters - Original name and updated record.
- * @returns {{name: string, active: boolean}} The updated cohort record.
+ * @param {{key: string, record: {name: string, active?: boolean, startYear?: number, startMonth?: number}}} parameters - Key and updated record.
+ * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The updated cohort record.
  */
 function updateCohort(parameters) {
   return getController().updateCohort(parameters);
 }
 
 /**
- * Handler that deletes a cohort record by name.
+ * Handler that deletes a cohort record by key.
  *
  * @param {Object} parameters - Request payload.
  * @param {{key: string}} parameters - The cohort key to delete.
@@ -56,7 +56,7 @@ function deleteCohort(parameters) {
  * Handler that retrieves all year group records.
  *
  * @param {*} parameters - Optional; currently unused.
- * @returns {Array<{name: string}>} List of all year groups.
+ * @returns {Array<{key: string, name: string}>} List of all year groups.
  */
 function getYearGroups() {
   return getController().listYearGroups();
@@ -67,7 +67,7 @@ function getYearGroups() {
  *
  * @param {Object} parameters - Request payload.
  * @param {{record: {name: string}}} parameters - Contains the year group record to create.
- * @returns {{name: string}} The created year group record.
+ * @returns {{key: string, name: string}} The created year group record.
  */
 function createYearGroup(parameters) {
   return getController().createYearGroup(parameters.record);
@@ -77,15 +77,15 @@ function createYearGroup(parameters) {
  * Handler that updates an existing year group record.
  *
  * @param {Object} parameters - Request payload.
- * @param {{originalName: string, record: {name: string}}} parameters - Original name and updated record.
- * @returns {{name: string}} The updated year group record.
+ * @param {{key: string, record: {name: string}}} parameters - Key and updated record.
+ * @returns {{key: string, name: string}} The updated year group record.
  */
 function updateYearGroup(parameters) {
   return getController().updateYearGroup(parameters);
 }
 
 /**
- * Handler that deletes a year group record by name.
+ * Handler that deletes a year group record by key.
  *
  * @param {Object} parameters - Request payload.
  * @param {{key: string}} parameters - The year group key to delete.

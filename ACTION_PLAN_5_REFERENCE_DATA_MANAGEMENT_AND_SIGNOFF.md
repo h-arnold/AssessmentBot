@@ -22,6 +22,7 @@
 - The current docs do not match the real warm-up/query-key state.
 - Browser harness coverage exists at the transport layer, but not yet as a reusable Classes CRUD fixture set.
 - There is no dedicated `tests/api/referenceData*.test.js` suite; transport coverage currently lives in `tests/backend-api/referenceData.unit.test.js`.
+- Keep the Classes query invalidation surface limited to the live `runMutationWithRequiredClassPartialsRefresh()` helper; do not reintroduce `invalidateCohortsAfterMutation` or `invalidateYearGroupsAfterMutation` wrappers.
 
 ## Work packages
 
@@ -81,6 +82,7 @@ Acceptance:
 - Rollout notes preserve the destructive-reset assumption.
 - Follow-up notes preserve the deferred assessment-workflow refactor for numeric `yearGroup`.
 - Make it explicit that this deferred numeric `yearGroup` follow-up must be handled via downstream mapping/projection only; frontend/backend transport contracts must remain key-based (`yearGroupKey`) with no legacy fallback fields reintroduced.
+- Reference-data docs and notes should use key-based payloads: cohorts are `{ key, name, active, startYear, startMonth }` and year groups are `{ key, name }`, rather than the retired name-based contract.
 
 Documents to update:
 
