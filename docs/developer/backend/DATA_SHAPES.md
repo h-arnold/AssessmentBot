@@ -73,7 +73,7 @@ To balance performance with data fidelity in the Google Apps Script environment,
 `ABClass` is the root object for serialized classroom data. When stored in or
 rehydrated from a lightweight JSON-backed store such as JsonDbApp, the
 container (`ABClass`) itself is usually fully populated with its direct
-properties (for example: `classId`, `className`, `cohort`, `teachers`, and
+properties (for example: `classId`, `className`, `cohortKey`, `teachers`, and
 `students`). Nested domain objects may be partially hydrated to keep reads
 fast and payloads small. In our common pattern the `assignments` array is
 frequently stored with a "partial" (summary-level) representation so that
@@ -86,9 +86,9 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
 {
   "classId": "C123",
   "className": "Year 10 English",
-  "cohort": "2025",
+  "cohortKey": "2025",
   "courseLength": 1,
-  "yearGroup": 10,
+  "yearGroupKey": "10",
   "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
   "students": [{ "name": "Ada Lovelace", "email": "ada@school.com", "id": "S001" }],
   "assignments": [
@@ -168,9 +168,11 @@ The same schema is used for every hydration level. Partial definitions use `task
 {
   "classId": "C123",
   "className": "Year 10 English",
-  "cohort": "2025",
+  "cohortKey": "2025",
+  "cohortLabel": null,
   "courseLength": 1,
-  "yearGroup": 10,
+  "yearGroupKey": "10",
+  "yearGroupLabel": null,
   "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
   "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
   "active": true
@@ -315,7 +317,7 @@ Key notes:
 
 The ABClass write endpoints in `src/backend/z_Api/abclassMutations.js` split ownership of fields as follows:
 
-- User-managed inputs: `cohort`, `yearGroup`, `courseLength`, `active`
+- User-managed inputs: `cohortKey`, `yearGroupKey`, `courseLength`, `active`
 - Google-derived write-path fields: `className`, `classOwner`, `teachers`, `students`
 - Out of scope for these endpoints: `assignments` payload mutation
 
@@ -328,8 +330,8 @@ Request data:
 ```json
 {
   "classId": "1234567890",
-  "cohort": "2025",
-  "yearGroup": 10,
+  "cohortKey": "2025",
+  "yearGroupKey": "10",
   "courseLength": 2
 }
 ```
@@ -340,9 +342,9 @@ Response data:
 {
   "classId": "1234567890",
   "className": "Year 10 English",
-  "cohort": "2025",
+  "cohortKey": "2025",
   "courseLength": 2,
-  "yearGroup": 10,
+  "yearGroupKey": "10",
   "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
   "teachers": [{ "userId": "T1", "email": "teacher@school.com", "teacherName": "Ms Smith" }],
   "active": null
@@ -351,7 +353,7 @@ Response data:
 
 Key notes:
 
-- Required request fields: `classId`, `cohort`, `yearGroup`, `courseLength`.
+- Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
 - `courseLength` must be an integer greater than or equal to `1`.
 - The controller hydrates `classOwner`, `teachers`, and `students` from Google Classroom before persisting.
 - When the class already exists, the controller preserves existing `assignments` while refreshing roster data.
@@ -374,11 +376,11 @@ Response data uses the same partial class summary shape as `upsertABClass`.
 Key notes:
 
 - Required request field: `classId`.
-- Optional patch fields: `cohort`, `yearGroup`, `courseLength`, `active`.
+- Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`.
 - Forbidden transport fields: `classOwner`, `teachers`, `students`, `assignments`.
 - For an existing class, only supplied patch fields are updated. Excluded fields remain untouched.
-- If the class is missing, the controller creates it first and then returns the same partial summary shape.
-- On create-on-missing, unspecified fields retain the `ABClass` model defaults: `courseLength` stays `1`, `yearGroup` stays `null`, and `active` stays `null` unless explicitly supplied.
+- If the class is missing, the controller throws `RangeError`; `updateABClass` is not an upsert path.
+- For existing classes, omitted fields retain their stored values; the `ABClass` constructor defaults apply only on create paths such as `upsertABClass`.
 
 ### `deleteABClass` response data
 

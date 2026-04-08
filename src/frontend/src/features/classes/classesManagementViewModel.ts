@@ -34,7 +34,7 @@ export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
  *
  * @param {string | null} key Reference-data key.
  * @param {string | null} fallbackLabel Backend-provided fallback label.
- * @param {Readonly<Record<string, string>>} labelsByKey Labels indexed by key.
+ * @param {ReadonlyMap<string, string>} labelsByKey Labels indexed by key.
  * @returns {string | null} Display label.
  */
 function resolveLabel(

@@ -66,7 +66,7 @@ function toLabelsByKey(
 }
 
 /**
- * Derives readiness flags from the four classes-related queries.
+ * Collects typed ready-state datasets from the four classes-related queries.
  *
  * @param {Readonly<{
  *   googleClassroomsQuery: ReturnType<typeof useQuery>;
