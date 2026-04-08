@@ -18,9 +18,10 @@
 
 ## Current status note
 
-- The Classes CRUD surface now lives only under `SettingsPage` -> `Classes`; the obsolete top-level Classes navigation entry and placeholder page have been removed.
-- `SettingsPage` now controls the active settings tab and remounts `ClassesManagementPanel` when leaving the Classes tab, so selection resets on tab re-entry.
-- Browser and unit coverage now treat Classes as a Settings-tab feature, not a standalone page.
+- The live frontend no longer carries the obsolete standalone `ClassesPage` / `pageContent.classes` surface.
+- The live frontend no longer exposes the dead `useSelectedRows` state helper.
+- Canonical default ordering now stays owned by `classesManagementViewModel.ts`, with `ClassesTableColumns.tsx` and `ClassesTable.helpers.ts` consuming that shared contract.
+- The live frontend no longer computes the unused `hasErrorStartupDataset` readiness flag.
 - The exploration findings below are historical planning notes, not the current code state.
 
 ## Historical exploration findings to account for
