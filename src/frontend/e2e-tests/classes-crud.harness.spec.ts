@@ -8,8 +8,6 @@ import {
   openClassesTab,
 } from './classes-crud.shared';
 
-const unexpectedCallWaitTimeoutMs = 500;
-
 test.describe('Classes CRUD harness journey', () => {
   test('shows ready state when all startup warm-up queries succeed', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
@@ -102,7 +100,11 @@ test.describe('Classes CRUD harness journey', () => {
     });
 
     await openClassesTab(page);
-    await page.waitForTimeout(unexpectedCallWaitTimeoutMs);
-    expect(consoleMessages.some((message) => message.includes('Unexpected call'))).toBe(true);
+    await expect
+      .poll(
+        () => consoleMessages.some((message) => message.includes('Unexpected call')),
+        { message: 'Expected an unexpected backend call error in browser console.' }
+      )
+      .toBe(true);
   });
 });
