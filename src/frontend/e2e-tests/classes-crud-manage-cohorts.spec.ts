@@ -20,6 +20,10 @@ import {
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
+import {
+  deleteReferenceDataRowAndExpectBlocked,
+  deleteReferenceDataRowAndExpectRemoval,
+} from './helpers/classes-crud-delete-flow';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -260,20 +264,14 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
-
-    const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
-    await cohort2025Row.getByRole('button', { name: /delete/i }).click();
-
-    const confirmDialog = page.getByRole('dialog', { name: /delete cohort/i });
-    await expect(confirmDialog).toBeVisible();
-    await confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }).click();
-
-    await expect(confirmDialog).toHaveCount(0);
-    await expect(modal.getByText('Cohort 2025')).toHaveCount(0);
-    await expect(modal.getByText('Cohort 2024')).toBeVisible();
+    await deleteReferenceDataRowAndExpectRemoval(page, {
+      managementButtonName: 'Manage Cohorts',
+      managementDialogName: /manage cohorts/i,
+      rowName: /cohort 2025/i,
+      deleteDialogName: /delete cohort/i,
+      removedText: 'Cohort 2025',
+      remainingText: 'Cohort 2024',
+    });
   });
 
   test('keeps the delete dialog open with an inline Alert when delete is blocked because the cohort is in use', async ({
@@ -295,26 +293,12 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
-
-    const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
-    await cohort2025Row.getByRole('button', { name: /delete/i }).click();
-
-    const confirmDialog = page.getByRole('dialog', { name: /delete cohort/i });
-    await expect(confirmDialog).toBeVisible();
-    await confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }).click();
-
-    // Confirmation dialog must remain open with an explanatory alert.
-    await expect(confirmDialog).toBeVisible();
-    await expect(confirmDialog.getByRole('alert')).toBeVisible();
-    await expect(confirmDialog.getByRole('alert')).toContainText(/in use/i);
-
-    // The destructive button must be disabled so the user cannot retry blindly.
-    await expect(
-      confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }),
-    ).toBeDisabled();
+    await deleteReferenceDataRowAndExpectBlocked(page, {
+      managementButtonName: 'Manage Cohorts',
+      managementDialogName: /manage cohorts/i,
+      rowName: /cohort 2025/i,
+      deleteDialogName: /delete cohort/i,
+    });
   });
 
   test('closes the management modal via its close control', async ({ page }) => {

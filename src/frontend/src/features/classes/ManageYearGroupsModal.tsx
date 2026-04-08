@@ -13,9 +13,9 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Input, Modal, Space, Table, type TableColumnType } from 'antd';
+import { Button, Flex, Form, Modal, Space, Table, type TableColumnType } from 'antd';
 import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
 import {
   createYearGroup,
@@ -24,8 +24,12 @@ import {
 } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
-import { InlineDialog } from './InlineDialog';
 import { isInUseError, getDeleteErrorMessage } from './manageReferenceDataHelpers';
+import {
+  ReferenceDataDeleteDialog,
+  ReferenceDataFormDialog,
+  type ReferenceDataFormValues,
+} from './manageReferenceDataDialogs';
 
 export type ManageYearGroupsModalProperties = Readonly<{
   open: boolean;
@@ -34,9 +38,7 @@ export type ManageYearGroupsModalProperties = Readonly<{
 
 type FormMode = 'create' | 'edit';
 
-type YearGroupFormValues = Readonly<{
-  name: string;
-}>;
+type YearGroupFormValues = ReferenceDataFormValues;
 
 type DeleteDialogState = Readonly<{
   open: boolean;
@@ -56,104 +58,6 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 
 const FORM_DIALOG_LABEL_ID = 'manage-year-groups-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
-
-type YearGroupFormSectionProperties = Readonly<{
-  editingYearGroup: YearGroup | null;
-  form: ReturnType<typeof Form.useForm<YearGroupFormValues>>[0];
-  formDialogTitle: string;
-  formError: string | null;
-  formSubmitting: boolean;
-  onClose: () => void;
-  onFinish: (values: YearGroupFormValues) => Promise<void>;
-  onOk: () => void;
-}>;
-
-/**
- * Renders the create/edit form inline dialog.
- *
- * @param {YearGroupFormSectionProperties} properties Section properties.
- * @returns {JSX.Element} The inline form dialog section.
- */
-function YearGroupFormSection(properties: YearGroupFormSectionProperties) {
-  return (
-    <InlineDialog labelId={FORM_DIALOG_LABEL_ID} title={properties.formDialogTitle}>
-      {properties.formError === null ? null : (
-        <Alert
-          description={properties.formError}
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      <Form<YearGroupFormValues>
-        key={properties.editingYearGroup?.key ?? 'create'}
-        form={properties.form}
-        layout="vertical"
-        onFinish={properties.onFinish}
-        initialValues={properties.editingYearGroup === null ? undefined : { name: properties.editingYearGroup.name }}
-      >
-        <Form.Item
-          label="Name"
-          name="name"
-          rules={[{ required: true, message: 'Please enter a year group name.' }]}
-        >
-          <Input disabled={properties.formSubmitting} />
-        </Form.Item>
-      </Form>
-      <Space style={{ marginTop: 16 }}>
-        <Button onClick={properties.onClose}>Cancel</Button>
-        <Button type="primary" loading={properties.formSubmitting} onClick={properties.onOk}>
-          OK
-        </Button>
-      </Space>
-    </InlineDialog>
-  );
-}
-
-type YearGroupDeleteSectionProperties = Readonly<{
-  deleteState: DeleteDialogState;
-  onClose: () => void;
-  onConfirm: () => void;
-}>;
-
-/**
- * Renders the delete confirmation inline dialog.
- *
- * @param {YearGroupDeleteSectionProperties} properties Section properties.
- * @returns {JSX.Element} The inline delete dialog section.
- */
-function YearGroupDeleteSection(properties: YearGroupDeleteSectionProperties) {
-  const { deleteState, onClose, onConfirm } = properties;
-
-  return (
-    <InlineDialog labelId={DELETE_DIALOG_LABEL_ID} title="Delete year group">
-      {deleteState.error === null ? (
-        <p>
-          Are you sure you want to delete{' '}
-          <strong>{deleteState.yearGroup?.name ?? 'this year group'}</strong>?
-        </p>
-      ) : (
-        <Alert
-          description={deleteState.error}
-          type="error"
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      <Space style={{ marginTop: 16 }}>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          danger
-          disabled={deleteState.blocked || deleteState.submitting}
-          loading={deleteState.submitting}
-          onClick={onConfirm}
-        >
-          Delete
-        </Button>
-      </Space>
-    </InlineDialog>
-  );
-}
 
 type YearGroupColumnsOptions = Readonly<{
   onEdit: (yearGroup: YearGroup) => void;
@@ -186,6 +90,169 @@ function buildYearGroupColumns(options: YearGroupColumnsOptions): TableColumnTyp
   ];
 }
 
+type YearGroupFormDialogProperties = Readonly<{
+  editingYearGroup: YearGroup | null;
+  form: ReturnType<typeof Form.useForm<YearGroupFormValues>>[0];
+  formDialogTitle: string;
+  formError: string | null;
+  formMode: FormMode | null;
+  formSubmitting: boolean;
+  onClose: () => void;
+  onFinish: (values: YearGroupFormValues) => Promise<void>;
+  onOk: () => void;
+}>;
+
+/**
+ * Returns the shared year-group form dialog when the form is open.
+ *
+ * @param {YearGroupFormDialogProperties} properties Dialog properties.
+ * @returns {JSX.Element | null} Rendered year-group form dialog.
+ */
+function renderYearGroupFormDialog(properties: YearGroupFormDialogProperties) {
+  if (properties.formMode === null) {
+    return null;
+  }
+
+  return (
+    <ReferenceDataFormDialog
+      formKey={properties.editingYearGroup?.key ?? 'create'}
+      form={properties.form}
+      initialName={properties.editingYearGroup?.name ?? null}
+      labelId={FORM_DIALOG_LABEL_ID}
+      title={properties.formDialogTitle}
+      formError={properties.formError}
+      formSubmitting={properties.formSubmitting}
+      validationMessage="Please enter a year group name."
+      onClose={properties.onClose}
+      onFinish={properties.onFinish}
+      onOk={properties.onOk}
+    />
+  );
+}
+
+type YearGroupDeleteDialogProperties = Readonly<{
+  deleteState: DeleteDialogState;
+  onClose: () => void;
+  onConfirm: () => void;
+}>;
+
+/**
+ * Returns the shared year-group delete dialog when delete mode is open.
+ *
+ * @param {YearGroupDeleteDialogProperties} properties Dialog properties.
+ * @returns {JSX.Element | null} Rendered year-group delete dialog.
+ */
+function renderYearGroupDeleteDialog(properties: YearGroupDeleteDialogProperties) {
+  if (!properties.deleteState.open) {
+    return null;
+  }
+
+  return (
+    <ReferenceDataDeleteDialog
+      blocked={properties.deleteState.blocked}
+      entityLabel="year group"
+      entityName={properties.deleteState.yearGroup?.name ?? null}
+      error={properties.deleteState.error}
+      labelId={DELETE_DIALOG_LABEL_ID}
+      submitting={properties.deleteState.submitting}
+      title="Delete year group"
+      onClose={properties.onClose}
+      onConfirm={properties.onConfirm}
+    />
+  );
+}
+
+type YearGroupFormFinishHandlerProperties = Readonly<{
+  closeFormDialog: () => void;
+  editingYearGroup: YearGroup | null;
+  formMode: FormMode | null;
+  queryClient: QueryClient;
+  setFormError: (message: string | null) => void;
+  setFormSubmitting: (isSubmitting: boolean) => void;
+}>;
+
+/**
+ * Builds the year-group form submit handler.
+ *
+ * @param {YearGroupFormFinishHandlerProperties} properties Handler dependencies.
+ * @returns {(values: YearGroupFormValues) => Promise<void>} Form submit handler.
+ */
+function createYearGroupFormFinishHandler(properties: YearGroupFormFinishHandlerProperties) {
+  return async function handleFormFinish(values: YearGroupFormValues): Promise<void> {
+    properties.setFormSubmitting(true);
+    properties.setFormError(null);
+
+    try {
+      if (properties.formMode === 'create') {
+        await createYearGroup({ record: { name: values.name } });
+      } else {
+        if (properties.editingYearGroup === null) {
+          throw new Error('Unable to save the year group.');
+        }
+
+        await updateYearGroup({
+          key: properties.editingYearGroup.key,
+          record: { name: values.name },
+        });
+      }
+
+      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+      properties.closeFormDialog();
+    } catch (error: unknown) {
+      properties.setFormError(error instanceof Error ? error.message : 'Unable to save the year group.');
+    } finally {
+      properties.setFormSubmitting(false);
+    }
+  };
+}
+
+type YearGroupDeleteConfirmHandlerProperties = Readonly<{
+  deleteState: DeleteDialogState;
+  queryClient: QueryClient;
+  setDeleteState: (updater: (previous: DeleteDialogState) => DeleteDialogState) => void;
+}>;
+
+/**
+ * Builds the year-group delete confirmation handler.
+ *
+ * @param {YearGroupDeleteConfirmHandlerProperties} properties Handler dependencies.
+ * @returns {() => Promise<void>} Delete confirmation handler.
+ */
+function createYearGroupDeleteConfirmHandler(properties: YearGroupDeleteConfirmHandlerProperties) {
+  return async function handleDeleteConfirm(): Promise<void> {
+    if (properties.deleteState.yearGroup === null) {
+      return;
+    }
+
+    properties.setDeleteState((previous) => ({ ...previous, submitting: true, error: null }));
+
+    try {
+      await deleteYearGroup({ key: properties.deleteState.yearGroup.key });
+      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+      properties.setDeleteState(() => INITIAL_DELETE_STATE);
+    } catch (error: unknown) {
+      const blocked = isInUseError(error);
+
+      properties.setDeleteState((previous) => ({
+        ...previous,
+        submitting: false,
+        error: getDeleteErrorMessage(error, blocked, 'year group'),
+        blocked,
+      }));
+    }
+  };
+}
+
+/**
+ * Returns the dialog title for the current year-group form mode.
+ *
+ * @param {FormMode | null} formMode Current form mode.
+ * @returns {string} Form dialog title.
+ */
+function getYearGroupFormDialogTitle(formMode: FormMode | null): string {
+  return formMode === 'create' ? 'Create year group' : 'Edit year group';
+}
+
 /**
  * Renders the Manage Year Groups modal workflow.
  *
@@ -203,6 +270,19 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
+  const handleFormFinish = createYearGroupFormFinishHandler({
+    closeFormDialog,
+    editingYearGroup,
+    formMode,
+    queryClient,
+    setFormError,
+    setFormSubmitting,
+  });
+  const handleDeleteConfirm = createYearGroupDeleteConfirmHandler({
+    deleteState,
+    queryClient,
+    setDeleteState,
+  });
 
   /**
    * Opens the create form with blank fields.
@@ -231,11 +311,16 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
    * Closes the form dialog and resets transient form state.
    */
   function closeFormDialog(): void {
+    const wasFormOpen = formMode !== null;
+
     setFormMode(null);
     setEditingYearGroup(null);
     setFormError(null);
     setFormSubmitting(false);
-    form.resetFields();
+
+    if (wasFormOpen) {
+      form.resetFields();
+    }
   }
 
   /**
@@ -246,71 +331,6 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     setDeleteState(INITIAL_DELETE_STATE);
     properties.onClose();
   }
-
-  /**
-   * Submits the create or edit form and invalidates yearGroups on success.
-   *
-   * @param {YearGroupFormValues} values Validated form values.
-   * @returns {Promise<void>} Resolves when the mutation and invalidation complete.
-   */
-  async function handleFormFinish(values: YearGroupFormValues): Promise<void> {
-    setFormSubmitting(true);
-    setFormError(null);
-
-    try {
-      if (formMode === 'create') {
-        await createYearGroup({ record: { name: values.name } });
-      } else {
-        if (editingYearGroup === null) {
-          console.error('ManageYearGroupsModal invariant violated: editingYearGroup must be set when formMode is edit');
-          throw new Error('Unable to save the year group.');
-        }
-
-        await updateYearGroup({
-          key: editingYearGroup.key,
-          record: { name: values.name },
-        });
-      }
-
-      await queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
-      closeFormDialog();
-    } catch (error: unknown) {
-      setFormError(error instanceof Error ? error.message : 'Unable to save the year group.');
-    } finally {
-      setFormSubmitting(false);
-    }
-  }
-
-  /**
-   * Confirms the delete action, handling blocked and generic failures.
-   *
-   * @returns {Promise<void>} Resolves when the mutation settles.
-   */
-  async function handleDeleteConfirm(): Promise<void> {
-    if (deleteState.yearGroup === null) {
-      return;
-    }
-
-    setDeleteState((previous) => ({ ...previous, submitting: true, error: null }));
-
-    try {
-      await deleteYearGroup({ key: deleteState.yearGroup.key });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
-      setDeleteState(INITIAL_DELETE_STATE);
-    } catch (error: unknown) {
-      const blocked = isInUseError(error);
-
-      setDeleteState((previous) => ({
-        ...previous,
-        submitting: false,
-        error: getDeleteErrorMessage(error, blocked, 'year group'),
-        blocked,
-      }));
-    }
-  }
-
-  const formDialogTitle = formMode === 'create' ? 'Create year group' : 'Edit year group';
-  const isFormDialogOpen = formMode !== null;
 
   const columns = buildYearGroupColumns({
     onEdit: openEditForm,
@@ -344,26 +364,23 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
         />
       </Flex>
 
-      {isFormDialogOpen ? (
-        <YearGroupFormSection
-          editingYearGroup={editingYearGroup}
-          form={form}
-          formDialogTitle={formDialogTitle}
-          formError={formError}
-          formSubmitting={formSubmitting}
-          onClose={closeFormDialog}
-          onFinish={handleFormFinish}
-          onOk={() => { form.submit(); }}
-        />
-      ) : null}
+      {renderYearGroupFormDialog({
+        editingYearGroup,
+        form,
+        formDialogTitle: getYearGroupFormDialogTitle(formMode),
+        formError,
+        formMode,
+        formSubmitting,
+        onClose: closeFormDialog,
+        onFinish: handleFormFinish,
+        onOk: () => { form.submit(); },
+      })}
 
-      {deleteState.open ? (
-        <YearGroupDeleteSection
-          deleteState={deleteState}
-          onClose={() => { setDeleteState(INITIAL_DELETE_STATE); }}
-          onConfirm={() => { void handleDeleteConfirm(); }}
-        />
-      ) : null}
+      {renderYearGroupDeleteDialog({
+        deleteState,
+        onClose: () => { setDeleteState(INITIAL_DELETE_STATE); },
+        onConfirm: () => { void handleDeleteConfirm(); },
+      })}
     </Modal>
   );
 }

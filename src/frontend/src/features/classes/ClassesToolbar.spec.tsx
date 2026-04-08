@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ClassesToolbar } from './ClassesToolbar';
+import { ClassesToolbar, type ClassesToolbarProperties } from './ClassesToolbar';
 import { statusCoverageRows } from './classesTestHelpers';
 
 const nonDeleteActionNames = [
@@ -13,14 +13,33 @@ const nonDeleteActionNames = [
 ] as const;
 const metadataActionNames = ['Set cohort', 'Set year group', 'Set course length'] as const;
 
+type ManagementLauncherCase = Readonly<{
+  buttonName: string;
+  createOverrides: (onClick: () => void) => Partial<ClassesToolbarProperties>;
+}>;
+
+const managementLauncherCases: readonly ManagementLauncherCase[] = [
+  {
+    buttonName: 'Manage Cohorts',
+    createOverrides: (onClick) => ({ onManageCohorts: onClick }),
+  },
+  {
+    buttonName: 'Manage Year Groups',
+    createOverrides: (onClick) => ({ onManageYearGroups: onClick }),
+  },
+];
+
 /**
  * Renders the toolbar against the shared classes status-coverage rows.
  *
  * @param {string[]} selectedRowKeys Selected row identifiers.
- * @returns {void}
+ * @param {Partial<ClassesToolbarProperties>} [overrides] Toolbar property overrides.
+ * @returns {ReturnType<typeof render>} Testing Library render result.
  */
-function renderToolbar(selectedRowKeys: string[]) {
-  render(<ClassesToolbar rows={statusCoverageRows} selectedRowKeys={selectedRowKeys} />);
+function renderToolbar(selectedRowKeys: string[], overrides: Partial<ClassesToolbarProperties> = {}) {
+  return render(
+    <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={selectedRowKeys} {...overrides} />,
+  );
 }
 
 /**
@@ -80,73 +99,30 @@ describe('ClassesToolbar', () => {
     expectButtonsDisabled(metadataActionNames);
   });
 
-  describe('Manage Cohorts launcher', () => {
-    it('renders the Manage Cohorts button regardless of selection state', () => {
-      renderToolbar([]);
+  it.each(managementLauncherCases)('$buttonName launcher remains enabled for any selection', ({
+    buttonName,
+  }) => {
+    const { rerender } = renderToolbar([]);
 
-      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeInTheDocument();
-    });
+    expect(screen.getByRole('button', { name: buttonName })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
 
-    it('keeps the Manage Cohorts button enabled at all times', () => {
-      renderToolbar([]);
+    rerender(
+      <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={['active-1', 'inactive-1']} />,
+    );
 
-      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
-    });
-
-    it('keeps the Manage Cohorts button enabled when rows are selected', () => {
-      renderToolbar(['active-1', 'inactive-1']);
-
-      expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
-    });
-
-    it('calls onManageCohorts when the Manage Cohorts button is clicked', () => {
-      const onManageCohorts = vi.fn();
-      render(
-        <ClassesToolbar
-          rows={statusCoverageRows}
-          selectedRowKeys={[]}
-          onManageCohorts={onManageCohorts}
-        />,
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: 'Manage Cohorts' }));
-
-      expect(onManageCohorts).toHaveBeenCalledOnce();
-    });
+    expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
   });
 
-  describe('Manage Year Groups launcher', () => {
-    it('renders the Manage Year Groups button regardless of selection state', () => {
-      renderToolbar([]);
+  it.each(managementLauncherCases)('calls $buttonName handler when clicked', ({
+    buttonName,
+    createOverrides,
+  }) => {
+    const onClick = vi.fn();
+    renderToolbar([], createOverrides(onClick));
 
-      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByRole('button', { name: buttonName }));
 
-    it('keeps the Manage Year Groups button enabled at all times', () => {
-      renderToolbar([]);
-
-      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
-    });
-
-    it('keeps the Manage Year Groups button enabled when rows are selected', () => {
-      renderToolbar(['active-1', 'inactive-1']);
-
-      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
-    });
-
-    it('calls onManageYearGroups when the Manage Year Groups button is clicked', () => {
-      const onManageYearGroups = vi.fn();
-      render(
-        <ClassesToolbar
-          rows={statusCoverageRows}
-          selectedRowKeys={[]}
-          onManageYearGroups={onManageYearGroups}
-        />,
-      );
-
-      fireEvent.click(screen.getByRole('button', { name: 'Manage Year Groups' }));
-
-      expect(onManageYearGroups).toHaveBeenCalledOnce();
-    });
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });

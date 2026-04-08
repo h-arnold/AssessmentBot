@@ -18,9 +18,10 @@ import { ManageCohortsModal } from './ManageCohortsModal';
 
 const createCohortMock = vi.hoisted(() => vi.fn());
 const updateCohortMock = vi.hoisted(() => vi.fn());
+const getCohortsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/referenceDataService', () => ({
-  getCohorts: vi.fn(),
+  getCohorts: getCohortsMock,
   createCohort: createCohortMock,
   updateCohort: updateCohortMock,
   deleteCohort: vi.fn(),
@@ -62,6 +63,7 @@ function renderManageCohortsModal(options: { open?: boolean; cohorts?: Cohort[] 
   const queryClient = createAppQueryClient();
 
   queryClient.setQueryData(queryKeys.cohorts(), cohorts);
+  getCohortsMock.mockResolvedValue(cohorts);
 
   return renderWithFrontendProviders(<ManageCohortsModal open={open} onClose={onCloseMock} />, {
     queryClient,
@@ -70,6 +72,7 @@ function renderManageCohortsModal(options: { open?: boolean; cohorts?: Cohort[] 
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getCohortsMock.mockResolvedValue(seedCohorts);
 });
 
 describe('ManageCohortsModal', () => {

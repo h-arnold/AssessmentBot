@@ -19,6 +19,10 @@ import {
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
 } from './classes-crud.shared';
+import {
+  deleteReferenceDataRowAndExpectBlocked,
+  deleteReferenceDataRowAndExpectRemoval,
+} from './helpers/classes-crud-delete-flow';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -196,20 +200,14 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
-
-    const year7Row = modal.getByRole('row', { name: /year 7/i });
-    await year7Row.getByRole('button', { name: /delete/i }).click();
-
-    const confirmDialog = page.getByRole('dialog', { name: /delete year group/i });
-    await expect(confirmDialog).toBeVisible();
-    await confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }).click();
-
-    await expect(confirmDialog).toHaveCount(0);
-    await expect(modal.getByText('Year 7')).toHaveCount(0);
-    await expect(modal.getByText('Year 8')).toBeVisible();
+    await deleteReferenceDataRowAndExpectRemoval(page, {
+      managementButtonName: 'Manage Year Groups',
+      managementDialogName: /manage year groups/i,
+      rowName: /year 7/i,
+      deleteDialogName: /delete year group/i,
+      removedText: 'Year 7',
+      remainingText: 'Year 8',
+    });
   });
 
   test('keeps the delete dialog open with an inline Alert when delete is blocked because the year group is in use', async ({
@@ -231,26 +229,12 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
-
-    const year7Row = modal.getByRole('row', { name: /year 7/i });
-    await year7Row.getByRole('button', { name: /delete/i }).click();
-
-    const confirmDialog = page.getByRole('dialog', { name: /delete year group/i });
-    await expect(confirmDialog).toBeVisible();
-    await confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }).click();
-
-    // Confirmation dialog must remain open with an explanatory alert.
-    await expect(confirmDialog).toBeVisible();
-    await expect(confirmDialog.getByRole('alert')).toBeVisible();
-    await expect(confirmDialog.getByRole('alert')).toContainText(/in use/i);
-
-    // The destructive button must be disabled so the user cannot retry blindly.
-    await expect(
-      confirmDialog.getByRole('button', { name: /delete|confirm|ok/i }),
-    ).toBeDisabled();
+    await deleteReferenceDataRowAndExpectBlocked(page, {
+      managementButtonName: 'Manage Year Groups',
+      managementDialogName: /manage year groups/i,
+      rowName: /year 7/i,
+      deleteDialogName: /delete year group/i,
+    });
   });
 
   test('closes the management modal via its close control', async ({ page }) => {

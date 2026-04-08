@@ -15,6 +15,7 @@ const {
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
 } = require('../helpers/apiHandlerTestUtils.js');
+const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 const SECTION_1_API_METHOD_NAMES = Object.freeze([
   'getGoogleClassrooms',
@@ -161,6 +162,91 @@ function buildReferenceDataHandlers() {
     ])
   );
 }
+
+function handleApiRequest(method, params) {
+  const { ApiDispatcher } = loadApiHandlerModule();
+  return ApiDispatcher.getInstance().handle({
+    method,
+    ...(params === undefined ? {} : { params }),
+  });
+}
+
+function expectFailureEnvelope(response, { code, message, withRequestId = false }) {
+  if (withRequestId) {
+    expect(response).toEqual({
+      ok: false,
+      requestId: response.requestId,
+      error: {
+        code,
+        message,
+        retriable: false,
+      },
+    });
+    expect(response.requestId).toEqual(expect.any(String));
+    return;
+  }
+
+  expect(response).toMatchObject({
+    ok: false,
+    error: {
+      code,
+      message,
+      retriable: false,
+    },
+  });
+}
+
+const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
+  {
+    description:
+      'maps controller validation failures for reference-data handlers to the existing API failure envelope',
+    methodName: 'createCohort',
+    params: buildReferenceDataParams('createCohort'),
+    handlerName: 'createCohort',
+    errorMessage: 'Invalid cohort payload',
+    requestId: 'req-create-cohort',
+    withRequestId: false,
+  },
+  {
+    description:
+      'maps ApiValidationError from a new Section 1 handler to INVALID_REQUEST and preserves the failure envelope shape',
+    methodName: 'upsertABClass',
+    params: buildSection1Params('upsertABClass'),
+    handlerName: 'upsertABClass',
+    errorMessage: 'Invalid ABClass payload',
+    requestId: 'req-upsert-abclass',
+    withRequestId: true,
+  },
+  {
+    description:
+      'maps ApiValidationError from updateABClass to INVALID_REQUEST and preserves the failure envelope shape',
+    methodName: 'updateABClass',
+    params: buildSection1Params('updateABClass'),
+    handlerName: 'updateABClass',
+    errorMessage: 'Invalid ABClass update payload',
+    requestId: 'req-update-abclass',
+    withRequestId: true,
+  },
+]);
+
+const IN_USE_FAILURE_CASES = Object.freeze([
+  {
+    description:
+      'maps a plain Error with reason = IN_USE from deleteCohort to error.code = IN_USE (delete-blocked contract)',
+    methodName: 'deleteCohort',
+    params: buildReferenceDataParams('deleteCohort'),
+    handlerName: 'deleteCohort',
+    errorMessage: 'Cohort record is referenced by one or more classes',
+  },
+  {
+    description:
+      'maps a plain Error with reason = IN_USE from deleteYearGroup to error.code = IN_USE (delete-blocked contract)',
+    methodName: 'deleteYearGroup',
+    params: buildReferenceDataParams('deleteYearGroup'),
+    handlerName: 'deleteYearGroup',
+    errorMessage: 'Year group record is referenced by one or more classes',
+  },
+]);
 
 function loadApiConstantsModule() {
   delete require.cache[require.resolve(apiConstantsPath)];
@@ -712,150 +798,48 @@ describe('Api/apiHandler dispatcher', () => {
     expect(response.data.error).toBeUndefined();
   });
 
-  it('maps controller validation failures for reference-data handlers to the existing API failure envelope', () => {
-    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-    globalThis.createCohort.mockImplementation(() => {
-      throw new ApiValidationError('Invalid cohort payload', { requestId: 'req-create-cohort' });
-    });
-
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
-
-    const response = dispatcher.handle({
-      method: 'createCohort',
-      params: buildReferenceDataParams('createCohort'),
-    });
-
-    expect(response).toMatchObject({
-      ok: false,
-      error: {
-        code: 'INVALID_REQUEST',
-        message: 'Invalid cohort payload',
-        retriable: false,
-      },
-    });
-  });
-
-  it('maps ApiValidationError from a new Section 1 handler to INVALID_REQUEST and preserves the failure envelope shape', () => {
-    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-    globalThis.upsertABClass.mockImplementation(() => {
-      throw new ApiValidationError('Invalid ABClass payload', { requestId: 'req-upsert-abclass' });
-    });
-
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
-
-    const response = dispatcher.handle({
-      method: 'upsertABClass',
-      params: buildSection1Params('upsertABClass'),
-    });
-
-    expect(response).toEqual({
-      ok: false,
-      requestId: response.requestId,
-      error: {
-        code: 'INVALID_REQUEST',
-        message: 'Invalid ABClass payload',
-        retriable: false,
-      },
-    });
-    expect(response.requestId).toEqual(expect.any(String));
-  });
-
-  it('maps ApiValidationError from updateABClass to INVALID_REQUEST and preserves the failure envelope shape', () => {
-    const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-    globalThis.updateABClass.mockImplementation(() => {
-      throw new ApiValidationError('Invalid ABClass update payload', {
-        requestId: 'req-update-abclass',
+  it.each(INVALID_REQUEST_FAILURE_CASES)(
+    '$description',
+    ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
+      globalThis[handlerName].mockImplementation(() => {
+        throw new ApiValidationError(errorMessage, { requestId });
       });
-    });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+      const response = handleApiRequest(methodName, params);
 
-    const response = dispatcher.handle({
-      method: 'updateABClass',
-      params: buildSection1Params('updateABClass'),
-    });
-
-    expect(response).toEqual({
-      ok: false,
-      requestId: response.requestId,
-      error: {
+      expectFailureEnvelope(response, {
         code: 'INVALID_REQUEST',
-        message: 'Invalid ABClass update payload',
-        retriable: false,
-      },
-    });
-    expect(response.requestId).toEqual(expect.any(String));
-  });
+        message: errorMessage,
+        withRequestId,
+      });
+    }
+  );
 
-  it('maps a plain Error with reason = IN_USE from deleteCohort to error.code = IN_USE (delete-blocked contract)', () => {
-    const blockedError = new Error('Cohort record is referenced by one or more classes');
-    blockedError.reason = 'IN_USE';
-    globalThis.deleteCohort.mockImplementation(() => {
-      throw blockedError;
-    });
+  it.each(IN_USE_FAILURE_CASES)(
+    '$description',
+    ({ methodName, params, handlerName, errorMessage }) => {
+      const blockedError = new Error(errorMessage);
+      blockedError.reason = 'IN_USE';
+      globalThis[handlerName].mockImplementation(() => {
+        throw blockedError;
+      });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+      const response = handleApiRequest(methodName, params);
 
-    const response = dispatcher.handle({
-      method: 'deleteCohort',
-      params: buildReferenceDataParams('deleteCohort'),
-    });
-
-    expect(response).toEqual({
-      ok: false,
-      requestId: response.requestId,
-      error: {
+      expectFailureEnvelope(response, {
         code: 'IN_USE',
         message: expect.any(String),
-        retriable: false,
-      },
-    });
-    expect(response.requestId).toEqual(expect.any(String));
-  });
-
-  it('maps a plain Error with reason = IN_USE from deleteYearGroup to error.code = IN_USE (delete-blocked contract)', () => {
-    const blockedError = new Error('Year group record is referenced by one or more classes');
-    blockedError.reason = 'IN_USE';
-    globalThis.deleteYearGroup.mockImplementation(() => {
-      throw blockedError;
-    });
-
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
-
-    const response = dispatcher.handle({
-      method: 'deleteYearGroup',
-      params: buildReferenceDataParams('deleteYearGroup'),
-    });
-
-    expect(response).toEqual({
-      ok: false,
-      requestId: response.requestId,
-      error: {
-        code: 'IN_USE',
-        message: expect.any(String),
-        retriable: false,
-      },
-    });
-    expect(response.requestId).toEqual(expect.any(String));
-  });
+        withRequestId: true,
+      });
+    }
+  );
 
   it('does not map a plain Error without reason = IN_USE to IN_USE (generic errors remain INTERNAL_ERROR)', () => {
     globalThis.deleteCohort.mockImplementation(() => {
       throw new Error('Something else exploded');
     });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
-
-    const response = dispatcher.handle({
-      method: 'deleteCohort',
-      params: buildReferenceDataParams('deleteCohort'),
-    });
+    const response = handleApiRequest('deleteCohort', buildReferenceDataParams('deleteCohort'));
 
     expect(response).toMatchObject({
       ok: false,
@@ -871,21 +855,14 @@ describe('Api/apiHandler dispatcher', () => {
       throw new Error('year-group update exploded');
     });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const response = handleApiRequest(
+      'updateYearGroup',
+      buildReferenceDataParams('updateYearGroup')
+    );
 
-    const response = dispatcher.handle({
-      method: 'updateYearGroup',
-      params: buildReferenceDataParams('updateYearGroup'),
-    });
-
-    expect(response).toMatchObject({
-      ok: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal API error.',
-        retriable: false,
-      },
+    expectFailureEnvelope(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Internal API error.',
     });
   });
 
@@ -894,24 +871,13 @@ describe('Api/apiHandler dispatcher', () => {
       throw new Error('delete exploded');
     });
 
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
+    const response = handleApiRequest('deleteABClass', buildSection1Params('deleteABClass'));
 
-    const response = dispatcher.handle({
-      method: 'deleteABClass',
-      params: buildSection1Params('deleteABClass'),
+    expectFailureEnvelope(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Internal API error.',
+      withRequestId: true,
     });
-
-    expect(response).toEqual({
-      ok: false,
-      requestId: response.requestId,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Internal API error.',
-        retriable: false,
-      },
-    });
-    expect(response.requestId).toEqual(expect.any(String));
   });
 
   it('throws when an unrecognised handler name is passed to _invokeAllowlistedMethod', () => {

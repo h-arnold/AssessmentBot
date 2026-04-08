@@ -18,13 +18,14 @@ import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const createYearGroupMock = vi.hoisted(() => vi.fn());
 const updateYearGroupMock = vi.hoisted(() => vi.fn());
+const getYearGroupsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/referenceDataService', () => ({
   getCohorts: vi.fn(),
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
   deleteCohort: vi.fn(),
-  getYearGroups: vi.fn(),
+  getYearGroups: getYearGroupsMock,
   createYearGroup: createYearGroupMock,
   updateYearGroup: updateYearGroupMock,
   deleteYearGroup: vi.fn(),
@@ -52,6 +53,7 @@ function renderManageYearGroupsModal(
   const queryClient = createAppQueryClient();
 
   queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
+  getYearGroupsMock.mockResolvedValue(yearGroups);
 
   return renderWithFrontendProviders(
     <ManageYearGroupsModal open={open} onClose={onCloseMock} />,
@@ -61,6 +63,7 @@ function renderManageYearGroupsModal(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getYearGroupsMock.mockResolvedValue(seedYearGroups);
 });
 
 describe('ManageYearGroupsModal', () => {
