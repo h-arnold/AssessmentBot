@@ -37,7 +37,6 @@ type ClassesQueriesState = Readonly<{
 
 type ClassesQuerySnapshot = Readonly<{
   data: unknown;
-  isError: boolean;
   isPending: boolean;
 }>;
 

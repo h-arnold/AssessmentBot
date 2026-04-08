@@ -3,7 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGoogleScriptRunApiHandlerMock } from '../../test/googleScriptRunHarness';
 import { getClassesTableColumns, UNAVAILABLE_VALUE } from './ClassesTableColumns';
-import type { ClassesManagementRow } from './classesManagementViewModel';
+import {
+  compareRowsByDefaultPriority,
+  type ClassesManagementRow,
+} from './classesManagementViewModel';
 
 const classesManagementStateMock = vi.fn();
 const unavailableCellCount = 4;
@@ -218,28 +221,7 @@ describe('ClassesTableColumns', () => {
     expect(activeRender(null, inactiveRow, 0)).toBe('No');
   });
 
-  it('exposes the default ordering contract from the canonical view-model module surface', async () => {
-    const classesManagementViewModelModule = (await import('./classesManagementViewModel')) as Record<string, unknown>;
-    const classesTableColumnsModule = (await import('./ClassesTableColumns')) as Record<string, unknown>;
-
-    expect(classesManagementViewModelModule).toMatchObject({
-      STATUS_ORDER: {
-        active: 0,
-        inactive: 1,
-        notCreated: 2,
-        orphaned: 3,
-      },
-    });
-    expect(classesManagementViewModelModule).toHaveProperty('compareRowsByDefaultPriority');
-    expect(classesTableColumnsModule).not.toHaveProperty('STATUS_ORDER');
-    expect(classesTableColumnsModule).not.toHaveProperty('compareRowsByDefaultPriority');
-  });
-
-  it('applies status-priority then case-insensitive class-name tie-break ordering', async () => {
-    const classesManagementViewModelModule = (await import('./classesManagementViewModel')) as Record<string, unknown>;
-    const compareRowsByDefaultPriority = classesManagementViewModelModule.compareRowsByDefaultPriority as
-      | ((left: ClassesManagementRow, right: ClassesManagementRow) => number)
-      | undefined;
+  it('applies status-priority then case-insensitive class-name tie-break ordering', () => {
     const unsortedRows = [
       { ...activeRow, classId: 'beta-id', className: 'beta' },
       { ...activeRow, classId: 'alpha-id', className: 'Alpha' },
@@ -247,8 +229,7 @@ describe('ClassesTableColumns', () => {
       { ...inactiveRow },
     ];
 
-    expect(typeof compareRowsByDefaultPriority).toBe('function');
-    expect(unsortedRows.toSorted(compareRowsByDefaultPriority!).map((row) => row.classId)).toEqual([
+    expect(unsortedRows.toSorted(compareRowsByDefaultPriority).map((row) => row.classId)).toEqual([
       'alpha-id',
       'alpha-id-2',
       'beta-id',

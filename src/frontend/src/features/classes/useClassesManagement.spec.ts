@@ -27,7 +27,6 @@ describe('useClassesManagement', () => {
     useQueryMock
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [
           { classId: 'class-1', className: 'Alpha' },
           { classId: 'class-2', className: 'Beta' },
@@ -35,17 +34,14 @@ describe('useClassesManagement', () => {
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       });
 
@@ -77,7 +73,6 @@ describe('useClassesManagement', () => {
     useQueryMock
       .mockReturnValueOnce({
         isPending: false,
-        isError: true,
         error: new ApiTransportError({
           requestId: 'request-classes',
           error: {
@@ -89,17 +84,14 @@ describe('useClassesManagement', () => {
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       });
 
@@ -120,22 +112,18 @@ describe('useClassesManagement', () => {
     useQueryMock
       .mockReturnValueOnce({
         isPending: false,
-        isError: true,
         data: undefined,
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       });
 
@@ -152,12 +140,10 @@ describe('useClassesManagement', () => {
     useQueryMock
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: true,
         error: new ApiTransportError({
           requestId: 'request-classes-refresh',
           error: {
@@ -172,12 +158,10 @@ describe('useClassesManagement', () => {
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       })
       .mockReturnValueOnce({
         isPending: false,
-        isError: false,
         data: [],
       });
 

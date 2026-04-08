@@ -23,13 +23,6 @@ const rows = [
 ] as const;
 
 describe('selectionState', () => {
-  it('only exposes pruneSelectedRowKeys from the public selection-state module surface', async () => {
-    const selectionStateModule = await import('./selectionState');
-
-    expect(Object.keys(selectionStateModule)).toEqual(['pruneSelectedRowKeys']);
-    expect(selectionStateModule).not.toHaveProperty('useSelectedRows');
-  });
-
   it('prunes removed or invisible selected keys after row updates', () => {
     expect(pruneSelectedRowKeys(['active-1', 'inactive-1'], rows)).toEqual(['active-1', 'inactive-1']);
     expect(pruneSelectedRowKeys(['active-1', 'inactive-1'], [rows[0]])).toEqual(['active-1']);

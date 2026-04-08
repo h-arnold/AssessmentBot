@@ -1,18 +1,11 @@
 import type { TableColumnsType } from 'antd';
 import type { Key } from 'react';
-import { STATUS_ORDER, type ClassesManagementRow } from './classesManagementViewModel';
+import { getClassesTableSortComparator } from './ClassesTable.sorting';
+import type { ClassesManagementRow } from './classesManagementViewModel';
 
 export const UNAVAILABLE_VALUE = '—';
 
-const NULL_SORT_SENTINEL = -1;
-
-export type ClassesSortableColumnKey =
-  | 'status'
-  | 'className'
-  | 'cohortLabel'
-  | 'courseLength'
-  | 'yearGroupLabel'
-  | 'active';
+export type { ClassesSortableColumnKey } from './ClassesTable.sorting';
 
 export type ClassesFilterColumnKey =
   | 'status'
@@ -45,52 +38,6 @@ function asFilterValue(value: Key | boolean): string {
 }
 
 /**
- * Compares nullable text values using case-insensitive locale ordering.
- *
- * @param {string | null} left Left value.
- * @param {string | null} right Right value.
- * @returns {number} Comparison result for sorting.
- */
-function compareNullableText(left: string | null, right: string | null): number {
-  if (left === null && right === null) {
-    return 0;
-  }
-
-  if (left === null) {
-    return NULL_SORT_SENTINEL;
-  }
-
-  if (right === null) {
-    return 1;
-  }
-
-  return left.localeCompare(right, undefined, { sensitivity: 'base' });
-}
-
-/**
- * Compares nullable numeric values for deterministic ordering.
- *
- * @param {number | null} left Left value.
- * @param {number | null} right Right value.
- * @returns {number} Comparison result for sorting.
- */
-function compareNullableNumber(left: number | null, right: number | null): number {
-  if (left === null && right === null) {
-    return 0;
-  }
-
-  if (left === null) {
-    return NULL_SORT_SENTINEL;
-  }
-
-  if (right === null) {
-    return 1;
-  }
-
-  return left - right;
-}
-
-/**
  * Resolves the displayed cell value, using em dash for unavailable values.
  *
  * @param {ClassesManagementRow} row Row context.
@@ -108,7 +55,6 @@ function getNotCreatedAwareValue(
   return value ?? UNAVAILABLE_VALUE;
 }
 
-
 /**
  * Builds the status column definition.
  *
@@ -119,7 +65,7 @@ function createStatusColumn(): TableColumnsType<ClassesManagementRow>[number] {
     title: 'Status',
     dataIndex: 'status',
     key: 'status',
-    sorter: (left, right) => STATUS_ORDER[left.status] - STATUS_ORDER[right.status],
+    sorter: getClassesTableSortComparator('status'),
     filters: [
       { text: 'active', value: 'active' },
       { text: 'inactive', value: 'inactive' },
@@ -140,8 +86,7 @@ function createClassNameColumn(): TableColumnsType<ClassesManagementRow>[number]
     title: 'Class name',
     dataIndex: 'className',
     key: 'className',
-    sorter: (left, right) =>
-      left.className.localeCompare(right.className, undefined, { sensitivity: 'base' }),
+    sorter: getClassesTableSortComparator('className'),
   };
 }
 
@@ -159,7 +104,7 @@ function createCohortColumn(
     dataIndex: 'cohortLabel',
     key: 'cohortLabel',
     render: (_, row) => getNotCreatedAwareValue(row, row.cohortLabel),
-    sorter: (left, right) => compareNullableText(left.cohortLabel, right.cohortLabel),
+    sorter: getClassesTableSortComparator('cohortLabel'),
     filters: options?.filterOptions?.cohortLabel === undefined
       ? undefined
       : [...options.filterOptions.cohortLabel],
@@ -181,7 +126,7 @@ function createCourseLengthColumn(
     dataIndex: 'courseLength',
     key: 'courseLength',
     render: (_, row) => getNotCreatedAwareValue(row, row.courseLength),
-    sorter: (left, right) => compareNullableNumber(left.courseLength, right.courseLength),
+    sorter: getClassesTableSortComparator('courseLength'),
     filters: options?.filterOptions?.courseLength === undefined
       ? undefined
       : [...options.filterOptions.courseLength],
@@ -203,7 +148,7 @@ function createYearGroupColumn(
     dataIndex: 'yearGroupLabel',
     key: 'yearGroupLabel',
     render: (_, row) => getNotCreatedAwareValue(row, row.yearGroupLabel),
-    sorter: (left, right) => compareNullableText(left.yearGroupLabel, right.yearGroupLabel),
+    sorter: getClassesTableSortComparator('yearGroupLabel'),
     filters: options?.filterOptions?.yearGroupLabel === undefined
       ? undefined
       : [...options.filterOptions.yearGroupLabel],
@@ -231,11 +176,7 @@ function createActiveColumn(
 
       return row.active ? 'Yes' : 'No';
     },
-    sorter: (left, right) =>
-      compareNullableNumber(
-        left.active === null ? null : Number(left.active),
-        right.active === null ? null : Number(right.active),
-      ),
+    sorter: getClassesTableSortComparator('active'),
     filters: options?.filterOptions?.active === undefined
       ? undefined
       : [...options.filterOptions.active],

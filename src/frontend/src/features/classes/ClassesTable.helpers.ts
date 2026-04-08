@@ -1,14 +1,13 @@
 import type { TableColumnsType } from 'antd';
 import type { FilterValue, SortOrder, SorterResult } from 'antd/es/table/interface';
 import {
-  compareRowsByDefaultPriority,
-  STATUS_ORDER,
-  type ClassesManagementRow,
-} from './classesManagementViewModel';
+  getClassesTableSortComparator,
+  type ClassesSortableColumnKey,
+} from './ClassesTable.sorting';
+import { compareRowsByDefaultPriority, type ClassesManagementRow } from './classesManagementViewModel';
 import type {
   ClassesColumnFilterOption,
   ClassesFilterColumnKey,
-  ClassesSortableColumnKey,
 } from './ClassesTableColumns';
 
 export interface SortState {
@@ -271,44 +270,7 @@ export function applyColumnFilters(
 export function getSortComparator(
   columnKey: ClassesSortableColumnKey,
 ): (left: ClassesManagementRow, right: ClassesManagementRow) => number {
-  switch (columnKey) {
-    case 'status': {
-      return (left, right) => STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
-    }
-
-    case 'className': {
-      return (left, right) => left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
-    }
-
-    case 'cohortLabel': {
-      return (left, right) => (left.cohortLabel ?? '').localeCompare(right.cohortLabel ?? '', undefined, { sensitivity: 'base' });
-    }
-
-    case 'courseLength': {
-      return (left, right) => {
-        if (left.courseLength === right.courseLength) {
-          return 0;
-        }
-
-        return (left.courseLength ?? Number.NEGATIVE_INFINITY) - (right.courseLength ?? Number.NEGATIVE_INFINITY);
-      };
-    }
-
-    case 'yearGroupLabel': {
-      return (left, right) => (left.yearGroupLabel ?? '').localeCompare(right.yearGroupLabel ?? '', undefined, { sensitivity: 'base' });
-    }
-
-    default: {
-      return (left, right) => {
-        if (left.active === right.active) {
-          return 0;
-        }
-
-        return (left.active === null ? Number.NEGATIVE_INFINITY : Number(left.active))
-          - (right.active === null ? Number.NEGATIVE_INFINITY : Number(right.active));
-      };
-    }
-  }
+  return getClassesTableSortComparator(columnKey);
 }
 
 /**

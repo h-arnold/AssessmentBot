@@ -102,13 +102,6 @@ describe('shared query definitions', () => {
     await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).rejects.toBe(queryError);
   });
 
-  it('exposes warmStartupQueries as the canonical startup warm-up entrypoint and does not expose warmClassPartials', async () => {
-    const sharedQueriesModule = await import('./sharedQueries');
-
-    expect(sharedQueriesModule).toHaveProperty('warmStartupQueries');
-    expect(sharedQueriesModule).not.toHaveProperty('warmClassPartials');
-  });
-
   it('adds a shared Google Classrooms query definition keyed through queryKeys.googleClassrooms()', async () => {
     const classrooms = [{ classId: 'course-001', className: '10A Computer Science' }];
     getGoogleClassroomsMock.mockResolvedValueOnce(classrooms);

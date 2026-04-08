@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { getClassesTableColumns } from './ClassesTableColumns';
 import * as classesTableHelpers from './ClassesTable.helpers';
 import type { ClassesManagementRow } from './classesManagementViewModel';
@@ -42,30 +42,6 @@ const rows: ClassesManagementRow[] = [
   },
 ];
 
-afterEach(() => {
-  vi.doUnmock('./classesManagementViewModel');
-  vi.resetModules();
-});
-
-/**
- * Loads a fresh helper module instance with optional canonical ordering overrides.
- *
- * @param {Record<string, unknown>} overrides Runtime export overrides for the canonical view-model module.
- * @returns {Promise<unknown>} Fresh helper module instance.
- */
-async function importHelpersWithCanonicalOrderingOverrides(overrides: Record<string, unknown>) {
-  vi.resetModules();
-  vi.doMock('./classesManagementViewModel', async () => {
-    const actual = await vi.importActual<Record<string, unknown>>('./classesManagementViewModel');
-    return {
-      ...actual,
-      ...overrides,
-    };
-  });
-
-  return import('./ClassesTable.helpers');
-}
-
 describe('ClassesTable helper coverage', () => {
   it('normalises sorter/filter state and recognises filter keys', () => {
     expect(classesTableHelpers.getPrimarySorter({ columnKey: 'className', order: 'ascend' })).toEqual({
@@ -101,6 +77,12 @@ describe('ClassesTable helper coverage', () => {
 
     expect(classesTableHelpers.isFilterColumnKey('status')).toBe(true);
     expect(classesTableHelpers.isFilterColumnKey('className')).toBe(false);
+  });
+
+  it('returns default rows in status-priority then case-insensitive class-name order', () => {
+    expect(
+      classesTableHelpers.getDefaultSortedRows([rows[2], rows[3], rows[1], rows[0]]).map((row) => row.classId),
+    ).toEqual(['active-a', 'active-b', 'inactive-c', 'not-created']);
   });
 
   it('applies controlled columns and deterministic filtering/sorting branches', () => {
@@ -179,34 +161,6 @@ describe('ClassesTable helper coverage', () => {
       'inactive-c',
       'not-created',
     ]);
-  });
-
-  it('keeps the live helper status comparator aligned with the canonical view-model ordering owner', async () => {
-    const helpersModule = await importHelpersWithCanonicalOrderingOverrides({
-      STATUS_ORDER: {
-        active: 3,
-        inactive: 2,
-        notCreated: 1,
-        orphaned: 0,
-      },
-    });
-
-    expect(helpersModule.getSortComparator('status')(rows[0], rows[2])).toBeGreaterThan(0);
-  });
-
-  it('keeps the live helper default sorting aligned with the canonical view-model comparator', async () => {
-    const compareRowsByDefaultPriority = vi.fn((left: ClassesManagementRow, right: ClassesManagementRow) =>
-      right.classId.localeCompare(left.classId),
-    );
-    const helpersModule = await importHelpersWithCanonicalOrderingOverrides({ compareRowsByDefaultPriority });
-
-    expect(helpersModule.getDefaultSortedRows(rows).map((row) => row.classId)).toEqual([
-      'not-created',
-      'inactive-c',
-      'active-b',
-      'active-a',
-    ]);
-    expect(compareRowsByDefaultPriority).toHaveBeenCalled();
   });
 
   it('builds filter option values deterministically', () => {

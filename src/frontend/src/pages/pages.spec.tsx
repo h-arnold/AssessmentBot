@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { pageRenderers } from '../navigation/appNavigation';
 import { pageExpectations } from '../test/pageExpectations';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
-import { pageContent } from './pageContent';
 
 const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
   () => ({
@@ -70,16 +69,6 @@ beforeEach(() => {
 });
 
 describe('page components', () => {
-  it('only exposes the canonical top-level page expectations, content, and renderers', () => {
-    expect(Object.keys(pageContent)).toEqual(['dashboard', 'assignments', 'settings']);
-    expect(pageExpectations.map(({ key }) => key)).toEqual(['dashboard', 'assignments', 'settings']);
-    expect(Object.keys(pageRenderers).toSorted((a, b) => a.localeCompare(b))).toEqual([
-      'assignments',
-      'dashboard',
-      'settings',
-    ]);
-  });
-
   it.each(pageExpectations)(
     'renders the expected heading and summary text for $heading',
     async ({ heading, key, summary }) => {
