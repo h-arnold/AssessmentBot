@@ -4,8 +4,8 @@
  * Covers: list rendering, empty state, create/edit form launch, active-state toggle,
  * query invalidation after successful mutations, and modal close wiring.
  *
- * RED PHASE: ManageCohortsModal does not yet exist; these tests are expected to fail
- * with module-not-found errors until the component is implemented.
+ * Covers the current green ManageCohortsModal implementation and its query invalidation
+ * behaviour for cohort management flows.
  */
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -14,7 +14,6 @@ import type { Cohort } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-// RED: ManageCohortsModal does not exist yet — import fails in the red phase.
 import { ManageCohortsModal } from './ManageCohortsModal';
 
 const createCohortMock = vi.hoisted(() => vi.fn());

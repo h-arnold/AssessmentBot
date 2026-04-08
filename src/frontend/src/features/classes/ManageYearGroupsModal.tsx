@@ -211,6 +211,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     form.resetFields();
     setEditingYearGroup(null);
     setFormError(null);
+    setDeleteState(INITIAL_DELETE_STATE);
     setFormMode('create');
   }
 
@@ -222,6 +223,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   function openEditForm(yearGroup: YearGroup): void {
     setEditingYearGroup(yearGroup);
     setFormError(null);
+    setDeleteState(INITIAL_DELETE_STATE);
     setFormMode('edit');
   }
 
@@ -232,7 +234,17 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     setFormMode(null);
     setEditingYearGroup(null);
     setFormError(null);
+    setFormSubmitting(false);
     form.resetFields();
+  }
+
+  /**
+   * Closes the outer modal and clears all transient modal state first.
+   */
+  function handleModalClose(): void {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    properties.onClose();
   }
 
   /**
@@ -250,7 +262,8 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
         await createYearGroup({ record: { name: values.name } });
       } else {
         if (editingYearGroup === null) {
-          throw new Error('editingYearGroup must be set when formMode is edit');
+          console.error('ManageYearGroupsModal invariant violated: editingYearGroup must be set when formMode is edit');
+          throw new Error('Unable to save the year group.');
         }
 
         await updateYearGroup({
@@ -301,16 +314,19 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
 
   const columns = buildYearGroupColumns({
     onEdit: openEditForm,
-    onDelete: (yearGroup) => { setDeleteState({ open: true, yearGroup, error: null, blocked: false, submitting: false }); },
+    onDelete: (yearGroup) => {
+      closeFormDialog();
+      setDeleteState({ open: true, yearGroup, error: null, blocked: false, submitting: false });
+    },
   });
 
   return (
     <Modal
       open={properties.open}
       title="Manage Year Groups"
-      onCancel={properties.onClose}
+      onCancel={handleModalClose}
       footer={
-        <Button onClick={properties.onClose}>Cancel</Button>
+        <Button onClick={handleModalClose}>Cancel</Button>
       }
       width={700}
     >

@@ -114,4 +114,39 @@ describe('ClassesToolbar', () => {
       expect(onManageCohorts).toHaveBeenCalledOnce();
     });
   });
+
+  describe('Manage Year Groups launcher', () => {
+    it('renders the Manage Year Groups button regardless of selection state', () => {
+      renderToolbar([]);
+
+      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeInTheDocument();
+    });
+
+    it('keeps the Manage Year Groups button enabled at all times', () => {
+      renderToolbar([]);
+
+      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
+    });
+
+    it('keeps the Manage Year Groups button enabled when rows are selected', () => {
+      renderToolbar(['active-1', 'inactive-1']);
+
+      expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
+    });
+
+    it('calls onManageYearGroups when the Manage Year Groups button is clicked', () => {
+      const onManageYearGroups = vi.fn();
+      render(
+        <ClassesToolbar
+          rows={statusCoverageRows}
+          selectedRowKeys={[]}
+          onManageYearGroups={onManageYearGroups}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Manage Year Groups' }));
+
+      expect(onManageYearGroups).toHaveBeenCalledOnce();
+    });
+  });
 });

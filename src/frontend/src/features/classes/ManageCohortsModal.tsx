@@ -230,7 +230,8 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
    * Opens the create form with blank fields.
    */
   function openCreateForm(): void {
-    form.resetFields();
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
     setEditingCohort(null);
     setFormError(null);
     setFormMode('create');
@@ -242,6 +243,8 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
    * @param {Cohort} cohort Cohort to edit.
    */
   function openEditForm(cohort: Cohort): void {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
     setEditingCohort(cohort);
     setFormError(null);
     setFormMode('edit');
@@ -254,7 +257,20 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     setFormMode(null);
     setEditingCohort(null);
     setFormError(null);
+    setFormSubmitting(false);
     form.resetFields();
+  }
+
+  /**
+   * Closes the outer modal and clears transient child-dialog state.
+   *
+   * @returns {void} No return value.
+   */
+  function handleModalClose(): void {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    setToggleError(null);
+    properties.onClose();
   }
 
   /**
@@ -272,7 +288,8 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
         await createCohort({ record: { name: values.name } });
       } else {
         if (editingCohort === null) {
-          throw new Error('editingCohort must be set when formMode is edit');
+          console.error('ManageCohortsModal invariant violated: editingCohort must be set when formMode is edit');
+          throw new Error('Unable to save the cohort.');
         }
 
         await updateCohort({
@@ -355,9 +372,20 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const formDialogTitle = formMode === 'create' ? 'Create cohort' : 'Edit cohort';
   const isFormDialogOpen = formMode !== null;
 
+  function openDeleteDialog(cohort: Cohort): void {
+    closeFormDialog();
+    setDeleteState({
+      open: true,
+      cohort,
+      error: null,
+      blocked: false,
+      submitting: false,
+    });
+  }
+
   const columns = buildCohortColumns({
     onEdit: openEditForm,
-    onDelete: (cohort) => { setDeleteState({ open: true, cohort, error: null, blocked: false, submitting: false }); },
+    onDelete: openDeleteDialog,
     onToggleActive: (cohort, checked) => { void handleToggleActive(cohort, checked); },
   });
 
@@ -365,9 +393,9 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     <Modal
       open={properties.open}
       title="Manage Cohorts"
-      onCancel={properties.onClose}
+      onCancel={handleModalClose}
       footer={
-        <Button onClick={properties.onClose}>Cancel</Button>
+        <Button onClick={handleModalClose}>Cancel</Button>
       }
       width={800}
     >

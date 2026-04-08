@@ -4,8 +4,8 @@
  * Covers: list rendering, empty state, create/edit form launch,
  * query invalidation after successful mutations, and modal close wiring.
  *
- * RED PHASE: ManageYearGroupsModal does not yet exist; these tests are expected to fail
- * with module-not-found errors until the component is implemented.
+ * Covers the current green ManageYearGroupsModal implementation and its query invalidation
+ * behaviour for year-group management flows.
  */
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -14,7 +14,6 @@ import type { YearGroup } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
 import { createAppQueryClient } from '../../query/queryClient';
 import { renderWithFrontendProviders } from '../../test/renderWithFrontendProviders';
-// RED: ManageYearGroupsModal does not exist yet — import fails in the red phase.
 import { ManageYearGroupsModal } from './ManageYearGroupsModal';
 
 const createYearGroupMock = vi.hoisted(() => vi.fn());

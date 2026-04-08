@@ -5,8 +5,9 @@
  * Extracted here to avoid duplicating identical markup across both modal modules.
  * Keep this file local to the classes feature.
  *
- * Uses a native div with role="dialog" so tests can locate it by role and name
- * without relying on portal-based Ant Design Modal rendering in jsdom.
+ * Uses a native div with role="dialog" and aria-labelledby so tests can locate
+ * it by role and name without relying on portal-based Ant Design Modal rendering
+ * in jsdom.
  */
 
 import { Typography } from 'antd';
@@ -29,7 +30,6 @@ export function InlineDialog(properties: Readonly<{
   return (
     <div
       role="dialog"
-      aria-modal="true"
       aria-labelledby={properties.labelId}
       style={{
         border: '1px solid #d9d9d9',
