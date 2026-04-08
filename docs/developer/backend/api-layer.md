@@ -89,6 +89,7 @@ Known backend error types are mapped to transport error codes:
 - `ApiRateLimitError` -> `RATE_LIMITED`
 - `ApiValidationError` -> `INVALID_REQUEST`
 - `ApiDisabledError` -> `UNKNOWN_METHOD`
+- errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort or year group cannot be deleted because it is still assigned to one or more `ABClass` records)
 
 Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
 

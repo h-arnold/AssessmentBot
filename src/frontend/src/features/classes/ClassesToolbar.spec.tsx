@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { ClassesToolbar } from './ClassesToolbar';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { ClassesToolbar, type ClassesToolbarProperties } from './ClassesToolbar';
 import { statusCoverageRows } from './classesTestHelpers';
 
 const nonDeleteActionNames = [
@@ -13,14 +13,33 @@ const nonDeleteActionNames = [
 ] as const;
 const metadataActionNames = ['Set cohort', 'Set year group', 'Set course length'] as const;
 
+type ManagementLauncherCase = Readonly<{
+  buttonName: string;
+  createOverrides: (onClick: () => void) => Partial<ClassesToolbarProperties>;
+}>;
+
+const managementLauncherCases: readonly ManagementLauncherCase[] = [
+  {
+    buttonName: 'Manage Cohorts',
+    createOverrides: (onClick) => ({ onManageCohorts: onClick }),
+  },
+  {
+    buttonName: 'Manage Year Groups',
+    createOverrides: (onClick) => ({ onManageYearGroups: onClick }),
+  },
+];
+
 /**
  * Renders the toolbar against the shared classes status-coverage rows.
  *
  * @param {string[]} selectedRowKeys Selected row identifiers.
- * @returns {void}
+ * @param {Partial<ClassesToolbarProperties>} [overrides] Toolbar property overrides.
+ * @returns {ReturnType<typeof render>} Testing Library render result.
  */
-function renderToolbar(selectedRowKeys: string[]) {
-  render(<ClassesToolbar rows={statusCoverageRows} selectedRowKeys={selectedRowKeys} />);
+function renderToolbar(selectedRowKeys: string[], overrides: Partial<ClassesToolbarProperties> = {}) {
+  return render(
+    <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={selectedRowKeys} {...overrides} />,
+  );
 }
 
 /**
@@ -78,5 +97,32 @@ describe('ClassesToolbar', () => {
   it('keeps metadata edits disabled for notCreated selections', () => {
     renderToolbar(['not-created-1']);
     expectButtonsDisabled(metadataActionNames);
+  });
+
+  it.each(managementLauncherCases)('$buttonName launcher remains enabled for any selection', ({
+    buttonName,
+  }) => {
+    const { rerender } = renderToolbar([]);
+
+    expect(screen.getByRole('button', { name: buttonName })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
+
+    rerender(
+      <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={['active-1', 'inactive-1']} />,
+    );
+
+    expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
+  });
+
+  it.each(managementLauncherCases)('calls $buttonName handler when clicked', ({
+    buttonName,
+    createOverrides,
+  }) => {
+    const onClick = vi.fn();
+    renderToolbar([], createOverrides(onClick));
+
+    fireEvent.click(screen.getByRole('button', { name: buttonName }));
+
+    expect(onClick).toHaveBeenCalledOnce();
   });
 });

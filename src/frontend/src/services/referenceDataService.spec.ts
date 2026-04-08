@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ZodError } from 'zod';
+import { ApiTransportError } from '../errors/apiTransportError';
 
 const callApiMock = vi.fn();
 
@@ -257,4 +258,37 @@ describe('referenceDataService keyed contracts', () => {
             await expect(invocation).rejects.toBeInstanceOf(ZodError);
         }
     );
+
+    describe('delete-blocked IN_USE transport propagation', () => {
+        it('deleteCohort() propagates an ApiTransportError with code IN_USE unchanged to callers', async () => {
+            const inUseError = new ApiTransportError({
+                requestId: 'req-delete-blocked-cohort',
+                error: {
+                    code: 'IN_USE',
+                    message: 'Cohort is in use by one or more classes and cannot be deleted.',
+                    retriable: false,
+                },
+            });
+            callApiMock.mockRejectedValueOnce(inUseError);
+            const { deleteCohort } = await loadReferenceDataService();
+
+            await expect(deleteCohort(deleteCohortInput)).rejects.toBe(inUseError);
+        });
+
+        it('deleteYearGroup() propagates an ApiTransportError with code IN_USE unchanged to callers', async () => {
+            const inUseError = new ApiTransportError({
+                requestId: 'req-delete-blocked-year-group',
+                error: {
+                    code: 'IN_USE',
+                    message: 'Year group is in use by one or more classes and cannot be deleted.',
+                    retriable: false,
+                },
+            });
+            callApiMock.mockRejectedValueOnce(inUseError);
+            const { deleteYearGroup } = await loadReferenceDataService();
+
+            await expect(deleteYearGroup(deleteYearGroupInput)).rejects.toBe(inUseError);
+        });
+
+    });
 });

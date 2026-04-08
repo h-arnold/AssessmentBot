@@ -10,4 +10,5 @@
 /scripts/builder/node_modules/
 build
 coverage
+test-results/
 nohup.out
