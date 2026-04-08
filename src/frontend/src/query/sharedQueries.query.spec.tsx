@@ -102,15 +102,11 @@ describe('shared query definitions', () => {
     await expect(queryClient.fetchQuery(getClassPartialsQueryOptions())).rejects.toBe(queryError);
   });
 
-  it('warms the shared class-partials query through the provided query client', async () => {
-    const classPartials = [{ classId: 'class-1' }];
-    getABClassPartialsMock.mockResolvedValueOnce(classPartials);
+  it('exposes warmStartupQueries as the canonical startup warm-up entrypoint and does not expose warmClassPartials', async () => {
+    const sharedQueriesModule = await import('./sharedQueries');
 
-    const { warmClassPartials } = await import('./sharedQueries');
-    const queryClient = createAppQueryClient();
-
-    await expect(warmClassPartials(queryClient)).resolves.toEqual(classPartials);
-    expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
+    expect(sharedQueriesModule).toHaveProperty('warmStartupQueries');
+    expect(sharedQueriesModule).not.toHaveProperty('warmClassPartials');
   });
 
   it('adds a shared Google Classrooms query definition keyed through queryKeys.googleClassrooms()', async () => {

@@ -23,18 +23,10 @@ export const requiredClassPartialsRefreshFailureOutcomeSchema = z
   })
   .readonly();
 
-export const requiredClassPartialsRefreshOutcomeSchema = z.union([
-  requiredClassPartialsRefreshSuccessOutcomeSchema,
-  requiredClassPartialsRefreshFailureOutcomeSchema,
-]);
-
 export type RefreshErrorMetadata = z.infer<typeof refreshErrorMetadataSchema>;
 export type RequiredClassPartialsRefreshSuccessOutcomeBase = z.infer<
   typeof requiredClassPartialsRefreshSuccessOutcomeSchema
 >;
 export type RequiredClassPartialsRefreshFailureOutcomeBase = z.infer<
   typeof requiredClassPartialsRefreshFailureOutcomeSchema
->;
-export type RequiredClassPartialsRefreshOutcomeBase = z.infer<
-  typeof requiredClassPartialsRefreshOutcomeSchema
 >;

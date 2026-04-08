@@ -80,6 +80,12 @@ describe('query invalidation orchestration', () => {
     vi.resetModules();
   });
 
+  it('does not expose the unused required class-partials refresh union schema export', async () => {
+    const queryInvalidationSchemaModule = await import('./queryInvalidation.zod');
+
+    expect(queryInvalidationSchemaModule).not.toHaveProperty('requiredClassPartialsRefreshOutcomeSchema');
+  });
+
   it('returns a composite success outcome after a required class-partials refetch succeeds', async () => {
     getABClassPartialsMock
       .mockResolvedValueOnce([{ classId: 'existing-class' }])

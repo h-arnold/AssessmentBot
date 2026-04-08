@@ -90,17 +90,6 @@ export function getYearGroupsQueryOptions() {
     queryFn: getYearGroups,
   });
 }
-
-/**
- * Warms the shared class-partials query through the provided query client.
- *
- * @param {QueryClient} queryClient Query client to warm.
- * @returns {Promise<ClassPartial[]>} The warmed class-partials response.
- */
-export function warmClassPartials(queryClient: QueryClient): Promise<ClassPartial[]> {
-  return queryClient.fetchQuery(getClassPartialsQueryOptions());
-}
-
 /**
  * Warms the shared startup datasets in parallel through the provided query client.
  *
