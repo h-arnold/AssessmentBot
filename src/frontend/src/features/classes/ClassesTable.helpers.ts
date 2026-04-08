@@ -1,12 +1,14 @@
 import type { TableColumnsType } from 'antd';
 import type { FilterValue, SortOrder, SorterResult } from 'antd/es/table/interface';
-import type { ClassesManagementRow } from './classesManagementViewModel';
 import {
   compareRowsByDefaultPriority,
   STATUS_ORDER,
-  type ClassesColumnFilterOption,
-  type ClassesFilterColumnKey,
-  type ClassesSortableColumnKey,
+  type ClassesManagementRow,
+} from './classesManagementViewModel';
+import type {
+  ClassesColumnFilterOption,
+  ClassesFilterColumnKey,
+  ClassesSortableColumnKey,
 } from './ClassesTableColumns';
 
 export interface SortState {

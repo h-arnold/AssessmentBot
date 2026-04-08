@@ -22,7 +22,7 @@ export interface BuildClassesManagementRowsInput {
   yearGroupLabelsByKey: Readonly<Record<string, string>>;
 }
 
-const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
+export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
   active: 0,
   inactive: 1,
   notCreated: 2,
@@ -47,6 +47,27 @@ function resolveLabel(
   }
 
   return labelsByKey.get(key) ?? fallbackLabel;
+}
+
+/**
+ * Compares rows by the default status-priority contract and class-name tie-break.
+ *
+ * @param {ClassesManagementRow} left Left row.
+ * @param {ClassesManagementRow} right Right row.
+ * @returns {number} Comparison result for sorting.
+ */
+export function compareRowsByDefaultPriority(left: ClassesManagementRow, right: ClassesManagementRow): number {
+  const statusComparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
+  if (statusComparison !== 0) {
+    return statusComparison;
+  }
+
+  const classNameComparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
+  if (classNameComparison !== 0) {
+    return classNameComparison;
+  }
+
+  return left.classId.localeCompare(right.classId);
 }
 
 /**
@@ -113,19 +134,7 @@ export function buildClassesManagementRows(
     });
   }
 
-  rows.sort((left, right) => {
-    const statusComparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
-    if (statusComparison !== 0) {
-      return statusComparison;
-    }
-
-    const classNameComparison = left.className.localeCompare(right.className, undefined, { sensitivity: 'base' });
-    if (classNameComparison !== 0) {
-      return classNameComparison;
-    }
-
-    return left.classId.localeCompare(right.classId);
-  });
+  rows.sort(compareRowsByDefaultPriority);
 
   return rows;
 }

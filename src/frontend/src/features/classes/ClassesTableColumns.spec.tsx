@@ -1,11 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import {
-  compareRowsByDefaultPriority,
-  getClassesTableColumns,
-  UNAVAILABLE_VALUE,
-} from './ClassesTableColumns';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createGoogleScriptRunApiHandlerMock } from '../../test/googleScriptRunHarness';
+import { getClassesTableColumns, UNAVAILABLE_VALUE } from './ClassesTableColumns';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const classesManagementStateMock = vi.fn();
@@ -26,6 +23,41 @@ function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
 }
+
+/**
+ * Installs a minimal google script run apiHandler harness for lazy reference-data consumers.
+ */
+function installGoogleScriptRunHarness() {
+  (globalThis as { google?: unknown }).google = {
+    script: {
+      run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
+        const method = (request as { method?: string }).method ?? 'unknown';
+
+        callbacks.successHandler?.({
+          ok: true,
+          requestId: 'classes-table-columns-' + method,
+          data: [],
+        });
+      }),
+    },
+  };
+}
+
+/**
+ * Removes the temporary google script run apiHandler harness after each test.
+ */
+function clearGoogleScriptRunHarness() {
+  delete (globalThis as { google?: unknown }).google;
+}
+
+beforeEach(() => {
+  classesManagementStateMock.mockReset();
+  installGoogleScriptRunHarness();
+});
+
+afterEach(() => {
+  clearGoogleScriptRunHarness();
+});
 
 const rowsForOrdering = [
   {
@@ -186,7 +218,28 @@ describe('ClassesTableColumns', () => {
     expect(activeRender(null, inactiveRow, 0)).toBe('No');
   });
 
-  it('applies status-priority then case-insensitive class-name tie-break ordering', () => {
+  it('exposes the default ordering contract from the canonical view-model module surface', async () => {
+    const classesManagementViewModelModule = (await import('./classesManagementViewModel')) as Record<string, unknown>;
+    const classesTableColumnsModule = (await import('./ClassesTableColumns')) as Record<string, unknown>;
+
+    expect(classesManagementViewModelModule).toMatchObject({
+      STATUS_ORDER: {
+        active: 0,
+        inactive: 1,
+        notCreated: 2,
+        orphaned: 3,
+      },
+    });
+    expect(classesManagementViewModelModule).toHaveProperty('compareRowsByDefaultPriority');
+    expect(classesTableColumnsModule).not.toHaveProperty('STATUS_ORDER');
+    expect(classesTableColumnsModule).not.toHaveProperty('compareRowsByDefaultPriority');
+  });
+
+  it('applies status-priority then case-insensitive class-name tie-break ordering', async () => {
+    const classesManagementViewModelModule = (await import('./classesManagementViewModel')) as Record<string, unknown>;
+    const compareRowsByDefaultPriority = classesManagementViewModelModule.compareRowsByDefaultPriority as
+      | ((left: ClassesManagementRow, right: ClassesManagementRow) => number)
+      | undefined;
     const unsortedRows = [
       { ...activeRow, classId: 'beta-id', className: 'beta' },
       { ...activeRow, classId: 'alpha-id', className: 'Alpha' },
@@ -194,7 +247,8 @@ describe('ClassesTableColumns', () => {
       { ...inactiveRow },
     ];
 
-    expect(unsortedRows.toSorted(compareRowsByDefaultPriority).map((row) => row.classId)).toEqual([
+    expect(typeof compareRowsByDefaultPriority).toBe('function');
+    expect(unsortedRows.toSorted(compareRowsByDefaultPriority!).map((row) => row.classId)).toEqual([
       'alpha-id',
       'alpha-id-2',
       'beta-id',

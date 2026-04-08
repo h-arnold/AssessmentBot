@@ -31,7 +31,6 @@ export type ClassesManagementState = Readonly<{
 
 type ClassesQueriesState = Readonly<{
   hasAnyBlockingDataGap: boolean;
-  hasErrorStartupDataset: boolean;
   hasPendingStartupDataset: boolean;
   readyQueryState: ReadyClassesQueryState | null;
 }>;
@@ -133,7 +132,6 @@ function createClassesQueriesState(
 ): ClassesQueriesState {
   return {
     hasAnyBlockingDataGap: querySnapshots.some((querySnapshot) => querySnapshot.data === undefined),
-    hasErrorStartupDataset: querySnapshots.some((querySnapshot) => querySnapshot.isError),
     hasPendingStartupDataset: querySnapshots.some((querySnapshot) => querySnapshot.isPending),
     readyQueryState,
   };

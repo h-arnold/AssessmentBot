@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
@@ -15,21 +14,4 @@ export function pruneSelectedRowKeys(
   const visibleRowKeys = new Set(rows.map((row) => row.classId));
 
   return selectedRowKeys.filter((rowKey) => visibleRowKeys.has(rowKey));
-}
-
-/**
- * Resolves selected rows by key from a row set.
- *
- * @param {readonly ClassesManagementRow[]} rows Current rows.
- * @param {readonly string[]} selectedRowKeys Controlled selected keys.
- * @returns {ClassesManagementRow[]} Selected rows.
- */
-export function useSelectedRows(
-  rows: readonly ClassesManagementRow[],
-  selectedRowKeys: readonly string[],
-): ClassesManagementRow[] {
-  return useMemo(() => {
-    const selectedRowKeySet = new Set(selectedRowKeys);
-    return rows.filter((row) => selectedRowKeySet.has(row.classId));
-  }, [rows, selectedRowKeys]);
 }

@@ -1,15 +1,9 @@
 import type { TableColumnsType } from 'antd';
 import type { Key } from 'react';
-import type { ClassesManagementRow, ClassesManagementStatus } from './classesManagementViewModel';
+import { STATUS_ORDER, type ClassesManagementRow } from './classesManagementViewModel';
 
 export const UNAVAILABLE_VALUE = '—';
 
-export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
-  active: 0,
-  inactive: 1,
-  notCreated: 2,
-  orphaned: 3,
-};
 const NULL_SORT_SENTINEL = -1;
 
 export type ClassesSortableColumnKey =
@@ -48,29 +42,6 @@ function asFilterValue(value: Key | boolean): string {
   }
 
   return String(value);
-}
-
-/**
- * Compares rows by the default status-priority contract and class name tie-break.
- *
- * @param {ClassesManagementRow} left Left row.
- * @param {ClassesManagementRow} right Right row.
- * @returns {number} Comparison result for sorting.
- */
-export function compareRowsByDefaultPriority(left: ClassesManagementRow, right: ClassesManagementRow): number {
-  const statusComparison = STATUS_ORDER[left.status] - STATUS_ORDER[right.status];
-  if (statusComparison !== 0) {
-    return statusComparison;
-  }
-
-  const classNameComparison = left.className.localeCompare(right.className, undefined, {
-    sensitivity: 'base',
-  });
-  if (classNameComparison !== 0) {
-    return classNameComparison;
-  }
-
-  return left.classId.localeCompare(right.classId);
 }
 
 /**

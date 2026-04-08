@@ -1,6 +1,5 @@
-import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { pruneSelectedRowKeys, useSelectedRows } from './selectionState';
+import { pruneSelectedRowKeys } from './selectionState';
 
 const rows = [
   {
@@ -24,31 +23,11 @@ const rows = [
 ] as const;
 
 describe('selectionState', () => {
-  it('returns selected rows in controlled-key order from visible rows', () => {
-    const { result, rerender } = renderHook(
-      ({ currentRows, selectedRowKeys }: { currentRows: typeof rows; selectedRowKeys: string[] }) =>
-        useSelectedRows(currentRows, selectedRowKeys),
-      {
-        initialProps: {
-          currentRows: rows,
-          selectedRowKeys: ['active-1'],
-        },
-      },
-    );
+  it('only exposes pruneSelectedRowKeys from the public selection-state module surface', async () => {
+    const selectionStateModule = await import('./selectionState');
 
-    expect(result.current.map((row) => row.classId)).toEqual(['active-1']);
-
-    rerender({
-      currentRows: rows,
-      selectedRowKeys: ['inactive-1'],
-    });
-
-    expect(result.current.map((row) => row.classId)).toEqual(['inactive-1']);
-  });
-
-  it('returns an empty selection when no keys are selected', () => {
-    const { result } = renderHook(() => useSelectedRows(rows, []));
-    expect(result.current).toEqual([]);
+    expect(Object.keys(selectionStateModule)).toEqual(['pruneSelectedRowKeys']);
+    expect(selectionStateModule).not.toHaveProperty('useSelectedRows');
   });
 
   it('prunes removed or invisible selected keys after row updates', () => {
