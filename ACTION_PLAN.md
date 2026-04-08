@@ -48,6 +48,7 @@ Use this file as the index only.
 
 - Final branch-wide cleanup removed the last stale reference-data contract notes and misleading inline comments so the pushed branch no longer documents the retired name-based payloads or removed adapter-era wording.
 - Workstream 1 backend cleanup also standardised active `ABClass` construction usage, removed the misleading `abclassMutations.js` validator naming, and dropped duplicate or stale backend test and documentation leftovers.
+- Workstream 2 frontend data/query cleanup now leaves `warmStartupQueries(...)` as the only startup warm-up entrypoint, removes the dead `warmClassPartials(...)` helper, and drops the unused required-refresh union schema/base-type exports from `queryInvalidation.zod.ts`.
 
 ## Cross-cutting rules
 

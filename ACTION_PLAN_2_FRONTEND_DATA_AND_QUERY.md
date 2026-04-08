@@ -21,6 +21,12 @@
 - `src/frontend/src/features/auth/AppAuthGate.tsx`
 - `src/frontend/src/test/googleScriptRunHarness.ts`
 
+## Current implementation state
+
+- `warmStartupQueries(...)` is the only startup warm-up entrypoint on the live query surface.
+- The live query surface no longer exposes the dead `warmClassPartials(...)` helper.
+- `queryInvalidation.zod.ts` no longer exports the unused required-refresh union schema or base type.
+
 ## Exploration findings to account for
 
 - Warm-up currently covers only `classPartials` and fails open.
