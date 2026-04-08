@@ -32,7 +32,7 @@ export function createTestFixture(options = {}) {
     className = 'Test Class',
   } = options;
 
-  const abClass = new ABClass(courseId, className);
+  const abClass = new ABClass({ classId: courseId, className });
 
   let taskDef = null;
   let submission = null;

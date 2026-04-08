@@ -1,7 +1,7 @@
 /**
  * ABClassController – Roster Sync / Partial Upsert Tests (RED Phase)
  *
- * Section 3 of ACTION_PLAN.md: "Synchronise all relevant class write paths"
+ * Behaviour under test: roster persistence writes through to class partials
  *
  * Tests validating that _persistRoster() also upserts the abclass_partials doc
  * after successfully writing the roster to the class collection.
@@ -74,13 +74,13 @@ afterEach(() => {
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe('ABClassController – roster sync to abclass_partials (Section 3)', () => {
+describe('ABClassController – roster sync to abclass_partials', () => {
   // -------------------------------------------------------------------------
   // Test 1: _persistRoster() triggers partial upsert after persisting roster
   // -------------------------------------------------------------------------
   it('_persistRoster() upserts a partial doc in abclass_partials after persisting the roster', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-r01', 'Roster Sync Class');
+    const abClass = new ABClass({ classId: 'class-r01', className: 'Roster Sync Class' });
 
     const existingDoc = { _id: 'doc-1', classId: 'class-r01' };
 
@@ -102,7 +102,7 @@ describe('ABClassController – roster sync to abclass_partials (Section 3)', ()
   // -------------------------------------------------------------------------
   it('second _persistRoster() call uses replaceOne (not insertOne) on abclass_partials', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-r02', 'No Duplicate Class');
+    const abClass = new ABClass({ classId: 'class-r02', className: 'No Duplicate Class' });
 
     const existingDoc = { _id: 'doc-2', classId: 'class-r02' };
 
@@ -131,7 +131,7 @@ describe('ABClassController – roster sync to abclass_partials (Section 3)', ()
   // -------------------------------------------------------------------------
   it('partial doc written by _persistRoster() contains the current className', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-r03', 'Original Name');
+    const abClass = new ABClass({ classId: 'class-r03', className: 'Original Name' });
 
     // Simulate metadata update applied before persisting roster
     abClass.setClassName('Updated Roster Name');
@@ -156,7 +156,7 @@ describe('ABClassController – roster sync to abclass_partials (Section 3)', ()
   // -------------------------------------------------------------------------
   it('does not call partial upsert when roster collection write throws', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-r04', 'Error Case Class');
+    const abClass = new ABClass({ classId: 'class-r04', className: 'Error Case Class' });
 
     const existingDoc = { _id: 'doc-4', classId: 'class-r04' };
 
@@ -171,7 +171,7 @@ describe('ABClassController – roster sync to abclass_partials (Section 3)', ()
 
     // Partial upsert must never be reached when roster write fails
     // RED: this assertion passes trivially today (partials never touched),
-    // but will correctly guard the ordering once Section 3 is implemented —
+    // but will correctly guard the ordering once roster partial write-through is implemented —
     // at that point the test ensures the write sequence is roster-first, partial-second.
     expect(partialsCollection.insertOne).not.toHaveBeenCalled();
     expect(partialsCollection.replaceOne).not.toHaveBeenCalled();

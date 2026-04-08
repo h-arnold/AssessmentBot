@@ -53,28 +53,13 @@ function serialiseOwner(owner) {
 class ABClass {
   /**
    * Constructs an ABClass instance with class metadata, students, teachers, and assignments.
-   * Accepts either a legacy positional argument list or a single options object.
-   * @param {...*} arguments_ - Legacy positional arguments or one options object.
+   * @param {Object} options - Class metadata and nested collections.
+   * @throws {TypeError} If options is not a plain object or classId is missing.
    */
-  constructor(...arguments_) {
-    const options =
-      arguments_.length === 1 &&
-      arguments_[0] &&
-      typeof arguments_[0] === 'object' &&
-      !Array.isArray(arguments_[0])
-        ? arguments_[0]
-        : {
-            classId: arguments_[0],
-            className: arguments_[1],
-            cohortKey: arguments_[2],
-            courseLength: arguments_[3],
-            yearGroupKey: arguments_[4],
-            classOwner: arguments_[5],
-            teachers: arguments_[6],
-            students: arguments_[7],
-            assignments: arguments_[8],
-            active: arguments_[9],
-          };
+  constructor(options) {
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new TypeError('ABClass constructor requires an options object');
+    }
 
     const {
       classId,

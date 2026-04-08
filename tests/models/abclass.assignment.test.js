@@ -34,7 +34,7 @@ afterEach(() => {
 describe('ABClass Assignment Serialization', () => {
   describe('findAssignmentIndex() Helper Method', () => {
     it('returns the array index of a matching assignment', () => {
-      const abClass = new ABClass('class-idx', 'Test Class');
+      const abClass = new ABClass({ classId: 'class-idx', className: 'Test Class' });
 
       const assignment1 = createSlidesAssignment({
         courseId: 'class-idx',
@@ -61,7 +61,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('returns -1 when no assignment matches the predicate', () => {
-      const abClass = new ABClass('class-notfound', 'Test Class');
+      const abClass = new ABClass({ classId: 'class-notfound', className: 'Test Class' });
 
       const assignment1 = createSlidesAssignment({
         courseId: 'class-notfound',
@@ -78,7 +78,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('returns -1 for an empty assignments array', () => {
-      const abClass = new ABClass('class-empty', 'Test Class');
+      const abClass = new ABClass({ classId: 'class-empty', className: 'Test Class' });
 
       // RED: findAssignmentIndex doesn't exist yet
       expect(typeof abClass.findAssignmentIndex).toBe('function');
@@ -88,7 +88,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('supports immutable replace pattern during rehydration', () => {
-      const abClass = new ABClass('class-replace', 'Test Class');
+      const abClass = new ABClass({ classId: 'class-replace', className: 'Test Class' });
 
       const assignment1 = createSlidesAssignment({
         courseId: 'class-replace',
@@ -124,7 +124,7 @@ describe('ABClass Assignment Serialization', () => {
 
   describe('ABClass.toJSON() with Assignments', () => {
     it('serializes assignments via their toJSON() methods', () => {
-      const abClass = new ABClass('class-ser1', 'Serialization Test');
+      const abClass = new ABClass({ classId: 'class-ser1', className: 'Serialization Test' });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-ser1',
@@ -149,7 +149,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('serializes multiple assignments of different types', () => {
-      const abClass = new ABClass('class-multi', 'Multi Assignment Test');
+      const abClass = new ABClass({ classId: 'class-multi', className: 'Multi Assignment Test' });
 
       const slidesAssignment = createSlidesAssignment({
         courseId: 'class-multi',
@@ -172,7 +172,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('serializes all subclass-specific fields in assignment payloads', () => {
-      const abClass = new ABClass('class-fields', 'Fields Test');
+      const abClass = new ABClass({ classId: 'class-fields', className: 'Fields Test' });
 
       const taskDef = createTextTask(0, 'Task reference', 'Task template');
       const submission = createStudentSubmission({
@@ -213,7 +213,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('maintains polymorphic type information through documentType field', () => {
-      const abClass = new ABClass('class-poly', 'Polymorphic Test');
+      const abClass = new ABClass({ classId: 'class-poly', className: 'Polymorphic Test' });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-poly',
@@ -232,7 +232,7 @@ describe('ABClass Assignment Serialization', () => {
 
   describe('ABClass.fromJSON() with Assignments', () => {
     it('reconstructs assignments as proper typed instances (not plain objects)', () => {
-      const abClass = new ABClass('class-recon', 'Reconstruction Test');
+      const abClass = new ABClass({ classId: 'class-recon', className: 'Reconstruction Test' });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-recon',
@@ -258,7 +258,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('preserves assignment types across round-trip serialization', () => {
-      const abClass = new ABClass('class-roundtrip', 'Round Trip Test');
+      const abClass = new ABClass({ classId: 'class-roundtrip', className: 'Round Trip Test' });
 
       const slidesAssignment = createSlidesAssignment({
         courseId: 'class-roundtrip',
@@ -287,7 +287,10 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('reconstructs polymorphic fields correctly (referenceDocumentId, templateDocumentId)', () => {
-      const abClass = new ABClass('class-polyfields', 'Polymorphic Fields Test');
+      const abClass = new ABClass({
+        classId: 'class-polyfields',
+        className: 'Polymorphic Fields Test',
+      });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-polyfields',
@@ -310,7 +313,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('handles nested data structures (tasks, submissions) after round-trip', () => {
-      const abClass = new ABClass('class-nested', 'Nested Data Test');
+      const abClass = new ABClass({ classId: 'class-nested', className: 'Nested Data Test' });
 
       const taskDef = createTextTask(1, 'Nested reference', 'Nested template');
       const submission = createStudentSubmission({
@@ -343,7 +346,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('gracefully handles corrupt assignment data with logging', () => {
-      const abClass = new ABClass('class-corrupt', 'Corrupt Data Test');
+      const abClass = new ABClass({ classId: 'class-corrupt', className: 'Corrupt Data Test' });
 
       // Manually add a malformed assignment to the JSON
       const json = abClass.toJSON();
@@ -363,7 +366,10 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('handles empty assignments array correctly', () => {
-      const abClass = new ABClass('class-empty-assign', 'Empty Assignments Test');
+      const abClass = new ABClass({
+        classId: 'class-empty-assign',
+        className: 'Empty Assignments Test',
+      });
 
       const json = abClass.toJSON();
       const restored = ABClass.fromJSON(json);
@@ -372,7 +378,7 @@ describe('ABClass Assignment Serialization', () => {
     });
 
     it('verifies second round-trip still produces valid typed instances', () => {
-      const abClass = new ABClass('class-2rt', 'Second Round Trip Test');
+      const abClass = new ABClass({ classId: 'class-2rt', className: 'Second Round Trip Test' });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-2rt',
@@ -398,7 +404,7 @@ describe('ABClass Assignment Serialization', () => {
 
   describe('Assignment Immutability During Serialization', () => {
     it('does not mutate original assignment instances during toJSON', () => {
-      const abClass = new ABClass('class-immut', 'Immutability Test');
+      const abClass = new ABClass({ classId: 'class-immut', className: 'Immutability Test' });
 
       const assignment = createSlidesAssignment({
         courseId: 'class-immut',

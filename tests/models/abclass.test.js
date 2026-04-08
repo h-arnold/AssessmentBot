@@ -32,6 +32,10 @@ describe('ABClass model – key-based metadata contract', () => {
     expect(() => new ABClass({ classId: undefined })).toThrow(TypeError);
   });
 
+  it('rejects the retired positional constructor signature', () => {
+    expect(() => new ABClass('cid-positional', 'Legacy Class')).toThrow(TypeError);
+  });
+
   it('toJSON() emits cohortKey and yearGroupKey (not legacy cohort/yearGroup)', () => {
     const c = new ABClass({
       classId: 'id-json',

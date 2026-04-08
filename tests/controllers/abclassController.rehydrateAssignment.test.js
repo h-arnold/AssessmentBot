@@ -121,7 +121,10 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('replaces partial assignment in abClass.assignments with full version', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-replace-rehydrate', 'Replace Rehydrate Test');
+      const abClass = new ABClass({
+        classId: 'course-replace-rehydrate',
+        className: 'Replace Rehydrate Test',
+      });
 
       const [assignment1, assignment2] = createMultipleAssignments({
         courseId: 'course-replace-rehydrate',
@@ -301,7 +304,10 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('provides clear error message when assignmentId not found in abClass', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-not-in-class', 'Not In Class Test');
+      const abClass = new ABClass({
+        classId: 'course-not-in-class',
+        className: 'Not In Class Test',
+      });
 
       // abClass has no assignments
 
@@ -326,7 +332,7 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('handles null or undefined assignmentId gracefully', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-null-id', 'Null ID Test');
+      const abClass = new ABClass({ classId: 'course-null-id', className: 'Null ID Test' });
 
       // RED: Method doesn't exist yet
       assertMethodExists(controller, 'rehydrateAssignment');
@@ -418,7 +424,10 @@ describe('ABClassController Rehydrate Assignment', () => {
 
     it('handles multiple rehydrations in sequence', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-multi-rehydrate', 'Multi Rehydrate Test');
+      const abClass = new ABClass({
+        classId: 'course-multi-rehydrate',
+        className: 'Multi Rehydrate Test',
+      });
 
       const [assignment1, assignment2] = createMultipleAssignments({
         courseId: 'course-multi-rehydrate',

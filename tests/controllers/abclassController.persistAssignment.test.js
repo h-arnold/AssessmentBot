@@ -167,7 +167,7 @@ describe('ABClassController Persist Assignment', () => {
 
     it('uses findAssignmentIndex to replace assignment in abClass.assignments', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-replace', 'Replace Test Class');
+      const abClass = new ABClass({ classId: 'course-replace', className: 'Replace Test Class' });
 
       const [assignment1, assignment2, assignment3] = createMultipleAssignments({
         courseId: 'course-replace',
@@ -356,7 +356,10 @@ describe('ABClassController Persist Assignment', () => {
 
     it('handles null or undefined assignment gracefully', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-null-assign', 'Null Assignment Test');
+      const abClass = new ABClass({
+        classId: 'course-null-assign',
+        className: 'Null Assignment Test',
+      });
 
       // RED: Method doesn't exist yet
       assertMethodExists(controller, 'persistAssignmentRun');
@@ -368,7 +371,7 @@ describe('ABClassController Persist Assignment', () => {
 
     it('handles assignment not initially in abClass.assignments (adds it)', () => {
       const controller = new ABClassController();
-      const abClass = new ABClass('course-new', 'New Assignment Test');
+      const abClass = new ABClass({ classId: 'course-new', className: 'New Assignment Test' });
 
       const { assignment } = createTestFixture({
         ABClass,

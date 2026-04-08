@@ -1,7 +1,7 @@
 /**
  * ABClassController – Class Partials Persistence Tests (RED Phase)
  *
- * Section 2 of ACTION_PLAN.md: "Persist class partials as document-per-class registry"
+ * Behaviour under test: saveClass() writes through to the class partials registry
  *
  * Tests validating the write-through persistence contract:
  * - saveClass() writes to the class collection AND upserts a partial doc in abclass_partials
@@ -80,13 +80,13 @@ afterEach(() => {
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe('ABClassController – class partials persistence (Section 2)', () => {
+describe('ABClassController – class partials persistence', () => {
   // -------------------------------------------------------------------------
   // Test 1: saveClass inserts partial doc when none exists
   // -------------------------------------------------------------------------
   it('saveClass() inserts partial doc in abclass_partials when none exists for that classId', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-001', 'Test Class Alpha');
+    const abClass = new ABClass({ classId: 'class-001', className: 'Test Class Alpha' });
 
     // No existing partial for this classId
     partialsCollection.findOne.mockReturnValue(null);
@@ -106,7 +106,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
   // -------------------------------------------------------------------------
   it('saveClass() replaces partial doc in abclass_partials when one already exists for classId', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-002', 'Test Class Beta');
+    const abClass = new ABClass({ classId: 'class-002', className: 'Test Class Beta' });
 
     // Simulate an existing partial doc
     partialsCollection.findOne.mockReturnValue({ classId: 'class-002', className: 'Old Name' });
@@ -125,7 +125,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
   // -------------------------------------------------------------------------
   it('partial upsert filter uses classId (not index or position)', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-filter-check', 'Filter Check Class');
+    const abClass = new ABClass({ classId: 'class-filter-check', className: 'Filter Check Class' });
 
     // Return an existing doc so the replace branch is taken
     partialsCollection.findOne.mockReturnValue({ classId: 'class-filter-check' });
@@ -149,7 +149,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
   // -------------------------------------------------------------------------
   it('throws and logs error when partial registry write fails', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-003', 'Test Class Gamma');
+    const abClass = new ABClass({ classId: 'class-003', className: 'Test Class Gamma' });
 
     // Simulate failure on the partials collection insert
     partialsCollection.findOne.mockReturnValue(null);
@@ -172,7 +172,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
   // -------------------------------------------------------------------------
   it('full class document is still persisted to its own collection when partial upsert succeeds', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-004', 'Test Class Delta');
+    const abClass = new ABClass({ classId: 'class-004', className: 'Test Class Delta' });
 
     // Both collections: no existing docs
     classCollection.findOne.mockReturnValue(null);
@@ -195,7 +195,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
   // -------------------------------------------------------------------------
   it('saveClass() calls _persistClassAndPartial() internally (write-through pattern)', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-005', 'Test Class Epsilon');
+    const abClass = new ABClass({ classId: 'class-005', className: 'Test Class Epsilon' });
 
     expect(typeof controller._persistClassAndPartial).toBe('function');
 
@@ -209,7 +209,7 @@ describe('ABClassController – class partials persistence (Section 2)', () => {
 
   it('does not write a partial when the full class write fails', () => {
     const controller = new ABClassController();
-    const abClass = new ABClass('class-006', 'Broken Full Write');
+    const abClass = new ABClass({ classId: 'class-006', className: 'Broken Full Write' });
 
     classCollection.findOne.mockReturnValue(null);
     classCollection.insertOne.mockImplementation(() => {

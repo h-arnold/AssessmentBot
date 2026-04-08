@@ -60,13 +60,13 @@ function validateClassId(classId, methodName) {
 }
 
 /**
- * Validates a mutation classId, disallowing unsafe path characters.
+ * Validates a mutation classId used across create, update, and delete flows, disallowing unsafe path characters.
  *
  * @param {*} classId - The class ID to validate.
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
-function validateDeleteClassId(classId, methodName) {
+function validateMutationClassId(classId, methodName) {
   validateClassId(classId, methodName);
 
   if (classId.includes('..') || classId.includes('/') || classId.includes('\\')) {
@@ -112,7 +112,7 @@ function validateUpsertABClassParameters(parameters) {
     },
     methodName
   );
-  validateDeleteClassId(parameters.classId, methodName);
+  validateMutationClassId(parameters.classId, methodName);
   validateCourseLength(parameters.courseLength, methodName);
 }
 
@@ -129,7 +129,7 @@ function validateUpdateABClassParameters(parameters) {
 
   validateParametersObject(parameters, methodName);
   requireParameters({ classId: parameters.classId }, methodName);
-  validateDeleteClassId(parameters.classId, methodName);
+  validateMutationClassId(parameters.classId, methodName);
 
   if (Object.hasOwn(parameters, 'courseLength')) {
     validateCourseLength(parameters.courseLength, methodName);
@@ -167,7 +167,7 @@ function validateDeleteABClassParameters(parameters) {
 
   validateParametersObject(parameters, methodName);
   requireParameters({ classId: parameters.classId }, methodName);
-  validateDeleteClassId(parameters.classId, methodName);
+  validateMutationClassId(parameters.classId, methodName);
 }
 
 /**

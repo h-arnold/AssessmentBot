@@ -1,14 +1,9 @@
-/**
- * Returns all class partial documents from the abclass_partials registry.
- *
- * Thin handler that delegates to ABClassController.getAllClassPartials().
- * Called by the API dispatcher when method is 'getABClassPartials'.
- *
- * @returns {Array<object>} Array of plain class partial objects.
- */
 /* global ABClassController */
 /**
- * GAS-exposed handler that returns all class partials via the controller.
+ * GAS-exposed handler that returns all class partials from the abclass_partials registry
+ * via ABClassController.getAllClassPartials().
+ *
+ * Called by the API dispatcher when method is 'getABClassPartials'.
  *
  * @returns {Array<object>} Array of normalised class partial objects.
  */
