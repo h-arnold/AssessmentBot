@@ -20,9 +20,9 @@
 
 ## Current status note
 
-- Cleanup follow-up now landed on `chore/slop-cleanup-ws1-4`:
-  - `abclassMutations.js` now applies the unsafe-path `classId` guard consistently in `upsertABClass`, `updateABClass`, and `deleteABClass`.
-  - `abclassPartials.js` is back to the GAS-native pattern: it instantiates `ABClassController` inside `getABClassPartials()` and keeps only the minimal guarded export block at end of file.
+- The live backend and test surface now use object-form `ABClass` construction only across the active implementation and tests.
+- `src/backend/z_Api/abclassMutations.js` no longer carries the misleading delete-only validator name.
+- `src/backend/z_Api/abclassPartials.js` no longer repeats duplicate header comments, and `tests/api/apiHandler.test.js` no longer carries stale keyed-contract routing fixtures.
 - The exploration findings below are historical planning notes, not the current code state.
 
 ## Historical exploration findings to account for
