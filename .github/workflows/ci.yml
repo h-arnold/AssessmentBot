@@ -17,22 +17,6 @@ on:
       - 'src/frontend/vite.config.ts'
       - 'tsconfig.base.json'
       - 'config/eslint/ts-base-rules.cjs'
-  pull_request:
-    paths:
-      - '.github/workflows/ci.yml'
-      - 'scripts/builder/**'
-      - 'src/backend/**'
-      - 'src/frontend/**'
-      - 'tests/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'src/frontend/package.json'
-      - 'src/frontend/package-lock.json'
-      - 'vitest.config.js'
-      - 'scripts/builder/vitest.config.ts'
-      - 'src/frontend/vite.config.ts'
-      - 'tsconfig.base.json'
-      - 'config/eslint/ts-base-rules.cjs'
   workflow_dispatch:
 
 permissions:
