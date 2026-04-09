@@ -34,6 +34,7 @@ Before writing documentation updates, you must:
 3. **Agent guidance maintenance**:
    - Update `AGENTS.md` (or relevant component agent docs) only when new constraints are not discoverable by reading code alone, or when agent instructions are out of date.
    - Do not add bulky discoverable implementation detail to top-level agent files.
+   - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.
 
 4. **JSDoc correctness**:
    - Ensure changed public methods/classes have accurate JSDoc descriptions, params, return values, and behaviour notes.

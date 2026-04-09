@@ -1,5 +1,14 @@
 # Feature Delivery Plan (TDD-First)
 
+## Read-First Context
+
+Before writing or executing this plan:
+
+1. Read the current `SPEC.md`.
+2. Read any related frontend layout spec or other companion planning doc.
+3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
+4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec or layout docs.
+
 ## Scope and assumptions
 
 ### Scope

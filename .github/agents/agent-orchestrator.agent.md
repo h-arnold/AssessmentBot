@@ -18,7 +18,9 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
    - assumptions
    - global constraints and quality gates
    - each numbered section, including objective, constraints, acceptance criteria, required test cases, and section checks
-3. If it does not exist, ask the user for the path or tell them to create one from `docs/developer/ACTION_PLAN_TEMPLATE.md`.
+3. If `ACTION_PLAN.md` is missing, or the request clearly lacks an up-to-date planning set for the work, delegate planning to `Planner` first.
+   - Expect the planner to produce `SPEC.md`, any required frontend layout spec, and `ACTION_PLAN.md`.
+   - Do not begin implementation sequencing until those artefacts exist, unless the user explicitly instructs you to skip planning.
 4. Detect the delegation environment once and reuse it:
    - GitHub Copilot: `runSubagent(...)`
    - Codex: `codex-delegate ...`
@@ -221,6 +223,7 @@ Prioritise:
 - Keep red, green, review, and refactor phases separate.
 - Keep commit and push as a separate required phase.
 - Pass full context to sub-agents; do not make them guess.
+- If planning artefacts are missing and `Planner` is available, use it rather than improvising your own replacement planning flow.
 - If delegation fails or the state is unclear, stop and ask the user.
 - Do not mark work complete before a clean review pass.
 - Do not mark a section complete before commit SHA(s) and successful push confirmation are recorded.
