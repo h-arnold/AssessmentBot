@@ -77,6 +77,7 @@ Frontend build output is consumed by the GAS builder pipeline.
 - Before changing TS/ESLint config, read `docs/developer/builder/TypeScriptAndLintConfigHierarchy.md`.
 - Delegate all test implementation and test-debugging work to `Testing Specialist` when sub-agent delegation is available.
 - If delegation is unavailable, follow `.github/agents/Testing.agent.md` and `docs/developer/frontend/frontend-testing.md` before changing tests.
+- Shared frontend test helpers live under `src/frontend/src/test/**`; keep specs co-located in `src/frontend/src/**` and do not import `src/test/**` from production source.
 - When a frontend change depends on backend configuration transport behaviour, treat `tests/api/backendConfigApi.test.js` as the dedicated backend transport suite and keep frontend service assertions in `src/frontend/src/services/backendConfigurationService.spec.ts`.
 
 ## 8. Validation and Type Definition Standard

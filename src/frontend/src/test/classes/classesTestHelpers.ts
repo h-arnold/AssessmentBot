@@ -1,8 +1,8 @@
 import { vi } from 'vitest';
 import type { Cohort, YearGroup } from '../../services/referenceData.zod';
-import type { RowMutationResult } from './batchMutationEngine';
-import type { ClassesManagementRow } from './classesManagementViewModel';
-import type { ClassesManagementState } from './useClassesManagement';
+import type { RowMutationResult } from '../../features/classes/batchMutationEngine';
+import type { ClassesManagementRow } from '../../features/classes/classesManagementViewModel';
+import type { ClassesManagementState } from '../../features/classes/useClassesManagement';
 
 /**
  * Builds a canonical classes-management row for frontend tests.

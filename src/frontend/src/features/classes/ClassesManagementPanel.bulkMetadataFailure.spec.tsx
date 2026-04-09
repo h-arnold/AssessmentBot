@@ -12,7 +12,7 @@ import {
   buildClassesManagementRow,
   buildClassesManagementState,
   yearGroupOptions,
-} from './classesTestHelpers';
+} from '../../test/classes/classesTestHelpers';
 
 const classesManagementStateMock = vi.fn();
 const bulkSetCohortMock = vi.hoisted(() => vi.fn());

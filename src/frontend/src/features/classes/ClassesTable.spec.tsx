@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ClassesTable } from './ClassesTable';
-import { statusCoverageRows } from './classesTestHelpers';
+import { statusCoverageRows } from '../../test/classes/classesTestHelpers';
 
 /**
  * Reads rendered table row keys in visual order.

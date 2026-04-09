@@ -36,6 +36,7 @@ Choose test strategy by component.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
 - When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
+- Shared frontend test helpers live under `src/frontend/src/test/**` (feature-scoped subfolders are allowed). Keep specs co-located in `src/frontend/src/**`, and do not import `src/test/**` from production source.
 
 ### Builder (`scripts/builder`)
 - Framework: Vitest (`npm run builder:test`), Node environment.

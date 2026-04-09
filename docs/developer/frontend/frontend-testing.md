@@ -178,10 +178,14 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Frontend runtime setup helper: `src/frontend/src/test/setup.ts` (Testing Library + jest-dom integration).
 - Frontend provider render helper: `src/frontend/src/test/renderWithFrontendProviders.tsx` (QueryClient + startup-warmup providers for component tests; prefer this over ad-hoc `QueryClientProvider` wrappers).
 - Frontend `apiHandler` mock helper: `src/frontend/src/test/googleScriptRunHarness.ts`.
-- Classes fixture/state helper: `src/frontend/src/features/classes/classesTestHelpers.ts` (shared rows, ready-state builders, and batch-result builders for Classes table/toolbar/panel specs).
+- Classes fixture/state helper: `src/frontend/src/test/classes/classesTestHelpers.ts` (shared rows, ready-state builders, and batch-result builders for Classes table/toolbar/panel specs).
 - Builder JsonDb source fixture helpers: `scripts/builder/src/test/jsondb-source-test-helpers.ts` (shared by JsonDb source builder specs to build release archives, create path fixtures, and write release files/manifests).
 
-When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `classesTestHelpers.ts` for row fixtures and state builders rather than redefining near-identical active/inactive/notCreated/orphaned datasets in each file.
+When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders rather than redefining near-identical active/inactive/notCreated/orphaned datasets in each file.
+
+Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
+
+Production source must not import from `src/test/**`. The frontend ESLint config enforces that boundary so helper placement and import paths stay explicit.
 
 ### Mandatory `apiHandler` mock rule
 
@@ -203,6 +207,7 @@ For Settings-page Classes CRUD browser tests, extend the existing scenario harne
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
+- Shared test helpers: `src/frontend/src/test/**`
 - Test setup: `src/frontend/src/test/setup.ts`
 - E2E tests: `src/frontend/e2e-tests/**/*.spec.ts`
 - Playwright config: `src/frontend/playwright.config.ts`

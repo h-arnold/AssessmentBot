@@ -7,7 +7,7 @@ import {
   buildClassesManagementState,
   createFulfilledClassResult,
   createRejectedClassResult,
-} from './classesTestHelpers';
+} from '../../test/classes/classesTestHelpers';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 const classesManagementStateMock = vi.fn();

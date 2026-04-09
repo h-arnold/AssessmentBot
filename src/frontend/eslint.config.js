@@ -63,6 +63,28 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/test/**'],
+              message: 'Import shared test helpers only from spec files or src/test support files.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.spec.{ts,tsx}', 'src/test/**'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+  {
     files: ['src/logging/frontendLogger.ts'],
     rules: {
       'no-console': 'off',
@@ -100,6 +122,11 @@ export default defineConfig([
               group: ['./services/*', './services/**'],
               message:
                 'Keep App.tsx service-free. Access services through feature hooks/components.',
+            },
+            {
+              group: ['./test/*', './test/**'],
+              message:
+                'Keep App.tsx within production source boundaries. Import shared test helpers only from spec files or src/test support files.',
             },
           ],
         },

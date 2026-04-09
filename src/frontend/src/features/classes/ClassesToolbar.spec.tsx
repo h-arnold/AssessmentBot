@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ClassesToolbar, type ClassesToolbarProperties } from './ClassesToolbar';
-import { statusCoverageRows } from './classesTestHelpers';
+import { statusCoverageRows } from '../../test/classes/classesTestHelpers';
 
 const nonDeleteActionNames = [
   'Create ABClass',

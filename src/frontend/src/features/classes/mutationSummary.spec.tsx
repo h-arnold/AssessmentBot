@@ -6,7 +6,7 @@ import type * as BulkSetCohortFlowModule from './bulkSetCohortFlow';
 import {
   buildClassesManagementRow,
   buildClassesManagementState,
-} from './classesTestHelpers';
+} from '../../test/classes/classesTestHelpers';
 
 const classesManagementStateMock = vi.fn();
 const bulkSetCohortMock = vi.fn();
