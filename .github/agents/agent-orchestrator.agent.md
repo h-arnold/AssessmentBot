@@ -22,6 +22,11 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 4. Detect the delegation environment once and reuse it:
    - GitHub Copilot: `runSubagent(...)`
    - Codex: `codex-delegate ...`
+   - For both environments, pass full context to every sub-agent request:
+     - files read
+     - constraints
+     - exact requested outcome
+     - expected deliverables
 5. Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
 ## 2. Mandatory Section Loop

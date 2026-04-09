@@ -26,6 +26,7 @@ Before reviewing or editing anything, you must:
 3. **Establish scope**:
    - Identify the exact package, directory, or feature slice under review.
    - Separate confirmed slop from mere style preference.
+   - Expect the handoff prompt to include the relevant source snippets, concrete requirements, error/output details, and exact changes already made.
 4. **Check dependencies and APIs**:
    - Inspect package manifests, lockfiles, imports, and current runtime usage before calling something outdated.
    - Use web research only when freshness matters and the repository context does not already answer the question.

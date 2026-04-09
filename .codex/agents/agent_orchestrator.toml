@@ -11,7 +11,13 @@ Start-up:
 - Find `ACTION_PLAN.md` at the repository root.
 - Read it fully and capture the scope, assumptions, global constraints, quality gates, and each numbered section's objective, constraints, acceptance criteria, required test cases, and section checks.
 - If it does not exist, ask the user for the path or tell them to create one from `docs/developer/ACTION_PLAN_TEMPLATE.md`.
-- Detect the delegation environment once and reuse it. In Codex, use the project custom agents created for this repository.
+- Detect the delegation environment once and reuse it.
+  - In Codex, use the project custom agents created for this repository.
+  - Pass full context to every sub-agent request:
+    - files read
+    - constraints
+    - exact requested outcome
+    - expected deliverables
 - Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
 Mandatory section loop:
