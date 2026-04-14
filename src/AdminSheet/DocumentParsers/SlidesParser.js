@@ -385,7 +385,7 @@ class SlidesParser extends DocumentParser {
    * Page ID is retained only as metadata on the matched artifact, not as part of the lookup key.
    */
   collectSubmissionArtifact(definition, submissionIndex, typeNeeded, documentId) {
-    const matchCandidates = [definition.getId(), definition.taskTitle].filter(Boolean);
+    const matchCandidates = [...new Set([definition.getId(), definition.taskTitle].filter(Boolean))];
 
     if (typeNeeded === 'IMAGE') {
       return this.collectTaggedImageSubmissionArtifact(
