@@ -538,7 +538,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Method**: `SlidesAssignment.populateTasks()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SlidesAssignment.js:74-98`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   1. Gets referenceDocumentId and templateDocumentId from definition
   2. Creates `SlidesParser` instance
@@ -552,17 +552,18 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Class**: `SlidesParser` (extends `DocumentParser`)
 
-- **Location**: `/src/AdminSheet/DocumentParsers/SlidesParser.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser.js`
 - **Method**: `extractTaskDefinitions(referenceId, templateId)`
   - Fetches both presentations via Slides API
-  - Iterates through slides
-  - Extracts task titles from notes
-  - Creates artifacts from slide content (as images)
+  - Iterates through tagged slide elements in the reference and template decks
+  - Matches reference and template content into one `TaskDefinition` by task title, even when page IDs differ
+  - Builds stable Slides task IDs from task title while retaining the reference page ID as metadata
+  - Stores source `documentId` on created reference and template artefacts
   - Returns array of `TaskDefinition` instances
 
 **Class**: `TaskDefinition`
 
-- **Location**: `/src/AdminSheet/Models/TaskDefinition.js`
+- **Location**: `/src/backend/Models/TaskDefinition.js`
 - **Properties**:
 
   ```javascript
@@ -570,7 +571,6 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
     id: string,              // Generated ID
     taskTitle: string,       // From slide notes
     pageId: string,          // Slide page ID
-    documentId: string,      // Reference document ID
     artifacts: {
       reference: [BaseTaskArtifact],  // Reference slide content
       template: [BaseTaskArtifact]    // Template slide content
@@ -592,14 +592,14 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Method**: `SlidesAssignment.fetchSubmittedDocuments()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SlidesAssignment.js:104-108`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   - Defines SLIDES_MIME_TYPE constant
   - Calls parent method `fetchSubmittedDocumentsByMimeType(SLIDES_MIME_TYPE)`
 
 **Method**: `Assignment.fetchSubmittedDocumentsByMimeType()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:566-598`
+- **Location**: `/src/backend/AssignmentProcessor/Assignment.js`
 - **Process**:
   1. Calls Google Classroom API:
      - `Classroom.Courses.CourseWork.StudentSubmissions.list(courseId, assignmentId)`
@@ -612,7 +612,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Helper Method**: `_processAttachmentForSubmission(attachment, studentId, mimeType)`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/Assignment.js:528-560`
+- **Location**: `/src/backend/AssignmentProcessor/Assignment.js`
 - **Process**:
   1. Extracts driveFileId from attachment
   2. Fetches file from Drive
@@ -630,7 +630,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Method**: `SlidesAssignment.processAllSubmissions()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SlidesAssignment.js:114-140`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   1. Creates `SlidesParser` instance
   2. Gets task definitions from assignment
@@ -645,20 +645,20 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Method**: `SlidesParser.extractSubmissionArtifacts(documentId, taskDefs)`
 
-- **Location**: `/src/AdminSheet/DocumentParsers/SlidesParser.js`
+- **Location**: `/src/backend/DocumentParsers/SlidesParser.js`
 - **Process**:
   1. Fetches presentation via Slides API
-  2. Iterates through slides
-  3. For each slide:
-     - Checks notes for task title
-     - Matches against taskDefs array
-     - Extracts slide content as base64 image
-     - Creates artifact object
+  2. Builds an index of tagged student slide elements across the whole deck
+  3. For each task definition:
+     - Matches student content by stable task ID first, then task title
+     - Accepts moved or copied slides with different page IDs
+     - Extracts text, table, or tagged image artefacts based on the definition type
+     - Preserves the matched student `pageId` and submission `documentId` on the extraction
   4. Returns array of artifacts
 
 **Method**: `StudentSubmission.upsertItemFromExtraction(taskDef, extractionData)`
 
-- **Location**: `/src/AdminSheet/Models/StudentSubmission.js`
+- **Location**: `/src/backend/Models/StudentSubmission.js`
 - **Process**:
   1. Gets or creates StudentSubmissionItem for taskId
   2. Creates new artifact from extraction data
@@ -668,7 +668,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Class**: `StudentSubmissionItem`
 
-- **Location**: `/src/AdminSheet/Models/StudentSubmission.js` (both classes in same file)
+- **Location**: `/src/backend/Models/StudentSubmission.js` (both classes in the same file)
 - **Properties**:
 
   ```javascript
