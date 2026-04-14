@@ -103,6 +103,7 @@ Notes:
 The builder fails fast with stage-specific messages. Stage IDs map directly to pipeline modules:
 
 - `preflight-clean`
+- `frontend-install-deps`
 - `frontend-build`
 - `frontend-htmlservice-transform`
 - `backend-copy`
@@ -114,7 +115,7 @@ The builder fails fast with stage-specific messages. Stage IDs map directly to p
 
 ## 2. How it works
 
-The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config and runs nine stages in order.
+The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config and runs ten stages in order.
 
 ### Stage 1: Preflight clean
 
@@ -127,14 +128,22 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
   - `build/gas`
   - `build/gas/UI`
 
-### Stage 2: Frontend build
+### Stage 2: Frontend dependency check and install
+
+- Verifies frontend dependencies with:
+  - `npm --prefix <frontendDir> ls --depth=0`
+- If verification fails, runs:
+  - `npm --prefix <frontendDir> ci --no-audit --no-fund`
+- Fails with stage-aware diagnostics if dependency installation fails.
+
+### Stage 3: Frontend build
 
 - Runs:
   - `npm --prefix <frontendDir> run build -- --base=./ --outDir <buildFrontendDir> --emptyOutDir`
 - Requires `build/frontend/index.html` to exist.
 - Captures chunk and warning metadata from command output.
 
-### Stage 3: HtmlService transform
+### Stage 4: HtmlService transform
 
 - Reads `build/frontend/index.html`.
 - Replaces stylesheet `<link ... href="...">` tags with inline `<style>` blocks.
@@ -143,7 +152,7 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 - Fails if unresolved asset references remain, or if any module script still has an unresolved external `src` after transform.
 - Handles module script attributes in quoted or unquoted form, and supports either `src`/`type` attribute order.
 
-### Stage 4: Backend copy
+### Stage 5: Backend copy
 
 - Recursively copies runtime `.js` files from `src/backend` to `build/gas`.
 - Preserves relative directory structure.
@@ -153,13 +162,13 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
   - `.map`
   - `~`, `.tmp`, `.temp` suffixed files
 
-### Stage 5: Resolve JsonDb source
+### Stage 6: Resolve JsonDb source
 
 - Resolves `jsonDbApp.sourceFiles` from the pinned snapshot directory.
 - Verifies each source file exists before continuing.
 - Uses deterministic ordering.
 
-### Stage 6: Inline JsonDb namespace
+### Stage 7: Inline JsonDb namespace
 
 - Concatenates ordered JsonDb source files.
 - Wraps them in an IIFE namespace:
@@ -178,7 +187,7 @@ const JsonDbAppNS = (function () {
 - Writes `build/gas/JsonDbApp.inlined.js`.
 - Keeps JsonDb internals out of global scope except `JsonDbAppNS`.
 
-### Stage 7: Merge manifest
+### Stage 8: Merge manifest
 
 - Reads:
   - backend manifest (`src/backend/appsscript.json`)
@@ -190,14 +199,14 @@ const JsonDbAppNS = (function () {
 - Sorts keys recursively for deterministic output.
 - Writes merged `build/gas/appsscript.json`.
 
-### Stage 8: Materialise output
+### Stage 9: Materialise output
 
 - Scans final `build/gas` tree.
 - Verifies required layout files exist.
 - Verifies no temporary `work` or `frontend` directories leaked under `build/gas`.
 - Emits summary metadata (`fileCount`, `totalBytes`).
 
-### Stage 9: Validate output
+### Stage 10: Validate output
 
 - Re-validates required files.
 - Checks manifest sanity:
