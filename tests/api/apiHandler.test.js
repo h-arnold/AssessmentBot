@@ -311,7 +311,7 @@ function makeVmGlobals(overrides = {}) {
         };
       },
     },
-    ABLogger: { getInstance: () => ({ warn: () => {}, info: () => {} }) },
+    ABLogger: { getInstance: () => ({ warn: () => {}, info: () => {}, error: () => {} }) },
     Utilities: { getUuid: () => 'uuid-vm-default' },
     Validate:
       require('../../src/backend/Utils/Validate.js').Validate ||
@@ -407,6 +407,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   beforeEach(() => {
     context = setupApiHandlerTestContext(vi, {
+      installLogger: true,
       additionalHandlers: {
         ...buildReferenceDataHandlers(),
         ...buildAbClassTransportHandlers(),
@@ -592,6 +593,71 @@ describe('Api/apiHandler dispatcher', () => {
         retriable: false,
       },
     });
+  });
+
+  it('captures boundary error diagnostics for unexpected handler failures through the shared logger harness', () => {
+    const thrownError = new Error('dispatch exploded');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw thrownError;
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const response = callAuthorisationStatus(dispatcher);
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+    expect(context.errorSpy).toHaveBeenCalledTimes(1);
+    expect(context.errorSpy).toHaveBeenCalledWith(
+      'API request failed.',
+      expect.objectContaining({
+        requestId: response.requestId,
+        method: 'getAuthorisationStatus',
+      }),
+      thrownError
+    );
+  });
+
+  it('preserves top-level Error details at the console.error seam when using the real ABLogger path', () => {
+    teardownApiHandlerTestContext(vi, context);
+    context = setupApiHandlerTestContext(vi, { installLogger: 'real' });
+
+    const thrownError = new TypeError('dispatch exploded');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw thrownError;
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const response = callAuthorisationStatus(dispatcher);
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+    expect(context.consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(context.consoleErrorSpy).toHaveBeenCalledWith(
+      'API request failed.',
+      expect.objectContaining({
+        requestId: response.requestId,
+        method: 'getAuthorisationStatus',
+      }),
+      expect.objectContaining({
+        name: thrownError.name,
+        message: thrownError.message,
+        stack: thrownError.stack,
+      })
+    );
   });
 
   it.each(REFERENCE_DATA_API_METHOD_NAMES)(
