@@ -22,16 +22,20 @@ if (typeof module !== 'undefined' && module.exports) {
  *
  * @param {string} requestId - Unique identifier for this request.
  * @param {string} method - API method name that was invoked.
+ * @param {number} [startedAtMs=Date.now()] - Optional pre-captured timestamp for deterministic callers.
  * @returns {Object} Started record with requestId, method, status, and timestamp.
- * @throws {Error} Throws if requestId or method validation fails.
+ * @throws {Error} Throws if requestId or method validation fails, or if startedAtMs is not a finite number.
  */
-function createStartedRecord(requestId, method) {
+function createStartedRecord(requestId, method, startedAtMs = Date.now()) {
   Validate.requireParams({ requestId, method }, 'createStartedRecord');
+  if (!Validate.isNumber(startedAtMs)) {
+    throw new TypeError('startedAtMs must be a finite number.');
+  }
   return {
     requestId,
     method,
     status: 'started',
-    startedAtMs: Date.now(),
+    startedAtMs,
   };
 }
 
@@ -123,12 +127,16 @@ function markError(store, requestId, errorMessage) {
  *
  * @param {Object} store - The request store object.
  * @param {number} stalenessThresholdMs - Age in milliseconds beyond which a started entry is stale.
+ * @param {number} [referenceTimeMs=Date.now()] - Optional pre-captured timestamp for deterministic callers.
  * @returns {Object} The mutated store object.
- * @throws {Error} Throws if store or stalenessThresholdMs validation fails.
+ * @throws {Error} Throws if store or stalenessThresholdMs validation fails, or if referenceTimeMs is not a finite number.
  */
-function pruneStaleEntries(store, stalenessThresholdMs) {
+function pruneStaleEntries(store, stalenessThresholdMs, referenceTimeMs = Date.now()) {
   Validate.requireParams({ store, stalenessThresholdMs }, 'pruneStaleEntries');
-  const cutoffMs = Date.now() - stalenessThresholdMs;
+  if (!Validate.isNumber(referenceTimeMs)) {
+    throw new TypeError('referenceTimeMs must be a finite number.');
+  }
+  const cutoffMs = referenceTimeMs - stalenessThresholdMs;
   for (const [id, entry] of Object.entries(store)) {
     if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
       delete store[id];

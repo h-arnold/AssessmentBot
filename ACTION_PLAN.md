@@ -336,6 +336,15 @@ Frontend tests:
 
 ---
 
+## De-sloppification outcome
+
+- **Status:** Clean and ready for documentation sync.
+- **Findings resolved:** Admission-phase duplication removed by reusing `requestStore` helpers with validated optional timestamps/reference times; unused helper surface reduced; `requestStore` JSDoc aligned.
+- **Review confirmation:** No slop remains in the intended `apiHandler`/`requestStore`/test-helper cleanup slice after review.
+- **Cleanup commit/push evidence:** Pending until committed.
+
+---
+
 ## Documentation and rollout notes
 
 ### Objective

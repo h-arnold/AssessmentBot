@@ -148,7 +148,7 @@ class ApiDispatcher extends BaseSingleton {
   /**
    * Acquires the user lock, prunes stale started entries, registers a started entry in the request store,
    * and releases the lock. Returns a failure envelope if the lock cannot be acquired or active limit is reached.
-   * Inline pruning and record creation use lockAcquiredAt as the timestamp reference to minimise Date.now() calls,
+   * Request-store helpers reuse the pre-captured lockAcquiredAt timestamp to minimise Date.now() calls,
    * which is required for reliable lock-timing observability tests.
    *
    * @param {string} requestId - Unique identifier for this request.
@@ -180,14 +180,8 @@ class ApiDispatcher extends BaseSingleton {
     try {
       const store = requestStoreFns.loadStore();
 
-      // Inline pruning using lockAcquiredAt as the reference to avoid an extra Date.now() call.
-      const cutoffMs = lockAcquiredAt - staleRequestAgeMs;
       const keysBefore = Object.keys(store);
-      for (const [id, entry] of Object.entries(store)) {
-        if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
-          delete store[id];
-        }
-      }
+      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs, lockAcquiredAt);
       const keysAfterSet = new Set(Object.keys(store));
       for (const candidateId of keysBefore) {
         if (!keysAfterSet.has(candidateId)) {
@@ -211,8 +205,7 @@ class ApiDispatcher extends BaseSingleton {
         );
       }
 
-      // Inline record creation using lockAcquiredAt as startedAtMs to avoid an extra Date.now() call.
-      store[requestId] = { requestId, method, status: 'started', startedAtMs: lockAcquiredAt };
+      store[requestId] = requestStoreFns.createStartedRecord(requestId, method, lockAcquiredAt);
       requestStoreFns.saveStore(store);
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;

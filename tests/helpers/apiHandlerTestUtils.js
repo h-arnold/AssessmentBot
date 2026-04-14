@@ -50,12 +50,6 @@ function resetUserProperties() {
   globalThis.PropertiesService._resetUserProperties();
 }
 
-function setAuthorisationStatusHandler(vi, handler = () => ({ authorised: true })) {
-  const originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
-  globalThis.getAuthorisationStatus = vi.fn(handler);
-  return originalGetAuthorisationStatus;
-}
-
 function restoreGlobal(globalKey, originalValue) {
   if (originalValue === undefined) {
     delete globalThis[globalKey];
@@ -217,14 +211,6 @@ module.exports = {
   loadApiHandlerModule,
   getApiDispatcherInstance,
   callAuthorisationStatus,
-  installApiMethodHandlers,
-  restoreApiMethodHandlers,
-  resetUserProperties,
-  setAuthorisationStatusHandler,
-  restoreGlobal,
-  installLockServiceMock,
-  installAbLoggerSpies,
-  installRealAbLoggerSpies,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
   buildStartedStore,
