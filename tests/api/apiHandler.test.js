@@ -99,6 +99,13 @@ function buildAbClassTransportHandlers() {
   );
 }
 
+function buildApiHandlerTestHandlers() {
+  return {
+    ...buildReferenceDataHandlers(),
+    ...buildAbClassTransportHandlers(),
+  };
+}
+
 function buildReferenceDataParams(methodName) {
   switch (methodName) {
     case 'createCohort': {
@@ -217,6 +224,29 @@ function expectBoundaryFailureLog(errorSpy, { response, methodName, thrownValue 
     }),
     thrownValue
   );
+}
+
+function expectBoundaryFailureConsoleErrorLog(
+  consoleErrorSpy,
+  { response, methodName, thrownError }
+) {
+  const boundaryCall = consoleErrorSpy.mock.calls.find(
+    (args) =>
+      args[0] === 'API request failed.' &&
+      args[1]?.requestId === response.requestId &&
+      args[1]?.method === methodName
+  );
+
+  expect(boundaryCall).toBeDefined();
+  expect(boundaryCall[2]).toEqual(
+    expect.objectContaining({
+      name: thrownError.name,
+      message: thrownError.message,
+      stack: thrownError.stack,
+    })
+  );
+
+  return boundaryCall;
 }
 
 const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
@@ -421,10 +451,7 @@ describe('Api/apiHandler dispatcher', () => {
   beforeEach(() => {
     context = setupApiHandlerTestContext(vi, {
       installLogger: true,
-      additionalHandlers: {
-        ...buildReferenceDataHandlers(),
-        ...buildAbClassTransportHandlers(),
-      },
+      additionalHandlers: buildApiHandlerTestHandlers(),
     });
   });
 
@@ -671,6 +698,109 @@ describe('Api/apiHandler dispatcher', () => {
         stack: thrownError.stack,
       })
     );
+  });
+
+  it.each([
+    ['info', 'consoleInfoSpy', 'Controlled downstream info before failure.'],
+    ['warn', 'consoleWarnSpy', 'Controlled downstream warning before failure.'],
+  ])(
+    'preserves controlled downstream ABLogger.%s activity when the handler later fails',
+    (loggerMethod, consoleSpyName, downstreamMessage) => {
+      teardownApiHandlerTestContext(vi, context);
+      context = setupApiHandlerTestContext(vi, {
+        installLogger: 'real',
+        additionalHandlers: buildApiHandlerTestHandlers(),
+      });
+
+      const thrownError = new Error('controlled downstream ' + loggerMethod + ' failure');
+      globalThis.getAuthorisationStatus = vi.fn(() => {
+        ABLogger.getInstance()[loggerMethod](downstreamMessage, {
+          source: 'controlled-downstream-stub',
+        });
+        throw thrownError;
+      });
+
+      const dispatcher = getApiDispatcherInstance();
+
+      const response = callAuthorisationStatus(dispatcher);
+
+      expectFailureEnvelope(response, {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        withRequestId: true,
+      });
+      expect(context[consoleSpyName]).toHaveBeenCalledWith(downstreamMessage, {
+        source: 'controlled-downstream-stub',
+      });
+      expectBoundaryFailureConsoleErrorLog(context.consoleErrorSpy, {
+        response,
+        methodName: 'getAuthorisationStatus',
+        thrownError,
+      });
+    }
+  );
+
+  it('preserves controlled downstream error traffic shaped like ProgressTracker developer logging when the request fails', () => {
+    teardownApiHandlerTestContext(vi, context);
+    context = setupApiHandlerTestContext(vi, {
+      installLogger: 'real',
+      additionalHandlers: buildApiHandlerTestHandlers(),
+    });
+
+    const thrownError = new Error('controlled downstream request-path failure');
+    globalThis.updateYearGroup = vi.fn(() => {
+      ABLogger.getInstance().error('ProgressTracker logged a user-facing error.', {
+        errorMessage: 'Could not update the year group.',
+      });
+      ABLogger.getInstance().error('Developer details - Stack trace:', thrownError.stack);
+      ABLogger.getInstance().error('Developer details - Message:', thrownError.message);
+      ABLogger.getInstance().error('Developer details - Error type:', thrownError.name);
+      throw thrownError;
+    });
+
+    const response = handleApiRequest(
+      'updateYearGroup',
+      buildReferenceDataParams('updateYearGroup')
+    );
+
+    expectFailureEnvelope(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Internal API error.',
+      withRequestId: true,
+    });
+
+    expect(context.consoleErrorSpy).toHaveBeenCalledWith(
+      'ProgressTracker logged a user-facing error.',
+      { errorMessage: 'Could not update the year group.' }
+    );
+    expect(context.consoleErrorSpy).toHaveBeenCalledWith(
+      'Developer details - Stack trace:',
+      thrownError.stack
+    );
+    expect(context.consoleErrorSpy).toHaveBeenCalledWith(
+      'Developer details - Message:',
+      thrownError.message
+    );
+    expect(context.consoleErrorSpy).toHaveBeenCalledWith(
+      'Developer details - Error type:',
+      thrownError.name
+    );
+
+    const lastDownstreamLogIndex = context.consoleErrorSpy.mock.calls
+      .map((args, index) => ({ args, index }))
+      .filter(({ args }) => args[0] !== 'API request failed.')
+      .at(-1)?.index;
+    const boundaryLogIndex = context.consoleErrorSpy.mock.calls.findIndex(
+      (args) => args[0] === 'API request failed.'
+    );
+
+    expect(lastDownstreamLogIndex).toBeGreaterThanOrEqual(0);
+    expect(boundaryLogIndex).toBeGreaterThan(lastDownstreamLogIndex);
+    expectBoundaryFailureConsoleErrorLog(context.consoleErrorSpy, {
+      response,
+      methodName: 'updateYearGroup',
+      thrownError,
+    });
   });
 
   it.each(REFERENCE_DATA_API_METHOD_NAMES)(

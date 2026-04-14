@@ -213,6 +213,19 @@ Frontend tests:
 
 ## Section 3 — Downstream Log Stream Preservation Regression Coverage
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added: Complete
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete
+- Action plan updated: Complete
+- Commit created: Pending
+- Push completed: Pending
+
 ### Objective
 
 - Prove that `apiHandler` does not suppress downstream logger usage from controlled stubs when a handler both logs and then fails, so a future regression cannot reintroduce the current observability gap.
@@ -262,9 +275,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during implementation.
-- **Deviations from plan:** Populate during implementation.
-- **Follow-up implications for later sections:** Populate during implementation.
+- **Implementation notes:** Section 3 is regression coverage only; no production changes were required. Added tests proving downstream info/warn/error logging from controlled stubs remains observable alongside the single boundary failure log. Timing observability remained green.
+- **Deviations from plan:** This section did not produce a red failure because the current implementation already satisfied the covered behaviour.
+- **Follow-up implications for later sections:** No production gap was identified for the covered cases.
 
 ---
 
