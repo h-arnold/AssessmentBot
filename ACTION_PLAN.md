@@ -1,119 +1,319 @@
-# Classes CRUD Delivery Plan
+# Feature Delivery Plan (TDD-First)
 
-This plan has been split into five workstream documents so the delivery order, touched code, and failure modes are easier to reason about.
+## Read-First Context
 
-Use this file as the index only.
+Before writing or executing this plan:
 
-## Source documents
+1. Read the current `SPEC.md`.
+2. No frontend layout spec is required for this backend-only change.
+3. Treat `SPEC.md` as the source of truth for transport-contract and logging-visibility behaviour.
+4. Use this action plan to sequence delivery and testing; do not redefine the frontend envelope contract here.
 
-- Product contract: `SPEC.md`
-- UI/layout contract: `CLASSES_TAB_LAYOUT_AND_MODALS.md`
-- This plan index: `ACTION_PLAN.md`
+## Scope and assumptions
 
-## Workstream index
+### Scope
 
-1. [`ACTION_PLAN_1_BACKEND_CONTRACTS.md`](ACTION_PLAN_1_BACKEND_CONTRACTS.md)
-   - Stable-key reference-data contract
-   - `ABClass` key migration
-   - Partial-shape refresh
-   - Backend validation hardening
+- Preserve developer-visible backend diagnostics in Google Apps Script execution logs for downstream failures caught by `src/backend/z_Api/apiHandler.js`.
+- Keep the frontend response envelope unchanged for all success and failure paths.
+- Add or update backend API-layer tests and test helpers so regressions in logging visibility are caught automatically.
+- Update backend transport documentation if implementation changes the documented diagnostic expectations.
 
-2. [`ACTION_PLAN_2_FRONTEND_DATA_AND_QUERY.md`](ACTION_PLAN_2_FRONTEND_DATA_AND_QUERY.md)
-   - Frontend Zod/service contract changes
-   - `googleClassrooms` transport integration
-   - Shared query keys and query options
-   - Startup warm-up ownership
-   - Shared invalidation and re-fetch rules
-   - Browser harness groundwork
+### Out of scope
 
-3. [`ACTION_PLAN_3_CLASSES_TAB_SHELL_AND_TABLE.md`](ACTION_PLAN_3_CLASSES_TAB_SHELL_AND_TABLE.md)
-   - Settings-page feature bootstrap
-   - Classes shell and readiness plumbing
-   - Merged row view-model
-   - Summary, toolbar, table (including column sorting/filtering), and load-state rendering
+- Frontend code or UI changes.
+- Broad logging refactors across unrelated backend modules.
+- Changing the public error payload sent to the frontend.
 
-4. [`ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md`](ACTION_PLAN_4_BULK_CLASS_WORKFLOWS.md)
-   - Shared batch mutation engine
-   - Bulk create, delete, active/inactive
-   - Bulk cohort, year group, and course-length updates
-   - Mutation summary and refresh-failure UX
+### Assumptions
 
-5. [`ACTION_PLAN_5_REFERENCE_DATA_MANAGEMENT_AND_SIGNOFF.md`](ACTION_PLAN_5_REFERENCE_DATA_MANAGEMENT_AND_SIGNOFF.md)
-   - Cohort management modal
-   - Year-group management modal
-   - Regression and contract hardening
-   - Documentation and rollout notes
+1. `ABLogger` remains the canonical developer-facing logger for backend diagnostics and continues to route to Google Apps Script console output.
+2. The implementation may keep request-store failure tracking compact even if execution-log diagnostics become richer.
+3. Fidelity assertions for thrown `Error` values will target the top-level `console.error` payload produced by current `ABLogger` serialisation rather than expanding into deeper cause-chain guarantees.
+4. The default plan assumes mapped and expected downstream handler failures receive the same single boundary error-level log as unexpected failures, unless implementation review explicitly decides that the additional log volume is not acceptable.
 
-## Final de-sloppification outcome
+---
 
-- Final branch-wide cleanup removed the last stale reference-data contract notes and misleading inline comments so the pushed branch no longer documents the retired name-based payloads or removed adapter-era wording.
-- Workstream 1 backend cleanup also standardised active `ABClass` construction usage, removed the misleading `abclassMutations.js` validator naming, and dropped duplicate or stale backend test and documentation leftovers.
-- Workstream 2 frontend data/query cleanup now leaves `warmStartupQueries(...)` as the only startup warm-up entrypoint, removes the dead `warmClassPartials(...)` helper, and drops the unused required-refresh union schema/base-type exports from `queryInvalidation.zod.ts`.
-- Workstream 3 shell/table cleanup removed the retired standalone Classes page surface, dropped the dead row-selection helper and unused startup-error flag, and kept default table ordering owned by the shared Classes view-model contract.
-- A final follow-up cleanup removed the last dead `ClassesQuerySnapshot` field, routed Classes table sorting through one shared helper, and pared the temporary cleanup-mechanics tests back to behaviour-focused coverage.
+## Global constraints and quality gates
 
-## Cross-cutting rules
+### Engineering constraints
 
-- TDD-first for every work package.
-- Keep `SettingsPage.tsx` as a composition layer only.
-- Keep API handlers thin; push behaviour into controllers, hooks, helpers, or services.
-- Route all frontend transport through `callApi(...)`.
-- Use Zod for all new or changed frontend contracts.
-- Treat the key-based contract as blank-slate only for this delivery.
-- Preserve the rollout note that downstream assessment flows still depend on numeric `ABClass.yearGroup`.
-- For frontend-visible behaviour changes, pair Vitest with Playwright coverage and extend the shared Classes CRUD harness instead of creating parallel harnesses.
+- Keep `apiHandler` as a thin transport boundary with existing admission and completion lifecycle behaviour intact.
+- Fail fast on invalid inputs and do not hide backend wiring issues.
+- Avoid defensive guards that hide missing logger or transport wiring.
+- Keep changes minimal, localised, and consistent with repository conventions.
+- Use British English in comments and documentation.
+- Do not widen the frontend error envelope beyond `ok`, `requestId`, and `error { code, message, retriable }`.
+- The transport boundary may add one concise contextual error log only; it must not re-emit a second transport-generated series of stack, message, and detail logs when downstream code has already logged those details.
 
-## Exploration summary (historical planning context)
+### TDD workflow (mandatory per section)
 
-The split above matches the largest codebase seams and the highest-risk gaps found during the original planning sweep. Several of the risks below have since been resolved in delivered work and later cleanup; use the workstream documents above for the current implementation state.
+For each section below:
 
-### Backend contract risks
+1. **Red**: write failing tests for the section’s acceptance criteria.
+2. **Green**: implement the smallest change needed to pass.
+3. **Refactor**: tidy implementation with all tests still green.
+4. Run section-level verification commands.
 
-- During the original planning sweep, `src/backend/z_Api/referenceData.js` was still dereferencing request payloads before validating shape.
-- During the original planning sweep, `src/backend/z_Api/abclassPartials.js` resolved `ABClassController` at module load, which was fragile under bundle/load-order changes.
-- During the original planning sweep, `src/backend/z_Api/abclassMutations.js` sanitised `classId` on delete but not consistently on create/update paths.
-- The original controller/model test baseline still encoded old name-based and create-on-missing behaviour.
-
-### Frontend data/query risks
-
-- At planning time, `src/frontend/src/features/auth/AppAuthGate.tsx` only warmed `classPartials` and failed open.
-- At planning time, `src/frontend/src/services/referenceData.zod.ts` and `src/frontend/src/services/classPartials.zod.ts` still encoded the old transport shapes.
-- The initial delivery gap included the absence of a frontend `googleClassrooms` service or query definition.
-- The original plan also tracked the lack of a shared refresh-failure contract for “mutation succeeded, refresh failed”.
-
-### Feature-shell risks
-
-- At planning time, `src/frontend/src/pages/SettingsPage.tsx` still rendered a blank placeholder card for the Classes tab.
-- At planning time, `src/frontend/src/features/classes/` existed for Workstream 2 query-invalidation foundations, but still lacked the Classes shell/table components.
-- The original page-test baseline covered tabs, not data-driven tab content or blocking readiness states.
-
-### Bulk-workflow risks
-
-- Workstream 1 hardened backend validation for missing-class `active` updates; the planned Workstream 4 follow-on needed to preserve this behaviour while adding bulk flows.
-- The original bulk-workflow plan noted that a shared batch mutation engine had not been introduced yet.
-- The shared Classes harness already existed, but the Workstream 4 plan still called for explicit bulk-journey assertions for submitted-row ordering and partial-failure aggregation.
-
-### Reference-data modal and sign-off risks
-
-- The original sign-off plan noted that delete-blocked UX did not yet have a backend-authoritative contract.
-- The planning sweep also recorded that `docs/developer/frontend/frontend-react-query-and-prefetch.md` had fallen out of sync with the warm-up/query-key implementation of that time.
-- The original test-gap note was that there was no dedicated `tests/api/referenceData*.test.js` suite, with transport coverage instead living in `tests/backend-api/referenceData.unit.test.js`.
-
-## Recommended implementation order
-
-1. Workstream 1: backend contracts
-2. Workstream 2: frontend data/query foundations
-3. Workstream 3: feature shell and table
-4. Workstream 4: bulk class workflows
-5. Workstream 5: reference-data management, regression, and docs
-
-## Validation command hierarchy
+### Validation commands hierarchy
 
 - Backend lint: `npm run lint`
-- Frontend lint: `npm run frontend:lint`
-- Builder lint: `npm run builder:lint`
 - Backend tests: `npm test -- <target>`
-- Frontend unit tests: `npm run frontend:test -- <target>`
-- Frontend e2e tests: `npm run frontend:test:e2e -- <target>`
-- Frontend coverage: `npm run frontend:test:coverage`
-- Frontend type-check: `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+---
+
+## Section 1 — Logging Contract Test Harness
+
+### Objective
+
+- Extend the `apiHandler` test harness so API-layer tests can assert both developer-facing `ABLogger.error(...)` calls and the underlying `console.error` execution-log seam, in addition to the existing timing `info` and `warn` checks.
+
+### Constraints
+
+- Keep the harness focused on transport-boundary observability; do not leak frontend concerns into these tests.
+- Reuse `tests/helpers/apiHandlerTestUtils.js` rather than creating one-off logger stubs per test file.
+- Maintain existing timing-test support while adding error-log capture.
+- Add a targeted seam path that uses the real `ABLogger` with `console.error` spying where fidelity must be proven; do not treat an `ABLogger` mock alone as sufficient evidence for execution-log preservation.
+
+### Acceptance criteria
+
+- Test helpers can capture `ABLogger.error(...)` calls alongside `info` and `warn`.
+- Targeted tests can assert the `console.error` payload produced by the real `ABLogger` path.
+- Existing timing tests continue to read clearly and do not lose their current assertions.
+- The harness supports assertions against both contextual metadata and original thrown values.
+- For thrown `Error` values, seam tests can prove preservation of top-level `name`, `message`, and `stack`.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None.
+
+API layer tests:
+
+1. Add a helper-level test or first consumer test that fails until `ABLogger.error(...)` calls are capturable through the shared `apiHandler` test context.
+2. Add a targeted seam test that runs through the real `ABLogger.error(...)` path and spies on `console.error` to prove top-level `name`, `message`, and `stack` fidelity for a thrown `Error`.
+3. Prove the logger harness can distinguish timing logs from boundary failure logs.
+
+Frontend tests:
+
+1. None.
+
+### Section checks
+
+- `npm test -- tests/api/apiHandler.test.js`
+- `npm test -- tests/api/apiHandlerLocking.test.js`
+- `npm test -- tests/api/apiHandlerTiming.test.js`
+
+### Optional `@remarks` JSDoc follow-through
+
+- None.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** Populate during implementation.
+- **Deviations from plan:** Populate during implementation.
+- **Follow-up implications for later sections:** Populate during implementation.
+
+---
+
+## Section 2 — Transport Boundary Failure Logging
+
+### Objective
+
+- Preserve faithful developer diagnostics in execution logs for all downstream `apiHandler` failure paths while keeping frontend envelope mapping unchanged.
+
+### Constraints
+
+- `apiHandler` must continue returning envelopes rather than throwing to the frontend.
+- Known transport-code mapping behaviour must remain unchanged.
+- The boundary log should carry request context and the original thrown value without reducing it to a lossy string before logging.
+- Boundary logging must stay as one concise contextual error entry and must not replay a transport-generated detail series when downstream code has already logged detailed diagnostics.
+- Avoid turning request-store persistence into a full stack-trace store.
+
+### Acceptance criteria
+
+- Unexpected downstream failures still return `INTERNAL_ERROR` with the current generic frontend message.
+- Mapped failures such as `ApiValidationError` and `reason === 'IN_USE'` still return their current envelope codes and messages.
+- Each downstream failure path produces developer-visible boundary diagnostics suitable for Google Apps Script execution logs.
+- For thrown `Error` values, the targeted seam tests prove the emitted execution-log payload preserves top-level `name`, `message`, and `stack`.
+- Request completion tracking still records a failed request after the boundary logging change.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. If request-store behaviour changes, add or update `tests/api/requestStore.test.js` to keep the persisted failure summary contract explicit.
+
+Backend controller tests:
+
+1. None.
+
+API layer tests:
+
+1. `apiHandler` returns `INTERNAL_ERROR` for an unexpected handler exception and also emits a single boundary `ABLogger.error(...)` entry containing `requestId`, method name, and the original `Error` object.
+2. The corresponding real-logger seam test proves that the emitted `console.error` payload preserves top-level `name`, `message`, and `stack`.
+3. `apiHandler` returns `INVALID_REQUEST` for `ApiValidationError` and still emits developer-facing boundary diagnostics without changing the frontend payload.
+4. `apiHandler` returns `IN_USE` for the existing delete-blocked path and still emits developer-facing boundary diagnostics.
+5. A non-`Error` thrown value still results in deterministic logging plus the existing failure envelope.
+6. The failed request remains recorded by the completion flow after boundary logging runs.
+
+Frontend tests:
+
+1. None.
+
+### Section checks
+
+- `npm test -- tests/api/apiHandler.test.js`
+- `npm test -- tests/api/apiHandlerLocking.test.js`
+- `npm test -- tests/api/requestStore.test.js`
+
+### Optional `@remarks` JSDoc follow-through
+
+- Consider `@remarks` on `ApiDispatcher.handle(...)` or `_runCompletionPhase(...)` only if the final implementation needs to explain why execution-log preservation and frontend-envelope privacy are intentionally separated.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** Populate during implementation.
+- **Deviations from plan:** Populate during implementation.
+- **Follow-up implications for later sections:** Populate during implementation.
+
+---
+
+## Section 3 — Downstream Log Stream Preservation Regression Coverage
+
+### Objective
+
+- Prove that `apiHandler` does not suppress downstream logger usage from controlled stubs when a handler both logs and then fails, so a future regression cannot reintroduce the current observability gap.
+
+### Constraints
+
+- Keep assertions at the API boundary and shared logger seam; do not overfit tests to internal controller implementations.
+- Assert ordering only where the implementation guarantees it.
+- Reuse the existing test helper strategy rather than mocking the entire backend runtime differently per test.
+- Do not claim that mocked tests verify the exact production internals of `ProgressTracker`; use strictly accurate wording about non-suppression of controlled downstream logging stubs unless a real class is intentionally loaded with shims.
+
+### Acceptance criteria
+
+- Tests demonstrate that downstream `ABLogger` activity from controlled stubs remains observable when the handler ultimately fails.
+- Tests demonstrate that `apiHandler` does not suppress controlled downstream logging patterns shaped like `ProgressTracker.logError(...)` developer logging.
+- Timing observability tests remain green alongside the new failure-log assertions.
+
+### Required test cases (Red first)
+
+Backend model tests:
+
+1. None.
+
+Backend controller tests:
+
+1. None.
+
+API layer tests:
+
+1. Add a handler-double test where the downstream handler emits `ABLogger.info(...)` or `ABLogger.warn(...)` and then throws, and assert those calls remain present alongside the boundary failure log.
+2. Add a request-path test that uses a controlled downstream stub to emit the same style of `ABLogger.error(...)` traffic that `ProgressTracker.logError(...)` would produce, and assert that `apiHandler` does not suppress those downstream log entries alongside the final failure envelope.
+3. Keep or extend the existing completion-timing test so boundary error logging does not suppress completion-phase observability.
+
+Frontend tests:
+
+1. None.
+
+### Section checks
+
+- `npm test -- tests/api/apiHandler.test.js`
+- `npm test -- tests/api/apiHandlerLocking.test.js`
+- `npm test -- tests/api/apiHandlerTiming.test.js`
+
+### Optional `@remarks` JSDoc follow-through
+
+- None unless the final tests reveal a non-obvious ordering rule that needs preserving in code comments.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** Populate during implementation.
+- **Deviations from plan:** Populate during implementation.
+- **Follow-up implications for later sections:** Populate during implementation.
+
+---
+
+## Regression and contract hardening
+
+### Objective
+
+- Confirm the logging-preservation change holds across touched API-layer paths without regressing transport mapping, request tracking, or lint standards.
+
+### Constraints
+
+- Prefer focused backend test runs before broad validation.
+- Do not treat documentation as complete until the transport contract and diagnostic guidance agree.
+
+### Acceptance criteria
+
+- Touched backend API tests pass with the new logging assertions.
+- Any touched request-store tests pass if failure-summary persistence changed.
+- Backend lint passes.
+- Frontend envelope assertions remain unchanged in the touched API tests.
+
+### Required test cases/checks
+
+1. Run `npm test -- tests/api/apiHandler.test.js`.
+2. Run `npm test -- tests/api/apiHandlerLocking.test.js`.
+3. Run `npm test -- tests/api/apiHandlerTiming.test.js`.
+4. Run `npm test -- tests/api/requestStore.test.js` if request-store behaviour changed.
+5. Run `npm run lint`.
+
+### Section checks
+
+- Run the commands listed above and ensure green results.
+
+### Implementation notes / deviations / follow-up
+
+- **Implementation notes:** Summarise what was done during regression phase.
+- **Deviations from plan:** Note any additional work discovered or done.
+
+---
+
+## Documentation and rollout notes
+
+### Objective
+
+- Update backend documentation to reflect the preserved execution-log diagnostics and unchanged frontend contract.
+
+### Constraints
+
+- Only modify documents relevant to the touched backend transport area.
+
+### Acceptance criteria
+
+- `docs/developer/backend/api-layer.md` still documents the existing frontend envelope contract accurately.
+- Backend documentation makes it clear that developer diagnostics are preserved in execution logs even when frontend failures are mapped to generic envelopes.
+- Notes and deviations fields in this action plan are completed during implementation.
+
+### Required checks
+
+1. Verify the backend API-layer doc still describes the unchanged frontend envelope.
+2. Verify the same doc or another relevant backend doc records the execution-log diagnostic expectation for `apiHandler` failure paths.
+3. Confirm notes/deviations fields are filled during implementation.
+
+### Optional `@remarks` JSDoc review
+
+- Review whether any non-obvious separation between execution-log diagnostics and frontend transport privacy should be preserved in `@remarks` within `apiHandler.js`.
+- If no such documentation is needed, record `None`.
+
+### Implementation notes / deviations / follow-up
+
+- Populate during implementation.
+
+---
+
+## Suggested implementation order
+
+1. Section 1 — Logging Contract Test Harness
+2. Section 2 — Transport Boundary Failure Logging
+3. Section 3 — Downstream Log Stream Preservation Regression Coverage
+4. Regression and contract hardening
+5. Documentation and rollout notes
