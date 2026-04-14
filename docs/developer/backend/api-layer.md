@@ -93,6 +93,19 @@ Known backend error types are mapped to transport error codes:
 
 Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
 
+### Failure diagnostics and transport privacy
+
+When an allowlisted handler throws, `apiHandler` preserves developer diagnostics in Google Apps Script execution logs while keeping the frontend transport envelope stable:
+
+- emits one boundary `ABLogger.error(...)` entry with `requestId`, allowlisted `method`, and the original thrown value
+- writes that boundary log before completion tracking updates the request store
+- keeps downstream `ABLogger` activity from the failing handler visible; the transport boundary does not suppress those logs
+- still returns the same frontend-safe envelope shape, including generic `INTERNAL_ERROR` responses for unmapped failures
+
+This separation is intentional: execution logs remain the place for developer investigation, while the frontend transport contract avoids exposing stack traces or raw exception payloads to callers.
+
+Request-store persistence stays compact. Failed entries record a stringified failure summary for lifecycle tracking, not the full thrown payload.
+
 ### Frontend usage pattern
 
 Frontend code should call `callApi` from `src/frontend/src/services/apiService.ts`, not `google.script.run` directly.

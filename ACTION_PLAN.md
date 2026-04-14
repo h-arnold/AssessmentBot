@@ -347,6 +347,18 @@ Frontend tests:
 
 ## Documentation and rollout notes
 
+**Status:** Complete
+
+**Checklist**
+
+- Docs changes drafted: Complete
+- Docs review clean: Complete
+- Docs checks passed: Complete
+- Optional `@remarks` review completed: Complete
+- Action plan updated: Complete
+- Commit created: Pending
+- Push completed: Pending
+
 ### Objective
 
 - Update backend documentation to reflect the preserved execution-log diagnostics and unchanged frontend contract.
@@ -374,7 +386,10 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- Populate during implementation.
+- **Implementation notes:** Updated `docs/developer/backend/api-layer.md` to keep the frontend envelope contract explicit while documenting that `apiHandler` now preserves developer diagnostics in execution logs via one boundary `ABLogger.error(...)` entry containing `requestId`, method, and the original thrown value. The same doc now states that downstream developer logs remain visible and that request-store persistence stays compact.
+- **Optional `@remarks` review result:** Added a concise `@remarks` note to `ApiDispatcher.handle(...)` in `src/backend/z_Api/apiHandler.js` because the separation between execution-log diagnostics and frontend transport privacy is intentional and not obvious from the envelope code alone. `_runCompletionPhase(...)` and `_mapErrorToFailureEnvelope(...)` JSDoc now also accept non-`Error` thrown values accurately.
+- **Deviations from plan:** None.
+- **Follow-up implications:** None.
 
 ---
 

@@ -91,6 +91,10 @@ class ApiDispatcher extends BaseSingleton {
    * As the API boundary entry point, this method always returns an envelope and never throws.
    * Always wraps errors in a structured response.
    *
+   * @remarks Downstream handler failures are logged once at the transport boundary with the original thrown value
+   * for execution-log diagnostics, then mapped to the frontend-safe envelope contract without exposing raw
+   * exception details to callers.
+   *
    * @param {Object} request - Request object with method and optional params.
    * @param {string} request.method - The API method name to dispatch.
    * @param {*} [request.params] - Optional parameters for the handler.
@@ -231,7 +235,7 @@ class ApiDispatcher extends BaseSingleton {
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {boolean} handlerFailed - Whether the handler threw an error.
-   * @param {Error} [handlerError] - The error thrown by the handler, if any.
+   * @param {*} [handlerError] - The value thrown by the handler, if any.
    * @private
    */
   _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
@@ -365,7 +369,7 @@ class ApiDispatcher extends BaseSingleton {
    * and maps them to appropriate error codes. Falls back to INTERNAL_ERROR for unknown error types.
    *
    * @param {string} requestId - Unique request identifier.
-   * @param {Error} error - The runtime error to map.
+   * @param {*} error - The runtime error value to map.
    * @returns {Object} Failure response envelope.
    * @private
    */
