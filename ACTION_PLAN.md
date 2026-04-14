@@ -73,8 +73,8 @@ For each section below:
 - Green review clean: Complete
 - Checks passed: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -128,6 +128,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** `apiHandler` now emits one boundary `ABLogger.error(...)` entry with `requestId`, `method`, and the original thrown value when a handler throws. The shared harness now captures error logs and the real `ABLogger` -> `console.error` seam behaviour. Existing timing observability remained intact.
+- **Delivery evidence:** Branch `chore/apihandler-gas-log-preservation-spec`; commit `e708edfbce5e8364c8274dc9526aa86f0cea08a8` (`feat: complete section 1 logging contract harness`); commit created: Complete; push completed: Complete; push confirmation: succeeded.
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Add direct mapped-failure and non-`Error` failure assertions next; this section proved the core unexpected-`Error` path.
 
