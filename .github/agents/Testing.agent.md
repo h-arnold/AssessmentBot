@@ -2,6 +2,7 @@
 name: 'Testing Specialist'
 description: 'Creates, runs and debugs tests'
 user-invocable: true
+model: gpt-5.4
 tools: [vscode/getProjectSetupInfo, vscode/runCommand, execute, read/problems, read/readFile, read/terminalSelection, read/terminalLastCommand, edit/createDirectory, edit/createFile, edit/createJupyterNotebook, edit/editFiles, search, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_setUpConnectedMode, sonarsource.sonarlint-vscode/sonarqube_analyzeFile, todo]
 ---
 
@@ -31,9 +32,11 @@ Choose test strategy by component.
 
 ### Frontend (`src/frontend`)
 - Unit/component tests: Vitest + Testing Library (`npm run frontend:test`) in `src/frontend/src/**/*.spec.{ts,tsx}`.
-- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`.
+- Browser E2E tests: Playwright (`npm run frontend:test:e2e`) in `src/frontend/e2e-tests/**/*.spec.ts`. You must run them for any new or changed user-visible interaction or browser integration flow. If Chromium or its system dependencies are missing, install them with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e` until it passes.
 - Environment: JSDOM for unit tests, real browser automation for E2E.
 - Prefer behaviour-focused assertions over implementation details.
+- When mocking `google.script.run.apiHandler`, reuse `src/frontend/src/test/googleScriptRunHarness.ts`. Use `createGoogleScriptRunApiHandlerMock(...)` in Vitest and `googleScriptRunApiHandlerFactorySource` for Playwright init scripts; do not add new shared-mutable runner mocks.
+- Shared frontend test helpers live under `src/frontend/src/test/**` (feature-scoped subfolders are allowed). Keep specs co-located in `src/frontend/src/**`, and do not import `src/test/**` from production source.
 
 ### Builder (`scripts/builder`)
 - Framework: Vitest (`npm run builder:test`), Node environment.
@@ -47,7 +50,7 @@ Use commands relevant to the component under test:
 - Backend targeted: `npm test -- <path_to_test>`
 - Backend full: `npm test`
 - Frontend targeted/full: `npm run frontend:test -- <pattern>` or `npm run frontend:test`
-- Frontend E2E: `npm run frontend:test:e2e`
+- Frontend E2E: `npm run frontend:test:e2e` (required for visible browser behaviour; rerun after installing Chromium dependencies if needed)
 - Frontend coverage gate (minimum 85%): `npm run frontend:test:coverage`
 - Builder tests: `npm run builder:test`
 - Builder coverage gate (minimum 85%): `npm run builder:test:coverage`
@@ -58,6 +61,14 @@ If you add or modify tests, run the smallest targeted command first, then the re
 
 - Frontend and builder unit test suites must satisfy minimum coverage thresholds of **85%** for lines, functions, statements, and branches.
 - Use the dedicated coverage commands to verify the enforced thresholds before handoff.
+
+## 2.2 Test naming and traceability
+
+- Name tests, `describe(...)` blocks, helper constants, and fixtures after the behaviour or surface under test.
+- Do **not** use action-plan section numbering in test names or helpers (for example `Section 1`, `Section 2`, `SECTION_1_*`).
+- When migrating a transport surface, rename tests to the real method/class names and retire the old planning labels rather than carrying them forward.
+- For backend configuration transport, use `tests/api/backendConfigApi.test.js` as the dedicated suite and keep general dispatcher coverage in `tests/api/apiHandler.test.js`.
+- Do not recreate removed legacy configuration transport coverage around `src/backend/ConfigurationManager/99_globals.js`.
 
 ## 3. Idiomatic Patterns
 
@@ -92,9 +103,11 @@ Report enough detail to be actionable without noise.
 Before declaring completion:
 
 1. Run tests you changed (targeted first).
-2. Run the relevant broader suite for the touched component.
-3. Summarise:
+2. Run the linter. **YOU MUST** return code free of linter issues.
+3. Run the relevant broader suite for the touched component. For frontend user-visible changes, this includes `npm run frontend:test:e2e` and any browser dependency install step needed to make it pass.
+4. Summarise:
    - files created/modified
    - commands run
    - pass/fail outcomes
    - remaining risks or gaps
+

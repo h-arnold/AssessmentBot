@@ -2,6 +2,7 @@
 name: 'Docs'
 description: 'Reviews changed code and updates developer documentation, AGENTS guidance, and JSDoc accuracy'
 user-invocable: true
+model: gpt-5.4
 tools: [execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/createAndRunTask, execute/runInTerminal, read/problems, read/readFile, edit/createFile, edit/editFiles, edit/rename, search, web, vscode.mermaid-chat-features/renderMermaidDiagram, todo]
 ---
 
@@ -33,6 +34,7 @@ Before writing documentation updates, you must:
 3. **Agent guidance maintenance**:
    - Update `AGENTS.md` (or relevant component agent docs) only when new constraints are not discoverable by reading code alone, or when agent instructions are out of date.
    - Do not add bulky discoverable implementation detail to top-level agent files.
+   - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.
 
 4. **JSDoc correctness**:
    - Ensure changed public methods/classes have accurate JSDoc descriptions, params, return values, and behaviour notes.
@@ -103,3 +105,4 @@ Provide a concise handoff summary including:
 - Keep all developer docs tightly focused on this codebase, its architecture, and its workflows.
 - Assume developer-doc readers are experienced engineers; avoid hand-holding explanations of TypeScript, React, GAS, IDE setup, or generic programming basics.
 - For non-developer docs, assume a technically competent secondary school teacher: tech-savvy and comfortable with practical software use, but not necessarily familiar with coding, IDEs, or developer tooling internals.
+
