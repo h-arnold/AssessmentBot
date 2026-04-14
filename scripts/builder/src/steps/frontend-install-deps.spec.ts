@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { BuilderPaths } from '../types.js';
+import { createBuilderPaths } from '../test/builder-fixture-test-helpers.js';
 
 vi.mock('../lib/process.js', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
@@ -19,37 +20,15 @@ const STAGE_ID = 'frontend-install-deps';
 const FIRST_CALL_INDEX = 1;
 const SECOND_CALL_INDEX = 2;
 
-/**
- * Builds a representative `BuilderPaths` fixture for step tests.
- *
- * @returns {BuilderPaths} Fully resolved builder path values.
- */
-function createBuilderPaths(): BuilderPaths {
-  return {
-    repoRoot: '/repo',
-    builderRoot: '/repo/scripts/builder',
-    configPath: '/repo/scripts/builder/builder.config.json',
-    frontendDir: '/repo/src/frontend',
-    backendDir: '/repo/src/backend',
-    buildDir: '/repo/build',
-    buildFrontendDir: '/repo/build/frontend',
-    buildWorkDir: '/repo/build/work',
-    buildGasDir: '/repo/build/gas',
-    buildGasUiDir: '/repo/build/gas/UI',
-    backendManifestPath: '/repo/src/backend/appsscript.json',
-    jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
-    jsonDbAppManifestPath: '/repo/vendor/jsondbapp/appsscript.json',
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
-
 describe('runFrontendInstallDeps', () => {
   let paths: BuilderPaths;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    paths = createBuilderPaths();
+    paths = createBuilderPaths('/repo', {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
   });
 
   it('passes when frontend dependencies are already present', async () => {

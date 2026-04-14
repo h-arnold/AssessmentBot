@@ -18,45 +18,24 @@ vi.mock('../lib/fs.js', () => ({
 import { BuildStageError } from '../lib/errors.js';
 import { pathExists } from '../lib/fs.js';
 import { CommandExecutionError } from '../lib/process.js';
+import { createBuilderPaths } from '../test/builder-fixture-test-helpers.js';
 import { runCommand } from '../lib/process.js';
-import { runFrontendBuild, runFrontendBuildWithMode } from './frontend-build.js';
+import { runFrontendBuildWithMode } from './frontend-build.js';
 
 const runCommandMock = vi.mocked(runCommand);
 const pathExistsMock = vi.mocked(pathExists);
 const BUILD_STDOUT = 'build/frontend/index.html\nbuild/frontend/assets/index-abc123.js';
 const FRONTEND_BUILD_STAGE = 'frontend-build';
 
-/**
- * Builds a representative `BuilderPaths` fixture for step tests.
- *
- * @returns {BuilderPaths} Fully resolved builder path values.
- */
-function createBuilderPaths(): BuilderPaths {
-  return {
-    repoRoot: '/repo',
-    builderRoot: '/repo/scripts/builder',
-    configPath: '/repo/scripts/builder/builder.config.json',
-    frontendDir: '/repo/src/frontend',
-    backendDir: '/repo/src/backend',
-    buildDir: '/repo/build',
-    buildFrontendDir: '/repo/build/frontend',
-    buildWorkDir: '/repo/build/work',
-    buildGasDir: '/repo/build/gas',
-    buildGasUiDir: '/repo/build/gas/UI',
-    backendManifestPath: '/repo/src/backend/appsscript.json',
-    jsonDbAppPinnedSnapshotDir: '/repo/vendor/jsondbapp',
-    jsonDbAppManifestPath: '/repo/vendor/jsondbapp/appsscript.json',
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
-
-describe('runFrontendBuild', () => {
+describe('runFrontendBuildWithMode', () => {
   let paths: BuilderPaths;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    paths = createBuilderPaths();
+    paths = createBuilderPaths('/repo', {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
   });
 
   it('invokes frontend build command with expected working directory and options', async () => {
@@ -66,7 +45,7 @@ describe('runFrontendBuild', () => {
     });
     pathExistsMock.mockResolvedValue(true);
 
-    await runFrontendBuild(paths);
+    await runFrontendBuildWithMode(paths, 'production');
 
     expect(runCommandMock).toHaveBeenCalledWith(
       'npm',
@@ -128,7 +107,7 @@ describe('runFrontendBuild', () => {
     });
     pathExistsMock.mockResolvedValue(true);
 
-    const result = await runFrontendBuild(paths);
+    const result = await runFrontendBuildWithMode(paths, 'production');
 
     expect(result.stage).toBe(FRONTEND_BUILD_STAGE);
     expect(result.entryHtmlPath).toBe(path.join(paths.buildFrontendDir, 'index.html'));
@@ -152,7 +131,7 @@ describe('runFrontendBuild', () => {
       })
     );
 
-    const result = runFrontendBuild(paths);
+    const result = runFrontendBuildWithMode(paths, 'production');
     await expect(result).rejects.toMatchObject({
       name: 'BuildStageError',
       stage: FRONTEND_BUILD_STAGE,
@@ -162,15 +141,25 @@ describe('runFrontendBuild', () => {
     await expect(result).rejects.toThrow('vite stderr');
   });
 
+  it('wraps unexpected build command failures with stage context', async () => {
+    runCommandMock.mockRejectedValue(new Error('unexpected failure'));
+
+    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toMatchObject({
+      name: 'BuildStageError',
+      stage: FRONTEND_BUILD_STAGE,
+      message: 'Frontend build failed while running Vite build command.',
+    });
+  });
+
   it('throws BuildStageError when index.html is not generated', async () => {
     runCommandMock.mockResolvedValue({ stdout: 'chunk info', stderr: 'warning: test warning' });
     pathExistsMock.mockResolvedValue(false);
 
-    await expect(runFrontendBuild(paths)).rejects.toMatchObject({
+    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toMatchObject({
       name: 'BuildStageError',
       stage: FRONTEND_BUILD_STAGE,
     });
-    await expect(runFrontendBuild(paths)).rejects.toThrow('chunk info');
-    await expect(runFrontendBuild(paths)).rejects.toThrow('warning: test warning');
+    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toThrow('chunk info');
+    await expect(runFrontendBuildWithMode(paths, 'production')).rejects.toThrow('warning: test warning');
   });
 });

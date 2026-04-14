@@ -96,7 +96,7 @@ Notes:
 - `buildDir` is fully removed and recreated during preflight.
 - If `build/gas/.clasp.json` exists before preflight, it is preserved and restored after directory recreation.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
-- `jsonDbApp.publicExports` controls what is exposed on `JsonDbAppNS`.
+- `jsonDbApp.publicExports` controls what is exposed on `JsonDbApp`.
 
 ### Failure behaviour
 
@@ -174,7 +174,7 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 - Wraps them in an IIFE namespace:
 
 ```javascript
-const JsonDbAppNS = (function () {
+const JsonDbApp = (function () {
   // inlined JsonDb source
   return {
     loadDatabase,
@@ -185,7 +185,7 @@ const JsonDbAppNS = (function () {
 ```
 
 - Writes `build/gas/JsonDbApp.inlined.js`.
-- Keeps JsonDb internals out of global scope except `JsonDbAppNS`.
+- Keeps JsonDb internals out of global scope except `JsonDbApp`.
 
 ### Stage 8: Merge manifest
 
@@ -217,7 +217,7 @@ const JsonDbAppNS = (function () {
 - Checks UI HTML for forbidden external/asset references.
 - Scans JavaScript top-level declarations and fails on duplicate protected globals:
   - `Validate`
-  - `JsonDbAppNS`
+  - `JsonDbApp`
 - Emits artefact sizes and SHA-256 checksums for determinism tracking.
 
 ### Error model and determinism

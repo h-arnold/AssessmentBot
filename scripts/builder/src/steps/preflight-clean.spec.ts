@@ -1,23 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { runPreflightClean } from './preflight-clean.js';
 import { BuildStageError } from '../lib/errors.js';
+import { createTempDir } from '../test/builder-fixture-test-helpers.js';
 import type { BuilderPaths } from '../types.js';
 
 const PREFLIGHT_STAGE = 'preflight-clean';
 const CLASP_FILE = '.clasp.json';
-
-/**
- * Creates a unique temporary directory for a test case.
- *
- * @returns {Promise<string>} Path to the created temporary directory.
- */
-async function createTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'preflight-clean-'));
-}
 
 /**
  * Builds a complete `BuilderPaths` object rooted at a temporary directory.
@@ -108,7 +99,7 @@ describe('runPreflightClean', () => {
   let paths: BuilderPaths;
 
   beforeEach(async () => {
-    tempDir = await createTempDir();
+    tempDir = await createTempDir('preflight-clean-');
     paths = createBuilderPaths(tempDir);
 
     await ensureDir(paths.frontendDir);

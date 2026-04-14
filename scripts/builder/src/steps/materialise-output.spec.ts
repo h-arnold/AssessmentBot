@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
+import { createBuilderPaths, createTempDir } from '../test/builder-fixture-test-helpers.js';
 import { runMaterialiseOutput } from './materialise-output.js';
 
 const EXPECTED_GAS_FILE_COUNT = 4;
@@ -15,51 +15,16 @@ const MATERIALISE_OUTPUT_STAGE = 'materialise-output';
 const REACT_APP_HTML = 'ReactApp.html';
 const MANIFEST_JSON = '{"oauthScopes":["a"]}';
 
-/**
- * Creates a unique temporary directory for each test run.
- *
- * @returns {Promise<string>} Temporary root directory path.
- */
-async function createTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'materialise-output-'));
-}
-
-/**
- * Creates a complete builder paths object for tests.
- *
- * @param {string} rootDir - Temporary repository root path.
- * @returns {BuilderPaths} Resolved path structure.
- */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  const buildDir = path.join(rootDir, 'build');
-  const buildGasDir = path.join(buildDir, 'gas');
-
-  return {
-    repoRoot: rootDir,
-    builderRoot: path.join(rootDir, 'scripts', 'builder'),
-    configPath: path.join(rootDir, 'scripts', 'builder', 'builder.config.json'),
-    frontendDir: path.join(rootDir, 'src', 'frontend'),
-    backendDir: path.join(rootDir, 'src', 'backend'),
-    buildDir,
-    buildFrontendDir: path.join(buildDir, 'frontend'),
-    buildWorkDir: path.join(buildDir, 'work'),
-    buildGasDir,
-    buildGasUiDir: path.join(buildGasDir, 'UI'),
-    backendManifestPath: path.join(rootDir, 'src', 'backend', APPS_SCRIPT_JSON),
-    jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', APPS_SCRIPT_JSON),
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
-
 describe('runMaterialiseOutput', () => {
   let tempRoot: string;
   let paths: BuilderPaths;
 
   beforeEach(async () => {
-    tempRoot = await createTempDir();
-    paths = createBuilderPaths(tempRoot);
+    tempRoot = await createTempDir('materialise-output-');
+    paths = createBuilderPaths(tempRoot, {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
     await fs.mkdir(paths.buildGasUiDir, { recursive: true });
   });
 
