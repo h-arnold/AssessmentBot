@@ -309,7 +309,7 @@ describe('Document ID propagation across parsers', () => {
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
-    it('extracts image submissions when the student description is the stable task id and preserves the matched pageId in sourceUrl', () => {
+    it('does not extract image submissions when the student description is only the stable task id without an image tag', () => {
       const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
       let studentTaskId = null;
 
@@ -335,16 +335,14 @@ describe('Document ID propagation across parsers', () => {
       expect(artifacts).toEqual([
         {
           taskId: defs[0].getId(),
-          pageId: 'student-image-page-by-id',
-          documentId: studentDocId,
+          pageId: null,
           content: null,
-          metadata: {
-            sourceUrl:
-              'https://docs.google.com/presentation/d/student-doc-789/export/png?id=student-doc-789&pageid=student-image-page-by-id',
-          },
+          documentId: studentDocId,
         },
       ]);
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Failed to extract artifact for task "${defs[0].taskTitle}" in document ${studentDocId}.`
+      );
     });
 
     it('does not create task definitions from untagged plain titles in reference or template slides', () => {
