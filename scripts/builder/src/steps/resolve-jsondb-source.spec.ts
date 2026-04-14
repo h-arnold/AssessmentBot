@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { BuildStageError } from '../lib/errors.js';
 import {
   createBuilderPaths,
+  createTempDir,
   createReleaseArchive,
   writeReleaseFile,
   writeReleaseManifest,
-} from '../test/jsondb-source-test-helpers.js';
+} from '../test/builder-fixture-test-helpers.js';
 import { runResolveJsonDbSource } from './resolve-jsondb-source.js';
 
 /**
@@ -28,7 +28,7 @@ describe('runResolveJsonDbSource', () => {
   let tempRoot: string;
 
   beforeEach(async () => {
-    tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'resolve-jsondb-source-'));
+    tempRoot = await createTempDir('resolve-jsondb-source-');
   });
 
   afterEach(async () => {

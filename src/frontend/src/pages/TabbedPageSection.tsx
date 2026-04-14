@@ -4,9 +4,11 @@ import { PageSection } from './PageSection';
 
 type TabbedPageSectionProperties = Readonly<{
   activeKey?: string;
+  contentClassName?: string;
   defaultActiveKey: string;
   heading: string;
   onChange?: TabsProps['onChange'];
+  sectionClassName?: string;
   summary: string;
   tabs: NonNullable<TabsProps['items']>;
 }>;
@@ -18,10 +20,16 @@ type TabbedPageSectionProperties = Readonly<{
  * @returns {JSX.Element} The tabbed page section.
  */
 export function TabbedPageSection(properties: TabbedPageSectionProperties) {
-  const { activeKey, defaultActiveKey, heading, onChange, summary, tabs } = properties;
+  const { activeKey, contentClassName, defaultActiveKey, heading, onChange, sectionClassName, summary, tabs } =
+    properties;
 
   return (
-    <PageSection heading={heading} summary={summary}>
+    <PageSection
+      heading={heading}
+      summary={summary}
+      sectionClassName={sectionClassName}
+      contentClassName={contentClassName}
+    >
       <Tabs
         className="app-tabbed-page"
         activeKey={activeKey}

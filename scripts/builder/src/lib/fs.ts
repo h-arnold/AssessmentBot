@@ -75,6 +75,31 @@ export async function requireFile(
 }
 
 /**
+ * Recursively lists files beneath a directory in deterministic order.
+ *
+ * @param {string} rootDir - Directory to scan.
+ * @returns {Promise<string[]>} Absolute file paths.
+ */
+export async function listFilesRecursive(rootDir: string): Promise<string[]> {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const sortedEntries = [...entries].sort((left, right) => left.name.localeCompare(right.name));
+  const files: string[] = [];
+
+  for (const entry of sortedEntries) {
+    const entryPath = `${rootDir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      files.push(...(await listFilesRecursive(entryPath)));
+      continue;
+    }
+    if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
+}
+
+/**
  * Removes a directory recursively.
  *
  * @param {string} targetPath - Directory path to remove.

@@ -1,55 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
+import { createBuilderPaths, createTempDir } from '../test/builder-fixture-test-helpers.js';
 import { mergeScopes, mergeServices, runMergeManifest, sortKeysDeep } from './merge-manifest.js';
 
 const APPS_SCRIPT_JSON = 'appsscript.json';
-
-/**
- * Creates a unique temporary directory for a test case.
- *
- * @returns {Promise<string>} Path to the created temporary directory.
- */
-async function createTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'merge-manifest-'));
-}
-
-/**
- * Builds a complete `BuilderPaths` object rooted at a temporary directory.
- *
- * @param {string} rootDir - Root temporary directory for the test fixture.
- * @returns {BuilderPaths} Fully resolved builder path values.
- */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  const repoRoot = rootDir;
-  const buildDir = path.join(repoRoot, 'build');
-  const buildGasDir = path.join(buildDir, 'gas');
-  const backendDir = path.join(repoRoot, 'src', 'backend');
-  const jsonDbAppPinnedSnapshotDir = path.join(repoRoot, 'vendor', 'jsondbapp');
-
-  return {
-    repoRoot,
-    builderRoot: path.join(repoRoot, 'scripts', 'builder'),
-    configPath: path.join(repoRoot, 'scripts', 'builder', 'builder.config.json'),
-    frontendDir: path.join(repoRoot, 'src', 'frontend'),
-    backendDir,
-    buildDir,
-    buildFrontendDir: path.join(buildDir, 'frontend'),
-    buildWorkDir: path.join(buildDir, 'work'),
-    buildGasDir,
-    buildGasUiDir: path.join(buildGasDir, 'UI'),
-    backendManifestPath: path.join(backendDir, APPS_SCRIPT_JSON),
-    jsonDbAppPinnedSnapshotDir,
-    jsonDbAppManifestPath: path.join(jsonDbAppPinnedSnapshotDir, APPS_SCRIPT_JSON),
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
-
 
 
 describe('sortKeysDeep', () => {
@@ -111,8 +69,11 @@ describe('runMergeManifest', () => {
   let paths: BuilderPaths;
 
   beforeEach(async () => {
-    tempRoot = await createTempDir();
-    paths = createBuilderPaths(tempRoot);
+    tempRoot = await createTempDir('merge-manifest-');
+    paths = createBuilderPaths(tempRoot, {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
     await fs.mkdir(paths.buildGasDir, { recursive: true });
     await fs.mkdir(path.dirname(paths.backendManifestPath), { recursive: true });
     await fs.mkdir(path.dirname(paths.jsonDbAppManifestPath), { recursive: true });

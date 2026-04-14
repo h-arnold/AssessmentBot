@@ -23,6 +23,8 @@
     "frontend:test:watch": "npm --prefix src/frontend run test:watch --",
     "frontend:test:coverage": "npm --prefix src/frontend run test:coverage --",
     "frontend:test:e2e": "npm --prefix src/frontend run test:e2e --",
+    "frontend:test:e2e:interactive": "npm --prefix src/frontend run test:e2e:interactive --",
+    "frontend:test:e2e:screenshots": "npm --prefix src/frontend run test:e2e:screenshots --",
     "builder:compile": "tsc -p scripts/builder/tsconfig.json",
     "builder:run": "node scripts/builder/dist/build-gas-bundle.js",
     "builder:test": "vitest run --config scripts/builder/vitest.config.ts",

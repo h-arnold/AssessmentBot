@@ -5,7 +5,14 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { BuildStageError, asError, isBuildStageError } from './errors.js';
-import { ensureDirs, pathExists, removeDir, requireDirectory, requireFile } from './fs.js';
+import {
+  ensureDirs,
+  listFilesRecursive,
+  pathExists,
+  removeDir,
+  requireDirectory,
+  requireFile,
+} from './fs.js';
 
 let tempRoot = '';
 const PREFLIGHT_STAGE = 'preflight-clean';
@@ -80,6 +87,24 @@ describe('ensureDirs and removeDir', () => {
     await removeDir(path.join(tempRoot, 'a'));
 
     await expect(pathExists(nestedDir)).resolves.toBe(false);
+  });
+});
+
+describe('listFilesRecursive', () => {
+  it('returns nested file paths in deterministic order', async () => {
+    const alphaDir = path.join(tempRoot, 'alpha');
+    const betaDir = path.join(tempRoot, 'beta');
+    await fs.mkdir(alphaDir, { recursive: true });
+    await fs.mkdir(betaDir, { recursive: true });
+    await fs.writeFile(path.join(betaDir, 'b.txt'), 'b');
+    await fs.writeFile(path.join(alphaDir, 'a.txt'), 'a');
+    await fs.writeFile(path.join(tempRoot, 'root.txt'), 'root');
+
+    await expect(listFilesRecursive(tempRoot)).resolves.toEqual([
+      path.join(alphaDir, 'a.txt'),
+      path.join(betaDir, 'b.txt'),
+      path.join(tempRoot, 'root.txt'),
+    ]);
   });
 });
 

@@ -367,7 +367,11 @@ export function BackendSettingsPanel() {
   }
 
   return (
-    <Card className="settings-tab-panel" role="region" aria-label="Backend settings panel">
+    <Card
+      className="settings-tab-panel settings-tab-panel--backend"
+      role="region"
+      aria-label="Backend settings panel"
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
         {partialLoadError !== null && <Alert title={partialLoadError} showIcon type="warning" />}
 

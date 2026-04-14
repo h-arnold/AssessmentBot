@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import ts from 'typescript';
 
 import { BuildStageError } from '../lib/errors.js';
+import { listFilesRecursive } from '../lib/fs.js';
 import { checksumUtf8 } from '../lib/hash.js';
 import type { BuilderPaths, ValidateOutputResult } from '../types.js';
 
@@ -22,31 +23,6 @@ type GasManifest = {
     enabledAdvancedServices?: { userSymbol: string; serviceId: string; version: string }[];
   };
 };
-
-/**
- * Recursively lists files beneath a directory in deterministic order.
- *
- * @param {string} rootDir - Directory to scan.
- * @returns {Promise<string[]>} Absolute file paths.
- */
-async function listFilesRecursive(rootDir: string): Promise<string[]> {
-  const entries = await fs.readdir(rootDir, { withFileTypes: true });
-  const sortedEntries = [...entries].sort((left, right) => left.name.localeCompare(right.name));
-  const files: string[] = [];
-
-  for (const entry of sortedEntries) {
-    const entryPath = path.join(rootDir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listFilesRecursive(entryPath)));
-      continue;
-    }
-    if (entry.isFile()) {
-      files.push(entryPath);
-    }
-  }
-
-  return files;
-}
 
 /**
  * Ensures required final GAS output files are present.

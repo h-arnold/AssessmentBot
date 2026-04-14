@@ -8,16 +8,6 @@ import { pathExists } from '../lib/fs.js';
 const FRONTEND_BUILD_STAGE = 'frontend-build';
 
 /**
- * Runs the frontend Vite build with HtmlService-compatible options.
- *
- * @param {BuilderPaths} paths - Resolved builder filesystem paths.
- * @returns {Promise<FrontendBuildResult>} Build output metadata.
- */
-export async function runFrontendBuild(paths: BuilderPaths): Promise<FrontendBuildResult> {
-  return runFrontendBuildWithMode(paths, 'production');
-}
-
-/**
  * Runs the frontend Vite build with explicit build-mode options.
  *
  * @param {BuilderPaths} paths - Resolved builder filesystem paths.
@@ -32,9 +22,9 @@ export async function runFrontendBuildWithMode(
   const commandEnv =
     mode === 'dev'
       ? {
-          ...process.env,
-          NODE_ENV: 'development',
-        }
+        ...process.env,
+        NODE_ENV: 'development',
+      }
       : process.env;
   const commandArgs = [
     '--prefix',

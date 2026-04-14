@@ -82,12 +82,21 @@ body {
   width: min(100%, 720px);
 }
 
+.settings-page-content--classes {
+  width: min(calc(100% - 1rem), 1280px);
+}
+
 .app-tabbed-page {
   width: 100%;
 }
 
 .settings-tab-panel {
   min-height: 16rem;
+}
+
+.settings-tab-panel--backend {
+  width: min(100%, 720px);
+  margin-inline: auto;
 }
 
 .auth-card {

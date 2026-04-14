@@ -2,6 +2,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
 import { BuildStageError } from '../lib/errors.js';
+import { listFilesRecursive } from '../lib/fs.js';
 import type { BackendCopyResult, BuilderPaths } from '../types.js';
 
 const STAGE_ID = 'backend-copy' as const;
@@ -20,30 +21,6 @@ export function isRuntimeBackendFile(filePath: string): boolean {
   return !/\.(test|spec)\./i.test(normalised) &&
     !/\.(tmp|temp)\.js$/i.test(normalised) &&
     !/~\.js$/i.test(normalised);
-}
-
-/**
- * Recursively lists all files under a directory.
- *
- * @param {string} rootDir - Directory to enumerate.
- * @returns {Promise<string[]>} Absolute file paths.
- */
-async function listFilesRecursive(rootDir: string): Promise<string[]> {
-  const entries = await fs.readdir(rootDir, { withFileTypes: true });
-  const files: string[] = [];
-
-  for (const entry of entries) {
-    const entryPath = path.join(rootDir, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listFilesRecursive(entryPath)));
-      continue;
-    }
-    if (entry.isFile()) {
-      files.push(entryPath);
-    }
-  }
-
-  return files;
 }
 
 /**

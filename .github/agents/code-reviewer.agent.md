@@ -15,14 +15,14 @@ You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the code
 Before providing any feedback, you must:
 
 1. **Acquire Context**: Read the relevant source files and test files. Do not guess the contents.
-2. **Read Standards**: Read [CONTRIBUTING.md](CONTRIBUTING.md) and the module-specific `AGENTS.md` for every component you are reviewing:
-   - Backend (`src/backend/**`): [src/backend/AGENTS.md](src/backend/AGENTS.md)
-   - Frontend (`src/frontend/**`): [src/frontend/AGENTS.md](src/frontend/AGENTS.md)
-   - Builder (`scripts/builder/**`): [scripts/builder/AGENTS.md](scripts/builder/AGENTS.md)
-   - Cross-component rules: [AGENTS.md](AGENTS.md)
+2. **Read Standards**: Read [CONTRIBUTING.md](../../CONTRIBUTING.md) and the module-specific `AGENTS.md` for every component you are reviewing:
+  - Backend (`src/backend/**`): [src/backend/AGENTS.md](../../src/backend/AGENTS.md)
+  - Frontend (`src/frontend/**`): [src/frontend/AGENTS.md](../../src/frontend/AGENTS.md)
+  - Builder (`scripts/builder/**`): [scripts/builder/AGENTS.md](../../scripts/builder/AGENTS.md)
+  - Cross-component rules: [AGENTS.md](../../AGENTS.md)
 3. **Identify the module(s) in scope** and apply only the checks relevant to those modules. Do not apply backend rules to frontend code or vice versa.
 4. **Analyse**: Use `read/problems` and `sonarqube_analyzeFile` to get an objective assessment before forming your own opinion.
-5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read `docs/developer/frontend/frontend-logging-and-error-handling.md` and `docs/developer/builder/builder-script.md` and treat them as canonical policy references.
+5. **Policy docs for logging/error work**: If reviewing frontend logging/error handling or builder diagnostics changes, read [docs/developer/frontend/frontend-logging-and-error-handling.md](../../docs/developer/frontend/frontend-logging-and-error-handling.md) and [docs/developer/builder/builder-script.md](../../docs/developer/builder/builder-script.md) and treat them as canonical policy references.
 
 ## 1. Codebase Overview
 
@@ -83,7 +83,7 @@ Test location and naming conventions are defined in the module testing docs and 
 - **Determinism**: Keep output ordering, checksums, and manifest merge semantics deterministic. Manifest merge uses `src/backend/appsscript.json` as base; scope/service additions are de-duplicated.
 - **Path safety**: All paths must resolve inside the repo root.
 - **Build outputs**: Treat `build/*` as generated artefacts; never manually edit them. Preflight intentionally recreates the build directory.
-- **HtmlService constraints**: Frontend transform must inline all assets. Output validation must reject unresolved asset references. Preserve duplicate protected global checks (`Validate`, `JsonDbAppNS`).
+- **HtmlService constraints**: Frontend transform must inline all assets. Output validation must reject unresolved asset references. Preserve duplicate protected global checks (`Validate`, `JsonDbApp`).
 
 ## 4. Review Workflow
 

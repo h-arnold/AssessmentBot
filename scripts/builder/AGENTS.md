@@ -56,7 +56,7 @@ Key outputs:
 
 - Frontend transform must inline assets into HtmlService-compatible output.
 - Output validation must continue to reject unresolved asset references.
-- Preserve duplicate protected global checks (`Validate`, `JsonDbAppNS`).
+- Preserve duplicate protected global checks (`Validate`, `JsonDbApp`).
 
 ## 7. Config, Lint, and Testing Delegation
 

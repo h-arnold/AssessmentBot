@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
+import { createBuilderPaths, createTempDir } from '../test/builder-fixture-test-helpers.js';
 import {
   findDuplicateProtectedGlobals,
   runValidateOutput,
@@ -17,44 +17,6 @@ const APPS_SCRIPT_JSON = 'appsscript.json';
 const JSONDB_INLINED = 'JsonDbApp.inlined.js';
 const REACT_APP_HTML = 'UI/ReactApp.html';
 const VALIDATE_OUTPUT_STAGE = 'validate-output';
-
-/**
- * Creates a unique temporary root for tests.
- *
- * @returns {Promise<string>} Temporary directory path.
- */
-async function createTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'validate-output-'));
-}
-
-/**
- * Creates a complete builder paths object for tests.
- *
- * @param {string} rootDir - Temporary repository root.
- * @returns {BuilderPaths} Fully resolved test paths.
- */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  const buildDir = path.join(rootDir, 'build');
-  const buildGasDir = path.join(buildDir, 'gas');
-
-  return {
-    repoRoot: rootDir,
-    builderRoot: path.join(rootDir, 'scripts', 'builder'),
-    configPath: path.join(rootDir, 'scripts', 'builder', 'builder.config.json'),
-    frontendDir: path.join(rootDir, 'src', 'frontend'),
-    backendDir: path.join(rootDir, 'src', 'backend'),
-    buildDir,
-    buildFrontendDir: path.join(buildDir, 'frontend'),
-    buildWorkDir: path.join(buildDir, 'work'),
-    buildGasDir,
-    buildGasUiDir: path.join(buildGasDir, 'UI'),
-    backendManifestPath: path.join(rootDir, 'src', 'backend', APPS_SCRIPT_JSON),
-    jsonDbAppPinnedSnapshotDir: path.join(rootDir, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(rootDir, 'vendor', 'jsondbapp', APPS_SCRIPT_JSON),
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
 
 /**
  * Writes minimum valid final GAS artefacts for validation tests.
@@ -184,8 +146,11 @@ describe('runValidateOutput', () => {
   let paths: BuilderPaths;
 
   beforeEach(async () => {
-    tempRoot = await createTempDir();
-    paths = createBuilderPaths(tempRoot);
+    tempRoot = await createTempDir('validate-output-');
+    paths = createBuilderPaths(tempRoot, {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
     await fs.mkdir(path.join(paths.buildGasDir, 'Utils'), { recursive: true });
   });
 

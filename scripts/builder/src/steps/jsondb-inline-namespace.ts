@@ -55,16 +55,6 @@ export function generateJsonDbNamespaceWrapper(sourceChunks: string[], publicExp
 }
 
 /**
- * Detects symbol names that appear as top-level declarations in script source.
- *
- * @param {string} source - JavaScript source code to scan.
- * @returns {string[]} Declared symbol names.
- */
-export function scanTopLevelDeclarations(source: string): string[] {
-  return scanFileTopLevelDeclarations(source);
-}
-
-/**
  * Validates that configured exports map to declared symbols.
  *
  * @param {string[]} declaredSymbols - Top-level declared symbols in source.
@@ -116,7 +106,7 @@ export async function runJsonDbInlineNamespace(
     );
     validateNoPlaceholderSnapshot(sourceChunks);
     const exportedApi = resolvePublicExports(paths.jsonDbAppPublicExports);
-    const declaredSymbols = scanTopLevelDeclarations(sourceChunks.join('\n\n'));
+    const declaredSymbols = scanFileTopLevelDeclarations(sourceChunks.join('\n\n'));
     validateConfiguredExports(declaredSymbols, exportedApi);
     const outputSource = generateJsonDbNamespaceWrapper(sourceChunks, exportedApi);
     const outputPath = path.join(paths.buildGasDir, OUTPUT_FILENAME);

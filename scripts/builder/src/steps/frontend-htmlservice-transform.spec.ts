@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import type { BuilderPaths } from '../types.js';
 import { BuildStageError } from '../lib/errors.js';
+import { createBuilderPaths, createTempDir } from '../test/builder-fixture-test-helpers.js';
 import { runFrontendHtmlServiceTransform } from './frontend-htmlservice-transform.js';
 
 const HTML_DOCTYPE = '<!doctype html>';
@@ -16,47 +16,6 @@ const HTML_BODY_CLOSE = '  </body>';
 const HTML_CLOSE = '</html>';
 const SCRIPT_ASSET_PATH = './assets/index-abc.js';
 const SCRIPT_ASSET_FILE = 'index-abc.js';
-
-/**
- * Creates a unique temporary directory for a test case.
- *
- * @returns {Promise<string>} Path to the created temporary directory.
- */
-async function createTempDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'frontend-htmlservice-transform-'));
-}
-
-/**
- * Builds a complete `BuilderPaths` object rooted at a temporary directory.
- *
- * @param {string} rootDir - Root temporary directory for the test fixture.
- * @returns {BuilderPaths} Fully resolved builder path values.
- */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  const repoRoot = rootDir;
-  const buildDir = path.join(repoRoot, 'build');
-  const buildFrontendDir = path.join(buildDir, 'frontend');
-  const buildGasDir = path.join(buildDir, 'gas');
-  const buildGasUiDir = path.join(buildGasDir, 'UI');
-
-  return {
-    repoRoot,
-    builderRoot: path.join(repoRoot, 'scripts', 'builder'),
-    configPath: path.join(repoRoot, 'scripts', 'builder', 'builder.config.json'),
-    frontendDir: path.join(repoRoot, 'src', 'frontend'),
-    backendDir: path.join(repoRoot, 'src', 'backend'),
-    buildDir,
-    buildFrontendDir,
-    buildWorkDir: path.join(buildDir, 'work'),
-    buildGasDir,
-    buildGasUiDir,
-    backendManifestPath: path.join(repoRoot, 'src', 'backend', 'appsscript.json'),
-    jsonDbAppPinnedSnapshotDir: path.join(repoRoot, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(repoRoot, 'vendor', 'jsondbapp', 'appsscript.json'),
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
 
 /**
  * Writes the frontend `index.html` fixture for the current test.
@@ -105,8 +64,11 @@ describe('runFrontendHtmlServiceTransform', () => {
   let paths: BuilderPaths;
 
   beforeEach(async () => {
-    tempRoot = await createTempDir();
-    paths = createBuilderPaths(tempRoot);
+    tempRoot = await createTempDir('frontend-htmlservice-transform-');
+    paths = createBuilderPaths(tempRoot, {
+      jsonDbAppSourceFiles: ['src/01-core.js'],
+      jsonDbAppPublicExports: ['loadDatabase'],
+    });
 
     await fs.mkdir(path.join(paths.buildFrontendDir, 'assets'), { recursive: true });
     await fs.mkdir(paths.buildGasUiDir, { recursive: true });
