@@ -294,8 +294,8 @@ Frontend tests:
 - Green review clean: Complete
 - Checks passed: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -330,7 +330,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Ran `npm test -- tests/api/apiHandler.test.js`, `npm test -- tests/api/apiHandlerLocking.test.js`, `npm test -- tests/api/apiHandlerTiming.test.js`, and `npm run lint`. All required checks passed for this validation phase. Frontend envelope assertions remained unchanged in the touched API tests.
+- **Implementation notes:** Ran `npm test -- tests/api/apiHandler.test.js`, `npm test -- tests/api/apiHandlerLocking.test.js`, `npm test -- tests/api/apiHandlerTiming.test.js`, and `npm run lint`. All required checks passed for this validation phase. Frontend envelope assertions remained unchanged in the touched API tests, and this section is now fully complete.
+- **Delivery evidence:** Branch `chore/apihandler-gas-log-preservation-spec`; commit `888795371aee4c0491bb98c8579932d7f80f7d3c` (`docs: complete regression contract hardening`); commit created: Complete; push completed: Complete; push confirmation: succeeded.
 - **Deviations from plan:** `npm run lint` still reports one unrelated existing warning in `src/backend/Models/Cohort.js:139`. `tests/api/requestStore.test.js` was not rerun because request-store behaviour did not change in this phase.
 
 ---
