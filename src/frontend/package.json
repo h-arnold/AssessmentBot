@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:interactive": "playwright test --headed",
+    "test:e2e:screenshots": "playwright test --config playwright.screenshots.config.ts"
   },
   "dependencies": {
     "@ant-design/icons": "latest",
