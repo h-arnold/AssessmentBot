@@ -35,6 +35,8 @@ class SlidesParser extends DocumentParser {
    *   ^TaskTitle     -> attaches taskNotes to the matching TaskDefinition
    *   ~ImageId       -> adds Image artifact using slide export URL
    * Page ordering establishes TaskDefinition.index.
+   * @param referenceDocumentId
+   * @param templateDocumentId
    */
   extractTaskDefinitions(referenceDocumentId, templateDocumentId) {
     const referencePresentation = SlidesApp.openById(referenceDocumentId);
@@ -53,11 +55,11 @@ class SlidesParser extends DocumentParser {
     };
 
     this.processSlidesForDefinitions(referenceSlides, 'reference', context);
-    if (templateSlides.length) {
+    if (templateSlides.length > 0) {
       this.processSlidesForDefinitions(templateSlides, 'template', context);
     }
 
-    return Array.from(definitionMap.values());
+    return [...definitionMap.values()];
   }
 
   /**
@@ -76,18 +78,22 @@ class SlidesParser extends DocumentParser {
         const { tag, tagText } = this.parseDescriptionTag(description);
         if (!tag) return;
         switch (tag) {
-          case '#':
+          case '#': {
             this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
             break;
-          case '^':
+          }
+          case '^': {
             this.appendNotesToDefinitions(pageElement, tagText, context.definitionMap);
             break;
+          }
           case '~':
-          case '|':
+          case '|': {
             this.handleImageArtifactElement(tagText, pageId, role, context);
             break;
-          default:
+          }
+          default: {
             break;
+          }
         }
       });
     });
@@ -108,7 +114,7 @@ class SlidesParser extends DocumentParser {
     if (!contentDetails) return;
 
     const { artifactType, elementContent } = contentDetails;
-    const params = {
+    const parameters = {
       type: artifactType,
       pageId,
       content: elementContent,
@@ -116,7 +122,7 @@ class SlidesParser extends DocumentParser {
       documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
-    this.addArtifactToDefinition(definition, role, params);
+    this.addArtifactToDefinition(definition, role, parameters);
   }
 
   /**
@@ -156,7 +162,7 @@ class SlidesParser extends DocumentParser {
       role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
       pageId
     );
-    const params = {
+    const parameters = {
       type: 'IMAGE',
       pageId,
       metadata: { sourceUrl: url },
@@ -165,7 +171,7 @@ class SlidesParser extends DocumentParser {
       documentId: role === 'reference' ? context.referenceDocumentId : context.templateDocumentId,
     };
 
-    this.addArtifactToDefinition(definition, role, params);
+    this.addArtifactToDefinition(definition, role, parameters);
   }
 
   /**
@@ -196,7 +202,9 @@ class SlidesParser extends DocumentParser {
    * @return {string} Stable task ID for Slides definitions.
    */
   buildSlidesTaskId(taskTitle) {
-    return 't_' + Utils.generateHash(taskTitle || '').substring(0, SLIDES_TASK_ID_HASH_LENGTH);
+    return (
+      't_' + Utils.generateHash(taskTitle || '').slice(0, Math.max(0, SLIDES_TASK_ID_HASH_LENGTH))
+    );
   }
 
   /**
@@ -219,7 +227,7 @@ class SlidesParser extends DocumentParser {
       return {
         rawText,
         tag,
-        tagText: rawText.substring(1).trim(),
+        tagText: rawText.slice(1).trim(),
       };
     }
 
@@ -257,13 +265,14 @@ class SlidesParser extends DocumentParser {
    * @param {TaskDefinition} definition - Task definition to update.
    * @param {string} role - Either 'reference' or 'template'.
    * @param {Object} params - Artifact payload.
+   * @param parameters
    * @return {void}
    */
-  addArtifactToDefinition(definition, role, params) {
+  addArtifactToDefinition(definition, role, parameters) {
     if (role === 'reference') {
-      definition.addReferenceArtifact(params);
+      definition.addReferenceArtifact(parameters);
     } else if (role === 'template') {
-      definition.addTemplateArtifact(params);
+      definition.addTemplateArtifact(parameters);
     }
   }
 
@@ -272,6 +281,8 @@ class SlidesParser extends DocumentParser {
    * Matches student elements by stable task ID first, then task title, so copied slides can move
    * to different page IDs without breaking extraction.
    * Returns array of { taskId, pageId, content, metadata, documentId }.
+   * @param documentId
+   * @param taskDefs
    */
   extractSubmissionArtifacts(documentId, taskDefs) {
     const presentation = SlidesApp.openById(documentId);
@@ -486,11 +497,11 @@ class SlidesParser extends DocumentParser {
     try {
       if (!table || !(table.getNumRows && table.getNumColumns)) return [];
       const rows = [];
-      const numRows = table.getNumRows();
-      const numCols = table.getNumColumns();
-      for (let r = 0; r < numRows; r++) {
+      const numberRows = table.getNumRows();
+      const numberCols = table.getNumColumns();
+      for (let r = 0; r < numberRows; r++) {
         const row = [];
-        for (let c = 0; c < numCols; c++) {
+        for (let c = 0; c < numberCols; c++) {
           const cell = table.getCell(r, c);
           const text = this.extractCellText(cell);
           row.push(text);
@@ -498,8 +509,8 @@ class SlidesParser extends DocumentParser {
         rows.push(row);
       }
       return rows;
-    } catch (e) {
-      ABLogger.getInstance().error('extractTableCells failed', e);
+    } catch (error) {
+      ABLogger.getInstance().error('extractTableCells failed', error);
       return [];
     }
   }
@@ -533,15 +544,20 @@ class SlidesParser extends DocumentParser {
   extractTextFromPageElement(pageElement) {
     const type = pageElement.getPageElementType();
 
-    if (type === SlidesApp.PageElementType.SHAPE) {
-      return this.extractTextFromShape(pageElement.asShape());
-    } else if (type === SlidesApp.PageElementType.TABLE) {
-      return this.extractTextFromTable(pageElement.asTable());
-    } else if (type === SlidesApp.PageElementType.IMAGE) {
-      return this.extractImageDescription(pageElement.asImage());
-    } else {
-      ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
-      return '';
+    switch (type) {
+      case SlidesApp.PageElementType.SHAPE: {
+        return this.extractTextFromShape(pageElement.asShape());
+      }
+      case SlidesApp.PageElementType.TABLE: {
+        return this.extractTextFromTable(pageElement.asTable());
+      }
+      case SlidesApp.PageElementType.IMAGE: {
+        return this.extractImageDescription(pageElement.asImage());
+      }
+      default: {
+        ABLogger.getInstance().warn(`Unsupported PageElementType for notes: ${type}`);
+        return '';
+      }
     }
   }
 
