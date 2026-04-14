@@ -1,4 +1,9 @@
 /**
+ * Number of hash characters retained for stable Slides task IDs.
+ */
+const SLIDES_TASK_ID_HASH_LENGTH = 12;
+
+/**
  * SlidesParser Class
  *
  * Handles extraction and processing of content from Google Slides presentations.
@@ -26,7 +31,7 @@ class SlidesParser extends DocumentParser {
    * Build TaskDefinitions from reference/template slide decks.
    * Tags:
    *   #TitleElement  (shape/table) -> creates/updates TaskDefinition
-   *   ^NotesElement  -> attaches taskNotes
+   *   ^TaskTitle     -> attaches taskNotes to the matching TaskDefinition
    *   ~ImageId       -> adds Image artifact using slide export URL
    * Page ordering establishes TaskDefinition.index.
    */
@@ -36,7 +41,7 @@ class SlidesParser extends DocumentParser {
     const referenceSlides = referencePresentation.getSlides();
     const templateSlides = templatePresentation ? templatePresentation.getSlides() : [];
 
-    // Map: key = title + '|' + pageId (slide id) for stability
+    // Map: key = taskTitle for title-based Slides matching while preserving pageId as metadata.
     const definitionMap = new Map();
     const orderState = { value: 0 };
     const context = {
@@ -75,7 +80,7 @@ class SlidesParser extends DocumentParser {
             this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
             break;
           case '^':
-            this.appendNotesToDefinitions(pageElement, pageId, context.definitionMap);
+            this.appendNotesToDefinitions(pageElement, tagText, context.definitionMap);
             break;
           case '~':
           case '|':
@@ -115,20 +120,26 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
-   * Append notes content to every definition on the given page.
+   * Append notes content to the definition with the matching task title.
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The notes element.
-   * @param {string} pageId - Slide page ID.
-   * @param {Map<string, TaskDefinition>} definitionMap - Map of task definitions keyed by title and page.
+   * @param {string} taskTitle - Title extracted from the tag text.
+   * @param {Map<string, TaskDefinition>} definitionMap - Map of task definitions keyed by title.
    * @return {void}
    */
-  appendNotesToDefinitions(pageElement, pageId, definitionMap) {
-    for (const definition of definitionMap.values()) {
-      if (definition.pageId === pageId) {
-        const notesContent = this.extractTextFromPageElement(pageElement);
-        definition.taskNotes =
-          (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
-      }
+  appendNotesToDefinitions(pageElement, taskTitle, definitionMap) {
+    if (!taskTitle) {
+      ABLogger.getInstance().warn('Slides notes tag requires a task title.');
+      return;
     }
+
+    const definition = definitionMap.get(this.buildDefinitionKey(taskTitle));
+    if (!definition) {
+      ABLogger.getInstance().warn(`No task definition found for notes tag "${taskTitle}".`);
+      return;
+    }
+
+    const notesContent = this.extractTextFromPageElement(pageElement);
+    definition.taskNotes = (definition.taskNotes ? definition.taskNotes + '\n' : '') + notesContent;
   }
 
   /**
@@ -165,15 +176,37 @@ class SlidesParser extends DocumentParser {
    * @return {TaskDefinition} - Existing or newly created task definition.
    */
   ensureTaskDefinition(taskTitle, pageId, context) {
-    const definitionKey = `${taskTitle}|${pageId}`;
+    const definitionKey = this.buildDefinitionKey(taskTitle);
     const { definitionMap, orderState } = context;
     let definition = definitionMap.get(definitionKey);
     if (!definition) {
-      definition = new TaskDefinition({ taskTitle, pageId });
+      definition = new TaskDefinition({
+        taskTitle,
+        pageId,
+        id: this.buildSlidesTaskId(taskTitle),
+      });
       definition.index = orderState.value++;
       definitionMap.set(definitionKey, definition);
     }
     return definition;
+  }
+
+  /**
+   * Build the title-based key used for Slides task matching.
+   * @param {string} taskTitle - Title extracted from the slide tag.
+   * @return {string} Deterministic key for Slides definitions.
+   */
+  buildDefinitionKey(taskTitle) {
+    return taskTitle;
+  }
+
+  /**
+   * Build a stable Slides task ID from task title only.
+   * @param {string} taskTitle - Title extracted from the slide tag.
+   * @return {string} Stable task ID for Slides definitions.
+   */
+  buildSlidesTaskId(taskTitle) {
+    return 't_' + Utils.generateHash(taskTitle || '').substring(0, SLIDES_TASK_ID_HASH_LENGTH);
   }
 
   /**
@@ -221,88 +254,76 @@ class SlidesParser extends DocumentParser {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     const artifacts = [];
-    const defsByPage = this.groupDefinitionsByPage(taskDefs);
-    slides.forEach((slide) => {
-      const pageId = this.getPageId(slide);
-      const defs = defsByPage[pageId];
-      if (!defs?.length) return;
-      const pageElements = slide.getPageElements();
-      // Simple strategy: for each definition, attempt to extract matching content type by first artifact type
-      defs.forEach((def) => {
-        const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
-        if (!primary) return;
-        const typeNeeded = primary.getType();
-        let extracted = null;
-        if (typeNeeded === 'IMAGE') {
-          // For images we just supply metadata with sourceUrl again
-          extracted = {
-            taskId: def.getId(),
-            pageId,
-            content: null,
-            documentId,
-            metadata: { sourceUrl: this.generateSlideImageUrl(documentId, pageId) },
-          };
-          artifacts.push(extracted);
-          return;
-        }
-        extracted = this.collectSubmissionArtifact(
-          def,
-          pageElements,
-          typeNeeded,
-          pageId,
-          documentId
-        );
-        if (extracted) artifacts.push(extracted);
-        else {
-          artifacts.push({ taskId: def.getId(), pageId, content: null, documentId });
-          ABLogger.getInstance().error(
-            `Failed to extract artifact for task "${def.taskTitle}" on page ${pageId}.`
-          );
-        }
-      });
-    });
-    return artifacts;
-  }
+    const slideContexts = slides.map((slide) => ({
+      pageId: this.getPageId(slide),
+      pageElements: slide.getPageElements(),
+    }));
 
-  /**
-   * Group task definitions by page ID for quick lookup.
-   * @param {TaskDefinition[]} taskDefs - Task definitions to index.
-   * @return {Object<string, TaskDefinition[]>} - Definitions keyed by page ID.
-   */
-  groupDefinitionsByPage(taskDefs) {
-    const defsByPage = {};
-    taskDefs.forEach((definition) => {
-      if (!defsByPage[definition.pageId]) defsByPage[definition.pageId] = [];
-      defsByPage[definition.pageId].push(definition);
+    taskDefs.forEach((def) => {
+      const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
+      if (!primary) return;
+
+      const extracted = this.collectSubmissionArtifact(
+        def,
+        slideContexts,
+        primary.getType(),
+        documentId
+      );
+
+      if (extracted) {
+        artifacts.push(extracted);
+      } else {
+        artifacts.push({ taskId: def.getId(), pageId: null, content: null, documentId });
+        ABLogger.getInstance().error(
+          `Failed to extract artifact for task "${def.taskTitle}" in document ${documentId}.`
+        );
+      }
     });
-    return defsByPage;
+
+    return artifacts;
   }
 
   /**
    * Collect the submission artifact content for a definition from slide elements.
    * @param {TaskDefinition} definition - Definition being matched.
-   * @param {GoogleAppsScript.Slides.PageElement[]} pageElements - Elements on the slide.
-   * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE).
-   * @param {string} pageId - Slide page ID.
+   * @param {Array<{pageId: string, pageElements: GoogleAppsScript.Slides.PageElement[]}>} slideContexts - Slides and elements to search.
+   * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE/IMAGE).
    * @param {string} documentId - Student document ID for submission artifact.
    * @return {{taskId: string, pageId: string, content: *, metadata?: Object, documentId: string}|null} - Artifact payload or null.
    */
-  collectSubmissionArtifact(definition, pageElements, typeNeeded, pageId, documentId) {
-    for (const pageElement of pageElements) {
-      const desc = pageElement.getDescription();
-      if (!desc) continue;
-      const tag = desc.charAt(0);
-      const key = desc.substring(1).trim();
-      if (tag !== '#' && tag !== '~') continue;
-      if (key !== definition.taskTitle) continue;
-      const contentDetails = this.extractDefinitionContent(pageElement);
-      if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
-      return {
-        taskId: definition.getId(),
-        pageId,
-        documentId,
-        content: contentDetails.elementContent,
-      };
+  collectSubmissionArtifact(definition, slideContexts, typeNeeded, documentId) {
+    for (const slideContext of slideContexts) {
+      for (const pageElement of slideContext.pageElements) {
+        const desc = pageElement.getDescription();
+        if (!desc) continue;
+
+        const tag = desc.charAt(0);
+        const key = desc.substring(1).trim();
+        if (key !== definition.taskTitle) continue;
+
+        if (typeNeeded === 'IMAGE') {
+          if (tag !== '~' && tag !== '|') continue;
+          return {
+            taskId: definition.getId(),
+            pageId: slideContext.pageId,
+            documentId,
+            content: null,
+            metadata: {
+              sourceUrl: this.generateSlideImageUrl(documentId, slideContext.pageId),
+            },
+          };
+        }
+
+        if (tag !== '#') continue;
+        const contentDetails = this.extractDefinitionContent(pageElement);
+        if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+        return {
+          taskId: definition.getId(),
+          pageId: slideContext.pageId,
+          documentId,
+          content: contentDetails.elementContent,
+        };
+      }
     }
     return null;
   }

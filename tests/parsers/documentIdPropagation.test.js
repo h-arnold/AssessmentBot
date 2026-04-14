@@ -8,6 +8,7 @@ describe('Document ID propagation across parsers', () => {
     const studentDocId = 'student-doc-789';
     let SlidesParser;
     let originalIsValidUrl;
+    let mockLogger;
 
     const createShapeElement = (description, text) => ({
       getDescription: vi.fn(() => description),
@@ -19,23 +20,25 @@ describe('Document ID propagation across parsers', () => {
       })),
     });
 
+    const createTaggedElement = (description) => ({
+      getDescription: vi.fn(() => description),
+    });
+
     const createSlide = (pageId, elements) => ({
       getObjectId: vi.fn(() => pageId),
       getPageElements: vi.fn(() => elements),
     });
 
     beforeAll(async () => {
-      const documentParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
-      );
+      const documentParserModule =
+        await import('../../src/AdminSheet/DocumentParsers/DocumentParser.js');
       const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
 
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const slidesParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/SlidesParser.js'
-      );
+      const slidesParserModule =
+        await import('../../src/AdminSheet/DocumentParsers/SlidesParser.js');
       SlidesParser = slidesParserModule.SlidesParser;
     });
 
@@ -43,8 +46,14 @@ describe('Document ID propagation across parsers', () => {
       originalIsValidUrl = globalThis.Utils.isValidUrl;
       globalThis.Utils.isValidUrl = vi.fn(() => true);
 
+      mockLogger = {
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+      };
+
       globalThis.ABLogger = {
-        getInstance: vi.fn().mockReturnValue({ warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+        getInstance: vi.fn().mockReturnValue(mockLogger),
       };
 
       globalThis.SlidesApp = {
@@ -82,6 +91,54 @@ describe('Document ID propagation across parsers', () => {
       expect(tplArtifact.documentId).toBe(tplDocId);
     });
 
+    it('merges reference and template slides with the same title into one task definition across different pageIds', () => {
+      const referencePageId = 'ref-page-1';
+      const templatePageId = 'tpl-page-2';
+      const refSlide = createSlide(referencePageId, [createShapeElement('# Task 1', 'Ref text')]);
+      const tplSlide = createSlide(templatePageId, [createShapeElement('# Task 1', 'Tpl text')]);
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === tplDocId) return { getSlides: () => [tplSlide] };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
+
+      expect(defs).toHaveLength(1);
+
+      const [def] = defs;
+      expect(def.getId()).toBe(parser.buildSlidesTaskId('Task 1'));
+      expect(def.pageId).toBe(referencePageId);
+      expect(def.artifacts.reference).toHaveLength(1);
+      expect(def.artifacts.template).toHaveLength(1);
+      expect(def.getPrimaryReference().content).toBe('Ref text');
+      expect(def.getPrimaryTemplate().content).toBe('Tpl text');
+    });
+
+    it('attaches notes by task title even when the note is on a different slide pageId', () => {
+      const definitionPageId = 'ref-page-1';
+      const notesPageId = 'ref-page-2';
+      const refSlides = [
+        createSlide(definitionPageId, [createShapeElement('# Task 1', 'Ref text')]),
+        createSlide(notesPageId, [createShapeElement('^ Task 1', 'Notes for Task 1')]),
+      ];
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => refSlides };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId);
+
+      expect(defs).toHaveLength(1);
+      expect(defs[0].pageId).toBe(definitionPageId);
+      expect(defs[0].taskNotes).toBe('Notes for Task 1');
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
     it('sets documentId on submission artifacts', () => {
       const refSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Ref text')]);
       const tplSlide = createSlide('page-1', [createShapeElement('# Task 1', 'Tpl text')]);
@@ -101,6 +158,68 @@ describe('Document ID propagation across parsers', () => {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0].documentId).toBe(studentDocId);
     });
+
+    it('extracts a student submission by title from a different slide pageId and preserves student identifiers', () => {
+      const refSlide = createSlide('ref-page-1', [createShapeElement('# Task 1', 'Ref text')]);
+      const tplSlide = createSlide('tpl-page-2', [createShapeElement('# Task 1', 'Tpl text')]);
+      const studentSlides = [
+        createSlide('student-page-other', [createShapeElement('# Task 2', 'Other task')]),
+        createSlide('student-page-99', [createShapeElement('# Task 1', 'Student text')]),
+      ];
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === tplDocId) return { getSlides: () => [tplSlide] };
+        if (id === studentDocId) return { getSlides: () => studentSlides };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
+      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]).toMatchObject({
+        taskId: defs[0].getId(),
+        pageId: 'student-page-99',
+        documentId: studentDocId,
+        content: 'Student text',
+      });
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('extracts image submissions by task title across the deck and uses the matched student slide pageId in sourceUrl', () => {
+      const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
+      const studentSlides = [
+        createSlide('student-image-other', [createTaggedElement('| Task 2')]),
+        createSlide('student-image-page', [createTaggedElement('| Task 1')]),
+      ];
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === studentDocId) return { getSlides: () => studentSlides };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId);
+      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
+
+      expect(defs).toHaveLength(1);
+      expect(defs[0].getPrimaryReference().getType()).toBe('IMAGE');
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0]).toMatchObject({
+        taskId: defs[0].getId(),
+        pageId: 'student-image-page',
+        documentId: studentDocId,
+        content: null,
+        metadata: {
+          sourceUrl:
+            'https://docs.google.com/presentation/d/student-doc-789/export/png?id=student-doc-789&pageid=student-image-page',
+        },
+      });
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
   });
 
   describe('SheetsParser', () => {
@@ -110,17 +229,15 @@ describe('Document ID propagation across parsers', () => {
     let SheetsParser;
 
     beforeAll(async () => {
-      const documentParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/DocumentParser.js'
-      );
+      const documentParserModule =
+        await import('../../src/AdminSheet/DocumentParsers/DocumentParser.js');
       const taskDefinitionModule = await import('../../src/AdminSheet/Models/TaskDefinition.js');
 
       globalThis.DocumentParser = documentParserModule.DocumentParser;
       globalThis.TaskDefinition = taskDefinitionModule.TaskDefinition;
 
-      const sheetsParserModule = await import(
-        '../../src/AdminSheet/DocumentParsers/SheetsParser.js'
-      );
+      const sheetsParserModule =
+        await import('../../src/AdminSheet/DocumentParsers/SheetsParser.js');
       SheetsParser = sheetsParserModule.SheetsParser;
     });
 
