@@ -2,6 +2,7 @@
 name: 'Code Reviewer'
 description: 'Reviews code for quality, standards adherence, and bugs'
 user-invocable: true
+model: gpt-5.4
 tools: [vscode/askQuestions, vscode/runCommand, execute/getTerminalOutput, execute/awaitTerminal, execute/killTerminal, execute/createAndRunTask, execute/runTests, execute/testFailure, execute/runInTerminal, read/terminalSelection, read/terminalLastCommand, read/problems, read/readFile, browser, search, todo, github.vscode-pull-request-github/issue_fetch, github.vscode-pull-request-github/labels_fetch, github.vscode-pull-request-github/notification_fetch, github.vscode-pull-request-github/doSearch, github.vscode-pull-request-github/activePullRequest, github.vscode-pull-request-github/pullRequestStatusChecks, github.vscode-pull-request-github/openPullRequest, sonarsource.sonarlint-vscode/sonarqube_getPotentialSecurityIssues, sonarsource.sonarlint-vscode/sonarqube_excludeFiles, sonarsource.sonarlint-vscode/sonarqube_analyzeFile]
 ---
 
@@ -73,6 +74,7 @@ Test location and naming conventions are defined in the module testing docs and 
 - **Backend boundary**: Do not import anything from `src/backend/` into frontend code. Treat the interface as an API boundary.
 - **Error handling**: Fail loudly in development. No broad catch-and-ignore logic.
 - **Builder compatibility**: Avoid CDN-dependent runtime assets. Keep `index.html` asset wiring compatible with builder inlining into HtmlService output.
+- **Export functions as functions**: Functions should be declared as such, not exported constants with arrow functions. Fail the code review unless there is a very good reason to export a constant over a function.
 
 ### 3.3 Builder (`scripts/builder/`)
 
@@ -130,6 +132,7 @@ Frontend E2E tests (Playwright) should be run when reviewing integration-level c
 ```bash
 npm run frontend:test:e2e
 ```
+If Chromium or its system dependencies are missing, install them first with `npm --prefix src/frontend exec -- playwright install --with-deps chromium`, then rerun `npm run frontend:test:e2e`. Do not mark the review clean until the Playwright run passes for any user-visible interaction or browser integration change.
 
 **Builder**:
 ```bash
@@ -183,6 +186,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] No imports from `src/backend/`.
 - [ ] `@ant-design/v5-patch-for-react-19` patch import present in entrypoint if modified.
 - [ ] No CDN-dependent runtime assets; assets must be inlineable by the builder.
+- [ ] Playwright E2E has passed for any user-visible interaction or browser integration change.
 
 ### Builder Only
 - [ ] `BuildStageError` used with correct `BuildStageId` for pipeline failures.
@@ -212,3 +216,4 @@ Structure all feedback as follows:
 ## 7. Completion
 
 When your review is complete, summarise the key findings. State explicitly whether blocking issues remain. If the code is clean, confirm that it adheres to all standards for the modules reviewed.
+

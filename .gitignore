@@ -4,5 +4,6 @@
 .VSCodeCounter
 *.clasprc.json
 *credentials.json
+coverage
 /site
 
