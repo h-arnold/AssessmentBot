@@ -4,6 +4,7 @@ import { parseCliOptions } from './lib/cli-options.js';
 import { runBackendCopy } from './steps/backend-copy.js';
 import { runFrontendBuildWithMode } from './steps/frontend-build.js';
 import { runFrontendHtmlServiceTransform } from './steps/frontend-htmlservice-transform.js';
+import { runFrontendInstallDeps } from './steps/frontend-install-deps.js';
 import { runJsonDbInlineNamespace } from './steps/jsondb-inline-namespace.js';
 import { runMaterialiseOutput } from './steps/materialise-output.js';
 import { runMergeManifest } from './steps/merge-manifest.js';
@@ -22,42 +23,49 @@ async function run(): Promise<void> {
   await runPreflightClean(paths);
   logInfo('Step 1 complete: preflight checks passed and build directories prepared.');
 
+  const frontendInstallDepsResult = await runFrontendInstallDeps(paths);
+  logInfo(
+    frontendInstallDepsResult.installed
+      ? 'Step 2 complete: frontend dependencies were missing and have been installed with npm ci.'
+      : 'Step 2 complete: frontend dependency check passed.'
+  );
+
   const frontendBuildResult = await runFrontendBuildWithMode(paths, options.frontendMode);
   logInfo(
-    `Step 2 complete: frontend build (${options.frontendMode}) generated entry HTML at ${frontendBuildResult.entryHtmlPath}`
+    `Step 3 complete: frontend build (${options.frontendMode}) generated entry HTML at ${frontendBuildResult.entryHtmlPath}`
   );
 
   const htmlServiceTransformResult = await runFrontendHtmlServiceTransform(paths);
   logInfo(
-    `Step 3 complete: HtmlService ReactApp generated at ${htmlServiceTransformResult.reactAppPath}`
+    `Step 4 complete: HtmlService ReactApp generated at ${htmlServiceTransformResult.reactAppPath}`
   );
 
   const backendCopyResult = await runBackendCopy(paths);
-  logInfo(`Step 4 complete: copied ${backendCopyResult.copiedFiles.length} backend runtime files.`);
+  logInfo(`Step 5 complete: copied ${backendCopyResult.copiedFiles.length} backend runtime files.`);
 
   const resolveJsonDbSourceResult = await runResolveJsonDbSource(paths);
   logInfo(
-    `Step 5 complete: resolved JsonDbApp source files (${resolveJsonDbSourceResult.sourceFiles.length}): ${resolveJsonDbSourceResult.sourceFiles.join(', ')}`
+    `Step 6 complete: resolved JsonDbApp source files (${resolveJsonDbSourceResult.sourceFiles.length}): ${resolveJsonDbSourceResult.sourceFiles.join(', ')}`
   );
 
   const jsonDbInlineNamespaceResult = await runJsonDbInlineNamespace(paths);
   logInfo(
-    `Step 6 complete: generated ${jsonDbInlineNamespaceResult.outputPath} with namespace ${jsonDbInlineNamespaceResult.namespaceSymbol} and exports: ${jsonDbInlineNamespaceResult.exportedApi.join(', ')}`
+    `Step 7 complete: generated ${jsonDbInlineNamespaceResult.outputPath} with namespace ${jsonDbInlineNamespaceResult.namespaceSymbol} and exports: ${jsonDbInlineNamespaceResult.exportedApi.join(', ')}`
   );
 
   const mergeManifestResult = await runMergeManifest(paths);
   logInfo(
-    `Step 7 complete: merged manifest written to ${mergeManifestResult.outputPath} with ${mergeManifestResult.mergedScopeCount} scopes and ${mergeManifestResult.mergedServiceCount} enabled advanced services.`
+    `Step 8 complete: merged manifest written to ${mergeManifestResult.outputPath} with ${mergeManifestResult.mergedScopeCount} scopes and ${mergeManifestResult.mergedServiceCount} enabled advanced services.`
   );
 
   const materialiseOutputResult = await runMaterialiseOutput(paths);
   logInfo(
-    `Step 8 complete: materialised ${materialiseOutputResult.fileCount} files in ${materialiseOutputResult.gasRootPath} (${materialiseOutputResult.totalBytes} bytes).`
+    `Step 9 complete: materialised ${materialiseOutputResult.fileCount} files in ${materialiseOutputResult.gasRootPath} (${materialiseOutputResult.totalBytes} bytes).`
   );
 
   const validateOutputResult = await runValidateOutput(paths);
   logInfo(
-    `Step 9 complete: validated ${validateOutputResult.outputPath} with ${validateOutputResult.requiredFileCount} required artefacts (${validateOutputResult.gasFileCount} total files).`
+    `Step 10 complete: validated ${validateOutputResult.outputPath} with ${validateOutputResult.requiredFileCount} required artefacts (${validateOutputResult.gasFileCount} total files).`
   );
   logInfo(
     `Build summary: appsscript.json=${validateOutputResult.artefactSizes['appsscript.json']} bytes, JsonDbApp.inlined.js=${validateOutputResult.artefactSizes['JsonDbApp.inlined.js']} bytes, UI/ReactApp.html=${validateOutputResult.artefactSizes['UI/ReactApp.html']} bytes.`

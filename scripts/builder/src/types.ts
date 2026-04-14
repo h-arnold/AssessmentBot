@@ -1,5 +1,6 @@
 export type BuildStageId =
   | 'preflight-clean'
+  | 'frontend-install-deps'
   | 'frontend-build'
   | 'frontend-htmlservice-transform'
   | 'backend-copy'
@@ -50,6 +51,11 @@ export type FrontendBuildResult = {
   entryHtmlPath: string;
   generatedChunks: string[];
   warnings: string[];
+};
+
+export type FrontendInstallDependenciesResult = {
+  stage: BuildStageId;
+  installed: boolean;
 };
 
 export type FrontendHtmlServiceTransformResult = {
