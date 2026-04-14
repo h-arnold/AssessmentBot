@@ -441,7 +441,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 **Class**: `SlidesAssignment` (extends `Assignment`)
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SlidesAssignment.js`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Constructor**:
   - Converts assignmentDefinition to instance if needed
   - Calls parent constructor with courseId, assignmentId, and definition
@@ -569,7 +569,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
   ```javascript
   {
     id: string,              // Generated ID
-    taskTitle: string,       // From slide notes
+    taskTitle: string,       // From tagged slide element descriptions
     pageId: string,          // Slide page ID
     artifacts: {
       reference: [BaseTaskArtifact],  // Reference slide content
@@ -718,7 +718,7 @@ assignment.submissions = [
 
 **Method**: `SlidesAssignment.processImages()`
 
-- **Location**: `/src/AdminSheet/AssignmentProcessor/SlidesAssignment.js:39-67`
+- **Location**: `/src/backend/AssignmentProcessor/SlidesAssignment.js`
 - **Process**:
   1. Creates `ImageManager` instance
   2. Collects all image artifacts via `imageManager.collectAllImageArtifacts(this)`
@@ -1504,7 +1504,7 @@ To add new processing stages:
 
 **Tasks not appearing:**
 
-- Verify task titles in slide notes or sheet headers
+- Verify task titles in tagged slide element descriptions or sheet headers
 - Check TaskDefinition validation (must have reference and template artifacts)
 - Review task parsing logs in ABLogger output
 
