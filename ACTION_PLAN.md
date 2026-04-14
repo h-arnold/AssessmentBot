@@ -146,8 +146,8 @@ Frontend tests:
 - Green review clean: Complete
 - Checks passed: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -205,6 +205,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Direct assertions now cover INVALID_REQUEST, IN_USE, non-Error throws, and failed-request persistence. `apiHandler` now emits the boundary error log before completion tracking, while envelope mapping stays unchanged. Request-store persistence remains compact.
+- **Delivery evidence:** Branch `chore/apihandler-gas-log-preservation-spec`; commit `c29fe07d0b5c0e5d0dcfd64da7e7bf9d8260330d` (`feat: complete section 2 boundary failure logging`); commit created: Complete; push completed: Complete; push confirmation: succeeded.
 - **Deviations from plan:** Several logging assertions were already satisfied by Section 1's broader boundary-log change.
 - **Follow-up implications for later sections:** Residual nearby watchpoint from review: `_runCompletionPhase()` still is not guarded from throwing, but that predates this section and was not changed.
 
