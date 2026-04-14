@@ -358,7 +358,7 @@ class SlidesParser extends DocumentParser {
       slideContext.elements.forEach(({ pageElement, descriptionInfo }) => {
         if (!descriptionInfo.rawText) return;
 
-        const candidates = [descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean);
+        const candidates = [...new Set([descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean))];
         candidates.forEach((candidate) => {
           const bucket = index.get(candidate) || [];
           bucket.push({
