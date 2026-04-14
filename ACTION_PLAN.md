@@ -284,6 +284,19 @@ Frontend tests:
 
 ## Regression and contract hardening
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added: Complete
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete
+- Action plan updated: Complete
+- Commit created: Pending
+- Push completed: Pending
+
 ### Objective
 
 - Confirm the logging-preservation change holds across touched API-layer paths without regressing transport mapping, request tracking, or lint standards.
@@ -310,12 +323,15 @@ Frontend tests:
 
 ### Section checks
 
-- Run the commands listed above and ensure green results.
+- `npm test -- tests/api/apiHandler.test.js`
+- `npm test -- tests/api/apiHandlerLocking.test.js`
+- `npm test -- tests/api/apiHandlerTiming.test.js`
+- `npm run lint`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Summarise what was done during regression phase.
-- **Deviations from plan:** Note any additional work discovered or done.
+- **Implementation notes:** Ran `npm test -- tests/api/apiHandler.test.js`, `npm test -- tests/api/apiHandlerLocking.test.js`, `npm test -- tests/api/apiHandlerTiming.test.js`, and `npm run lint`. All required checks passed for this validation phase. Frontend envelope assertions remained unchanged in the touched API tests.
+- **Deviations from plan:** `npm run lint` still reports one unrelated existing warning in `src/backend/Models/Cohort.js:139`. `tests/api/requestStore.test.js` was not rerun because request-store behaviour did not change in this phase.
 
 ---
 
