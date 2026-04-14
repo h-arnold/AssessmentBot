@@ -81,11 +81,3 @@ When you touch existing backend code that contains direct `console.*` calls:
 1. Never log secrets, credentials, tokens, or API keys.
 2. Avoid logging full raw payloads when they may contain sensitive or unnecessary data.
 3. Prefer selective, structured metadata fields required for diagnosis.
-
-## 9. Testing expectations
-
-1. Add regression tests for critical logging boundaries when behaviour changes.
-2. For execution-log fidelity, prefer assertions at the logger-output seam (`ABLogger` -> console) rather than only mocked logger invocation checks.
-3. Ensure failure-path tests verify both:
-   - transport or control-flow outcome
-   - developer-log preservation expectations
