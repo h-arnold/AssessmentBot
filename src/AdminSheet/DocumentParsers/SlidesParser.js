@@ -72,9 +72,8 @@ class SlidesParser extends DocumentParser {
       const pageElements = slide.getPageElements();
       pageElements.forEach((pageElement) => {
         const description = pageElement.getDescription();
-        if (!description?.length) return;
-        const tag = description.charAt(0);
-        const tagText = description.substring(1).trim();
+        const { tag, tagText } = this.parseDescriptionTag(description);
+        if (!tag) return;
         switch (tag) {
           case '#':
             this.handleDefinitionTitleElement(pageElement, tagText, pageId, role, context);
@@ -210,6 +209,51 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
+   * Parse a page element description into an optional tag and identifier text.
+   * @param {string} description - Raw page element description.
+   * @return {{rawText: string, tag: string|null, tagText: string}} Parsed description metadata.
+   */
+  parseDescriptionTag(description) {
+    const rawText = description ? description.trim() : '';
+    if (!rawText) {
+      return {
+        rawText: '',
+        tag: null,
+        tagText: '',
+      };
+    }
+
+    const tag = rawText.charAt(0);
+    if (tag === '#' || tag === '^' || tag === '~' || tag === '|') {
+      return {
+        rawText,
+        tag,
+        tagText: rawText.substring(1).trim(),
+      };
+    }
+
+    return {
+      rawText,
+      tag: null,
+      tagText: rawText,
+    };
+  }
+
+  /**
+   * Return true when a page element description identifies the passed definition.
+   * Student copies can preserve either tagged titles or plain text identifiers.
+   * @param {{rawText: string, tag: string|null, tagText: string}} descriptionInfo - Parsed description metadata.
+   * @param {TaskDefinition} definition - Definition being matched.
+   * @return {boolean} True when the description references the task.
+   */
+  descriptionMatchesDefinition(descriptionInfo, definition) {
+    const candidateTexts = [descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean);
+    return candidateTexts.some(
+      (candidate) => candidate === definition.taskTitle || candidate === definition.getId()
+    );
+  }
+
+  /**
    * Extract content and Artifact type for a definition element.
    * @param {GoogleAppsScript.Slides.PageElement} pageElement - The tagged element.
    * @return {{artifactType: string, elementContent: *}|null} - Content details or null when unsupported.
@@ -295,14 +339,14 @@ class SlidesParser extends DocumentParser {
     for (const slideContext of slideContexts) {
       for (const pageElement of slideContext.pageElements) {
         const desc = pageElement.getDescription();
-        if (!desc) continue;
-
-        const tag = desc.charAt(0);
-        const key = desc.substring(1).trim();
-        if (key !== definition.taskTitle) continue;
+        const descriptionInfo = this.parseDescriptionTag(desc);
+        if (!descriptionInfo.rawText) continue;
+        if (!this.descriptionMatchesDefinition(descriptionInfo, definition)) continue;
 
         if (typeNeeded === 'IMAGE') {
-          if (tag !== '~' && tag !== '|') continue;
+          if (descriptionInfo.tag && descriptionInfo.tag !== '~' && descriptionInfo.tag !== '|') {
+            continue;
+          }
           return {
             taskId: definition.getId(),
             pageId: slideContext.pageId,
@@ -314,7 +358,7 @@ class SlidesParser extends DocumentParser {
           };
         }
 
-        if (tag !== '#') continue;
+        if (descriptionInfo.tag && descriptionInfo.tag !== '#') continue;
         const contentDetails = this.extractDefinitionContent(pageElement);
         if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
         return {

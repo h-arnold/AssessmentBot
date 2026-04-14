@@ -20,6 +20,21 @@ describe('Document ID propagation across parsers', () => {
       })),
     });
 
+    const createTableElement = (description, rows) => ({
+      getDescription: vi.fn(() => description),
+      getPageElementType: vi.fn(() => globalThis.SlidesApp.PageElementType.TABLE),
+      asTable: vi.fn(() => ({
+        getNumRows: vi.fn(() => rows.length),
+        getNumColumns: vi.fn(() => rows[0]?.length || 0),
+        getCell: vi.fn((rowIndex, columnIndex) => ({
+          getMergeState: vi.fn(() => globalThis.SlidesApp.CellMergeState.NORMAL),
+          getText: vi.fn(() => ({
+            asString: vi.fn(() => rows[rowIndex]?.[columnIndex] ?? ''),
+          })),
+        })),
+      })),
+    });
+
     const createTaggedElement = (description) => ({
       getDescription: vi.fn(() => description),
     });
@@ -61,6 +76,11 @@ describe('Document ID propagation across parsers', () => {
           SHAPE: 'SHAPE',
           TABLE: 'TABLE',
           IMAGE: 'IMAGE',
+        },
+        CellMergeState: {
+          NORMAL: 'NORMAL',
+          HEAD: 'HEAD',
+          MERGED: 'MERGED',
         },
       };
     });
@@ -188,6 +208,74 @@ describe('Document ID propagation across parsers', () => {
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
+    it('extracts a table submission when the student description is the bare task title', () => {
+      const refSlide = createSlide('ref-table-page', [
+        createTableElement('# Task Table', [['Reference value']]),
+      ]);
+      const studentSlide = createSlide('student-table-page', [
+        createTableElement('Task Table', [['Student value']]),
+      ]);
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === studentDocId) return { getSlides: () => [studentSlide] };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId);
+      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
+
+      expect(defs).toHaveLength(1);
+      expect(defs[0].getPrimaryReference().getType()).toBe('TABLE');
+      expect(artifacts).toEqual([
+        {
+          taskId: defs[0].getId(),
+          pageId: 'student-table-page',
+          documentId: studentDocId,
+          content: [['Student value']],
+        },
+      ]);
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('extracts a table submission when the student description is the stable task id', () => {
+      const refSlide = createSlide('ref-table-page', [
+        createTableElement('# Task Table', [['Reference value']]),
+      ]);
+      let studentTaskId = null;
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === studentDocId) {
+          return {
+            getSlides: () => [
+              createSlide('student-table-page', [
+                createTableElement(studentTaskId, [['Student value by id']]),
+              ]),
+            ],
+          };
+        }
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId);
+      studentTaskId = defs[0].getId();
+      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
+
+      expect(defs).toHaveLength(1);
+      expect(artifacts).toEqual([
+        {
+          taskId: defs[0].getId(),
+          pageId: 'student-table-page',
+          documentId: studentDocId,
+          content: [['Student value by id']],
+        },
+      ]);
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
     it('extracts image submissions by task title across the deck and uses the matched student slide pageId in sourceUrl', () => {
       const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
       const studentSlides = [
@@ -219,6 +307,61 @@ describe('Document ID propagation across parsers', () => {
         },
       });
       expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('extracts image submissions when the student description is the stable task id and preserves the matched pageId in sourceUrl', () => {
+      const refSlide = createSlide('ref-image-page', [createTaggedElement('~ Task 1')]);
+      let studentTaskId = null;
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === studentDocId) {
+          return {
+            getSlides: () => [
+              createSlide('student-image-other', [createTaggedElement('Task 2')]),
+              createSlide('student-image-page-by-id', [createTaggedElement(studentTaskId)]),
+            ],
+          };
+        }
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId);
+      studentTaskId = defs[0].getId();
+      const artifacts = parser.extractSubmissionArtifacts(studentDocId, defs);
+
+      expect(defs).toHaveLength(1);
+      expect(artifacts).toEqual([
+        {
+          taskId: defs[0].getId(),
+          pageId: 'student-image-page-by-id',
+          documentId: studentDocId,
+          content: null,
+          metadata: {
+            sourceUrl:
+              'https://docs.google.com/presentation/d/student-doc-789/export/png?id=student-doc-789&pageid=student-image-page-by-id',
+          },
+        },
+      ]);
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('does not create task definitions from untagged plain titles in reference or template slides', () => {
+      const refSlide = createSlide('ref-plain-page', [createShapeElement('Task 1', 'Ref text')]);
+      const tplSlide = createSlide('tpl-plain-page', [createShapeElement('Task 1', 'Tpl text')]);
+
+      globalThis.SlidesApp.openById = vi.fn((id) => {
+        if (id === refDocId) return { getSlides: () => [refSlide] };
+        if (id === tplDocId) return { getSlides: () => [tplSlide] };
+        return { getSlides: () => [] };
+      });
+
+      const parser = new SlidesParser();
+      const defs = parser.extractTaskDefinitions(refDocId, tplDocId);
+
+      expect(defs).toHaveLength(0);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
     });
   });
 
