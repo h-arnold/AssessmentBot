@@ -223,8 +223,8 @@ Frontend tests:
 - Green review clean: Complete
 - Checks passed: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -276,6 +276,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Section 3 is regression coverage only; no production changes were required. Added tests proving downstream info/warn/error logging from controlled stubs remains observable alongside the single boundary failure log. Timing observability remained green.
+- **Delivery evidence:** Branch `chore/apihandler-gas-log-preservation-spec`; commit `17e9bbc5e25c379acee3fc3b2bd5c7a62c5a9179` (`test: complete section 3 downstream log coverage`); commit created: Complete; push completed: Complete; push confirmation: succeeded.
 - **Deviations from plan:** This section did not produce a red failure because the current implementation already satisfied the covered behaviour.
 - **Follow-up implications for later sections:** No production gap was identified for the covered cases.
 
