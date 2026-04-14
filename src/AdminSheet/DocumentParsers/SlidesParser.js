@@ -194,6 +194,8 @@ class SlidesParser extends DocumentParser {
    * Build the title-based key used for Slides task matching.
    * @param {string} taskTitle - Title extracted from the slide tag.
    * @return {string} Deterministic key for Slides definitions.
+   * @remarks We key by `taskTitle` because the previous `taskTitle + pageId` composite key was brittle.
+   * It failed when student copies or template/reference decks had non-aligned page IDs across documents.
    */
   buildDefinitionKey(taskTitle) {
     return taskTitle;
@@ -298,10 +300,8 @@ class SlidesParser extends DocumentParser {
     const presentation = SlidesApp.openById(documentId);
     const slides = presentation.getSlides();
     const artifacts = [];
-    const slideContexts = slides.map((slide) => ({
-      pageId: this.getPageId(slide),
-      pageElements: slide.getPageElements(),
-    }));
+    const slideContexts = this.buildSubmissionSlideContexts(slides);
+    const submissionIndex = this.buildSubmissionIndex(slideContexts);
 
     taskDefs.forEach((def) => {
       const primary = def.getPrimaryReference() || def.getPrimaryTemplate();
@@ -309,7 +309,7 @@ class SlidesParser extends DocumentParser {
 
       const extracted = this.collectSubmissionArtifact(
         def,
-        slideContexts,
+        submissionIndex,
         primary.getType(),
         documentId
       );
@@ -328,48 +328,131 @@ class SlidesParser extends DocumentParser {
   }
 
   /**
-   * Collect the submission artifact content for a definition from slide elements.
+   * Build submission contexts with pre-parsed description metadata for each element.
+   * @param {GoogleAppsScript.Slides.Slide[]} slides - Slides in the student submission.
+   * @return {Array<{pageId: string, elements: Array<{pageElement: GoogleAppsScript.Slides.PageElement, descriptionInfo: {rawText: string, tag: string|null, tagText: string}}>}>>} Indexed slide contexts.
+   * @remarks `getDescription()` is a relatively expensive Apps Script call, so we parse once per element.
+   * This avoids repeated remote calls inside per-task loops and reduces runtime pressure on large decks.
+   */
+  buildSubmissionSlideContexts(slides) {
+    return slides.map((slide) => ({
+      pageId: this.getPageId(slide),
+      elements: slide.getPageElements().map((pageElement) => ({
+        pageElement,
+        descriptionInfo: this.parseDescriptionTag(pageElement.getDescription()),
+      })),
+    }));
+  }
+
+  /**
+   * Build lookup index for submission elements by candidate description text.
+   * @param {Array<{pageId: string, elements: Array<{pageElement: GoogleAppsScript.Slides.PageElement, descriptionInfo: {rawText: string, tag: string|null, tagText: string}}>}>>} slideContexts - Parsed slide contexts.
+   * @return {Map<string, Array<{pageId: string, pageElement: GoogleAppsScript.Slides.PageElement, descriptionInfo: {rawText: string, tag: string|null, tagText: string}}>>} Candidate lookup index.
+   * @remarks The index keeps lookups keyed to content identifiers (`taskTitle`/stable ID), not page IDs.
+   * This preserves cross-document tolerance and avoids the brittle composite key behaviour.
+   */
+  buildSubmissionIndex(slideContexts) {
+    const index = new Map();
+
+    slideContexts.forEach((slideContext) => {
+      slideContext.elements.forEach(({ pageElement, descriptionInfo }) => {
+        if (!descriptionInfo.rawText) return;
+
+        const candidates = [...new Set([descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean))];
+        candidates.forEach((candidate) => {
+          const bucket = index.get(candidate) || [];
+          bucket.push({
+            pageId: slideContext.pageId,
+            pageElement,
+            descriptionInfo,
+          });
+          index.set(candidate, bucket);
+        });
+      });
+    });
+
+    return index;
+  }
+
+  /**
+   * Collect the submission artifact content for a definition from indexed slide elements.
    * @param {TaskDefinition} definition - Definition being matched.
-   * @param {Array<{pageId: string, pageElements: GoogleAppsScript.Slides.PageElement[]}>} slideContexts - Slides and elements to search.
+   * @param {Map<string, Array<{pageId: string, pageElement: GoogleAppsScript.Slides.PageElement, descriptionInfo: {rawText: string, tag: string|null, tagText: string}}>>} submissionIndex - Candidate lookup index.
    * @param {string} typeNeeded - Artifact type expected (TEXT/TABLE/IMAGE).
    * @param {string} documentId - Student document ID for submission artifact.
    * @return {{taskId: string, pageId: string, content: *, metadata?: Object, documentId: string}|null} - Artifact payload or null.
+   * @remarks Candidate matching is driven by stable task ID and task title for resilience across copied slides.
+   * Page ID is retained only as metadata on the matched artifact, not as part of the lookup key.
    */
-  collectSubmissionArtifact(definition, slideContexts, typeNeeded, documentId) {
-    for (const slideContext of slideContexts) {
-      for (const pageElement of slideContext.pageElements) {
-        const desc = pageElement.getDescription();
-        const descriptionInfo = this.parseDescriptionTag(desc);
-        if (!descriptionInfo.rawText) continue;
-        if (!this.descriptionMatchesDefinition(descriptionInfo, definition)) continue;
+  collectSubmissionArtifact(definition, submissionIndex, typeNeeded, documentId) {
+    const matchCandidates = [...new Set([definition.getId(), definition.taskTitle].filter(Boolean))];
 
-        if (typeNeeded === 'IMAGE') {
-          if (descriptionInfo.tag && descriptionInfo.tag !== '~' && descriptionInfo.tag !== '|') {
-            continue;
-          }
-          return {
-            taskId: definition.getId(),
-            pageId: slideContext.pageId,
-            documentId,
-            content: null,
-            metadata: {
-              sourceUrl: this.generateSlideImageUrl(documentId, slideContext.pageId),
-            },
-          };
-        }
+    if (typeNeeded === 'IMAGE') {
+      return this.collectTaggedImageSubmissionArtifact(
+        definition,
+        submissionIndex,
+        matchCandidates,
+        documentId
+      );
+    }
 
+    for (const candidate of matchCandidates) {
+      const matches = submissionIndex.get(candidate) || [];
+      for (const { pageId: matchedPageId, pageElement, descriptionInfo } of matches) {
         if (descriptionInfo.tag && descriptionInfo.tag !== '#') continue;
+
         const contentDetails = this.extractDefinitionContent(pageElement);
         if (!contentDetails || contentDetails.artifactType !== typeNeeded) continue;
+
         return {
           taskId: definition.getId(),
-          pageId: slideContext.pageId,
+          pageId: matchedPageId,
           documentId,
           content: contentDetails.elementContent,
         };
       }
     }
+
     return null;
+  }
+
+  /**
+   * Find the first tagged image submission match for a definition.
+   * @param {TaskDefinition} definition - Definition being matched.
+   * @param {Map<string, Array<{pageId: string, pageElement: GoogleAppsScript.Slides.PageElement, descriptionInfo: {rawText: string, tag: string|null, tagText: string}}>>} submissionIndex - Candidate lookup index.
+   * @param {string[]} matchCandidates - Candidate tokens for lookup.
+   * @param {string} documentId - Student document ID for submission artifact.
+   * @return {{taskId: string, pageId: string, documentId: string, content: null, metadata: {sourceUrl: string}}|null} Image artifact payload or null when unmatched.
+   */
+  collectTaggedImageSubmissionArtifact(definition, submissionIndex, matchCandidates, documentId) {
+    for (const candidate of matchCandidates) {
+      const matches = submissionIndex.get(candidate) || [];
+      for (const { pageId, descriptionInfo } of matches) {
+        if (descriptionInfo.tag !== '~' && descriptionInfo.tag !== '|') continue;
+        return this.buildImageSubmissionArtifact(definition, documentId, pageId);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Build submission artifact payload for image tasks.
+   * @param {TaskDefinition} definition - Definition being matched.
+   * @param {string} documentId - Student document ID for submission artifact.
+   * @param {string} pageId - Slide page ID containing the matched element.
+   * @return {{taskId: string, pageId: string, documentId: string, content: null, metadata: {sourceUrl: string}}} Image artifact payload.
+   */
+  buildImageSubmissionArtifact(definition, documentId, pageId) {
+    return {
+      taskId: definition.getId(),
+      pageId,
+      documentId,
+      content: null,
+      metadata: {
+        sourceUrl: this.generateSlideImageUrl(documentId, pageId),
+      },
+    };
   }
 
   /**
