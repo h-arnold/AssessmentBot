@@ -338,10 +338,10 @@ Frontend tests:
 
 ## De-sloppification outcome
 
-- **Status:** Clean and ready for documentation sync.
+- **Status:** Clean. Branch state is ready for documentation sync, so docs sync can begin.
 - **Findings resolved:** Admission-phase duplication removed by reusing `requestStore` helpers with validated optional timestamps/reference times; unused helper surface reduced; `requestStore` JSDoc aligned.
 - **Review confirmation:** No slop remains in the intended `apiHandler`/`requestStore`/test-helper cleanup slice after review.
-- **Cleanup commit/push evidence:** Pending until committed.
+- **Cleanup commit/push evidence:** Branch `chore/apihandler-gas-log-preservation-spec`; cleanup commit `c13bb34b605536396be154ba8e086b58027c2176` (`refactor: de-sloppify apiHandler request tracking`); push confirmation: succeeded.
 
 ---
 
