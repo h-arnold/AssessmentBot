@@ -125,8 +125,6 @@ class ApiDispatcher extends BaseSingleton {
       handlerError = error;
     }
 
-    this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
-
     if (handlerFailed) {
       ABLogger.getInstance().error(
         'API request failed.',
@@ -136,6 +134,11 @@ class ApiDispatcher extends BaseSingleton {
         },
         handlerError
       );
+    }
+
+    this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
+
+    if (handlerFailed) {
       return this._mapErrorToFailureEnvelope(requestId, handlerError);
     }
 

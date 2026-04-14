@@ -136,6 +136,19 @@ Frontend tests:
 
 ## Section 2 — Transport Boundary Failure Logging
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added: Complete
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete
+- Action plan updated: Complete
+- Commit created: Pending
+- Push completed: Pending
+
 ### Objective
 
 - Preserve faithful developer diagnostics in execution logs for all downstream `apiHandler` failure paths while keeping frontend envelope mapping unchanged.
@@ -191,9 +204,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during implementation.
-- **Deviations from plan:** Populate during implementation.
-- **Follow-up implications for later sections:** Populate during implementation.
+- **Implementation notes:** Direct assertions now cover INVALID_REQUEST, IN_USE, non-Error throws, and failed-request persistence. `apiHandler` now emits the boundary error log before completion tracking, while envelope mapping stays unchanged. Request-store persistence remains compact.
+- **Deviations from plan:** Several logging assertions were already satisfied by Section 1's broader boundary-log change.
+- **Follow-up implications for later sections:** Residual nearby watchpoint from review: `_runCompletionPhase()` still is not guarded from throwing, but that predates this section and was not changed.
 
 ---
 

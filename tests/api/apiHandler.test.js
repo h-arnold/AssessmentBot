@@ -11,6 +11,7 @@ const {
   callAuthorisationStatus,
   getApiDispatcherInstance,
   loadApiHandlerModule,
+  readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
@@ -204,6 +205,18 @@ function expectFailureEnvelope(response, { code, message, withRequestId = false 
       retriable: false,
     },
   });
+}
+
+function expectBoundaryFailureLog(errorSpy, { response, methodName, thrownValue }) {
+  expect(errorSpy).toHaveBeenCalledTimes(1);
+  expect(errorSpy).toHaveBeenCalledWith(
+    'API request failed.',
+    expect.objectContaining({
+      requestId: response.requestId,
+      method: methodName,
+    }),
+    thrownValue
+  );
 }
 
 const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
@@ -893,6 +906,29 @@ describe('Api/apiHandler dispatcher', () => {
     }
   );
 
+  it.each(INVALID_REQUEST_FAILURE_CASES)(
+    'emits one boundary diagnostic for $methodName validation failures while preserving the INVALID_REQUEST envelope',
+    ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
+      const thrownError = new ApiValidationError(errorMessage, { requestId });
+      globalThis[handlerName].mockImplementation(() => {
+        throw thrownError;
+      });
+
+      const response = handleApiRequest(methodName, params);
+
+      expectFailureEnvelope(response, {
+        code: 'INVALID_REQUEST',
+        message: errorMessage,
+        withRequestId,
+      });
+      expectBoundaryFailureLog(context.errorSpy, {
+        response,
+        methodName,
+        thrownValue: thrownError,
+      });
+    }
+  );
+
   it.each(IN_USE_FAILURE_CASES)(
     '$description',
     ({ methodName, params, handlerName, errorMessage }) => {
@@ -908,6 +944,30 @@ describe('Api/apiHandler dispatcher', () => {
         code: 'IN_USE',
         message: expect.any(String),
         withRequestId: true,
+      });
+    }
+  );
+
+  it.each(IN_USE_FAILURE_CASES)(
+    'emits one boundary diagnostic for $methodName delete-blocked failures while preserving the IN_USE envelope',
+    ({ methodName, params, handlerName, errorMessage }) => {
+      const blockedError = new Error(errorMessage);
+      blockedError.reason = 'IN_USE';
+      globalThis[handlerName].mockImplementation(() => {
+        throw blockedError;
+      });
+
+      const response = handleApiRequest(methodName, params);
+
+      expectFailureEnvelope(response, {
+        code: 'IN_USE',
+        message: expect.any(String),
+        withRequestId: true,
+      });
+      expectBoundaryFailureLog(context.errorSpy, {
+        response,
+        methodName,
+        thrownValue: blockedError,
       });
     }
   );
@@ -1137,6 +1197,93 @@ describe('Api/apiHandler dispatcher', () => {
         retriable: false,
       },
     });
+  });
+
+  it('logs non-Error thrown values deterministically while preserving the INTERNAL_ERROR envelope', () => {
+    const thrownValue = { detail: 'plain-object-failure', severity: 'high' };
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw thrownValue;
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const response = callAuthorisationStatus(dispatcher);
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Internal API error.',
+        retriable: false,
+      },
+    });
+    expectBoundaryFailureLog(context.errorSpy, {
+      response,
+      methodName: 'getAuthorisationStatus',
+      thrownValue,
+    });
+  });
+
+  it('records the failed request during completion after boundary logging has run', () => {
+    const requestId = 'req-boundary-before-completion';
+    const callOrder = [];
+    const originalUtilities = globalThis.Utilities;
+    const originalGetUserProperties = globalThis.PropertiesService.getUserProperties;
+    const baseUserProperties = originalGetUserProperties.call(globalThis.PropertiesService);
+
+    globalThis.Utilities = {
+      getUuid: vi.fn(() => requestId),
+    };
+    globalThis.PropertiesService.getUserProperties = () => ({
+      getProperty(key) {
+        return baseUserProperties.getProperty(key);
+      },
+      setProperty(key, value) {
+        const parsed = JSON.parse(value);
+        if (parsed[requestId]?.status === 'started') {
+          callOrder.push('admissionSave');
+        }
+        if (parsed[requestId]?.status === 'error') {
+          callOrder.push('completionSave');
+        }
+        return baseUserProperties.setProperty(key, value);
+      },
+    });
+    context.errorSpy.mockImplementation(() => {
+      callOrder.push('boundaryLog');
+    });
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw new Error('completion should follow boundary logging');
+    });
+
+    try {
+      const dispatcher = getApiDispatcherInstance();
+
+      const response = callAuthorisationStatus(dispatcher);
+
+      expect(response).toMatchObject({
+        ok: false,
+        requestId,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal API error.',
+          retriable: false,
+        },
+      });
+      expect(readPersistedUserRequestStore()[requestId]).toMatchObject({
+        status: 'error',
+        errorMessage: 'Error: completion should follow boundary logging',
+      });
+      expect(callOrder).toEqual(expect.arrayContaining(['boundaryLog', 'completionSave']));
+      expect(callOrder.indexOf('boundaryLog')).toBeLessThan(callOrder.indexOf('completionSave'));
+    } finally {
+      globalThis.PropertiesService.getUserProperties = originalGetUserProperties;
+      if (originalUtilities === undefined) {
+        delete globalThis.Utilities;
+      } else {
+        globalThis.Utilities = originalUtilities;
+      }
+    }
   });
 
   it('maps null thrown values to INTERNAL_ERROR', () => {
