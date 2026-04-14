@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
 
-// Slides parser docId propagation
-describe('Document ID propagation across parsers', () => {
+// Slides and Sheets parser matching/document ID coverage
+describe('Parser matching and document ID propagation', () => {
   describe('SlidesParser', () => {
     const refDocId = 'ref-doc-123';
     const tplDocId = 'tpl-doc-456';

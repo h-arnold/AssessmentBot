@@ -131,7 +131,7 @@ class SlidesParser extends DocumentParser {
       return;
     }
 
-    const definition = definitionMap.get(this.buildDefinitionKey(taskTitle));
+    const definition = definitionMap.get(taskTitle);
     if (!definition) {
       ABLogger.getInstance().warn(`No task definition found for notes tag "${taskTitle}".`);
       return;
@@ -175,9 +175,8 @@ class SlidesParser extends DocumentParser {
    * @return {TaskDefinition} - Existing or newly created task definition.
    */
   ensureTaskDefinition(taskTitle, pageId, context) {
-    const definitionKey = this.buildDefinitionKey(taskTitle);
     const { definitionMap, orderState } = context;
-    let definition = definitionMap.get(definitionKey);
+    let definition = definitionMap.get(taskTitle);
     if (!definition) {
       definition = new TaskDefinition({
         taskTitle,
@@ -185,20 +184,9 @@ class SlidesParser extends DocumentParser {
         id: this.buildSlidesTaskId(taskTitle),
       });
       definition.index = orderState.value++;
-      definitionMap.set(definitionKey, definition);
+      definitionMap.set(taskTitle, definition);
     }
     return definition;
-  }
-
-  /**
-   * Build the title-based key used for Slides task matching.
-   * @param {string} taskTitle - Title extracted from the slide tag.
-   * @return {string} Deterministic key for Slides definitions.
-   * @remarks We key by `taskTitle` because the previous `taskTitle + pageId` composite key was brittle.
-   * It failed when student copies or template/reference decks had non-aligned page IDs across documents.
-   */
-  buildDefinitionKey(taskTitle) {
-    return taskTitle;
   }
 
   /**
@@ -239,20 +227,6 @@ class SlidesParser extends DocumentParser {
       tag: null,
       tagText: rawText,
     };
-  }
-
-  /**
-   * Return true when a page element description identifies the passed definition.
-   * Student copies can preserve either tagged titles or plain text identifiers.
-   * @param {{rawText: string, tag: string|null, tagText: string}} descriptionInfo - Parsed description metadata.
-   * @param {TaskDefinition} definition - Definition being matched.
-   * @return {boolean} True when the description references the task.
-   */
-  descriptionMatchesDefinition(descriptionInfo, definition) {
-    const candidateTexts = [descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean);
-    return candidateTexts.some(
-      (candidate) => candidate === definition.taskTitle || candidate === definition.getId()
-    );
   }
 
   /**
@@ -358,7 +332,9 @@ class SlidesParser extends DocumentParser {
       slideContext.elements.forEach(({ pageElement, descriptionInfo }) => {
         if (!descriptionInfo.rawText) return;
 
-        const candidates = [...new Set([descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean))];
+        const candidates = [
+          ...new Set([descriptionInfo.rawText, descriptionInfo.tagText].filter(Boolean)),
+        ];
         candidates.forEach((candidate) => {
           const bucket = index.get(candidate) || [];
           bucket.push({
@@ -385,7 +361,9 @@ class SlidesParser extends DocumentParser {
    * Page ID is retained only as metadata on the matched artifact, not as part of the lookup key.
    */
   collectSubmissionArtifact(definition, submissionIndex, typeNeeded, documentId) {
-    const matchCandidates = [...new Set([definition.getId(), definition.taskTitle].filter(Boolean))];
+    const matchCandidates = [
+      ...new Set([definition.getId(), definition.taskTitle].filter(Boolean)),
+    ];
 
     if (typeNeeded === 'IMAGE') {
       return this.collectTaggedImageSubmissionArtifact(
