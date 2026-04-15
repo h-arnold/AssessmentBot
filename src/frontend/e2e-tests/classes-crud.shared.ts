@@ -4,6 +4,8 @@ import type { Cohort, YearGroup } from '../src/services/referenceData.zod';
 import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
+type TransportClassPartial = Omit<ClassPartial, 'cohortLabel' | 'yearGroupLabel'>;
+
 type ClassesCrudApiResponseScenario = Readonly<
   | {
       kind: 'success';
@@ -49,7 +51,7 @@ export type ClassesCrudRuntimeScenario = Readonly<{
 }>;
 
 export type ClassesCrudDataBundle = Readonly<{
-  classPartials: readonly ClassPartial[];
+  classPartials: readonly TransportClassPartial[];
   cohorts: readonly Cohort[];
   googleClassrooms: readonly GoogleClassroom[];
   yearGroups: readonly YearGroup[];
@@ -83,15 +85,13 @@ export const baseYearGroups: YearGroup[] = [
   },
 ];
 
-export const baseClassPartials: ClassPartial[] = [
+export const baseClassPartials: TransportClassPartial[] = [
   {
     classId: 'class-101',
     className: 'Maths Year 7A',
     cohortKey: 'cohort-2024',
-    cohortLabel: 'Cohort 2024',
     courseLength: 30,
     yearGroupKey: 'year-7',
-    yearGroupLabel: 'Year 7',
     classOwner: {
       userId: 'teacher-001',
       email: 'teacher1@example.com',
@@ -104,10 +104,8 @@ export const baseClassPartials: ClassPartial[] = [
     classId: 'class-102',
     className: 'Science Year 8B',
     cohortKey: 'cohort-2023',
-    cohortLabel: 'Cohort 2023',
     courseLength: 25,
     yearGroupKey: 'year-8',
-    yearGroupLabel: 'Year 8',
     classOwner: null,
     teachers: [
       {
@@ -136,15 +134,13 @@ export const matchedGoogleClassrooms: GoogleClassroom[] = [
   { classId: 'gc-class-202', className: 'History Year 8D' },
 ];
 
-export const matchedClassPartials: ClassPartial[] = [
+export const matchedClassPartials: TransportClassPartial[] = [
   {
     classId: 'gc-class-201',
     className: 'English Year 7C',
     cohortKey: 'cohort-2024',
-    cohortLabel: 'Cohort 2024',
     courseLength: 30,
     yearGroupKey: 'year-7',
-    yearGroupLabel: 'Year 7',
     classOwner: null,
     teachers: [],
     active: true,
@@ -153,10 +149,8 @@ export const matchedClassPartials: ClassPartial[] = [
     classId: 'gc-class-202',
     className: 'History Year 8D',
     cohortKey: 'cohort-2023',
-    cohortLabel: 'Cohort 2023',
     courseLength: 25,
     yearGroupKey: 'year-8',
-    yearGroupLabel: 'Year 8',
     classOwner: null,
     teachers: [],
     active: false,

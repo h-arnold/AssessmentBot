@@ -47,8 +47,8 @@ function serialiseOwner(owner) {
  * ABClass
  *
  * Root model that encapsulates all data about a given class (Google Classroom course).
- * Contains students, teachers and assignments and provides helpers for cohort handling
- * and simple add/remove/find operations. Designed to be serializable via toJSON/fromJSON.
+ * Contains class metadata, students, teachers, and assignments, with simple
+ * add/remove/find operations. Designed to be serializable via toJSON/fromJSON.
  */
 class ABClass {
   /**

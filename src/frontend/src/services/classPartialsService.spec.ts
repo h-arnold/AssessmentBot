@@ -112,15 +112,15 @@ describe('classPartialsService.getABClassPartials', () => {
     it('accepts the live persisted partial shape without cohortLabel or yearGroupLabel fields', async () => {
         callApiMock.mockResolvedValueOnce([
             {
-                classId: '619359134808',
-                className: 'Test Class 2',
-                cohortKey: 'b1555f77-1a48-45de-bf7c-c3e93ecf96c8',
+                classId: 'class-201',
+                className: 'Class 201',
+                cohortKey: 'cohort-2025',
                 courseLength: 1,
-                yearGroupKey: '3e7e1598-721f-4a2a-bcf1-52acba53b440',
+                yearGroupKey: 'year-07',
                 classOwner: {
-                    email: 'info@assessmentbot.com',
-                    userId: '111627089605158006298',
-                    teacherName: 'Hamish Arnold',
+                    email: 'owner@example.invalid',
+                    userId: 'google-user-001',
+                    teacherName: 'Ms Example',
                 },
                 teachers: [],
                 active: null,
@@ -131,15 +131,15 @@ describe('classPartialsService.getABClassPartials', () => {
 
         await expect(getABClassPartials()).resolves.toEqual([
             {
-                classId: '619359134808',
-                className: 'Test Class 2',
-                cohortKey: 'b1555f77-1a48-45de-bf7c-c3e93ecf96c8',
+                classId: 'class-201',
+                className: 'Class 201',
+                cohortKey: 'cohort-2025',
                 courseLength: 1,
-                yearGroupKey: '3e7e1598-721f-4a2a-bcf1-52acba53b440',
+                yearGroupKey: 'year-07',
                 classOwner: {
-                    email: 'info@assessmentbot.com',
-                    userId: '111627089605158006298',
-                    teacherName: 'Hamish Arnold',
+                    email: 'owner@example.invalid',
+                    userId: 'google-user-001',
+                    teacherName: 'Ms Example',
                 },
                 teachers: [],
                 active: null,

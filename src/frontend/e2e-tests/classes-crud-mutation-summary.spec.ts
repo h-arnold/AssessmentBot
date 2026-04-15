@@ -29,7 +29,6 @@ test.describe('mutation summary and refresh failure', () => {
         ? {
             ...classPartial,
             cohortKey: 'cohort-2025',
-            cohortLabel: 'Cohort 2025',
           }
         : classPartial,
     );

@@ -53,6 +53,23 @@ describe('ABClass model – key-based metadata contract', () => {
     expect(json).not.toHaveProperty('yearGroup');
   });
 
+  it('toJSON() omits retired cohortLabel and yearGroupLabel fields', () => {
+    const c = new ABClass({
+      classId: 'id-json-labels',
+      cohortKey: 'coh-uuid-004',
+      yearGroupKey: 'yg-uuid-004',
+      cohortLabel: 'Cohort 2024',
+      yearGroupLabel: 'Year 7',
+      courseLength: 1,
+      active: true,
+    });
+
+    const json = c.toJSON();
+
+    expect(json).not.toHaveProperty('cohortLabel');
+    expect(json).not.toHaveProperty('yearGroupLabel');
+  });
+
   it('fromJSON() restores cohortKey and yearGroupKey', () => {
     const data = {
       classId: 'id-restore',
@@ -73,6 +90,30 @@ describe('ABClass model – key-based metadata contract', () => {
     expect(restored.cohortKey).toBe('coh-uuid-003');
     expect(restored.yearGroupKey).toBe('yg-uuid-003');
     expect(restored.active).toBe(false);
+  });
+
+  it('fromJSON() ignores retired cohortLabel and yearGroupLabel fields', () => {
+    const data = {
+      classId: 'id-restore-labels',
+      className: 'Restored Class',
+      cohortKey: 'coh-uuid-004',
+      cohortLabel: 'Cohort 2024',
+      yearGroupKey: 'yg-uuid-004',
+      yearGroupLabel: 'Year 7',
+      courseLength: 1,
+      active: true,
+      teachers: [],
+      students: [],
+      assignments: [],
+      classOwner: null,
+    };
+
+    const restored = ABClass.fromJSON(data);
+
+    expect(restored).not.toHaveProperty('cohortLabel');
+    expect(restored).not.toHaveProperty('yearGroupLabel');
+    expect(restored.cohortKey).toBe('coh-uuid-004');
+    expect(restored.yearGroupKey).toBe('yg-uuid-004');
   });
 
   it('add/remove/find for teachers, students and assignments and serialisation round-trip', () => {
