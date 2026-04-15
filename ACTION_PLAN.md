@@ -155,6 +155,7 @@ Builder stage tests:
   - Green validation completed: `npm run builder:test -- scripts/builder/src/config.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/resolve-jsondb-source.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/jsondb-inline-namespace.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/merge-manifest.spec.ts`, `npm run builder:lint`, `npm run builder:compile`, `npm run builder:test`, and `npm run build` all pass against the refreshed dependency tree with direct `zod` ownership.
   - Green review follow-up: `scripts/builder/src/steps/merge-manifest.spec.ts` now exercises Stage 8 against the committed vendored manifest at `scripts/builder/vendor/jsondbapp/appsscript.json` instead of a synthetic JsonDbApp manifest fixture, and the Section 1 builder checks were re-run after that fix.
   - Green review follow-up: restored the upstream-style `console.error`, `console.warn`, and `console.log` calls in the committed vendored JsonDbApp logger (`scripts/builder/vendor/jsondbapp/src/01_utils/JDbLogger.js`) and documented the user-approved narrow exception for upstream/runtime parity, then re-ran the Section 1 builder checks.
+  - De-sloppification follow-up completed: removed the stale Stage 6 archive/download test scaffolding from scripts/builder/src/steps/resolve-jsondb-source.spec.ts and dropped the redundant Stage 7 public-export de-duplication helper/tests now that the Zod config contract guarantees unique non-empty jsonDbApp.publicExports.
 - **Delivery evidence:**
   - Branch: `chore/apihandler-gas-log-preservation-spec`.
   - Section 1 delivery commit: `4d90c78cc05aafc308bd16c3eef0e98bde1bf5dc` — `feat: complete section 1 JsonDbApp contract alignment`.
@@ -308,6 +309,7 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
   - Green phase completed: added a 15-second explicit timeout plus timeout-specific `ScriptError` context for Sonar API fetches, made `.husky/pre-commit` fail fast on `npm run lint:fix`, removed the unused `console` import from `eslint.config.js`, fixed the broken Markdown anchor, replaced the targeted placeholder JSDoc blocks in the three deprecated AdminSheet files, and renamed the mismatched requestStore test title to match its assertion.
   - Validation completed: `npm test -- tests/api/requestStore.test.js` passed (23 tests). `npm run lint` and `npm run lint:fix` both exited 0 and still report the pre-existing unrelated `no-magic-numbers` warning in `src/backend/Models/Cohort.js`.
   - Manual verification completed: a Python smoke check that monkeypatched `urlopen` to raise `URLError(socket.timeout(...))` produced `Timed out after 15s fetching Sonar API JSON from https://sonarcloud.io/api/test`; a Bash smoke check sourcing `.husky/pre-commit` with a simulated failing `npm` function returned `husky_exit=42`; docs inspection confirmed the fixed `(#-json-db-lock-timeout-ms)` anchor is present and the broken variant is absent; a placeholder-count check reported zero empty placeholder JSDoc blocks remaining in `ABLogger.js`, `ScriptAppManager.js`, and `SheetsAssessor.js`.
+  - De-sloppification follow-up completed: replaced the remaining speculative ABLogger.js header block with a short factual description without widening deprecated AdminSheet scope.
   - Green review completed: Section 3 is review-clean after the Sonar timeout hardening, Husky exit preservation, docs/AdminSheet cleanup, and requestStore title alignment were checked together.
   - Outcome summary: Section 3 now preserves actionable Sonar timeout logging, keeps pre-commit failures blocking, and records the bounded manual-only follow-through without widening scope.
 - **Delivery evidence:**
@@ -388,6 +390,17 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ## Documentation and rollout notes
 
+**Status:** Complete
+
+**Checklist**
+
+- Final documentation sync complete: Complete
+- Final docs review clean: Complete
+- De-sloppification outcome preserved in plan notes: Complete
+- Action plan updated: Complete
+- Commit created: Pending
+- Push completed: Pending
+
 ### Objective
 
 - Keep planning and builder-facing documentation aligned with the delivered contract and call out any intentionally manual verification.
@@ -415,8 +428,14 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** TBD during delivery.
-- **Deviations from plan:** TBD during delivery.
+- **Implementation notes:**
+  - Final documentation sync confirmed `SPEC.md` and `ACTION_PLAN.md` now serve as the maintenance-pass planning artefacts replacing the stale apiHandler planning document.
+  - `docs/developer/builder/builder-script.md` matches the delivered builder contract: committed vendored JsonDbApp `v0.1.1` subset, adjacent Zod-backed config validation, Stage 6 local vendored validation only, the confirmed public export list, and the narrow vendored `JDbLogger` `console.*` exception.
+  - The bounded Section 3 documentation surfaces remain aligned: `docs/setup/configOptions.md` keeps the corrected `#-json-db-lock-timeout-ms` anchor, the targeted deprecated AdminSheet JSDoc in `src/AdminSheet/Utils/ScriptAppManager.js` and `src/AdminSheet/Assessors/SheetsAssessor.js` now describes actual behaviour, and the recorded de-sloppification outcome remains the factual `ABLogger.js` header cleanup already captured in Section 3.
+  - No AGENTS guidance updates were required because the existing top-level, builder, and backend instructions already match the delivered architecture and policy boundaries.
+  - Optional `@remarks` review outcome: None. The final code paths are sufficiently explained by the updated docs and concise JSDoc.
+- **Delivery evidence:** Pending final docs-sync commit creation and push confirmation; record them in a forward-only ACTION_PLAN follow-up commit.
+- **Deviations from plan:** None.
 
 ---
 

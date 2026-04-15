@@ -132,6 +132,7 @@ Notes:
 - `buildDir` is fully removed and recreated during preflight.
 - If `build/gas/.clasp.json` exists before preflight, it is preserved and restored after directory recreation.
 - `builder.config.json` is the authoritative JsonDbApp inclusion allowlist for the committed vendored subset.
+- Builder config validation is owned by the adjacent Zod schema in `scripts/builder/src/config.zod.ts`, and the builder config types are inferred from that schema.
 - `jsonDbApp.sourceFiles` is sorted deterministically before inlining.
 - `jsonDbApp.publicExports` controls what is exposed on `JsonDbApp`.
 - The committed vendored snapshot is sourced from upstream JsonDbApp tag `v0.1.1`; Stage 6 validates that local snapshot and never downloads or extracts releases at runtime.
@@ -195,6 +196,7 @@ The entrypoint is `scripts/builder/src/build-gas-bundle.ts`. It resolves config 
 
 - Recursively copies runtime `.js` files from `src/backend` to `build/gas`.
 - Preserves relative directory structure.
+- Wraps per-file destination-directory creation and copy failures in `BuildStageError` with `backend-copy` stage context and path detail.
 - Excludes non-runtime noise:
   - `*.test.*`
   - `*.spec.*`
@@ -254,6 +256,7 @@ const JsonDbApp = (function () {
   - No duplicate scopes
   - No duplicate advanced services by `serviceId`
 - Checks UI HTML for forbidden external/asset references.
+- Normalises reported relative paths to forward-slash form across Windows and POSIX runs.
 - Scans JavaScript top-level declarations and fails on duplicate protected globals:
   - `Validate`
   - `JsonDbApp`

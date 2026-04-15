@@ -245,14 +245,13 @@ class SheetsAssessor {
   }
 
   /**
-   * Calculates assessment scores for formulae based on provided scores and the total count of formulae.
+   * Calculates assessment scores for formulae from the comparison summary and total formula count.
    *
-   * @param {Array<number>} scores - An array of scores for each formula assessed.
-   * @param {number} countOfFormulae - The total number of formulae to be assessed.
-   * @returns {Object} An object containing:
-   *   - {number} completenessScore: The score representing formula completeness.
-   *   - {number} accuracyScore: The score representing formula accuracy.
-   *   - {string} spagScore: Always returns 'N' as SPaG is not assessed for formulae.
+   * @param {Object} scores - Comparison counts returned from `_compareFormulaArrays(...)`.
+   * @param {number} scores.correct - Number of correct formulae.
+   * @param {number} scores.notAttempted - Number of unattempted formulae.
+   * @param {number} countOfFormulae - Total number of formulae to be assessed.
+   * @returns {Object} Score object containing completeness, accuracy, and SPaG results.
    */
   calculateFormulaeAssessmentScores(scores, countOfFormulae) {
     const completenessScore = this._calculateFormulaeCompletenessScore(scores, countOfFormulae);
@@ -291,11 +290,12 @@ class SheetsAssessor {
   }
 
   /**
-   * Calculates the accuracy score for formulae based on the number of correct answers.
+   * Calculates the accuracy score for formulae based on attempted and correct answers.
    * The score is scaled to a range of 0 to 5 and rounded to 2 decimal places.
    *
-   * @param {Object} scores - An object containing the count of correct formulae.
+   * @param {Object} scores - Comparison counts returned from `_compareFormulaArrays(...)`.
    * @param {number} scores.correct - The number of correct formulae.
+   * @param {number} scores.notAttempted - The number of unattempted formulae.
    * @param {number} countOfFormulae - The total number of formulae to assess.
    * @returns {number} The calculated accuracy score (0 to 5, rounded to 2 decimal places).
    */

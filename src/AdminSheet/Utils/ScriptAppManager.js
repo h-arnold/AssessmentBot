@@ -26,8 +26,8 @@ class ScriptAppManager {
   }
 
   /**
-   * Checks the current authorization mode of the script
-   * @returns {string} The current authorization mode (NONE, LIMITED, or FULL)
+   * Checks the current authorisation status of the script.
+   * @returns {string} The current `ScriptApp.AuthorizationStatus` value.
    */
   checkAuthMode() {
     const authStatus = this.authInfo.getAuthorizationStatus();
