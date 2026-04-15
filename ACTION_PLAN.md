@@ -322,6 +322,19 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ## Regression and contract hardening
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added / explicitly skipped by plan: Complete (automated red test creation was intentionally skipped because this section is validation-only and adds no new behaviour or acceptance criteria)
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete (`npm run builder:ci`, `npm run lint`, `npm test -- tests/api/requestStore.test.js`, Sonar timeout smoke check, Husky blocking-behaviour smoke check, docs anchor reconfirmation, deprecated JSDoc cleanup reconfirmation)
+- Action plan updated: Complete
+- Commit created: Complete
+- Push completed: Complete
+
 ### Objective
 
 - Prove the builder contract, repo quality gates, and touched regression surfaces all hold together after the maintenance pass.
@@ -330,6 +343,7 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 - Prefer the existing full builder command as the final builder gate.
 - Do not widen regression runs beyond the touched surfaces unless a section discovers additional coupling.
+- Keep this section validation-only: do not add behaviour, acceptance tests, or early regression-command runs during the red phase.
 
 ### Acceptance criteria
 
@@ -339,10 +353,11 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ### Required test cases/checks
 
-1. Run `npm run builder:ci`.
-2. Run `npm run lint`.
-3. Run `npm test -- tests/api/requestStore.test.js`.
-4. Reconfirm the manual checks recorded in Section 3.
+- [x] Run `npm run builder:ci`.
+- [x] Run `npm run lint`.
+- [x] Run `npm test -- tests/api/requestStore.test.js`.
+- [x] Reconfirm the manual checks recorded in Section 3.
+- [x] Record that red automated test creation is intentionally skipped because this section is a regression/verification gate with no new behaviour to drive.
 
 ### Section checks
 
@@ -352,8 +367,22 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** TBD during delivery.
-- **Deviations from plan:** TBD during delivery.
+- **Implementation notes:**
+  - Red phase started: Section 4 regression and contract hardening began as a validation-only gate, so this phase was limited to planning/status updates and explicitly deferred the final regression commands.
+  - Red phase completed: automated red test creation was intentionally skipped because this section only reruns existing regression commands and manual reconfirmation steps; it introduces no new behaviour, implementation surface, or acceptance criteria to drive with failing tests.
+  - Red review completed: Section 4 red-phase scope remained review-clean with the validation-only plan and explicit test-skip rationale preserved.
+  - Green phase completed: this validation-only green phase ran the agreed regression/contract-hardening checks without changing production code or adding tests; `npm run builder:ci` passed end-to-end, including builder lint, builder tests, TypeScript compile, and the production builder run against the committed vendored JsonDbApp subset.
+  - Validation completed: `npm run lint` exited 0 while still reporting the same existing unrelated `no-magic-numbers` warning in `src/backend/Models/Cohort.js`; `npm test -- tests/api/requestStore.test.js` passed (23 tests).
+  - Manual reconfirmation completed: the Sonar timeout smoke check still raises `ScriptError` with `Timed out after 15s fetching Sonar API JSON from https://sonarcloud.io/api/test`; the Husky smoke check still preserves blocking failure behaviour (`husky_exit=42` when `npm run lint:fix` is forced to fail); docs inspection still shows the fixed `(#-json-db-lock-timeout-ms)` anchor and no broken variant; the deprecated AdminSheet files still contain the cleaned meaningful JSDoc descriptions, with zero placeholder blocks detected.
+  - Green review completed: Section 4 is review-clean after the builder/root regression reruns and manual reconfirmations were checked together as a validation-only closure pass.
+  - Outcome summary: the regression/contract-hardening section is complete as a validation-only closeout, and the builder contract, repo quality gates, and the touched regression surfaces still hold together after the maintenance pass while the unrelated existing Cohort lint warning remains unchanged.
+- **Delivery evidence:**
+  - Branch: `chore/apihandler-gas-log-preservation-spec`.
+  - Section 4 delivery commit: Pending.
+  - Push confirmation: Pending.
+  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record section 4 commit evidence`.
+- **Deviations from plan:** None beyond carrying forward the existing unrelated `src/backend/Models/Cohort.js` lint warning context while the command still exits 0.
+- **Follow-up implications for later sections:** Do not reopen this validation-only section during de-sloppification; preserve the recorded regression evidence and the unchanged unrelated lint warning context as baseline history.
 
 ---
 
