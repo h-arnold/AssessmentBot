@@ -5,7 +5,7 @@ import { ABClass } from '../../src/backend/Models/ABClass.js';
  * ABClass partial data contract – key-based metadata.
  *
  * Encodes the Part 1 contract: ABClass stores cohortKey/yearGroupKey and
- * toPartialJSON() emits keys plus resolved labels (cohortLabel, yearGroupLabel).
+ * toPartialJSON() emits keys and active state without cohort/year-group labels.
  */
 describe('ABClass – partial data contract (key-based)', () => {
   /** Minimal plain-object owner stub; avoids Teacher global dependency in tests. */
@@ -19,8 +19,6 @@ describe('ABClass – partial data contract (key-based)', () => {
       courseLength: overrides.courseLength ?? 2,
       yearGroupKey: overrides.yearGroupKey ?? 'yg-uuid-test',
       classOwner: overrides.classOwner ?? stubOwner,
-      cohortLabel: overrides.cohortLabel ?? '2024-2025',
-      yearGroupLabel: overrides.yearGroupLabel ?? 'Year 10',
     });
     if (Object.hasOwn(overrides, 'active')) {
       inst.active = overrides.active;
@@ -104,18 +102,6 @@ describe('ABClass – partial data contract (key-based)', () => {
       expect(partial).toHaveProperty('yearGroupKey', 'yg-uuid-p');
     });
 
-    it('returns cohortLabel and yearGroupLabel in partial output', () => {
-      const inst = makeClass({
-        cohortLabel: '2024-2025',
-        yearGroupLabel: 'Year 10',
-        active: true,
-      });
-      const partial = inst.toPartialJSON();
-
-      expect(partial).toHaveProperty('cohortLabel', '2024-2025');
-      expect(partial).toHaveProperty('yearGroupLabel', 'Year 10');
-    });
-
     it('does not include legacy cohort or yearGroup fields in partial output', () => {
       const inst = makeClass({ active: true });
       const partial = inst.toPartialJSON();
@@ -124,7 +110,7 @@ describe('ABClass – partial data contract (key-based)', () => {
       expect(partial).not.toHaveProperty('yearGroup');
     });
 
-    it('returns the expected keys: classId, className, cohortKey, yearGroupKey, cohortLabel, yearGroupLabel, courseLength, classOwner, teachers, active', () => {
+    it('returns the expected keys: classId, className, cohortKey, yearGroupKey, courseLength, classOwner, teachers, active', () => {
       const inst = makeClass({ active: true });
       const partial = inst.toPartialJSON();
       const expectedKeys = [
@@ -132,8 +118,6 @@ describe('ABClass – partial data contract (key-based)', () => {
         'className',
         'cohortKey',
         'yearGroupKey',
-        'cohortLabel',
-        'yearGroupLabel',
         'courseLength',
         'classOwner',
         'teachers',
@@ -154,7 +138,7 @@ describe('ABClass – partial data contract (key-based)', () => {
       expect(makeClass({ active: true }).toPartialJSON()).not.toHaveProperty('assignments');
     });
 
-    it('is stable when optional key fields (cohortKey, yearGroupKey, cohortLabel, yearGroupLabel, classOwner) are null', () => {
+    it('is stable when optional key fields (cohortKey, yearGroupKey, classOwner) are null', () => {
       const inst = new ABClass({ classId: 'cls-minimal' });
       inst.active = false;
 
@@ -175,8 +159,6 @@ describe('ABClass – partial data contract (key-based)', () => {
       expect(partial.className).toBe('Test Class');
       expect(partial.cohortKey).toBe('coh-uuid-test');
       expect(partial.yearGroupKey).toBe('yg-uuid-test');
-      expect(partial.cohortLabel).toBe('2024-2025');
-      expect(partial.yearGroupLabel).toBe('Year 10');
       expect(partial.courseLength).toBe(2);
       expect(partial.classOwner).toEqual(stubOwner);
       expect(partial.active).toBe(true);

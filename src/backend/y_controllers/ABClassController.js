@@ -164,15 +164,13 @@ class ABClassController {
 
     return {
       classId: partialDocument.classId,
-      className: partialDocument.className,
-      cohortKey: partialDocument.cohortKey,
-      cohortLabel: partialDocument.cohortLabel ?? null,
+      className: partialDocument.className ?? null,
+      cohortKey: partialDocument.cohortKey ?? null,
       courseLength: partialDocument.courseLength,
-      yearGroupKey: partialDocument.yearGroupKey,
-      yearGroupLabel: partialDocument.yearGroupLabel ?? null,
-      classOwner: partialDocument.classOwner,
+      yearGroupKey: partialDocument.yearGroupKey ?? null,
+      classOwner: partialDocument.classOwner ?? null,
       teachers: [...partialDocument.teachers],
-      active: partialDocument.active,
+      active: partialDocument.active ?? null,
     };
   }
 
@@ -728,7 +726,7 @@ class ABClassController {
    * @private
    */
   _buildClassSummary(abClass) {
-    return abClass.toPartialJSON();
+    return this._normaliseClassPartial(abClass.toPartialJSON());
   }
 
   /**
@@ -773,6 +771,7 @@ class ABClassController {
         yearGroupKey: parameters.yearGroupKey,
         courseLength: courseLength,
       });
+      abClass.active = true;
     }
 
     this.saveClass(abClass);

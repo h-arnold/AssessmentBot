@@ -67,8 +67,6 @@ class ABClass {
       cohortKey = null,
       courseLength = 1,
       yearGroupKey = null,
-      cohortLabel = null,
-      yearGroupLabel = null,
       classOwner = null,
       teachers = [],
       students = [],
@@ -93,9 +91,6 @@ class ABClass {
 
     const hasYearGroupKey = yearGroupKey === undefined || yearGroupKey === null;
     this.yearGroupKey = hasYearGroupKey ? null : String(yearGroupKey);
-
-    this.cohortLabel = cohortLabel ?? null;
-    this.yearGroupLabel = yearGroupLabel ?? null;
 
     // Arrays of domain objects; consumers may push instances or plain objects.
     this.teachers = Array.isArray(teachers) ? [...teachers] : [];
@@ -186,34 +181,6 @@ class ABClass {
    */
   setClassName(name) {
     this.className = name || null;
-  }
-
-  // Cohort helpers
-  /**
-   * Gets the cohort start year as an integer.
-   * @returns {number|null} The cohort start year, or null if not parseable
-   */
-  getCohortStartYear() {
-    if (!this.cohortLabel) return null;
-    const number_ = Number.parseInt(String(this.cohortLabel), 10);
-    return Number.isNaN(number_) ? null : number_;
-  }
-
-  /**
-   * Gets an array of cohort year ranges based on course length.
-   * For example: cohort=2025, courseLength=2 returns ['2025-2026', '2026-2027'].
-   * @returns {Array<string>} Array of year range strings in format 'YYYY-YYYY'
-   */
-  getCohortYearRanges() {
-    const start = this.getCohortStartYear();
-    if (!start || !Number.isInteger(this.courseLength) || this.courseLength < 1) return [];
-    const ranges = [];
-    for (let index = 0; index < this.courseLength; index++) {
-      const a = start + index;
-      const b = a + 1;
-      ranges.push(`${a}-${b}`);
-    }
-    return ranges;
   }
 
   // Teacher management
@@ -338,7 +305,7 @@ class ABClass {
       teachers: serialiseArray(this.teachers),
       students: serialiseArray(this.students),
       assignments: serialiseArray(this.assignments),
-      active: this.active,
+      active: this.active ?? null,
     };
   }
 
@@ -348,7 +315,7 @@ class ABClass {
    * @returns {Object} A partial object representation with class metadata and teachers, but no students or assignments
    */
   toPartialJSON() {
-    const partial = {
+    return {
       classId: this.classId,
       className: this.className,
       cohortKey: this.cohortKey,
@@ -356,18 +323,8 @@ class ABClass {
       yearGroupKey: this.yearGroupKey,
       classOwner: serialiseOwner(this.classOwner),
       teachers: serialiseArray(this.teachers),
-      active: this.active,
+      active: this.active ?? null,
     };
-
-    if (this.cohortLabel !== null && this.cohortLabel !== undefined) {
-      partial.cohortLabel = this.cohortLabel;
-    }
-
-    if (this.yearGroupLabel !== null && this.yearGroupLabel !== undefined) {
-      partial.yearGroupLabel = this.yearGroupLabel;
-    }
-
-    return partial;
   }
 
   // fromJSON reconstructs an ABClass instance from previously serialized data.
@@ -390,8 +347,6 @@ class ABClass {
       json.yearGroupKey !== undefined && json.yearGroupKey !== null
         ? String(json.yearGroupKey)
         : null;
-    inst.cohortLabel = json.cohortLabel ?? null;
-    inst.yearGroupLabel = json.yearGroupLabel ?? null;
 
     // Restore explicit owner (attempt Teacher.fromJSON when available)
     try {

@@ -33,20 +33,18 @@ export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
  * Resolves the preferred display label for a reference-data key.
  *
  * @param {string | null} key Reference-data key.
- * @param {string | null} fallbackLabel Backend-provided fallback label.
  * @param {ReadonlyMap<string, string>} labelsByKey Labels indexed by key.
  * @returns {string | null} Display label.
  */
 function resolveLabel(
   key: string | null,
-  fallbackLabel: string | null,
   labelsByKey: ReadonlyMap<string, string>,
 ): string | null {
   if (key === null) {
-    return fallbackLabel;
+    return null;
   }
 
-  return labelsByKey.get(key) ?? fallbackLabel;
+  return labelsByKey.get(key) ?? null;
 }
 
 /**
@@ -108,9 +106,9 @@ export function buildClassesManagementRows(
       className: googleClassroom.className,
       status: classPartial.active === true ? 'active' : 'inactive',
       cohortKey: classPartial.cohortKey,
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, cohortLabelsByKey),
       yearGroupKey: classPartial.yearGroupKey,
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });
@@ -126,9 +124,9 @@ export function buildClassesManagementRows(
       className: classPartial.className ?? classPartial.classId,
       status: 'orphaned',
       cohortKey: classPartial.cohortKey,
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, cohortLabelsByKey),
       yearGroupKey: classPartial.yearGroupKey,
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });
