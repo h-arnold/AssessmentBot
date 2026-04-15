@@ -84,8 +84,8 @@ For each section below:
 - Green review clean: Complete
 - Checks passed: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -155,6 +155,11 @@ Builder stage tests:
   - Green validation completed: `npm run builder:test -- scripts/builder/src/config.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/resolve-jsondb-source.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/jsondb-inline-namespace.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/merge-manifest.spec.ts`, `npm run builder:lint`, `npm run builder:compile`, `npm run builder:test`, and `npm run build` all pass against the refreshed dependency tree with direct `zod` ownership.
   - Green review follow-up: `scripts/builder/src/steps/merge-manifest.spec.ts` now exercises Stage 8 against the committed vendored manifest at `scripts/builder/vendor/jsondbapp/appsscript.json` instead of a synthetic JsonDbApp manifest fixture, and the Section 1 builder checks were re-run after that fix.
   - Green review follow-up: restored the upstream-style `console.error`, `console.warn`, and `console.log` calls in the committed vendored JsonDbApp logger (`scripts/builder/vendor/jsondbapp/src/01_utils/JDbLogger.js`) and documented the user-approved narrow exception for upstream/runtime parity, then re-ran the Section 1 builder checks.
+- **Delivery evidence:**
+  - Branch: `chore/apihandler-gas-log-preservation-spec`.
+  - Section 1 delivery commit: `4d90c78cc05aafc308bd16c3eef0e98bde1bf5dc` — `feat: complete section 1 JsonDbApp contract alignment`.
+  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`feb3fbd..4d90c78` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record section 1 commit evidence`.
 - **Deviations from plan:** User-approved narrow exception: the vendored upstream JsonDbApp logger keeps its `console.*` calls for upstream/runtime parity; this is documented as a file-specific deviation only and does not broaden active-project logging policy.
 - **Follow-up implications for later sections:** Section 1 is complete; later sections remain untouched in this pass.
 
