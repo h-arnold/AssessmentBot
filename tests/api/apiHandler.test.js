@@ -347,7 +347,7 @@ function makeVmGlobals(overrides = {}) {
     PropertiesService: {
       getUserProperties() {
         return {
-          getProperty: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
+          getProperty: (k) => (Object.hasOwn(store, k) ? store[k] : null),
           setProperty: (k, v) => {
             store[k] = v;
           },
@@ -1356,7 +1356,7 @@ describe('Api/apiHandler dispatcher', () => {
   it('records the failed request during completion after boundary logging has run', () => {
     const requestId = 'req-boundary-before-completion';
     const callOrder = [];
-    const hadUtilities = Object.prototype.hasOwnProperty.call(globalThis, 'Utilities');
+    const hadUtilities = Object.hasOwn(globalThis, 'Utilities');
     const originalUtilities = globalThis.Utilities;
     const originalGetUserProperties = globalThis.PropertiesService.getUserProperties;
     const baseUserProperties = originalGetUserProperties.call(globalThis.PropertiesService);
@@ -1408,10 +1408,10 @@ describe('Api/apiHandler dispatcher', () => {
       expect(callOrder.indexOf('boundaryLog')).toBeLessThan(callOrder.indexOf('completionSave'));
     } finally {
       globalThis.PropertiesService.getUserProperties = originalGetUserProperties;
-      if (!hadUtilities) {
-        delete globalThis.Utilities;
-      } else {
+      if (hadUtilities) {
         globalThis.Utilities = originalUtilities;
+      } else {
+        delete globalThis.Utilities;
       }
     }
   });

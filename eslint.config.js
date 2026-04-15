@@ -161,6 +161,8 @@ module.exports = [
     plugins: { security },
     rules: {
       ...unicodeSecurityRules,
+      'prefer-object-has-own': 'warn',
+      'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
     },
   },

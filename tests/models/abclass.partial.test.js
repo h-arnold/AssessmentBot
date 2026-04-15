@@ -22,7 +22,7 @@ describe('ABClass – partial data contract (key-based)', () => {
       cohortLabel: overrides.cohortLabel ?? '2024-2025',
       yearGroupLabel: overrides.yearGroupLabel ?? 'Year 10',
     });
-    if (Object.prototype.hasOwnProperty.call(overrides, 'active')) {
+    if (Object.hasOwn(overrides, 'active')) {
       inst.active = overrides.active;
     }
     return inst;
