@@ -50,12 +50,6 @@ function resetUserProperties() {
   globalThis.PropertiesService._resetUserProperties();
 }
 
-function setAuthorisationStatusHandler(vi, handler = () => ({ authorised: true })) {
-  const originalGetAuthorisationStatus = globalThis.getAuthorisationStatus;
-  globalThis.getAuthorisationStatus = vi.fn(handler);
-  return originalGetAuthorisationStatus;
-}
-
 function restoreGlobal(globalKey, originalValue) {
   if (originalValue === undefined) {
     delete globalThis[globalKey];
@@ -77,18 +71,44 @@ function installAbLoggerSpies(vi) {
   const originalABLogger = globalThis.ABLogger;
   const infoSpy = vi.fn();
   const warnSpy = vi.fn();
+  const errorSpy = vi.fn();
   const mockLoggerInstance = {
     debug: () => {},
     debugUi: () => {},
     info: infoSpy,
     warn: warnSpy,
-    error: () => {},
+    error: errorSpy,
     log: () => {},
   };
   globalThis.ABLogger = {
     getInstance: () => mockLoggerInstance,
   };
-  return { originalABLogger, infoSpy, warnSpy };
+  return { originalABLogger, infoSpy, warnSpy, errorSpy };
+}
+
+function installRealAbLoggerSpies(vi) {
+  const originalABLogger = globalThis.ABLogger;
+  const ABLogger = require('../../src/backend/Utils/ABLogger.js');
+
+  if (typeof ABLogger.resetForTests === 'function') {
+    ABLogger.resetForTests();
+  }
+
+  globalThis.ABLogger = ABLogger;
+
+  const loggerInstance = ABLogger.getInstance();
+  const errorSpy = vi.spyOn(loggerInstance, 'error');
+  const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+  const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  return {
+    originalABLogger,
+    errorSpy,
+    consoleErrorSpy,
+    consoleInfoSpy,
+    consoleWarnSpy,
+  };
 }
 
 /**
@@ -112,8 +132,14 @@ function setupApiHandlerTestContext(
     }),
   };
 
-  if (installLogger) {
+  const loggerMode = installLogger === true ? 'mock' : installLogger;
+
+  if (loggerMode === 'mock') {
     Object.assign(context, installAbLoggerSpies(vi));
+  }
+
+  if (loggerMode === 'real') {
+    Object.assign(context, installRealAbLoggerSpies(vi));
   }
 
   if (installLock) {
@@ -132,6 +158,9 @@ function teardownApiHandlerTestContext(vi, context) {
   restoreApiMethodHandlers(context.originalApiMethodHandlers);
 
   if ('originalABLogger' in context) {
+    if (typeof globalThis.ABLogger?.resetForTests === 'function') {
+      globalThis.ABLogger.resetForTests();
+    }
     restoreGlobal('ABLogger', context.originalABLogger);
   }
 
@@ -182,13 +211,6 @@ module.exports = {
   loadApiHandlerModule,
   getApiDispatcherInstance,
   callAuthorisationStatus,
-  installApiMethodHandlers,
-  restoreApiMethodHandlers,
-  resetUserProperties,
-  setAuthorisationStatusHandler,
-  restoreGlobal,
-  installLockServiceMock,
-  installAbLoggerSpies,
   setupApiHandlerTestContext,
   teardownApiHandlerTestContext,
   buildStartedStore,

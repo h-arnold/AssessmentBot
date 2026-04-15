@@ -26,6 +26,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
   let mockLock;
   let infoSpy;
   let warnSpy;
+  let errorSpy;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -33,6 +34,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
     mockLock = context.mockLock;
     infoSpy = context.infoSpy;
     warnSpy = context.warnSpy;
+    errorSpy = context.errorSpy;
   });
 
   afterEach(() => {
@@ -161,6 +163,33 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
 
     const completionMeta = findTimingMeta(infoSpy, 'completion');
     expect(completionMeta).toBeDefined();
+  });
+
+  it('keeps boundary failure diagnostics separate from timing logs when the handler throws', () => {
+    const thrownError = new Error('handler failure');
+    globalThis.getAuthorisationStatus = vi.fn(() => {
+      throw thrownError;
+    });
+
+    const dispatcher = getApiDispatcherInstance();
+
+    const result = callAuthorisationStatus(dispatcher, { params: {} });
+
+    expect(result.ok).toBe(false);
+    expect(
+      infoSpy.mock.calls
+        .map((args) => args[1]?.phase)
+        .filter((phase) => phase === 'admission' || phase === 'completion')
+    ).toEqual(['admission', 'completion']);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'API request failed.',
+      expect.objectContaining({
+        requestId: result.requestId,
+        method: 'getAuthorisationStatus',
+      }),
+      thrownError
+    );
   });
 
   it('timing metadata does not include request params', () => {

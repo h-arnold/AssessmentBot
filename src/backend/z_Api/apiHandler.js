@@ -91,6 +91,10 @@ class ApiDispatcher extends BaseSingleton {
    * As the API boundary entry point, this method always returns an envelope and never throws.
    * Always wraps errors in a structured response.
    *
+   * @remarks Downstream handler failures are logged once at the transport boundary with the original thrown value
+   * for execution-log diagnostics, then mapped to the frontend-safe envelope contract without exposing raw
+   * exception details to callers.
+   *
    * @param {Object} request - Request object with method and optional params.
    * @param {string} request.method - The API method name to dispatch.
    * @param {*} [request.params] - Optional parameters for the handler.
@@ -125,6 +129,17 @@ class ApiDispatcher extends BaseSingleton {
       handlerError = error;
     }
 
+    if (handlerFailed) {
+      ABLogger.getInstance().error(
+        'API request failed.',
+        {
+          requestId,
+          method: methodName,
+        },
+        handlerError
+      );
+    }
+
     this._runCompletionPhase(requestId, methodName, handlerFailed, handlerError);
 
     if (handlerFailed) {
@@ -137,7 +152,7 @@ class ApiDispatcher extends BaseSingleton {
   /**
    * Acquires the user lock, prunes stale started entries, registers a started entry in the request store,
    * and releases the lock. Returns a failure envelope if the lock cannot be acquired or active limit is reached.
-   * Inline pruning and record creation use lockAcquiredAt as the timestamp reference to minimise Date.now() calls,
+   * Request-store helpers reuse the pre-captured lockAcquiredAt timestamp to minimise Date.now() calls,
    * which is required for reliable lock-timing observability tests.
    *
    * @param {string} requestId - Unique identifier for this request.
@@ -169,14 +184,8 @@ class ApiDispatcher extends BaseSingleton {
     try {
       const store = requestStoreFns.loadStore();
 
-      // Inline pruning using lockAcquiredAt as the reference to avoid an extra Date.now() call.
-      const cutoffMs = lockAcquiredAt - staleRequestAgeMs;
       const keysBefore = Object.keys(store);
-      for (const [id, entry] of Object.entries(store)) {
-        if (entry.status === 'started' && entry.startedAtMs < cutoffMs) {
-          delete store[id];
-        }
-      }
+      requestStoreFns.pruneStaleEntries(store, staleRequestAgeMs, lockAcquiredAt);
       const keysAfterSet = new Set(Object.keys(store));
       for (const candidateId of keysBefore) {
         if (!keysAfterSet.has(candidateId)) {
@@ -200,8 +209,7 @@ class ApiDispatcher extends BaseSingleton {
         );
       }
 
-      // Inline record creation using lockAcquiredAt as startedAtMs to avoid an extra Date.now() call.
-      store[requestId] = { requestId, method, status: 'started', startedAtMs: lockAcquiredAt };
+      store[requestId] = requestStoreFns.createStartedRecord(requestId, method, lockAcquiredAt);
       requestStoreFns.saveStore(store);
       const endTime = Date.now();
       const stateUpdateMs = endTime - lockAcquiredAt;
@@ -227,7 +235,7 @@ class ApiDispatcher extends BaseSingleton {
    * @param {string} requestId - Unique identifier for this request.
    * @param {string} method - The API method name.
    * @param {boolean} handlerFailed - Whether the handler threw an error.
-   * @param {Error} [handlerError] - The error thrown by the handler, if any.
+   * @param {*} [handlerError] - The value thrown by the handler, if any.
    * @private
    */
   _runCompletionPhase(requestId, method, handlerFailed, handlerError) {
@@ -361,7 +369,7 @@ class ApiDispatcher extends BaseSingleton {
    * and maps them to appropriate error codes. Falls back to INTERNAL_ERROR for unknown error types.
    *
    * @param {string} requestId - Unique request identifier.
-   * @param {Error} error - The runtime error to map.
+   * @param {*} error - The runtime error value to map.
    * @returns {Object} Failure response envelope.
    * @private
    */

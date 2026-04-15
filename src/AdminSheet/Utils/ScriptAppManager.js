@@ -1,15 +1,11 @@
 // ScriptAppManager.gs
 
 /**
- * This class is encapsulates various ScriptApp functionality such as checking Auth modes, getting the script Id etc.
- */
-
-/**
- *
+ * Encapsulates ScriptApp authorisation checks and related script metadata lookups.
  */
 class ScriptAppManager {
   /**
-   *
+   * Initialises cached ScriptApp authorisation metadata for later checks.
    */
   constructor() {
     this.authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
@@ -30,8 +26,8 @@ class ScriptAppManager {
   }
 
   /**
-   * Checks the current authorization mode of the script
-   * @returns {string} The current authorization mode (NONE, LIMITED, or FULL)
+   * Checks the current authorisation status of the script.
+   * @returns {string} The current `ScriptApp.AuthorizationStatus` value.
    */
   checkAuthMode() {
     const authStatus = this.authInfo.getAuthorizationStatus();

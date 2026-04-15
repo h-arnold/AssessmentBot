@@ -37,6 +37,14 @@ describe('Api/requestStore', () => {
       expect(record.startedAtMs).toBeTypeOf('number');
       expect(record.startedAtMs).toBeGreaterThan(0);
     });
+
+    it('uses a provided startedAtMs value without calling Date.now again', () => {
+      const { createStartedRecord } = loadRequestStoreModule();
+
+      const record = createStartedRecord('req-001', 'getAuthorisationStatus', 12345);
+
+      expect(record.startedAtMs).toBe(12345);
+    });
   });
 
   // ── markSuccess ───────────────────────────────────────────────────────────
@@ -153,6 +161,10 @@ describe('Api/requestStore', () => {
         'createStartedRecord — missing method',
         () => loadRequestStoreModule().createStartedRecord('req-v-1', null),
       ],
+      [
+        'createStartedRecord — invalid startedAtMs',
+        () => loadRequestStoreModule().createStartedRecord('req-v-1', 'someMethod', Number.NaN),
+      ],
       ['saveStore — missing store', () => loadRequestStoreModule().saveStore(null)],
       ['markSuccess — missing store', () => loadRequestStoreModule().markSuccess(null, 'req-v-1')],
       ['markSuccess — missing requestId', () => loadRequestStoreModule().markSuccess({}, null)],
@@ -165,9 +177,39 @@ describe('Api/requestStore', () => {
         'markError — missing errorMessage',
         () => loadRequestStoreModule().markError({}, 'req-v-1', null),
       ],
+      [
+        'pruneStaleEntries — invalid referenceTimeMs',
+        () => loadRequestStoreModule().pruneStaleEntries({}, 1000, Number.POSITIVE_INFINITY),
+      ],
       ['compactStore — missing store', () => loadRequestStoreModule().compactStore(null)],
-    ])('throws when required parameter is absent: %s', (_label, fn) => {
+    ])('throws when validation fails: %s', (_label, fn) => {
       expect(fn).toThrow();
+    });
+  });
+
+  describe('pruneStaleEntries', () => {
+    it('removes only started entries older than the provided reference time threshold', () => {
+      const { pruneStaleEntries } = loadRequestStoreModule();
+
+      const store = {
+        'stale-req-1': {
+          requestId: 'stale-req-1',
+          method: 'getAuthorisationStatus',
+          status: 'started',
+          startedAtMs: 1000,
+        },
+        'recent-req-1': {
+          requestId: 'recent-req-1',
+          method: 'getAuthorisationStatus',
+          status: 'started',
+          startedAtMs: 9000,
+        },
+      };
+
+      pruneStaleEntries(store, 5000, 7000);
+
+      expect(store['stale-req-1']).toBeUndefined();
+      expect(store['recent-req-1']).toBeDefined();
     });
   });
 

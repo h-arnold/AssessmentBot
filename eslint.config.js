@@ -4,7 +4,6 @@ const unicorn = require('eslint-plugin-unicorn').default;
 const sonarjs = require('eslint-plugin-sonarjs');
 const { unicodeSecurityRules } = require('./config/eslint/unicode-security-rules.cjs');
 const { security, securityRecommendedErrorRules } = require('./config/eslint/ts-base-rules.cjs');
-const { error } = require('console');
 
 module.exports = [
   // Ignore legacy GAS source folders entirely from linting
@@ -162,6 +161,8 @@ module.exports = [
     plugins: { security },
     rules: {
       ...unicodeSecurityRules,
+      'prefer-object-has-own': 'warn',
+      'no-negated-condition': 'warn',
       'require-unicode-regexp': 'off',
     },
   },

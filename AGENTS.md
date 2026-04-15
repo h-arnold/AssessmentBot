@@ -134,6 +134,7 @@ Keep shared standards in shared/root config and runtime-specific behaviour in le
 
 To avoid policy drift, keep detailed policy in dedicated docs and use AGENTS files as routing signposts only:
 
+- Backend logging and error-handling policy: `docs/developer/backend/backend-logging-and-error-handling.md`
 - Frontend logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Frontend testing policy and commands: `docs/developer/frontend/frontend-testing.md`
 

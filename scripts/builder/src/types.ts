@@ -1,3 +1,5 @@
+import type { BuilderConfig as InferredBuilderConfig } from './config.zod.js';
+
 export type BuildStageId =
   | 'preflight-clean'
   | 'frontend-install-deps'
@@ -12,16 +14,7 @@ export type BuildStageId =
 
 export type FrontendBuildMode = 'production' | 'dev';
 
-export type BuilderConfig = {
-  frontendDir: string;
-  backendDir: string;
-  buildDir: string;
-  jsonDbApp: {
-    pinnedSnapshotDir: string;
-    sourceFiles: string[];
-    publicExports: string[];
-  };
-};
+export type BuilderConfig = InferredBuilderConfig;
 
 export type BuilderPaths = {
   repoRoot: string;

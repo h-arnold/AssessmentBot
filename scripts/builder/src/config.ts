@@ -2,7 +2,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 
+import { z } from 'zod';
+
 import { BuildStageError } from './lib/errors.js';
+import { builderConfigSchema, formatBuilderConfigIssues } from './config.zod.js';
 import type { BuilderConfig, BuilderPaths } from './types.js';
 
 const CONFIG_FILENAME = 'builder.config.json';
@@ -46,37 +49,19 @@ function parseConfig(configPath: string, raw: string): BuilderConfig {
     );
   }
 
-  if (!parsed || typeof parsed !== 'object') {
-    throw new BuildStageError('preflight-clean', `Builder config is invalid: ${configPath}`);
-  }
+  try {
+    return builderConfigSchema.parse(parsed);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      throw new BuildStageError(
+        'preflight-clean',
+        `Builder config is invalid: ${configPath}; ${formatBuilderConfigIssues(err)}`,
+        err,
+      );
+    }
 
-  const config = parsed as Partial<BuilderConfig>;
-  const missing = ['frontendDir', 'backendDir', 'buildDir'].filter(
-    (key) => typeof config[key as keyof BuilderConfig] !== 'string',
-  );
-  if (missing.length > 0) {
-    throw new BuildStageError(
-      'preflight-clean',
-      `Builder config is missing required fields: ${missing.join(', ')}`,
-    );
+    throw err;
   }
-
-  if (
-    !config.jsonDbApp ||
-    typeof config.jsonDbApp !== 'object' ||
-    typeof config.jsonDbApp.pinnedSnapshotDir !== 'string' ||
-    !Array.isArray(config.jsonDbApp.sourceFiles) ||
-    config.jsonDbApp.sourceFiles.some((entry) => typeof entry !== 'string') ||
-    !Array.isArray(config.jsonDbApp.publicExports) ||
-    config.jsonDbApp.publicExports.some((entry) => typeof entry !== 'string')
-  ) {
-    throw new BuildStageError(
-      'preflight-clean',
-      'Builder config jsonDbApp must define pinnedSnapshotDir, sourceFiles, and publicExports string arrays.',
-    );
-  }
-
-  return config as BuilderConfig;
 }
 
 /**
@@ -192,8 +177,6 @@ export async function resolveBuilderPaths(
     'jsonDbApp.pinnedSnapshotDir',
   );
   const jsonDbAppManifestPath = path.join(jsonDbAppPinnedSnapshotDir, 'appsscript.json');
-  const jsonDbAppSourceFiles = config.jsonDbApp.sourceFiles;
-  const jsonDbAppPublicExports = config.jsonDbApp.publicExports;
 
   return {
     repoRoot,
@@ -209,7 +192,7 @@ export async function resolveBuilderPaths(
     backendManifestPath,
     jsonDbAppPinnedSnapshotDir,
     jsonDbAppManifestPath,
-    jsonDbAppSourceFiles,
-    jsonDbAppPublicExports,
+    jsonDbAppSourceFiles: config.jsonDbApp.sourceFiles,
+    jsonDbAppPublicExports: config.jsonDbApp.publicExports,
   };
 }

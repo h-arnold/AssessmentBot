@@ -102,6 +102,10 @@ Rules:
 
 ## 3. Error and Logging Contract (Backend Only)
 
+Canonical policy source of truth:
+
+- `docs/developer/backend/backend-logging-and-error-handling.md`
+
 User-facing failures:
 
 - `ProgressTracker.getInstance().logError(userMessage, { devContext, err })`
@@ -112,6 +116,9 @@ Developer diagnostics:
 
 Rules:
 
+- `ABLogger` is mandatory for all new backend code in active backend areas.
+- Do not add direct `console.log/info/warn/error` calls in new backend code.
+- When touching existing backend code, opportunistically refactor nearby touched direct `console.*` calls to `ABLogger`, keeping scope local and low-risk.
 - Do not duplicate the same error details in both `logError` and `ABLogger.error`.
 - Never add empty `catch` blocks.
 - Do not suppress errors with defensive feature detection.

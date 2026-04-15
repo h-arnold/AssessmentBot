@@ -8,7 +8,6 @@ import { scanFileTopLevelDeclarations } from './validate-output.js';
 const STAGE_ID = 'jsondb-inline-namespace' as const;
 const NAMESPACE_SYMBOL = 'JsonDbApp';
 const OUTPUT_FILENAME = 'JsonDbApp.inlined.js';
-const PLACEHOLDER_SENTINEL = 'JsonDbApp snapshot placeholder';
 
 /**
  * Creates the deterministic ordered source file list for JsonDbApp inlining.
@@ -73,23 +72,6 @@ function validateConfiguredExports(declaredSymbols: string[], exportedApi: strin
 }
 
 /**
- * Validates that vendored JsonDbApp source is not a placeholder snapshot.
- *
- * @param {string[]} sourceChunks - Ordered raw JsonDbApp source contents.
- * @returns {void}
- */
-function validateNoPlaceholderSnapshot(sourceChunks: string[]): void {
-  const hasPlaceholderSource = sourceChunks.some((source) => source.includes(PLACEHOLDER_SENTINEL));
-
-  if (hasPlaceholderSource) {
-    throw new BuildStageError(
-      STAGE_ID,
-      'Pinned JsonDbApp snapshot contains placeholder implementations and cannot be bundled.',
-    );
-  }
-}
-
-/**
  * Generates the inlined JsonDbApp namespace bundle and writes it to build output.
  *
  * @param {BuilderPaths} paths - Resolved builder path configuration.
@@ -104,7 +86,6 @@ export async function runJsonDbInlineNamespace(
     const sourceChunks = await Promise.all(
       orderedSourcePaths.map((sourcePath) => fs.readFile(sourcePath, 'utf-8')),
     );
-    validateNoPlaceholderSnapshot(sourceChunks);
     const exportedApi = resolvePublicExports(paths.jsonDbAppPublicExports);
     const declaredSymbols = scanFileTopLevelDeclarations(sourceChunks.join('\n\n'));
     validateConfiguredExports(declaredSymbols, exportedApi);

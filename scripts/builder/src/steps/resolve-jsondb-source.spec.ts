@@ -5,23 +5,131 @@ import path from 'node:path';
 import { BuildStageError } from '../lib/errors.js';
 import {
   createBuilderPaths,
-  createTempDir,
   createReleaseArchive,
-  writeReleaseFile,
-  writeReleaseManifest,
+  createTempDir,
 } from '../test/builder-fixture-test-helpers.js';
 import { runResolveJsonDbSource } from './resolve-jsondb-source.js';
 
+const CONFIGURED_VENDORED_SOURCE_FILES = [
+  'src/01_utils/Validation.js',
+  'src/04_core/Database.js',
+  'src/04_core/99_PublicAPI.js',
+];
+const REAL_VENDORED_MANIFEST = {
+  timeZone: 'Europe/London',
+  exceptionLogging: 'STACKDRIVER',
+  runtimeVersion: 'V8',
+  oauthScopes: [
+    'https://www.googleapis.com/auth/script.storage',
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/script.scriptapp',
+  ],
+  dependencies: {
+    enabledAdvancedServices: [{ userSymbol: 'Drive', serviceId: 'drive', version: 'v3' }],
+  },
+};
+const REAL_VENDORED_SOURCE_CONTENT = {
+  'src/01_utils/Validation.js': 'function Validation() { return true; }\n',
+  'src/04_core/Database.js': [
+    'function Database(config) {',
+    '  this.config = config;',
+    '}',
+    'Database.prototype.initialise = function () {};',
+    'Database.prototype.createDatabase = function () {};',
+    '',
+  ].join('\n'),
+  'src/04_core/99_PublicAPI.js': [
+    'function loadDatabase(config) {',
+    '  const db = new Database(config);',
+    '  db.initialise();',
+    '  return db;',
+    '}',
+    '',
+    'function createAndInitialiseDatabase(config) {',
+    '  const db = new Database(config);',
+    '  db.createDatabase();',
+    '  db.initialise();',
+    '  return db;',
+    '}',
+    '',
+  ].join('\n'),
+} satisfies Record<string, string>;
+
+type VendoredSnapshotOptions = {
+  files?: Record<string, string>;
+  manifest?: Record<string, unknown>;
+};
+
 /**
- * Mocks a successful release download for resolve-jsondb-source tests.
+ * Writes a vendored JsonDbApp snapshot fixture to disk.
  *
- * @param {Uint8Array} archiveBytes - Tar archive payload returned by mocked fetch.
- * @return {void} No return value.
+ * @param {string} snapshotRoot - Absolute vendored snapshot root path.
+ * @param {VendoredSnapshotOptions} options - Optional fixture overrides.
+ * @returns {Promise<void>} Resolves once the fixture files exist.
  */
-function mockSuccessfulReleaseDownload(archiveBytes: Uint8Array): void {
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response(archiveBytes, { status: 200, statusText: 'OK' }),
+async function writeVendoredSnapshot(
+  snapshotRoot: string,
+  options: VendoredSnapshotOptions = {},
+): Promise<void> {
+  const files = options.files ?? REAL_VENDORED_SOURCE_CONTENT;
+  const manifest = options.manifest ?? REAL_VENDORED_MANIFEST;
+
+  await fs.mkdir(snapshotRoot, { recursive: true });
+  await fs.writeFile(path.join(snapshotRoot, 'appsscript.json'), JSON.stringify(manifest), 'utf-8');
+
+  await Promise.all(
+    Object.entries(files).map(async ([relativePath, content]) => {
+      const absolutePath = path.join(snapshotRoot, relativePath);
+      await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+      await fs.writeFile(absolutePath, content, 'utf-8');
+    }),
   );
+}
+
+/**
+ * Creates a legacy release archive from the vendored snapshot fixture.
+ *
+ * @param {string} tempRoot - Temporary test root directory.
+ * @param {VendoredSnapshotOptions} options - Optional fixture overrides.
+ * @returns {Promise<Uint8Array>} Archive bytes for the legacy download path.
+ */
+async function createLegacyReleaseArchiveFromSnapshot(
+  tempRoot: string,
+  options: VendoredSnapshotOptions = {},
+): Promise<Uint8Array> {
+  return createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
+    await writeVendoredSnapshot(releaseFixtureRoot, options);
+  });
+}
+
+/**
+ * Creates builder paths rooted at a vendored JsonDbApp snapshot fixture.
+ *
+ * @param {string} tempRoot - Temporary test root directory.
+ * @returns {ReturnType<typeof createBuilderPaths>} Resolved fixture paths.
+ */
+function createVendoredSnapshotPaths(tempRoot: string): ReturnType<typeof createBuilderPaths> {
+  const snapshotRoot = path.join(tempRoot, 'scripts', 'builder', 'vendor', 'jsondbapp');
+
+  return createBuilderPaths(tempRoot, {
+    builderRoot: path.join(tempRoot, 'scripts', 'builder'),
+    jsonDbAppPinnedSnapshotDir: snapshotRoot,
+    jsonDbAppManifestPath: path.join(snapshotRoot, 'appsscript.json'),
+    jsonDbAppSourceFiles: [...CONFIGURED_VENDORED_SOURCE_FILES],
+    jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
+  });
+}
+
+/**
+ * Mocks the legacy release download transport for the current Stage 6 implementation.
+ *
+ * @param {Uint8Array} archiveBytes - Archive payload returned by the mocked fetch call.
+ * @returns {ReturnType<typeof vi.spyOn>} Fetch spy used by assertions.
+ */
+function mockLegacyReleaseDownload(archiveBytes: Uint8Array) {
+  return vi
+    .spyOn(globalThis, 'fetch')
+    .mockResolvedValue(new Response(archiveBytes, { status: 200, statusText: 'OK' }));
 }
 
 describe('runResolveJsonDbSource', () => {
@@ -36,65 +144,106 @@ describe('runResolveJsonDbSource', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('downloads, extracts, and resolves sorted src JavaScript files from the release archive', async () => {
-    const paths = createBuilderPaths(tempRoot);
-
-    const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await writeReleaseManifest(releaseFixtureRoot);
-      await writeReleaseFile(releaseFixtureRoot, 'src/z-last.js', 'function z(){}');
-      await writeReleaseFile(releaseFixtureRoot, 'src/a-first.js', 'function a(){}');
-      await writeReleaseFile(releaseFixtureRoot, 'src/nested/b-middle.js', 'function b(){}');
+  it('validates the configured vendored snapshot locally and keeps configured source paths', async () => {
+    const paths = createVendoredSnapshotPaths(tempRoot);
+    const snapshotRoot = paths.jsonDbAppPinnedSnapshotDir;
+    await writeVendoredSnapshot(snapshotRoot, {
+      files: {
+        ...REAL_VENDORED_SOURCE_CONTENT,
+        'src/99_unused.js': 'function notConfigured() {}\n',
+      },
     });
-    mockSuccessfulReleaseDownload(archiveBytes);
+    const fetchSpy = mockLegacyReleaseDownload(
+      await createLegacyReleaseArchiveFromSnapshot(tempRoot, {
+        files: {
+          ...REAL_VENDORED_SOURCE_CONTENT,
+          'src/99_unused.js': 'function notConfigured() {}\n',
+        },
+      }),
+    );
 
     const result = await runResolveJsonDbSource(paths);
 
-    expect(result.sourceFiles).toEqual(['src/a-first.js', 'src/nested/b-middle.js', 'src/z-last.js']);
-    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(path.join(paths.buildWorkDir, 'jsondbapp-v0.1.1'));
-    expect(paths.jsonDbAppManifestPath).toBe(
-      path.join(paths.buildWorkDir, 'jsondbapp-v0.1.1', 'appsscript.json'),
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      stage: 'resolve-jsondb-source',
+      sourceFiles: CONFIGURED_VENDORED_SOURCE_FILES,
+    });
+    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(snapshotRoot);
+    expect(paths.jsonDbAppManifestPath).toBe(path.join(snapshotRoot, 'appsscript.json'));
+    expect(paths.jsonDbAppSourceFiles).toEqual(CONFIGURED_VENDORED_SOURCE_FILES);
+    expect(paths.jsonDbAppPinnedSnapshotDir.startsWith(paths.buildWorkDir)).toBe(false);
+  });
+
+  it('fails when a configured vendored source file is missing instead of auto-discovering a replacement', async () => {
+    const paths = createVendoredSnapshotPaths(tempRoot);
+    const replacementFiles = {
+      'src/01_utils/Validation.js': REAL_VENDORED_SOURCE_CONTENT['src/01_utils/Validation.js'],
+      'src/04_core/Database.js': REAL_VENDORED_SOURCE_CONTENT['src/04_core/Database.js'],
+      'src/04_core/Replacement.js': 'function replacementFile() {}\n',
+    };
+    await writeVendoredSnapshot(paths.jsonDbAppPinnedSnapshotDir, {
+      files: replacementFiles,
+    });
+    mockLegacyReleaseDownload(
+      await createLegacyReleaseArchiveFromSnapshot(tempRoot, {
+        files: replacementFiles,
+      }),
     );
-    expect(paths.jsonDbAppSourceFiles).toEqual(result.sourceFiles);
-  });
 
-  it('throws BuildStageError when the release is missing a source directory', async () => {
-    const paths = createBuilderPaths(tempRoot);
-    const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await writeReleaseManifest(releaseFixtureRoot);
+    const resolvePromise = runResolveJsonDbSource(paths);
+
+    await expect(resolvePromise).rejects.toBeInstanceOf(BuildStageError);
+    await expect(resolvePromise).rejects.toMatchObject({
+      name: 'BuildStageError',
+      stage: 'resolve-jsondb-source',
     });
-    mockSuccessfulReleaseDownload(archiveBytes);
-
-    await expect(runResolveJsonDbSource(paths)).rejects.toThrow('missing source directory');
+    await expect(resolvePromise).rejects.toThrow('src/04_core/99_PublicAPI.js');
   });
 
-  it('throws BuildStageError when the release is missing a manifest', async () => {
-    const paths = createBuilderPaths(tempRoot);
-    const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await writeReleaseFile(releaseFixtureRoot, 'src/entry.js', 'const x = 1;');
+  it('does not repoint BuilderPaths into build/work when vendored snapshot validation succeeds', async () => {
+    const paths = createVendoredSnapshotPaths(tempRoot);
+    const snapshotRoot = paths.jsonDbAppPinnedSnapshotDir;
+    const manifestPath = paths.jsonDbAppManifestPath;
+    mockLegacyReleaseDownload(await createLegacyReleaseArchiveFromSnapshot(tempRoot));
+    await writeVendoredSnapshot(snapshotRoot);
+
+    await runResolveJsonDbSource(paths);
+
+    expect(paths.jsonDbAppPinnedSnapshotDir).toBe(snapshotRoot);
+    expect(paths.jsonDbAppManifestPath).toBe(manifestPath);
+    expect(paths.jsonDbAppPinnedSnapshotDir.startsWith(paths.buildWorkDir)).toBe(false);
+  });
+
+  it('rejects placeholder vendored content before Stage 7 inlining', async () => {
+    const paths = createVendoredSnapshotPaths(tempRoot);
+    const placeholderFiles = {
+      ...REAL_VENDORED_SOURCE_CONTENT,
+      'src/04_core/99_PublicAPI.js': [
+        "function loadDatabase() { throw new Error('JsonDbApp snapshot placeholder'); }",
+        '',
+        'function createAndInitialiseDatabase() {',
+        '  return loadDatabase();',
+        '}',
+        '',
+      ].join('\n'),
+    };
+    await writeVendoredSnapshot(paths.jsonDbAppPinnedSnapshotDir, {
+      files: placeholderFiles,
     });
-    mockSuccessfulReleaseDownload(archiveBytes);
-
-    await expect(runResolveJsonDbSource(paths)).rejects.toThrow('missing manifest');
-  });
-
-  it('throws BuildStageError when src has no JavaScript files', async () => {
-    const paths = createBuilderPaths(tempRoot);
-    const archiveBytes = await createReleaseArchive(tempRoot, async (releaseFixtureRoot) => {
-      await writeReleaseManifest(releaseFixtureRoot);
-      await writeReleaseFile(releaseFixtureRoot, 'src/README.md', '# not js');
-    });
-    mockSuccessfulReleaseDownload(archiveBytes);
-
-    await expect(runResolveJsonDbSource(paths)).rejects.toThrow('contains no JavaScript source files');
-  });
-
-  it('throws BuildStageError when the release download fails', async () => {
-    const paths = createBuilderPaths(tempRoot);
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('error', { status: 404 }));
-
-    await expect(runResolveJsonDbSource(paths)).rejects.toBeInstanceOf(BuildStageError);
-    await expect(runResolveJsonDbSource(paths)).rejects.toThrow(
-      'Failed to download JsonDbApp release archive',
+    mockLegacyReleaseDownload(
+      await createLegacyReleaseArchiveFromSnapshot(tempRoot, {
+        files: placeholderFiles,
+      }),
     );
+
+    const resolvePromise = runResolveJsonDbSource(paths);
+
+    await expect(resolvePromise).rejects.toBeInstanceOf(BuildStageError);
+    await expect(resolvePromise).rejects.toMatchObject({
+      name: 'BuildStageError',
+      stage: 'resolve-jsondb-source',
+    });
+    await expect(resolvePromise).rejects.toThrow('placeholder');
   });
 });

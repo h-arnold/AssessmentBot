@@ -12,6 +12,19 @@ These API functions should be tested as thin wrappers around controller delegati
 
 Backend configuration transport is now covered by the dedicated suite in `tests/api/backendConfigApi.test.js`. Keep broader dispatcher and allowlist coverage in `tests/api/apiHandler.test.js`.
 
+## Backend logging test expectations
+
+When backend logging behaviour or error boundaries change, include explicit logging-focused regression coverage in backend tests.
+
+Rules:
+
+1. Add regression tests for critical logging boundaries when behaviour changes.
+2. For execution-log fidelity, prefer assertions at the logger-output seam (`ABLogger` -> console) rather than only mocked logger invocation checks.
+3. Ensure failure-path tests verify both:
+   - transport or control-flow outcome
+   - developer-log preservation expectations
+4. When touching `apiHandler` failure paths, include coverage that downstream logs remain visible and boundary logs are emitted according to policy without widening frontend error envelopes.
+
 ## Production/Test Boundary
 
 ### Core rule

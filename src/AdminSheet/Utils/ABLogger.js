@@ -19,14 +19,11 @@
  */
 class ABLogger extends BaseSingleton {
   /**
-   *
+   * Initialises the singleton logger instance.
    */
   constructor(isSingletonCreator = false) {
     super();
-    /**
-     * JSDoc Singleton Banner
-     * Use ABLogger.getInstance(); do not call constructor directly.
-     */
+    // Use ABLogger.getInstance(); do not call the constructor directly.
     if (!isSingletonCreator && ABLogger._instance) {
       return; // ignore duplicate constructions
     }
@@ -59,7 +56,7 @@ class ABLogger extends BaseSingleton {
 
   // Helper: serialise Error objects (and nested causes) to plain objects for logging
   /**
-   *
+   * Converts an error-like value into a plain object for logging.
    */
   serialiseError(err) {
     if (!err || typeof err !== 'object') return err;
@@ -75,7 +72,7 @@ class ABLogger extends BaseSingleton {
   }
 
   /**
-   *
+   * Serialises one log argument before forwarding it to the console.
    */
   serialiseArg(arg) {
     if (!arg) return arg;
@@ -95,7 +92,7 @@ class ABLogger extends BaseSingleton {
 
   // Helper to shallow-copy objects/arrays and serialise any direct Error-like properties
   /**
-   *
+   * Shallow-copies an object or array and serialises direct error-like values.
    */
   shallowSerialiseObject(obj, isErrorLike) {
     try {
@@ -114,31 +111,31 @@ class ABLogger extends BaseSingleton {
 
   // Lightweight forwards to console for tests and runtime logging
   /**
-   *
+   * Logs serialised arguments with console.log.
    */
   log(...args) {
     console.log(...args.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Logs serialised arguments with console.info.
    */
   info(...args) {
     console.info(...args.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Logs serialised arguments with console.warn.
    */
   warn(...args) {
     console.warn(...args.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Logs serialised arguments with console.error.
    */
   error(...args) {
     console.error(...args.map((a) => this.serialiseArg(a)));
   }
   /**
-   *
+   * Logs serialised debug arguments using console.log.
    */
   debug(...args) {
     // Apps Script doesn't support console.debug; use console.log and make the output explicit

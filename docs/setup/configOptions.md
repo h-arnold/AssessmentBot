@@ -12,7 +12,7 @@
       - [⏳ Days Until Auth Revoke](#-days-until-auth-revoke)
     - [🗃️ Database Tab](#-database-tab)
       - [🗂️ JSON DB Master Index Key](#-json-db-master-index-key)
-      - [⏱️ JSON DB Lock Timeout (ms)](️#-json-db-lock-timeout-ms)
+      - [⏱️ JSON DB Lock Timeout (ms)](#-json-db-lock-timeout-ms)
       - [📈 JSON DB Log Level](#-json-db-log-level)
       - [💾 JSON DB Backup On Initialise](#-json-db-backup-on-initialise)
       - [📁 JSON DB Root Folder ID](#-json-db-root-folder-id)

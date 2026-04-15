@@ -1,788 +1,322 @@
-# Classes CRUD Specification
+# Builder Reliability and Review Follow-through Specification
 
 ## Status
 
-Draft v1.2 — refined after the second review pass.
+- Draft v1.0
+- Replaces the stale apiHandler planning artefact with a maintenance specification for the agreed actionable items in `CODE_REVIEW_EVAL.md`
 
 ## Purpose
 
-This document defines the intended behaviour for the Classes CRUD surface.
+This document defines the intended behaviour for the agreed review-fix maintenance work across the active builder pipeline and a small set of bounded repository hygiene follow-through items.
 
-The Classes CRUD feature will live in the **Classes** tab within the top-level **Settings** page and will be used to:
+The feature will be used to:
 
-- list active Google Classrooms alongside persisted `ABClass` records
-- show which Google Classrooms do and do not yet have corresponding `ABClass` records
-- create, update, activate, inactivate, and delete `ABClass` records
-- manage cohort and year-group reference data through secondary modals
+- restore a truthful, deterministic builder contract for JsonDbApp inputs
+- harden builder reliability across path handling, filesystem error reporting, and network-dependent tooling
+- complete the agreed low-risk follow-through items without widening scope beyond `CODE_REVIEW_EVAL.md`
 
-This page is **not** intended to host class analysis or assessment-run controls in the first implementation slice.
+This feature is **not** intended to:
+
+- redesign the broader builder pipeline beyond the agreed review comments
+- introduce frontend layout or workflow changes
+- refactor deprecated `src/AdminSheet` code beyond minimal documentation-quality cleanup
 
 ## Agreed product decisions
 
-1. The **Classes** tab in the top-level **Settings** page is the single canonical home for this feature; do not add or restore a separate top-level Classes route, page, or navigation entry.
-2. This page is for **CRUD operations on `ABClass` entities only**.
-3. Orphaned `ABClass` records should remain visible on the same page and should support **deletion only**.
-4. The page should use a **single table** with status as a visible column.
-5. Rows should be sorted to show **active**, then **inactive**, then **not created**, then **orphaned**.
-   Assumption: rows with no `ABClass` yet (`not created`) are treated as a distinct status that sorts after inactive and before orphaned unless later directed otherwise.
-6. The Google Classroom list should refresh on page load only; no manual refresh control is needed for now.
-7. Cohort and year-group management should use **secondary modals** for create, edit, and delete flows.
-8. Bulk editing should remain **modal-driven**, not inline.
-9. `courseLength` must be part of the create flow, with `1` accepted as the default, and existing classes must also support a modal-driven edit workflow for `courseLength`.
-10. Newly created `ABClass` records should default to `active=true`.
-11. Active/inactive updates must **not** create missing `ABClass` records; frontend and backend validation must enforce this.
-12. Delete messaging should make clear that both the full and partial `ABClass` records are deleted.
-13. Bulk-action partial failures should keep failed rows selected and show a summary alert.
-14. Deleting cohorts or year groups that are still in use must be prevented.
-15. Cohort selection should:
-    - allow only active cohorts in create/edit selectors for new class flows
-    - keep inactive cohorts visible in existing class data
-    - keep inactive cohorts understandable when already assigned
-16. `cohorts` and `yearGroups` should be startup-prefetched alongside `classPartials` because they will become shared lookup data for querying and filtering across the frontend.
-17. The app-level auth / warm-up boundary should own startup readiness for `classPartials`, `cohorts`, and `yearGroups`.
-18. Any create, edit, or delete operation affecting cohorts or year groups should invalidate the corresponding shared query and force a refresh.
-19. Bulk actions are also the single-row edit path; selecting one row should use the same workflow as selecting many rows.
-20. Bulk requests should dispatch one request per selected row in parallel, continue across the full selection, and report failures per row in the original submitted row order.
-21. If a required re-fetch fails after a successful mutation, stale table data should not remain visible; the user should instead see an alert explaining that the update succeeded but a refresh is needed to see the latest state.
+1. The committed `scripts/builder/vendor/jsondbapp` snapshot is the canonical runtime builder input for both JsonDbApp inlining and JsonDb manifest merge.
+2. This maintenance pass must replace the current placeholder vendored JsonDbApp files with the actual upstream JsonDbApp `v0.1.1` builder subset committed in-repo.
+3. The committed builder subset is limited to the real upstream `appsscript.json` plus the real upstream contents for every file explicitly enumerated in the updated `jsonDbApp.sourceFiles` allowlist in `builder.config.json`; unrelated upstream files do not need to be vendored for this pass, and no implicit transitive-closure or runtime-discovery rule applies.
+4. `builder.config.json` remains the runtime source of truth for JsonDbApp inclusion. In this maintenance pass, `jsonDbApp.sourceFiles` must be synchronised to the real committed `v0.1.1` subset and must enumerate the exact committed vendored subset before implementation is complete because the current placeholder-era list does not match upstream.
+5. Stage 6 (`resolve-jsondb-source`) is retained only as a local validation-and-normalisation step over the committed vendored snapshot. It is the canonical blocking owner for rejecting missing configured files and placeholder vendored content before downstream inlining, and it must not auto-discover replacements from disk.
+6. Stage 6 must stop downloading archives, extracting releases, shelling out to `curl` or `tar`, or repointing `BuilderPaths` to a workdir copy; resolved JsonDbApp paths stay pointed at the configured vendored snapshot.
+7. Builder config validation in the active `scripts/builder` surface must be brought back into line with the builder AGENTS Zod-first policy in code, not by weakening the policy document. This change includes adding `zod` as a direct dependency owned in `package.json` and `package-lock.json`, with dependency installation and lockfile validation treated as part of the builder config-validation change. The Zod schema becomes the single source of truth for config validation, lives in an adjacent schema module, and `BuilderConfig`-related TypeScript types are inferred from it.
+8. `jsonDbApp.sourceFiles` and `jsonDbApp.publicExports` must both be non-empty and unique after normalisation. `jsonDbApp.sourceFiles` entries may be normalised from Windows-style separators to forward-slash relative paths during config loading, but duplicates, invalid relative paths, or out-of-root paths must fail validation.
+9. Stage 7 inlining order remains the current deterministic lexicographic relative-path order rather than config-array order.
+10. The real upstream `v0.1.1` public exports relevant to AssessmentBot remain `loadDatabase` and `createAndInitialiseDatabase`; `jsonDbApp.publicExports` continues to expose only that confirmed API.
+11. Inspection of the real upstream `v0.1.1` manifest shows extra top-level fields (`timeZone`, `exceptionLogging`, `runtimeVersion`), but AssessmentBot’s backend manifest already owns those values. Stage 8 merge semantics therefore remain unchanged for this maintenance pass: only OAuth scopes and enabled advanced services are merged from JsonDbApp into the final output.
+12. Builder relative-path reporting must normalise single Windows path separators (`\`) to forward slashes everywhere relative file lists are emitted or validated.
+13. The shared recursive file walker in `scripts/builder/src/lib/fs.ts` becomes the canonical implementation. Step-local duplication should be removed where the shared helper already fits the contract.
+14. Per-file backend copy failures must be wrapped in `BuildStageError` with `backend-copy` stage context and the relevant source or destination path details.
+15. All remaining in-scope network calls must use explicit finite timeouts and fail with actionable context. For this maintenance pass that applies to the Sonar PR duplication helper script; the builder no longer performs a JsonDbApp release download at runtime.
+16. Smaller follow-through items stay deliberately bounded to: removing the unused import in `eslint.config.js`; fixing the broken docs anchor in `docs/setup/configOptions.md`; replacing placeholder or empty JSDoc in the listed deprecated AdminSheet files with concise meaningful documentation or removing empty blocks; renaming the mismatched `requestStore` test title to match its assertion intent; and making `.husky/pre-commit` block commits when `npm run lint:fix` fails.
 
 ## Existing system constraints
 
-### Backend/API surfaces already available
+### Backend or API constraints already in place
 
-The current transport layer already exposes:
-
-- `getABClassPartials`
-- `getGoogleClassrooms`
-- `upsertABClass`
-- `updateABClass`
-- `deleteABClass`
-- `getCohorts`, `createCohort`, `updateCohort`, `deleteCohort`
-- `getYearGroups`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`
+- The builder entrypoint `scripts/builder/src/build-gas-bundle.ts` runs a fixed stage sequence that later steps already consume through `BuilderPaths`.
+- `runJsonDbInlineNamespace(...)` expects `jsonDbAppPinnedSnapshotDir`, `jsonDbAppSourceFiles`, and `jsonDbAppPublicExports` to be fully resolved before the inlining stage runs.
+- `jsondb-inline-namespace.ts` currently rejects placeholder snapshot content, but this maintenance pass moves the canonical blocking ownership for that rejection upstream to Stage 6 so downstream inlining may assume validated real source.
+- `runMergeManifest(...)` already treats the backend manifest as the owner of top-level manifest fields and merges JsonDbApp scopes/services into that base.
+- Root backend linting and Vitest flows already exist for `tests/**/*.js`, including `tests/api/requestStore.test.js`.
 
 ### Current data-shape constraints
 
-- `getGoogleClassrooms` returns only `classId` and `className` for active Google Classrooms.
-- `getABClassPartials` returns only persisted `ABClass` partials.
-- First-run behaviour must therefore be driven by a merged view model, because there may be zero persisted partials while active Google Classrooms still exist.
-- Current reference-data transport is key-based (`key` plus display `name`), so frontend and backend changes must preserve stable keys rather than reintroducing name-based compatibility paths.
+- `BuilderConfig` currently defines `frontendDir`, `backendDir`, `buildDir`, and `jsonDbApp.{ pinnedSnapshotDir, sourceFiles, publicExports }`.
+- `jsonDbApp.publicExports` remains a configured allowlist for the namespace wrapper surface.
+- `jsonDbApp.sourceFiles` remains an authoritative configured allowlist of relative JavaScript paths beneath the vendored snapshot root; for this maintenance pass that allowlist must enumerate the exact committed vendored subset, the builder may normalise these entries to forward-slash form, but it must not replace them from a downloaded release scan, directory walk, or implicit transitive-closure rule.
+- Final builder output still depends on deterministic relative paths such as `appsscript.json`, `JsonDbApp.inlined.js`, and `UI/ReactApp.html`.
 
-### Frontend architecture constraints
+### Frontend or consumer architecture constraints
 
-- Async orchestration should live in feature hooks, not page composition components.
-- Shared server state should use React Query query-key helpers rather than ad-hoc keys.
-- Frontend/backend calls must remain routed through `callApi(...)` and service wrappers.
-- User-visible failures should surface through Ant Design `Alert` components by default.
+- No frontend route, layout, or visible workflow changes are part of this maintenance work.
+- Existing repository commands in `package.json` are the validation surface for this work; the plan must not rely on invented helper commands.
+- No TypeScript or ESLint shared-config behaviour change is required for this scope; the `eslint.config.js` item is limited to removing an unused import rather than changing lint policy semantics.
 
-## Recommendation: use stable keys for cohorts and year groups
+## Domain and contract recommendations
 
-Adding stable keys for both cohorts and year groups is the recommended long-term model.
+### Why this approach is preferable
 
-### Why this is preferable
+- It makes the builder contract truthful again by aligning runtime behaviour to the committed vendored-snapshot configuration instead of silently overriding it.
+- It improves portability and determinism by removing runtime dependence on external archive tools and a network download in the active builder path.
+- It resolves the placeholder-snapshot blocker directly enough that the builder can remain functional after the contract change.
+- It keeps the deprecated-surface follow-through deliberately small so the maintenance pass does not expand into broader refactors.
 
-If `ABClass` stores the display name directly:
+### Recommended data shapes
 
-- renaming a cohort or year group becomes a bulk rewrite problem
-- edit flows become more fragile
-- joins between `ABClass` records and reference data depend on mutable display values
-
-If `ABClass` stores a stable key instead:
-
-- cohort and year-group labels can be edited without rewriting every `ABClass`
-- display names remain a presentation concern
-- backend validation becomes clearer and less brittle
-- future support for richer labels becomes easier
-
-## Recommended reference-data shapes
-
-### Cohort
+#### Builder JsonDbApp contract
 
 ```ts
 {
-  key: string;
-  name: string;
-  active: boolean;
-  startYear: number;
-  startMonth: number;
+  jsonDbApp: {
+    pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+    sourceFiles: ['src/...real-upstream-files...'],
+    publicExports: ['loadDatabase', 'createAndInitialiseDatabase']
+  }
 }
 ```
 
-### Year group
+Contract rules:
+
+- `pinnedSnapshotDir` identifies the vendored snapshot root inside the repository.
+- `sourceFiles` is a non-empty, unique configured inclusion allowlist of relative `.js` files beneath that root.
+- `publicExports` is a non-empty, unique configured namespace export allowlist.
+- Config loading normalises `sourceFiles` path separators to forward slashes before uniqueness checks and downstream use.
+
+#### Builder resolved-path expectations
 
 ```ts
 {
-  key: string;
-  name: string;
+  jsonDbAppPinnedSnapshotDir: '/absolute/path/to/scripts/builder/vendor/jsondbapp',
+  jsonDbAppManifestPath: '/absolute/path/to/scripts/builder/vendor/jsondbapp/appsscript.json',
+  jsonDbAppSourceFiles: ['src/...real-upstream-files...']
 }
 ```
 
-## Recommended `ABClass` metadata shape
+Rules:
 
-Use explicit key fields rather than overloading the current display-name fields.
-
-```ts
-{
-  cohortKey: string | null;
-  yearGroupKey: string | null;
-}
-```
+- The resolved paths point at the committed vendor snapshot, not `build/work`.
+- Stage 6 may validate and normalise these values.
+- Stage 6 must not repoint them to a downloaded release tree.
 
 ### Naming recommendation
 
-Prefer explicit property names such as:
+Prefer:
 
-- `cohortKey`
-- `yearGroupKey`
+- `vendored snapshot`
+- `configured source-file allowlist`
+- `builder stage context`
+- `blocking lint gate`
 
-rather than continuing to use `cohort` and `yearGroup` for key values.
+Avoid:
 
-That keeps the contract readable and avoids future ambiguity between stored keys and display names.
+- `runtime release snapshot`
+- `downloaded source of truth`
+- `best-effort lint gate`
 
-## Validation recommendation
+### Validation recommendation
 
-### Frontend
+#### Builder
 
-- Create and edit flows should use `Select` components backed by fetched reference-data options.
-- Submitted cohort and year-group values should be validated as non-empty keys chosen from the fetched option lists.
-- Free-text entry should not be allowed for class metadata assignment.
+- Define the builder config schema first in an adjacent Zod schema module and infer `BuilderConfig` from it.
+- Update `package.json` and `package-lock.json` to own the direct `zod` dependency required by that schema, and treat dependency installation plus lockfile validation as part of this builder contract-alignment change.
+- Parse builder config through that schema so required fields, nested JsonDbApp fields, uniqueness rules, and string-array contracts fail with consistent `preflight-clean` stage context.
+- Validate that `jsonDbApp.pinnedSnapshotDir` resolves inside the repository, contains `appsscript.json`, and contains every configured source file.
+- Fail fast in Stage 6 on malformed config, invalid relative paths, missing vendored files, placeholder snapshot content, or filesystem copy failures; do not silently continue.
 
-### Backend
+#### Repository hygiene follow-through
 
-Backend validation should be authoritative.
+- Network helper scripts that remain in scope must pass an explicit timeout to their HTTP client API and surface timeout failure context.
+- Pre-commit gating changes and Sonar helper timeout changes must each have an explicit validation note in the action plan even if that validation is manual rather than automated.
+- Wording-only or docs-only fixes do not require contrived automated tests when no existing harness exists, but they must stay local to the agreed files.
 
-For `upsertABClass` and `updateABClass`:
+## Feature architecture
 
-- accept `cohortKey` and `yearGroupKey` as `string | null`
-- reject non-string non-null values
-- when non-null, verify the key exists in the corresponding reference-data collection
+### Placement
 
-### Display resolution
+- Canonical ownership for the main behaviour changes remains inside `scripts/builder`.
+- The bounded follow-through items are limited to the explicitly listed root docs, test, hook, deprecated AdminSheet files, the in-scope Sonar helper script, and the builder documentation that currently misstates the JsonDbApp contract.
+- No parallel builder entrypoint, alternate JsonDbApp source mechanism, or frontend layout document is introduced.
 
-The UI table should resolve keys to human-readable names by joining:
-
-- `ABClass.cohortKey` -> cohort option `name`
-- `ABClass.yearGroupKey` -> year-group option `name`
-
-## Page architecture
-
-The composition root for this feature lives under `SettingsPage` in the **Classes** tab. Do not add or restore a separate top-level `ClassesPage`, route, or navigation entry for the same CRUD surface.
-
-For the detailed tab layout, modal hierarchy, component selection, and state design, use `CLASSES_TAB_LAYOUT_AND_MODALS.md` alongside this spec.
-
-Proposed high-level tree:
+### Proposed high-level tree
 
 ```text
-SettingsPage
-└── TabbedPageSection
-    └── Classes tab
-        └── ClassesManagementPanel
-            ├── PageHeader / summary
-            ├── Alert region (load, partial-load, mutation summary)
-            ├── ClassesToolbar
-            │   ├── Bulk actions trigger
-            │   ├── Secondary modal launchers
-            │   │   ├── Manage cohorts
-            │   │   └── Manage year groups
-            │   └── Selection summary
-            └── ClassesTable
+build-gas-bundle.ts
+ resolveBuilderPaths / loadBuilderConfig
+ runResolveJsonDbSource
+ runJsonDbInlineNamespace
+ runMergeManifest
+ runBackendCopy
+ runMaterialiseOutput
+ runValidateOutput
 ```
 
-### Out of scope for this page
+### Out of scope for this surface
 
-The first implementation slice must not add:
+- New tooling or automation for refreshing the vendored JsonDbApp snapshot from upstream releases after this maintenance pass.
+- Broader deprecated AdminSheet behaviour refactors or lint enablement.
+- Any not-agreed or de-prioritised comments listed in `CODE_REVIEW_EVAL.md`.
 
-- class analysis tools
-- assessment-run controls
-- assignment workflows
+## Data loading and orchestration
 
-## Data loading and prefetch strategy
+### Required datasets or dependencies
 
-## Required datasets
+- `scripts/builder/builder.config.json`
+- root `package.json` and `package-lock.json` for the direct `zod` dependency introduced by builder config validation alignment
+- local repository filesystem contents under `scripts/builder/vendor/jsondbapp`
+- existing builder output directories under `build/`
+- SonarCloud API responses for the PR duplication helper script
 
-The Settings-page **Classes** tab depends on four shared datasets:
+### Prefetch or initialisation policy
 
-- `classPartials`
-- `googleClassrooms`
-- `cohorts`
-- `yearGroups`
+#### Startup
 
-## Prefetch policy
+- Builder startup resolves config and repository-relative paths locally.
+- Builder startup must not perform a JsonDbApp network fetch or archive extraction.
 
-### Startup
+#### Feature entry
 
-Startup warm-up should prefetch, under the app-level auth / warm-up boundary:
+- `runResolveJsonDbSource(...)` validates the vendored snapshot and configured source-file allowlist, rejects placeholder vendored content as the canonical Stage 6 blocking check, and leaves downstream JsonDbApp inlining to assume already-validated real source.
+- Repository hygiene items run only when the touched file or command is invoked; no extra startup work is introduced.
 
-- `classPartials`
-- `cohorts`
-- `yearGroups`
+#### Manual refresh
 
-These datasets should be treated as shared lookup data because they will be reused for joins, filters, and query composition beyond the Classes tab.
+- No manual refresh workflow is added.
 
-### Classes-tab entry
+### Query or transport additions
 
-When the Classes tab is opened, prefetch:
+- None.
 
-- `googleClassrooms`
+## Workflow specification
 
-This should be treated as **view-entry prefetch**, while the shared lookup datasets above are warmed at startup.
+## Resolve builder config and JsonDbApp snapshot
 
-### Manual refresh
+### Eligible inputs or preconditions
 
-No dedicated manual refresh control is required in v1.
+- `builder.config.json` exists and is valid JSON.
+- Configured source directories and the vendored JsonDbApp snapshot resolve inside the repository.
 
-## Query additions
+### Inputs, fields, or confirmation copy
 
-The backend `getGoogleClassrooms` API surface already exists. Add the missing frontend service, adjacent Zod schema, shared query key, and shared query options for Google Classrooms:
-
-- `queryKeys.googleClassrooms()`
-- `getGoogleClassroomsQueryOptions()`
-
-## Core merged view model
-
-The main table must not render directly from `ABClassPartials` alone.
-
-It should render from a merged row model keyed by `classId`.
-
-Suggested view-model shape:
-
-```ts
-{
-  classId: string;
-  googleClassroomName: string | null;
-  abClass: ClassPartial | null;
-  status: 'active' | 'inactive' | 'notCreated' | 'orphaned';
-  className: string;
-  cohortKey: string | null;
-  cohortName: string | null;
-  courseLength: number | null;
-  yearGroupKey: string | null;
-  yearGroupName: string | null;
-  classOwner: TeacherSummary | null;
-  teachers: TeacherSummary[];
-  active: boolean | null;
-}
-```
-
-## Merge rules
-
-### Active
-
-- active Google Classroom exists
-- matching `ABClass` partial exists
-- `ABClass.active === true`
-
-### Inactive
-
-- active Google Classroom exists
-- matching `ABClass` partial exists
-- `ABClass.active !== true`
-
-### Not created
-
-- active Google Classroom exists
-- no matching `ABClass` partial exists
-
-This is the first-run case.
-
-### Orphaned
-
-- persisted `ABClass` partial exists
-- class is not present in the active Google Classroom list
-
-For v1, this status means **not present in the active Google Classroom list** only. It is not yet a definitive signal that the Classroom was deleted or archived. Future work may widen the Classroom dataset to include archived classes so this label can become more precise.
-
-## Sort order
-
-Default table sort order should be:
-
-1. active
-2. inactive
-3. not created
-4. orphaned
-
-This preserves the agreed priority order while still keeping unmanaged rows visible.
-Within each status group, apply a deterministic secondary sort by `className` using case-insensitive `localeCompare` (`sensitivity: 'base'`).
-
-## Main table specification
-
-## Ant Design components
-
-Recommended Ant Design components:
-
-- `Table` for the main grid and built-in `rowSelection`
-- `Badge` for status display
-- `Tooltip` for orphan warnings and constrained actions
-- `Dropdown` or split-button for bulk actions
-- `Modal` + `Form` for bulk action input and reference-data management
-- `Popconfirm` for destructive actions
-- `Select` for cohort/year-group choices
-- `InputNumber` for `courseLength`
-- `Alert` for blocking and summary feedback
-- `Empty` for empty states
-- `Skeleton` or table `loading` state for initial loads
-
-## Main table columns
-
-1. checkbox selection column
-2. status column
-3. `className`
-4. cohort
-5. `courseLength`
-6. year group
-7. `active`
-
-`classId` should remain available to the feature as the row key and hidden identifier, but it does not need a visible table column in the Classes-tab UI. `classOwner` and `teachers` should not be displayed in the table because they are backend-managed Google Classroom metadata and are populated only after the stored `ABClass` exists.
-
-## Column sorting and filtering
-
-The Classes table must provide user-facing column sorting and filtering controls in addition to the default merged-row ordering.
-
-- Sorting should be available on status, class name, cohort, course length, year group, and active columns.
-- Filtering should be available on status, class name, cohort, course length, year group, and active columns.
-- When sorting and filtering are cleared, the table should return to the default order: status priority then the documented case-insensitive `className` tie-break contract.
-- Sorting/filtering interactions must be deterministic and testable in both Vitest (column config/state mapping) and Playwright (visible browser behaviour).
-
-## Rendering rules
-
-### Not-created rows
-
-For rows without persisted `ABClass` data, unavailable fields should render as `—`:
-
-- cohort
-- course length
-- year group
-- active
-
-### Active and inactive rows
-
-Display stored `ABClass` metadata resolved through the reference-data lookups where relevant.
-
-### Orphaned rows
-
-- show a warning icon in the status cell
-- attach a tooltip explaining that the `ABClass` record exists but the Google Classroom is no longer in the active Classroom list
-- allow deletion only
-
-## Bulk-action specification
-
-Bulk actions are modal-driven only. They are also the supported single-row edit path in v1: selecting one row uses the same modal and transport behaviour as selecting many rows.
-
-Execution semantics for all bulk actions:
-
-- dispatch one request per selected row in parallel
-- continue attempting every selected row even if some requests fail
-- report success/failure counts in the submitted row order captured when the user confirms the modal
-- if the user closes a modal after requests have already been dispatched, those in-flight requests continue because cancellation is not supported in v1
-
-## Bulk create `ABClass` records
-
-### Eligible rows
-
-- `notCreated` rows only
-
-### Modal fields
-
-- `cohortKey` (select from active cohorts)
-- `yearGroupKey` (select from year-group options)
-- `courseLength` (`InputNumber`, default `1`, min `1`)
+- `frontendDir`
+- `backendDir`
+- `buildDir`
+- `jsonDbApp.pinnedSnapshotDir`
+- `jsonDbApp.sourceFiles`
+- `jsonDbApp.publicExports`
 
 ### Behaviour
 
-- submit one `upsertABClass` call per selected row in parallel
-- newly created classes default to `active=true`
-- failed rows remain selected
-- successful rows are deselected
-- on partial success, keep the modal open briefly with inline feedback, then close and show a summary alert
-- show a summary alert after completion
+- Parse config through the builder-owned Zod schema and reject malformed or missing fields with `preflight-clean` stage context.
+- Own the direct `zod` dependency in `package.json` and `package-lock.json` as part of this config-validation change, with dependency installation and lockfile validation completed before builder verification.
+- Resolve the configured JsonDbApp snapshot to an absolute in-repo path, verify `appsscript.json` exists, verify every configured source file exists beneath the snapshot root, reject placeholder snapshot content as the canonical Stage 6 blocking failure before Stage 7, and leave resolved BuilderPaths pointed at the configured vendored snapshot.
+- Produce deterministic relative file metadata for downstream steps without downloading or extracting any release archive.
+- Surface invalid configuration or missing snapshot files as blocking builder failures.
 
-## Bulk delete `ABClass` records
+## Materialise and validate final builder output
 
-### Eligible rows
+### Eligible inputs or preconditions
 
-- active rows
-- inactive rows
-- orphaned rows
-
-### Confirmation copy
-
-The confirmation should make clear that this deletes:
-
-- the full stored `ABClass` record
-- the partial stored `ABClass` summary/index row
+- The build pipeline has already populated `build/gas`.
 
 ### Behaviour
 
-- failed rows remain selected
-- successful rows are deselected
-- on partial success, keep the modal open briefly with inline feedback, then close and show summary alert
-- show summary alert
+- Use consistent forward-slash normalisation for relative output file lists on Windows and non-Windows platforms.
+- Reuse the shared recursive file walker rather than keeping duplicate step-local traversal logic where the shared helper satisfies the need.
+- Keep required-file and forbidden-leakage checks unchanged in meaning while making the file enumeration implementation portable.
 
-## Bulk set active / inactive
+## Copy backend runtime files
 
-### Eligible rows
+### Eligible inputs or preconditions
 
-- active rows
-- inactive rows
-
-Rows in `notCreated` or `orphaned` status are not eligible.
-
-### Frontend validation
-
-The action must be disabled or blocked when the selection contains any ineligible row.
-
-### Backend validation
-
-The backend must reject attempts to set `active` on a class that does not already exist.
-
-This avoids accidental creation-through-update.
-
-## Bulk set cohort
-
-### Eligible rows
-
-- active rows
-- inactive rows
-
-Rows in `notCreated` or `orphaned` status are not eligible in v1.
-
-### Modal fields
-
-- `cohortKey` select
-- only active cohorts should be available in the selector
-
-## Bulk set year group
-
-### Eligible rows
-
-- active rows
-- inactive rows
-
-Rows in `notCreated` or `orphaned` status are not eligible in v1.
-
-### Modal fields
-
-- `yearGroupKey` select
-
-## Bulk set course length
-
-### Eligible rows
-
-- active rows
-- inactive rows
-
-Rows in `notCreated` or `orphaned` status are not eligible in v1.
-
-### Modal fields
-
-- `courseLength` (`InputNumber`, integer, min `1`)
+- `paths.backendDir` exists and `paths.buildGasDir` is writable.
 
 ### Behaviour
 
-- this is the supported edit workflow for `courseLength` on existing classes
-- selecting one row uses the same workflow as selecting many rows
-- submit one `updateABClass` call per selected row in parallel
+- Continue copying only runtime-relevant backend JavaScript files.
+- Wrap per-file destination-directory creation and copy failures in `BuildStageError` with `backend-copy` stage context and path detail so diagnostics identify the failing file.
 
-## Partial-success handling
+## Apply bounded repository hygiene follow-through
 
-For all bulk actions:
+### Behaviour
 
-- keep failed rows selected if those rows still exist after refresh
-- deselect successful rows
-- clear selection for rows that were deleted or are no longer visible
-- reset selection when the user leaves and re-enters the tab
-- keep the modal open briefly with inline feedback on partial success, then close and hand off to the persistent summary `Alert`
-- show a persistent summary `Alert`
-- include counts for attempted, succeeded, and failed rows
-
-## Selection lifecycle contract
-
-Implement selection with controlled table selection state in the Classes feature shell.
-
-- Use controlled `selectedRowKeys` state (do not rely on implicit table-internal state across tab switches).
-- On Classes-tab entry/re-entry, reset selection to empty via explicit Settings-tab lifecycle handling rather than by assuming inactive tab panes unmount automatically.
-- After destructive operations and required refresh, remove keys that are no longer visible.
-- Do not preserve invisible keys across tab re-entry cycles.
-
-## Reference-data management specification
-
-Reference-data management should be launched from secondary modals in the Settings-page **Classes** tab.
-
-## Cohort management modal
-
-### Capabilities
-
-- list cohorts
-- create cohort
-- edit cohort
-- delete cohort
-- show active/inactive state
-
-### Delete safeguard
-
-Deletion must be prevented when any persisted `ABClass` still references that cohort key.
-
-This safeguard should exist in both:
-
-- backend authoritative validation
-- a frontend confirmation modal that shows a disabled delete button plus explanatory warning state and remains open with inline feedback until the user closes it
-
-## Year-group management modal
-
-### Capabilities
-
-- list year groups
-- create year group
-- edit year group
-- delete year group
-
-### Delete safeguard
-
-Deletion must be prevented when any persisted `ABClass` still references that year-group key.
-
-As with cohorts, backend validation is authoritative and the frontend should surface blocked deletes through the same confirmation-modal pattern, including a disabled delete button and inline warning state that remains open until the user closes it.
-
-## Backend changes required to support agreed behaviour
-
-## 1. Add stable keys to reference data
-
-Update the cohort and year-group models and transport contracts so they expose stable keys.
-
-Key requirements:
-
-- generate UUID keys on create
-- keys are immutable on rename
-- all cohort and year-group records are keyed; no unkeyed records are supported in the v1 contract
-- CRUD request and response shapes should identify records by `key`, not mutable display names
-
-For cohorts, also add:
-
-- `startYear: number`
-- `startMonth: number`
-
-Defaulting rules for cohorts:
-
-- `startMonth` defaults to `9` (September)
-- `startYear` defaults to the current calendar year when the current month is September or later
-- `startYear` defaults to the previous calendar year when the current month is earlier than September
-
-## 2. Update `ABClass` metadata to store keys
-
-Update the `ABClass` domain model and transport contracts to use:
-
-- `cohortKey`
-- `yearGroupKey`
-
-rather than mutable display names.
-
-This spec assumes a one-off destructive reset of existing data before rollout, so no compatibility or backfill layer is required in production code for the old name-based contract.
-
-## 3. Strengthen `updateABClass` validation for `active`
-
-Current behaviour allows create-on-missing for `updateABClass`.
-
-Required refinement:
-
-- if the payload includes `active`
-- and the class does not already exist
-- reject the request rather than initialising a new `ABClass`
-
-This preserves explicit-creation semantics.
-
-## 4. Reference-data delete guards
-
-Add backend validation so:
-
-- `deleteCohort` fails if any persisted `ABClass` uses that cohort key
-- `deleteYearGroup` fails if any persisted `ABClass` uses that year-group key
-
-The preferred implementation source for these in-use checks is the `abclass_partials` registry, because it already exists as the lightweight index of persisted class metadata.
-
-## 5. Partial-response shaping
-
-`getABClassPartials` should return keys plus resolved display names for convenience. The transport contract should therefore expose explicit keys (`cohortKey`, `yearGroupKey`) alongside resolved labels (`cohortName`, `yearGroupName`).
-
-## Frontend feature structure recommendation
-
-Suggested new feature area:
-
-```text
-src/frontend/src/features/classes/
-  ClassesManagementPanel.tsx
-  ClassesManagementPanel.spec.tsx
-  useClassesManagement.ts
-  useClassesManagement.spec.ts
-  classesManagementViewModel.ts
-  classesManagementViewModel.spec.ts
-  bulkActions/
-  referenceData/
-```
-
-Suggested new or updated service and query files:
-
-```text
-src/frontend/src/services/
-  googleClassroomsService.ts
-  googleClassrooms.zod.ts
-
-src/frontend/src/query/
-  queryKeys.ts
-  sharedQueries.ts
-```
-
-## Broad implementation-plan task set
-
-The implementation plan should be organised around the following broad workstreams.
-
-## 1. Contract design
-
-- confirm the final blank-slate transport contract for `cohortKey` and `yearGroupKey`
-- record explicitly that rollout depends on a one-off destructive reset of existing persisted data
-- ensure later sections can rely on the key-based contract without compatibility fallbacks
-- identify every backend and frontend consumer that must adopt the new key-based contract
-- record that parts of the assessment workflow currently depend on `ABClass.yearGroup` as a numeric academic-year field and will require follow-on refactor work outside this v1 delivery
-
-## 2. Reference-data model and API updates
-
-- add stable UUID keys to cohort and year-group records
-- update create, edit, list, and delete handlers to expose keys and use keyed CRUD payloads
-- preserve existing active-state behaviour for cohorts
-- add `startYear` and `startMonth` to cohorts, including the defaulting rules above
-- add delete guards for in-use cohort and year-group keys
-
-## 3. `ABClass` domain and API updates
-
-- update the `ABClass` model to store `cohortKey` and `yearGroupKey`
-- update serialisation, deserialisation, and partial-response shapes
-- update `upsertABClass` and `updateABClass` validation for key-based metadata
-- prevent `active` updates from creating missing classes
-
-## 4. Backend query and lookup support
-
-- add any controller helpers needed to resolve reference-data keys efficiently
-- ensure reference-data existence checks are shared rather than duplicated
-- return class partial responses with explicit keys plus resolved labels
-
-## 5. Frontend service and schema work
-
-- add or update Zod schemas for key-based cohort and year-group payloads
-- add the frontend `googleClassrooms` service wrapper for the existing backend API surface
-- update service contracts for any changed `ABClass`, cohort, or year-group payloads
-- keep all transport calls routed through `callApi(...)`
-
-## 6. React Query and prefetch orchestration
-
-- add `googleClassrooms` shared query definitions and keys
-- update startup warm-up to include `cohorts` and `yearGroups` alongside `classPartials`
-- add invalidation and forced refresh behaviour for cohort and year-group mutations
-- update any canonical React Query documentation that changes as a result
-
-## 7. Settings-page Classes-tab feature implementation
-
-- keep `SettingsPage` wired to the real Classes feature entry component; do not reintroduce placeholder content or a parallel top-level Classes page
-- build the merged row view model for active, inactive, not-created, and orphaned rows
-- implement default status sorting and row selection
-- implement column sorting and filtering controls for the main table
-- render the main Ant Design table and status affordances
-
-## 8. Bulk-action workflows
-
-- implement bulk create, delete, set active or inactive, set cohort, set year group, and set course length flows
-- add modal forms, validation, confirmation steps, and partial-success summaries
-- ensure failed rows remain selected after batch operations
-
-## 9. Reference-data management modals
-
-- implement cohort management modal flows for create, edit, delete, and active-state handling
-- implement year-group management modal flows for create, edit, and delete
-- surface delete-blocked states clearly when reference data is still in use
-
-## 10. Error handling and empty states
-
-- implement blocking and partial-load `Alert` states
-- add empty states for no active Google Classrooms and first-run no-`ABClass` cases
-- ensure orphaned-state tooltip and destructive-action copy are clear
-
-## 11. Automated testing
-
-- add backend unit and API-layer coverage for the new contracts and guards
-- add frontend Vitest coverage for services, view-model mapping, hooks, and component logic
-- add Playwright coverage for user-visible interactions such as tab/page entry, row selection, column sorting/filtering, modals, and bulk actions
-- keep test coverage aligned with the repo testing split and shared mock-helper rules
-
-## 12. Documentation and rollout follow-through
-
-- update canonical docs that are affected by the final design, especially React Query/prefetch guidance and any API/data-shape docs
-- capture rollout notes and any deferred follow-up tasks
-- record any follow-on tasks that are intentionally deferred from v1
+- Add explicit timeouts to the in-scope Sonar helper network request and keep timeout failures diagnosable.
+- Keep the `requestStore` test descriptive text aligned with what the assertion actually proves.
+- Make the pre-commit hook fail the commit when `npm run lint:fix` fails.
+- Limit deprecated AdminSheet changes to documentation-quality cleanup only.
+- Update builder-facing documentation so Stage 6, config examples, and public-export examples no longer imply the stale contract.
 
 ## Error, loading, and empty-state rules
 
-## Blocking load failure
+### Blocking failure
 
-If the Settings-page Classes tab cannot load any essential startup-prefetched dataset (`classPartials`, `cohorts`, or `yearGroups`), show a top-level `Alert` and fail fast/loudly rather than silently continuing with a partially warmed client state.
+- Invalid builder config, missing vendored snapshot files, placeholder vendored snapshot content rejected by Stage 6 before Stage 7, invalid relative source-file entries, or per-file backend copy failures are blocking builder errors.
+- Network timeout or HTTP fetch failure in the Sonar helper script must fail with actionable context rather than hanging indefinitely.
 
-## Partial-load failure
+### Partial-load or partial-success failure
 
-If one dataset fails but others succeed during a non-blocking refresh path:
+- None. This maintenance pass should fail fast rather than degrading builder output quality.
 
-- show a warning `Alert`
-- do not leave stale table data visible if the failed refresh is required to trust the current table state
-- if the failed refresh followed a successful mutation, tell the user the update succeeded but they must refresh the page to see changes
+## Backend changes required to support agreed behaviour
 
-## Empty states
+1. Builder config contract alignment
+   - Replace manual config validation with a Zod-backed schema module and inferred config types while preserving `BuildStageError` stage context.
+   - Add the direct `zod` dependency in `package.json` and `package-lock.json`, and treat dependency installation plus lockfile validation as required follow-through for the schema adoption.
+   - Replace the placeholder vendored JsonDbApp snapshot with the real pinned `v0.1.1` subset and synchronise `jsonDbApp.sourceFiles` so it enumerates that exact committed subset.
+   - Stop runtime reassignment to a downloaded release snapshot, keep Stage 6 as local validation only, and make Stage 6 the canonical blocking owner for placeholder-content rejection before Stage 7.
+2. Builder reliability hardening
+   - Correct Windows path-separator normalisation in the listed builder steps.
+   - Reuse the shared recursive file walker and fix its path-join portability issue.
+   - Wrap backend copy loop filesystem failures with stage context.
+3. Bounded repository follow-through
+   - Add explicit timeout handling to the in-scope Sonar helper request.
+   - Fix the listed lint/docs/JSDoc/test-title/pre-commit items without expanding to unrelated cleanup.
+   - Update builder documentation where the JsonDbApp contract is currently stale.
 
-### No active Google Classrooms
+## Planning handoff notes
 
-Show `Empty` state for the table only when the Google Classroom fetch succeeds and returns zero active classes. A fetch failure must surface as an error state rather than being treated as an empty result.
+- Sequence contract-alignment work before downstream builder-step hardening so tests can target the settled JsonDbApp source-of-truth.
+- No frontend layout spec is required because this scope does not materially change any frontend layout, route, or workflow.
+- Keep docs and deprecated-surface cleanup in later sections after builder reliability changes land.
 
-### First run: no `ABClass` records yet
+## Testing expectations
 
-Still show all active Google Classrooms as `notCreated` rows.
+- Add or update builder unit tests around config parsing, JsonDbApp snapshot resolution, Stage 6 ownership of placeholder rejection before Stage 7, non-repointed vendored-snapshot BuilderPaths, backend-copy failures, and output-path normalisation.
+- Replace archive/download-centred `resolve-jsondb-source` coverage with vendored-snapshot fixture coverage that proves Stage 6 validates the exact local committed files named in `builder.config.json` and no longer depends on network fetches, external archive tooling, or runtime file discovery.
+- Treat `package.json` and `package-lock.json` updates for direct `zod` adoption as part of the builder contract change, and run builder verification against the installed dependency tree reflected in the updated lockfile.
+- Keep builder verification grounded in existing commands: `npm run builder:test`, `npm run builder:lint`, `npm run builder:compile`, and the final end-to-end builder command already present in `package.json`.
+- Keep root validation focused on `npm run lint` and `npm test -- tests/api/requestStore.test.js` for the touched non-builder test surface.
+- Record explicit manual validation steps for the Sonar helper timeout behaviour and the `.husky/pre-commit` blocking behaviour if no existing automated harness is introduced.
+- For docs-only or wording-only items with no existing automated harness, record that red-first automated tests are intentionally skipped.
 
-### No orphaned classes
+## Documentation and rollout notes
 
-Orphaned rows, if any, will appear in the main table according to the specified sort order. No separate UI panel or section is needed to display them.
-
-## Mutation refresh rules
-
-After successful mutations, refresh the relevant queries:
-
-- class create, update, delete -> refresh `classPartials`; if that re-fetch fails after a successful mutation, show success-plus-refresh-needed guidance and do not keep stale table data visible
-- cohort create, edit, delete -> invalidate `cohorts` and force a refresh for active consumers
-- year-group create, edit, delete -> invalidate `yearGroups` and force a refresh for active consumers
-- Google Classrooms refreshes on page entry only in v1
-
-## Accessibility and usability notes
-
-- bulk-action controls should expose disabled reasons where practical via tooltip text
-- orphaned state should be understandable by icon plus text or tooltip, not icon alone
-- modal forms should focus the first actionable field on open
-- destructive actions should require explicit confirmation
-- table selection state should remain predictable after partial failures and should reset on tab re-entry
+- Update root `SPEC.md` and `ACTION_PLAN.md` to replace the stale apiHandler planning artefacts for this maintenance pass.
+- Update `docs/developer/builder/builder-script.md` so its JsonDbApp configuration example, public-export example, and Stage 6 narrative all match the final committed-vendor contract.
+- If code comments or configuration wording are changed, keep them aligned with the vendored-snapshot contract and British English usage.
+- Retain discoverable provenance for the vendored JsonDbApp source as upstream tag `v0.1.1` in the active builder code or adjacent builder documentation without reintroducing runtime download behaviour.
+- Manual future refresh automation for the vendored JsonDbApp snapshot is deliberately deferred; this maintenance pass only restores truthful runtime behaviour.
 
 ## V1 scope recommendation
 
-Include in v1:
+### Include in v1
 
-- Settings-page **Classes** tab ownership for this feature
-- a single CRUD-focused table
-- status column with default sort order
-- merged active, inactive, not-created, and orphaned rows
-- modal-driven bulk actions
-- secondary modals for cohort and year-group management
-- create flow with default `courseLength` of `1`
-- stable keys for cohorts and year groups
-- `ABClass` storage of cohort and year-group keys
-- backend validation to prevent `active` updates creating missing classes
-- backend validation to prevent deleting in-use cohorts and year groups
-- Google Classrooms view-entry prefetch on Classes-tab entry
+- Builder contract realignment to the vendored JsonDbApp snapshot, including replacement of the current placeholder snapshot with the real pinned `v0.1.1` subset
+- Builder reliability fixes for path normalisation, shared file walking, backend copy error wrapping, and in-scope network timeout handling
+- The explicitly listed repo hygiene and builder-doc follow-through items only
 
-Defer from v1:
+### Defer from v1
 
-- inline editing
-- dedicated backend bulk endpoints
-- manual refresh controls
-- class analysis features on this page
-- assessment-run controls on this page
-- broader assignment workflows
-- fetching all Google Classrooms, including archived classes, to refine orphaned-row labelling
-- numeric `yearGroup` mapping: parts of the legacy assessment workflow depend on `ABClass.yearGroup` as a numeric academic-year field; when this is addressed it must be handled via downstream mapping/projection only — transport contracts must remain key-based (`yearGroupKey`) and no legacy fallback fields must be reintroduced
+- New tooling or automation for updating the vendored JsonDbApp snapshot
+- Broader builder refactors unrelated to the agreed review comments
+- Any additional cleanup in deprecated AdminSheet code beyond the listed JSDoc work
