@@ -13,7 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
-const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
+const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
 
 const {
   loadApiHandlerModule,

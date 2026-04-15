@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
+const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
 const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
 const googleClassroomsHandlerPath = '../../src/backend/z_Api/googleClassrooms.js';
 const originalClassroomApiClient = globalThis.ClassroomApiClient;

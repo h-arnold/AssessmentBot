@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const abclassMutationsModulePath = '../../src/backend/z_Api/abclassMutations.js';
@@ -248,6 +251,47 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     });
 
     expect(() => deleteABClass({ classId: 'class-001' })).toThrow(controllerError);
+  });
+
+  it('keeps using the ABClass controller when reference-data API helpers are loaded into the same GAS global scope', () => {
+    const params = {
+      classId: 'class-001',
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
+      courseLength: 2,
+    };
+    const controllerResult = buildClassSummary();
+    const upsertSpy = vi.fn(() => controllerResult);
+    const validateModule = require('../../src/backend/Utils/Validate.js');
+    const referenceDataPath = path.resolve(__dirname, '../../src/backend/z_Api/referenceData.js');
+    const abclassMutationsPath = path.resolve(
+      __dirname,
+      '../../src/backend/z_Api/abclassMutations.js'
+    );
+    const referenceDataSource = fs.readFileSync(referenceDataPath, 'utf8');
+    const abclassMutationsSource = fs.readFileSync(abclassMutationsPath, 'utf8');
+    const context = {
+      ABClassController: function MockABClassController() {
+        this.upsertABClass = upsertSpy;
+      },
+      ReferenceDataController: function MockReferenceDataController() {
+        this.listCohorts = vi.fn();
+      },
+      ApiValidationError,
+      Validate: validateModule.Validate || validateModule,
+    };
+
+    context.globalThis = context;
+    vm.createContext(context);
+
+    vm.runInContext(referenceDataSource, context, { filename: referenceDataPath });
+    vm.runInContext(`${abclassMutationsSource}\nthis.__exports = { upsertABClass };`, context, {
+      filename: abclassMutationsPath,
+    });
+
+    expect(context.__exports.upsertABClass(params)).toEqual(controllerResult);
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(upsertSpy).toHaveBeenCalledWith(params);
   });
 
   it.each([
