@@ -184,6 +184,9 @@ describe('resolveBuildDir', () => {
 });
 
 describe('resolveBuilderPaths', () => {
+  type BuilderConfig = ReturnType<typeof createValidConfig>;
+  type JsonDbAppConfig = BuilderConfig['jsonDbApp'];
+
   let tempRoot: string;
   let builderRoot: string;
   let repoRoot: string;
@@ -191,6 +194,30 @@ describe('resolveBuilderPaths', () => {
 
   async function writeBuilderConfig(config: Record<string, unknown>): Promise<void> {
     await fs.writeFile(configPath, JSON.stringify(config));
+  }
+
+  async function expectResolveBuilderPathsToFail(
+    configOverrides: Partial<BuilderConfig>,
+  ): Promise<void> {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      ...configOverrides,
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  }
+
+  async function expectResolveBuilderPathsToFailForJsonDbApp(
+    jsonDbAppOverrides: Partial<JsonDbAppConfig>,
+  ): Promise<void> {
+    await expectResolveBuilderPathsToFail({
+      jsonDbApp: {
+        ...createValidConfig().jsonDbApp,
+        ...jsonDbAppOverrides,
+      },
+    });
   }
 
   beforeEach(async () => {
@@ -207,178 +234,84 @@ describe('resolveBuilderPaths', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('throws BuildStageError with stage "preflight-clean" when frontendDir is empty or whitespace', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      frontendDir: '',
-    });
+  it.each([
+    ['frontendDir', ''],
+    ['frontendDir', '   '],
+    ['backendDir', ''],
+    ['backendDir', '   '],
+  ] as const)(
+    'throws BuildStageError with stage "preflight-clean" when %s is empty or whitespace',
+    async (dirKey, dirValue) => {
+      await expectResolveBuilderPathsToFail({
+        [dirKey]: dirValue,
+      } as Partial<BuilderConfig>);
+    },
+  );
 
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
+  it.each([
+    ['frontendDir', '.'],
+    ['backendDir', '.'],
+  ] as const)(
+    'throws BuildStageError with stage "preflight-clean" when %s resolves to repo root',
+    async (dirKey, dirValue) => {
+      await expectResolveBuilderPathsToFail({
+        [dirKey]: dirValue,
+      } as Partial<BuilderConfig>);
+    },
+  );
 
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      frontendDir: '   ',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
-
-  it('throws BuildStageError with stage "preflight-clean" when backendDir is empty or whitespace', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      backendDir: '',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      backendDir: '   ',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
-
-  it('throws BuildStageError with stage "preflight-clean" when frontendDir resolves to repo root', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      frontendDir: '.',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
-
-  it('throws BuildStageError with stage "preflight-clean" when backendDir resolves to repo root', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      backendDir: '.',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
-
-  it('throws BuildStageError with stage "preflight-clean" when frontendDir resolves outside repo root', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      frontendDir: '..',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
-
-  it('throws BuildStageError with stage "preflight-clean" when backendDir resolves outside repo root', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      backendDir: '..',
-    });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
-  });
+  it.each([
+    ['frontendDir', '..'],
+    ['backendDir', '..'],
+  ] as const)(
+    'throws BuildStageError with stage "preflight-clean" when %s resolves outside repo root',
+    async (dirKey, dirValue) => {
+      await expectResolveBuilderPathsToFail({
+        [dirKey]: dirValue,
+      } as Partial<BuilderConfig>);
+    },
+  );
 
   it('rejects empty JsonDbApp source-file arrays', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: [],
-        publicExports: ['loadDatabase'],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: [],
+      publicExports: ['loadDatabase'],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('rejects empty JsonDbApp public-export arrays', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['src/04_core/99_PublicAPI.js'],
-        publicExports: [],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: ['src/04_core/99_PublicAPI.js'],
+      publicExports: [],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('rejects duplicate JsonDbApp configured source files', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['src/04_core/99_PublicAPI.js', 'src/04_core/99_PublicAPI.js'],
-        publicExports: ['loadDatabase'],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: ['src/04_core/99_PublicAPI.js', 'src/04_core/99_PublicAPI.js'],
+      publicExports: ['loadDatabase'],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('rejects duplicate JsonDbApp public exports', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['src/04_core/99_PublicAPI.js'],
-        publicExports: ['loadDatabase', 'loadDatabase'],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: ['src/04_core/99_PublicAPI.js'],
+      publicExports: ['loadDatabase', 'loadDatabase'],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('rejects JsonDbApp source files that escape the vendored snapshot root', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['../outside.js'],
-        publicExports: ['loadDatabase'],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: ['../outside.js'],
+      publicExports: ['loadDatabase'],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('rejects JsonDbApp source files that use absolute paths', async () => {
-    await writeBuilderConfig({
-      ...createValidConfig(),
-      jsonDbApp: {
-        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['/absolute/path.js'],
-        publicExports: ['loadDatabase'],
-      },
+    await expectResolveBuilderPathsToFailForJsonDbApp({
+      sourceFiles: ['/absolute/path.js'],
+      publicExports: ['loadDatabase'],
     });
-
-    await assertBuildStageError(() =>
-      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
-    );
   });
 
   it('normalises Windows-style JsonDbApp configured source-file separators', async () => {
@@ -386,7 +319,7 @@ describe('resolveBuilderPaths', () => {
       ...createValidConfig(),
       jsonDbApp: {
         pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
-        sourceFiles: ['src\\04_core\\99_PublicAPI.js'],
+        sourceFiles: [String.raw`src\04_core\99_PublicAPI.js`],
         publicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
       },
     });

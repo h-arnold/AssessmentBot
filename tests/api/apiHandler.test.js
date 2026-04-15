@@ -788,8 +788,7 @@ describe('Api/apiHandler dispatcher', () => {
 
     const lastDownstreamLogIndex = context.consoleErrorSpy.mock.calls
       .map((args, index) => ({ args, index }))
-      .filter(({ args }) => args[0] !== 'API request failed.')
-      .at(-1)?.index;
+      .findLast(({ args }) => args[0] !== 'API request failed.')?.index;
     const boundaryLogIndex = context.consoleErrorSpy.mock.calls.findIndex(
       (args) => args[0] === 'API request failed.'
     );
@@ -1357,6 +1356,7 @@ describe('Api/apiHandler dispatcher', () => {
   it('records the failed request during completion after boundary logging has run', () => {
     const requestId = 'req-boundary-before-completion';
     const callOrder = [];
+    const hadUtilities = Object.prototype.hasOwnProperty.call(globalThis, 'Utilities');
     const originalUtilities = globalThis.Utilities;
     const originalGetUserProperties = globalThis.PropertiesService.getUserProperties;
     const baseUserProperties = originalGetUserProperties.call(globalThis.PropertiesService);
@@ -1408,7 +1408,7 @@ describe('Api/apiHandler dispatcher', () => {
       expect(callOrder.indexOf('boundaryLog')).toBeLessThan(callOrder.indexOf('completionSave'));
     } finally {
       globalThis.PropertiesService.getUserProperties = originalGetUserProperties;
-      if (originalUtilities === undefined) {
+      if (!hadUtilities) {
         delete globalThis.Utilities;
       } else {
         globalThis.Utilities = originalUtilities;
