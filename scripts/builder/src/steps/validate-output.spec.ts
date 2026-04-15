@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -17,6 +17,8 @@ const APPS_SCRIPT_JSON = 'appsscript.json';
 const JSONDB_INLINED = 'JsonDbApp.inlined.js';
 const REACT_APP_HTML = 'UI/ReactApp.html';
 const VALIDATE_OUTPUT_STAGE = 'validate-output';
+const REQUIRED_FILE_COUNT = 3;
+const VALID_GAS_FILE_COUNT = 4;
 
 /**
  * Writes minimum valid final GAS artefacts for validation tests.
@@ -155,6 +157,7 @@ describe('runValidateOutput', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
@@ -163,8 +166,8 @@ describe('runValidateOutput', () => {
 
     const result = await runValidateOutput(paths);
 
-    const expectedRequiredFileCount = 3;
-    const expectedGasFileCount = 4;
+    const expectedRequiredFileCount = REQUIRED_FILE_COUNT;
+    const expectedGasFileCount = VALID_GAS_FILE_COUNT;
 
     expect(result.stage).toBe(VALIDATE_OUTPUT_STAGE);
     expect(result.outputPath).toBe(paths.buildGasDir);
@@ -186,6 +189,30 @@ describe('runValidateOutput', () => {
     expect(result.artefactChecksums[REACT_APP_HTML]).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it('treats Windows-style required-file paths as normalised forward-slash output paths', async () => {
+    await writeValidGasArtefacts(paths);
+
+    const windowsRelativePaths = new Map<string, string>([
+      [path.join(paths.buildGasDir, APPS_SCRIPT_JSON), APPS_SCRIPT_JSON],
+      [path.join(paths.buildGasDir, JSONDB_INLINED), JSONDB_INLINED],
+      [path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)), String.raw`UI\ReactApp.html`],
+      [path.join(paths.buildGasDir, 'Utils', 'Validate.js'), String.raw`Utils\Validate.js`],
+    ]);
+
+    vi.spyOn(path, 'relative').mockImplementation((_from, to) => {
+      const relativePath = windowsRelativePaths.get(String(to));
+      if (!relativePath) {
+        throw new Error(`Unexpected relative-path input: ${String(to)}`);
+      }
+      return relativePath;
+    });
+
+    const result = await runValidateOutput(paths);
+
+    expect(result.requiredFileCount).toBe(REQUIRED_FILE_COUNT);
+    expect(result.gasFileCount).toBe(VALID_GAS_FILE_COUNT);
+  });
+
   it('returns stable checksums for unchanged outputs across runs', async () => {
     await writeValidGasArtefacts(paths);
 
@@ -193,6 +220,38 @@ describe('runValidateOutput', () => {
     const second = await runValidateOutput(paths);
 
     expect(second.artefactChecksums).toEqual(first.artefactChecksums);
+  });
+
+  it('reports duplicate protected globals with forward-slash relative file paths', async () => {
+    await writeValidGasArtefacts(paths);
+    await fs.mkdir(path.join(paths.buildGasDir, 'Duplicate'), { recursive: true });
+    await fs.writeFile(path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'), 'function Validate() {}', 'utf-8');
+
+    const windowsRelativePaths = new Map<string, string>([
+      [path.join(paths.buildGasDir, APPS_SCRIPT_JSON), APPS_SCRIPT_JSON],
+      [path.join(paths.buildGasDir, JSONDB_INLINED), JSONDB_INLINED],
+      [path.join(paths.buildGasUiDir, path.basename(REACT_APP_HTML)), REACT_APP_HTML],
+      [path.join(paths.buildGasDir, 'Utils', 'Validate.js'), String.raw`Utils\Validate.js`],
+      [path.join(paths.buildGasDir, 'Duplicate', 'ValidateAgain.js'), String.raw`Duplicate\ValidateAgain.js`],
+    ]);
+
+    vi.spyOn(path, 'relative').mockImplementation((_from, to) => {
+      const relativePath = windowsRelativePaths.get(String(to));
+      if (!relativePath) {
+        throw new Error(`Unexpected relative-path input: ${String(to)}`);
+      }
+      return relativePath;
+    });
+
+    const error = await runValidateOutput(paths).catch((caughtError: unknown) => caughtError);
+
+    expect(error).toBeInstanceOf(BuildStageError);
+    expect(error).toMatchObject({
+      stage: VALIDATE_OUTPUT_STAGE,
+    });
+    expect((error as BuildStageError).message).toContain(
+      'Validate: Duplicate/ValidateAgain.js, Utils/Validate.js',
+    );
   });
 
   it('fails with actionable error on duplicate protected globals', async () => {

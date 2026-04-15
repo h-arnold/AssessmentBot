@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
 import { BuildStageError } from './errors.js';
@@ -75,6 +76,27 @@ export async function requireFile(
 }
 
 /**
+ * Normalises path separators to forward slashes.
+ *
+ * @param {string} targetPath - Path string to normalise.
+ * @returns {string} Path using forward-slash separators.
+ */
+export function normalisePathSeparators(targetPath: string): string {
+  return targetPath.replaceAll('\\', '/');
+}
+
+/**
+ * Joins a child path using the separator style implied by the root path.
+ *
+ * @param {string} rootDir - Root directory being traversed.
+ * @param {string} childName - Directory entry name to append.
+ * @returns {string} Joined child path preserving the root path style.
+ */
+function joinChildPath(rootDir: string, childName: string): string {
+  return rootDir.includes('\\') ? path.win32.join(rootDir, childName) : path.join(rootDir, childName);
+}
+
+/**
  * Recursively lists files beneath a directory in deterministic order.
  *
  * @param {string} rootDir - Directory to scan.
@@ -86,7 +108,7 @@ export async function listFilesRecursive(rootDir: string): Promise<string[]> {
   const files: string[] = [];
 
   for (const entry of sortedEntries) {
-    const entryPath = `${rootDir}/${entry.name}`;
+    const entryPath = joinChildPath(rootDir, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await listFilesRecursive(entryPath)));
       continue;

@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import ts from 'typescript';
 
 import { BuildStageError } from '../lib/errors.js';
-import { listFilesRecursive } from '../lib/fs.js';
+import { listFilesRecursive, normalisePathSeparators } from '../lib/fs.js';
 import { checksumUtf8 } from '../lib/hash.js';
 import type { BuilderPaths, ValidateOutputResult } from '../types.js';
 
@@ -246,7 +246,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
   try {
     const absoluteFiles = await listFilesRecursive(paths.buildGasDir);
     const relativeFiles = absoluteFiles
-      .map((absolutePath) => path.relative(paths.buildGasDir, absolutePath).replaceAll('\\\\', '/'))
+      .map((absolutePath) => normalisePathSeparators(path.relative(paths.buildGasDir, absolutePath)))
       .sort((left, right) => left.localeCompare(right));
     const relativeFileSet = new Set(relativeFiles);
 
@@ -266,7 +266,7 @@ export async function runValidateOutput(paths: BuilderPaths): Promise<ValidateOu
       if (!absolutePath.endsWith('.js')) {
         continue;
       }
-      const relativePath = path.relative(paths.buildGasDir, absolutePath).replaceAll('\\\\', '/');
+      const relativePath = normalisePathSeparators(path.relative(paths.buildGasDir, absolutePath));
       jsSourcesByPath[relativePath] = await fs.readFile(absolutePath, 'utf-8');
     }
 

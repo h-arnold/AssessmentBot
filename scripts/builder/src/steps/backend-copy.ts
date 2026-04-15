@@ -2,7 +2,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
 import { BuildStageError } from '../lib/errors.js';
-import { listFilesRecursive } from '../lib/fs.js';
+import { listFilesRecursive, normalisePathSeparators } from '../lib/fs.js';
 import type { BackendCopyResult, BuilderPaths } from '../types.js';
 
 const STAGE_ID = 'backend-copy' as const;
@@ -14,7 +14,7 @@ const STAGE_ID = 'backend-copy' as const;
  * @returns {boolean} `true` when the file should be copied.
  */
 export function isRuntimeBackendFile(filePath: string): boolean {
-  const normalised = filePath.replaceAll('\\', '/');
+  const normalised = normalisePathSeparators(filePath);
   if (!normalised.endsWith('.js')) {
     return false;
   }
@@ -42,11 +42,39 @@ export async function runBackendCopy(paths: BuilderPaths): Promise<BackendCopyRe
 
   for (const sourcePath of runtimeFiles) {
     const relativePath = path.relative(paths.backendDir, sourcePath);
+    const normalisedRelativePath = normalisePathSeparators(relativePath);
     const destinationPath = path.join(paths.buildGasDir, relativePath);
     const destinationDir = path.dirname(destinationPath);
-    await fs.mkdir(destinationDir, { recursive: true });
-    await fs.copyFile(sourcePath, destinationPath);
-    copiedFiles.push(relativePath.replaceAll('\\', '/'));
+
+    try {
+      await fs.mkdir(destinationDir, { recursive: true });
+    } catch (err) {
+      throw new BuildStageError(
+        STAGE_ID,
+        'Unable to create destination directory for backend file ' +
+          normalisedRelativePath +
+          ': ' +
+          destinationDir,
+        err,
+      );
+    }
+
+    try {
+      await fs.copyFile(sourcePath, destinationPath);
+    } catch (err) {
+      throw new BuildStageError(
+        STAGE_ID,
+        'Unable to copy backend file ' +
+          normalisedRelativePath +
+          ' from ' +
+          sourcePath +
+          ' to ' +
+          destinationPath,
+        err,
+      );
+    }
+
+    copiedFiles.push(normalisedRelativePath);
   }
 
   copiedFiles.sort((a, b) => a.localeCompare(b));

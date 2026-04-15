@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BuildStageError, asError, isBuildStageError } from './errors.js';
 import {
@@ -22,6 +22,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await fs.rm(tempRoot, { recursive: true, force: true });
 });
 
@@ -105,6 +106,35 @@ describe('listFilesRecursive', () => {
       path.join(betaDir, 'b.txt'),
       path.join(tempRoot, 'root.txt'),
     ]);
+  });
+
+  it('uses path-safe joins when recursing from Windows-style root paths', async () => {
+    const rootDir = String.raw`C:\repo\build\gas`;
+    const uiDir = path.win32.join(rootDir, 'UI');
+    const htmlFile = path.win32.join(uiDir, 'ReactApp.html');
+    const directoryEntry = {
+      name: 'UI',
+      isDirectory: () => true,
+      isFile: () => false,
+    };
+    const fileEntry = {
+      name: 'ReactApp.html',
+      isDirectory: () => false,
+      isFile: () => true,
+    };
+
+    vi.spyOn(fs, 'readdir').mockImplementation(async (targetPath, options) => {
+      expect(options).toEqual({ withFileTypes: true });
+      if (targetPath === rootDir) {
+        return [directoryEntry] as unknown as Awaited<ReturnType<typeof fs.readdir>>;
+      }
+      if (targetPath === uiDir) {
+        return [fileEntry] as unknown as Awaited<ReturnType<typeof fs.readdir>>;
+      }
+      throw new Error(`Unexpected path: ${String(targetPath)}`);
+    });
+
+    await expect(listFilesRecursive(rootDir)).resolves.toEqual([htmlFile]);
   });
 });
 
