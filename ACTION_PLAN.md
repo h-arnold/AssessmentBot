@@ -398,8 +398,8 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 - Final docs review clean: Complete
 - De-sloppification outcome preserved in plan notes: Complete
 - Action plan updated: Complete
-- Commit created: Pending
-- Push completed: Pending
+- Commit created: Complete
+- Push completed: Complete
 
 ### Objective
 
@@ -434,7 +434,11 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
   - The bounded Section 3 documentation surfaces remain aligned: `docs/setup/configOptions.md` keeps the corrected `#-json-db-lock-timeout-ms` anchor, the targeted deprecated AdminSheet JSDoc in `src/AdminSheet/Utils/ScriptAppManager.js` and `src/AdminSheet/Assessors/SheetsAssessor.js` now describes actual behaviour, and the recorded de-sloppification outcome remains the factual `ABLogger.js` header cleanup already captured in Section 3.
   - No AGENTS guidance updates were required because the existing top-level, builder, and backend instructions already match the delivered architecture and policy boundaries.
   - Optional `@remarks` review outcome: None. The final code paths are sufficiently explained by the updated docs and concise JSDoc.
-- **Delivery evidence:** Pending final docs-sync commit creation and push confirmation; record them in a forward-only ACTION_PLAN follow-up commit.
+- **Delivery evidence:**
+  - Branch: `chore/apihandler-gas-log-preservation-spec`.
+  - Documentation-sync delivery commit: `ee52ce4f9314ddfd9ddf4eec6c332de5e4f0ff06` — `docs: sync final rollout documentation`.
+  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`2701652..ee52ce4` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record final docs sync evidence`.
 - **Deviations from plan:** None.
 
 ---
