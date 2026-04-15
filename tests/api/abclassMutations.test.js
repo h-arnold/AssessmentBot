@@ -294,6 +294,48 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     expect(upsertSpy).toHaveBeenCalledWith(params);
   });
 
+  it('keeps using the reference-data controller when ABClass API helpers are loaded into the same GAS global scope', () => {
+    const controllerResult = [
+      {
+        key: 'coh-2026',
+        name: '2026 Cohort',
+        active: true,
+        startYear: 2026,
+        startMonth: 9,
+      },
+    ];
+    const listCohortsSpy = vi.fn(() => controllerResult);
+    const validateModule = require('../../src/backend/Utils/Validate.js');
+    const referenceDataPath = path.resolve(__dirname, '../../src/backend/z_Api/referenceData.js');
+    const abclassMutationsPath = path.resolve(
+      __dirname,
+      '../../src/backend/z_Api/abclassMutations.js'
+    );
+    const referenceDataSource = fs.readFileSync(referenceDataPath, 'utf8');
+    const abclassMutationsSource = fs.readFileSync(abclassMutationsPath, 'utf8');
+    const context = {
+      ABClassController: function MockABClassController() {
+        this.upsertABClass = vi.fn();
+      },
+      ReferenceDataController: function MockReferenceDataController() {
+        this.listCohorts = listCohortsSpy;
+      },
+      ApiValidationError,
+      Validate: validateModule.Validate || validateModule,
+    };
+
+    context.globalThis = context;
+    vm.createContext(context);
+
+    vm.runInContext(abclassMutationsSource, context, { filename: abclassMutationsPath });
+    vm.runInContext(`${referenceDataSource}\nthis.__exports = { getCohorts };`, context, {
+      filename: referenceDataPath,
+    });
+
+    expect(context.__exports.getCohorts()).toEqual(controllerResult);
+    expect(listCohortsSpy).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     [
       'upsertABClass',

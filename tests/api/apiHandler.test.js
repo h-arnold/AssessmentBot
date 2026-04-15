@@ -37,64 +37,61 @@ const BACKEND_CONFIG_API_METHOD_ENTRIES = Object.freeze(
   Object.fromEntries(BACKEND_CONFIG_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
 );
 
-function buildAbClassTransportParams(methodName) {
-  switch (methodName) {
-    case 'getGoogleClassrooms': {
-      return {};
-    }
-    case 'upsertABClass': {
-      return {
-        classId: 'class-upsert-001',
-        cohortKey: 'coh-2026',
-        yearGroupKey: 'yg-10',
-        courseLength: 2,
-      };
-    }
-    case 'updateABClass': {
-      return {
-        classId: 'class-update-001',
-        cohortKey: 'coh-2027',
-        yearGroupKey: 'yg-11',
-        courseLength: 2,
-        active: true,
-      };
-    }
-    case 'deleteABClass': {
-      return {
-        classId: 'class-delete-001',
-      };
-    }
-    default: {
-      return { traceId: `${methodName}-params` };
-    }
-  }
-}
+const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
+  getGoogleClassrooms: {},
+  upsertABClass: {
+    classId: 'class-upsert-001',
+    cohortKey: 'coh-2026',
+    yearGroupKey: 'yg-10',
+    courseLength: 2,
+  },
+  updateABClass: {
+    classId: 'class-update-001',
+    cohortKey: 'coh-2027',
+    yearGroupKey: 'yg-11',
+    courseLength: 2,
+    active: true,
+  },
+  deleteABClass: {
+    classId: 'class-delete-001',
+  },
+});
 
-function buildAbClassTransportResult(methodName) {
-  switch (methodName) {
-    case 'getGoogleClassrooms': {
-      return [{ classId: 'course-001', className: '10A Computer Science' }];
-    }
-    case 'upsertABClass': {
-      return { classId: 'class-upsert-001', saved: true };
-    }
-    case 'updateABClass': {
-      return { classId: 'class-update-001', updated: true };
-    }
-    case 'deleteABClass': {
-      return { classId: 'class-delete-001', deleted: true };
-    }
-    default: {
-      return { handledBy: methodName };
-    }
-  }
-}
+const ABCLASS_TRANSPORT_RESULTS = Object.freeze({
+  getGoogleClassrooms: [{ classId: 'course-001', className: '10A Computer Science' }],
+  upsertABClass: { classId: 'class-upsert-001', saved: true },
+  updateABClass: { classId: 'class-update-001', updated: true },
+  deleteABClass: { classId: 'class-delete-001', deleted: true },
+});
+
+const REFERENCE_DATA_RESULTS = Object.freeze({
+  getCohorts: [
+    { key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 },
+  ],
+  createCohort: {
+    key: 'coh-2026',
+    name: 'Cohort 2026',
+    active: true,
+    startYear: 2025,
+    startMonth: 9,
+  },
+  updateCohort: {
+    key: 'coh-2025',
+    name: 'Cohort 2026',
+    active: false,
+    startYear: 2025,
+    startMonth: 9,
+  },
+  getYearGroups: [{ key: 'yg-10', name: 'Year 10' }],
+  createYearGroup: { key: 'yg-10', name: 'Year 10' },
+  updateYearGroup: { key: 'yg-9', name: 'Year 10' },
+});
 
 function buildAbClassTransportHandlers() {
   return Object.fromEntries(
     ABCLASS_TRANSPORT_API_METHOD_NAMES.map((methodName) => [
       methodName,
-      () => buildAbClassTransportResult(methodName),
+      () => ABCLASS_TRANSPORT_RESULTS[methodName],
     ])
   );
 }
@@ -106,77 +103,26 @@ function buildApiHandlerTestHandlers() {
   };
 }
 
-function buildReferenceDataParams(methodName) {
-  switch (methodName) {
-    case 'createCohort': {
-      return { record: { name: 'Cohort 2026', active: true } };
-    }
-    case 'updateCohort': {
-      return {
-        key: 'coh-2025',
-        record: { key: 'coh-2025', name: 'Cohort 2026', active: false },
-      };
-    }
-    case 'deleteCohort': {
-      return { key: 'coh-2026' };
-    }
-    case 'createYearGroup': {
-      return { record: { name: 'Year 10' } };
-    }
-    case 'updateYearGroup': {
-      return {
-        key: 'yg-9',
-        record: { key: 'yg-9', name: 'Year 10' },
-      };
-    }
-    case 'deleteYearGroup': {
-      return { key: 'yg-10' };
-    }
-    default: {
-      return { traceId: `${methodName}-params` };
-    }
-  }
-}
-
-function buildReferenceDataResult(methodName) {
-  switch (methodName) {
-    case 'getCohorts': {
-      return [
-        { key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 },
-      ];
-    }
-    case 'createCohort': {
-      return { key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 };
-    }
-    case 'updateCohort': {
-      return {
-        key: 'coh-2025',
-        name: 'Cohort 2026',
-        active: false,
-        startYear: 2025,
-        startMonth: 9,
-      };
-    }
-    case 'getYearGroups': {
-      return [{ key: 'yg-10', name: 'Year 10' }];
-    }
-    case 'createYearGroup': {
-      return { key: 'yg-10', name: 'Year 10' };
-    }
-    case 'updateYearGroup': {
-      return { key: 'yg-9', name: 'Year 10' };
-    }
-    default: {
-      return { handledBy: methodName };
-    }
-  }
-}
+const REFERENCE_DATA_PARAMS = Object.freeze({
+  createCohort: { record: { name: 'Cohort 2026', active: true } },
+  updateCohort: {
+    key: 'coh-2025',
+    record: { key: 'coh-2025', name: 'Cohort 2026', active: false },
+  },
+  deleteCohort: { key: 'coh-2026' },
+  createYearGroup: { record: { name: 'Year 10' } },
+  updateYearGroup: {
+    key: 'yg-9',
+    record: { key: 'yg-9', name: 'Year 10' },
+  },
+  deleteYearGroup: { key: 'yg-10' },
+});
 
 function buildReferenceDataHandlers() {
   return Object.fromEntries(
     REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [
       methodName,
-      () => buildReferenceDataResult(methodName),
+      () => REFERENCE_DATA_RESULTS[methodName],
     ])
   );
 }
@@ -254,7 +200,7 @@ const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
     description:
       'maps controller validation failures for reference-data handlers to the existing API failure envelope',
     methodName: 'createCohort',
-    params: buildReferenceDataParams('createCohort'),
+    params: REFERENCE_DATA_PARAMS.createCohort,
     handlerName: 'createCohort',
     errorMessage: 'Invalid cohort payload',
     requestId: 'req-create-cohort',
@@ -264,7 +210,7 @@ const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
     description:
       'maps ApiValidationError from upsertABClass to INVALID_REQUEST and preserves the failure envelope shape',
     methodName: 'upsertABClass',
-    params: buildAbClassTransportParams('upsertABClass'),
+    params: ABCLASS_TRANSPORT_PARAMS.upsertABClass,
     handlerName: 'upsertABClass',
     errorMessage: 'Invalid ABClass payload',
     requestId: 'req-upsert-abclass',
@@ -274,7 +220,7 @@ const INVALID_REQUEST_FAILURE_CASES = Object.freeze([
     description:
       'maps ApiValidationError from updateABClass to INVALID_REQUEST and preserves the failure envelope shape',
     methodName: 'updateABClass',
-    params: buildAbClassTransportParams('updateABClass'),
+    params: ABCLASS_TRANSPORT_PARAMS.updateABClass,
     handlerName: 'updateABClass',
     errorMessage: 'Invalid ABClass update payload',
     requestId: 'req-update-abclass',
@@ -287,7 +233,7 @@ const IN_USE_FAILURE_CASES = Object.freeze([
     description:
       'maps a plain Error with reason = IN_USE from deleteCohort to error.code = IN_USE (delete-blocked contract)',
     methodName: 'deleteCohort',
-    params: buildReferenceDataParams('deleteCohort'),
+    params: REFERENCE_DATA_PARAMS.deleteCohort,
     handlerName: 'deleteCohort',
     errorMessage: 'Cohort record is referenced by one or more classes',
   },
@@ -295,7 +241,7 @@ const IN_USE_FAILURE_CASES = Object.freeze([
     description:
       'maps a plain Error with reason = IN_USE from deleteYearGroup to error.code = IN_USE (delete-blocked contract)',
     methodName: 'deleteYearGroup',
-    params: buildReferenceDataParams('deleteYearGroup'),
+    params: REFERENCE_DATA_PARAMS.deleteYearGroup,
     handlerName: 'deleteYearGroup',
     errorMessage: 'Year group record is referenced by one or more classes',
   },
@@ -758,10 +704,7 @@ describe('Api/apiHandler dispatcher', () => {
       throw thrownError;
     });
 
-    const response = handleApiRequest(
-      'updateYearGroup',
-      buildReferenceDataParams('updateYearGroup')
-    );
+    const response = handleApiRequest('updateYearGroup', REFERENCE_DATA_PARAMS.updateYearGroup);
 
     expectFailureEnvelope(response, {
       code: 'INTERNAL_ERROR',
@@ -807,11 +750,11 @@ describe('Api/apiHandler dispatcher', () => {
     (methodName) => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
-      const params = buildReferenceDataParams(methodName);
+      const params = REFERENCE_DATA_PARAMS[methodName];
       const expectedData =
         methodName === 'deleteCohort' || methodName === 'deleteYearGroup'
           ? { transport: 'plain-data', methodName }
-          : buildReferenceDataResult(methodName);
+          : REFERENCE_DATA_RESULTS[methodName];
 
       globalThis[methodName].mockImplementation(() => expectedData);
 
@@ -834,8 +777,8 @@ describe('Api/apiHandler dispatcher', () => {
     (methodName) => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
-      const params = buildAbClassTransportParams(methodName);
-      const expectedData = buildAbClassTransportResult(methodName);
+      const params = ABCLASS_TRANSPORT_PARAMS[methodName];
+      const expectedData = ABCLASS_TRANSPORT_RESULTS[methodName];
 
       globalThis[methodName].mockImplementation(() => expectedData);
 
@@ -1106,7 +1049,7 @@ describe('Api/apiHandler dispatcher', () => {
       throw new Error('Something else exploded');
     });
 
-    const response = handleApiRequest('deleteCohort', buildReferenceDataParams('deleteCohort'));
+    const response = handleApiRequest('deleteCohort', REFERENCE_DATA_PARAMS.deleteCohort);
 
     expect(response).toMatchObject({
       ok: false,
@@ -1122,10 +1065,7 @@ describe('Api/apiHandler dispatcher', () => {
       throw new Error('year-group update exploded');
     });
 
-    const response = handleApiRequest(
-      'updateYearGroup',
-      buildReferenceDataParams('updateYearGroup')
-    );
+    const response = handleApiRequest('updateYearGroup', REFERENCE_DATA_PARAMS.updateYearGroup);
 
     expectFailureEnvelope(response, {
       code: 'INTERNAL_ERROR',
@@ -1138,10 +1078,7 @@ describe('Api/apiHandler dispatcher', () => {
       throw new Error('delete exploded');
     });
 
-    const response = handleApiRequest(
-      'deleteABClass',
-      buildAbClassTransportParams('deleteABClass')
-    );
+    const response = handleApiRequest('deleteABClass', ABCLASS_TRANSPORT_PARAMS.deleteABClass);
 
     expectFailureEnvelope(response, {
       code: 'INTERNAL_ERROR',
@@ -1282,9 +1219,10 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('maps known custom error names with missing message to INTERNAL_ERROR', () => {
     globalThis.getAuthorisationStatus = vi.fn(() => {
-      throw {
-        name: 'ApiValidationError',
-      };
+      const error = new Error('placeholder message');
+      error.name = 'ApiValidationError';
+      error.message = undefined;
+      throw error;
     });
 
     const { ApiDispatcher } = loadApiHandlerModule();
