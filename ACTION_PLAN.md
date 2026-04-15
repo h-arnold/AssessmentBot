@@ -436,9 +436,11 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
   - Optional `@remarks` review outcome: None. The final code paths are sufficiently explained by the updated docs and concise JSDoc.
 - **Delivery evidence:**
   - Branch: `chore/apihandler-gas-log-preservation-spec`.
-  - Documentation-sync delivery commit: `ee52ce4f9314ddfd9ddf4eec6c332de5e4f0ff06` — `docs: sync final rollout documentation`.
-  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`2701652..ee52ce4` on `origin/chore/apihandler-gas-log-preservation-spec`).
-  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record final docs sync evidence`.
+  - Documentation-sync delivery commit: `ee52ce488fade400cfd6416ff0f3a8446fa8f833` — `docs: sync final rollout documentation`.
+  - Delivery push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`2701652..ee52ce4` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - ACTION_PLAN evidence follow-up commit: `42a6a306cd6a19efd293a9e708d67ef18e1fa4b5` — `docs: record final docs sync evidence`.
+  - Evidence follow-up push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`ee52ce4..42a6a30` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - Forward-only ACTION_PLAN evidence correction commit message: `docs: correct final docs sync evidence`.
 - **Deviations from plan:** None.
 
 ---
