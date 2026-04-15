@@ -2,10 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { loadBuilderConfig, resolveBuildDir, resolveBuilderPaths } from './config.js';
 import { BuildStageError } from './lib/errors.js';
 
 const TEMP_ROOT = path.join(os.tmpdir(), 'builder-config-spec');
+const SPEC_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(SPEC_DIR, '..', '..', '..');
+const ROOT_PACKAGE_JSON_PATH = path.join(REPO_ROOT, 'package.json');
+const ROOT_PACKAGE_LOCK_PATH = path.join(REPO_ROOT, 'package-lock.json');
+
 async function resetDir(targetPath: string): Promise<void> {
   await fs.rm(targetPath, { recursive: true, force: true });
   await fs.mkdir(targetPath, { recursive: true });
@@ -30,9 +37,9 @@ function createValidConfig(): {
     backendDir: 'src/backend',
     buildDir: 'build',
     jsonDbApp: {
-      pinnedSnapshotDir: 'vendor/jsondbapp',
-      sourceFiles: ['src/a.js'],
-      publicExports: ['loadDatabase'],
+      pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+      sourceFiles: ['src/04_core/99_PublicAPI.js'],
+      publicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
     },
   };
 }
@@ -90,6 +97,26 @@ describe('loadBuilderConfig', () => {
     await expect(loadBuilderConfig(configPath)).rejects.toBeInstanceOf(BuildStageError);
   });
 
+  it('throws BuildStageError with stage "preflight-clean" when jsonDbApp config shape is malformed', async () => {
+    const configPath = await writeConfig(
+      'malformed-jsondbapp',
+      JSON.stringify({
+        ...createValidConfig(),
+        jsonDbApp: {
+          pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+          sourceFiles: 'src/04_core/99_PublicAPI.js',
+          publicExports: ['loadDatabase'],
+        },
+      }),
+    );
+
+    await expect(loadBuilderConfig(configPath)).rejects.toMatchObject({
+      name: 'BuildStageError',
+      stage: 'preflight-clean',
+    });
+    await expect(loadBuilderConfig(configPath)).rejects.toBeInstanceOf(BuildStageError);
+  });
+
   it('throws BuildStageError with stage "preflight-clean" when config file is missing', async () => {
     const configPath = path.join(TEMP_ROOT, 'missing', 'builder.config.json');
 
@@ -98,6 +125,30 @@ describe('loadBuilderConfig', () => {
       stage: 'preflight-clean',
     });
     await expect(loadBuilderConfig(configPath)).rejects.toBeInstanceOf(BuildStageError);
+  });
+
+  it('declares a direct zod dependency in package metadata for builder config schema validation', async () => {
+    const packageJson = JSON.parse(await fs.readFile(ROOT_PACKAGE_JSON_PATH, 'utf-8')) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const packageLock = JSON.parse(await fs.readFile(ROOT_PACKAGE_LOCK_PATH, 'utf-8')) as {
+      packages?: Record<
+        string,
+        { dependencies?: Record<string, string>; devDependencies?: Record<string, string> }
+      >;
+      dependencies?: Record<string, unknown>;
+    };
+
+    const packageJsonDirectZodVersion =
+      packageJson.dependencies?.zod ?? packageJson.devDependencies?.zod;
+    const packageLockRootDirectZod =
+      packageLock.packages?.['']?.dependencies?.zod ??
+      packageLock.packages?.['']?.devDependencies?.zod ??
+      packageLock.dependencies?.zod;
+
+    expect(packageJsonDirectZodVersion).toBeDefined();
+    expect(packageLockRootDirectZod).toBeDefined();
   });
 });
 
@@ -238,5 +289,110 @@ describe('resolveBuilderPaths', () => {
     await assertBuildStageError(() =>
       resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
     );
+  });
+
+  it('rejects empty JsonDbApp source-file arrays', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: [],
+        publicExports: ['loadDatabase'],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('rejects empty JsonDbApp public-export arrays', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['src/04_core/99_PublicAPI.js'],
+        publicExports: [],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('rejects duplicate JsonDbApp configured source files', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['src/04_core/99_PublicAPI.js', 'src/04_core/99_PublicAPI.js'],
+        publicExports: ['loadDatabase'],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('rejects duplicate JsonDbApp public exports', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['src/04_core/99_PublicAPI.js'],
+        publicExports: ['loadDatabase', 'loadDatabase'],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('rejects JsonDbApp source files that escape the vendored snapshot root', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['../outside.js'],
+        publicExports: ['loadDatabase'],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('rejects JsonDbApp source files that use absolute paths', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['/absolute/path.js'],
+        publicExports: ['loadDatabase'],
+      },
+    });
+
+    await assertBuildStageError(() =>
+      resolveBuilderPaths({ builderRoot, repoRoot, configPath }),
+    );
+  });
+
+  it('normalises Windows-style JsonDbApp configured source-file separators', async () => {
+    await writeBuilderConfig({
+      ...createValidConfig(),
+      jsonDbApp: {
+        pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+        sourceFiles: ['src\\04_core\\99_PublicAPI.js'],
+        publicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
+      },
+    });
+
+    const resolvedPaths = await resolveBuilderPaths({ builderRoot, repoRoot, configPath });
+
+    expect(resolvedPaths.jsonDbAppSourceFiles).toEqual(['src/04_core/99_PublicAPI.js']);
   });
 });

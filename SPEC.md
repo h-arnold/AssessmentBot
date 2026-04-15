@@ -1,229 +1,322 @@
-# API Handler GAS Logging Preservation Specification
+# Builder Reliability and Review Follow-through Specification
 
 ## Status
 
 - Draft v1.0
-- Created on 14 April 2026 to plan a backend-only change that preserves developer diagnostics in Google Apps Script execution logs without changing the frontend transport contract
+- Replaces the stale apiHandler planning artefact with a maintenance specification for the agreed actionable items in `CODE_REVIEW_EVAL.md`
 
 ## Purpose
 
-This document defines the intended behaviour for preserving backend logging visibility across `apiHandler` downstream execution paths.
+This document defines the intended behaviour for the agreed review-fix maintenance work across the active builder pipeline and a small set of bounded repository hygiene follow-through items.
 
 The feature will be used to:
 
-- preserve faithful developer diagnostics in Google Apps Script execution logs when allowlisted backend handlers fail
-- keep the frontend transport envelope stable and safe while backend debugging improves
-- add regression protection so future `apiHandler` changes cannot quietly degrade log visibility
+- restore a truthful, deterministic builder contract for JsonDbApp inputs
+- harden builder reliability across path handling, filesystem error reporting, and network-dependent tooling
+- complete the agreed low-risk follow-through items without widening scope beyond `CODE_REVIEW_EVAL.md`
 
 This feature is **not** intended to:
 
-- expose backend stack traces, raw exceptions, or internal diagnostic payloads to the frontend
-- redesign downstream service/controller logging conventions beyond the `apiHandler` transport boundary
+- redesign the broader builder pipeline beyond the agreed review comments
+- introduce frontend layout or workflow changes
+- refactor deprecated `src/AdminSheet` code beyond minimal documentation-quality cleanup
 
 ## Agreed product decisions
 
-1. The frontend transport contract remains unchanged: successful responses stay `{ ok: true, requestId, data }` and failures stay `{ ok: false, requestId, error: { code, message, retriable } }`.
-2. `apiHandler` remains the top-level transport boundary and may continue catching downstream exceptions, but caught failures must still be written to Google Apps Script execution logs with the original diagnostic fidelity available at the boundary.
-3. For any downstream handler failure, `apiHandler` must emit one concise developer-facing boundary error log that includes the backend-owned `requestId`, the allowlisted method name, and the original thrown value or error object without first collapsing it to a lossy `String(...)`.
-4. For thrown `Error` values, acceptance must be proven at the Google Apps Script execution-log seam by asserting the `console.error` payload produced by the current `ABLogger` serialisation preserves the top-level `name`, `message`, and `stack`.
-5. Existing downstream `ABLogger` output must remain observable in execution logs. The transport boundary must not widen the frontend payload or attempt to mirror backend diagnostics into the frontend envelope.
-6. Boundary logging must stay concise and contextual. It must not add a second transport-generated series of per-field detail logs when downstream code has already emitted detailed diagnostics; the single boundary error log is the only transport-added diagnostic entry.
-7. Error-code mapping remains unchanged: known backend failures may still map to `RATE_LIMITED`, `INVALID_REQUEST`, `UNKNOWN_METHOD`, or `IN_USE`, and all other failures may still map to `INTERNAL_ERROR` with the existing generic frontend message.
+1. The committed `scripts/builder/vendor/jsondbapp` snapshot is the canonical runtime builder input for both JsonDbApp inlining and JsonDb manifest merge.
+2. This maintenance pass must replace the current placeholder vendored JsonDbApp files with the actual upstream JsonDbApp `v0.1.1` builder subset committed in-repo.
+3. The committed builder subset is limited to the real upstream `appsscript.json` plus the real upstream contents for every file explicitly enumerated in the updated `jsonDbApp.sourceFiles` allowlist in `builder.config.json`; unrelated upstream files do not need to be vendored for this pass, and no implicit transitive-closure or runtime-discovery rule applies.
+4. `builder.config.json` remains the runtime source of truth for JsonDbApp inclusion. In this maintenance pass, `jsonDbApp.sourceFiles` must be synchronised to the real committed `v0.1.1` subset and must enumerate the exact committed vendored subset before implementation is complete because the current placeholder-era list does not match upstream.
+5. Stage 6 (`resolve-jsondb-source`) is retained only as a local validation-and-normalisation step over the committed vendored snapshot. It is the canonical blocking owner for rejecting missing configured files and placeholder vendored content before downstream inlining, and it must not auto-discover replacements from disk.
+6. Stage 6 must stop downloading archives, extracting releases, shelling out to `curl` or `tar`, or repointing `BuilderPaths` to a workdir copy; resolved JsonDbApp paths stay pointed at the configured vendored snapshot.
+7. Builder config validation in the active `scripts/builder` surface must be brought back into line with the builder AGENTS Zod-first policy in code, not by weakening the policy document. This change includes adding `zod` as a direct dependency owned in `package.json` and `package-lock.json`, with dependency installation and lockfile validation treated as part of the builder config-validation change. The Zod schema becomes the single source of truth for config validation, lives in an adjacent schema module, and `BuilderConfig`-related TypeScript types are inferred from it.
+8. `jsonDbApp.sourceFiles` and `jsonDbApp.publicExports` must both be non-empty and unique after normalisation. `jsonDbApp.sourceFiles` entries may be normalised from Windows-style separators to forward-slash relative paths during config loading, but duplicates, invalid relative paths, or out-of-root paths must fail validation.
+9. Stage 7 inlining order remains the current deterministic lexicographic relative-path order rather than config-array order.
+10. The real upstream `v0.1.1` public exports relevant to AssessmentBot remain `loadDatabase` and `createAndInitialiseDatabase`; `jsonDbApp.publicExports` continues to expose only that confirmed API.
+11. Inspection of the real upstream `v0.1.1` manifest shows extra top-level fields (`timeZone`, `exceptionLogging`, `runtimeVersion`), but AssessmentBot’s backend manifest already owns those values. Stage 8 merge semantics therefore remain unchanged for this maintenance pass: only OAuth scopes and enabled advanced services are merged from JsonDbApp into the final output.
+12. Builder relative-path reporting must normalise single Windows path separators (`\`) to forward slashes everywhere relative file lists are emitted or validated.
+13. The shared recursive file walker in `scripts/builder/src/lib/fs.ts` becomes the canonical implementation. Step-local duplication should be removed where the shared helper already fits the contract.
+14. Per-file backend copy failures must be wrapped in `BuildStageError` with `backend-copy` stage context and the relevant source or destination path details.
+15. All remaining in-scope network calls must use explicit finite timeouts and fail with actionable context. For this maintenance pass that applies to the Sonar PR duplication helper script; the builder no longer performs a JsonDbApp release download at runtime.
+16. Smaller follow-through items stay deliberately bounded to: removing the unused import in `eslint.config.js`; fixing the broken docs anchor in `docs/setup/configOptions.md`; replacing placeholder or empty JSDoc in the listed deprecated AdminSheet files with concise meaningful documentation or removing empty blocks; renaming the mismatched `requestStore` test title to match its assertion intent; and making `.husky/pre-commit` block commits when `npm run lint:fix` fails.
 
 ## Existing system constraints
 
 ### Backend or API constraints already in place
 
-- `src/backend/z_Api/apiHandler.js` is the canonical frontend transport entrypoint and always returns an envelope rather than throwing to the frontend caller.
-- Admission and completion tracking in `apiHandler` must stay intact for all allowlisted methods, including failure paths.
-- `ABLogger` is the backend developer-logging abstraction and serialises `Error` objects to console-friendly payloads including `name`, `message`, and `stack`.
-- `ProgressTracker.logError(...)` is for user-facing progress state and also writes developer diagnostics through `ABLogger`.
+- The builder entrypoint `scripts/builder/src/build-gas-bundle.ts` runs a fixed stage sequence that later steps already consume through `BuilderPaths`.
+- `runJsonDbInlineNamespace(...)` expects `jsonDbAppPinnedSnapshotDir`, `jsonDbAppSourceFiles`, and `jsonDbAppPublicExports` to be fully resolved before the inlining stage runs.
+- `jsondb-inline-namespace.ts` currently rejects placeholder snapshot content, but this maintenance pass moves the canonical blocking ownership for that rejection upstream to Stage 6 so downstream inlining may assume validated real source.
+- `runMergeManifest(...)` already treats the backend manifest as the owner of top-level manifest fields and merges JsonDbApp scopes/services into that base.
+- Root backend linting and Vitest flows already exist for `tests/**/*.js`, including `tests/api/requestStore.test.js`.
 
 ### Current data-shape constraints
 
-- The request-store helpers in `src/backend/z_Api/requestStore.js` currently persist compact request metadata and a bounded `errorMessage` string for failed requests.
-- The request store is not the canonical source of full diagnostic detail and should remain compact enough for Apps Script user-properties storage.
-- Some thrown values may be non-`Error` values; the transport boundary still needs a deterministic logging and mapping outcome for those cases.
-- Current `ABLogger` serialisation preserves top-level `name`, `message`, and `stack` for `Error` objects but does not recursively serialise deep cause chains.
+- `BuilderConfig` currently defines `frontendDir`, `backendDir`, `buildDir`, and `jsonDbApp.{ pinnedSnapshotDir, sourceFiles, publicExports }`.
+- `jsonDbApp.publicExports` remains a configured allowlist for the namespace wrapper surface.
+- `jsonDbApp.sourceFiles` remains an authoritative configured allowlist of relative JavaScript paths beneath the vendored snapshot root; for this maintenance pass that allowlist must enumerate the exact committed vendored subset, the builder may normalise these entries to forward-slash form, but it must not replace them from a downloaded release scan, directory walk, or implicit transitive-closure rule.
+- Final builder output still depends on deterministic relative paths such as `appsscript.json`, `JsonDbApp.inlined.js`, and `UI/ReactApp.html`.
 
 ### Frontend or consumer architecture constraints
 
-- Frontend callers consume only the stable transport envelope documented in `docs/developer/backend/api-layer.md`.
-- Frontend code must not receive backend stacks, raw exception objects, or internal logging metadata.
-- Existing frontend handling of `INTERNAL_ERROR` depends on the generic `"Internal API error."` message remaining stable.
+- No frontend route, layout, or visible workflow changes are part of this maintenance work.
+- Existing repository commands in `package.json` are the validation surface for this work; the plan must not rely on invented helper commands.
+- No TypeScript or ESLint shared-config behaviour change is required for this scope; the `eslint.config.js` item is limited to removing an unused import rather than changing lint policy semantics.
 
 ## Domain and contract recommendations
 
 ### Why this approach is preferable
 
-- It restores developer observability where the failure is actually caught, which is the point currently hiding stack-rich diagnostics from the Google Apps Script execution log.
-- It preserves the current frontend safety boundary and avoids coupling UI behaviour to backend diagnostic detail.
-- It keeps the change local to the transport/error-boundary path and its tests rather than spreading logging policy across unrelated controllers.
+- It makes the builder contract truthful again by aligning runtime behaviour to the committed vendored-snapshot configuration instead of silently overriding it.
+- It improves portability and determinism by removing runtime dependence on external archive tools and a network download in the active builder path.
+- It resolves the placeholder-snapshot blocker directly enough that the builder can remain functional after the contract change.
+- It keeps the deprecated-surface follow-through deliberately small so the maintenance pass does not expand into broader refactors.
 
 ### Recommended data shapes
 
-#### Boundary failure log context
+#### Builder JsonDbApp contract
 
-```js
+```ts
 {
-  phase: 'handler',
-  requestId: 'uuid',
-  method: 'allowlistedMethodName'
+  jsonDbApp: {
+    pinnedSnapshotDir: 'scripts/builder/vendor/jsondbapp',
+    sourceFiles: ['src/...real-upstream-files...'],
+    publicExports: ['loadDatabase', 'createAndInitialiseDatabase']
+  }
 }
 ```
 
-The contextual metadata should accompany the original thrown value or error object in the developer log entry.
-The transport boundary must rely on the existing single-entry `ABLogger.error(...)` serialisation rather than emitting separate stack, message, or name log lines of its own.
+Contract rules:
 
-#### Failed request tracking record
+- `pinnedSnapshotDir` identifies the vendored snapshot root inside the repository.
+- `sourceFiles` is a non-empty, unique configured inclusion allowlist of relative `.js` files beneath that root.
+- `publicExports` is a non-empty, unique configured namespace export allowlist.
+- Config loading normalises `sourceFiles` path separators to forward slashes before uniqueness checks and downstream use.
 
-```js
+#### Builder resolved-path expectations
+
+```ts
 {
-  requestId: 'uuid',
-  method: 'allowlistedMethodName',
-  status: 'error',
-  startedAtMs: 0,
-  finishedAtMs: 0,
-  errorMessage: 'compact diagnostic summary'
+  jsonDbAppPinnedSnapshotDir: '/absolute/path/to/scripts/builder/vendor/jsondbapp',
+  jsonDbAppManifestPath: '/absolute/path/to/scripts/builder/vendor/jsondbapp/appsscript.json',
+  jsonDbAppSourceFiles: ['src/...real-upstream-files...']
 }
 ```
 
-The request-store record may keep a compact summary for internal tracking, but it must not be treated as a substitute for execution-log diagnostics.
+Rules:
+
+- The resolved paths point at the committed vendor snapshot, not `build/work`.
+- Stage 6 may validate and normalise these values.
+- Stage 6 must not repoint them to a downloaded release tree.
 
 ### Naming recommendation
 
 Prefer:
 
-- `boundary failure log`
-- `execution-log diagnostics`
-- `transport error envelope`
+- `vendored snapshot`
+- `configured source-file allowlist`
+- `builder stage context`
+- `blocking lint gate`
 
 Avoid:
 
-- `frontend error details`
-- `swallowed error fix`
-
-Explain changes in terms of preserved diagnostics at the transport boundary rather than in terms of exposing more data to the UI.
+- `runtime release snapshot`
+- `downloaded source of truth`
+- `best-effort lint gate`
 
 ### Validation recommendation
 
-#### Frontend
+#### Builder
 
-- No frontend validation or transport-shape change is required for this feature.
-- Existing frontend error handling should continue to rely only on `code`, `message`, and `retriable`.
+- Define the builder config schema first in an adjacent Zod schema module and infer `BuilderConfig` from it.
+- Update `package.json` and `package-lock.json` to own the direct `zod` dependency required by that schema, and treat dependency installation plus lockfile validation as part of this builder contract-alignment change.
+- Parse builder config through that schema so required fields, nested JsonDbApp fields, uniqueness rules, and string-array contracts fail with consistent `preflight-clean` stage context.
+- Validate that `jsonDbApp.pinnedSnapshotDir` resolves inside the repository, contains `appsscript.json`, and contains every configured source file.
+- Fail fast in Stage 6 on malformed config, invalid relative paths, missing vendored files, placeholder snapshot content, or filesystem copy failures; do not silently continue.
 
-#### Backend
+#### Repository hygiene follow-through
 
-- Preserve current envelope mapping behaviour for mapped and unmapped failures while adding execution-log assertions for the same paths.
-- Treat both `Error` and non-`Error` thrown values as testable transport-boundary cases.
-- Prove `Error` fidelity at the `console.error` seam rather than only at an `ABLogger` spy seam.
-- Verify that completion tracking still records failed requests after the logging-preservation change.
-
-### Display-resolution recommendation
-
-- Developer diagnostics belong in Google Apps Script execution logs, not in the frontend envelope or progress UI.
-- The frontend should continue resolving only the safe transport message presented by `apiHandler`.
+- Network helper scripts that remain in scope must pass an explicit timeout to their HTTP client API and surface timeout failure context.
+- Pre-commit gating changes and Sonar helper timeout changes must each have an explicit validation note in the action plan even if that validation is manual rather than automated.
+- Wording-only or docs-only fixes do not require contrived automated tests when no existing harness exists, but they must stay local to the agreed files.
 
 ## Feature architecture
 
 ### Placement
 
-- Canonical ownership remains in `src/backend/z_Api/apiHandler.js` with supporting request-store and test-helper updates only if required by the logging contract.
-- No parallel frontend transport path, alternate logger path, or deprecated `globals.js` transport should be introduced.
+- Canonical ownership for the main behaviour changes remains inside `scripts/builder`.
+- The bounded follow-through items are limited to the explicitly listed root docs, test, hook, deprecated AdminSheet files, the in-scope Sonar helper script, and the builder documentation that currently misstates the JsonDbApp contract.
+- No parallel builder entrypoint, alternate JsonDbApp source mechanism, or frontend layout document is introduced.
 
 ### Proposed high-level tree
 
 ```text
-apiHandler transport boundary
-├── admission tracking
-├── allowlisted handler invocation
-├── boundary failure logging for caught downstream errors
-├── completion tracking
-└── frontend envelope mapping
+build-gas-bundle.ts
+ resolveBuilderPaths / loadBuilderConfig
+ runResolveJsonDbSource
+ runJsonDbInlineNamespace
+ runMergeManifest
+ runBackendCopy
+ runMaterialiseOutput
+ runValidateOutput
 ```
 
 ### Out of scope for this surface
 
-- Controller or service refactors unrelated to `apiHandler` failure visibility
-- Broad migration of older `console.*` calls outside the explicit `apiHandler` logging-preservation scope
+- New tooling or automation for refreshing the vendored JsonDbApp snapshot from upstream releases after this maintenance pass.
+- Broader deprecated AdminSheet behaviour refactors or lint enablement.
+- Any not-agreed or de-prioritised comments listed in `CODE_REVIEW_EVAL.md`.
 
 ## Data loading and orchestration
 
 ### Required datasets or dependencies
 
-- `ABLogger`
-- `ProgressTracker`
-- request-store helpers used by `apiHandler`
+- `scripts/builder/builder.config.json`
+- root `package.json` and `package-lock.json` for the direct `zod` dependency introduced by builder config validation alignment
+- local repository filesystem contents under `scripts/builder/vendor/jsondbapp`
+- existing builder output directories under `build/`
+- SonarCloud API responses for the PR duplication helper script
 
 ### Prefetch or initialisation policy
 
 #### Startup
 
-- No new startup work is required.
-- Singleton initialisation behaviour should remain unchanged.
+- Builder startup resolves config and repository-relative paths locally.
+- Builder startup must not perform a JsonDbApp network fetch or archive extraction.
 
 #### Feature entry
 
-- The behaviour applies only when `apiHandler` executes an allowlisted backend method.
-- No new background or eager logging workflow should be introduced.
+- `runResolveJsonDbSource(...)` validates the vendored snapshot and configured source-file allowlist, rejects placeholder vendored content as the canonical Stage 6 blocking check, and leaves downstream JsonDbApp inlining to assume already-validated real source.
+- Repository hygiene items run only when the touched file or command is invoked; no extra startup work is introduced.
 
 #### Manual refresh
 
-- No manual refresh control is relevant to this backend-only feature.
+- No manual refresh workflow is added.
 
 ### Query or transport additions
 
-- No new API methods or frontend transport fields are introduced.
-- Existing error mapping and request lifecycle sequencing remain the same apart from preserved execution-log diagnostics.
+- None.
 
-## Core view model or behavioural model
+## Workflow specification
 
-### Suggested shape
+## Resolve builder config and JsonDbApp snapshot
 
-```js
-{
-  requestId: 'uuid',
-  method: 'allowlistedMethodName',
-  handlerOutcome: 'success' | 'mapped_failure' | 'unexpected_failure',
-  frontendEnvelope: 'unchanged',
-  executionLogDiagnostics: 'preserved'
-}
-```
+### Eligible inputs or preconditions
 
-### Derivation or merge rules
+- `builder.config.json` exists and is valid JSON.
+- Configured source directories and the vendored JsonDbApp snapshot resolve inside the repository.
 
-#### Success
+### Inputs, fields, or confirmation copy
 
-- A successful downstream call keeps the current success envelope and timing logs.
-- No new failure logging is emitted.
+- `frontendDir`
+- `backendDir`
+- `buildDir`
+- `jsonDbApp.pinnedSnapshotDir`
+- `jsonDbApp.sourceFiles`
+- `jsonDbApp.publicExports`
 
-#### Mapped failure
+### Behaviour
 
-- A downstream error that maps to an existing transport code still returns the current mapped envelope.
-- The boundary must still preserve developer diagnostics in execution logs before returning the mapped envelope.
-- The planned default is that mapped and expected downstream handler failures also receive the single boundary error-level log so execution-log behaviour stays uniform across failure paths.
+- Parse config through the builder-owned Zod schema and reject malformed or missing fields with `preflight-clean` stage context.
+- Own the direct `zod` dependency in `package.json` and `package-lock.json` as part of this config-validation change, with dependency installation and lockfile validation completed before builder verification.
+- Resolve the configured JsonDbApp snapshot to an absolute in-repo path, verify `appsscript.json` exists, verify every configured source file exists beneath the snapshot root, reject placeholder snapshot content as the canonical Stage 6 blocking failure before Stage 7, and leave resolved BuilderPaths pointed at the configured vendored snapshot.
+- Produce deterministic relative file metadata for downstream steps without downloading or extracting any release archive.
+- Surface invalid configuration or missing snapshot files as blocking builder failures.
 
-#### Unexpected failure
+## Materialise and validate final builder output
 
-- A downstream error that does not map to a known transport code still returns `INTERNAL_ERROR` with the current generic frontend message.
-- The boundary must preserve the original thrown diagnostics in execution logs before returning the failure envelope.
+### Eligible inputs or preconditions
 
-### Sort order or priority rules
+- The build pipeline has already populated `build/gas`.
 
-1. Preserve frontend contract stability.
-2. Preserve execution-log diagnostic fidelity.
-3. Preserve request lifecycle tracking and timing observability.
+### Behaviour
 
-- When both downstream logs and boundary logs exist, tests should assert presence and ordering only where the implementation makes that ordering deterministic.
+- Use consistent forward-slash normalisation for relative output file lists on Windows and non-Windows platforms.
+- Reuse the shared recursive file walker rather than keeping duplicate step-local traversal logic where the shared helper satisfies the need.
+- Keep required-file and forbidden-leakage checks unchanged in meaning while making the file enumeration implementation portable.
 
-## Explicit assumptions
+## Copy backend runtime files
 
-1. Fidelity preservation is limited to the top-level thrown value seen by `apiHandler`. This work does not expand `ABLogger` serialisation depth beyond the current top-level `name`, `message`, `stack`, and shallow `cause` behaviour.
-2. The default planning assumption is that all caught downstream handler failures, including mapped or expected failures, receive one boundary error-level log entry. If implementation review finds the resulting log volume unacceptable, that trade-off should be revisited explicitly rather than changed implicitly.
-3. Downstream-log regression coverage will be worded and implemented as non-suppression of controlled downstream logging stubs unless a section explicitly says to load a real class with shims.
+### Eligible inputs or preconditions
 
-## Main user-facing surface specification
+- `paths.backendDir` exists and `paths.buildGasDir` is writable.
 
-### Recommended components or primitives
+### Behaviour
 
-- None. This is a backend-only change, so no dedicated frontend layout spec is required.
+- Continue copying only runtime-relevant backend JavaScript files.
+- Wrap per-file destination-directory creation and copy failures in `BuildStageError` with `backend-copy` stage context and path detail so diagnostics identify the failing file.
+
+## Apply bounded repository hygiene follow-through
+
+### Behaviour
+
+- Add explicit timeouts to the in-scope Sonar helper network request and keep timeout failures diagnosable.
+- Keep the `requestStore` test descriptive text aligned with what the assertion actually proves.
+- Make the pre-commit hook fail the commit when `npm run lint:fix` fails.
+- Limit deprecated AdminSheet changes to documentation-quality cleanup only.
+- Update builder-facing documentation so Stage 6, config examples, and public-export examples no longer imply the stale contract.
+
+## Error, loading, and empty-state rules
+
+### Blocking failure
+
+- Invalid builder config, missing vendored snapshot files, placeholder vendored snapshot content rejected by Stage 6 before Stage 7, invalid relative source-file entries, or per-file backend copy failures are blocking builder errors.
+- Network timeout or HTTP fetch failure in the Sonar helper script must fail with actionable context rather than hanging indefinitely.
+
+### Partial-load or partial-success failure
+
+- None. This maintenance pass should fail fast rather than degrading builder output quality.
+
+## Backend changes required to support agreed behaviour
+
+1. Builder config contract alignment
+   - Replace manual config validation with a Zod-backed schema module and inferred config types while preserving `BuildStageError` stage context.
+   - Add the direct `zod` dependency in `package.json` and `package-lock.json`, and treat dependency installation plus lockfile validation as required follow-through for the schema adoption.
+   - Replace the placeholder vendored JsonDbApp snapshot with the real pinned `v0.1.1` subset and synchronise `jsonDbApp.sourceFiles` so it enumerates that exact committed subset.
+   - Stop runtime reassignment to a downloaded release snapshot, keep Stage 6 as local validation only, and make Stage 6 the canonical blocking owner for placeholder-content rejection before Stage 7.
+2. Builder reliability hardening
+   - Correct Windows path-separator normalisation in the listed builder steps.
+   - Reuse the shared recursive file walker and fix its path-join portability issue.
+   - Wrap backend copy loop filesystem failures with stage context.
+3. Bounded repository follow-through
+   - Add explicit timeout handling to the in-scope Sonar helper request.
+   - Fix the listed lint/docs/JSDoc/test-title/pre-commit items without expanding to unrelated cleanup.
+   - Update builder documentation where the JsonDbApp contract is currently stale.
+
+## Planning handoff notes
+
+- Sequence contract-alignment work before downstream builder-step hardening so tests can target the settled JsonDbApp source-of-truth.
+- No frontend layout spec is required because this scope does not materially change any frontend layout, route, or workflow.
+- Keep docs and deprecated-surface cleanup in later sections after builder reliability changes land.
+
+## Testing expectations
+
+- Add or update builder unit tests around config parsing, JsonDbApp snapshot resolution, Stage 6 ownership of placeholder rejection before Stage 7, non-repointed vendored-snapshot BuilderPaths, backend-copy failures, and output-path normalisation.
+- Replace archive/download-centred `resolve-jsondb-source` coverage with vendored-snapshot fixture coverage that proves Stage 6 validates the exact local committed files named in `builder.config.json` and no longer depends on network fetches, external archive tooling, or runtime file discovery.
+- Treat `package.json` and `package-lock.json` updates for direct `zod` adoption as part of the builder contract change, and run builder verification against the installed dependency tree reflected in the updated lockfile.
+- Keep builder verification grounded in existing commands: `npm run builder:test`, `npm run builder:lint`, `npm run builder:compile`, and the final end-to-end builder command already present in `package.json`.
+- Keep root validation focused on `npm run lint` and `npm test -- tests/api/requestStore.test.js` for the touched non-builder test surface.
+- Record explicit manual validation steps for the Sonar helper timeout behaviour and the `.husky/pre-commit` blocking behaviour if no existing automated harness is introduced.
+- For docs-only or wording-only items with no existing automated harness, record that red-first automated tests are intentionally skipped.
+
+## Documentation and rollout notes
+
+- Update root `SPEC.md` and `ACTION_PLAN.md` to replace the stale apiHandler planning artefacts for this maintenance pass.
+- Update `docs/developer/builder/builder-script.md` so its JsonDbApp configuration example, public-export example, and Stage 6 narrative all match the final committed-vendor contract.
+- If code comments or configuration wording are changed, keep them aligned with the vendored-snapshot contract and British English usage.
+- Retain discoverable provenance for the vendored JsonDbApp source as upstream tag `v0.1.1` in the active builder code or adjacent builder documentation without reintroducing runtime download behaviour.
+- Manual future refresh automation for the vendored JsonDbApp snapshot is deliberately deferred; this maintenance pass only restores truthful runtime behaviour.
+
+## V1 scope recommendation
+
+### Include in v1
+
+- Builder contract realignment to the vendored JsonDbApp snapshot, including replacement of the current placeholder snapshot with the real pinned `v0.1.1` subset
+- Builder reliability fixes for path normalisation, shared file walking, backend copy error wrapping, and in-scope network timeout handling
+- The explicitly listed repo hygiene and builder-doc follow-through items only
+
+### Defer from v1
+
+- New tooling or automation for updating the vendored JsonDbApp snapshot
+- Broader builder refactors unrelated to the agreed review comments
+- Any additional cleanup in deprecated AdminSheet code beyond the listed JSDoc work

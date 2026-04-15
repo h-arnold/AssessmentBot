@@ -12,6 +12,7 @@ import {
 } from './jsondb-inline-namespace.js';
 
 const LOAD_DATABASE_EXPORT = 'loadDatabase,';
+const REAL_VENDORED_SOURCE_FILES = ['src/04_core/Database.js', 'src/04_core/99_PublicAPI.js'];
 
 describe('generateJsonDbNamespaceWrapper', () => {
   it('outputs the expected namespace declaration wrapper', () => {
@@ -49,20 +50,47 @@ describe('runJsonDbInlineNamespace', () => {
   beforeEach(async () => {
     tempRoot = await createTempDir('jsondb-inline-namespace-');
     paths = createBuilderPaths(tempRoot, {
-      jsonDbAppSourceFiles: ['src/01-core.js', 'src/02-database.js'],
+      jsonDbAppSourceFiles: [...REAL_VENDORED_SOURCE_FILES],
+      jsonDbAppPublicExports: ['loadDatabase', 'createAndInitialiseDatabase'],
     });
 
-    await fs.mkdir(path.join(paths.jsonDbAppPinnedSnapshotDir, 'src'), { recursive: true });
+    await fs.mkdir(path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core'), { recursive: true });
     await fs.mkdir(paths.buildGasDir, { recursive: true });
 
     await fs.writeFile(
-      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '01-core.js'),
-      'function Validate() {}\nfunction loadDatabase() {}\n',
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', 'Database.js'),
+      [
+        'function Database(config) {',
+        '  this.config = config;',
+        '}',
+        'Database.prototype.initialise = function () {};',
+        'Database.prototype.createDatabase = function () {};',
+        '',
+      ].join('\n'),
       'utf-8',
     );
     await fs.writeFile(
-      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '02-database.js'),
-      'function createAndInitialiseDatabase() {}\nfunction JsonDbInternal() {}\n',
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', '99_PublicAPI.js'),
+      [
+        'function loadDatabase(config) {',
+        '  const db = new Database(config);',
+        '  db.initialise();',
+        '  return db;',
+        '}',
+        '',
+        'function createAndInitialiseDatabase(config) {',
+        '  const db = new Database(config);',
+        '  db.createDatabase();',
+        '  db.initialise();',
+        '  return db;',
+        '}',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', 'UnusedHelper.js'),
+      'function leakedHelper() {}\n',
       'utf-8',
     );
   });
@@ -71,7 +99,7 @@ describe('runJsonDbInlineNamespace', () => {
     await fs.rm(tempRoot, { recursive: true, force: true });
   });
 
-  it('writes JsonDbApp.inlined.js and restricts exported API list', async () => {
+  it('writes JsonDbApp.inlined.js from the configured vendored source subset', async () => {
     const result = await runJsonDbInlineNamespace(paths);
     const output = await fs.readFile(result.outputPath, 'utf-8');
 
@@ -83,11 +111,48 @@ describe('runJsonDbInlineNamespace', () => {
     expect(output).toContain('const JsonDbApp = (function () {');
     expect(output).toContain('loadDatabase,');
     expect(output).toContain('createAndInitialiseDatabase,');
-    expect(output).not.toContain('JsonDbInternal,');
-    expect(output).not.toContain('Validate,');
+    expect(output).not.toContain('leakedHelper');
   });
 
-  it('fails when configured exports are not declared in source', async () => {
+  it('emits configured JsonDbApp source files in lexicographic relative-path order', async () => {
+    paths.jsonDbAppSourceFiles = [
+      'src/04_core/30-third.js',
+      'src/04_core/10-first.js',
+      'src/04_core/20-second.js',
+    ];
+
+    const lineBreak = '\n';
+
+    await fs.writeFile(
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', '10-first.js'),
+      ['// first', 'function alphaHelper() {}', ''].join(lineBreak),
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', '20-second.js'),
+      ['// second', 'function loadDatabase() {', '  return alphaHelper();', '}', ''].join(lineBreak),
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', '30-third.js'),
+      [
+        '// third',
+        'function createAndInitialiseDatabase() {',
+        '  return loadDatabase();',
+        '}',
+        '',
+      ].join(lineBreak),
+      'utf-8',
+    );
+
+    const result = await runJsonDbInlineNamespace(paths);
+    const output = await fs.readFile(result.outputPath, 'utf-8');
+
+    expect(output.indexOf('// first')).toBeLessThan(output.indexOf('// second'));
+    expect(output.indexOf('// second')).toBeLessThan(output.indexOf('// third'));
+  });
+
+  it('fails when configured exports are not declared in the vendored source subset', async () => {
     paths.jsonDbAppPublicExports = ['loadDatabase', 'missingExport'];
 
     await expect(runJsonDbInlineNamespace(paths)).rejects.toThrow(
@@ -95,20 +160,8 @@ describe('runJsonDbInlineNamespace', () => {
     );
   });
 
-  it('fails when source files contain placeholder snapshot implementations', async () => {
-    await fs.writeFile(
-      path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '01-core.js'),
-      "function loadDatabase() { throw new Error('JsonDbApp snapshot placeholder'); }",
-      'utf-8',
-    );
-
-    await expect(runJsonDbInlineNamespace(paths)).rejects.toThrow(
-      'Pinned JsonDbApp snapshot contains placeholder implementations and cannot be bundled.',
-    );
-  });
-
   it('wraps unexpected source read failures with stage context', async () => {
-    const sourcePath = path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '01-core.js');
+    const sourcePath = path.join(paths.jsonDbAppPinnedSnapshotDir, 'src', '04_core', 'Database.js');
     await fs.rm(sourcePath);
     await fs.mkdir(sourcePath);
 
@@ -119,15 +172,14 @@ describe('runJsonDbInlineNamespace', () => {
     });
   });
 
-  it('keeps JsonDb internals isolated from global declarations scan', async () => {
+  it('keeps JsonDb internals isolated from the top-level declarations scan', async () => {
     const result = await runJsonDbInlineNamespace(paths);
     const output = await fs.readFile(result.outputPath, 'utf-8');
 
     const declarations = scanFileTopLevelDeclarations(output);
 
     expect(declarations).toEqual(['JsonDbApp']);
-    expect(declarations).not.toContain('Validate');
-    expect(declarations).not.toContain('JsonDbInternal');
+    expect(declarations).not.toContain('Database');
     expect(declarations).not.toContain('loadDatabase');
     expect(declarations).not.toContain('createAndInitialiseDatabase');
   });
