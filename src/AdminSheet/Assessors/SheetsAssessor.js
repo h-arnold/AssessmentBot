@@ -1,14 +1,9 @@
-/**  Sheets Assessor Class
- * Handles the non-LLM assessment of student responses in Google Sheets assignments.
- *
- */
-
 /**
- *
+ * Handles the non-LLM assessment of student responses in Google Sheets assignments.
  */
 class SheetsAssessor {
   /**
-   *
+   * Stores the task definitions and student submissions for one assessment run.
    */
   constructor(tasks, studentTasks) {
     this.tasks = tasks;

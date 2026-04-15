@@ -188,7 +188,7 @@ describe('Api/requestStore', () => {
   });
 
   describe('pruneStaleEntries', () => {
-    it('uses a provided reference time when pruning started entries', () => {
+    it('removes only started entries older than the provided reference time threshold', () => {
       const { pruneStaleEntries } = loadRequestStoreModule();
 
       const store = {

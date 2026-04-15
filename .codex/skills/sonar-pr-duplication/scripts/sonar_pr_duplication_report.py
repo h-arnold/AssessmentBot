@@ -6,16 +6,19 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import socket
 import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from urllib.parse import parse_qs, quote, urlparse
+from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 
 DUPLICATION_URL_RE = re.compile(r"https://sonarcloud\.io/component_measures\?[^\s)]+")
+NETWORK_TIMEOUT_SECONDS = 15
 
 
 class ScriptError(RuntimeError):
@@ -249,8 +252,23 @@ def fetch_open_issues(
 def fetch_json(url: str) -> dict[str, Any]:
     """Fetch and decode JSON from a URL."""
 
-    with urlopen(url) as response:  # noqa: S310 - public SonarCloud API URL from bot comment
-        return json.load(response)
+    timeout_message = f"Timed out after {NETWORK_TIMEOUT_SECONDS}s fetching Sonar API JSON from {url}"
+
+    try:
+        with urlopen(url, timeout=NETWORK_TIMEOUT_SECONDS) as response:  # noqa: S310 - public SonarCloud API URL from bot comment
+            return json.load(response)
+    except (TimeoutError, socket.timeout) as error:
+        raise ScriptError(timeout_message) from error
+    except HTTPError as error:
+        raise ScriptError(
+            f"Sonar API request failed for {url}: HTTP {error.code} {error.reason}"
+        ) from error
+    except URLError as error:
+        if isinstance(error.reason, (TimeoutError, socket.timeout)):
+            raise ScriptError(timeout_message) from error
+        raise ScriptError(f"Failed to fetch Sonar API JSON from {url}: {error.reason}") from error
+    except json.JSONDecodeError as error:
+        raise ScriptError(f"Failed to decode Sonar API JSON from {url}: {error}") from error
 
 
 def get_period_metric(component: dict[str, Any], metric_name: str) -> float:
