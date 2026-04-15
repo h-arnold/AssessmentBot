@@ -378,8 +378,8 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
   - Outcome summary: the regression/contract-hardening section is complete as a validation-only closeout, and the builder contract, repo quality gates, and the touched regression surfaces still hold together after the maintenance pass while the unrelated existing Cohort lint warning remains unchanged.
 - **Delivery evidence:**
   - Branch: `chore/apihandler-gas-log-preservation-spec`.
-  - Section 4 delivery commit: Pending.
-  - Push confirmation: Pending.
+  - Section 4 delivery commit: `7869b86de05efaa0c2d3387a469b1c93f4bbcc08` — `chore: complete section 4 regression hardening`.
+  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`bbfc4d3..7869b86` on `origin/chore/apihandler-gas-log-preservation-spec`).
   - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record section 4 commit evidence`.
 - **Deviations from plan:** None beyond carrying forward the existing unrelated `src/backend/Models/Cohort.js` lint warning context while the command still exits 0.
 - **Follow-up implications for later sections:** Do not reopen this validation-only section during de-sloppification; preserve the recorded regression evidence and the unchanged unrelated lint warning context as baseline history.
