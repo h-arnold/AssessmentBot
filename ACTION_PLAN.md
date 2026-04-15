@@ -244,6 +244,19 @@ Builder stage tests:
 
 ## Section 3 — Repo quality-gate and hygiene follow-through
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added / explicitly skipped by plan: Complete (the requestStore rename and manual-only surfaces were explicitly skipped by plan)
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete (command exits 0; existing unrelated Cohort.js lint warning unchanged)
+- Action plan updated: Complete
+- Commit created: Complete
+- Push completed: Complete
+
 ### Objective
 
 - Land the remaining agreed non-builder fixes without expanding into unrelated repo cleanup.
@@ -288,9 +301,22 @@ Manual-only checks (red phase intentionally skipped because no existing harness 
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** TBD during delivery.
-- **Deviations from plan:** TBD during delivery.
-- **Follow-up implications for later sections:** Record any manual-verification caveats that must be preserved in the documentation/rollout section.
+- **Implementation notes:**
+  - Red phase started: Section 3 repo quality-gate follow-through began by updating the plan first and keeping scope limited to the agreed non-builder files.
+  - Red phase completed: automated red tests were intentionally skipped by plan for the requestStore title-only wording change and for the manual-only Sonar timeout, docs anchor, deprecated AdminSheet JSDoc cleanup, and Husky hook surfaces because no existing automated harness was identified for those items.
+  - Red review completed: Section 3 red-phase scope is review-clean with the planned test skips preserved.
+  - Green phase completed: added a 15-second explicit timeout plus timeout-specific `ScriptError` context for Sonar API fetches, made `.husky/pre-commit` fail fast on `npm run lint:fix`, removed the unused `console` import from `eslint.config.js`, fixed the broken Markdown anchor, replaced the targeted placeholder JSDoc blocks in the three deprecated AdminSheet files, and renamed the mismatched requestStore test title to match its assertion.
+  - Validation completed: `npm test -- tests/api/requestStore.test.js` passed (23 tests). `npm run lint` and `npm run lint:fix` both exited 0 and still report the pre-existing unrelated `no-magic-numbers` warning in `src/backend/Models/Cohort.js`.
+  - Manual verification completed: a Python smoke check that monkeypatched `urlopen` to raise `URLError(socket.timeout(...))` produced `Timed out after 15s fetching Sonar API JSON from https://sonarcloud.io/api/test`; a Bash smoke check sourcing `.husky/pre-commit` with a simulated failing `npm` function returned `husky_exit=42`; docs inspection confirmed the fixed `(#-json-db-lock-timeout-ms)` anchor is present and the broken variant is absent; a placeholder-count check reported zero empty placeholder JSDoc blocks remaining in `ABLogger.js`, `ScriptAppManager.js`, and `SheetsAssessor.js`.
+  - Green review completed: Section 3 is review-clean after the Sonar timeout hardening, Husky exit preservation, docs/AdminSheet cleanup, and requestStore title alignment were checked together.
+  - Outcome summary: Section 3 now preserves actionable Sonar timeout logging, keeps pre-commit failures blocking, and records the bounded manual-only follow-through without widening scope.
+- **Delivery evidence:**
+  - Branch: `chore/apihandler-gas-log-preservation-spec`.
+  - Section 3 delivery commit: `bca2e067209d41006adcb933e946ee4e484cfc40` — `chore: complete section 3 repo quality-gate follow-through`.
+  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`60a59f2..bca2e06` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record section 3 commit evidence`.
+- **Deviations from plan:** None beyond recording the existing unrelated lint warning instead of broadening Section 3 scope to fix `src/backend/Models/Cohort.js`.
+- **Follow-up implications for later sections:** Preserve the manual-verification notes and the unchanged unrelated lint warning context in the regression and rollout sections.
 
 ---
 
