@@ -167,6 +167,19 @@ Builder stage tests:
 
 ## Section 2 — Builder portability and stage-diagnostic hardening
 
+**Status:** Complete
+
+**Checklist**
+
+- Red tests added: Complete
+- Red review clean: Complete
+- Green implementation complete: Complete
+- Green review clean: Complete
+- Checks passed: Complete
+- Action plan updated: Complete
+- Commit created: Complete
+- Push completed: Complete
+
 ### Objective
 
 - Remove the agreed portability and observability defects in active builder file handling without changing the final GAS layout contract.
@@ -198,8 +211,10 @@ Builder stage tests:
 - `npm run builder:test -- scripts/builder/src/steps/materialise-output.spec.ts`
 - `npm run builder:test -- scripts/builder/src/steps/validate-output.spec.ts`
 - `npm run builder:test -- scripts/builder/src/steps/backend-copy.spec.ts`
+- `npm run builder:test -- scripts/builder/src/lib/fs.spec.ts`
 - `npm run builder:lint`
 - `npm run builder:compile`
+- `npm run builder:test`
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -207,9 +222,23 @@ Builder stage tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** TBD during delivery.
-- **Deviations from plan:** TBD during delivery.
-- **Follow-up implications for later sections:** Record whether any builder regression checks need widening because helper reuse touched more than one stage.
+- **Implementation notes:**
+  - Red phase started: Section 2 portability and diagnostic coverage was kept test-only while the agreed failures were documented in the plan.
+  - Red phase completed: added failing coverage in `scripts/builder/src/steps/materialise-output.spec.ts`, `scripts/builder/src/steps/validate-output.spec.ts`, `scripts/builder/src/steps/backend-copy.spec.ts`, and `scripts/builder/src/lib/fs.spec.ts`.
+  - Red review completed: Section 2 red coverage is review-clean with no remaining test-only follow-up before green implementation.
+  - Green phase started: fixed the shared file walker first, then wired `materialise-output` onto it, corrected forward-slash normalisation in the agreed output-validation surfaces, and wrapped per-file backend copy failures with stage-aware diagnostics.
+  - Green phase completed: `scripts/builder/src/lib/fs.ts` now uses path-safe joins while preserving Windows path style during recursive traversal, `materialise-output` reuses the shared walker, `validate-output` emits forward-slash relative paths for required-file and duplicate-global checks, and `backend-copy` rethrows per-file `mkdir` and `copyFile` failures as `BuildStageError` with path detail.
+  - Green validation follow-up: adjusted the Windows-style `fs.readdir(...)` mock casts in `scripts/builder/src/lib/fs.spec.ts` so `npm run builder:compile` passes without changing the test intent.
+  - Green validation completed: `npm run builder:test -- scripts/builder/src/steps/materialise-output.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/validate-output.spec.ts`, `npm run builder:test -- scripts/builder/src/steps/backend-copy.spec.ts`, `npm run builder:test -- scripts/builder/src/lib/fs.spec.ts`, `npm run builder:lint`, `npm run builder:compile`, `npm run builder:test`, and `npm run build` all pass.
+  - Green review completed: Section 2 is review-clean after the portability fixes, shared-walker reuse, and backend-copy diagnostic hardening outcomes were verified together.
+  - Outcome summary: Section 2 now keeps relative-path diagnostics portable across Windows and POSIX surfaces without changing the GAS layout contract, while backend copy failures retain actionable `backend-copy` stage context.
+- **Delivery evidence:**
+  - Branch: `chore/apihandler-gas-log-preservation-spec`.
+  - Section 2 delivery commit: `b5e95dc3d4617d2af7ebb1e916f3574807138598` — `feat: complete section 2 builder portability hardening`.
+  - Push confirmation: `git push origin chore/apihandler-gas-log-preservation-spec` succeeded (`736b000..b5e95dc` on `origin/chore/apihandler-gas-log-preservation-spec`).
+  - Forward-only ACTION_PLAN evidence follow-up commit message: `docs: record section 2 commit evidence`.
+- **Deviations from plan:** None beyond the explicit red-phase addition of `scripts/builder/src/lib/fs.spec.ts`, which remained the smallest practical place to pin the shared walker path-join defect.
+- **Follow-up implications for later sections:** Section 2 is complete; later sections remain unchanged in this pass.
 
 ---
 
