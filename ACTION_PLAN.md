@@ -465,34 +465,41 @@ Frontend tests:
 
 ### Objective
 
-- Update the remaining active frontend surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` so the standards are applied consistently beyond the initially obvious settings and classes areas.
+- Verify that the historical `FRONTEND_STANDARDS_AUDIT.md` implementation targets were fully closed by Sections 3-6 on this branch, and only sync repo-tracked documentation if that remains true.
 
 ### Constraints
 
 - Keep the sweep limited to the active frontend surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` within `src/frontend`.
-- Cover shared page wrappers, tab panels, standalone card-like surfaces, table cards, and modal loading flows where the approved standards apply.
+- Treat Section 7 as verification/doc-sync only on this branch unless a later change touches a new active frontend surface or reopens an audited gap.
 - Do not expand into unrelated UX redesign.
 
 ### Acceptance criteria
 
-- Every active frontend surface listed in `FRONTEND_STANDARDS_AUDIT.md` is either updated for compliance or explicitly recorded as a deliberate deferral.
-- Remaining non-compliant surfaces in scope are not left implicit.
-- No duplicated default or wide-data width literals remain in touched active frontend surfaces where shared tokens should apply.
+- No additional active frontend surfaces remain non-compliant after Sections 3-6 on this branch.
+- Section 7 is explicitly recorded as verification/doc sync only unless new active frontend surfaces are touched.
+- Any future reopened gap or newly touched active surface is treated as new implementation scope rather than being left implicit.
 
 ### Required test cases (Red first)
 
 Frontend tests:
 
-1. Add or update focused tests for each newly touched surface listed in `FRONTEND_STANDARDS_AUDIT.md` where existing behaviour changes under the standards sweep.
-2. Add regression coverage for any shared helper or wrapper introduced to support repo-wide consistency.
-3. Run the relevant frontend Vitest suites for all touched surfaces from `FRONTEND_STANDARDS_AUDIT.md`, not just the initial settings and classes tests.
-4. Add or update Playwright coverage for every changed user-visible interaction introduced by the remaining `FRONTEND_STANDARDS_AUDIT.md` surface work.
+1. None for the current branch state. No new red tests are required because Section 7 touches no new active frontend surfaces; if that changes later, add focused red coverage for the newly touched surface before green work.
 
 ### Section checks
 
-- `npm run frontend:test -- <touched targets>`
-- `npm run frontend:test:e2e -- <touched browser targets>`
-- `npm run frontend:lint`
+- Minimal Section 7 no-op validation command set: `npm run frontend:lint`
+- Minimal Section 7 no-op validation command set: `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Delivery checklist
+
+- [x] Red tests added _(N/A: verification/doc-sync-only section; no executable tests required)_
+- [x] Red review clean
+- [x] Green implementation complete _(N/A: no frontend code changes required)_
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -500,9 +507,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Section 7 remained a no-op verification/doc-sync pass on this branch because the historical `Needs work` entries from `FRONTEND_STANDARDS_AUDIT.md` were already closed by Sections 3-6. Repo-tracked no-op evidence now lives in this section and the `FRONTEND_STANDARDS_AUDIT.md` branch-status note, with the two documents cross-referencing the same outcome.
+- **Deviations from plan:** None beyond treating the section as an explicit verification/doc-sync-only outcome; no new red tests or frontend code changes were required because no additional active frontend surfaces remained non-compliant. Red review was clean after the evidence update.
+- **Follow-up implications for later sections:** Green no-op verification passed with `npm run frontend:lint` and `npm exec tsc -- -b src/frontend/tsconfig.json`, and the green review was clean. If a later change touches a new active frontend surface or reopens an audited standards gap, Section 7 must resume the normal red-green-refactor flow for that surface.
 
 ---
 
