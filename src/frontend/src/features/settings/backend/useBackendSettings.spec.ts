@@ -321,6 +321,8 @@ describe('useBackendSettings', () => {
             backendSettingsFormValues: null,
         });
 
+        getBackendConfigMock.mockRejectedValueOnce(new Error('Refresh failed.'));
+
         await act(async () => {
             await getCurrentState().saveBackendSettings(baseStoredKeyFormValues);
         });
@@ -384,23 +386,55 @@ describe('useBackendSettings', () => {
         });
     });
 
-    it('keeps partial-load data visible while blocking save when the backend returns loadError', async () => {
+    it('blocks save attempts when the backend config payload is incomplete and exposes degraded-load state', async () => {
         getBackendConfigMock.mockResolvedValueOnce(partialLoadBackendConfig);
         mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(baseStoredKeyFormValues);
 
         const { getCurrentState } = await renderBackendSettingsHook();
 
         await waitFor(() => {
-            expect(getCurrentState().partialLoadError).toBe(partialLoadBackendConfig.loadError);
+            expect(getCurrentState()).toMatchObject({
+                isInitialLoading: false,
+                loadError: partialLoadBackendConfig.loadError,
+                partialLoadError: partialLoadBackendConfig.loadError,
+                isSaveBlocked: true,
+                hasApiKey: true,
+                backendSettingsFormValues: null,
+            });
         });
 
-        expect(getCurrentState()).toMatchObject({
-            isInitialLoading: false,
-            loadError: null,
-            partialLoadError: partialLoadBackendConfig.loadError,
-            isSaveBlocked: true,
-            hasApiKey: true,
-            backendSettingsFormValues: baseStoredKeyFormValues,
+        await act(async () => {
+            await getCurrentState().saveBackendSettings(baseStoredKeyFormValues);
+        });
+
+        expect(setBackendConfigMock).not.toHaveBeenCalled();
+        expect(mapBackendSettingsFormValuesToBackendConfigWriteInputMock).not.toHaveBeenCalled();
+    });
+
+    it('keeps trustworthy backend settings visible when a later refetch fails', async () => {
+        getBackendConfigMock.mockResolvedValueOnce(baseBackendConfig);
+        mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(baseStoredKeyFormValues);
+
+        const { getCurrentState, queryClient } = await renderBackendSettingsHook();
+
+        await waitFor(() => {
+            expect(getCurrentState().backendSettingsFormValues).toEqual(baseStoredKeyFormValues);
+        });
+
+        getBackendConfigMock.mockRejectedValueOnce(new Error('Background refresh failed.'));
+
+        await act(async () => {
+            await queryClient.refetchQueries();
+        });
+
+        await waitFor(() => {
+            expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
+            expect(getCurrentState()).toMatchObject({
+                loadError: null,
+                partialLoadError: null,
+                isSaveBlocked: false,
+                backendSettingsFormValues: baseStoredKeyFormValues,
+            });
         });
     });
 
@@ -430,6 +464,8 @@ describe('useBackendSettings', () => {
         await waitFor(() => {
             expect(getCurrentState().backendSettingsFormValues).toEqual(baseStoredKeyFormValues);
         });
+
+        getBackendConfigMock.mockRejectedValueOnce(new Error('Refresh failed.'));
 
         await act(async () => {
             await getCurrentState().saveBackendSettings(baseStoredKeyFormValues);
@@ -463,6 +499,36 @@ describe('useBackendSettings', () => {
             saveResult.resolve({ success: true });
             await pendingSavePromise;
         });
+    });
+
+    it('fails closed when a successful save cannot refresh the now-invalid backend settings data', async () => {
+        getBackendConfigMock.mockResolvedValueOnce(baseBackendConfig);
+        mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(baseStoredKeyFormValues);
+        mapBackendSettingsFormValuesToBackendConfigWriteInputMock.mockReturnValueOnce(
+            blankApiKeyWriteInput
+        );
+        setBackendConfigMock.mockResolvedValueOnce({ success: true });
+
+        const { getCurrentState } = await renderBackendSettingsHook();
+
+        await waitFor(() => {
+            expect(getCurrentState().backendSettingsFormValues).toEqual(baseStoredKeyFormValues);
+        });
+
+        await act(async () => {
+            await getCurrentState().saveBackendSettings(baseStoredKeyFormValues);
+        });
+
+        await waitFor(() => {
+            expect(getCurrentState()).toMatchObject({
+                loadError: 'Unable to load backend settings right now.',
+                partialLoadError: null,
+                isSaveBlocked: true,
+                saveError: null,
+                backendSettingsFormValues: null,
+            });
+        });
+        expect(messageSuccessMock).not.toHaveBeenCalled();
     });
 
     it('announces a successful save, refetches backend config, and rebases fresh values', async () => {

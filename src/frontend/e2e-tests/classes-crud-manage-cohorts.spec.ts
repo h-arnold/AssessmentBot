@@ -165,6 +165,45 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByText('Cohort 2026')).toBeVisible();
   });
 
+  test('fails closed in the modal when a successful cohort create cannot refresh trustworthy cohort data', async ({ page }) => {
+    const newCohort = {
+      key: 'cohort-2026',
+      name: 'Cohort 2026',
+      active: true,
+      startYear: 2026,
+      startMonth: 9,
+    };
+
+    await openClassesTabWithScenario(page, {
+      ...createSuccessfulClassesScenario({
+        classPartials: baseClassPartials,
+        cohorts: manageCohortsCohorts,
+        googleClassrooms: baseGoogleClassrooms,
+        yearGroups: baseYearGroups,
+      }),
+      createCohort: [{ kind: 'success', data: newCohort }],
+      getCohorts: [
+        { kind: 'success', data: manageCohortsCohorts },
+        { kind: 'transportFailure', message: 'Cohorts refresh failed.' },
+      ],
+    });
+
+    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
+    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
+    await expect(modal).toBeVisible();
+
+    await modal.getByRole('button', { name: /create cohort/i }).click();
+    const form = page.getByRole('dialog', { name: /create cohort/i });
+    await expect(form).toBeVisible();
+
+    await form.getByRole('textbox', { name: /name/i }).fill('Cohort 2026');
+    await form.getByRole('button', { name: /ok|save|create/i }).click();
+
+    await expect(modal.getByRole('alert')).toContainText('Unable to load cohorts right now.');
+    await expect(modal.getByRole('button', { name: /create cohort/i })).toHaveCount(0);
+    await expect(modal.getByRole('table', { name: /cohorts/i })).toHaveCount(0);
+  });
+
   test('edits an existing cohort and shows the updated name', async ({ page }) => {
     const updatedCohort = {
       key: 'cohort-2025',

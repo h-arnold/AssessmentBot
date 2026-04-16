@@ -81,45 +81,38 @@ describe('BackendSettingsPanel', () => {
     expect(within(panel).queryByLabelText('API key')).not.toBeInTheDocument();
   });
 
-  it('renders a top-level alert for a blocking load failure', () => {
+  it('renders a blocking load failure inside the owned backend panel region', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       loadError: 'Unable to load backend settings right now.',
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(within(panel).getByRole('alert')).toHaveTextContent(
       'Unable to load backend settings right now.'
     );
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 
-  it('renders a persistent warning for a partial load warning', () => {
+  it('suppresses the form and save action when the backend config payload is incomplete', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 15_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-      },
+      backendSettingsFormValues: null,
       hasApiKey: true,
       isSaveBlocked: true,
+      loadError: 'apiKey: REDACTED',
       partialLoadError: 'apiKey: REDACTED',
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('heading', { level: 3, name: 'Backend' })).not.toBeInTheDocument();
+    expect(within(panel).queryByLabelText('API key')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
   }, slowPanelInteractionTimeoutMs);
 
   it('renders the planned section cards and visible field labels', () => {

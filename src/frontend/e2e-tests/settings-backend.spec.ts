@@ -352,7 +352,7 @@ test.describe('backend settings journey', () => {
     await expect(page.getByText(apiKeyValidationMessage)).toBeVisible();
   });
 
-  test('disables save while a partial-load warning is present', async ({ page }) => {
+  test('suppresses the backend settings form when the loaded configuration payload is incomplete', async ({ page }) => {
     await mockBackendSettingsRuntime(page, {
       getBackendConfig: [
         {
@@ -367,7 +367,8 @@ test.describe('backend settings journey', () => {
     await openBackendSettings(page);
 
     await expect(page.getByRole('alert')).toContainText(partialLoadWarning);
-    await expect(page.getByRole('button', { name: saveButtonLabel })).toBeDisabled();
+    await expect(page.getByRole('button', { name: saveButtonLabel })).toHaveCount(0);
+    await expect(getField(page, apiKeyLabel)).toHaveCount(0);
   });
 
   test('retains the stored API key when saving refreshed backend data', async ({ page }) => {

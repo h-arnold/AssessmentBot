@@ -8,7 +8,7 @@
  * behaviour for year-group management flows.
  */
 
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { YearGroup } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
@@ -32,6 +32,7 @@ vi.mock('../../services/referenceDataService', () => ({
 }));
 
 const onCloseMock = vi.fn();
+const yearGroupsLoadFailureCopy = 'Unable to load year groups right now.';
 
 const seedYearGroups: YearGroup[] = [
   { key: 'year-7', name: 'Year 7' },
@@ -101,6 +102,45 @@ describe('ManageYearGroupsModal', () => {
       expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
       expect(within(dialog).queryByText('Year 7')).not.toBeInTheDocument();
+    });
+
+    it('suppresses the ready modal body when the year-groups query fails before any usable data loads', async () => {
+      getYearGroupsMock.mockRejectedValueOnce(new Error('Year groups failed to load.'));
+
+      const queryClient = createAppQueryClient();
+      renderWithFrontendProviders(<ManageYearGroupsModal open={true} onClose={onCloseMock} />, {
+        queryClient,
+      });
+      const dialog = await findManageYearGroupsModalDialog();
+
+      await waitFor(() => {
+        expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
+      });
+      expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
+    });
+
+    it('keeps the trusted year-groups table visible when a later refetch fails', async () => {
+      const { queryClient } = renderManageYearGroupsModal();
+
+      const dialog = await findManageYearGroupsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /year groups/i });
+      expect(within(table).getByText('Year 7')).toBeInTheDocument();
+
+      getYearGroupsMock.mockRejectedValueOnce(new Error('Background year groups refresh failed.'));
+
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+      });
+
+      await waitFor(() => {
+        expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
+      });
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
+      expect(within(dialog).getByRole('table', { name: /year groups/i })).toBeInTheDocument();
+      expect(within(dialog).getByText('Year 7')).toBeInTheDocument();
+      expect(within(dialog).getByText('Year 8')).toBeInTheDocument();
     });
   });
 
@@ -179,7 +219,7 @@ describe('ManageYearGroupsModal', () => {
       updateYearGroupMock.mockResolvedValue(updatedYearGroup);
 
       const { queryClient } = renderManageYearGroupsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       const dialog = await findManageYearGroupsModalDialog();
       const table = await within(dialog).findByRole('table', { name: /year groups/i });
@@ -198,8 +238,13 @@ describe('ManageYearGroupsModal', () => {
         });
       });
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.yearGroups() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.yearGroups(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
@@ -211,7 +256,7 @@ describe('ManageYearGroupsModal', () => {
       createYearGroupMock.mockResolvedValue(newYearGroup);
 
       const { queryClient } = renderManageYearGroupsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
@@ -229,10 +274,79 @@ describe('ManageYearGroupsModal', () => {
         });
       });
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.yearGroups() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.yearGroups(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
+    });
+  });
+
+  describe('required refresh failures', () => {
+    it('fails closed when a successful create cannot refresh the now-invalid year-groups data', async () => {
+      const newYearGroup: YearGroup = { key: 'year-9', name: 'Year 9' };
+      createYearGroupMock.mockResolvedValue(newYearGroup);
+
+      renderManageYearGroupsModal();
+
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      getYearGroupsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+
+      const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
+      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
+        target: { value: 'Year 9' },
+      });
+      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
+
+      await waitFor(() => {
+        expect(createYearGroupMock).toHaveBeenCalledWith({
+          record: expect.objectContaining({ name: 'Year 9' }),
+        });
+      });
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
+      });
+      expect(screen.queryByRole('dialog', { name: /create year group/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
+    });
+
+    it('keeps the fail-closed year-groups state blocked after remount while the cached data is still untrustworthy', async () => {
+      const newYearGroup: YearGroup = { key: 'year-9', name: 'Year 9' };
+      createYearGroupMock.mockResolvedValue(newYearGroup);
+
+      const { queryClient, unmount } = renderManageYearGroupsModal();
+
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      getYearGroupsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+
+      const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
+      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
+        target: { value: 'Year 9' },
+      });
+      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
+      });
+
+      unmount();
+      renderWithFrontendProviders(<ManageYearGroupsModal open={true} onClose={onCloseMock} />, {
+        queryClient,
+      });
+
+      const remountedDialog = await findManageYearGroupsModalDialog();
+      expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
+      expect(within(remountedDialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
+      expect(within(remountedDialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
     });
   });
 

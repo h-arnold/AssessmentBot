@@ -135,15 +135,20 @@ describe('ManageYearGroupsModal — delete flow', () => {
     it('invalidates the yearGroups query after a successful delete', async () => {
       deleteYearGroupMock.mockImplementation(async () => {});
       const { queryClient } = renderManageYearGroupsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       await openDeleteConfirmationForFirstRow();
       const dialog = screen.getByRole('dialog', { name: /delete year group/i });
       fireEvent.click(within(dialog).getByRole('button', { name: /delete|confirm|ok/i }));
 
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.yearGroups() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.yearGroups(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });

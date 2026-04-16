@@ -240,7 +240,6 @@ export function BackendSettingsPanel() {
     isSaveBlocked,
     isSaving,
     loadError,
-    partialLoadError,
     saveBackendSettings,
     saveError,
   } = useBackendSettings();
@@ -355,7 +354,15 @@ export function BackendSettingsPanel() {
   };
 
   if (loadError !== null) {
-    return <Alert title={loadError} showIcon type="error" />;
+    return (
+      <Card
+        className="settings-tab-panel settings-tab-panel--backend"
+        role="region"
+        aria-label="Backend settings panel"
+      >
+        <Alert title={loadError} showIcon type="error" />
+      </Card>
+    );
   }
 
   if (isInitialLoading) {
@@ -379,7 +386,6 @@ export function BackendSettingsPanel() {
       aria-label="Backend settings panel"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
-        {partialLoadError !== null && <Alert title={partialLoadError} showIcon type="warning" />}
 
         {saveError !== null && <Alert title={saveError} showIcon type="error" />}
 

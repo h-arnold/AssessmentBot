@@ -1,8 +1,8 @@
 /**
  * Manage Year Groups Modal — list, create, edit, and delete year-group records.
  *
- * Reads year groups from the shared React Query cache. Successful mutations invalidate
- * the `yearGroups` query key so the list refreshes automatically.
+ * Reads year groups from the shared React Query cache. Successful mutations refetch the active
+ * `yearGroups` query so the visible dataset stays trustworthy.
  *
  * Delete-blocked state (IN_USE from the API transport) is surfaced as an inline Alert
  * inside the delete confirmation dialog; the destructive button is disabled so the user
@@ -13,8 +13,8 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Button, Flex, Form, Modal, Skeleton, Space, Table, type TableColumnType } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Table, type TableColumnType } from 'antd';
+import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
 import {
@@ -24,7 +24,16 @@ import {
 } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
-import { isInUseError, getDeleteErrorMessage } from './manageReferenceDataHelpers';
+import {
+  clearPersistedBlockingLoadError,
+  getDeleteErrorMessage,
+  getPersistedBlockingLoadError,
+  getReferenceDataBlockingLoadErrorQueryKey,
+  isInUseError,
+  refetchRequiredReferenceDataQuery,
+  setPersistedBlockingLoadError,
+  type BlockingLoadErrorState,
+} from './manageReferenceDataHelpers';
 import {
   ReferenceDataDeleteDialog,
   ReferenceDataFormDialog,
@@ -58,11 +67,81 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 
 const FORM_DIALOG_LABEL_ID = 'manage-year-groups-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
+const yearGroupsLoadFailureCopy = 'Unable to load year groups right now.';
 
 type YearGroupColumnsOptions = Readonly<{
   onEdit: (yearGroup: YearGroup) => void;
   onDelete: (yearGroup: YearGroup) => void;
 }>;
+
+
+type ManageYearGroupsModalBodyProperties = Readonly<{
+  columns: TableColumnType<YearGroup>[];
+  isInitialLoading: boolean;
+  loadError: string | null;
+  onCreate: () => void;
+  yearGroups: YearGroup[];
+}>;
+
+/**
+ * Returns the current blocking year-groups load error.
+ *
+ * @param {Readonly<{ data: YearGroup[] | undefined; isError: boolean; }>} yearGroupsQuery Year-groups query state.
+ * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
+ * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
+ * @returns {string | null} Blocking error copy when the year-groups dataset is not trustworthy.
+ */
+function getYearGroupsLoadError(
+  yearGroupsQuery: Readonly<{
+    data: YearGroup[] | undefined;
+    isError: boolean;
+  }>,
+  blockingLoadError: BlockingLoadErrorState | null,
+  dataUpdatedAt: number
+): string | null {
+  const blockingLoadErrorMessage = getBlockingLoadErrorMessage(blockingLoadError, dataUpdatedAt);
+  if (blockingLoadErrorMessage !== null) {
+    return blockingLoadErrorMessage;
+  }
+
+  if (yearGroupsQuery.isError && yearGroupsQuery.data === undefined) {
+    return yearGroupsLoadFailureCopy;
+  }
+
+  return null;
+}
+
+/**
+ * Renders the year-groups modal body for the current load state.
+ *
+ * @param {ManageYearGroupsModalBodyProperties} properties Body render properties.
+ * @returns {JSX.Element} The modal body.
+ */
+function renderManageYearGroupsModalBody(properties: ManageYearGroupsModalBodyProperties): ReactElement {
+  if (properties.isInitialLoading) {
+    return <ManageYearGroupsInitialLoadingState />;
+  }
+
+  if (properties.loadError !== null) {
+    return <Alert description={properties.loadError} showIcon type="error" />;
+  }
+
+  return (
+    <Flex vertical gap={12}>
+      <Button type="primary" onClick={properties.onCreate}>
+        Create year group
+      </Button>
+      <Table<YearGroup>
+        aria-label="year groups"
+        dataSource={properties.yearGroups}
+        columns={properties.columns}
+        rowKey="key"
+        pagination={false}
+        locale={{ emptyText: 'No year groups' }}
+      />
+    </Flex>
+  );
+}
 
 /**
  * Builds the column definitions for the year groups management table.
@@ -166,6 +245,7 @@ type YearGroupFormFinishHandlerProperties = Readonly<{
   closeFormDialog: () => void;
   editingYearGroup: YearGroup | null;
   formMode: FormMode | null;
+  onRequiredRefreshFailure: () => void;
   queryClient: QueryClient;
   setFormError: (message: string | null) => void;
   setFormSubmitting: (isSubmitting: boolean) => void;
@@ -196,7 +276,16 @@ function createYearGroupFormFinishHandler(properties: YearGroupFormFinishHandler
         });
       }
 
-      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        properties.queryClient,
+        queryKeys.yearGroups()
+      );
+
+      if (!refreshSucceeded) {
+        properties.onRequiredRefreshFailure();
+        return;
+      }
+
       properties.closeFormDialog();
     } catch (error: unknown) {
       properties.setFormError(error instanceof Error ? error.message : 'Unable to save the year group.');
@@ -208,6 +297,7 @@ function createYearGroupFormFinishHandler(properties: YearGroupFormFinishHandler
 
 type YearGroupDeleteConfirmHandlerProperties = Readonly<{
   deleteState: DeleteDialogState;
+  onRequiredRefreshFailure: () => void;
   queryClient: QueryClient;
   setDeleteState: (updater: (previous: DeleteDialogState) => DeleteDialogState) => void;
 }>;
@@ -228,7 +318,16 @@ function createYearGroupDeleteConfirmHandler(properties: YearGroupDeleteConfirmH
 
     try {
       await deleteYearGroup({ key: properties.deleteState.yearGroup.key });
-      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        properties.queryClient,
+        queryKeys.yearGroups()
+      );
+
+      if (!refreshSucceeded) {
+        properties.onRequiredRefreshFailure();
+        return;
+      }
+
       properties.setDeleteState(() => INITIAL_DELETE_STATE);
     } catch (error: unknown) {
       const blocked = isInUseError(error);
@@ -270,6 +369,28 @@ function ManageYearGroupsInitialLoadingState() {
 }
 
 /**
+ * Returns the blocking load error while the currently cached dataset is still refresh-invalidated.
+ *
+ * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
+ * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
+ * @returns {string | null} Blocking load error message while the dataset remains invalidated.
+ */
+function getBlockingLoadErrorMessage(
+  blockingLoadError: BlockingLoadErrorState | null,
+  dataUpdatedAt: number
+): string | null {
+  if (blockingLoadError === null) {
+    return null;
+  }
+
+  if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
+    return null;
+  }
+
+  return blockingLoadError.message;
+}
+
+/**
  * Renders the Manage Year Groups modal workflow.
  *
  * @param {ManageYearGroupsModalProperties} properties Component properties.
@@ -280,6 +401,20 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const yearGroupsQuery = useQuery(getYearGroupsQueryOptions());
   const yearGroups = yearGroupsQuery.data ?? [];
   const isInitialLoading = yearGroupsQuery.isPending && yearGroupsQuery.data === undefined;
+  const blockingLoadErrorQuery = useQuery({
+    enabled: false,
+    queryFn: () => getPersistedBlockingLoadError(queryClient, 'yearGroups'),
+    queryKey: getReferenceDataBlockingLoadErrorQueryKey('yearGroups'),
+  });
+  const blockingLoadError = blockingLoadErrorQuery.data ?? null;
+
+  useEffect(() => {
+    if (blockingLoadError === null || yearGroupsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
+      return;
+    }
+
+    clearPersistedBlockingLoadError(queryClient, 'yearGroups');
+  }, [blockingLoadError, queryClient, yearGroupsQuery.dataUpdatedAt]);
 
   const [form] = Form.useForm<YearGroupFormValues>();
   const [formMode, setFormMode] = useState<FormMode | null>(null);
@@ -287,16 +422,24 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
+  const loadError = getYearGroupsLoadError(
+    yearGroupsQuery,
+    blockingLoadError,
+    yearGroupsQuery.dataUpdatedAt
+  );
+
   const handleFormFinish = createYearGroupFormFinishHandler({
     closeFormDialog,
     editingYearGroup,
     formMode,
+    onRequiredRefreshFailure: handleRequiredRefreshFailure,
     queryClient,
     setFormError,
     setFormSubmitting,
   });
   const handleDeleteConfirm = createYearGroupDeleteConfirmHandler({
     deleteState,
+    onRequiredRefreshFailure: handleRequiredRefreshFailure,
     queryClient,
     setDeleteState,
   });
@@ -349,12 +492,35 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     properties.onClose();
   }
 
+  /**
+   * Handles the fail-closed state required after a successful mutation cannot be refreshed.
+   */
+  function handleRequiredRefreshFailure(): void {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+
+    const nextBlockingLoadError: BlockingLoadErrorState = {
+      dataUpdatedAt: yearGroupsQuery.dataUpdatedAt,
+      message: yearGroupsLoadFailureCopy,
+    };
+
+    setPersistedBlockingLoadError(queryClient, 'yearGroups', nextBlockingLoadError);
+  }
+
   const columns = buildYearGroupColumns({
     onEdit: openEditForm,
     onDelete: (yearGroup) => {
       closeFormDialog();
       setDeleteState({ open: true, yearGroup, error: null, blocked: false, submitting: false });
     },
+  });
+
+  const modalBody = renderManageYearGroupsModalBody({
+    columns,
+    isInitialLoading,
+    loadError,
+    onCreate: openCreateForm,
+    yearGroups,
   });
 
   return (
@@ -367,23 +533,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       }
       width={700}
     >
-      {isInitialLoading ? (
-        <ManageYearGroupsInitialLoadingState />
-      ) : (
-        <Flex vertical gap={12}>
-          <Button type="primary" onClick={openCreateForm}>
-            Create year group
-          </Button>
-          <Table<YearGroup>
-            aria-label="year groups"
-            dataSource={yearGroups}
-            columns={columns}
-            rowKey="key"
-            pagination={false}
-            locale={{ emptyText: 'No year groups' }}
-          />
-        </Flex>
-      )}
+      {modalBody}
 
       {renderYearGroupFormDialog({
         editingYearGroup,

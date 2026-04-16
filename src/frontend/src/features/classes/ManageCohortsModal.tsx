@@ -1,8 +1,8 @@
 /**
  * Manage Cohorts Modal — list, create, edit, toggle-active, and delete cohort records.
  *
- * Reads cohorts from the shared React Query cache. Successful mutations invalidate the
- * `cohorts` query key so the list refreshes automatically.
+ * Reads cohorts from the shared React Query cache. Successful mutations refetch the active
+ * `cohorts` query so the visible dataset stays trustworthy.
  *
  * Delete-blocked state (IN_USE from the API transport) is surfaced as an inline Alert
  * inside the delete confirmation dialog; the destructive button is disabled so the user
@@ -14,7 +14,7 @@
  */
 
 import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Switch, Table, type TableColumnType } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
 import {
@@ -24,7 +24,16 @@ import {
 } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
-import { isInUseError, getDeleteErrorMessage } from './manageReferenceDataHelpers';
+import {
+  clearPersistedBlockingLoadError,
+  getDeleteErrorMessage,
+  getPersistedBlockingLoadError,
+  getReferenceDataBlockingLoadErrorQueryKey,
+  isInUseError,
+  refetchRequiredReferenceDataQuery,
+  setPersistedBlockingLoadError,
+  type BlockingLoadErrorState,
+} from './manageReferenceDataHelpers';
 import {
   ReferenceDataDeleteDialog,
   ReferenceDataFormDialog,
@@ -58,12 +67,95 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 
 const FORM_DIALOG_LABEL_ID = 'manage-cohorts-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
+const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
 
 type CohortColumnsOptions = Readonly<{
   onEdit: (cohort: Cohort) => void;
   onDelete: (cohort: Cohort) => void;
   onToggleActive: (cohort: Cohort, checked: boolean) => void;
 }>;
+
+
+type ManageCohortsModalBodyProperties = Readonly<{
+  cohorts: Cohort[];
+  columns: TableColumnType<Cohort>[];
+  isInitialLoading: boolean;
+  loadError: string | null;
+  onCreate: () => void;
+  toggleError: string | null;
+}>;
+
+/**
+ * Returns the current blocking cohorts load error.
+ *
+ * @param {Readonly<{ data: Cohort[] | undefined; isError: boolean; }>} cohortsQuery Cohorts query state.
+ * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
+ * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
+ * @returns {string | null} Blocking error copy when the cohorts dataset is not trustworthy.
+ */
+function getCohortsLoadError(
+  cohortsQuery: Readonly<{
+    data: Cohort[] | undefined;
+    isError: boolean;
+  }>,
+  blockingLoadError: BlockingLoadErrorState | null,
+  dataUpdatedAt: number
+): string | null {
+  const blockingLoadErrorMessage = getBlockingLoadErrorMessage(blockingLoadError, dataUpdatedAt);
+  if (blockingLoadErrorMessage !== null) {
+    return blockingLoadErrorMessage;
+  }
+
+  if (cohortsQuery.isError && cohortsQuery.data === undefined) {
+    return cohortsLoadFailureCopy;
+  }
+
+  return null;
+}
+
+/**
+ * Renders the cohorts modal body for the current load state.
+ *
+ * @param {ManageCohortsModalBodyProperties} properties Body render properties.
+ * @returns {JSX.Element} The modal body.
+ */
+function renderManageCohortsModalBody(properties: ManageCohortsModalBodyProperties): ReactElement {
+  if (properties.isInitialLoading) {
+    return <ManageCohortsInitialLoadingState />;
+  }
+
+  if (properties.loadError !== null) {
+    return <Alert description={properties.loadError} showIcon type="error" />;
+  }
+
+  let toggleErrorAlert: ReactElement | null = null;
+  if (properties.toggleError !== null) {
+    toggleErrorAlert = (
+      <Alert
+        description={properties.toggleError}
+        type="error"
+        showIcon
+      />
+    );
+  }
+
+  return (
+    <Flex vertical gap={12}>
+      <Button type="primary" onClick={properties.onCreate}>
+        Create cohort
+      </Button>
+      {toggleErrorAlert}
+      <Table<Cohort>
+        aria-label="cohorts"
+        dataSource={properties.cohorts}
+        columns={properties.columns}
+        rowKey="key"
+        pagination={false}
+        locale={{ emptyText: 'No cohorts' }}
+      />
+    </Flex>
+  );
+}
 
 /**
  * Builds the column definitions for the cohorts management table.
@@ -213,6 +305,7 @@ type CohortFormFinishHandlerProperties = Readonly<{
   closeFormDialog: () => void;
   editingCohort: Cohort | null;
   formMode: FormMode | null;
+  onRequiredRefreshFailure: () => void;
   queryClient: QueryClient;
   setFormError: (message: string | null) => void;
   setFormSubmitting: (isSubmitting: boolean) => void;
@@ -248,7 +341,16 @@ function createCohortFormFinishHandler(properties: CohortFormFinishHandlerProper
         });
       }
 
-      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        properties.queryClient,
+        queryKeys.cohorts()
+      );
+
+      if (!refreshSucceeded) {
+        properties.onRequiredRefreshFailure();
+        return;
+      }
+
       properties.closeFormDialog();
     } catch (error: unknown) {
       properties.setFormError(error instanceof Error ? error.message : 'Unable to save the cohort.');
@@ -259,6 +361,7 @@ function createCohortFormFinishHandler(properties: CohortFormFinishHandlerProper
 }
 
 type CohortToggleActiveHandlerProperties = Readonly<{
+  onRequiredRefreshFailure: () => void;
   queryClient: QueryClient;
   setToggleError: (message: string | null) => void;
 }>;
@@ -283,7 +386,14 @@ function createCohortToggleActiveHandler(properties: CohortToggleActiveHandlerPr
           startMonth: cohort.startMonth,
         },
       });
-      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        properties.queryClient,
+        queryKeys.cohorts()
+      );
+
+      if (!refreshSucceeded) {
+        properties.onRequiredRefreshFailure();
+      }
     } catch (error: unknown) {
       properties.setToggleError(error instanceof Error ? error.message : 'Unable to update the cohort active state.');
     }
@@ -292,6 +402,7 @@ function createCohortToggleActiveHandler(properties: CohortToggleActiveHandlerPr
 
 type CohortDeleteConfirmHandlerProperties = Readonly<{
   deleteState: DeleteDialogState;
+  onRequiredRefreshFailure: () => void;
   queryClient: QueryClient;
   setDeleteState: (updater: (previous: DeleteDialogState) => DeleteDialogState) => void;
 }>;
@@ -312,7 +423,16 @@ function createCohortDeleteConfirmHandler(properties: CohortDeleteConfirmHandler
 
     try {
       await deleteCohort({ key: properties.deleteState.cohort.key });
-      await properties.queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+      const refreshSucceeded = await refetchRequiredReferenceDataQuery(
+        properties.queryClient,
+        queryKeys.cohorts()
+      );
+
+      if (!refreshSucceeded) {
+        properties.onRequiredRefreshFailure();
+        return;
+      }
+
       properties.setDeleteState(() => INITIAL_DELETE_STATE);
     } catch (error: unknown) {
       const blocked = isInUseError(error);
@@ -328,6 +448,28 @@ function createCohortDeleteConfirmHandler(properties: CohortDeleteConfirmHandler
 }
 
 /**
+ * Returns the blocking load error while the currently cached dataset is still refresh-invalidated.
+ *
+ * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
+ * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
+ * @returns {string | null} Blocking load error message while the dataset remains invalidated.
+ */
+function getBlockingLoadErrorMessage(
+  blockingLoadError: BlockingLoadErrorState | null,
+  dataUpdatedAt: number
+): string | null {
+  if (blockingLoadError === null) {
+    return null;
+  }
+
+  if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
+    return null;
+  }
+
+  return blockingLoadError.message;
+}
+
+/**
  * Renders the Manage Cohorts modal workflow.
  *
  * @param {ManageCohortsModalProperties} properties Component properties.
@@ -338,6 +480,20 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const cohortsQuery = useQuery(getCohortsQueryOptions());
   const cohorts = cohortsQuery.data ?? [];
   const isInitialLoading = cohortsQuery.isPending && cohortsQuery.data === undefined;
+  const blockingLoadErrorQuery = useQuery({
+    enabled: false,
+    queryFn: () => getPersistedBlockingLoadError(queryClient, 'cohorts'),
+    queryKey: getReferenceDataBlockingLoadErrorQueryKey('cohorts'),
+  });
+  const blockingLoadError = blockingLoadErrorQuery.data ?? null;
+
+  useEffect(() => {
+    if (blockingLoadError === null || cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
+      return;
+    }
+
+    clearPersistedBlockingLoadError(queryClient, 'cohorts');
+  }, [blockingLoadError, cohortsQuery.dataUpdatedAt, queryClient]);
 
   const [form] = Form.useForm<CohortFormValues>();
   const [formMode, setFormMode] = useState<FormMode | null>(null);
@@ -346,20 +502,29 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const [formError, setFormError] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
+  const loadError = getCohortsLoadError(
+    cohortsQuery,
+    blockingLoadError,
+    cohortsQuery.dataUpdatedAt
+  );
+
   const handleFormFinish = createCohortFormFinishHandler({
     closeFormDialog,
     editingCohort,
     formMode,
+    onRequiredRefreshFailure: handleRequiredRefreshFailure,
     queryClient,
     setFormError,
     setFormSubmitting,
   });
   const handleToggleActive = createCohortToggleActiveHandler({
+    onRequiredRefreshFailure: handleRequiredRefreshFailure,
     queryClient,
     setToggleError,
   });
   const handleDeleteConfirm = createCohortDeleteConfirmHandler({
     deleteState,
+    onRequiredRefreshFailure: handleRequiredRefreshFailure,
     queryClient,
     setDeleteState,
   });
@@ -417,6 +582,22 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   }
 
   /**
+   * Handles the fail-closed state required after a successful mutation cannot be refreshed.
+   */
+  function handleRequiredRefreshFailure(): void {
+    closeFormDialog();
+    setDeleteState(INITIAL_DELETE_STATE);
+    setToggleError(null);
+
+    const nextBlockingLoadError: BlockingLoadErrorState = {
+      dataUpdatedAt: cohortsQuery.dataUpdatedAt,
+      message: cohortsLoadFailureCopy,
+    };
+
+    setPersistedBlockingLoadError(queryClient, 'cohorts', nextBlockingLoadError);
+  }
+
+  /**
    * Opens the delete confirmation for the given cohort.
    *
    * @param {Cohort} cohort Cohort to delete.
@@ -438,6 +619,15 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     onToggleActive: (cohort, checked) => { void handleToggleActive(cohort, checked); },
   });
 
+  const modalBody = renderManageCohortsModalBody({
+    cohorts,
+    columns,
+    isInitialLoading,
+    loadError,
+    onCreate: openCreateForm,
+    toggleError,
+  });
+
   return (
     <Modal
       open={properties.open}
@@ -448,30 +638,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       }
       width={800}
     >
-      {isInitialLoading ? (
-        <ManageCohortsInitialLoadingState />
-      ) : (
-        <Flex vertical gap={12}>
-          <Button type="primary" onClick={openCreateForm}>
-            Create cohort
-          </Button>
-          {toggleError === null ? null : (
-            <Alert
-              description={toggleError}
-              type="error"
-              showIcon
-            />
-          )}
-          <Table<Cohort>
-            aria-label="cohorts"
-            dataSource={cohorts}
-            columns={columns}
-            rowKey="key"
-            pagination={false}
-            locale={{ emptyText: 'No cohorts' }}
-          />
-        </Flex>
-      )}
+      {modalBody}
 
       {renderCohortFormDialog({
         editingCohort,

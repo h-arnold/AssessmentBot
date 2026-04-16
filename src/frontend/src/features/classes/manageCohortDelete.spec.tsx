@@ -1,9 +1,9 @@
 /**
  * Cohort delete flow — unit tests.
  *
- * Covers: delete confirmation wiring, successful delete invalidating the cohorts query,
- * delete-blocked (IN_USE) state keeping the modal open with an inline Alert and a
- * disabled destructive button, and generic failure rendering.
+ * Covers: delete confirmation wiring, successful delete refetching the active cohorts query,
+ * required refresh failures, delete-blocked (IN_USE) state keeping the modal open with an
+ * inline Alert and a disabled destructive button, and generic failure rendering.
  *
  */
 
@@ -17,9 +17,10 @@ import { renderWithFrontendProviders } from '../../test/renderWithFrontendProvid
 import { ManageCohortsModal } from './ManageCohortsModal';
 
 const deleteCohortMock = vi.hoisted(() => vi.fn());
+const getCohortsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../services/referenceDataService', () => ({
-  getCohorts: vi.fn(),
+  getCohorts: getCohortsMock,
   createCohort: vi.fn(),
   updateCohort: vi.fn(),
   deleteCohort: deleteCohortMock,
@@ -30,6 +31,7 @@ vi.mock('../../services/referenceDataService', () => ({
 }));
 
 const onCloseMock = vi.fn();
+const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
 
 const seedCohorts: Cohort[] = [
   {
@@ -93,6 +95,7 @@ async function openDeleteConfirmationForFirstRow(): Promise<void> {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getCohortsMock.mockResolvedValue(seedCohorts);
 });
 
 describe('ManageCohortsModal — delete flow', () => {
@@ -143,20 +146,45 @@ describe('ManageCohortsModal — delete flow', () => {
       });
     });
 
-    it('invalidates the cohorts query after a successful delete', async () => {
+    it('refetches the active cohorts query after a successful delete', async () => {
       deleteCohortMock.mockImplementation(async () => {});
       const { queryClient } = renderManageCohortsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       await openDeleteConfirmationForFirstRow();
       const dialog = screen.getByRole('dialog', { name: /delete cohort/i });
       fireEvent.click(within(dialog).getByRole('button', { name: /delete|confirm|ok/i }));
 
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.cohorts() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.cohorts(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
+    });
+  });
+
+  describe('required refresh failure after successful delete', () => {
+    it('fails closed when a successful delete cannot refresh the invalidated cohorts data', async () => {
+      deleteCohortMock.mockImplementation(async () => {});
+      renderManageCohortsModal();
+
+      await openDeleteConfirmationForFirstRow();
+      const dialog = screen.getByRole('dialog', { name: /manage cohorts/i });
+      const deleteDialog = screen.getByRole('dialog', { name: /delete cohort/i });
+      getCohortsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
+      fireEvent.click(within(deleteDialog).getByRole('button', { name: /delete|confirm|ok/i }));
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
+      });
+      expect(screen.queryByRole('dialog', { name: /delete cohort/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
     });
   });
 

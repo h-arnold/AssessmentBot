@@ -146,6 +146,39 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await expect(modal.getByText('Year 9')).toBeVisible();
   });
 
+  test('fails closed in the modal when a successful year-group create cannot refresh trustworthy year-group data', async ({ page }) => {
+    const newYearGroup = { key: 'year-9', name: 'Year 9' };
+
+    await openClassesTabWithScenario(page, {
+      ...createSuccessfulClassesScenario({
+        classPartials: baseClassPartials,
+        cohorts: baseCohorts,
+        googleClassrooms: baseGoogleClassrooms,
+        yearGroups: manageYearGroupsYearGroups,
+      }),
+      createYearGroup: [{ kind: 'success', data: newYearGroup }],
+      getYearGroups: [
+        { kind: 'success', data: manageYearGroupsYearGroups },
+        { kind: 'transportFailure', message: 'Year groups refresh failed.' },
+      ],
+    });
+
+    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
+    const modal = page.getByRole('dialog', { name: /manage year groups/i });
+    await expect(modal).toBeVisible();
+
+    await modal.getByRole('button', { name: /create year group/i }).click();
+    const form = page.getByRole('dialog', { name: /create year group/i });
+    await expect(form).toBeVisible();
+
+    await form.getByRole('textbox', { name: /name/i }).fill('Year 9');
+    await form.getByRole('button', { name: /ok|save|create/i }).click();
+
+    await expect(modal.getByRole('alert')).toContainText('Unable to load year groups right now.');
+    await expect(modal.getByRole('button', { name: /create year group/i })).toHaveCount(0);
+    await expect(modal.getByRole('table', { name: /year groups/i })).toHaveCount(0);
+  });
+
   test('edits an existing year group and shows the updated name', async ({ page }) => {
     const updatedYearGroup = { key: 'year-7', name: 'Year Seven' };
 
