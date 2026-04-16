@@ -498,8 +498,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -508,6 +508,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Section 7 remained a no-op verification/doc-sync pass on this branch because the historical `Needs work` entries from `FRONTEND_STANDARDS_AUDIT.md` were already closed by Sections 3-6. Repo-tracked no-op evidence now lives in this section and the `FRONTEND_STANDARDS_AUDIT.md` branch-status note, with the two documents cross-referencing the same outcome.
+- **Evidence:** Branch `chore/StandardiseFrontendPatterns`; section commit `5c5d0ef` — "Section 7: Verify frontend standards and update audit branch-status note"; plan commit `174bd0d` — "Section 7: Complete ACTION_PLAN with verification checklist and notes"; push succeeded.
 - **Deviations from plan:** None beyond treating the section as an explicit verification/doc-sync-only outcome; no new red tests or frontend code changes were required because no additional active frontend surfaces remained non-compliant. Red review was clean after the evidence update.
 - **Follow-up implications for later sections:** Green no-op verification passed with `npm run frontend:lint` and `npm exec tsc -- -b src/frontend/tsconfig.json`, and the green review was clean. If a later change touches a new active frontend surface or reopens an audited standards gap, Section 7 must resume the normal red-green-refactor flow for that surface.
 
