@@ -85,6 +85,9 @@ const REFERENCE_DATA_RESULTS = Object.freeze({
   getYearGroups: [{ key: 'yg-10', name: 'Year 10' }],
   createYearGroup: { key: 'yg-10', name: 'Year 10' },
   updateYearGroup: { key: 'yg-9', name: 'Year 10' },
+  // Delete handlers are intentionally transport-void; keep explicit nulls to avoid implicit undefined stubs.
+  deleteCohort: null,
+  deleteYearGroup: null,
 });
 
 function buildAbClassTransportHandlers() {
@@ -751,10 +754,7 @@ describe('Api/apiHandler dispatcher', () => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
       const params = REFERENCE_DATA_PARAMS[methodName];
-      const expectedData =
-        methodName === 'deleteCohort' || methodName === 'deleteYearGroup'
-          ? { transport: 'plain-data', methodName }
-          : REFERENCE_DATA_RESULTS[methodName];
+      const expectedData = REFERENCE_DATA_RESULTS[methodName];
 
       globalThis[methodName].mockImplementation(() => expectedData);
 
