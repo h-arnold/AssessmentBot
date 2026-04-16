@@ -445,8 +445,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -455,6 +455,7 @@ Frontend tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Red coverage for the Section 6 targets landed and reviewed clean across `ClassesManagementPanel`, `ClassesToolbar`, `ClassesTable`, `BackendSettingsPanel`, `manageCohorts.spec.tsx`, `manageYearGroups.spec.tsx`, and the existing Playwright harness/spec flows for classes CRUD, backend settings, cohorts, and year groups. Green implementation then added visible refresh feedback in `BackendSettingsPanel`, `ManageCohortsModal`, and `ManageYearGroupsModal` while keeping ready data visible, corrected the classes refresh copy so it scoped to the class-data workflow region, and remediated coverage-threshold issues so `npm run frontend:test:coverage` passed at branch coverage 85.26%. Final Section 6 validation passed with `npm run frontend:test -- ClassesManagementPanel`, `npm run frontend:test -- ClassesToolbar`, `npm run frontend:test -- ClassesTable`, `npm run frontend:test -- BackendSettingsPanel`, `npm run frontend:test -- manageCohorts.spec.tsx`, `npm run frontend:test -- manageYearGroups.spec.tsx`, `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts e2e-tests/settings-backend.spec.ts e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`, `npm run frontend:lint`, `npm exec tsc -- -b src/frontend/tsconfig.json`, and `npm run frontend:test:coverage`.
+- **Evidence:** Branch `chore/StandardiseFrontendPatterns`; code/test commit `18f6d0c` — "Section 6: Implement class/cohort/year-group management and backend settings"; plan commit `117658b` — "Update ACTION_PLAN.md - Section 6 complete"; push succeeded.
 - **Deviations from plan:** Green review was not clean on the first pass. Review findings on missing visible refresh feedback for backend settings and the cohorts/year-groups modals, overly broad classes refresh copy, and coverage-threshold shortfall were all remediated before the final clean green review.
 - **Follow-up implications for later sections:** Later sections should preserve the explicit busy-state publication and class-data-scoped refresh messaging now established for the classes workflow region, backend settings, and the cohorts/year-groups modals, and should extend the existing Playwright harness/spec coverage rather than introducing duplicate browser paths.
 
