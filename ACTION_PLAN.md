@@ -376,8 +376,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -385,7 +385,7 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Red coverage for backend settings plus cohorts/year-groups degraded-data handling and the regression/browser flows landed and reviewed clean. Final Section 5 validation passed with the commands listed above.
+- **Implementation notes:** Red coverage for backend settings plus cohorts/year-groups degraded-data handling and the regression/browser flows landed and reviewed clean. Final Section 5 validation passed with the commands listed above. Branch chore/StandardiseFrontendPatterns recorded code/test commit 0a817f6 — "refactor: standardise frontend patterns for backend settings and cohort/year group management" — plus plan commit a732c18 — "docs: update ACTION_PLAN.md Section 5 completion" — and push succeeded.
 - **Deviations from plan:** Green review initially raised two findings, both now remediated: the cohorts/year-groups modals now preserve a durable fail-closed trust boundary across remounts, and `BackendSettingsPanel` now renders its blocking `Alert` inside the panel shell. Follow-up green review passed clean with no blocking issues.
 - **Follow-up implications for later sections:** Refresh work in later sections must treat this trustworthy-data boundary as already settled.
 
