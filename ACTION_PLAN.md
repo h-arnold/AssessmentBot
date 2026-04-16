@@ -361,10 +361,23 @@ Frontend tests:
 
 ### Section checks
 
+- `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx src/features/settings/backend/useBackendSettings.spec.ts src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
 - `npm run frontend:test -- BackendSettingsPanel`
 - `npm run frontend:test -- useBackendSettings`
-- `npm run frontend:test:e2e -- <degraded-data targets>`
+- `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`
 - `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Delivery checklist
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -372,8 +385,8 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
+- **Implementation notes:** Red coverage for backend settings plus cohorts/year-groups degraded-data handling and the regression/browser flows landed and reviewed clean. Final Section 5 validation passed with the commands listed above.
+- **Deviations from plan:** Green review initially raised two findings, both now remediated: the cohorts/year-groups modals now preserve a durable fail-closed trust boundary across remounts, and `BackendSettingsPanel` now renders its blocking `Alert` inside the panel shell. Follow-up green review passed clean with no blocking issues.
 - **Follow-up implications for later sections:** Refresh work in later sections must treat this trustworthy-data boundary as already settled.
 
 ---
