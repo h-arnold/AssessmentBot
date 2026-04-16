@@ -105,15 +105,26 @@ Frontend tests:
 
 - Verify the new doc path, frontend AGENTS summary, and Docs subagent instruction updates exist and are internally consistent with `SPEC.md`.
 
+### Delivery checklist
+
+- [x] Red tests added _(N/A: documentation-only section; no executable tests required)_
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
 ### Optional `@remarks` JSDoc follow-through
 
 - None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:** Later sections must treat the new doc as the implementation-facing rule source rather than re-parsing chat history.
+- **Implementation notes:** Complete through action-plan update. This documentation-first section required no executable tests, and both red and green reviews passed with no findings.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Later sections should use `docs/developer/frontend/frontend-loading-and-width-standards.md` as the canonical rule source.
 
 ---
 
