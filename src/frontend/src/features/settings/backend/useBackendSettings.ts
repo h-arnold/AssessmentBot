@@ -23,6 +23,7 @@ type BackendSettingsHookValue = Readonly<{
     isInitialLoading: boolean;
     isSaveBlocked: boolean;
     isSaving: boolean;
+    isRefreshing: boolean;
     loadError: string | null;
     partialLoadError: string | null;
     saveBackendSettings: (formValues: BackendSettingsForm) => Promise<void>;
@@ -124,6 +125,21 @@ function getBlockingLoadErrorMessage(
     }
 
     return blockingLoadError.message;
+}
+
+type BackendSettingsRefreshQueryState = Readonly<{
+    isFetching: boolean;
+    isPending: boolean;
+}>;
+
+/**
+ * Returns whether backend settings are refreshing after a usable payload is already visible.
+ *
+ * @param {BackendSettingsRefreshQueryState} queryState Backend-config query fetch state.
+ * @returns {boolean} True when the panel should publish refresh busy state.
+ */
+function isBackendSettingsRefreshing(queryState: BackendSettingsRefreshQueryState): boolean {
+    return queryState.isFetching && !queryState.isPending;
 }
 
 
@@ -323,6 +339,7 @@ export function useBackendSettings(): BackendSettingsHookValue {
         blockingLoadErrorState,
         backendConfigQuery.dataUpdatedAt
     );
+    const isRefreshing = isBackendSettingsRefreshing(backendConfigQuery);
     const backendSettingsFormValues = useMemo(
         (): BackendSettingsForm | null =>
             backendConfig === undefined || partialLoadError !== null || blockingLoadError !== null
@@ -385,6 +402,7 @@ export function useBackendSettings(): BackendSettingsHookValue {
         isInitialLoading: backendConfigQuery.isPending,
         isSaveBlocked,
         isSaving,
+        isRefreshing,
         loadError,
         partialLoadError,
         saveBackendSettings,

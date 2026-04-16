@@ -46,6 +46,7 @@ const backendSettingsSaveFailureCopy = 'Configuration save failed.';
 const backendSettingsSavedCopy = 'Backend settings saved.';
 const backendSettingsLoadReleaseSignal = 'backend-settings-initial-load';
 const backendSettingsSaveDelayMs = 150;
+const backendSettingsRefreshReleaseSignal = 'backend-settings-post-save-refresh';
 const apiKeyValidationMessage =
   'API Key must be a valid string of alphanumeric characters and hyphens, without leading/trailing hyphens or consecutive hyphens.';
 
@@ -265,6 +266,22 @@ function getField(page: Page, label: string) {
   return page.getByLabel(label);
 }
 
+/**
+ * Releases one queued backend-settings response waiting on a browser-side signal.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @param {string} signal Release signal name.
+ * @returns {Promise<void>} Completion signal.
+ */
+async function releaseBackendSettingsSignal(page: Page, signal: string) {
+  await page.evaluate((queuedSignal) => {
+    (globalThis as {
+      __releaseBackendSettingsSignal: (signalName: string) => void;
+    }).__releaseBackendSettingsSignal(queuedSignal);
+  }, signal);
+}
+
+
 test.describe('backend settings journey', () => {
   test('navigates to the backend settings tab after showing the loading skeleton', async ({
     page,
@@ -415,6 +432,56 @@ test.describe('backend settings journey', () => {
     await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('48');
     await expect(getField(page, apiKeyLabel)).toHaveValue('');
     await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
+  });
+
+  test('keeps populated settings visible while publishing panel busy state during a post-save refresh', async ({ page }) => {
+    await mockBackendSettingsRuntime(page, {
+      getBackendConfig: [
+        {
+          kind: 'success',
+          data: baseBackendConfig,
+        },
+        {
+          kind: 'success',
+          data: refreshedBackendConfig,
+          releaseSignal: backendSettingsRefreshReleaseSignal,
+        },
+      ],
+      setBackendConfig: [
+        {
+          kind: 'success',
+          data: refreshedWriteResult,
+        },
+      ],
+    });
+
+    await page.goto('/');
+    await openBackendSettings(page);
+
+    await expect(page.getByText(storedApiKeyHelperCopy)).toBeVisible();
+
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(getField(page, backendAssessorBatchSizeLabel)).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('45');
+
+    try {
+      await page.getByRole('button', { name: saveButtonLabel }).click();
+
+      const panel = page.getByRole('region', { name: backendSettingsPanelLabel });
+      const saveButton = panel.getByRole('button', { name: saveButtonLabel });
+
+      await expect(panel).toHaveAttribute('aria-busy', 'true');
+      await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
+      await expect(panel.getByRole('heading', { level: 3, name: 'Backend' })).toBeVisible();
+      await expect(getField(page, backendUrlLabel)).toHaveValue('https://backend.example.com');
+      await expect(getField(page, backendAssessorBatchSizeLabel)).toHaveValue('45');
+    } finally {
+      await releaseBackendSettingsSignal(page, backendSettingsRefreshReleaseSignal);
+    }
   });
 
   test('shows save failure feedback when the backend rejects an update', async ({ page }) => {

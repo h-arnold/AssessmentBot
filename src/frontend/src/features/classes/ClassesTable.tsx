@@ -21,6 +21,7 @@ export interface ClassesTableProperties {
   rows: readonly ClassesManagementRow[];
   selectedRowKeys: readonly string[];
   onSelectedRowKeysChange: (selectedRowKeys: string[]) => void;
+  selectionFrozen?: boolean;
 }
 
 /**
@@ -50,8 +51,15 @@ export function ClassesTable(properties: Readonly<ClassesTableProperties>) {
 
   const rowSelection: TableProps<ClassesManagementRow>['rowSelection'] = {
     selectedRowKeys: properties.selectedRowKeys as string[],
-    onChange: (selectedKeys) =>
-      properties.onSelectedRowKeysChange(selectedKeys as string[]),
+    getCheckboxProps: () => ({ disabled: properties.selectionFrozen === true }),
+    getTitleCheckboxProps: () => ({ disabled: properties.selectionFrozen === true }),
+    onChange: (selectedKeys) => {
+      if (properties.selectionFrozen === true) {
+        return;
+      }
+
+      properties.onSelectedRowKeysChange(selectedKeys as string[]);
+    },
   };
 
   const hasActiveGoogleClassroom = properties.rows.some(

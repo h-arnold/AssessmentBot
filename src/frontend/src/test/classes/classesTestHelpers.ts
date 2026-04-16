@@ -158,6 +158,7 @@ export function buildClassesManagementState(
     classesCount: overrides.classesCount ?? rows.length,
     cohorts: [...cohorts],
     errorMessage: null,
+    isRefreshing: false,
     nonBlockingWarningMessage: null,
     refreshRequiredMessage: null,
     rows: [...rows],

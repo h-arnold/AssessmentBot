@@ -18,6 +18,7 @@ import {
   baseCohorts,
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
+  releaseClassesCrudSignal,
 } from './classes-crud.shared';
 import {
   deleteReferenceDataRowAndExpectBlocked,
@@ -32,6 +33,8 @@ const manageYearGroupsYearGroups = [
   { key: 'year-7', name: 'Year 7' },
   { key: 'year-8', name: 'Year 8' },
 ] as const;
+
+const yearGroupsBackgroundRefreshReleaseSignal = 'year-groups-background-refresh';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,6 +180,50 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await expect(modal.getByRole('alert')).toContainText('Unable to load year groups right now.');
     await expect(modal.getByRole('button', { name: /create year group/i })).toHaveCount(0);
     await expect(modal.getByRole('table', { name: /year groups/i })).toHaveCount(0);
+  });
+
+  test('keeps trusted year-group data visible while publishing modal busy state during background refresh', async ({ page }) => {
+    const updatedYearGroup = { key: 'year-7', name: 'Year Seven' };
+
+    await openClassesTabWithScenario(page, {
+      ...createSuccessfulClassesScenario({
+        classPartials: baseClassPartials,
+        cohorts: baseCohorts,
+        googleClassrooms: baseGoogleClassrooms,
+        yearGroups: manageYearGroupsYearGroups,
+      }),
+      updateYearGroup: [{ kind: 'success', data: updatedYearGroup }],
+      getYearGroups: [
+        { kind: 'success', data: manageYearGroupsYearGroups },
+        {
+          kind: 'success',
+          data: [updatedYearGroup, manageYearGroupsYearGroups[1]],
+          releaseSignal: yearGroupsBackgroundRefreshReleaseSignal,
+        },
+      ],
+    });
+
+    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
+    const modal = page.getByRole('dialog', { name: /manage year groups/i });
+    await expect(modal).toBeVisible();
+
+    const year7Row = modal.getByRole('row', { name: /year 7/i });
+    await year7Row.getByRole('button', { name: /edit/i }).click();
+
+    const form = page.getByRole('dialog', { name: /edit year group/i });
+    await expect(form).toBeVisible();
+    await form.getByRole('textbox', { name: /name/i }).fill('Year Seven');
+
+    try {
+      await form.getByRole('button', { name: /ok|save|update/i }).click();
+
+      await expect(modal).toHaveAttribute('aria-busy', 'true');
+      await expect(modal.getByRole('button', { name: /create year group/i })).toBeVisible();
+      await expect(modal.getByRole('table', { name: /year groups/i })).toBeVisible();
+      await expect(modal.getByText('Year 7')).toBeVisible();
+    } finally {
+      await releaseClassesCrudSignal(page, yearGroupsBackgroundRefreshReleaseSignal);
+    }
   });
 
   test('edits an existing year group and shows the updated name', async ({ page }) => {

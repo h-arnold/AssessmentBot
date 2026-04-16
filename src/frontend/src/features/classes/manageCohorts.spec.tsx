@@ -151,6 +151,36 @@ describe('ManageCohortsModal', () => {
       expect(within(dialog).getByText('Cohort 2025')).toBeInTheDocument();
       expect(within(dialog).getByText('Cohort 2024')).toBeInTheDocument();
     });
+
+    it('keeps trusted cohort data visible while publishing modal busy state during background refresh', async () => {
+      const { queryClient } = renderManageCohortsModal();
+
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+
+      let releaseRefresh: (() => void) | undefined;
+      getCohortsMock.mockImplementationOnce(() => new Promise<Cohort[]>((resolve) => {
+        releaseRefresh = () => resolve(seedCohorts);
+      }));
+
+      try {
+        await act(async () => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+        });
+
+        await waitFor(() => {
+          expect(getCohortsMock).toHaveBeenCalledTimes(1);
+        });
+
+        expect(dialog).toHaveAttribute('aria-busy', 'true');
+        expect(within(dialog).getByText('Refreshing cohorts...')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+        expect(within(dialog).getByRole('table', { name: /cohorts/i })).toBeInTheDocument();
+        expect(within(dialog).getByText('Cohort 2025')).toBeInTheDocument();
+      } finally {
+        releaseRefresh?.();
+      }
+    });
   });
 
   describe('list rendering', () => {

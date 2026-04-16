@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Switch, Table, type TableColumnType } from 'antd';
+import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Switch, Table, Typography, type TableColumnType } from 'antd';
 import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
@@ -68,6 +68,9 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 const FORM_DIALOG_LABEL_ID = 'manage-cohorts-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-cohorts-delete-dialog-title';
 const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
+const cohortsRefreshStatusCopy = 'Refreshing cohorts...';
+
+const { Text } = Typography;
 
 type CohortColumnsOptions = Readonly<{
   onEdit: (cohort: Cohort) => void;
@@ -80,6 +83,7 @@ type ManageCohortsModalBodyProperties = Readonly<{
   cohorts: Cohort[];
   columns: TableColumnType<Cohort>[];
   isInitialLoading: boolean;
+  isRefreshing: boolean;
   loadError: string | null;
   onCreate: () => void;
   toggleError: string | null;
@@ -141,6 +145,11 @@ function renderManageCohortsModalBody(properties: ManageCohortsModalBodyProperti
 
   return (
     <Flex vertical gap={12}>
+      {properties.isRefreshing ? (
+        <div aria-live="polite" role="status">
+          <Text type="secondary">{cohortsRefreshStatusCopy}</Text>
+        </div>
+      ) : null}
       <Button type="primary" onClick={properties.onCreate}>
         Create cohort
       </Button>
@@ -486,6 +495,22 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     queryKey: getReferenceDataBlockingLoadErrorQueryKey('cohorts'),
   });
   const blockingLoadError = blockingLoadErrorQuery.data ?? null;
+  const isRefreshing = !isInitialLoading && (cohortsQuery).isFetching;
+
+  useEffect(() => {
+    const dialog = document.querySelector('.manage-cohorts-modal[role="dialog"]');
+
+    if (!(dialog instanceof HTMLElement)) {
+      return;
+    }
+
+    if (isRefreshing) {
+      dialog.setAttribute('aria-busy', 'true');
+      return;
+    }
+
+    dialog.removeAttribute('aria-busy');
+  }, [isRefreshing, properties.open]);
 
   useEffect(() => {
     if (blockingLoadError === null || cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
@@ -623,6 +648,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     cohorts,
     columns,
     isInitialLoading,
+    isRefreshing,
     loadError,
     onCreate: openCreateForm,
     toggleError,
@@ -633,6 +659,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       open={properties.open}
       title="Manage Cohorts"
       onCancel={handleModalClose}
+      className="manage-cohorts-modal"
       footer={
         <Button onClick={handleModalClose}>Cancel</Button>
       }

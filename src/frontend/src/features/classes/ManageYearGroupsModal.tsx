@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Table, type TableColumnType } from 'antd';
+import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Table, Typography, type TableColumnType } from 'antd';
 import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
@@ -68,6 +68,9 @@ const INITIAL_DELETE_STATE: DeleteDialogState = {
 const FORM_DIALOG_LABEL_ID = 'manage-year-groups-form-dialog-title';
 const DELETE_DIALOG_LABEL_ID = 'manage-year-groups-delete-dialog-title';
 const yearGroupsLoadFailureCopy = 'Unable to load year groups right now.';
+const yearGroupsRefreshStatusCopy = 'Refreshing year groups...';
+
+const { Text } = Typography;
 
 type YearGroupColumnsOptions = Readonly<{
   onEdit: (yearGroup: YearGroup) => void;
@@ -78,6 +81,7 @@ type YearGroupColumnsOptions = Readonly<{
 type ManageYearGroupsModalBodyProperties = Readonly<{
   columns: TableColumnType<YearGroup>[];
   isInitialLoading: boolean;
+  isRefreshing: boolean;
   loadError: string | null;
   onCreate: () => void;
   yearGroups: YearGroup[];
@@ -128,6 +132,11 @@ function renderManageYearGroupsModalBody(properties: ManageYearGroupsModalBodyPr
 
   return (
     <Flex vertical gap={12}>
+      {properties.isRefreshing ? (
+        <div aria-live="polite" role="status">
+          <Text type="secondary">{yearGroupsRefreshStatusCopy}</Text>
+        </div>
+      ) : null}
       <Button type="primary" onClick={properties.onCreate}>
         Create year group
       </Button>
@@ -407,6 +416,22 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     queryKey: getReferenceDataBlockingLoadErrorQueryKey('yearGroups'),
   });
   const blockingLoadError = blockingLoadErrorQuery.data ?? null;
+  const isRefreshing = !isInitialLoading && (yearGroupsQuery).isFetching;
+
+  useEffect(() => {
+    const dialog = document.querySelector('.manage-year-groups-modal[role="dialog"]');
+
+    if (!(dialog instanceof HTMLElement)) {
+      return;
+    }
+
+    if (isRefreshing) {
+      dialog.setAttribute('aria-busy', 'true');
+      return;
+    }
+
+    dialog.removeAttribute('aria-busy');
+  }, [isRefreshing, properties.open]);
 
   useEffect(() => {
     if (blockingLoadError === null || yearGroupsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
@@ -518,6 +543,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const modalBody = renderManageYearGroupsModalBody({
     columns,
     isInitialLoading,
+    isRefreshing,
     loadError,
     onCreate: openCreateForm,
     yearGroups,
@@ -528,6 +554,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       open={properties.open}
       title="Manage Year Groups"
       onCancel={handleModalClose}
+      className="manage-year-groups-modal"
       footer={
         <Button onClick={handleModalClose}>Cancel</Button>
       }

@@ -19,6 +19,7 @@ import {
   baseYearGroups,
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
+  releaseClassesCrudSignal,
 } from './classes-crud.shared';
 import {
   deleteReferenceDataRowAndExpectBlocked,
@@ -45,6 +46,8 @@ const manageCohortsCohorts = [
     startMonth: 9,
   },
 ] as const;
+
+const cohortsBackgroundRefreshReleaseSignal = 'cohorts-background-refresh';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -202,6 +205,54 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     await expect(modal.getByRole('alert')).toContainText('Unable to load cohorts right now.');
     await expect(modal.getByRole('button', { name: /create cohort/i })).toHaveCount(0);
     await expect(modal.getByRole('table', { name: /cohorts/i })).toHaveCount(0);
+  });
+
+
+  test('keeps trusted cohort data visible while publishing modal busy state during background refresh', async ({ page }) => {
+    const toggledCohort = {
+      key: 'cohort-2025',
+      name: 'Cohort 2025',
+      active: false,
+      startYear: 2025,
+      startMonth: 9,
+    };
+
+    await openClassesTabWithScenario(page, {
+      ...createSuccessfulClassesScenario({
+        classPartials: baseClassPartials,
+        cohorts: manageCohortsCohorts,
+        googleClassrooms: baseGoogleClassrooms,
+        yearGroups: baseYearGroups,
+      }),
+      updateCohort: [{ kind: 'success', data: toggledCohort }],
+      getCohorts: [
+        { kind: 'success', data: manageCohortsCohorts },
+        {
+          kind: 'success',
+          data: [toggledCohort, manageCohortsCohorts[1]],
+          releaseSignal: cohortsBackgroundRefreshReleaseSignal,
+        },
+      ],
+    });
+
+    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
+    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
+    await expect(modal).toBeVisible();
+
+    const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
+    const activeSwitch = cohort2025Row.getByRole('switch');
+    await expect(activeSwitch).toBeChecked();
+
+    try {
+      await activeSwitch.click();
+
+      await expect(modal).toHaveAttribute('aria-busy', 'true');
+      await expect(modal.getByRole('button', { name: /create cohort/i })).toBeVisible();
+      await expect(modal.getByRole('table', { name: /cohorts/i })).toBeVisible();
+      await expect(modal.getByText('Cohort 2025')).toBeVisible();
+    } finally {
+      await releaseClassesCrudSignal(page, cohortsBackgroundRefreshReleaseSignal);
+    }
   });
 
   test('edits an existing cohort and shows the updated name', async ({ page }) => {

@@ -422,6 +422,34 @@ function ClassesManagementPanelLoadingState() {
   );
 }
 
+type ClassesWorkflowMutationBoundaryState = Readonly<{
+  createSubmitting: boolean;
+  deleteSubmitting: boolean;
+  setActiveSubmitting: boolean;
+  setCohortSubmitting: boolean;
+  setCourseLengthSubmitting: boolean;
+  setInactiveSubmitting: boolean;
+  setYearGroupSubmitting: boolean;
+}>;
+
+/**
+ * Returns whether the classes data-workflow write boundary is currently active.
+ *
+ * @param {ClassesWorkflowMutationBoundaryState} state Mutation submission state.
+ * @returns {boolean} True when conflicting workflow writes should stay disabled.
+ */
+function isClassesWorkflowMutationBoundaryActive(state: ClassesWorkflowMutationBoundaryState): boolean {
+  return [
+    state.createSubmitting,
+    state.deleteSubmitting,
+    state.setActiveSubmitting,
+    state.setInactiveSubmitting,
+    state.setCohortSubmitting,
+    state.setYearGroupSubmitting,
+    state.setCourseLengthSubmitting,
+  ].some(Boolean);
+}
+
 /**
  * Renders the Classes feature entry shell.
  *
@@ -467,6 +495,15 @@ export function ClassesManagementPanel() {
 
   const effectiveRefreshRequiredMessage = classesManagement.refreshRequiredMessage ?? refreshRequiredMessage;
   const shouldSuppressStaleTableData = suppressStaleTableData || classesManagement.refreshRequiredMessage !== null;
+  const workflowMutationBoundaryActive = isClassesWorkflowMutationBoundaryActive({
+    createSubmitting,
+    deleteSubmitting,
+    setActiveSubmitting,
+    setCohortSubmitting,
+    setCourseLengthSubmitting,
+    setInactiveSubmitting,
+    setYearGroupSubmitting,
+  });
 
   /**
    * Clears the transient bulk-action feedback before another mutation starts.
@@ -732,6 +769,7 @@ export function ClassesManagementPanel() {
     setYearGroupModalOpen,
     setYearGroupSubmitting,
     shouldSuppressStaleTableData,
+    workflowMutationBoundaryActive,
     yearGroupOptions,
   });
 }
@@ -784,6 +822,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
   setYearGroupModalOpen: boolean;
   setYearGroupSubmitting: boolean;
   shouldSuppressStaleTableData: boolean;
+  workflowMutationBoundaryActive: boolean;
   yearGroupOptions: ReturnType<typeof getYearGroupOptions>;
 }>) {
   if (properties.classesManagement.classesManagementViewState === 'loading') {
@@ -820,27 +859,37 @@ function renderClassesManagementPanelContent(properties: Readonly<{
       />
       {properties.shouldSuppressStaleTableData === false ? (
         <Flex vertical gap={12}>
-          <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
-          <ClassesToolbar
-            rows={properties.classesManagement.rows}
-            selectedRowKeys={properties.classesManagement.selectedRowKeys}
-            onBulkCreate={properties.onBulkCreateOpen}
-            onBulkDelete={properties.onBulkDeleteOpen}
-            onSetActive={properties.handleSetActive}
-            onSetInactive={properties.handleSetInactive}
-            onSetCohort={properties.onSetCohortOpen}
-            onSetYearGroup={properties.onSetYearGroupOpen}
-            onSetCourseLength={properties.onSetCourseLengthOpen}
-            onManageCohorts={properties.onManageCohortsOpen}
-            onManageYearGroups={properties.onManageYearGroupsOpen}
-            setActiveLoading={properties.setActiveSubmitting}
-            setInactiveLoading={properties.setInactiveSubmitting}
-          />
-          <ClassesTable
-            rows={properties.classesManagement.rows}
-            selectedRowKeys={properties.classesManagement.selectedRowKeys}
-            onSelectedRowKeysChange={properties.classesManagement.onSelectedRowKeysChange}
-          />
+          <div
+            role="region"
+            aria-label="Classes data workflow"
+            aria-busy={properties.classesManagement.isRefreshing ? 'true' : undefined}
+          >
+            <Flex vertical gap={12}>
+              <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
+              <ClassesToolbar
+                rows={properties.classesManagement.rows}
+                selectedRowKeys={properties.classesManagement.selectedRowKeys}
+                onBulkCreate={properties.onBulkCreateOpen}
+                onBulkDelete={properties.onBulkDeleteOpen}
+                onSetActive={properties.handleSetActive}
+                onSetInactive={properties.handleSetInactive}
+                onSetCohort={properties.onSetCohortOpen}
+                onSetYearGroup={properties.onSetYearGroupOpen}
+                onSetCourseLength={properties.onSetCourseLengthOpen}
+                onManageCohorts={properties.onManageCohortsOpen}
+                onManageYearGroups={properties.onManageYearGroupsOpen}
+                mutationInFlight={properties.workflowMutationBoundaryActive}
+                setActiveLoading={properties.setActiveSubmitting}
+                setInactiveLoading={properties.setInactiveSubmitting}
+              />
+              <ClassesTable
+                rows={properties.classesManagement.rows}
+                selectedRowKeys={properties.classesManagement.selectedRowKeys}
+                onSelectedRowKeysChange={properties.classesManagement.onSelectedRowKeysChange}
+                selectionFrozen={properties.workflowMutationBoundaryActive}
+              />
+            </Flex>
+          </div>
           <BulkCreateModal
             open={properties.createModalOpen}
             cohortOptions={properties.cohortOptions}

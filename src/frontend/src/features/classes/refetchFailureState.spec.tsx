@@ -46,6 +46,7 @@ function buildRefreshFailureState(): ClassesManagementState {
     classesCount: staleRows.length,
     cohorts: [],
     errorMessage: null,
+    isRefreshing: false,
     nonBlockingWarningMessage: null,
     refreshRequiredMessage: 'The classes could not be refreshed right now. Please reload the page and try again.',
     rows: [...staleRows],

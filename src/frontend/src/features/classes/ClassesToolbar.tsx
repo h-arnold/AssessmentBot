@@ -13,6 +13,7 @@ export interface ClassesToolbarProperties {
   onSetCourseLength?: () => void;
   onManageCohorts?: () => void;
   onManageYearGroups?: () => void;
+  mutationInFlight?: boolean;
   setActiveLoading?: boolean;
   setInactiveLoading?: boolean;
 }
@@ -92,6 +93,49 @@ function getBulkActionEligibility(
   };
 }
 
+type ClassesToolbarDisabledState = Readonly<{
+  create: boolean;
+  deleteAction: boolean;
+  setActive: boolean;
+  setCohort: boolean;
+  setCourseLength: boolean;
+  setInactive: boolean;
+  setYearGroup: boolean;
+}>;
+
+/**
+ * Returns whether one bulk-action trigger should be disabled.
+ *
+ * @param {boolean} canPerformAction Whether the current selection permits the action.
+ * @param {boolean} workflowMutationInFlight Whether a conflicting workflow write is running.
+ * @returns {boolean} True when the action should stay disabled.
+ */
+function isClassesToolbarActionDisabled(canPerformAction: boolean, workflowMutationInFlight: boolean): boolean {
+  return workflowMutationInFlight || !canPerformAction;
+}
+
+/**
+ * Returns disabled state for workflow-owned bulk actions.
+ *
+ * @param {ClassesToolbarEligibility} eligibility Current selection eligibility.
+ * @param {boolean} workflowMutationInFlight Whether a conflicting workflow write is running.
+ * @returns {ClassesToolbarDisabledState} Disabled flags for bulk-action buttons.
+ */
+function getClassesToolbarDisabledState(
+  eligibility: ClassesToolbarEligibility,
+  workflowMutationInFlight: boolean,
+): ClassesToolbarDisabledState {
+  return {
+    create: isClassesToolbarActionDisabled(eligibility.canCreate, workflowMutationInFlight),
+    deleteAction: isClassesToolbarActionDisabled(eligibility.canDelete, workflowMutationInFlight),
+    setActive: isClassesToolbarActionDisabled(eligibility.canSetActive, workflowMutationInFlight),
+    setCohort: isClassesToolbarActionDisabled(eligibility.canSetCohort, workflowMutationInFlight),
+    setCourseLength: isClassesToolbarActionDisabled(eligibility.canSetCourseLength, workflowMutationInFlight),
+    setInactive: isClassesToolbarActionDisabled(eligibility.canSetInactive, workflowMutationInFlight),
+    setYearGroup: isClassesToolbarActionDisabled(eligibility.canSetYearGroup, workflowMutationInFlight),
+  };
+}
+
 /**
  * Renders bulk-action eligibility state for selected rows.
  *
@@ -105,37 +149,39 @@ export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
   const eligibility = getBulkActionEligibility(selectedRows);
   const selectionMessage = getSelectionMessage(eligibility.selectedRows);
   const activeStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
+  const workflowMutationInFlight = properties.mutationInFlight === true || activeStateMutationInFlight;
+  const disabledState = getClassesToolbarDisabledState(eligibility, workflowMutationInFlight);
 
   return (
     <Card size="small" title="Bulk actions">
       <Space wrap>
-        <Button disabled={!eligibility.canCreate} onClick={properties.onBulkCreate}>
+        <Button disabled={disabledState.create} onClick={properties.onBulkCreate}>
           Create ABClass
         </Button>
         <Button
           loading={properties.setActiveLoading}
-          disabled={!eligibility.canSetActive || activeStateMutationInFlight}
+          disabled={disabledState.setActive}
           onClick={properties.onSetActive}
         >
           Set active
         </Button>
         <Button
           loading={properties.setInactiveLoading}
-          disabled={!eligibility.canSetInactive || activeStateMutationInFlight}
+          disabled={disabledState.setInactive}
           onClick={properties.onSetInactive}
         >
           Set inactive
         </Button>
-        <Button disabled={!eligibility.canSetCohort} onClick={properties.onSetCohort}>
+        <Button disabled={disabledState.setCohort} onClick={properties.onSetCohort}>
           Set cohort
         </Button>
-        <Button disabled={!eligibility.canSetYearGroup} onClick={properties.onSetYearGroup}>
+        <Button disabled={disabledState.setYearGroup} onClick={properties.onSetYearGroup}>
           Set year group
         </Button>
-        <Button disabled={!eligibility.canSetCourseLength} onClick={properties.onSetCourseLength}>
+        <Button disabled={disabledState.setCourseLength} onClick={properties.onSetCourseLength}>
           Set course length
         </Button>
-        <Button danger disabled={!eligibility.canDelete} onClick={properties.onBulkDelete}>
+        <Button danger disabled={disabledState.deleteAction} onClick={properties.onBulkDelete}>
           Delete ABClass
         </Button>
         <Button onClick={properties.onManageCohorts}>

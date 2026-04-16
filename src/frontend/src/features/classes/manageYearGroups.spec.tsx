@@ -142,6 +142,36 @@ describe('ManageYearGroupsModal', () => {
       expect(within(dialog).getByText('Year 7')).toBeInTheDocument();
       expect(within(dialog).getByText('Year 8')).toBeInTheDocument();
     });
+
+    it('keeps trusted year-group data visible while publishing modal busy state during background refresh', async () => {
+      const { queryClient } = renderManageYearGroupsModal();
+
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+
+      let releaseRefresh: (() => void) | undefined;
+      getYearGroupsMock.mockImplementationOnce(() => new Promise<YearGroup[]>((resolve) => {
+        releaseRefresh = () => resolve(seedYearGroups);
+      }));
+
+      try {
+        await act(async () => {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+        });
+
+        await waitFor(() => {
+          expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
+        });
+
+        expect(dialog).toHaveAttribute('aria-busy', 'true');
+        expect(within(dialog).getByText('Refreshing year groups...')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
+        expect(within(dialog).getByRole('table', { name: /year groups/i })).toBeInTheDocument();
+        expect(within(dialog).getByText('Year 7')).toBeInTheDocument();
+      } finally {
+        releaseRefresh?.();
+      }
+    });
   });
 
   describe('list rendering', () => {

@@ -162,6 +162,7 @@ type BackendSettingsHookValue = {
     isInitialLoading: boolean;
     isSaveBlocked: boolean;
     isSaving: boolean;
+    isRefreshing: boolean;
     loadError: string | null;
     partialLoadError: string | null;
     saveBackendSettings: (formValues: BackendSettingsForm) => Promise<void>;
@@ -283,6 +284,7 @@ describe('useBackendSettings', () => {
                 partialLoadError: null,
                 isSaveBlocked: false,
                 isSaving: false,
+                isRefreshing: false,
                 saveError: null,
                 hasApiKey: true,
                 backendSettingsFormValues: baseStoredKeyFormValues,
@@ -380,6 +382,7 @@ describe('useBackendSettings', () => {
             expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
             expect(getCurrentState()).toMatchObject({
                 isSaving: false,
+                isRefreshing: false,
                 saveError: null,
                 backendSettingsFormValues: baseStoredKeyFormValues,
             });
@@ -397,6 +400,7 @@ describe('useBackendSettings', () => {
                 isInitialLoading: false,
                 loadError: partialLoadBackendConfig.loadError,
                 partialLoadError: partialLoadBackendConfig.loadError,
+                isRefreshing: false,
                 isSaveBlocked: true,
                 hasApiKey: true,
                 backendSettingsFormValues: null,
@@ -432,6 +436,7 @@ describe('useBackendSettings', () => {
             expect(getCurrentState()).toMatchObject({
                 loadError: null,
                 partialLoadError: null,
+                isRefreshing: false,
                 isSaveBlocked: false,
                 backendSettingsFormValues: baseStoredKeyFormValues,
             });
@@ -523,6 +528,7 @@ describe('useBackendSettings', () => {
             expect(getCurrentState()).toMatchObject({
                 loadError: 'Unable to load backend settings right now.',
                 partialLoadError: null,
+                isRefreshing: false,
                 isSaveBlocked: true,
                 saveError: null,
                 backendSettingsFormValues: null,
@@ -561,6 +567,7 @@ describe('useBackendSettings', () => {
             expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
             expect(getCurrentState()).toMatchObject({
                 isSaving: false,
+                isRefreshing: false,
                 loadError: null,
                 partialLoadError: null,
                 isSaveBlocked: false,
@@ -609,6 +616,7 @@ describe('useBackendSettings', () => {
 
         expect(getCurrentState()).toMatchObject({
             isSaving: false,
+            isRefreshing: false,
             saveError: domainFailure.error,
             backendSettingsFormValues: baseStoredKeyFormValues,
         });
