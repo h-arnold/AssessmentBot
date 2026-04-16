@@ -161,15 +161,35 @@ Frontend tests:
 
 - Verify `FRONTEND_STANDARDS_AUDIT.md` is committed and referenced by later implementation sections before moving to code sections.
 
+### Delivery checklist
+
+- [x] Red tests added _(N/A: scope-and-classification section; no executable tests required)_
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Manual green-phase checks recorded
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
+### Manual green-phase checks
+
+- Confirm `FRONTEND_STANDARDS_AUDIT.md` covers the active surfaces in `src/frontend`.
+- Confirm each audited surface is classified for width tokens, blocking load, degraded-data handling, refresh scope, mutation boundaries, accessibility signalling, or no change.
+- Confirm modal-width decisions are explicitly marked out of scope where applicable.
+- Confirm deliberate deferrals are recorded explicitly.
+- Confirm `FRONTEND_STANDARDS_AUDIT.md` is the artefact referenced before Section 3+ implementation begins.
+
 ### Optional `@remarks` JSDoc follow-through
 
 - None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:** Later sections should only claim repo-wide compliance against the audited inventory.
+- **Implementation notes:** Green implementation recorded. `FRONTEND_STANDARDS_AUDIT.md` now fixes the active `src/frontend` audit artefact, with Section 3 and Section 6 explicitly anchored to it; `ManageYearGroupsModal` remains classified for mutation-boundary work.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Later sections should only claim repo-wide compliance against `FRONTEND_STANDARDS_AUDIT.md`.
 
 ---
 
@@ -178,11 +198,13 @@ Frontend tests:
 ### Objective
 
 - Introduce shared CSS custom properties for the approved page and panel width categories.
-- Route shared page wrappers, settings tab surfaces, and standalone card-like surfaces through those tokens while preserving current rendered widths.
+- Keep Section 3 scoped to the `FRONTEND_STANDARDS_AUDIT.md` surfaces with width work classified as **Needs work** or inherited from those owners (`PageSection`, `TabbedPageSection`, `SettingsPage`, `AuthStatusCard`, and `BackendSettingsPanel`).
+- Route those audited shared page wrappers, settings tab surfaces, and standalone card-like surfaces through the tokens while preserving current rendered widths.
 
 ### Constraints
 
 - Keep CSS custom properties as the only app-level width token source of truth.
+- Do not widen Section 3 beyond the width surfaces fixed in `FRONTEND_STANDARDS_AUDIT.md`.
 - Preserve the current default and wide-data rendered widths on the first pass.
 - Do not duplicate the same width literals in feature-local selectors after tokenisation.
 - Keep the Settings page outer frame stable across tabs while allowing a centred default-width inner backend settings panel.
@@ -192,7 +214,7 @@ Frontend tests:
 ### Acceptance criteria
 
 - Shared width tokens exist for default page width, wide-data page width, default panel width, and wide-data panel width.
-- Shared page wrappers, relevant tab-panel containers, and standalone card-like surfaces consume those tokens instead of repeating raw literals.
+- Only the audited Section 3 target surfaces consume those tokens instead of repeating raw literals in this sweep.
 - The auth status card consumes the shared default panel-width token rather than a duplicated raw literal.
 - Switching Settings tabs no longer changes the outer page frame width for backend settings.
 - Backend settings renders as a centred default-width inner panel inside the stable Settings-page frame.
@@ -238,7 +260,7 @@ Frontend tests:
 - Skeletons must render in the same owned region as the eventual content.
 - Initial loading must not show ready-state content for the same region at the same time.
 - Initial-loading regions must expose an announced status pattern alongside the skeleton.
-- Use the audit inventory to identify every surface still using generic loading copy or mismatched blocking-load treatment.
+- Use `FRONTEND_STANDARDS_AUDIT.md` to identify every surface still using generic loading copy or mismatched blocking-load treatment.
 - Include `AuthStatusCard` in the first-pass initial-load standardisation because it is a known active surface currently using spinner-plus-text loading.
 
 ### Acceptance criteria
@@ -255,7 +277,7 @@ Frontend tests:
 1. Add or update a Classes management panel test covering the loading branch and asserting a skeleton-style loading region is rendered instead of the existing text-only placeholder.
 2. Add or update backend settings loading tests to assert the initial-loading branch keeps the announced status semantics required by the spec.
 3. Add or update Auth status card tests to assert the initial blocking load uses a shape-matched skeleton instead of spinner-plus-text.
-4. Add focused tests for any additional audited surfaces that still use generic loading copy in place of owned-region skeletons.
+4. Add focused tests for any additional surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` that still use generic loading copy in place of owned-region skeletons.
 5. Add or update Playwright coverage for any changed user-visible loading interaction in touched browser flows.
 
 ### Section checks
@@ -290,7 +312,7 @@ Frontend tests:
 - React Query staleness or ordinary refetch eligibility alone must not be treated as degraded data.
 - Only known-invalid, known-incomplete, or refresh-invalidated data should trigger fail-closed behaviour.
 - Wider surrounding regions may remain visible only when they are independently usable and trustworthy.
-- Use the audit inventory to identify every currently non-compliant degraded-data surface before implementation starts.
+- Use `FRONTEND_STANDARDS_AUDIT.md` to identify every currently non-compliant degraded-data surface before implementation starts.
 - Add Playwright coverage for any changed user-visible degraded-data handling flows.
 
 ### Acceptance criteria
@@ -304,7 +326,7 @@ Frontend tests:
 Frontend tests:
 
 1. Add or update backend settings tests to assert degraded required data suppresses the form region and renders the blocking-state treatment instead.
-2. Add focused tests for any additional audited surfaces where partial or invalid data currently stays visible in violation of the fail-closed rule.
+2. Add focused tests for any additional surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` where partial or invalid data currently stays visible in violation of the fail-closed rule.
 3. Add regression tests that confirm ordinary background refetch or query staleness does not trigger fail-closed behaviour when usable data remains trustworthy.
 4. Add or update Playwright coverage for changed degraded-data browser behaviour where the affected flow is user-visible.
 
@@ -331,8 +353,8 @@ Frontend tests:
 
 ### Objective
 
-- Apply the subregion-scoped refresh rule and the table-surface mutation boundary baseline to composite data surfaces.
-- Keep ready data visible during background refresh while constraining conflicting write actions during short-running non-modal mutations.
+- Apply the subregion-scoped refresh rule and the table-surface mutation boundary baseline only to the `FRONTEND_STANDARDS_AUDIT.md` surfaces that are currently marked **Needs work** for refresh or mutation-boundary behaviour in this pass (`BackendSettingsPanel`, `ClassesManagementPanel`, `ClassesToolbar`, `ClassesTable`, `ManageCohortsModal`, and `ManageYearGroupsModal`).
+- Keep ready data visible during background refresh while constraining conflicting write actions during short-running non-modal mutations on those audited surfaces.
 
 ### Constraints
 
@@ -344,10 +366,11 @@ Frontend tests:
 - For the classes surface, implementation must define and test a small control-boundary matrix covering at least: bulk-action launchers, row selection, row-level write launchers if any, sort/filter controls, and adjacent reference-data launchers such as Manage Cohorts and Manage Year Groups.
 - For the classes surface, the default owned refresh region for class-partials and classroom dataset refresh is the classes data-workflow region comprising the summary card, bulk-actions toolbar, and table. The alert stack and outer panel chrome stay outside that region unless the whole panel context is invalidated.
 - Add Playwright coverage for changed visible refresh and disabled-control behaviour.
+- Do not expand Section 6 into active frontend surfaces that `FRONTEND_STANDARDS_AUDIT.md` already classifies as `No change`, `Inherits owner`, or `Out of scope` for refresh and mutation-boundary work.
 
 ### Acceptance criteria
 
-- Targeted composite surfaces publish explicit refresh or busy state instead of relying on panel-local heuristics only.
+- Only the audited Section 6 target surfaces publish explicit refresh or busy state instead of relying on panel-local heuristics only.
 - Composite surfaces derive refresh affordances at the correct scope instead of replacing whole ready surfaces unnecessarily.
 - Table-heavy non-modal mutation flows follow the agreed baseline for selection freeze, write disablement, and sort/filter availability.
 - The classes surface has an explicit tested control-boundary matrix for what is disabled, what remains available, and what is outside the owned conflict boundary.
@@ -361,7 +384,7 @@ Frontend tests:
 1. Add or update Classes management tests to assert background refresh keeps existing visible data on screen while showing a localised busy affordance.
 2. Add or update Classes toolbar/table tests to assert conflicting write launchers are disabled during bulk mutation, selection is frozen after snapshot, and sort/filter controls remain available.
 3. Add or update tests covering the classes control-boundary matrix, including whether adjacent reference-data launchers remain outside the conflicting workflow region.
-4. Add focused tests for any other composite audited surfaces that currently promote subregion refresh to unnecessary whole-surface replacement or that need explicit busy-state publication.
+4. Add focused tests for any other composite surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` that currently promote subregion refresh to unnecessary whole-surface replacement or that need explicit busy-state publication.
 5. Add or update Playwright classes browser coverage for visible refresh affordances and disabled-control behaviour.
 
 ### Section checks
@@ -388,17 +411,17 @@ Frontend tests:
 
 ### Objective
 
-- Update the remaining audited active frontend surfaces so the standards are applied consistently beyond the initially obvious settings and classes areas.
+- Update the remaining active frontend surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` so the standards are applied consistently beyond the initially obvious settings and classes areas.
 
 ### Constraints
 
-- Keep the sweep limited to the audited active frontend surfaces in `src/frontend`.
+- Keep the sweep limited to the active frontend surfaces listed in `FRONTEND_STANDARDS_AUDIT.md` within `src/frontend`.
 - Cover shared page wrappers, tab panels, standalone card-like surfaces, table cards, and modal loading flows where the approved standards apply.
 - Do not expand into unrelated UX redesign.
 
 ### Acceptance criteria
 
-- Every audited active frontend surface is either updated for compliance or explicitly recorded as a deliberate deferral.
+- Every active frontend surface listed in `FRONTEND_STANDARDS_AUDIT.md` is either updated for compliance or explicitly recorded as a deliberate deferral.
 - Remaining non-compliant surfaces in scope are not left implicit.
 - No duplicated default or wide-data width literals remain in touched active frontend surfaces where shared tokens should apply.
 
@@ -406,10 +429,10 @@ Frontend tests:
 
 Frontend tests:
 
-1. Add or update focused tests for each newly touched audited surface where existing behaviour changes under the standards sweep.
+1. Add or update focused tests for each newly touched surface listed in `FRONTEND_STANDARDS_AUDIT.md` where existing behaviour changes under the standards sweep.
 2. Add regression coverage for any shared helper or wrapper introduced to support repo-wide consistency.
-3. Run the relevant frontend Vitest suites for all touched audited surfaces, not just the initial settings and classes tests.
-4. Add or update Playwright coverage for every changed user-visible interaction introduced by the remaining audited-surface work.
+3. Run the relevant frontend Vitest suites for all touched surfaces from `FRONTEND_STANDARDS_AUDIT.md`, not just the initial settings and classes tests.
+4. Add or update Playwright coverage for every changed user-visible interaction introduced by the remaining `FRONTEND_STANDARDS_AUDIT.md` surface work.
 
 ### Section checks
 
