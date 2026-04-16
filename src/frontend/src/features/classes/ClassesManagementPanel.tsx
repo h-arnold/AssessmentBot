@@ -39,6 +39,9 @@ import { useClassesManagement } from './useClassesManagement';
 import type { ClassesManagementState } from './useClassesManagement';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
+/**
+ * Accessible label for the panel-owned classes management region.
+ */
 export const classesManagementPanelRegionLabel = 'Classes management panel';
 
 /**
