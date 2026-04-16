@@ -11,6 +11,12 @@ export type TeacherSummary = z.infer<typeof TeacherSummarySchema>;
 /**
  * Shape of a class partial document returned by the backend transport.
  * Teacher-bearing fields use TeacherSummary rather than the full Teacher model.
+ *
+ * @remarks The transport contract is key-based and intentionally excludes derived
+ * label fields such as `cohortLabel` and `yearGroupLabel`.
+ *
+ * @remarks `active` is tri-state (`true` | `false` | `null`) to distinguish
+ * inactive classes from unknown/unset values.
  */
 export const ClassPartialSchema = z.object({
     classId: z.string(),

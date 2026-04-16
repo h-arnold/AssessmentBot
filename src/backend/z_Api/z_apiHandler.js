@@ -328,6 +328,10 @@ class ApiDispatcher extends BaseSingleton {
   /**
    * Builds a successful response envelope.
    *
+   * @remarks This transport layer must not reshape handler payload contracts.
+   * It wraps method data in the stable envelope only; domain-field derivation
+   * (for example class label enrichment) must remain outside the backend API boundary.
+   *
    * @param {string} requestId - Unique request identifier.
    * @param {*} data - Response data from the handler.
    * @returns {Object} Response envelope with ok=true, requestId, and data.

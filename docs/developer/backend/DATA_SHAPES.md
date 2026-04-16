@@ -183,6 +183,7 @@ Key notes:
 - `active` is an explicit boolean (or `null` when unknown) persisted on `ABClass` and always included in the partial.
 - `classOwner` is serialised in partial transport via `ABClass.toPartialJSON()` (includes serialisation delegation for `Teacher` instances).
 - `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only.
+- Derived display fields such as `cohortLabel` and `yearGroupLabel` are intentionally excluded from backend transport; frontend view-models derive them from reference-data maps.
 - `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 
 ## Google Classroom Picker and ABClass Mutation Transport Shapes
@@ -345,7 +346,7 @@ Response data:
   "yearGroupKey": "10",
   "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
   "teachers": [{ "userId": "T1", "email": "teacher@school.com", "teacherName": "Ms Smith" }],
-  "active": null
+  "active": true
 }
 ```
 
@@ -356,6 +357,7 @@ Key notes:
 - The controller hydrates `classOwner`, `teachers`, and `students` from Google Classroom before persisting.
 - When the class already exists, the controller preserves existing `assignments` while refreshing roster data.
 - The response is the partial class summary from `ABClass.toPartialJSON()`, so `students` and `assignments` are not returned.
+- New-class upsert paths set `active` to `true`; update paths only change `active` when explicitly patched.
 
 ### `updateABClass` request and response data
 

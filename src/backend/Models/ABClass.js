@@ -312,6 +312,15 @@ class ABClass {
   /**
    * Returns a lightweight partial representation of the class, omitting students and assignments.
    * Suitable for list views and class-selector UIs.
+   *
+   * @remarks This is the canonical backend source for the class-partials transport contract.
+   * Do not add derived UI fields (for example `cohortLabel` or `yearGroupLabel`) here; labels are
+   * resolved in the frontend view-model from reference-data lookups.
+   *
+   * @remarks The `active` field is always emitted and preserves tri-state semantics:
+   * `true` (active), `false` (inactive), or `null` (unknown/unset).
+   * Only creation flows should default it explicitly.
+   *
    * @returns {Object} A partial object representation with class metadata and teachers, but no students or assignments
    */
   toPartialJSON() {

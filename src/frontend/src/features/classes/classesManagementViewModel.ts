@@ -32,6 +32,9 @@ export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
 /**
  * Resolves the preferred display label for a reference-data key.
  *
+ * @remarks This is a UI-only derivation step. Transport payloads should carry
+ * keys only; labels are resolved here from reference-data maps.
+ *
  * @param {string | null} key Reference-data key.
  * @param {ReadonlyMap<string, string>} labelsByKey Labels indexed by key.
  * @returns {string | null} Display label.
@@ -70,6 +73,13 @@ export function compareRowsByDefaultPriority(left: ClassesManagementRow, right: 
 
 /**
  * Builds merged Classes table rows from shared query datasets.
+ *
+ * @remarks `cohortLabel` and `yearGroupLabel` are derived view fields only and
+ * must not be treated as backend transport fields.
+ *
+ * @remarks Status mapping intentionally treats only `active === true` as active.
+ * `active === false` and `active === null` both map to inactive UI state unless
+ * a separate product rule introduces an explicit unknown-state presentation.
  *
  * @param {BuildClassesManagementRowsInput} input Source datasets.
  * @returns {ClassesManagementRow[]} Merged and sorted rows.

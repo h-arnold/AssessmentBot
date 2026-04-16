@@ -4,8 +4,6 @@ import type { Cohort, YearGroup } from '../src/services/referenceData.zod';
 import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
-type TransportClassPartial = ClassPartial;
-
 type ClassesCrudApiResponseScenario = Readonly<
   | {
       kind: 'success';
@@ -51,7 +49,7 @@ export type ClassesCrudRuntimeScenario = Readonly<{
 }>;
 
 export type ClassesCrudDataBundle = Readonly<{
-  classPartials: readonly TransportClassPartial[];
+  classPartials: readonly ClassPartial[];
   cohorts: readonly Cohort[];
   googleClassrooms: readonly GoogleClassroom[];
   yearGroups: readonly YearGroup[];
@@ -85,7 +83,7 @@ export const baseYearGroups: YearGroup[] = [
   },
 ];
 
-export const baseClassPartials: TransportClassPartial[] = [
+export const baseClassPartials: ClassPartial[] = [
   {
     classId: 'class-101',
     className: 'Maths Year 7A',
@@ -134,7 +132,7 @@ export const matchedGoogleClassrooms: GoogleClassroom[] = [
   { classId: 'gc-class-202', className: 'History Year 8D' },
 ];
 
-export const matchedClassPartials: TransportClassPartial[] = [
+export const matchedClassPartials: ClassPartial[] = [
   {
     classId: 'gc-class-201',
     className: 'English Year 7C',
