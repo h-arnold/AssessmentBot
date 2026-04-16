@@ -113,8 +113,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -170,8 +170,8 @@ Frontend tests:
 - [x] Checks passed
 - [x] Manual green-phase checks recorded
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Manual green-phase checks
 
@@ -246,8 +246,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -314,8 +314,8 @@ Frontend tests:
 - [x] Green review clean
 - [x] Checks passed
 - [x] Action plan updated
-- [ ] Commit created
-- [ ] Push completed
+- [x] Commit created
+- [x] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -579,7 +579,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- ...
+- **Implementation notes:** Final documentation pass completed with updates in `docs/developer/frontend/frontend-react-query-and-prefetch.md` and the `ClassesManagementPanel` JSDoc in `src/frontend/src/features/classes/ClassesManagementPanel.tsx`.
+- **Deviations / review outcome:** Docs review returned clean with no blocking issues and no additional deviations were recorded.
+- **Follow-up / validation outcome:** Required validation was reported passing for `npm run frontend:lint`, `npm exec tsc -- -b src/frontend/tsconfig.json`, `npm run frontend:test`, and `npm run frontend:test:coverage`; no further rollout follow-up is currently required.
 
 ---
 
