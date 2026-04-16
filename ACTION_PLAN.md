@@ -295,11 +295,27 @@ Frontend tests:
 
 ### Section checks
 
+- `npm run frontend:test -- src/features/auth/AuthStatusCard.spec.tsx src/features/classes/ClassesManagementPanel.spec.tsx src/features/settings/backend/BackendSettingsPanel.spec.tsx src/features/classes/manageCohorts.spec.tsx src/features/classes/manageYearGroups.spec.tsx`
 - `npm run frontend:test -- ClassesManagementPanel`
 - `npm run frontend:test -- BackendSettingsPanel`
 - `npm run frontend:test -- AuthStatusCard`
+- `npm run frontend:test -- App`
+- `npm run frontend:test -- src/features/auth/AppAuthGate.auth.spec.tsx`
+- `npm run frontend:test -- src/features/auth/useAuthorisationStatus.spec.tsx`
 - `npm run frontend:test:e2e -- e2e-tests/auth-status.spec.ts`
 - `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Delivery checklist
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -307,9 +323,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Red coverage was added or updated in `src/frontend/src/features/auth/AuthStatusCard.spec.tsx`, `src/frontend/src/features/classes/ClassesManagementPanel.spec.tsx`, `src/frontend/src/features/settings/backend/BackendSettingsPanel.spec.tsx`, `src/frontend/src/features/classes/manageCohorts.spec.tsx`, `src/frontend/src/features/classes/manageYearGroups.spec.tsx`, and `src/frontend/e2e-tests/auth-status.spec.ts`. Directly coupled auth tests were then synced in `src/frontend/src/App.spec.tsx`, `src/frontend/src/features/auth/AppAuthGate.auth.spec.tsx`, and `src/frontend/src/features/auth/useAuthorisationStatus.spec.tsx`. Green implementation updated `src/frontend/src/features/auth/AuthStatusCard.tsx`, `src/frontend/src/features/classes/ClassesManagementPanel.tsx`, `src/frontend/src/features/classes/ManageCohortsModal.tsx`, `src/frontend/src/features/classes/ManageYearGroupsModal.tsx`, and `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx` so owned-region skeleton status treatments now cover `AuthStatusCard`, `ClassesManagementPanel`, backend settings loading placement, `ManageCohortsModal`, and `ManageYearGroupsModal`.
+- **Deviations from plan:** None. Red review was clean, and green review was clean after the coupled auth test sync.
+- **Follow-up implications for later sections:** Later loading-state work should preserve the owned-region skeleton-plus-status treatment now shared across these auth, classes, and backend settings surfaces.
 
 ---
 
