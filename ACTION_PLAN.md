@@ -231,10 +231,23 @@ Frontend tests:
 
 ### Section checks
 
+- `npm run frontend:test -- src/pages/TabbedPageSection.spec.tsx src/pages/SettingsPage.spec.tsx src/features/auth/AuthStatusCard.spec.tsx`
 - `npm run frontend:test -- SettingsPage`
 - `npm run frontend:test -- AuthStatusCard`
 - `npm run frontend:test:e2e -- e2e-tests/settings-page.spec.ts`
 - `npm run frontend:lint`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+
+### Delivery checklist
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -242,9 +255,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Complete through action-plan update. Red coverage landed in `src/frontend/src/pages/SettingsPage.spec.tsx`, `src/frontend/src/pages/TabbedPageSection.spec.tsx`, `src/frontend/src/features/auth/AuthStatusCard.spec.tsx`, `src/frontend/e2e-tests/settings-page.spec.ts`, `src/frontend/src/test/appStylesRaw.ts`, and `src/frontend/vite.config.ts` to support raw stylesheet assertions. Green implementation updated `src/frontend/src/index.css` and `src/frontend/src/pages/SettingsPage.tsx` to add shared width CSS custom properties plus a neutral Settings-page outer-frame class so backend settings stays inside a stable wide outer frame while the backend panel remains centred at the default panel width.
+- **Deviations from plan:** Red review removed unsafe implementation-specific assertions; otherwise none. Green review passed with no findings.
+- **Follow-up implications for later sections:** Later settings-surface work should preserve the shared width-token ownership and stable outer-frame contract introduced here.
 
 ---
 
