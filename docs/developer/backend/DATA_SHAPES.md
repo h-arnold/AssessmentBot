@@ -169,10 +169,8 @@ The same schema is used for every hydration level. Partial definitions use `task
   "classId": "C123",
   "className": "Year 10 English",
   "cohortKey": "2025",
-  "cohortLabel": null,
   "courseLength": 1,
   "yearGroupKey": "10",
-  "yearGroupLabel": null,
   "classOwner": { "userId": "T0", "email": "owner@school.com", "teacherName": "Ms Owner" },
   "teachers": [{ "email": "teacher@school.com", "userId": "T1", "teacherName": "Ms Smith" }],
   "active": true
@@ -183,7 +181,7 @@ Key notes:
 
 - `students` and `assignments` are **intentionally excluded** to keep the document lightweight.
 - `active` is an explicit boolean (or `null` when unknown) persisted on `ABClass` and always included in the partial.
-- `classOwner` is serialised via `ABClass.toJSON()` (includes `toJSON()` delegation for `Teacher` instances).
+- `classOwner` is serialised in partial transport via `ABClass.toPartialJSON()` (includes serialisation delegation for `Teacher` instances).
 - `classOwner` and every entry in `teachers` are teacher summary objects with `userId`, `email`, and `teacherName` fields only.
 - `getABClassPartials` returns the documented shape above, not the raw stored document. Storage-only fields such as `_id` and any accidental extras in the collection are stripped during normalisation.
 

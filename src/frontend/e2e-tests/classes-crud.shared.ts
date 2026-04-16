@@ -4,7 +4,7 @@ import type { Cohort, YearGroup } from '../src/services/referenceData.zod';
 import type { GoogleClassroom } from '../src/services/googleClassrooms.zod';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
-type TransportClassPartial = Omit<ClassPartial, 'cohortLabel' | 'yearGroupLabel'>;
+type TransportClassPartial = ClassPartial;
 
 type ClassesCrudApiResponseScenario = Readonly<
   | {
