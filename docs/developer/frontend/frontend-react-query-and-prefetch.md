@@ -7,6 +7,7 @@ Use it alongside:
 - `src/frontend/AGENTS.md`
 - `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md` for initial-load, refresh, degraded-data, and mutation-presentation rules
 
 ## 1. Baseline contract
 
