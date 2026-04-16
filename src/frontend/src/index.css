@@ -1,6 +1,10 @@
 :root {
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --app-header-height: 64px;
+  --app-page-width-default: 720px;
+  --app-page-width-wide-data: 1280px;
+  --app-panel-width-default: 720px;
+  --app-panel-width-wide-data: 1280px;
 }
 
 body {
@@ -79,11 +83,15 @@ body {
 }
 
 .app-page-content {
-  width: min(100%, 720px);
+  width: min(100%, var(--app-page-width-default));
+}
+
+.settings-page-content {
+  width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
 }
 
 .settings-page-content--classes {
-  width: min(calc(100% - 1rem), 1280px);
+  width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
 }
 
 .app-tabbed-page {
@@ -95,12 +103,12 @@ body {
 }
 
 .settings-tab-panel--backend {
-  width: min(100%, 720px);
+  width: min(100%, var(--app-panel-width-default));
   margin-inline: auto;
 }
 
 .auth-card {
-  width: min(100%, 720px);
+  width: min(100%, var(--app-panel-width-default));
   text-align: center;
 }
 
