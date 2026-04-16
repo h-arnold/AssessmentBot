@@ -11,7 +11,7 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 
 ### 0.1 Required `apiHandler` migration pattern
 
-- Treat `src/backend/z_Api/apiHandler.js` as the single frontend transport entrypoint.
+- Treat `src/backend/z_Api/z_apiHandler.js` as the single frontend transport entrypoint.
 - Register new frontend-callable methods in `src/backend/z_Api/apiConstants.js` (`API_METHODS` and `API_ALLOWLIST`).
 - Implement allowlisted dispatch in `ApiDispatcher._invokeAllowlistedMethod(...)` and keep the handler path thin.
 - Return plain response data from allowlisted methods; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.

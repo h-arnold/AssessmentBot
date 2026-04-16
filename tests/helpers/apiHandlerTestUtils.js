@@ -1,4 +1,4 @@
-const apiHandlerPath = '../../src/backend/z_Api/apiHandler.js';
+const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
 const { USER_REQUEST_STORE_KEY } = require('../../src/backend/z_Api/apiConstants.js');
 
 const REFERENCE_DATA_API_METHOD_NAMES = Object.freeze([

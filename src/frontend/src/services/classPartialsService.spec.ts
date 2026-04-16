@@ -28,10 +28,8 @@ describe('classPartialsService.getABClassPartials', () => {
                 classId: 'c1',
                 className: 'Class A',
                 cohortKey: 'cohort-2025',
-                cohortLabel: '2025-2026',
                 courseLength: 2,
                 yearGroupKey: 'year-10',
-                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -53,10 +51,8 @@ describe('classPartialsService.getABClassPartials', () => {
                 classId: 'c1',
                 className: 'Class A',
                 cohortKey: 'cohort-2025',
-                cohortLabel: '2025-2026',
                 courseLength: 2,
                 yearGroupKey: 'year-10',
-                yearGroupLabel: 'Year 10',
                 classOwner: {
                     userId: 'owner-1',
                     email: 'owner-1@example.com',
@@ -83,16 +79,14 @@ describe('classPartialsService.getABClassPartials', () => {
         await expect(getABClassPartials()).rejects.toThrow('Transport failure');
     });
 
-    it('resolves with class partials that use keyed cohort and year-group metadata plus resolved labels', async () => {
+    it('resolves with class partials that use keyed cohort and year-group metadata without label fields', async () => {
         callApiMock.mockResolvedValueOnce([
             {
                 classId: 'c2',
                 className: 'Class B',
                 cohortKey: 'cohort-2026',
-                cohortLabel: '2026-2027',
                 courseLength: 3,
                 yearGroupKey: 'year-11',
-                yearGroupLabel: 'Year 11',
                 classOwner: null,
                 teachers: [],
                 active: false,
@@ -106,13 +100,49 @@ describe('classPartialsService.getABClassPartials', () => {
                 classId: 'c2',
                 className: 'Class B',
                 cohortKey: 'cohort-2026',
-                cohortLabel: '2026-2027',
                 courseLength: 3,
                 yearGroupKey: 'year-11',
-                yearGroupLabel: 'Year 11',
                 classOwner: null,
                 teachers: [],
                 active: false,
+            },
+        ]);
+    });
+
+    it('accepts the live persisted partial shape without cohortLabel or yearGroupLabel fields', async () => {
+        callApiMock.mockResolvedValueOnce([
+            {
+                classId: 'class-201',
+                className: 'Class 201',
+                cohortKey: 'cohort-2025',
+                courseLength: 1,
+                yearGroupKey: 'year-07',
+                classOwner: {
+                    email: 'owner@example.invalid',
+                    userId: 'google-user-001',
+                    teacherName: 'Ms Example',
+                },
+                teachers: [],
+                active: null,
+            },
+        ]);
+
+        const { getABClassPartials } = await import('./classPartialsService');
+
+        await expect(getABClassPartials()).resolves.toEqual([
+            {
+                classId: 'class-201',
+                className: 'Class 201',
+                cohortKey: 'cohort-2025',
+                courseLength: 1,
+                yearGroupKey: 'year-07',
+                classOwner: {
+                    email: 'owner@example.invalid',
+                    userId: 'google-user-001',
+                    teacherName: 'Ms Example',
+                },
+                teachers: [],
+                active: null,
             },
         ]);
     });

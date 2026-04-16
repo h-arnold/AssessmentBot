@@ -185,9 +185,17 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
     expect(classCollection.insertOne).toHaveBeenCalledTimes(1);
     expect(classCollection.replaceOne).not.toHaveBeenCalled();
     expect(partialsCollection.insertOne).toHaveBeenCalledTimes(1);
+    expect(partialsCollection.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        classId: 'class-001',
+        cohortKey: 'coh-2026',
+        yearGroupKey: 'yg-10',
+        active: true,
+      })
+    );
     expect(result).toEqual(
       buildExpectedSummary({
-        active: null,
+        active: true,
       })
     );
     expect(result).not.toHaveProperty('students');
@@ -279,6 +287,8 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
         teachers: existingClassDoc.teachers,
       })
     );
+    expect(result).not.toHaveProperty('cohortLabel');
+    expect(result).not.toHaveProperty('yearGroupLabel');
   });
 
   it('updateABClass does not alter teachers, students, classOwner, or assignments', () => {
@@ -319,6 +329,8 @@ describe('ABClassController upsert/update orchestration (key-based contract)', (
         active: false,
       })
     );
+    expect(result).not.toHaveProperty('cohortLabel');
+    expect(result).not.toHaveProperty('yearGroupLabel');
     expect(result).not.toHaveProperty('students');
     expect(result).not.toHaveProperty('assignments');
   });

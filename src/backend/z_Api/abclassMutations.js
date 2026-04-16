@@ -3,7 +3,7 @@
  *
  * @returns {ABClassController} A new controller instance.
  */
-function getController() {
+function getAbClassController() {
   return new ABClassController();
 }
 
@@ -180,7 +180,7 @@ function validateDeleteABClassParameters(parameters) {
  */
 function upsertABClass(parameters) {
   validateUpsertABClassParameters(parameters);
-  return getController().upsertABClass(parameters);
+  return getAbClassController().upsertABClass(parameters);
 }
 
 /**
@@ -193,7 +193,7 @@ function upsertABClass(parameters) {
  */
 function updateABClass(parameters) {
   validateUpdateABClassParameters(parameters);
-  return getController().updateABClass(parameters);
+  return getAbClassController().updateABClass(parameters);
 }
 
 /**
@@ -206,7 +206,7 @@ function updateABClass(parameters) {
  */
 function deleteABClass(parameters) {
   validateDeleteABClassParameters(parameters);
-  return getController().deleteABClass(parameters);
+  return getAbClassController().deleteABClass(parameters);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

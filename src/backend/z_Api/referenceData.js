@@ -5,7 +5,7 @@
  *
  * @returns {ReferenceDataController} A new controller instance.
  */
-function getController() {
+function getReferenceDataController() {
   return new ReferenceDataController();
 }
 
@@ -15,7 +15,7 @@ function getController() {
  * @returns {Array<{key: string, name: string, active: boolean, startYear: number, startMonth: number}>} List of all cohorts.
  */
 function getCohorts() {
-  return getController().listCohorts();
+  return getReferenceDataController().listCohorts();
 }
 
 /**
@@ -26,7 +26,7 @@ function getCohorts() {
  * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The created cohort record.
  */
 function createCohort(parameters) {
-  return getController().createCohort(parameters.record);
+  return getReferenceDataController().createCohort(parameters.record);
 }
 
 /**
@@ -37,7 +37,7 @@ function createCohort(parameters) {
  * @returns {{key: string, name: string, active: boolean, startYear: number, startMonth: number}} The updated cohort record.
  */
 function updateCohort(parameters) {
-  return getController().updateCohort(parameters);
+  return getReferenceDataController().updateCohort(parameters);
 }
 
 /**
@@ -48,7 +48,7 @@ function updateCohort(parameters) {
  * @returns {void}
  */
 function deleteCohort(parameters) {
-  return getController().deleteCohort(parameters.key);
+  return getReferenceDataController().deleteCohort(parameters.key);
 }
 
 /**
@@ -57,7 +57,7 @@ function deleteCohort(parameters) {
  * @returns {Array<{key: string, name: string}>} List of all year groups.
  */
 function getYearGroups() {
-  return getController().listYearGroups();
+  return getReferenceDataController().listYearGroups();
 }
 
 /**
@@ -68,7 +68,7 @@ function getYearGroups() {
  * @returns {{key: string, name: string}} The created year group record.
  */
 function createYearGroup(parameters) {
-  return getController().createYearGroup(parameters.record);
+  return getReferenceDataController().createYearGroup(parameters.record);
 }
 
 /**
@@ -79,7 +79,7 @@ function createYearGroup(parameters) {
  * @returns {{key: string, name: string}} The updated year group record.
  */
 function updateYearGroup(parameters) {
-  return getController().updateYearGroup(parameters);
+  return getReferenceDataController().updateYearGroup(parameters);
 }
 
 /**
@@ -90,7 +90,7 @@ function updateYearGroup(parameters) {
  * @returns {void}
  */
 function deleteYearGroup(parameters) {
-  return getController().deleteYearGroup(parameters.key);
+  return getReferenceDataController().deleteYearGroup(parameters.key);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

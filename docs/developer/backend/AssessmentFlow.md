@@ -58,7 +58,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 
 - API functions should stay thin and delegate to controllers.
 - Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.
-- Backend configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; the canonical read/write methods are `getBackendConfig` and `setBackendConfig` through `src/backend/z_Api/apiHandler.js`.
+- Backend configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; the canonical read/write methods are `getBackendConfig` and `setBackendConfig` through `src/backend/z_Api/z_apiHandler.js`.
 - Some detailed examples below still describe legacy AdminSheet/UI flows and should be treated as reference until fully migrated.
 
 ---

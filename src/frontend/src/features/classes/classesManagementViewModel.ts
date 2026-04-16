@@ -32,21 +32,22 @@ export const STATUS_ORDER: Readonly<Record<ClassesManagementStatus, number>> = {
 /**
  * Resolves the preferred display label for a reference-data key.
  *
+ * @remarks This is a UI-only derivation step. Transport payloads should carry
+ * keys only; labels are resolved here from reference-data maps.
+ *
  * @param {string | null} key Reference-data key.
- * @param {string | null} fallbackLabel Backend-provided fallback label.
  * @param {ReadonlyMap<string, string>} labelsByKey Labels indexed by key.
  * @returns {string | null} Display label.
  */
 function resolveLabel(
   key: string | null,
-  fallbackLabel: string | null,
   labelsByKey: ReadonlyMap<string, string>,
 ): string | null {
   if (key === null) {
-    return fallbackLabel;
+    return null;
   }
 
-  return labelsByKey.get(key) ?? fallbackLabel;
+  return labelsByKey.get(key) ?? null;
 }
 
 /**
@@ -72,6 +73,13 @@ export function compareRowsByDefaultPriority(left: ClassesManagementRow, right: 
 
 /**
  * Builds merged Classes table rows from shared query datasets.
+ *
+ * @remarks `cohortLabel` and `yearGroupLabel` are derived view fields only and
+ * must not be treated as backend transport fields.
+ *
+ * @remarks Status mapping intentionally treats only `active === true` as active.
+ * `active === false` and `active === null` both map to inactive UI state unless
+ * a separate product rule introduces an explicit unknown-state presentation.
  *
  * @param {BuildClassesManagementRowsInput} input Source datasets.
  * @returns {ClassesManagementRow[]} Merged and sorted rows.
@@ -108,9 +116,9 @@ export function buildClassesManagementRows(
       className: googleClassroom.className,
       status: classPartial.active === true ? 'active' : 'inactive',
       cohortKey: classPartial.cohortKey,
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, cohortLabelsByKey),
       yearGroupKey: classPartial.yearGroupKey,
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });
@@ -126,9 +134,9 @@ export function buildClassesManagementRows(
       className: classPartial.className ?? classPartial.classId,
       status: 'orphaned',
       cohortKey: classPartial.cohortKey,
-      cohortLabel: resolveLabel(classPartial.cohortKey, classPartial.cohortLabel, cohortLabelsByKey),
+      cohortLabel: resolveLabel(classPartial.cohortKey, cohortLabelsByKey),
       yearGroupKey: classPartial.yearGroupKey,
-      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, classPartial.yearGroupLabel, yearGroupLabelsByKey),
+      yearGroupLabel: resolveLabel(classPartial.yearGroupKey, yearGroupLabelsByKey),
       courseLength: classPartial.courseLength,
       active: classPartial.active,
     });

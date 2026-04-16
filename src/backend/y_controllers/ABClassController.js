@@ -148,6 +148,10 @@ class ABClassController {
    * Normalises a stored partial document to the documented transport shape.
    * This prevents storage-only metadata from leaking to API consumers.
    *
+   * @remarks Treat this as the backend transport boundary for class partials.
+   * Keep this output aligned with `ABClass.toPartialJSON()` and do not forward
+   * derived UI fields (for example `cohortLabel` or `yearGroupLabel`) from storage.
+   *
    * @param {Object} partialDocument - Raw partial document read from storage.
    * @returns {Object} Normalised class partial payload.
    * @throws {TypeError} If the document is not a plain object or lacks required fields.
@@ -164,15 +168,13 @@ class ABClassController {
 
     return {
       classId: partialDocument.classId,
-      className: partialDocument.className,
-      cohortKey: partialDocument.cohortKey,
-      cohortLabel: partialDocument.cohortLabel ?? null,
+      className: partialDocument.className ?? null,
+      cohortKey: partialDocument.cohortKey ?? null,
       courseLength: partialDocument.courseLength,
-      yearGroupKey: partialDocument.yearGroupKey,
-      yearGroupLabel: partialDocument.yearGroupLabel ?? null,
-      classOwner: partialDocument.classOwner,
+      yearGroupKey: partialDocument.yearGroupKey ?? null,
+      classOwner: partialDocument.classOwner ?? null,
       teachers: [...partialDocument.teachers],
-      active: partialDocument.active,
+      active: partialDocument.active ?? null,
     };
   }
 
@@ -663,6 +665,10 @@ class ABClassController {
 
   /**
    * Builds a patch object from update parameters for selective field updates.
+   *
+   * @remarks `active` is intentionally patched only when explicitly supplied.
+   * This preserves existing values and avoids accidental defaulting drift.
+   *
    * @param {Object} parameters - The update parameters object.
    * @param {*} [parameters.cohortKey] - Optional cohort key value.
    * @param {*} [parameters.yearGroupKey] - Optional year group key value.
@@ -728,13 +734,18 @@ class ABClassController {
    * @private
    */
   _buildClassSummary(abClass) {
-    return abClass.toPartialJSON();
+    return this._normaliseClassPartial(abClass.toPartialJSON());
   }
 
   /**
    * Creates a new ABClass or updates an existing one with fresh classroom data and custom metadata.
    * Validates all required parameters, then either creates a new class or refreshes an existing one,
    * applying the provided metadata (cohortKey, yearGroupKey, courseLength).
+   *
+   * @remarks New classes are explicitly initialised as active (`active = true`).
+   * Existing classes retain their persisted `active` value unless changed through `updateABClass`.
+   * This split is intentional to avoid hidden defaults during update flows.
+   *
    * @param {Object} parameters - Update parameters.
    * @param {string} parameters.classId - Classroom course identifier (required).
    * @param {*} parameters.cohortKey - User-managed cohort key (required).
@@ -773,6 +784,7 @@ class ABClassController {
         yearGroupKey: parameters.yearGroupKey,
         courseLength: courseLength,
       });
+      abClass.active = true;
     }
 
     this.saveClass(abClass);

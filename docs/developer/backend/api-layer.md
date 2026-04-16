@@ -27,7 +27,7 @@ Legacy backend `globals.js` files are reference-only during migration and are no
 - `src/backend/AssignmentProcessor/globals.js`
 - `src/backend/y_controllers/globals.js`
 
-Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/apiHandler.js`, with allowlisted method names registered in `src/backend/z_Api/apiConstants.js` and implemented in `src/backend/z_Api/apiConfig.js`.
+Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/z_apiHandler.js`, with allowlisted method names registered in `src/backend/z_Api/apiConstants.js` and implemented in `src/backend/z_Api/apiConfig.js`.
 
 Migration rule:
 
@@ -42,7 +42,7 @@ Migration rule:
 
 ## API handler transport (`apiHandler`)
 
-`src/backend/z_Api/apiHandler.js` is the canonical transport entrypoint used by frontend `callApi` requests.
+`src/backend/z_Api/z_apiHandler.js` is the canonical transport entrypoint used by frontend `callApi` requests.
 
 ### Request contract
 
@@ -68,7 +68,7 @@ To add a new frontend-callable API method:
 
 1. Add the method to `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
 2. Add the method to `API_ALLOWLIST` in `src/backend/z_Api/apiConstants.js`.
-3. Add dispatch handling in `ApiDispatcher._invokeAllowlistedMethod(...)` in `src/backend/z_Api/apiHandler.js`.
+3. Add dispatch handling in `ApiDispatcher._invokeAllowlistedMethod(...)` in `src/backend/z_Api/z_apiHandler.js`.
 4. Keep business logic in controllers/services; keep the dispatcher branch thin.
 
 ### Admission control and tracking
@@ -115,7 +115,7 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
 ### Current migrated endpoints
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
-  Source: `src/backend/z_Api/apiConfig.js`. Registered in `src/backend/z_Api/apiConstants.js` and dispatched through `src/backend/z_Api/apiHandler.js`.
+  Source: `src/backend/z_Api/apiConfig.js`. Registered in `src/backend/z_Api/apiConstants.js` and dispatched through `src/backend/z_Api/z_apiHandler.js`.
   Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
   Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
@@ -145,7 +145,7 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
-  Source: `src/backend/z_Api/googleClassrooms.js`. Dispatched through the `apiHandler` allowlist in `src/backend/z_Api/apiHandler.js`.
+  Source: `src/backend/z_Api/googleClassrooms.js`. Dispatched through the `apiHandler` allowlist in `src/backend/z_Api/z_apiHandler.js`.
   Handler behaviour: calls `ClassroomApiClient.fetchAllActiveClassrooms()`, which pages through active Classroom courses, then maps each row to `{ classId, className }`.
   Response data: `Array<{ classId: string, className: string }>`.
   Contract boundary: the payload intentionally omits `teachers`, `students`, `classOwner`, and `enrollmentCode`.

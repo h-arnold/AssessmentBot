@@ -73,16 +73,14 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('ABClassController – getAllClassPartials() read path', () => {
-  it('getAllClassPartials() returns all documents from abclass_partials with key-based metadata shape', () => {
+  it('getAllClassPartials() returns all documents from abclass_partials without label fields', () => {
     const docs = [
       {
         _id: 'doc-1',
         classId: 'class-001',
         className: 'Alpha',
         cohortKey: 'coh-uuid-001',
-        cohortLabel: '2025-2026',
         yearGroupKey: 'yg-uuid-010',
-        yearGroupLabel: 'Year 10',
         courseLength: 2,
         classOwner: { userId: 'owner-1' },
         teachers: [{ userId: 'teacher-1' }],
@@ -117,9 +115,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
         classId: 'class-001',
         className: 'Alpha',
         cohortKey: 'coh-uuid-001',
-        cohortLabel: '2025-2026',
         yearGroupKey: 'yg-uuid-010',
-        yearGroupLabel: 'Year 10',
         courseLength: 2,
         classOwner: { userId: 'owner-1' },
         teachers: [{ userId: 'teacher-1' }],
@@ -129,9 +125,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
         classId: 'class-002',
         className: 'Beta',
         cohortKey: 'coh-uuid-002',
-        cohortLabel: '2024-2025',
         yearGroupKey: 'yg-uuid-009',
-        yearGroupLabel: 'Year 9',
         courseLength: 1,
         classOwner: null,
         teachers: [],
@@ -144,6 +138,8 @@ describe('ABClassController – getAllClassPartials() read path', () => {
     expect(result[0]).not.toHaveProperty('metadataVersion');
     expect(result[0]).not.toHaveProperty('cohort');
     expect(result[0]).not.toHaveProperty('yearGroup');
+    expect(result[0]).not.toHaveProperty('cohortLabel');
+    expect(result[0]).not.toHaveProperty('yearGroupLabel');
   });
 
   it('getAllClassPartials() returns [] when the collection has no documents', () => {
@@ -172,9 +168,7 @@ describe('ABClassController – getAllClassPartials() read path', () => {
         classId: 'class-003',
         className: 'Gamma',
         cohortKey: 'coh-uuid-003',
-        cohortLabel: '2023-2024',
         yearGroupKey: 'yg-uuid-008',
-        yearGroupLabel: 'Year 8',
         courseLength: 1,
         classOwner: null,
         teachers: [],
@@ -186,8 +180,8 @@ describe('ABClassController – getAllClassPartials() read path', () => {
     expect(Array.isArray(new ABClassController().getAllClassPartials())).toBe(true);
   });
 
-  it('_normaliseClassPartial: stored partial missing cohortLabel/yearGroupLabel uses null, not undefined', () => {
-    // Simulate a document persisted before label fields were added (fields simply absent)
+  it('_normaliseClassPartial: stored partial missing cohortLabel/yearGroupLabel omits them from transport', () => {
+    // Simulate a document persisted before label fields were added (fields simply absent).
     const docs = [
       {
         classId: 'class-no-labels',
@@ -206,11 +200,51 @@ describe('ABClassController – getAllClassPartials() read path', () => {
 
     const [result] = new ABClassController().getAllClassPartials();
 
-    // Must be null (Zod z.string().nullable() accepts null but rejects undefined)
-    expect(result.cohortLabel).toBeNull();
-    expect(result.yearGroupLabel).toBeNull();
+    expect(result).not.toHaveProperty('cohortLabel');
+    expect(result).not.toHaveProperty('yearGroupLabel');
     // Sanity: other fields are still correct
     expect(result.cohortKey).toBe('coh-uuid-004');
     expect(result.yearGroupKey).toBe('yg-uuid-007');
+  });
+
+  it('normalises the live persisted class-partials row shape into the frontend transport contract', () => {
+    const docs = [
+      {
+        _id: '9494597d-e565-4498-b1d5-cf4cc6d9ef51',
+        classId: 'class-201',
+        className: 'Class 201',
+        cohortKey: 'cohort-2025',
+        courseLength: 1,
+        yearGroupKey: 'year-07',
+        classOwner: {
+          email: 'owner@example.invalid',
+          userId: 'google-user-001',
+          teacherName: 'Ms Example',
+        },
+        teachers: [],
+        active: null,
+      },
+    ];
+    partialsCollection.find.mockReturnValue(docs);
+
+    const [result] = new ABClassController().getAllClassPartials();
+
+    expect(result).toEqual({
+      classId: 'class-201',
+      className: 'Class 201',
+      cohortKey: 'cohort-2025',
+      courseLength: 1,
+      yearGroupKey: 'year-07',
+      classOwner: {
+        email: 'owner@example.invalid',
+        userId: 'google-user-001',
+        teacherName: 'Ms Example',
+      },
+      teachers: [],
+      active: null,
+    });
+    expect(result).not.toHaveProperty('cohortLabel');
+    expect(result).not.toHaveProperty('yearGroupLabel');
+    expect(result).not.toHaveProperty('_id');
   });
 });

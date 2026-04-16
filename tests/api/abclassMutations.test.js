@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const abclassMutationsModulePath = '../../src/backend/z_Api/abclassMutations.js';
@@ -248,6 +251,91 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     });
 
     expect(() => deleteABClass({ classId: 'class-001' })).toThrow(controllerError);
+  });
+
+  it('keeps using the ABClass controller when reference-data API helpers are loaded into the same GAS global scope', () => {
+    const params = {
+      classId: 'class-001',
+      cohortKey: 'coh-2026',
+      yearGroupKey: 'yg-10',
+      courseLength: 2,
+    };
+    const controllerResult = buildClassSummary();
+    const upsertSpy = vi.fn(() => controllerResult);
+    const validateModule = require('../../src/backend/Utils/Validate.js');
+    const referenceDataPath = path.resolve(__dirname, '../../src/backend/z_Api/referenceData.js');
+    const abclassMutationsPath = path.resolve(
+      __dirname,
+      '../../src/backend/z_Api/abclassMutations.js'
+    );
+    const referenceDataSource = fs.readFileSync(referenceDataPath, 'utf8');
+    const abclassMutationsSource = fs.readFileSync(abclassMutationsPath, 'utf8');
+    const context = {
+      ABClassController: function MockABClassController() {
+        this.upsertABClass = upsertSpy;
+      },
+      ReferenceDataController: function MockReferenceDataController() {
+        this.listCohorts = vi.fn();
+      },
+      ApiValidationError,
+      Validate: validateModule.Validate || validateModule,
+    };
+
+    context.globalThis = context;
+    vm.createContext(context);
+
+    vm.runInContext(referenceDataSource, context, { filename: referenceDataPath }); // NOSONAR -- test-only VM execution of trusted local fixture source
+    vm.runInContext(`${abclassMutationsSource}\nthis.__exports = { upsertABClass };`, context, {
+      // NOSONAR -- test-only VM execution of trusted local fixture source
+      filename: abclassMutationsPath,
+    });
+
+    expect(context.__exports.upsertABClass(params)).toEqual(controllerResult);
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
+    expect(upsertSpy).toHaveBeenCalledWith(params);
+  });
+
+  it('keeps using the reference-data controller when ABClass API helpers are loaded into the same GAS global scope', () => {
+    const controllerResult = [
+      {
+        key: 'coh-2026',
+        name: '2026 Cohort',
+        active: true,
+        startYear: 2026,
+        startMonth: 9,
+      },
+    ];
+    const listCohortsSpy = vi.fn(() => controllerResult);
+    const validateModule = require('../../src/backend/Utils/Validate.js');
+    const referenceDataPath = path.resolve(__dirname, '../../src/backend/z_Api/referenceData.js');
+    const abclassMutationsPath = path.resolve(
+      __dirname,
+      '../../src/backend/z_Api/abclassMutations.js'
+    );
+    const referenceDataSource = fs.readFileSync(referenceDataPath, 'utf8');
+    const abclassMutationsSource = fs.readFileSync(abclassMutationsPath, 'utf8');
+    const context = {
+      ABClassController: function MockABClassController() {
+        this.upsertABClass = vi.fn();
+      },
+      ReferenceDataController: function MockReferenceDataController() {
+        this.listCohorts = listCohortsSpy;
+      },
+      ApiValidationError,
+      Validate: validateModule.Validate || validateModule,
+    };
+
+    context.globalThis = context;
+    vm.createContext(context);
+
+    vm.runInContext(abclassMutationsSource, context, { filename: abclassMutationsPath }); // NOSONAR -- test-only VM execution of trusted local fixture source
+    vm.runInContext(`${referenceDataSource}\nthis.__exports = { getCohorts };`, context, {
+      // NOSONAR -- test-only VM execution of trusted local fixture source
+      filename: referenceDataPath,
+    });
+
+    expect(context.__exports.getCohorts()).toEqual(controllerResult);
+    expect(listCohortsSpy).toHaveBeenCalledTimes(1);
   });
 
   it.each([
