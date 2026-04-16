@@ -43,16 +43,19 @@ const seedYearGroups: YearGroup[] = [
  *
  * @param {object} [options] Render options.
  * @param {boolean} [options.open] Whether the modal is open.
+ * @param {boolean} [options.seedQueryData] Whether to seed the query cache before render.
  * @param {YearGroup[]} [options.yearGroups] Year groups to seed in the query cache.
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
 function renderManageYearGroupsModal(
-  options: { open?: boolean; yearGroups?: YearGroup[] } = {},
+  options: { open?: boolean; seedQueryData?: boolean; yearGroups?: YearGroup[] } = {},
 ) {
-  const { open = true, yearGroups = seedYearGroups } = options;
+  const { open = true, seedQueryData = true, yearGroups = seedYearGroups } = options;
   const queryClient = createAppQueryClient();
 
-  queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
+  if (seedQueryData) {
+    queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
+  }
   getYearGroupsMock.mockResolvedValue(yearGroups);
 
   return renderWithFrontendProviders(
@@ -61,17 +64,52 @@ function renderManageYearGroupsModal(
   );
 }
 
+
+/**
+ * Returns the owned Manage Year Groups modal dialog region.
+ *
+ * @returns {HTMLElement} The outer Manage Year Groups dialog.
+ */
+function getManageYearGroupsModalDialog() {
+  return screen.getByRole('dialog', { name: 'Manage Year Groups' });
+}
+
+/**
+ * Finds the owned Manage Year Groups modal dialog region.
+ *
+ * @returns {Promise<HTMLElement>} The outer Manage Year Groups dialog.
+ */
+async function findManageYearGroupsModalDialog() {
+  return screen.findByRole('dialog', { name: 'Manage Year Groups' });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   getYearGroupsMock.mockResolvedValue(seedYearGroups);
 });
 
 describe('ManageYearGroupsModal', () => {
+  describe('initial loading state', () => {
+    it('renders a skeleton status region instead of the ready year-group table while year-group data is still loading', () => {
+      getYearGroupsMock.mockImplementation(() => new Promise(() => {}));
+
+      renderManageYearGroupsModal({ seedQueryData: false });
+      const dialog = getManageYearGroupsModalDialog();
+
+      expect(within(dialog).getByRole('status', { name: 'Loading year groups' })).toBeInTheDocument();
+      expect(dialog.querySelector('.ant-skeleton')).not.toBeNull();
+      expect(within(dialog).queryByRole('button', { name: /create year group/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Year 7')).not.toBeInTheDocument();
+    });
+  });
+
   describe('list rendering', () => {
     it('renders a table listing year groups with a name column', async () => {
       renderManageYearGroupsModal();
 
-      const table = await screen.findByRole('table', { name: /year groups/i });
+      const dialog = await findManageYearGroupsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /year groups/i });
       expect(table).toBeInTheDocument();
       expect(within(table).getByText('Year 7')).toBeInTheDocument();
       expect(within(table).getByText('Year 8')).toBeInTheDocument();
@@ -80,7 +118,8 @@ describe('ManageYearGroupsModal', () => {
     it('renders Edit and Delete action buttons for each year-group row', async () => {
       renderManageYearGroupsModal();
 
-      const table = await screen.findByRole('table', { name: /year groups/i });
+      const dialog = await findManageYearGroupsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /year groups/i });
       const rows = within(table).getAllByRole('row').slice(1); // skip header row
 
       for (const row of rows) {
@@ -94,8 +133,9 @@ describe('ManageYearGroupsModal', () => {
     it('shows an empty state and a primary Create year group button when no year groups exist', async () => {
       renderManageYearGroupsModal({ yearGroups: [] });
 
-      await screen.findByText(/no year groups/i);
-      expect(screen.getByRole('button', { name: /create year group/i })).toBeInTheDocument();
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByText(/no year groups/i);
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
     });
   });
 
@@ -103,15 +143,17 @@ describe('ManageYearGroupsModal', () => {
     it('renders a Create year group button when year groups are listed', async () => {
       renderManageYearGroupsModal();
 
-      await screen.findByRole('table', { name: /year groups/i });
-      expect(screen.getByRole('button', { name: /create year group/i })).toBeInTheDocument();
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      expect(within(dialog).getByRole('button', { name: /create year group/i })).toBeInTheDocument();
     });
 
     it('opens a blank year-group form dialog when the Create year group button is clicked', async () => {
       renderManageYearGroupsModal();
 
-      await screen.findByRole('table', { name: /year groups/i });
-      fireEvent.click(screen.getByRole('button', { name: /create year group/i }));
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
 
       const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
       expect(formDialog).toBeInTheDocument();
@@ -123,7 +165,8 @@ describe('ManageYearGroupsModal', () => {
     it('opens a pre-filled year-group form dialog when an Edit button is clicked', async () => {
       renderManageYearGroupsModal();
 
-      const table = await screen.findByRole('table', { name: /year groups/i });
+      const dialog = await findManageYearGroupsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /year groups/i });
       const firstDataRow = within(table).getAllByRole('row')[1];
       fireEvent.click(within(firstDataRow).getByRole('button', { name: /edit/i }));
 
@@ -138,7 +181,8 @@ describe('ManageYearGroupsModal', () => {
       const { queryClient } = renderManageYearGroupsModal();
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-      const table = await screen.findByRole('table', { name: /year groups/i });
+      const dialog = await findManageYearGroupsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /year groups/i });
       const firstDataRow = within(table).getAllByRole('row')[1];
       fireEvent.click(within(firstDataRow).getByRole('button', { name: /edit/i }));
 
@@ -169,8 +213,9 @@ describe('ManageYearGroupsModal', () => {
       const { queryClient } = renderManageYearGroupsModal();
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
-      await screen.findByRole('table', { name: /year groups/i });
-      fireEvent.click(screen.getByRole('button', { name: /create year group/i }));
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
 
       const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
       fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
@@ -195,9 +240,9 @@ describe('ManageYearGroupsModal', () => {
     it('calls onClose when the modal footer Cancel button is activated', async () => {
       renderManageYearGroupsModal();
 
-      await screen.findByRole('table', { name: /year groups/i });
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      fireEvent.click(cancelButton);
+      const dialog = await findManageYearGroupsModalDialog();
+      await within(dialog).findByRole('table', { name: /year groups/i });
+      fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
 
       expect(onCloseMock).toHaveBeenCalledOnce();
     });
@@ -205,7 +250,7 @@ describe('ManageYearGroupsModal', () => {
     it('does not render the modal content when open is false', () => {
       renderManageYearGroupsModal({ open: false });
 
-      expect(screen.queryByRole('table', { name: /year groups/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Manage Year Groups' })).not.toBeInTheDocument();
     });
   });
 });

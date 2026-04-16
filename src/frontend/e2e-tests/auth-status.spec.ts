@@ -78,7 +78,7 @@ async function mockGoogleScriptRun(page: Page, scenario: AuthServiceMockScenario
 }
 
 test.describe('auth status flow', () => {
-  test('shows loading text initially', async ({ page }) => {
+  test('shows a skeleton status region while authorisation is still loading', async ({ page }) => {
     await mockGoogleScriptRun(page, {
       kind: 'success',
       result: true,
@@ -87,8 +87,17 @@ test.describe('auth status flow', () => {
 
     await page.goto('/');
 
-    await expect(page.getByText('Checking authorisation status...')).toBeVisible();
-    await expect(page.getByText('Authorised')).toBeVisible();
+    const authCard = page.locator('.auth-card');
+
+    await expect(authCard.getByRole('status', { name: 'Loading authorisation status' })).toBeVisible();
+    await expect(authCard.locator('.ant-skeleton')).toBeVisible();
+    await expect(authCard.getByText('Checking authorisation status...')).toHaveCount(0);
+    await expect(authCard.getByText('Authorised')).toHaveCount(0);
+    await expect(authCard.getByText('Unauthorised')).toHaveCount(0);
+
+    await expect(authCard.getByRole('status', { name: 'Loading authorisation status' })).toHaveCount(0);
+    await expect(authCard.locator('.ant-skeleton')).toHaveCount(0);
+    await expect(authCard.getByText('Authorised')).toBeVisible();
   });
 
   test('shows Authorised when backend returns true', async ({ page }) => {

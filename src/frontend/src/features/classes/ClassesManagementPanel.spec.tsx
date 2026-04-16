@@ -92,12 +92,19 @@ beforeEach(() => {
 });
 
 describe('ClassesManagementPanel', () => {
-  it('renders a loading feature state shell while classes data resolves', async () => {
+  it('renders a skeleton status region while classes data resolves', async () => {
     mockClassesManagementState({ classesManagementViewState: 'loading', classesCount: null, rows: [] });
 
     await renderPanel();
+    const panel = screen.getByRole('region', { name: 'Classes management panel' });
 
-    expect(screen.getByText('Classes feature is loading.')).toBeInTheDocument();
+    expect(within(panel).getByRole('status', { name: 'Loading classes' })).toBeInTheDocument();
+    expect(panel.querySelector('.ant-skeleton')).not.toBeNull();
+    expect(within(panel).queryByText('Classes feature is loading.')).not.toBeInTheDocument();
+    expect(within(panel).queryByText('Summary')).not.toBeInTheDocument();
+    expect(within(panel).queryByText('Selected rows: 0')).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Create ABClass' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
   });
 
   it.each([

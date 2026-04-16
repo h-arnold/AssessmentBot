@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
 import type { BackendSettingsForm } from './backendSettingsForm.zod';
@@ -65,18 +65,20 @@ describe('BackendSettingsPanel', () => {
     backendSettingsHookState.saveBackendSettings.mockReset();
   });
 
-  it('renders a loading skeleton before the form is available', () => {
+  it('renders the backend panel skeleton inside the owned announced status region before the form is available', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       isInitialLoading: true,
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(
-      screen.getByRole('status', { name: 'Loading backend settings' })
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).getByRole('status', { name: 'Loading backend settings' })).toBeInTheDocument();
+    expect(panel.querySelector('.ant-skeleton')).not.toBeNull();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('heading', { level: 3, name: 'Backend' })).not.toBeInTheDocument();
+    expect(within(panel).queryByLabelText('API key')).not.toBeInTheDocument();
   });
 
   it('renders a top-level alert for a blocking load failure', () => {

@@ -15,7 +15,7 @@ import {
 } from './navigation/appNavigation';
 import { createGoogleScriptRunApiHandlerMock } from './test/googleScriptRunHarness';
 
-const checkingAuthorisationStatusText = 'Checking authorisation status...';
+const loadingAuthorisationStatusLabel = 'Loading authorisation status';
 const applicationTitleText = appBreadcrumbBaseLabel;
 const navigationLabels = navigationItems.map(({ label }) => label);
 const noBreadcrumbLabelPosition = -1;
@@ -414,7 +414,7 @@ describe('App', () => {
 
     const mainRegion = screen.getByRole('main');
 
-    expect(within(mainRegion).getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(within(mainRegion).getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
   });
 
   it('toggle control renders with accessible label', async () => {
@@ -519,7 +519,7 @@ describe('App', () => {
     renderApp();
 
     expect(screen.getByRole('banner')).toHaveTextContent(applicationTitleText);
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Authorised')).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
     await waitFor(() => {
@@ -538,7 +538,7 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
@@ -558,7 +558,7 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
@@ -573,7 +573,7 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
@@ -594,7 +594,7 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(
       await screen.findByText('The service is busy. Please try again shortly.')
@@ -605,7 +605,7 @@ describe('App', () => {
   it('shows runtime failure message when google.script.run is unavailable', async () => {
     renderApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
     expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
   });
@@ -615,7 +615,7 @@ describe('App', () => {
 
     await renderPendingApp();
 
-    expect(screen.getByText(checkingAuthorisationStatusText)).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
     expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 

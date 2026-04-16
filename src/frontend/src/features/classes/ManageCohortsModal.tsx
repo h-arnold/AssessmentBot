@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Modal, Space, Switch, Table, type TableColumnType } from 'antd';
+import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Switch, Table, type TableColumnType } from 'antd';
 import { useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
@@ -193,6 +193,22 @@ function getCohortFormDialogTitle(formMode: FormMode | null): string {
   return formMode === 'create' ? 'Create cohort' : 'Edit cohort';
 }
 
+/**
+ * Renders the initial blocking-load treatment for the outer cohorts modal body.
+ *
+ * @returns {JSX.Element} Loading skeleton content.
+ */
+function ManageCohortsInitialLoadingState() {
+  return (
+    <div aria-label="Loading cohorts" role="status">
+      <Flex vertical gap={12}>
+        <Skeleton.Button active />
+        <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
+      </Flex>
+    </div>
+  );
+}
+
 type CohortFormFinishHandlerProperties = Readonly<{
   closeFormDialog: () => void;
   editingCohort: Cohort | null;
@@ -321,6 +337,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const queryClient = useQueryClient();
   const cohortsQuery = useQuery(getCohortsQueryOptions());
   const cohorts = cohortsQuery.data ?? [];
+  const isInitialLoading = cohortsQuery.isPending && cohortsQuery.data === undefined;
 
   const [form] = Form.useForm<CohortFormValues>();
   const [formMode, setFormMode] = useState<FormMode | null>(null);
@@ -431,26 +448,30 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       }
       width={800}
     >
-      <Flex vertical gap={12}>
-        <Button type="primary" onClick={openCreateForm}>
-          Create cohort
-        </Button>
-        {toggleError === null ? null : (
-          <Alert
-            description={toggleError}
-            type="error"
-            showIcon
+      {isInitialLoading ? (
+        <ManageCohortsInitialLoadingState />
+      ) : (
+        <Flex vertical gap={12}>
+          <Button type="primary" onClick={openCreateForm}>
+            Create cohort
+          </Button>
+          {toggleError === null ? null : (
+            <Alert
+              description={toggleError}
+              type="error"
+              showIcon
+            />
+          )}
+          <Table<Cohort>
+            aria-label="cohorts"
+            dataSource={cohorts}
+            columns={columns}
+            rowKey="key"
+            pagination={false}
+            locale={{ emptyText: 'No cohorts' }}
           />
-        )}
-        <Table<Cohort>
-          aria-label="cohorts"
-          dataSource={cohorts}
-          columns={columns}
-          rowKey="key"
-          pagination={false}
-          locale={{ emptyText: 'No cohorts' }}
-        />
-      </Flex>
+        </Flex>
+      )}
 
       {renderCohortFormDialog({
         editingCohort,

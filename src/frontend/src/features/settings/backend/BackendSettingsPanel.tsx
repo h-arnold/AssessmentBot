@@ -360,9 +360,15 @@ export function BackendSettingsPanel() {
 
   if (isInitialLoading) {
     return (
-      <div aria-label="Loading backend settings" role="status">
-        <Skeleton active paragraph={{ rows: 10 }} />
-      </div>
+      <Card
+        className="settings-tab-panel settings-tab-panel--backend"
+        role="region"
+        aria-label="Backend settings panel"
+      >
+        <div aria-label="Loading backend settings" role="status">
+          <Skeleton active paragraph={{ rows: 10 }} />
+        </div>
+      </Card>
     );
   }
 

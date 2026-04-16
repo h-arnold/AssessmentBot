@@ -1,4 +1,4 @@
-import { Alert, Card, Flex, Typography } from 'antd';
+import { Alert, Card, Flex, Skeleton, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
@@ -402,6 +402,27 @@ function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkAc
 }
 
 /**
+ * Renders the initial blocking-load treatment for the classes panel.
+ *
+ * @returns {JSX.Element} Loading skeleton for the panel-owned content.
+ */
+function ClassesManagementPanelLoadingState() {
+  return (
+    <div aria-label="Loading classes" role="status">
+      <Flex vertical gap={12}>
+        <Skeleton active paragraph={{ rows: 2 }} title={{ width: '35%' }} />
+        <Flex gap={8} wrap>
+          <Skeleton.Button active />
+          <Skeleton.Button active />
+          <Skeleton.Button active />
+        </Flex>
+        <Skeleton active paragraph={{ rows: 6 }} title={{ width: '20%' }} />
+      </Flex>
+    </div>
+  );
+}
+
+/**
  * Renders the Classes feature entry shell.
  *
  * Wires bulk-action handlers via the shared bulk-mutation orchestration helper.
@@ -768,13 +789,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
   if (properties.classesManagement.classesManagementViewState === 'loading') {
     return (
       <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-        <Typography.Text>Classes feature is loading.</Typography.Text>
-        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
-        <ClassesAlertStack
-          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
-          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
-          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
-        />
+        <ClassesManagementPanelLoadingState />
       </Card>
     );
   }

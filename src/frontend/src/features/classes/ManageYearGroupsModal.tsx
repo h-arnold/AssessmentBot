@@ -13,7 +13,7 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Button, Flex, Form, Modal, Space, Table, type TableColumnType } from 'antd';
+import { Button, Flex, Form, Modal, Skeleton, Space, Table, type TableColumnType } from 'antd';
 import { useState } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
@@ -254,6 +254,22 @@ function getYearGroupFormDialogTitle(formMode: FormMode | null): string {
 }
 
 /**
+ * Renders the initial blocking-load treatment for the outer year-groups modal body.
+ *
+ * @returns {JSX.Element} Loading skeleton content.
+ */
+function ManageYearGroupsInitialLoadingState() {
+  return (
+    <div aria-label="Loading year groups" role="status">
+      <Flex vertical gap={12}>
+        <Skeleton.Button active />
+        <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
+      </Flex>
+    </div>
+  );
+}
+
+/**
  * Renders the Manage Year Groups modal workflow.
  *
  * @param {ManageYearGroupsModalProperties} properties Component properties.
@@ -263,6 +279,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const queryClient = useQueryClient();
   const yearGroupsQuery = useQuery(getYearGroupsQueryOptions());
   const yearGroups = yearGroupsQuery.data ?? [];
+  const isInitialLoading = yearGroupsQuery.isPending && yearGroupsQuery.data === undefined;
 
   const [form] = Form.useForm<YearGroupFormValues>();
   const [formMode, setFormMode] = useState<FormMode | null>(null);
@@ -350,19 +367,23 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       }
       width={700}
     >
-      <Flex vertical gap={12}>
-        <Button type="primary" onClick={openCreateForm}>
-          Create year group
-        </Button>
-        <Table<YearGroup>
-          aria-label="year groups"
-          dataSource={yearGroups}
-          columns={columns}
-          rowKey="key"
-          pagination={false}
-          locale={{ emptyText: 'No year groups' }}
-        />
-      </Flex>
+      {isInitialLoading ? (
+        <ManageYearGroupsInitialLoadingState />
+      ) : (
+        <Flex vertical gap={12}>
+          <Button type="primary" onClick={openCreateForm}>
+            Create year group
+          </Button>
+          <Table<YearGroup>
+            aria-label="year groups"
+            dataSource={yearGroups}
+            columns={columns}
+            rowKey="key"
+            pagination={false}
+            locale={{ emptyText: 'No year groups' }}
+          />
+        </Flex>
+      )}
 
       {renderYearGroupFormDialog({
         editingYearGroup,
