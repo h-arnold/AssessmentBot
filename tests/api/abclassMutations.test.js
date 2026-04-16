@@ -284,8 +284,9 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     context.globalThis = context;
     vm.createContext(context);
 
-    vm.runInContext(referenceDataSource, context, { filename: referenceDataPath });
+    vm.runInContext(referenceDataSource, context, { filename: referenceDataPath }); // NOSONAR -- test-only VM execution of trusted local fixture source
     vm.runInContext(`${abclassMutationsSource}\nthis.__exports = { upsertABClass };`, context, {
+      // NOSONAR -- test-only VM execution of trusted local fixture source
       filename: abclassMutationsPath,
     });
 
@@ -327,8 +328,9 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     context.globalThis = context;
     vm.createContext(context);
 
-    vm.runInContext(abclassMutationsSource, context, { filename: abclassMutationsPath });
+    vm.runInContext(abclassMutationsSource, context, { filename: abclassMutationsPath }); // NOSONAR -- test-only VM execution of trusted local fixture source
     vm.runInContext(`${referenceDataSource}\nthis.__exports = { getCohorts };`, context, {
+      // NOSONAR -- test-only VM execution of trusted local fixture source
       filename: referenceDataPath,
     });
 
