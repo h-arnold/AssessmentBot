@@ -437,15 +437,26 @@ Frontend tests:
 - `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts`
 - `npm run frontend:lint`
 
+### Delivery checklist
+
+- [x] Red tests added
+- [x] Red review clean
+- [x] Green implementation complete
+- [x] Green review clean
+- [x] Checks passed
+- [x] Action plan updated
+- [ ] Commit created
+- [ ] Push completed
+
 ### Optional `@remarks` JSDoc follow-through
 
 - Use `@remarks` if a helper is introduced to explain why refresh scope is region-based rather than whole-panel by default or why a surface exposes explicit busy-state metadata.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:**
-- **Deviations from plan:**
-- **Follow-up implications for later sections:**
+- **Implementation notes:** Red coverage for the Section 6 targets landed and reviewed clean across `ClassesManagementPanel`, `ClassesToolbar`, `ClassesTable`, `BackendSettingsPanel`, `manageCohorts.spec.tsx`, `manageYearGroups.spec.tsx`, and the existing Playwright harness/spec flows for classes CRUD, backend settings, cohorts, and year groups. Green implementation then added visible refresh feedback in `BackendSettingsPanel`, `ManageCohortsModal`, and `ManageYearGroupsModal` while keeping ready data visible, corrected the classes refresh copy so it scoped to the class-data workflow region, and remediated coverage-threshold issues so `npm run frontend:test:coverage` passed at branch coverage 85.26%. Final Section 6 validation passed with `npm run frontend:test -- ClassesManagementPanel`, `npm run frontend:test -- ClassesToolbar`, `npm run frontend:test -- ClassesTable`, `npm run frontend:test -- BackendSettingsPanel`, `npm run frontend:test -- manageCohorts.spec.tsx`, `npm run frontend:test -- manageYearGroups.spec.tsx`, `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts e2e-tests/settings-backend.spec.ts e2e-tests/classes-crud-manage-cohorts.spec.ts e2e-tests/classes-crud-manage-year-groups.spec.ts`, `npm run frontend:lint`, `npm exec tsc -- -b src/frontend/tsconfig.json`, and `npm run frontend:test:coverage`.
+- **Deviations from plan:** Green review was not clean on the first pass. Review findings on missing visible refresh feedback for backend settings and the cohorts/year-groups modals, overly broad classes refresh copy, and coverage-threshold shortfall were all remediated before the final clean green review.
+- **Follow-up implications for later sections:** Later sections should preserve the explicit busy-state publication and class-data-scoped refresh messaging now established for the classes workflow region, backend settings, and the cohorts/year-groups modals, and should extend the existing Playwright harness/spec coverage rather than introducing duplicate browser paths.
 
 ---
 
