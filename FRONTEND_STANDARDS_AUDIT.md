@@ -9,6 +9,8 @@ Status terms used below:
 - **Inherits owner**: the surface is in scope, but its relevant behaviour is owned by a parent surface in this sweep.
 - **Out of scope**: deliberately deferred for this standards pass.
 
+Branch-status note: the `Needs work` entries below are the historical audit baseline that Sections 3-6 of `ACTION_PLAN.md` used on this branch. Those sections resolved the branch implementation targets, so no additional active frontend surfaces remain non-compliant on this branch and Section 7 is verification/doc-sync only unless a later change touches a new active frontend surface or reopens an audited gap.
+
 ## Shared wrappers and page-level surfaces
 
 | Surface           | Files                                                                   | Width                                                                                                          | Blocking load | Degraded data | Refresh   | Mutation boundary | Accessibility | Modal width | Notes / later work                                                                              |
