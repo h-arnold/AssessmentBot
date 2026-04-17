@@ -26,10 +26,10 @@ import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
-  getBlockingLoadErrorMessage,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
+  getReferenceDataLoadError,
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
@@ -88,34 +88,6 @@ type ManageYearGroupsModalBodyProperties = Readonly<{
   onCreate: () => void;
   yearGroups: YearGroup[];
 }>;
-
-/**
- * Returns the current blocking year-groups load error.
- *
- * @param {Readonly<{ data: YearGroup[] | undefined; isError: boolean; }>} yearGroupsQuery Year-groups query state.
- * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
- * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
- * @returns {string | null} Blocking error copy when the year-groups dataset is not trustworthy.
- */
-function getYearGroupsLoadError(
-  yearGroupsQuery: Readonly<{
-    data: YearGroup[] | undefined;
-    isError: boolean;
-  }>,
-  blockingLoadError: BlockingLoadErrorState | null,
-  dataUpdatedAt: number
-): string | null {
-  const blockingLoadErrorMessage = getBlockingLoadErrorMessage(blockingLoadError, dataUpdatedAt);
-  if (blockingLoadErrorMessage !== null) {
-    return blockingLoadErrorMessage;
-  }
-
-  if (yearGroupsQuery.isError && yearGroupsQuery.data === undefined) {
-    return yearGroupsLoadFailureCopy;
-  }
-
-  return null;
-}
 
 /**
  * Renders the year-groups modal body for the current load state.
@@ -416,10 +388,11 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
-  const loadError = getYearGroupsLoadError(
+  const loadError = getReferenceDataLoadError(
     yearGroupsQuery,
     blockingLoadError,
-    yearGroupsQuery.dataUpdatedAt
+    yearGroupsQuery.dataUpdatedAt,
+    yearGroupsLoadFailureCopy
   );
 
   const handleFormFinish = createYearGroupFormFinishHandler({

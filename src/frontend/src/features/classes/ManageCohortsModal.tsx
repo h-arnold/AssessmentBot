@@ -26,10 +26,10 @@ import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
-  getBlockingLoadErrorMessage,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
+  getReferenceDataLoadError,
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
@@ -90,34 +90,6 @@ type ManageCohortsModalBodyProperties = Readonly<{
   onCreate: () => void;
   toggleError: string | null;
 }>;
-
-/**
- * Returns the current blocking cohorts load error.
- *
- * @param {Readonly<{ data: Cohort[] | undefined; isError: boolean; }>} cohortsQuery Cohorts query state.
- * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
- * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
- * @returns {string | null} Blocking error copy when the cohorts dataset is not trustworthy.
- */
-function getCohortsLoadError(
-  cohortsQuery: Readonly<{
-    data: Cohort[] | undefined;
-    isError: boolean;
-  }>,
-  blockingLoadError: BlockingLoadErrorState | null,
-  dataUpdatedAt: number
-): string | null {
-  const blockingLoadErrorMessage = getBlockingLoadErrorMessage(blockingLoadError, dataUpdatedAt);
-  if (blockingLoadErrorMessage !== null) {
-    return blockingLoadErrorMessage;
-  }
-
-  if (cohortsQuery.isError && cohortsQuery.data === undefined) {
-    return cohortsLoadFailureCopy;
-  }
-
-  return null;
-}
 
 /**
  * Renders the cohorts modal body for the current load state.
@@ -496,10 +468,11 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const [formError, setFormError] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteDialogState>(INITIAL_DELETE_STATE);
-  const loadError = getCohortsLoadError(
+  const loadError = getReferenceDataLoadError(
     cohortsQuery,
     blockingLoadError,
-    cohortsQuery.dataUpdatedAt
+    cohortsQuery.dataUpdatedAt,
+    cohortsLoadFailureCopy
   );
 
   const handleFormFinish = createCohortFormFinishHandler({

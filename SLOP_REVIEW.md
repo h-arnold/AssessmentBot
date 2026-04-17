@@ -5,6 +5,18 @@
 **Validation Status**: All linting and tests passing (392/392 tests, 0 lint errors)  
 **Overall Assessment**: **Needs Improvement** — The branch correctly implements the SPEC's loading-state, skeleton, mutation-boundary, width-token, and fail-closed standards. The core logic is sound. No dead code blocks, stale imports, or misleading abstractions at the feature level. Slop is localised to a cluster of single-use helper extractions and one confirmed duplication across modal files.
 
+## Remediation Progress
+
+| Item           | Status     | Notes                                                                                         |
+| -------------- | ---------- | --------------------------------------------------------------------------------------------- |
+| Critical #1    | ✅ Clear   | Duplicated modal load-error logic deduplicated via shared `getReferenceDataLoadError` helper. |
+| Improvement #2 | ⏳ Pending | Not started.                                                                                  |
+| Improvement #3 | ⏳ Pending | Not started.                                                                                  |
+| Improvement #4 | ⏳ Pending | Not started.                                                                                  |
+| Nitpick #5     | ⏳ Pending | Not started.                                                                                  |
+| Nitpick #6     | ⏳ Pending | Not started.                                                                                  |
+| Nitpick #7     | ⏳ Pending | Not started.                                                                                  |
+
 ---
 
 ## Critical Findings

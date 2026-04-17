@@ -7,7 +7,7 @@
 
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import type { BlockingLoadErrorState } from '../../errors/blockingLoadError';
+import { getBlockingLoadErrorMessage, type BlockingLoadErrorState } from '../../errors/blockingLoadError';
 
 type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
 
@@ -148,4 +148,34 @@ export async function refetchRequiredReferenceDataQuery(
   } catch {
     return false;
   }
+}
+
+/**
+ * Returns the current blocking load error for a reference-data query.
+ *
+ * @param {Readonly<{ data: unknown; isError: boolean; }>} query Query state.
+ * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
+ * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
+ * @param {string} failureCopy User-facing failure message when query fails and has no data.
+ * @returns {string | null} Blocking error message, query failure message, or null.
+ */
+export function getReferenceDataLoadError(
+  query: Readonly<{
+    data: unknown;
+    isError: boolean;
+  }>,
+  blockingLoadError: BlockingLoadErrorState | null,
+  dataUpdatedAt: number,
+  failureCopy: string
+): string | null {
+  const blockingLoadErrorMessage = getBlockingLoadErrorMessage(blockingLoadError, dataUpdatedAt);
+  if (blockingLoadErrorMessage !== null) {
+    return blockingLoadErrorMessage;
+  }
+
+  if (query.isError && query.data === undefined) {
+    return failureCopy;
+  }
+
+  return null;
 }
