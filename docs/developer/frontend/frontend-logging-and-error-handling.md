@@ -9,6 +9,7 @@ Use this guide alongside:
 - `src/frontend/AGENTS.md`
 - `docs/developer/backend/api-layer.md`
 - `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md` for blocking-load, fail-closed degraded-data, and accessible busy-state rules
 
 ## 1. Goals and boundaries
 

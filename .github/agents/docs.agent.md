@@ -17,14 +17,14 @@ You are typically invoked by an orchestrator with a list of changed files and a 
 Before writing documentation updates, you must:
 
 1. **Acquire Context**: Read the changed source files directly. Do not rely only on change summaries.
-2. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted).
+2. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md` and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
 3. **Read Agent Contracts**: Read `AGENTS.md` and any component-specific agent docs referenced there so your updates remain aligned with current agent guidance.
 4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
 
 ## 1. Primary Responsibilities
 
 1. **Developer documentation updates**:
-   - Update relevant docs in `docs/developer/` for behavioural, architectural, pipeline, config, or workflow changes.
+   - Update relevant docs in `docs/developer/` for behavioural, architectural, pipeline, config, or workflow changes. When frontend loading, mutation-presentation, width-token, or accessibility-semantics rules change, treat `docs/developer/frontend/frontend-loading-and-width-standards.md` as the canonical long-lived frontend policy location and keep other references brief.
    - Keep updates concrete, implementation-grounded, and concise.
 
 2. **Create missing developer docs when needed**:

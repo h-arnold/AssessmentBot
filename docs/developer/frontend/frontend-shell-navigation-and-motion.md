@@ -11,6 +11,8 @@ This document defines the canonical conventions for frontend shell navigation, m
 
 Use these rules when extending shell behaviour so future changes stay consistent and performant.
 
+For surface loading, fail-closed degraded-data behaviour, and page or panel width ownership, also read `docs/developer/frontend/frontend-loading-and-width-standards.md`.
+
 ## 1. Navigation model and rendering contract
 
 ### 1.1 Keep navigation metadata centralised

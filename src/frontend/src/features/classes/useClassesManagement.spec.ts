@@ -69,6 +69,70 @@ describe('useClassesManagement', () => {
     expect(result.current.onSelectedRowKeysChange).toBeTypeOf('function');
   });
 
+  it('publishes a classes-only background refresh message when trusted class datasets refetch', () => {
+    useQueryMock
+      .mockReturnValueOnce({
+        isFetching: true,
+        isPending: false,
+        data: [
+          { classId: 'class-1', className: 'Alpha' },
+        ],
+      })
+      .mockReturnValueOnce({
+        isFetching: false,
+        isPending: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isFetching: false,
+        isPending: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isFetching: false,
+        isPending: false,
+        data: [],
+      });
+
+    const { result } = renderHook(() => useClassesManagement());
+
+    expect(result.current.classesManagementViewState).toBe('ready');
+    expect(result.current.isRefreshing).toBe(true);
+    expect(result.current.nonBlockingWarningMessage).toBe('Classes data is refreshing in the background.');
+  });
+
+  it('does not publish the classes refresh message when only reference-data queries refetch', () => {
+    useQueryMock
+      .mockReturnValueOnce({
+        isFetching: false,
+        isPending: false,
+        data: [
+          { classId: 'class-1', className: 'Alpha' },
+        ],
+      })
+      .mockReturnValueOnce({
+        isFetching: false,
+        isPending: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isFetching: true,
+        isPending: false,
+        data: [],
+      })
+      .mockReturnValueOnce({
+        isFetching: true,
+        isPending: false,
+        data: [],
+      });
+
+    const { result } = renderHook(() => useClassesManagement());
+
+    expect(result.current.classesManagementViewState).toBe('ready');
+    expect(result.current.isRefreshing).toBe(false);
+    expect(result.current.nonBlockingWarningMessage).toBeNull();
+  });
+
   it('maps transport failures to an error feature state boundary', () => {
     useQueryMock
       .mockReturnValueOnce({

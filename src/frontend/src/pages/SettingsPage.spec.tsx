@@ -1,13 +1,32 @@
 import * as React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { BackendSettingsForm } from '../features/settings/backend/backendSettingsForm.zod';
 import { createAppQueryClient } from '../query/queryClient';
+import { getCssRuleBlock } from '../test/appStylesRaw';
+import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 import { SettingsPage } from './SettingsPage';
 import { pageContent } from './pageContent';
-import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
-const backendSettingsFeatureEntryText = 'Backend settings feature entry';
-const backendSettingsFeatureEntryRegionLabel = 'Backend settings feature entry';
+const backendSettingsPanelLabel = 'Backend settings panel';
+
+const readyBackendSettingsFormValues = {
+  hasApiKey: true,
+  apiKey: '',
+  backendUrl: 'https://backend.example.com',
+  backendAssessorBatchSize: 30,
+  slidesFetchBatchSize: 20,
+  daysUntilAuthRevoke: 60,
+  jsonDbMasterIndexKey: 'master-index',
+  jsonDbLockTimeoutMs: 15_000,
+  jsonDbLogLevel: 'INFO',
+  jsonDbBackupOnInitialise: true,
+  jsonDbRootFolderId: 'folder-1234',
+} satisfies BackendSettingsForm;
+
+const { useBackendSettingsMock } = vi.hoisted(() => ({
+  useBackendSettingsMock: vi.fn(),
+}));
 
 vi.mock('../features/classes/ClassesManagementPanel', () => ({
   ClassesManagementPanel() {
@@ -39,21 +58,49 @@ vi.mock('../features/classes/ClassesManagementPanel', () => ({
   },
 }));
 
-vi.mock('../features/settings/backend/BackendSettingsPanel', () => ({
-  BackendSettingsPanel() {
-    return (
-      <div role="region" aria-label={backendSettingsFeatureEntryRegionLabel}>
-        {backendSettingsFeatureEntryText}
-      </div>
-    );
-  },
+vi.mock('../features/settings/backend/useBackendSettings', () => ({
+  useBackendSettings: useBackendSettingsMock,
 }));
 
-afterEach(() => {
-  vi.clearAllMocks();
-});
+const backendSettingsHookState = {
+  backendSettingsFormValues: readyBackendSettingsFormValues,
+  hasApiKey: true,
+  isInitialLoading: false,
+  isSaveBlocked: false,
+  isSaving: false,
+  isRefreshing: false,
+  loadError: null,
+  saveBackendSettings: vi.fn(),
+  saveError: null,
+};
+
+/**
+ * Returns the shared Settings page content wrapper.
+ *
+ * @param {HTMLElement} container The rendered test container.
+ * @returns {HTMLElement} The shared Settings page content wrapper.
+ */
+function getSettingsPageContent(container: HTMLElement) {
+  const settingsPageContent = container.querySelector('.app-page-content');
+
+  if (!(settingsPageContent instanceof HTMLElement)) {
+    throw new TypeError('Expected the shared settings page content wrapper to render.');
+  }
+
+  return settingsPageContent;
+}
 
 describe('SettingsPage', () => {
+  beforeEach(() => {
+    useBackendSettingsMock.mockImplementation(() => backendSettingsHookState);
+  });
+
+  afterEach(() => {
+    backendSettingsHookState.saveBackendSettings.mockReset();
+    useBackendSettingsMock.mockReset();
+    vi.clearAllMocks();
+  });
+
   const renderSettingsPage = (queryClient = createAppQueryClient()) => {
     const prefetchQuerySpy = vi
       .spyOn(queryClient, 'prefetchQuery')
@@ -85,10 +132,49 @@ describe('SettingsPage', () => {
     fireEvent.click(backendSettingsTab);
 
     expect(backendSettingsTab).toHaveAttribute('aria-selected', 'true');
-    expect(
-      screen.getByRole('region', { name: backendSettingsFeatureEntryRegionLabel })
-    ).toBeInTheDocument();
-    expect(screen.getByText(backendSettingsFeatureEntryText)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: backendSettingsPanelLabel })).toBeInTheDocument();
+    expect(screen.getByLabelText('Backend URL')).toBeInTheDocument();
+  });
+
+  it('keeps the shared settings frame element stable when switching from Classes to Backend settings', () => {
+    const { container } = renderSettingsPage();
+    const settingsPageContent = getSettingsPageContent(container);
+
+    expect(settingsPageContent).toHaveClass('settings-page-content');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
+
+    expect(getSettingsPageContent(container)).toBe(settingsPageContent);
+  });
+
+  it('renders the backend settings panel inside the shared settings frame instead of replacing it', () => {
+    const { container } = renderSettingsPage();
+    const settingsPageContent = getSettingsPageContent(container);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
+
+    const backendSettingsPanel = screen.getByRole('region', { name: backendSettingsPanelLabel });
+
+    expect(getSettingsPageContent(container)).toBe(settingsPageContent);
+    expect(settingsPageContent).toContainElement(screen.getByRole('tablist'));
+    expect(settingsPageContent).toContainElement(backendSettingsPanel);
+    expect(backendSettingsPanel.closest('.app-page-content')).toBe(settingsPageContent);
+    expect(within(backendSettingsPanel).getByRole('button', { name: 'Save' })).toBeInTheDocument();
+  });
+
+  it('routes the shared wide Settings page selector through the shared wide-page token', () => {
+    const classesPageRuleBlock = getCssRuleBlock('.settings-page-content');
+
+    expect(classesPageRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-page-width-wide-data\)/);
+    expect(classesPageRuleBlock).not.toMatch(/\b1280px\b/);
+  });
+
+  it('routes the backend settings panel through the shared default-panel token and keeps it centred', () => {
+    const backendPanelRuleBlock = getCssRuleBlock('.settings-tab-panel--backend');
+
+    expect(backendPanelRuleBlock).toMatch(/width:\s*min\([^)]*var\(--app-panel-width-default\)/);
+    expect(backendPanelRuleBlock).toMatch(/margin-inline:\s*auto/);
+    expect(backendPanelRuleBlock).not.toMatch(/\b720px\b/);
   });
 
   it('resets the Classes selection when leaving and re-entering the tab', async () => {

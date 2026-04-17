@@ -7,6 +7,7 @@ Use it alongside:
 - `src/frontend/AGENTS.md`
 - `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md` for initial-load, refresh, degraded-data, and mutation-presentation rules
 
 ## 1. Baseline contract
 
@@ -29,6 +30,7 @@ Do not scatter ad-hoc array literals through feature code.
 Current shared keys:
 
 - `authorisationStatus`
+- `backendConfig`
 - `classPartials`
 - `cohorts`
 - `yearGroups`
@@ -47,7 +49,7 @@ Shared query definitions belong in dedicated React Query helper modules and must
 
 Runtime validation should happen at the service boundary before data is cached.
 `classPartials` therefore uses an adjacent Zod schema file in the service layer.
-`cohorts` and `yearGroups` continue to reuse their existing validated service contracts.
+`backendConfig`, `cohorts`, and `yearGroups` continue to reuse their existing validated service contracts.
 
 ## 4. Startup warm-up policy
 
@@ -66,6 +68,7 @@ Current policy:
 Warm-up must not block initial render, shell paint, or navigation readiness.
 
 `googleClassrooms` remains a view-entry prefetch for the Classes tab rather than a startup-prefetched dataset.
+`backendConfig` remains an on-demand shared query owned by the Backend settings panel rather than a startup-prefetched dataset.
 
 ## 5. Prefetch decision framework for future features
 
@@ -83,13 +86,15 @@ Do not add startup prefetch only to exercise React Query.
 Active screens should keep stale data visible while a background refresh runs.
 The current query-client defaults support that by avoiding eager refetch on focus or reconnect and only refetching on mount when data is stale.
 
-Current invalidation rules:
+Current invalidation and required-refresh rules:
 
-- cohort mutations should invalidate the `cohorts` query and refresh active consumers
-- year-group mutations should invalidate the `yearGroups` query and refresh active consumers
-- use shared `queryKeys` directly for `cohorts`/`yearGroups`; do not reintroduce feature-local invalidation wrapper helpers
+- cohort mutations should target the shared `cohorts` query key and refresh active consumers
+- year-group mutations should target the shared `yearGroups` query key and refresh active consumers
+- backend settings writes should refetch the exact active `backendConfig` query after a successful save so the panel can rebase its local Ant Design form state from fresh query data
+- use shared `queryKeys` directly for `backendConfig`, `cohorts`, and `yearGroups`; do not reintroduce feature-local invalidation wrapper helpers for those shared datasets
 - `classPartials` refresh remains feature-driven after successful class mutations
-- if a required post-mutation refresh fails, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
+- if a required post-mutation refresh fails for a surface that cannot trust its previously cached data, fail closed for that owned surface until a newer successful payload arrives instead of quietly leaving stale data visible
+- if a required post-mutation refresh fails for the Classes table workflow, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
 
 Do not add speculative invalidation wiring beyond the feature contracts that exist.
 

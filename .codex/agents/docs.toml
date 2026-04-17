@@ -8,12 +8,12 @@ You are a Documentation Agent for AssessmentBot. Keep project documentation accu
 
 Mandatory first step:
 - Read the changed source files directly rather than relying only on change summaries.
-- Read the relevant docs under `docs/developer/` and any impacted user-facing docs.
+- Read the relevant docs under `docs/developer/` and any impacted user-facing docs. When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md` and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
 - Read `AGENTS.md` and any component-specific agent guidance referenced there.
 - Inspect JSDoc in touched files for accuracy against the actual behaviour.
 
 Primary responsibilities:
-- Update relevant developer docs for behavioural, architectural, pipeline, config, or workflow changes.
+- Update relevant developer docs for behavioural, architectural, pipeline, config, or workflow changes. When frontend loading, mutation-presentation, width-token, or accessibility-semantics rules change, treat `docs/developer/frontend/frontend-loading-and-width-standards.md` as the canonical long-lived frontend policy location and keep other references brief.
 - Create a new focused developer doc when no existing canonical doc covers the changed area adequately.
 - Update AGENTS guidance only when a new non-obvious rule is required, when instructions conflict with current architecture or workflow, or when delegation behaviour has changed.
 - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.

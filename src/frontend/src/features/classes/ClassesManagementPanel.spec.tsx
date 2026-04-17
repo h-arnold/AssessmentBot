@@ -9,6 +9,7 @@ import {
   createRejectedClassResult,
 } from '../../test/classes/classesTestHelpers';
 import type { ClassesManagementRow } from './classesManagementViewModel';
+import type { ClassesManagementState } from './useClassesManagement';
 
 const classesManagementStateMock = vi.fn();
 const runBatchMutationMock = vi.fn();
@@ -65,6 +66,23 @@ function mockClassesManagementState(overrides = {}) {
 }
 
 /**
+ * Builds a mocked hook state with the planned refresh-boundary contract.
+ *
+ * @param {Partial<ClassesManagementState>} [overrides] Hook-state overrides.
+ * @returns {ClassesManagementState} Mocked state at the current hook boundary.
+ */
+function buildRefreshingClassesManagementState(
+  overrides: Partial<ClassesManagementState> = {},
+): ClassesManagementState {
+  const refreshingState: ClassesManagementState = {
+    ...buildClassesManagementState(overrides),
+    isRefreshing: true,
+  };
+
+  return refreshingState;
+}
+
+/**
  * Loads and renders the panel with shared frontend providers.
  *
  * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result plus query client.
@@ -92,12 +110,19 @@ beforeEach(() => {
 });
 
 describe('ClassesManagementPanel', () => {
-  it('renders a loading feature state shell while classes data resolves', async () => {
+  it('renders a skeleton status region while classes data resolves', async () => {
     mockClassesManagementState({ classesManagementViewState: 'loading', classesCount: null, rows: [] });
 
     await renderPanel();
+    const panel = screen.getByRole('region', { name: 'Classes management panel' });
 
-    expect(screen.getByText('Classes feature is loading.')).toBeInTheDocument();
+    expect(within(panel).getByRole('status', { name: 'Loading classes' })).toBeInTheDocument();
+    expect(panel.querySelector('.ant-skeleton')).not.toBeNull();
+    expect(within(panel).queryByText('Classes feature is loading.')).not.toBeInTheDocument();
+    expect(within(panel).queryByText('Summary')).not.toBeInTheDocument();
+    expect(within(panel).queryByText('Selected rows: 0')).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Create ABClass' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('table')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -125,6 +150,31 @@ describe('ClassesManagementPanel', () => {
 
     expect(screen.getByText('Summary')).toBeInTheDocument();
     expect(screen.getByText('Selected rows: 0')).toBeInTheDocument();
+  });
+
+  it('keeps only the classes data workflow busy during background refresh while alerts stay in the outer panel chrome', async () => {
+    classesManagementStateMock.mockReturnValue(
+      buildRefreshingClassesManagementState({
+        nonBlockingWarningMessage: 'Classes data is refreshing in the background.',
+      })
+    );
+
+    await renderPanel();
+
+    const panel = screen.getByRole('region', { name: 'Classes management panel' });
+    const workflow = within(panel).getByRole('region', { name: 'Classes data workflow' });
+
+    expect(panel).toContainElement(workflow);
+    expect(workflow).not.toBe(panel);
+    expect(workflow).toHaveAttribute('aria-busy', 'true');
+    expect(panel).not.toHaveAttribute('aria-busy', 'true');
+    expect(within(panel).getByText('Some classes data may be stale.')).toBeInTheDocument();
+    expect(within(panel).getByText('Classes data is refreshing in the background.')).toBeInTheDocument();
+    expect(within(workflow).queryByText('Some classes data may be stale.')).not.toBeInTheDocument();
+    expect(within(workflow).queryByText('Classes data is refreshing in the background.')).not.toBeInTheDocument();
+    expect(within(workflow).getByText('Summary')).toBeInTheDocument();
+    expect(within(workflow).getByRole('button', { name: 'Create ABClass' })).toBeInTheDocument();
+    expect(within(workflow).getByRole('table', { name: 'Classes table' })).toBeInTheDocument();
   });
 
   it('shows a top-level warning and keeps failed rows selected when bulk delete partially fails', async () => {

@@ -219,6 +219,33 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
         return typeof request === 'object' && request !== null && typeof request.method === 'string';
       }
 
+      const releasedSignals = new Set();
+      const releaseResolvers = new Map();
+
+      function waitForReleaseSignal(signal) {
+        if (signal === undefined) {
+          return Promise.resolve();
+        }
+
+        if (releasedSignals.has(signal)) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+          releaseResolvers.set(signal, resolve);
+        });
+      }
+
+      globalThis.__releaseClassesCrudSignal = (signal) => {
+        releasedSignals.add(signal);
+        const resolve = releaseResolvers.get(signal);
+
+        if (resolve !== undefined) {
+          releaseResolvers.delete(signal);
+          resolve();
+        }
+      };
+
       function sendSuccess(handler, data, requestId) {
         if (handler !== undefined) {
           handler({ ok: true, requestId, data });
@@ -248,22 +275,32 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
           return;
         }
 
-        if (response.kind === 'transportFailure') {
-          callbacks.failureHandler?.(new Error(response.message));
-          return;
-        }
+        void (async () => {
+          await waitForReleaseSignal(response.releaseSignal);
 
-        if (response.kind === 'failureEnvelope') {
-          sendFailureEnvelope(
-            callbacks.successHandler,
-            \`req-\${method}-\${responseIndex}\`,
-            response.code ?? 'INTERNAL_ERROR',
-            response.message
-          );
-          return;
-        }
+          if (response.delayMs !== undefined) {
+            await new Promise((resolve) => {
+              setTimeout(resolve, response.delayMs);
+            });
+          }
 
-        sendSuccess(callbacks.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
+          if (response.kind === 'transportFailure') {
+            callbacks.failureHandler?.(new Error(response.message));
+            return;
+          }
+
+          if (response.kind === 'failureEnvelope') {
+            sendFailureEnvelope(
+              callbacks.successHandler,
+              \`req-\${method}-\${responseIndex}\`,
+              response.code ?? 'INTERNAL_ERROR',
+              response.message
+            );
+            return;
+          }
+
+          sendSuccess(callbacks.successHandler, response.data, \`req-\${method}-\${responseIndex}\`);
+        })();
       }
 
       const run = createGoogleScriptRunApiHandlerMock((request, callbacks) => {
@@ -305,6 +342,21 @@ export async function mockClassesCrudRuntime(page: Page, scenario: ClassesCrudRu
       };
     })();
   `);
+}
+
+/**
+ * Releases one queued classes CRUD response waiting on a browser-side signal.
+ *
+ * @param {Page} page Playwright page under test.
+ * @param {string} signal Release signal name.
+ * @returns {Promise<void>} Completion signal.
+ */
+export async function releaseClassesCrudSignal(page: Page, signal: string) {
+  await page.evaluate((queuedSignal) => {
+    (globalThis as {
+      __releaseClassesCrudSignal?: (signalName: string) => void;
+    }).__releaseClassesCrudSignal?.(queuedSignal);
+  }, signal);
 }
 
 /**

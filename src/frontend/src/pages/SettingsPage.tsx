@@ -84,12 +84,14 @@ export function SettingsPage() {
     setActiveTabKey(nextSettingsTabKey);
   };
 
+  const settingsPageContentClassName = 'settings-page-content';
+
   return (
     <>
       <SettingsPageGoogleClassroomsPrefetch />
       <TabbedPageSection
         activeKey={activeTabKey}
-        contentClassName={activeTabKey === 'classes' ? 'settings-page-content--classes' : undefined}
+        contentClassName={settingsPageContentClassName}
         defaultActiveKey="classes"
         heading={pageContent.settings.heading}
         onChange={handleTabChange}

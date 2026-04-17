@@ -57,6 +57,15 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 
 ## 5. Error Handling and Quality
 
+### 5.1 Loading and width standards
+
+- Treat the smallest independently usable panel, card, table region, or dialog content as the owned surface for loading, mutation, and width decisions.
+- Initial entry with no usable data must render a shape-matched skeleton; once usable data is visible, keep it visible during refresh and show a local busy affordance scoped to the affected surface or subregion.
+- Required degraded or untrustworthy data fails closed by default: suppress normal content and show the blocking-state treatment for that owned region; query staleness alone is not degraded data.
+- Short-running mutations keep loading on the primary trigger and disable conflicting writes on the same owned surface until the mutation settles; modal confirm-loading remains the standard modal pattern.
+- Loading and refresh affordances must expose explicit accessible status or busy semantics; visual indicators alone are not sufficient.
+- Keep outer page or tab width separate from inner panel width, and use the shared width tokens rather than feature-local literals. For the full rules, read `docs/developer/frontend/frontend-loading-and-width-standards.md`.
+
 - Fail loudly in development; do not hide failures behind broad catch-and-ignore logic.
 - When implementing or refactoring frontend logging/error handling, read `docs/developer/frontend/frontend-logging-and-error-handling.md` first and treat it as the single source of truth.
 - Keep this AGENTS file as a signpost only; do not duplicate detailed logging policy here.

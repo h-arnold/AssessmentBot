@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { TabsProps } from 'antd';
 import { TabbedPageSection } from './TabbedPageSection';
+import { getCssRuleBlock } from '../test/appStylesRaw';
 
 const tabbedPageSectionTabs = [
   {
@@ -48,5 +49,17 @@ describe('TabbedPageSection', () => {
 
     expect(advancedTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('Advanced panel')).toBeInTheDocument();
+  });
+
+  it('defines all shared page and panel width tokens and routes the shared page wrapper through the default page token', () => {
+    const rootRuleBlock = getCssRuleBlock(':root');
+    const pageContentRuleBlock = getCssRuleBlock('.app-page-content');
+
+    expect(rootRuleBlock).toMatch(/--app-page-width-default\s*:/);
+    expect(rootRuleBlock).toMatch(/--app-page-width-wide-data\s*:/);
+    expect(rootRuleBlock).toMatch(/--app-panel-width-default\s*:/);
+    expect(rootRuleBlock).toMatch(/--app-panel-width-wide-data\s*:/);
+    expect(pageContentRuleBlock).toMatch(/width:\s*min\(100%,\s*var\(--app-page-width-default\)\)/);
+    expect(pageContentRuleBlock).not.toMatch(/\b720px\b/);
   });
 });

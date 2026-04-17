@@ -1,4 +1,4 @@
-import { Alert, Card, Flex, Typography } from 'antd';
+import { Alert, Card, Flex, Skeleton, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { callApi } from '../../services/apiService';
@@ -39,6 +39,9 @@ import { useClassesManagement } from './useClassesManagement';
 import type { ClassesManagementState } from './useClassesManagement';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
+/**
+ * Accessible label for the panel-owned classes management region.
+ */
 export const classesManagementPanelRegionLabel = 'Classes management panel';
 
 /**
@@ -402,6 +405,55 @@ function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkAc
 }
 
 /**
+ * Renders the initial blocking-load treatment for the classes panel.
+ *
+ * @returns {JSX.Element} Loading skeleton for the panel-owned content.
+ */
+function ClassesManagementPanelLoadingState() {
+  return (
+    <output aria-label="Loading classes">
+      <Flex vertical gap={12}>
+        <Skeleton active paragraph={{ rows: 2 }} title={{ width: '35%' }} />
+        <Flex gap={8} wrap>
+          <Skeleton.Button active />
+          <Skeleton.Button active />
+          <Skeleton.Button active />
+        </Flex>
+        <Skeleton active paragraph={{ rows: 6 }} title={{ width: '20%' }} />
+      </Flex>
+    </output>
+  );
+}
+
+type ClassesWorkflowMutationBoundaryState = Readonly<{
+  createSubmitting: boolean;
+  deleteSubmitting: boolean;
+  setActiveSubmitting: boolean;
+  setCohortSubmitting: boolean;
+  setCourseLengthSubmitting: boolean;
+  setInactiveSubmitting: boolean;
+  setYearGroupSubmitting: boolean;
+}>;
+
+/**
+ * Returns whether the classes data-workflow write boundary is currently active.
+ *
+ * @param {ClassesWorkflowMutationBoundaryState} state Mutation submission state.
+ * @returns {boolean} True when conflicting workflow writes should stay disabled.
+ */
+function isClassesWorkflowMutationBoundaryActive(state: ClassesWorkflowMutationBoundaryState): boolean {
+  return [
+    state.createSubmitting,
+    state.deleteSubmitting,
+    state.setActiveSubmitting,
+    state.setInactiveSubmitting,
+    state.setCohortSubmitting,
+    state.setYearGroupSubmitting,
+    state.setCourseLengthSubmitting,
+  ].some(Boolean);
+}
+
+/**
  * Renders the Classes feature entry shell.
  *
  * Wires bulk-action handlers via the shared bulk-mutation orchestration helper.
@@ -446,6 +498,15 @@ export function ClassesManagementPanel() {
 
   const effectiveRefreshRequiredMessage = classesManagement.refreshRequiredMessage ?? refreshRequiredMessage;
   const shouldSuppressStaleTableData = suppressStaleTableData || classesManagement.refreshRequiredMessage !== null;
+  const workflowMutationBoundaryActive = isClassesWorkflowMutationBoundaryActive({
+    createSubmitting,
+    deleteSubmitting,
+    setActiveSubmitting,
+    setCohortSubmitting,
+    setCourseLengthSubmitting,
+    setInactiveSubmitting,
+    setYearGroupSubmitting,
+  });
 
   /**
    * Clears the transient bulk-action feedback before another mutation starts.
@@ -711,6 +772,7 @@ export function ClassesManagementPanel() {
     setYearGroupModalOpen,
     setYearGroupSubmitting,
     shouldSuppressStaleTableData,
+    workflowMutationBoundaryActive,
     yearGroupOptions,
   });
 }
@@ -763,40 +825,40 @@ function renderClassesManagementPanelContent(properties: Readonly<{
   setYearGroupModalOpen: boolean;
   setYearGroupSubmitting: boolean;
   shouldSuppressStaleTableData: boolean;
+  workflowMutationBoundaryActive: boolean;
   yearGroupOptions: ReturnType<typeof getYearGroupOptions>;
 }>) {
   if (properties.classesManagement.classesManagementViewState === 'loading') {
     return (
-      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-        <Typography.Text>Classes feature is loading.</Typography.Text>
-        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
-        <ClassesAlertStack
-          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
-          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
-          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
-        />
-      </Card>
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelLoadingState />
+        </Card>
+      </section>
     );
   }
 
   if (properties.classesManagement.classesManagementViewState === 'error') {
     return (
-      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
-        <ClassesAlertStack
-          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
-          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
-          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
-        />
-        {properties.classesManagement.blockingErrorMessage === null ? (
-          <Typography.Text>{properties.classesManagement.errorMessage}</Typography.Text>
-        ) : null}
-      </Card>
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
+          <ClassesAlertStack
+            blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
+            nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
+            refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
+          />
+          {properties.classesManagement.blockingErrorMessage === null ? (
+            <Typography.Text>{properties.classesManagement.errorMessage}</Typography.Text>
+          ) : null}
+        </Card>
+      </section>
     );
   }
 
   return (
-    <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
+    <section aria-label={classesManagementPanelRegionLabel}>
+      <Card className="settings-tab-panel">
       <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
       <ClassesAlertStack
         blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
@@ -805,27 +867,33 @@ function renderClassesManagementPanelContent(properties: Readonly<{
       />
       {properties.shouldSuppressStaleTableData === false ? (
         <Flex vertical gap={12}>
-          <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
-          <ClassesToolbar
-            rows={properties.classesManagement.rows}
-            selectedRowKeys={properties.classesManagement.selectedRowKeys}
-            onBulkCreate={properties.onBulkCreateOpen}
-            onBulkDelete={properties.onBulkDeleteOpen}
-            onSetActive={properties.handleSetActive}
-            onSetInactive={properties.handleSetInactive}
-            onSetCohort={properties.onSetCohortOpen}
-            onSetYearGroup={properties.onSetYearGroupOpen}
-            onSetCourseLength={properties.onSetCourseLengthOpen}
-            onManageCohorts={properties.onManageCohortsOpen}
-            onManageYearGroups={properties.onManageYearGroupsOpen}
-            setActiveLoading={properties.setActiveSubmitting}
-            setInactiveLoading={properties.setInactiveSubmitting}
-          />
-          <ClassesTable
-            rows={properties.classesManagement.rows}
-            selectedRowKeys={properties.classesManagement.selectedRowKeys}
-            onSelectedRowKeysChange={properties.classesManagement.onSelectedRowKeysChange}
-          />
+          <section aria-label="Classes data workflow" aria-busy={properties.classesManagement.isRefreshing ? 'true' : undefined}>
+            <Flex vertical gap={12}>
+              <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
+              <ClassesToolbar
+                rows={properties.classesManagement.rows}
+                selectedRowKeys={properties.classesManagement.selectedRowKeys}
+                onBulkCreate={properties.onBulkCreateOpen}
+                onBulkDelete={properties.onBulkDeleteOpen}
+                onSetActive={properties.handleSetActive}
+                onSetInactive={properties.handleSetInactive}
+                onSetCohort={properties.onSetCohortOpen}
+                onSetYearGroup={properties.onSetYearGroupOpen}
+                onSetCourseLength={properties.onSetCourseLengthOpen}
+                onManageCohorts={properties.onManageCohortsOpen}
+                onManageYearGroups={properties.onManageYearGroupsOpen}
+                mutationInFlight={properties.workflowMutationBoundaryActive}
+                setActiveLoading={properties.setActiveSubmitting}
+                setInactiveLoading={properties.setInactiveSubmitting}
+              />
+              <ClassesTable
+                rows={properties.classesManagement.rows}
+                selectedRowKeys={properties.classesManagement.selectedRowKeys}
+                onSelectedRowKeysChange={properties.classesManagement.onSelectedRowKeysChange}
+                selectionFrozen={properties.workflowMutationBoundaryActive}
+              />
+            </Flex>
+          </section>
           <BulkCreateModal
             open={properties.createModalOpen}
             cohortOptions={properties.cohortOptions}
@@ -875,6 +943,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
           />
         </Flex>
       ) : null}
-    </Card>
+      </Card>
+    </section>
   );
 }

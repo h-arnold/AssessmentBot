@@ -18,6 +18,8 @@ import { useBackendSettings } from './useBackendSettings';
 
 const { Text, Title } = Typography;
 
+const backendSettingsRefreshStatusCopy = 'Refreshing backend settings...';
+
 const jsonDatabaseLogLevelOptions = [
   { label: 'DEBUG', value: 'DEBUG' },
   { label: 'INFO', value: 'INFO' },
@@ -216,6 +218,32 @@ function setBackendSettingsFieldErrors(
 }
 
 /**
+ * Renders panel-level backend settings status notices.
+ *
+ * @param {Readonly<{ isRefreshing: boolean; saveError: string | null; }>} properties Status flags.
+ * @returns {JSX.Element} The status notice content.
+ */
+function renderBackendSettingsPanelStatus(
+  properties: Readonly<{
+    isRefreshing: boolean;
+    saveError: string | null;
+  }>
+) {
+  return (
+    <>
+      {properties.isRefreshing ? (
+        <div aria-live="polite" role="status">
+          <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
+        </div>
+      ) : null}
+      {properties.saveError === null ? null : (
+        <Alert title={properties.saveError} showIcon type="error" />
+      )}
+    </>
+  );
+}
+
+/**
  * Renders the backend settings feature panel for the Settings page.
  *
  * @remarks
@@ -239,8 +267,8 @@ export function BackendSettingsPanel() {
     isInitialLoading,
     isSaveBlocked,
     isSaving,
+    isRefreshing,
     loadError,
-    partialLoadError,
     saveBackendSettings,
     saveError,
   } = useBackendSettings();
@@ -355,14 +383,28 @@ export function BackendSettingsPanel() {
   };
 
   if (loadError !== null) {
-    return <Alert title={loadError} showIcon type="error" />;
+    return (
+      <Card
+        className="settings-tab-panel settings-tab-panel--backend"
+        role="region"
+        aria-label="Backend settings panel"
+      >
+        <Alert title={loadError} showIcon type="error" />
+      </Card>
+    );
   }
 
   if (isInitialLoading) {
     return (
-      <div aria-label="Loading backend settings" role="status">
-        <Skeleton active paragraph={{ rows: 10 }} />
-      </div>
+      <Card
+        className="settings-tab-panel settings-tab-panel--backend"
+        role="region"
+        aria-label="Backend settings panel"
+      >
+        <div aria-label="Loading backend settings" role="status">
+          <Skeleton active paragraph={{ rows: 10 }} />
+        </div>
+      </Card>
     );
   }
 
@@ -371,11 +413,10 @@ export function BackendSettingsPanel() {
       className="settings-tab-panel settings-tab-panel--backend"
       role="region"
       aria-label="Backend settings panel"
+      aria-busy={isRefreshing ? 'true' : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
-        {partialLoadError !== null && <Alert title={partialLoadError} showIcon type="warning" />}
-
-        {saveError !== null && <Alert title={saveError} showIcon type="error" />}
+        {renderBackendSettingsPanelStatus({ isRefreshing, saveError })}
 
         <Form<BackendSettingsForm>
           form={form}
@@ -598,8 +639,8 @@ export function BackendSettingsPanel() {
             <Form.Item>
               <Button
                 htmlType="submit"
-                loading={isSaving}
-                disabled={isSaveBlocked || isSaving}
+                loading={isSaving && !isRefreshing}
+                disabled={isSaveBlocked || isSaving || isRefreshing}
                 type="primary"
               >
                 Save

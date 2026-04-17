@@ -99,6 +99,21 @@ describe('ClassesToolbar', () => {
     expectButtonsDisabled(metadataActionNames);
   });
 
+  it('disables conflicting bulk write launchers while keeping adjacent reference-data launchers available', () => {
+    renderToolbar(['inactive-1'], { setActiveLoading: true });
+
+    expect(screen.getByRole('button', { name: /set active/i })).toBeDisabled();
+    expectButtonsDisabled([
+      'Set inactive',
+      'Set cohort',
+      'Set year group',
+      'Set course length',
+      'Delete ABClass',
+    ]);
+    expect(screen.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
+  });
+
   it.each(managementLauncherCases)('$buttonName launcher remains enabled for any selection', ({
     buttonName,
   }) => {

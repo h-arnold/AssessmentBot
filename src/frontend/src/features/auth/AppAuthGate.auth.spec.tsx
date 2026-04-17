@@ -104,7 +104,7 @@ describe('AppAuthGate', () => {
       }
     );
 
-    expect(screen.getByText('Checking authorisation status...')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading authorisation status' })).toBeInTheDocument();
     expect(screen.getByTestId('startup-warmup-probe')).toHaveTextContent(
       JSON.stringify({
         warmupState: 'loading',
@@ -158,7 +158,7 @@ describe('AppAuthGate', () => {
     );
 
     expect(await screen.findByText('Unauthorised')).toBeInTheDocument();
-    expect(screen.queryByText('Checking authorisation status...')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Loading authorisation status' })).not.toBeInTheDocument();
     expect(warmStartupQueriesMock).not.toHaveBeenCalled();
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
   });

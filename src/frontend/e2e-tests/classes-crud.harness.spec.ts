@@ -4,9 +4,56 @@ import {
   baseCohorts,
   baseGoogleClassrooms,
   baseYearGroups,
+  matchedClassPartials,
+  matchedGoogleClassrooms,
   mockClassesCrudRuntime,
   openClassesTab,
+  releaseClassesCrudSignal,
 } from './classes-crud.shared';
+
+const backgroundRefreshReleaseSignal = 'classes-background-refresh';
+const filterableColumnHeaderNames = ['Status', 'Cohort', 'Course length', 'Year group', 'Active'] as const;
+
+/**
+ * Boots the Classes page with a scenario that triggers a background refresh after "Set active".
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @param {typeof matchedClassPartials} refreshedClassPartials Refreshed class-partials payload.
+ * @returns {Promise<void>} Resolves once the runtime scenario is installed.
+ */
+async function setUpBackgroundRefreshScenario(
+  page: Parameters<typeof mockClassesCrudRuntime>[0],
+  refreshedClassPartials: typeof matchedClassPartials,
+) {
+  await mockClassesCrudRuntime(page, {
+    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    getABClassPartials: [
+      { kind: 'success', data: matchedClassPartials },
+      {
+        kind: 'success',
+        data: refreshedClassPartials,
+        releaseSignal: backgroundRefreshReleaseSignal,
+      },
+    ],
+    getCohorts: [{ kind: 'success', data: baseCohorts }],
+    getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+    getGoogleClassrooms: [{ kind: 'success', data: matchedGoogleClassrooms }],
+    updateABClass: [{ kind: 'success', data: { ok: true } }],
+  });
+}
+
+/**
+ * Opens the Classes tab, selects one class row, then starts the "Set active" workflow.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @returns {Promise<void>} Resolves once the workflow request is started.
+ */
+async function startSetActiveRefreshWorkflow(page: Parameters<typeof mockClassesCrudRuntime>[0]) {
+  await page.goto('/');
+  await openClassesTab(page);
+  await page.locator('tbody tr[data-row-key="gc-class-202"]').getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Set active' }).click();
+}
 
 test.describe('Classes CRUD harness journey', () => {
   test('shows ready state when all startup warm-up queries succeed', async ({ page }) => {
@@ -80,6 +127,59 @@ test.describe('Classes CRUD harness journey', () => {
     await page.goto('/');
     await openClassesTab(page);
     await expect(page.getByText('No active Google Classrooms are available.')).toBeVisible();
+  });
+
+  test('keeps the visible classes workflow on screen while a background refresh is busy', async ({ page }) => {
+    const refreshedClassPartials = [
+      matchedClassPartials[0],
+      {
+        ...matchedClassPartials[1],
+        active: true,
+      },
+    ];
+
+    await setUpBackgroundRefreshScenario(page, refreshedClassPartials);
+
+    try {
+      await startSetActiveRefreshWorkflow(page);
+
+      const panel = page.getByRole('region', { name: 'Classes management panel' });
+      const workflow = page.getByRole('region', { name: 'Classes data workflow' });
+      await expect(workflow).toHaveAttribute('aria-busy', 'true');
+      await expect(panel).not.toHaveAttribute('aria-busy', 'true');
+      await expect(page.getByRole('table', { name: 'Classes table' })).toBeVisible();
+      await expect(page.getByText('Selected rows: 1')).toBeVisible();
+    } finally {
+      await releaseClassesCrudSignal(page, backgroundRefreshReleaseSignal);
+    }
+  });
+
+  test('disables conflicting class write controls while keeping adjacent reference-data launchers available', async ({ page }) => {
+    await setUpBackgroundRefreshScenario(page, matchedClassPartials);
+
+    try {
+      await startSetActiveRefreshWorkflow(page);
+
+      await expect(page.getByRole('button', { name: 'Set cohort' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Set year group' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Set course length' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Delete ABClass' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Reset sort and filters' })).toBeEnabled();
+
+      for (const columnHeaderName of filterableColumnHeaderNames) {
+        await expect(
+          page.getByRole('columnheader', { name: columnHeaderName }).getByRole('button')
+        ).toBeEnabled();
+      }
+
+      await expect(page.getByRole('button', { name: 'Manage Cohorts' })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Manage Year Groups' })).toBeEnabled();
+      await expect(
+        page.locator('tbody tr[data-row-key="gc-class-201"]').getByRole('checkbox')
+      ).toBeDisabled();
+    } finally {
+      await releaseClassesCrudSignal(page, backgroundRefreshReleaseSignal);
+    }
   });
 
   test('fails fast when an unexpected backend call is made outside the scenario queue', async ({ page }) => {

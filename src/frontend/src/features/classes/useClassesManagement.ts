@@ -21,6 +21,7 @@ export type ClassesManagementState = Readonly<{
   classesCount: number | null;
   cohorts: Cohort[];
   errorMessage: string | null;
+  isRefreshing: boolean;
   nonBlockingWarningMessage: string | null;
   refreshRequiredMessage: string | null;
   rows: ClassesManagementRow[];
@@ -136,6 +137,24 @@ function createClassesQueriesState(
   };
 }
 
+type ClassesRefreshStateOptions = Readonly<{
+  classPartialsQuery: ReturnType<typeof useQuery>;
+  googleClassroomsQuery: ReturnType<typeof useQuery>;
+}>;
+
+/**
+ * Returns whether the classes data-workflow region is refreshing in the background.
+ *
+ * @param {ClassesRefreshStateOptions} queryState Query state for workflow-owned datasets.
+ * @returns {boolean} True when the workflow should publish busy state.
+ */
+function isClassesDataWorkflowRefreshing(queryState: ClassesRefreshStateOptions): boolean {
+  return (
+    (queryState.googleClassroomsQuery.isFetching && !queryState.googleClassroomsQuery.isPending)
+    || (queryState.classPartialsQuery.isFetching && !queryState.classPartialsQuery.isPending)
+  );
+}
+
 /**
  * Builds the non-ready shell state when startup data is still loading or blocked.
  *
@@ -160,6 +179,7 @@ function getNonReadyClassesManagementState(options: Readonly<{
       classesCount: null,
       cohorts: [],
       errorMessage: null,
+      isRefreshing: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -176,6 +196,7 @@ function getNonReadyClassesManagementState(options: Readonly<{
       classesCount: null,
       cohorts: [],
       errorMessage: 'Unable to load classes right now.',
+      isRefreshing: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -192,6 +213,7 @@ function getNonReadyClassesManagementState(options: Readonly<{
       classesCount: null,
       cohorts: [],
       errorMessage: 'Unable to load classes right now.',
+      isRefreshing: false,
       nonBlockingWarningMessage: null,
       refreshRequiredMessage: null,
       rows: [],
@@ -243,6 +265,10 @@ export function useClassesManagement(): ClassesManagementState {
 
   const rows = buildRowsForReadyState(queryState.readyQueryState);
   const visibleSelectedRowKeys = pruneSelectedRowKeys(selectedRowKeys, rows);
+  const isRefreshing = isClassesDataWorkflowRefreshing({
+    classPartialsQuery,
+    googleClassroomsQuery,
+  });
 
   return {
     blockingErrorMessage: null,
@@ -250,7 +276,8 @@ export function useClassesManagement(): ClassesManagementState {
     classesCount: rows.length,
     cohorts: queryState.readyQueryState?.cohorts ?? [],
     errorMessage: null,
-    nonBlockingWarningMessage: null,
+    isRefreshing,
+    nonBlockingWarningMessage: isRefreshing ? 'Classes data is refreshing in the background.' : null,
     refreshRequiredMessage: null,
     rows,
     selectedRowKeys: visibleSelectedRowKeys,

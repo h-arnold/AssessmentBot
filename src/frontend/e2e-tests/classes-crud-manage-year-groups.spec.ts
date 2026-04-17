@@ -18,6 +18,7 @@ import {
   baseCohorts,
   createSuccessfulClassesScenario,
   openClassesTabWithScenario,
+  releaseClassesCrudSignal,
 } from './classes-crud.shared';
 import {
   deleteReferenceDataRowAndExpectBlocked,
@@ -32,6 +33,8 @@ const manageYearGroupsYearGroups = [
   { key: 'year-7', name: 'Year 7' },
   { key: 'year-8', name: 'Year 8' },
 ] as const;
+
+const yearGroupsBackgroundRefreshReleaseSignal = 'year-groups-background-refresh';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,6 +62,19 @@ async function openClassesTabWithYearGroupManagementScenario(
   });
 }
 
+/**
+ * Opens the Manage Year Groups modal from the Classes tab toolbar.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @returns {Promise<import('@playwright/test').Locator>} The opened management modal.
+ */
+async function openManageYearGroupsModal(page: Parameters<typeof openClassesTabWithScenario>[0]) {
+  await page.getByRole('button', { name: 'Manage Year Groups' }).click();
+  const modal = page.getByRole('dialog', { name: /manage year groups/i });
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -82,10 +98,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
 
   test('lists year groups with their names in the management modal', async ({ page }) => {
     await openClassesTabWithYearGroupManagementScenario(page);
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageYearGroupsModal(page);
     await expect(modal.getByText('Year 7')).toBeVisible();
     await expect(modal.getByText('Year 8')).toBeVisible();
     // One header row plus one data row per year group.
@@ -116,13 +129,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
   test('creates a new year group and shows it in the list', async ({ page }) => {
     const newYearGroup = { key: 'year-9', name: 'Year 9' };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: baseCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: manageYearGroupsYearGroups,
-      }),
+    await openClassesTabWithYearGroupManagementScenario(page, {
       createYearGroup: [{ kind: 'success', data: newYearGroup }],
       // getYearGroups called again after create to refresh the list
       getYearGroups: [
@@ -131,9 +138,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageYearGroupsModal(page);
 
     await modal.getByRole('button', { name: /create year group/i }).click();
     const form = page.getByRole('dialog', { name: /create year group/i });
@@ -146,16 +151,71 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
     await expect(modal.getByText('Year 9')).toBeVisible();
   });
 
+  test('fails closed in the modal when a successful year-group create cannot refresh trustworthy year-group data', async ({ page }) => {
+    const newYearGroup = { key: 'year-9', name: 'Year 9' };
+
+    await openClassesTabWithYearGroupManagementScenario(page, {
+      createYearGroup: [{ kind: 'success', data: newYearGroup }],
+      getYearGroups: [
+        { kind: 'success', data: manageYearGroupsYearGroups },
+        { kind: 'transportFailure', message: 'Year groups refresh failed.' },
+      ],
+    });
+
+    const modal = await openManageYearGroupsModal(page);
+
+    await modal.getByRole('button', { name: /create year group/i }).click();
+    const form = page.getByRole('dialog', { name: /create year group/i });
+    await expect(form).toBeVisible();
+
+    await form.getByRole('textbox', { name: /name/i }).fill('Year 9');
+    await form.getByRole('button', { name: /ok|save|create/i }).click();
+
+    await expect(modal.getByRole('alert')).toContainText('Unable to load year groups right now.');
+    await expect(modal.getByRole('button', { name: /create year group/i })).toHaveCount(0);
+    await expect(modal.getByRole('table', { name: /year groups/i })).toHaveCount(0);
+  });
+
+  test('keeps trusted year-group data visible while publishing modal busy state during background refresh', async ({ page }) => {
+    const updatedYearGroup = { key: 'year-7', name: 'Year Seven' };
+
+    await openClassesTabWithYearGroupManagementScenario(page, {
+      updateYearGroup: [{ kind: 'success', data: updatedYearGroup }],
+      getYearGroups: [
+        { kind: 'success', data: manageYearGroupsYearGroups },
+        {
+          kind: 'success',
+          data: [updatedYearGroup, manageYearGroupsYearGroups[1]],
+          releaseSignal: yearGroupsBackgroundRefreshReleaseSignal,
+        },
+      ],
+    });
+
+    const modal = await openManageYearGroupsModal(page);
+
+    const year7Row = modal.getByRole('row', { name: /year 7/i });
+    await year7Row.getByRole('button', { name: /edit/i }).click();
+
+    const form = page.getByRole('dialog', { name: /edit year group/i });
+    await expect(form).toBeVisible();
+    await form.getByRole('textbox', { name: /name/i }).fill('Year Seven');
+
+    try {
+      await form.getByRole('button', { name: /ok|save|update/i }).click();
+
+      await expect(modal).toHaveAttribute('aria-busy', 'true');
+      await expect(modal.getByRole('button', { name: /create year group/i })).toBeVisible();
+      await expect(modal.getByRole('table', { name: /year groups/i })).toBeVisible();
+      await expect(modal.getByText('Year 7')).toBeVisible();
+    } finally {
+      await releaseClassesCrudSignal(page, yearGroupsBackgroundRefreshReleaseSignal);
+    }
+  });
+
   test('edits an existing year group and shows the updated name', async ({ page }) => {
     const updatedYearGroup = { key: 'year-7', name: 'Year Seven' };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: baseCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: manageYearGroupsYearGroups,
-      }),
+    await openClassesTabWithYearGroupManagementScenario(page, {
       updateYearGroup: [{ kind: 'success', data: updatedYearGroup }],
       getYearGroups: [
         { kind: 'success', data: manageYearGroupsYearGroups },
@@ -166,9 +226,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageYearGroupsModal(page);
 
     // Click the Edit button on the first year-group row (Year 7).
     const year7Row = modal.getByRole('row', { name: /year 7/i });
@@ -186,13 +244,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
   });
 
   test('deletes a year group and removes it from the list', async ({ page }) => {
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: baseCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: manageYearGroupsYearGroups,
-      }),
+    await openClassesTabWithYearGroupManagementScenario(page, {
       deleteYearGroup: [{ kind: 'success', data: undefined }],
       getYearGroups: [
         { kind: 'success', data: manageYearGroupsYearGroups },
@@ -213,13 +265,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
   test('keeps the delete dialog open with an inline Alert when delete is blocked because the year group is in use', async ({
     page,
   }) => {
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: baseCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: manageYearGroupsYearGroups,
-      }),
+    await openClassesTabWithYearGroupManagementScenario(page, {
       deleteYearGroup: [
         {
           kind: 'failureEnvelope',
@@ -240,9 +286,7 @@ test.describe('Classes CRUD — Manage Year Groups', () => {
   test('closes the management modal via its close control', async ({ page }) => {
     await openClassesTabWithYearGroupManagementScenario(page);
 
-    await page.getByRole('button', { name: 'Manage Year Groups' }).click();
-    const modal = page.getByRole('dialog', { name: /manage year groups/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageYearGroupsModal(page);
 
     await modal.getByRole('button', { name: /close/i }).click();
 

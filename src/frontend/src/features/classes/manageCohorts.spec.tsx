@@ -2,13 +2,11 @@
  * Cohort management modal — unit tests.
  *
  * Covers: list rendering, empty state, create/edit form launch, active-state toggle,
- * query invalidation after successful mutations, and modal close wiring.
- *
- * Covers the current green ManageCohortsModal implementation and its query invalidation
- * behaviour for cohort management flows.
+ * required refresh after successful mutations, degraded-data fail-closed handling, and modal
+ * close wiring.
  */
 
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Cohort } from '../../services/referenceData.zod';
 import { queryKeys } from '../../query/queryKeys';
@@ -32,6 +30,7 @@ vi.mock('../../services/referenceDataService', () => ({
 }));
 
 const onCloseMock = vi.fn();
+const cohortsLoadFailureCopy = 'Unable to load cohorts right now.';
 
 const seedCohorts: Cohort[] = [
   {
@@ -49,24 +48,83 @@ const seedCohorts: Cohort[] = [
     startMonth: 9,
   },
 ];
+const cohortCreateName = 'Cohort 2026';
+const createCohortInputNameRegex = /name/i;
+const cohortCreateSubmitButtonNameRegex = /ok|save|create/i;
+const cohortCreateDialogNameRegex = /create cohort/i;
+const refreshFailedErrorMessage = 'Refresh failed.';
+const createdCohortFixture: Cohort = {
+  key: 'cohort-2026',
+  name: cohortCreateName,
+  active: true,
+  startYear: 2026,
+  startMonth: 9,
+};
 
 /**
  * Renders ManageCohortsModal with pre-seeded cohort data and optional overrides.
  *
  * @param {object} [options] Render options.
  * @param {boolean} [options.open] Whether the modal is open.
+ * @param {boolean} [options.seedQueryData] Whether to seed the query cache before render.
  * @param {Cohort[]} [options.cohorts] Cohorts to seed in the query cache.
  * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result and query client.
  */
-function renderManageCohortsModal(options: { open?: boolean; cohorts?: Cohort[] } = {}) {
-  const { open = true, cohorts = seedCohorts } = options;
+function renderManageCohortsModal(
+  options: { open?: boolean; cohorts?: Cohort[]; seedQueryData?: boolean } = {},
+) {
+  const { open = true, cohorts = seedCohorts, seedQueryData = true } = options;
   const queryClient = createAppQueryClient();
 
-  queryClient.setQueryData(queryKeys.cohorts(), cohorts);
+  if (seedQueryData) {
+    queryClient.setQueryData(queryKeys.cohorts(), cohorts);
+  }
   getCohortsMock.mockResolvedValue(cohorts);
 
   return renderWithFrontendProviders(<ManageCohortsModal open={open} onClose={onCloseMock} />, {
     queryClient,
+  });
+}
+
+
+/**
+ * Returns the owned Manage Cohorts modal dialog region.
+ *
+ * @returns {HTMLElement} The outer Manage Cohorts dialog.
+ */
+function getManageCohortsModalDialog() {
+  return screen.getByRole('dialog', { name: 'Manage Cohorts' });
+}
+
+/**
+ * Finds the owned Manage Cohorts modal dialog region.
+ *
+ * @returns {Promise<HTMLElement>} The outer Manage Cohorts dialog.
+ */
+async function findManageCohortsModalDialog() {
+  return screen.findByRole('dialog', { name: 'Manage Cohorts' });
+}
+
+/**
+ * Opens and submits the Create cohort dialog while forcing the post-mutation refresh to fail.
+ *
+ * @param {HTMLElement} dialog The outer Manage Cohorts modal dialog.
+ * @returns {Promise<void>} Resolves once create submission has been asserted.
+ */
+async function submitCreateCohortWhenRefreshFails(dialog: HTMLElement) {
+  getCohortsMock.mockRejectedValueOnce(new Error(refreshFailedErrorMessage));
+  fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
+
+  const formDialog = await screen.findByRole('dialog', { name: cohortCreateDialogNameRegex });
+  fireEvent.change(within(formDialog).getByRole('textbox', { name: createCohortInputNameRegex }), {
+    target: { value: cohortCreateName },
+  });
+  fireEvent.click(within(formDialog).getByRole('button', { name: cohortCreateSubmitButtonNameRegex }));
+
+  await waitFor(() => {
+    expect(createCohortMock).toHaveBeenCalledWith({
+      record: expect.objectContaining({ name: cohortCreateName }),
+    });
   });
 }
 
@@ -76,11 +134,96 @@ beforeEach(() => {
 });
 
 describe('ManageCohortsModal', () => {
+  describe('initial loading state', () => {
+    it('renders a skeleton status region instead of the ready cohorts table while cohort data is still loading', () => {
+      getCohortsMock.mockImplementation(() => new Promise(() => {}));
+
+      renderManageCohortsModal({ seedQueryData: false });
+      const dialog = getManageCohortsModalDialog();
+
+      expect(within(dialog).getByRole('status', { name: 'Loading cohorts' })).toBeInTheDocument();
+      expect(dialog.querySelector('.ant-skeleton')).not.toBeNull();
+      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByText('Cohort 2025')).not.toBeInTheDocument();
+    });
+
+    it('suppresses the ready modal body when the cohorts query fails before any usable data loads', async () => {
+      getCohortsMock.mockRejectedValueOnce(new Error('Cohorts failed to load.'));
+
+      const queryClient = createAppQueryClient();
+      renderWithFrontendProviders(<ManageCohortsModal open={true} onClose={onCloseMock} />, {
+        queryClient,
+      });
+      const dialog = await findManageCohortsModalDialog();
+
+      await waitFor(() => {
+        expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      });
+      expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
+    });
+
+    it('keeps the trusted cohorts table visible when a later refetch fails', async () => {
+      const { queryClient } = renderManageCohortsModal();
+
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
+      expect(within(table).getByText('Cohort 2025')).toBeInTheDocument();
+
+      getCohortsMock.mockRejectedValueOnce(new Error('Background cohorts refresh failed.'));
+
+      await act(async () => {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+      });
+
+      await waitFor(() => {
+        expect(getCohortsMock).toHaveBeenCalledTimes(1);
+      });
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+      expect(within(dialog).getByRole('table', { name: /cohorts/i })).toBeInTheDocument();
+      expect(within(dialog).getByText('Cohort 2025')).toBeInTheDocument();
+      expect(within(dialog).getByText('Cohort 2024')).toBeInTheDocument();
+    });
+
+    it('keeps trusted cohort data visible while publishing modal busy state during background refresh', async () => {
+      const { queryClient } = renderManageCohortsModal();
+
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+
+      let releaseRefresh: (() => void) | undefined;
+      getCohortsMock.mockImplementationOnce(() => new Promise<Cohort[]>((resolve) => {
+        releaseRefresh = () => resolve(seedCohorts);
+      }));
+
+      try {
+        await act(async () => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+        });
+
+        await waitFor(() => {
+          expect(getCohortsMock).toHaveBeenCalledTimes(1);
+        });
+
+        expect(dialog).toHaveAttribute('aria-busy', 'true');
+        expect(within(dialog).getByText('Refreshing cohorts...')).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+        expect(within(dialog).getByRole('table', { name: /cohorts/i })).toBeInTheDocument();
+        expect(within(dialog).getByText('Cohort 2025')).toBeInTheDocument();
+      } finally {
+        releaseRefresh?.();
+      }
+    });
+  });
+
   describe('list rendering', () => {
     it('renders a table listing cohorts with name, start year, start month, and active state columns', async () => {
       renderManageCohortsModal();
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       expect(table).toBeInTheDocument();
       expect(within(table).getByText('Cohort 2025')).toBeInTheDocument();
       expect(within(table).getByText('Cohort 2024')).toBeInTheDocument();
@@ -89,7 +232,8 @@ describe('ManageCohortsModal', () => {
     it('shows start year and start month for each cohort row', async () => {
       renderManageCohortsModal();
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       // Scope per-row to avoid multi-match: both seed cohorts share startMonth 9.
       const [, firstRow, secondRow] = within(table).getAllByRole('row');
       expect(within(firstRow).getByText('2025')).toBeInTheDocument();
@@ -101,7 +245,8 @@ describe('ManageCohortsModal', () => {
     it('shows active and inactive state for respective cohort rows', async () => {
       renderManageCohortsModal();
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       const activeRow = within(table).getByRole('row', { name: /cohort 2025/i });
       const inactiveRow = within(table).getByRole('row', { name: /cohort 2024/i });
 
@@ -113,7 +258,8 @@ describe('ManageCohortsModal', () => {
     it('renders Edit and Delete action buttons for each cohort row', async () => {
       renderManageCohortsModal();
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       const rows = within(table).getAllByRole('row').slice(1); // skip header row
 
       for (const row of rows) {
@@ -127,8 +273,9 @@ describe('ManageCohortsModal', () => {
     it('shows an empty state and a primary Create cohort button when no cohorts exist', async () => {
       renderManageCohortsModal({ cohorts: [] });
 
-      await screen.findByText(/no cohorts/i);
-      expect(screen.getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByText(/no cohorts/i);
+      expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
     });
   });
 
@@ -136,15 +283,18 @@ describe('ManageCohortsModal', () => {
     it('renders a Create cohort button when cohorts are listed', async () => {
       renderManageCohortsModal();
 
-      await screen.findByRole('table', { name: /cohorts/i });
-      expect(screen.getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      expect(within(dialog).getByRole('button', { name: /create cohort/i })).toBeInTheDocument();
     });
 
     it('opens a blank cohort form modal when the Create cohort button is clicked', async () => {
       renderManageCohortsModal();
 
-      await screen.findByRole('table', { name: /cohorts/i });
-      fireEvent.click(screen.getByRole('button', { name: /create cohort/i }));
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      getCohortsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
+      fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
 
       const formDialog = await screen.findByRole('dialog', { name: /create cohort/i });
       expect(formDialog).toBeInTheDocument();
@@ -156,7 +306,8 @@ describe('ManageCohortsModal', () => {
     it('opens a pre-filled cohort form modal when an Edit button is clicked', async () => {
       renderManageCohortsModal();
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       const firstDataRow = within(table).getAllByRole('row')[1];
       fireEvent.click(within(firstDataRow).getByRole('button', { name: /edit/i }));
 
@@ -164,14 +315,15 @@ describe('ManageCohortsModal', () => {
       expect(within(formDialog).getByRole('textbox', { name: /name/i })).not.toHaveValue('');
     });
 
-    it('calls updateCohort and invalidates the cohorts query after a successful edit', async () => {
+    it('calls updateCohort and refetches the active cohorts query after a successful edit', async () => {
       const updatedCohort: Cohort = { ...seedCohorts[0], name: 'Cohort 2025 Updated' };
       updateCohortMock.mockResolvedValue(updatedCohort);
 
       const { queryClient } = renderManageCohortsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       const firstDataRow = within(table).getAllByRole('row')[1];
       fireEvent.click(within(firstDataRow).getByRole('button', { name: /edit/i }));
 
@@ -187,58 +339,93 @@ describe('ManageCohortsModal', () => {
         });
       });
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.cohorts() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.cohorts(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
   });
 
   describe('create flow', () => {
-    it('calls createCohort and invalidates the cohorts query after a successful create', async () => {
-      const newCohort: Cohort = {
-        key: 'cohort-2026',
-        name: 'Cohort 2026',
-        active: true,
-        startYear: 2026,
-        startMonth: 9,
-      };
-      createCohortMock.mockResolvedValue(newCohort);
+    it('calls createCohort and refetches the active cohorts query after a successful create', async () => {
+      createCohortMock.mockResolvedValue(createdCohortFixture);
 
       const { queryClient } = renderManageCohortsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
-      await screen.findByRole('table', { name: /cohorts/i });
-      fireEvent.click(screen.getByRole('button', { name: /create cohort/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create cohort/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Cohort 2026' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
-
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      await submitCreateCohortWhenRefreshFails(dialog);
       await waitFor(() => {
-        expect(createCohortMock).toHaveBeenCalledWith({
-          record: expect.objectContaining({ name: 'Cohort 2026' }),
-        });
-      });
-      await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.cohorts() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.cohorts(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
   });
 
+  describe('required refresh failures', () => {
+    it('fails closed when a successful create cannot refresh the now-invalid cohorts data', async () => {
+      createCohortMock.mockResolvedValue(createdCohortFixture);
+
+      renderManageCohortsModal();
+
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      await submitCreateCohortWhenRefreshFails(dialog);
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
+      });
+      expect(screen.queryByRole('dialog', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+    });
+
+    it('keeps the fail-closed cohorts state blocked after remount while the cached data is still untrustworthy', async () => {
+      createCohortMock.mockResolvedValue(createdCohortFixture);
+
+      const { queryClient, unmount } = renderManageCohortsModal();
+
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      await submitCreateCohortWhenRefreshFails(dialog);
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
+      });
+
+      unmount();
+      renderWithFrontendProviders(<ManageCohortsModal open={true} onClose={onCloseMock} />, {
+        queryClient,
+      });
+
+      const remountedDialog = await findManageCohortsModalDialog();
+      expect(within(remountedDialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
+      expect(within(remountedDialog).queryByRole('button', { name: /create cohort/i })).not.toBeInTheDocument();
+      expect(within(remountedDialog).queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+    });
+  });
+
   describe('active-state toggle', () => {
-    it('calls updateCohort and invalidates the cohorts query when the active Switch is toggled', async () => {
+    it('calls updateCohort and refetches the active cohorts query when the active Switch is toggled', async () => {
       const toggled: Cohort = { ...seedCohorts[0], active: false };
       updateCohortMock.mockResolvedValue(toggled);
 
       const { queryClient } = renderManageCohortsModal();
-      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
-      const table = await screen.findByRole('table', { name: /cohorts/i });
+      const dialog = await findManageCohortsModalDialog();
+      const table = await within(dialog).findByRole('table', { name: /cohorts/i });
       const activeRow = within(table).getByRole('row', { name: /cohort 2025/i });
       fireEvent.click(within(activeRow).getByRole('switch'));
 
@@ -249,8 +436,13 @@ describe('ManageCohortsModal', () => {
         });
       });
       await waitFor(() => {
-        expect(invalidateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ queryKey: queryKeys.cohorts() }),
+        expect(refetchSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            exact: true,
+            queryKey: queryKeys.cohorts(),
+            type: 'active',
+          }),
+          expect.objectContaining({ throwOnError: true }),
         );
       });
     });
@@ -260,9 +452,9 @@ describe('ManageCohortsModal', () => {
     it('calls onClose when the modal footer Cancel button is activated', async () => {
       renderManageCohortsModal();
 
-      await screen.findByRole('table', { name: /cohorts/i });
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      fireEvent.click(cancelButton);
+      const dialog = await findManageCohortsModalDialog();
+      await within(dialog).findByRole('table', { name: /cohorts/i });
+      fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
 
       expect(onCloseMock).toHaveBeenCalledOnce();
     });
@@ -270,7 +462,7 @@ describe('ManageCohortsModal', () => {
     it('does not render the modal content when open is false', () => {
       renderManageCohortsModal({ open: false });
 
-      expect(screen.queryByRole('table', { name: /cohorts/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'Manage Cohorts' })).not.toBeInTheDocument();
     });
   });
 });

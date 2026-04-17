@@ -1,29 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendSettingsPanel } from './BackendSettingsPanel';
-import type { BackendSettingsForm } from './backendSettingsForm.zod';
+import type { useBackendSettings } from './useBackendSettings';
 
-type BackendSettingsPanelHookState = Readonly<{
-  backendSettingsFormValues: BackendSettingsForm | null;
-  hasApiKey: boolean;
-  isInitialLoading: boolean;
-  isSaveBlocked: boolean;
-  isSaving: boolean;
-  loadError: string | null;
-  partialLoadError: string | null;
-  saveBackendSettings: ReturnType<typeof vi.fn>;
-  saveError: string | null;
-}>;
+type BackendSettingsPanelHookState = ReturnType<typeof useBackendSettings>;
 
-const backendSettingsHookState = {
+const saveBackendSettingsMock = vi.fn<BackendSettingsPanelHookState['saveBackendSettings']>();
+
+const backendSettingsHookState: BackendSettingsPanelHookState = {
   backendSettingsFormValues: null,
   hasApiKey: false,
   isInitialLoading: false,
   isSaveBlocked: false,
   isSaving: false,
+  isRefreshing: false,
   loadError: null,
-  partialLoadError: null,
-  saveBackendSettings: vi.fn(),
+  saveBackendSettings: saveBackendSettingsMock,
   saveError: null,
 } satisfies BackendSettingsPanelHookState;
 
@@ -55,6 +47,24 @@ function getField(label: string) {
   return screen.getByLabelText(label);
 }
 
+/**
+ * Builds a mocked hook state with the planned post-save refresh boundary flag.
+ *
+ * @param {Partial<BackendSettingsPanelHookState>} overrides Hook-state overrides.
+ * @returns {BackendSettingsPanelHookState} Mocked state at the current hook boundary.
+ */
+function buildRefreshingBackendSettingsState(
+  overrides: Partial<BackendSettingsPanelHookState> = {},
+): BackendSettingsPanelHookState {
+  const refreshingState: BackendSettingsPanelHookState = {
+    ...backendSettingsHookState,
+    ...overrides,
+    isRefreshing: true,
+  };
+
+  return refreshingState;
+}
+
 describe('BackendSettingsPanel', () => {
   beforeEach(() => {
     useBackendSettingsMock.mockImplementation(() => backendSettingsHookState);
@@ -62,62 +72,56 @@ describe('BackendSettingsPanel', () => {
 
   afterEach(() => {
     useBackendSettingsMock.mockReset();
-    backendSettingsHookState.saveBackendSettings.mockReset();
+    saveBackendSettingsMock.mockReset();
   });
 
-  it('renders a loading skeleton before the form is available', () => {
+  it('renders the backend panel skeleton inside the owned announced status region before the form is available', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       isInitialLoading: true,
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(
-      screen.getByRole('status', { name: 'Loading backend settings' })
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).getByRole('status', { name: 'Loading backend settings' })).toBeInTheDocument();
+    expect(panel.querySelector('.ant-skeleton')).not.toBeNull();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('heading', { level: 3, name: 'Backend' })).not.toBeInTheDocument();
+    expect(within(panel).queryByLabelText('API key')).not.toBeInTheDocument();
   });
 
-  it('renders a top-level alert for a blocking load failure', () => {
+  it('renders a blocking load failure inside the owned backend panel region', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       loadError: 'Unable to load backend settings right now.',
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(within(panel).getByRole('alert')).toHaveTextContent(
       'Unable to load backend settings right now.'
     );
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
   });
 
-  it('renders a persistent warning for a partial load warning', () => {
+  it('suppresses the form and save action when the backend config payload is incomplete', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
-      backendSettingsFormValues: {
-        hasApiKey: true,
-        apiKey: '',
-        backendUrl: 'https://backend.example.com',
-        backendAssessorBatchSize: 30,
-        slidesFetchBatchSize: 20,
-        daysUntilAuthRevoke: 60,
-        jsonDbMasterIndexKey: 'master-index',
-        jsonDbLockTimeoutMs: 15_000,
-        jsonDbLogLevel: 'INFO',
-        jsonDbBackupOnInitialise: true,
-        jsonDbRootFolderId: 'folder-1234',
-      },
+      backendSettingsFormValues: null,
       hasApiKey: true,
       isSaveBlocked: true,
-      partialLoadError: 'apiKey: REDACTED',
+      loadError: 'apiKey: REDACTED',
     }));
 
     renderBackendSettingsPanel();
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
 
-    expect(screen.getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    expect(within(panel).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('heading', { level: 3, name: 'Backend' })).not.toBeInTheDocument();
+    expect(within(panel).queryByLabelText('API key')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('alert')).toHaveTextContent('apiKey: REDACTED');
   }, slowPanelInteractionTimeoutMs);
 
   it('renders the planned section cards and visible field labels', () => {
@@ -186,7 +190,7 @@ describe('BackendSettingsPanel', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  it('shows the loading state while a save is in flight', () => {
+  it('shows save-button loading while a save is in flight without publishing post-save refresh busy state yet', () => {
     useBackendSettingsMock.mockImplementation(() => ({
       ...backendSettingsHookState,
       backendSettingsFormValues: {
@@ -208,10 +212,47 @@ describe('BackendSettingsPanel', () => {
 
     renderBackendSettingsPanel();
 
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
     const saveButton = screen.getByRole('button', { name: /save/i });
 
     expect(saveButton).toHaveClass('ant-btn-loading');
     expect(saveButton).toBeDisabled();
+    expect(panel).not.toHaveAttribute('aria-busy', 'true');
+    expect(within(panel).queryByText('Refreshing backend settings...')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('heading', { level: 3, name: 'Backend' })).toBeInTheDocument();
+  });
+
+  it('keeps populated settings visible while publishing panel busy state during a post-save refresh', () => {
+    useBackendSettingsMock.mockImplementation(() =>
+      buildRefreshingBackendSettingsState({
+        backendSettingsFormValues: {
+          hasApiKey: true,
+          apiKey: '',
+          backendUrl: 'https://backend.example.com',
+          backendAssessorBatchSize: 30,
+          slidesFetchBatchSize: 20,
+          daysUntilAuthRevoke: 60,
+          jsonDbMasterIndexKey: 'master-index',
+          jsonDbLockTimeoutMs: 15_000,
+          jsonDbLogLevel: 'INFO',
+          jsonDbBackupOnInitialise: true,
+          jsonDbRootFolderId: 'folder-1234',
+        },
+        hasApiKey: true,
+      })
+    );
+
+    renderBackendSettingsPanel();
+
+    const panel = screen.getByRole('region', { name: 'Backend settings panel' });
+    const saveButton = within(panel).getByRole('button', { name: 'Save' });
+
+    expect(panel).toHaveAttribute('aria-busy', 'true');
+    expect(within(panel).getByText('Refreshing backend settings...')).toBeInTheDocument();
+    expect(saveButton).not.toHaveClass('ant-btn-loading');
+    expect(within(panel).getByRole('heading', { level: 3, name: 'Backend' })).toBeInTheDocument();
+    expect(within(panel).getByLabelText('Backend URL')).toHaveDisplayValue('https://backend.example.com');
+    expect(within(panel).getByLabelText('Backend assessor batch size')).toHaveDisplayValue('30');
   });
 
   it('moves focus to the first invalid field after submit failure', async () => {
@@ -323,7 +364,7 @@ describe('BackendSettingsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
-      expect(backendSettingsHookState.saveBackendSettings).toHaveBeenCalledWith(
+      expect(saveBackendSettingsMock).toHaveBeenCalledWith(
         expect.objectContaining({
           jsonDbBackupOnInitialise: true,
           backendAssessorBatchSize: 45,
