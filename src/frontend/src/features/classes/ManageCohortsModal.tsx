@@ -447,7 +447,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
     queryKey: getReferenceDataBlockingLoadErrorQueryKey('cohorts'),
   });
   const blockingLoadError = blockingLoadErrorQuery.data ?? null;
-  const isRefreshing = !isInitialLoading && (cohortsQuery).isFetching;
+  const isRefreshing = !isInitialLoading && cohortsQuery.isFetching;
 
   useEffect(() => {
     syncReferenceDataModalBusyState('.manage-cohorts-modal[role="dialog"]', isRefreshing);

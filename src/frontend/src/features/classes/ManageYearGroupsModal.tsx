@@ -368,7 +368,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
     queryKey: getReferenceDataBlockingLoadErrorQueryKey('yearGroups'),
   });
   const blockingLoadError = blockingLoadErrorQuery.data ?? null;
-  const isRefreshing = !isInitialLoading && (yearGroupsQuery).isFetching;
+  const isRefreshing = !isInitialLoading && yearGroupsQuery.isFetching;
 
   useEffect(() => {
     syncReferenceDataModalBusyState('.manage-year-groups-modal[role="dialog"]', isRefreshing);
