@@ -11,7 +11,7 @@
 | -------------- | ---------- | ---------------------------------------------------------------------------------------------------- |
 | Critical #1    | ✅ Clear   | Duplicated modal load-error logic deduplicated via shared `getReferenceDataLoadError` helper.        |
 | Improvement #2 | ✅ Clear   | Inlined single-use helpers in `useBackendSettings.ts` and removed redundant helper/type indirection. |
-| Improvement #3 | ⏳ Pending | Not started.                                                                                         |
+| Improvement #3 | ✅ Clear   | Removed single-use save-button helper in `BackendSettingsPanel.tsx` and inlined button state logic.  |
 | Improvement #4 | ⏳ Pending | Not started.                                                                                         |
 | Nitpick #5     | ⏳ Pending | Not started.                                                                                         |
 | Nitpick #6     | ⏳ Pending | Not started.                                                                                         |

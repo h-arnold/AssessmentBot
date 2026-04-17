@@ -217,26 +217,27 @@ function setBackendSettingsFieldErrors(
   setFieldErrorMessages(nextFieldErrorMessages);
 }
 
-type BackendSettingsSaveButtonState = Readonly<{
-  disabled: boolean;
-  loading: boolean;
-}>;
-
 /**
- * Returns the Save button state for backend settings.
+ * Renders panel-level backend settings status notices.
  *
- * @param {Readonly<{ isRefreshing: boolean; isSaveBlocked: boolean; isSaving: boolean; }>} state Save-state flags.
- * @returns {BackendSettingsSaveButtonState} Save button loading and disablement state.
+ * @param {Readonly<{ isRefreshing: boolean; saveError: string | null; }>} properties Status flags.
+ * @returns {JSX.Element} The status notice content.
  */
-function getBackendSettingsSaveButtonState(state: Readonly<{
+function renderBackendSettingsPanelStatus(properties: Readonly<{
   isRefreshing: boolean;
-  isSaveBlocked: boolean;
-  isSaving: boolean;
-}>): BackendSettingsSaveButtonState {
-  return {
-    disabled: state.isSaveBlocked || state.isSaving || state.isRefreshing,
-    loading: state.isSaving && !state.isRefreshing,
-  };
+  saveError: string | null;
+}>) {
+  return (
+    <>
+      {properties.isRefreshing ? (
+        <div aria-live="polite" role="status">
+          <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
+        </div>
+      ) : null}
+
+      {properties.saveError !== null && <Alert title={properties.saveError} showIcon type="error" />}
+    </>
+  );
 }
 
 /**
@@ -272,7 +273,6 @@ export function BackendSettingsPanel() {
   const [fieldErrorMessages, setFieldErrorMessages] = useState(
     () => new Map<BackendSettingsFieldName, string>()
   );
-  const saveButtonState = getBackendSettingsSaveButtonState({ isRefreshing, isSaveBlocked, isSaving });
 
   useEffect(() => {
     if (backendSettingsFormValues !== null) {
@@ -414,13 +414,7 @@ export function BackendSettingsPanel() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
 
-        {isRefreshing ? (
-          <div aria-live="polite" role="status">
-            <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
-          </div>
-        ) : null}
-
-        {saveError !== null && <Alert title={saveError} showIcon type="error" />}
+        {renderBackendSettingsPanelStatus({ isRefreshing, saveError })}
 
         <Form<BackendSettingsForm>
           form={form}
@@ -643,8 +637,8 @@ export function BackendSettingsPanel() {
             <Form.Item>
               <Button
                 htmlType="submit"
-                loading={saveButtonState.loading}
-                disabled={saveButtonState.disabled}
+                loading={isSaving && !isRefreshing}
+                disabled={isSaveBlocked || isSaving || isRefreshing}
                 type="primary"
               >
                 Save
