@@ -2,8 +2,6 @@ import rawAppStyles from '../index.css?inline';
 
 export const appStylesRaw = rawAppStyles;
 
-const notFoundIndex = -1;
-
 /**
  * Returns the declaration block for a selector from the shared app stylesheet.
  *
@@ -21,7 +19,7 @@ export function getCssRuleBlock(selector: string): string {
   const ruleBlockStart = appStylesRaw.indexOf(selectorToken) + selectorToken.length;
   const ruleBlockEnd = appStylesRaw.indexOf('}', ruleBlockStart);
 
-  if (ruleBlockEnd === notFoundIndex) {
+  if (ruleBlockEnd < ruleBlockStart) {
     throw new Error(`Expected selector ${selector} to have a closing brace in the shared app stylesheet.`);
   }
 
