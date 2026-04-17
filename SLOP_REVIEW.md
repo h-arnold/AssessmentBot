@@ -7,15 +7,15 @@
 
 ## Remediation Progress
 
-| Item           | Status     | Notes                                                                                                    |
-| -------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| Critical #1    | ✅ Clear   | Duplicated modal load-error logic deduplicated via shared `getReferenceDataLoadError` helper.            |
-| Improvement #2 | ✅ Clear   | Inlined single-use helpers in `useBackendSettings.ts` and removed redundant helper/type indirection.     |
-| Improvement #3 | ✅ Clear   | Removed single-use save-button helper in `BackendSettingsPanel.tsx` and inlined button state logic.      |
-| Improvement #4 | ✅ Clear   | Removed redundant `.settings-page-content--classes` modifier and aligned Settings page tests.            |
-| Nitpick #5     | ✅ Clear   | Removed redundant parentheses in `isRefreshing` derivations in both reference-data modals.               |
-| Nitpick #6     | ✅ Clear   | Removed `notFoundIndex` sentinel from `appStylesRaw.ts` and kept the closing-brace guard lint-compliant. |
-| Nitpick #7     | ⏳ Pending | Not started.                                                                                             |
+| Item           | Status   | Notes                                                                                                    |
+| -------------- | -------- | -------------------------------------------------------------------------------------------------------- |
+| Critical #1    | ✅ Clear | Duplicated modal load-error logic deduplicated via shared `getReferenceDataLoadError` helper.            |
+| Improvement #2 | ✅ Clear | Inlined single-use helpers in `useBackendSettings.ts` and removed redundant helper/type indirection.     |
+| Improvement #3 | ✅ Clear | Removed single-use save-button helper in `BackendSettingsPanel.tsx` and inlined button state logic.      |
+| Improvement #4 | ✅ Clear | Removed redundant `.settings-page-content--classes` modifier and aligned Settings page tests.            |
+| Nitpick #5     | ✅ Clear | Removed redundant parentheses in `isRefreshing` derivations in both reference-data modals.               |
+| Nitpick #6     | ✅ Clear | Removed `notFoundIndex` sentinel from `appStylesRaw.ts` and kept the closing-brace guard lint-compliant. |
+| Nitpick #7     | ✅ Clear | Already resolved during `useBackendSettings.ts` cleanup; spacing now uses a single separator line.       |
 
 ---
 
