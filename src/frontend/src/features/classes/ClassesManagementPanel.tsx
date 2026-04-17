@@ -411,7 +411,7 @@ function ClassesManagementPanelOutcomeAlert(properties: Readonly<{ alert: BulkAc
  */
 function ClassesManagementPanelLoadingState() {
   return (
-    <div aria-label="Loading classes" role="status">
+    <output aria-label="Loading classes">
       <Flex vertical gap={12}>
         <Skeleton active paragraph={{ rows: 2 }} title={{ width: '35%' }} />
         <Flex gap={8} wrap>
@@ -421,7 +421,7 @@ function ClassesManagementPanelLoadingState() {
         </Flex>
         <Skeleton active paragraph={{ rows: 6 }} title={{ width: '20%' }} />
       </Flex>
-    </div>
+    </output>
   );
 }
 
@@ -830,30 +830,35 @@ function renderClassesManagementPanelContent(properties: Readonly<{
 }>) {
   if (properties.classesManagement.classesManagementViewState === 'loading') {
     return (
-      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-        <ClassesManagementPanelLoadingState />
-      </Card>
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelLoadingState />
+        </Card>
+      </section>
     );
   }
 
   if (properties.classesManagement.classesManagementViewState === 'error') {
     return (
-      <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
-        <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
-        <ClassesAlertStack
-          blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
-          nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
-          refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
-        />
-        {properties.classesManagement.blockingErrorMessage === null ? (
-          <Typography.Text>{properties.classesManagement.errorMessage}</Typography.Text>
-        ) : null}
-      </Card>
+      <section aria-label={classesManagementPanelRegionLabel}>
+        <Card className="settings-tab-panel">
+          <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
+          <ClassesAlertStack
+            blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
+            nonBlockingWarningMessage={properties.classesManagement.nonBlockingWarningMessage}
+            refreshRequiredMessage={properties.effectiveRefreshRequiredMessage}
+          />
+          {properties.classesManagement.blockingErrorMessage === null ? (
+            <Typography.Text>{properties.classesManagement.errorMessage}</Typography.Text>
+          ) : null}
+        </Card>
+      </section>
     );
   }
 
   return (
-    <Card className="settings-tab-panel" role="region" aria-label={classesManagementPanelRegionLabel}>
+    <section aria-label={classesManagementPanelRegionLabel}>
+      <Card className="settings-tab-panel">
       <ClassesManagementPanelOutcomeAlert alert={properties.bulkActionOutcomeAlert} />
       <ClassesAlertStack
         blockingErrorMessage={properties.classesManagement.blockingErrorMessage}
@@ -862,11 +867,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
       />
       {properties.shouldSuppressStaleTableData === false ? (
         <Flex vertical gap={12}>
-          <div
-            role="region"
-            aria-label="Classes data workflow"
-            aria-busy={properties.classesManagement.isRefreshing ? 'true' : undefined}
-          >
+          <section aria-label="Classes data workflow" aria-busy={properties.classesManagement.isRefreshing ? 'true' : undefined}>
             <Flex vertical gap={12}>
               <ClassesSummaryCard rows={properties.classesManagement.rows} selectedCount={properties.classesManagement.selectedRowKeys.length} />
               <ClassesToolbar
@@ -892,7 +893,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
                 selectionFrozen={properties.workflowMutationBoundaryActive}
               />
             </Flex>
-          </div>
+          </section>
           <BulkCreateModal
             open={properties.createModalOpen}
             cohortOptions={properties.cohortOptions}
@@ -942,6 +943,7 @@ function renderClassesManagementPanelContent(properties: Readonly<{
           />
         </Flex>
       ) : null}
-    </Card>
+      </Card>
+    </section>
   );
 }

@@ -75,6 +75,19 @@ async function openClassesTabWithCohortManagementScenario(
   });
 }
 
+/**
+ * Opens the Manage Cohorts modal from the Classes tab toolbar.
+ *
+ * @param {import('@playwright/test').Page} page Playwright page.
+ * @returns {Promise<import('@playwright/test').Locator>} The opened management modal.
+ */
+async function openManageCohortsModal(page: Parameters<typeof openClassesTabWithScenario>[0]) {
+  await page.getByRole('button', { name: 'Manage Cohorts' }).click();
+  const modal = page.getByRole('dialog', { name: /manage cohorts/i });
+  await expect(modal).toBeVisible();
+  return modal;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -98,10 +111,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
     page,
   }) => {
     await openClassesTabWithCohortManagementScenario(page);
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
     await expect(modal.getByText('Cohort 2025')).toBeVisible();
     await expect(modal.getByText('Cohort 2024')).toBeVisible();
     // Active cohort should have its Switch on; inactive should have it off.
@@ -138,13 +148,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       startMonth: 9,
     };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       createCohort: [{ kind: 'success', data: newCohort }],
       // getCohorts called again after create to refresh the list
       getCohorts: [
@@ -153,9 +157,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     await modal.getByRole('button', { name: /create cohort/i }).click();
     const form = page.getByRole('dialog', { name: /create cohort/i });
@@ -177,13 +179,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       startMonth: 9,
     };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       createCohort: [{ kind: 'success', data: newCohort }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
@@ -191,9 +187,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     await modal.getByRole('button', { name: /create cohort/i }).click();
     const form = page.getByRole('dialog', { name: /create cohort/i });
@@ -217,13 +211,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       startMonth: 9,
     };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       updateCohort: [{ kind: 'success', data: toggledCohort }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
@@ -235,9 +223,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
     const activeSwitch = cohort2025Row.getByRole('switch');
@@ -264,13 +250,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       startMonth: 9,
     };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       updateCohort: [{ kind: 'success', data: updatedCohort }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
@@ -281,9 +261,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     // Click the Edit button on the first cohort row (Cohort 2025).
     const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
@@ -309,13 +287,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       startMonth: 9,
     };
 
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       updateCohort: [{ kind: 'success', data: toggledCohort }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
@@ -326,9 +298,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
       ],
     });
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     const cohort2025Row = modal.getByRole('row', { name: /cohort 2025/i });
     const activeSwitch = cohort2025Row.getByRole('switch');
@@ -340,13 +310,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
   });
 
   test('deletes a cohort and removes it from the list', async ({ page }) => {
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       deleteCohort: [{ kind: 'success', data: undefined }],
       getCohorts: [
         { kind: 'success', data: manageCohortsCohorts },
@@ -367,13 +331,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
   test('keeps the delete dialog open with an inline Alert when delete is blocked because the cohort is in use', async ({
     page,
   }) => {
-    await openClassesTabWithScenario(page, {
-      ...createSuccessfulClassesScenario({
-        classPartials: baseClassPartials,
-        cohorts: manageCohortsCohorts,
-        googleClassrooms: baseGoogleClassrooms,
-        yearGroups: baseYearGroups,
-      }),
+    await openClassesTabWithCohortManagementScenario(page, {
       deleteCohort: [
         {
           kind: 'failureEnvelope',
@@ -394,9 +352,7 @@ test.describe('Classes CRUD — Manage Cohorts', () => {
   test('closes the management modal via its close control', async ({ page }) => {
     await openClassesTabWithCohortManagementScenario(page);
 
-    await page.getByRole('button', { name: 'Manage Cohorts' }).click();
-    const modal = page.getByRole('dialog', { name: /manage cohorts/i });
-    await expect(modal).toBeVisible();
+    const modal = await openManageCohortsModal(page);
 
     await modal.getByRole('button', { name: /close/i }).click();
 

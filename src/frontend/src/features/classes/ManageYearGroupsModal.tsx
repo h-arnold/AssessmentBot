@@ -342,12 +342,12 @@ function getYearGroupFormDialogTitle(formMode: FormMode | null): string {
  */
 function ManageYearGroupsInitialLoadingState() {
   return (
-    <div aria-label="Loading year groups" role="status">
+    <output aria-label="Loading year groups">
       <Flex vertical gap={12}>
         <Skeleton.Button active />
         <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
       </Flex>
-    </div>
+    </output>
   );
 }
 

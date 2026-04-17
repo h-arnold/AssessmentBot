@@ -213,6 +213,30 @@ function getThemeModeSwitch() {
   return screen.getByRole('switch', { name: 'Dark mode' });
 }
 
+/**
+ * Asserts the unauthorised auth-gate outcome, including optional explanatory copy.
+ *
+ * @param {{ getCallCount(method: string): number } | null} transport Transport harness when one is installed.
+ * @param {{ expectedMessage?: string }} [options] Optional assertion options.
+ * @param {string} [options.expectedMessage] Optional message expected in the unauthorised state.
+ * @returns {Promise<void>} Resolves once async auth-state assertions complete.
+ */
+async function expectUnauthorisedOutcome(
+  transport: { getCallCount(method: string): number } | null,
+  options: { expectedMessage?: string } = {}
+) {
+  expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
+  expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+
+  if (options.expectedMessage !== undefined) {
+    expect(await screen.findByText(options.expectedMessage)).toBeInTheDocument();
+  }
+
+  if (transport !== null) {
+    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
+  }
+}
+
 describe('App', () => {
   afterEach(() => {
     delete (globalThis as { google?: unknown }).google;
@@ -538,10 +562,8 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
+    await expectUnauthorisedOutcome(transport);
     expect(transport.getCallCount(authStatusMethodName)).toBe(1);
-    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
   });
 
   it('shows backend failure message when backend returns a failure envelope', async () => {
@@ -558,10 +580,9 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
-    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
+    await expectUnauthorisedOutcome(transport, {
+      expectedMessage: unableToCheckAuthorisationStatusMessage,
+    });
   });
 
   it('shows string failure message when transport fails with a non-Error value', async () => {
@@ -573,10 +594,9 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
-    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
+    await expectUnauthorisedOutcome(transport, {
+      expectedMessage: unableToCheckAuthorisationStatusMessage,
+    });
   });
 
   it('shows rate-limited message when backend returns retriable rate limit envelope', async () => {
@@ -594,20 +614,17 @@ describe('App', () => {
 
     renderApp();
 
-    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(
-      await screen.findByText('The service is busy. Please try again shortly.')
-    ).toBeInTheDocument();
-    expect(transport.getCallCount(classPartialsMethodName)).toBe(0);
+    await expectUnauthorisedOutcome(transport, {
+      expectedMessage: 'The service is busy. Please try again shortly.',
+    });
   });
 
   it('shows runtime failure message when google.script.run is unavailable', async () => {
     renderApp();
 
-    expect(screen.getByRole('status', { name: loadingAuthorisationStatusLabel })).toBeInTheDocument();
-    expect(await screen.findByText('Unauthorised', {}, { timeout: 10_000 })).toBeInTheDocument();
-    expect(await screen.findByText(unableToCheckAuthorisationStatusMessage)).toBeInTheDocument();
+    await expectUnauthorisedOutcome(null, {
+      expectedMessage: unableToCheckAuthorisationStatusMessage,
+    });
   });
 
   it('does not start class-partials warm-up while auth is unresolved', async () => {

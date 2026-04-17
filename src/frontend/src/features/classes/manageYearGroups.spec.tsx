@@ -38,6 +38,12 @@ const seedYearGroups: YearGroup[] = [
   { key: 'year-7', name: 'Year 7' },
   { key: 'year-8', name: 'Year 8' },
 ];
+const yearGroupCreateName = 'Year 9';
+const createYearGroupInputNameRegex = /name/i;
+const yearGroupCreateSubmitButtonNameRegex = /ok|save|create/i;
+const yearGroupCreateDialogNameRegex = /create year group/i;
+const refreshFailedErrorMessage = 'Refresh failed.';
+const createdYearGroupFixture: YearGroup = { key: 'year-9', name: yearGroupCreateName };
 
 /**
  * Renders ManageYearGroupsModal with pre-seeded year-group data and optional overrides.
@@ -82,6 +88,29 @@ function getManageYearGroupsModalDialog() {
  */
 async function findManageYearGroupsModalDialog() {
   return screen.findByRole('dialog', { name: 'Manage Year Groups' });
+}
+
+/**
+ * Opens and submits the Create year group dialog while forcing refresh failure.
+ *
+ * @param {HTMLElement} dialog The outer Manage Year Groups modal dialog.
+ * @returns {Promise<void>} Resolves once create submission has been asserted.
+ */
+async function submitCreateYearGroupWhenRefreshFails(dialog: HTMLElement) {
+  getYearGroupsMock.mockRejectedValueOnce(new Error(refreshFailedErrorMessage));
+  fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
+
+  const formDialog = await screen.findByRole('dialog', { name: yearGroupCreateDialogNameRegex });
+  fireEvent.change(within(formDialog).getByRole('textbox', { name: createYearGroupInputNameRegex }), {
+    target: { value: yearGroupCreateName },
+  });
+  fireEvent.click(within(formDialog).getByRole('button', { name: yearGroupCreateSubmitButtonNameRegex }));
+
+  await waitFor(() => {
+    expect(createYearGroupMock).toHaveBeenCalledWith({
+      record: expect.objectContaining({ name: yearGroupCreateName }),
+    });
+  });
 }
 
 beforeEach(() => {
@@ -156,7 +185,7 @@ describe('ManageYearGroupsModal', () => {
 
       try {
         await act(async () => {
-          void queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.yearGroups() });
         });
 
         await waitFor(() => {
@@ -282,27 +311,14 @@ describe('ManageYearGroupsModal', () => {
 
   describe('create flow', () => {
     it('calls createYearGroup and invalidates the yearGroups query after a successful create', async () => {
-      const newYearGroup: YearGroup = { key: 'year-9', name: 'Year 9' };
-      createYearGroupMock.mockResolvedValue(newYearGroup);
+      createYearGroupMock.mockResolvedValue(createdYearGroupFixture);
 
       const { queryClient } = renderManageYearGroupsModal();
       const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
-      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Year 9' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
-
-      await waitFor(() => {
-        expect(createYearGroupMock).toHaveBeenCalledWith({
-          record: expect.objectContaining({ name: 'Year 9' }),
-        });
-      });
+      await submitCreateYearGroupWhenRefreshFails(dialog);
       await waitFor(() => {
         expect(refetchSpy).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -318,27 +334,13 @@ describe('ManageYearGroupsModal', () => {
 
   describe('required refresh failures', () => {
     it('fails closed when a successful create cannot refresh the now-invalid year-groups data', async () => {
-      const newYearGroup: YearGroup = { key: 'year-9', name: 'Year 9' };
-      createYearGroupMock.mockResolvedValue(newYearGroup);
+      createYearGroupMock.mockResolvedValue(createdYearGroupFixture);
 
       renderManageYearGroupsModal();
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
-      getYearGroupsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
-      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Year 9' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
-
-      await waitFor(() => {
-        expect(createYearGroupMock).toHaveBeenCalledWith({
-          record: expect.objectContaining({ name: 'Year 9' }),
-        });
-      });
+      await submitCreateYearGroupWhenRefreshFails(dialog);
       await waitFor(() => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);
       });
@@ -348,21 +350,13 @@ describe('ManageYearGroupsModal', () => {
     });
 
     it('keeps the fail-closed year-groups state blocked after remount while the cached data is still untrustworthy', async () => {
-      const newYearGroup: YearGroup = { key: 'year-9', name: 'Year 9' };
-      createYearGroupMock.mockResolvedValue(newYearGroup);
+      createYearGroupMock.mockResolvedValue(createdYearGroupFixture);
 
       const { queryClient, unmount } = renderManageYearGroupsModal();
 
       const dialog = await findManageYearGroupsModalDialog();
       await within(dialog).findByRole('table', { name: /year groups/i });
-      getYearGroupsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
-      fireEvent.click(within(dialog).getByRole('button', { name: /create year group/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create year group/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Year 9' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
+      await submitCreateYearGroupWhenRefreshFails(dialog);
 
       await waitFor(() => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(yearGroupsLoadFailureCopy);

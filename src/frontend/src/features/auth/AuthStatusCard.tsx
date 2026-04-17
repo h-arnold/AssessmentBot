@@ -14,9 +14,9 @@ export function AuthStatusCard() {
   if (isLoading) {
     return (
       <Card className="auth-card">
-        <div aria-label="Loading authorisation status" role="status">
+        <output aria-label="Loading authorisation status">
           <Skeleton active avatar={{ shape: 'circle', size: 64 }} paragraph={{ rows: 2 }} title={{ width: '40%' }} />
-        </div>
+        </output>
       </Card>
     );
   }

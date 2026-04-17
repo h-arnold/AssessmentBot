@@ -275,12 +275,12 @@ function getCohortFormDialogTitle(formMode: FormMode | null): string {
  */
 function ManageCohortsInitialLoadingState() {
   return (
-    <div aria-label="Loading cohorts" role="status">
+    <output aria-label="Loading cohorts">
       <Flex vertical gap={12}>
         <Skeleton.Button active />
         <Skeleton active paragraph={{ rows: 5 }} title={{ width: '24%' }} />
       </Flex>
-    </div>
+    </output>
   );
 }
 

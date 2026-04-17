@@ -48,6 +48,18 @@ const seedCohorts: Cohort[] = [
     startMonth: 9,
   },
 ];
+const cohortCreateName = 'Cohort 2026';
+const createCohortInputNameRegex = /name/i;
+const cohortCreateSubmitButtonNameRegex = /ok|save|create/i;
+const cohortCreateDialogNameRegex = /create cohort/i;
+const refreshFailedErrorMessage = 'Refresh failed.';
+const createdCohortFixture: Cohort = {
+  key: 'cohort-2026',
+  name: cohortCreateName,
+  active: true,
+  startYear: 2026,
+  startMonth: 9,
+};
 
 /**
  * Renders ManageCohortsModal with pre-seeded cohort data and optional overrides.
@@ -91,6 +103,29 @@ function getManageCohortsModalDialog() {
  */
 async function findManageCohortsModalDialog() {
   return screen.findByRole('dialog', { name: 'Manage Cohorts' });
+}
+
+/**
+ * Opens and submits the Create cohort dialog while forcing the post-mutation refresh to fail.
+ *
+ * @param {HTMLElement} dialog The outer Manage Cohorts modal dialog.
+ * @returns {Promise<void>} Resolves once create submission has been asserted.
+ */
+async function submitCreateCohortWhenRefreshFails(dialog: HTMLElement) {
+  getCohortsMock.mockRejectedValueOnce(new Error(refreshFailedErrorMessage));
+  fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
+
+  const formDialog = await screen.findByRole('dialog', { name: cohortCreateDialogNameRegex });
+  fireEvent.change(within(formDialog).getByRole('textbox', { name: createCohortInputNameRegex }), {
+    target: { value: cohortCreateName },
+  });
+  fireEvent.click(within(formDialog).getByRole('button', { name: cohortCreateSubmitButtonNameRegex }));
+
+  await waitFor(() => {
+    expect(createCohortMock).toHaveBeenCalledWith({
+      record: expect.objectContaining({ name: cohortCreateName }),
+    });
+  });
 }
 
 beforeEach(() => {
@@ -165,7 +200,7 @@ describe('ManageCohortsModal', () => {
 
       try {
         await act(async () => {
-          void queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.cohorts() });
         });
 
         await waitFor(() => {
@@ -318,34 +353,14 @@ describe('ManageCohortsModal', () => {
 
   describe('create flow', () => {
     it('calls createCohort and refetches the active cohorts query after a successful create', async () => {
-      const newCohort: Cohort = {
-        key: 'cohort-2026',
-        name: 'Cohort 2026',
-        active: true,
-        startYear: 2026,
-        startMonth: 9,
-      };
-      createCohortMock.mockResolvedValue(newCohort);
+      createCohortMock.mockResolvedValue(createdCohortFixture);
 
       const { queryClient } = renderManageCohortsModal();
       const refetchSpy = vi.spyOn(queryClient, 'refetchQueries');
 
       const dialog = await findManageCohortsModalDialog();
       await within(dialog).findByRole('table', { name: /cohorts/i });
-      getCohortsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
-      fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create cohort/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Cohort 2026' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
-
-      await waitFor(() => {
-        expect(createCohortMock).toHaveBeenCalledWith({
-          record: expect.objectContaining({ name: 'Cohort 2026' }),
-        });
-      });
+      await submitCreateCohortWhenRefreshFails(dialog);
       await waitFor(() => {
         expect(refetchSpy).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -361,33 +376,13 @@ describe('ManageCohortsModal', () => {
 
   describe('required refresh failures', () => {
     it('fails closed when a successful create cannot refresh the now-invalid cohorts data', async () => {
-      const newCohort: Cohort = {
-        key: 'cohort-2026',
-        name: 'Cohort 2026',
-        active: true,
-        startYear: 2026,
-        startMonth: 9,
-      };
-      createCohortMock.mockResolvedValue(newCohort);
+      createCohortMock.mockResolvedValue(createdCohortFixture);
 
       renderManageCohortsModal();
 
       const dialog = await findManageCohortsModalDialog();
       await within(dialog).findByRole('table', { name: /cohorts/i });
-      getCohortsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
-      fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create cohort/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Cohort 2026' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
-
-      await waitFor(() => {
-        expect(createCohortMock).toHaveBeenCalledWith({
-          record: expect.objectContaining({ name: 'Cohort 2026' }),
-        });
-      });
+      await submitCreateCohortWhenRefreshFails(dialog);
       await waitFor(() => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
       });
@@ -397,27 +392,13 @@ describe('ManageCohortsModal', () => {
     });
 
     it('keeps the fail-closed cohorts state blocked after remount while the cached data is still untrustworthy', async () => {
-      const newCohort: Cohort = {
-        key: 'cohort-2026',
-        name: 'Cohort 2026',
-        active: true,
-        startYear: 2026,
-        startMonth: 9,
-      };
-      createCohortMock.mockResolvedValue(newCohort);
+      createCohortMock.mockResolvedValue(createdCohortFixture);
 
       const { queryClient, unmount } = renderManageCohortsModal();
 
       const dialog = await findManageCohortsModalDialog();
       await within(dialog).findByRole('table', { name: /cohorts/i });
-      getCohortsMock.mockRejectedValueOnce(new Error('Refresh failed.'));
-      fireEvent.click(within(dialog).getByRole('button', { name: /create cohort/i }));
-
-      const formDialog = await screen.findByRole('dialog', { name: /create cohort/i });
-      fireEvent.change(within(formDialog).getByRole('textbox', { name: /name/i }), {
-        target: { value: 'Cohort 2026' },
-      });
-      fireEvent.click(within(formDialog).getByRole('button', { name: /ok|save|create/i }));
+      await submitCreateCohortWhenRefreshFails(dialog);
 
       await waitFor(() => {
         expect(within(dialog).getByRole('alert')).toHaveTextContent(cohortsLoadFailureCopy);
