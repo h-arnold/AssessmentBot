@@ -90,10 +90,6 @@ body {
   width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
 }
 
-.settings-page-content--classes {
-  width: min(var(--app-page-width-wide-data), calc(100% - 1rem));
-}
-
 .app-tabbed-page {
   width: 100%;
 }

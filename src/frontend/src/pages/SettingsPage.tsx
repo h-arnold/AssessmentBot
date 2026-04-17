@@ -84,10 +84,7 @@ export function SettingsPage() {
     setActiveTabKey(nextSettingsTabKey);
   };
 
-  const settingsPageContentClassName =
-    activeTabKey === 'classes'
-      ? 'settings-page-content settings-page-content--classes'
-      : 'settings-page-content';
+  const settingsPageContentClassName = 'settings-page-content';
 
   return (
     <>
