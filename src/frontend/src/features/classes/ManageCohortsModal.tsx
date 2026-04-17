@@ -26,12 +26,14 @@ import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
+  getBlockingLoadErrorMessage,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
+  syncReferenceDataModalBusyState,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
 import {
@@ -457,28 +459,6 @@ function createCohortDeleteConfirmHandler(properties: CohortDeleteConfirmHandler
 }
 
 /**
- * Returns the blocking load error while the currently cached dataset is still refresh-invalidated.
- *
- * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
- * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
- * @returns {string | null} Blocking load error message while the dataset remains invalidated.
- */
-function getBlockingLoadErrorMessage(
-  blockingLoadError: BlockingLoadErrorState | null,
-  dataUpdatedAt: number
-): string | null {
-  if (blockingLoadError === null) {
-    return null;
-  }
-
-  if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
-    return null;
-  }
-
-  return blockingLoadError.message;
-}
-
-/**
  * Renders the Manage Cohorts modal workflow.
  *
  * @param {ManageCohortsModalProperties} properties Component properties.
@@ -498,18 +478,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const isRefreshing = !isInitialLoading && (cohortsQuery).isFetching;
 
   useEffect(() => {
-    const dialog = document.querySelector('.manage-cohorts-modal[role="dialog"]');
-
-    if (!(dialog instanceof HTMLElement)) {
-      return;
-    }
-
-    if (isRefreshing) {
-      dialog.setAttribute('aria-busy', 'true');
-      return;
-    }
-
-    dialog.removeAttribute('aria-busy');
+    syncReferenceDataModalBusyState('.manage-cohorts-modal[role="dialog"]', isRefreshing);
   }, [isRefreshing, properties.open]);
 
   useEffect(() => {

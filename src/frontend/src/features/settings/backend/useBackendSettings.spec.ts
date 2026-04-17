@@ -164,7 +164,6 @@ type BackendSettingsHookValue = {
     isSaving: boolean;
     isRefreshing: boolean;
     loadError: string | null;
-    partialLoadError: string | null;
     saveBackendSettings: (formValues: BackendSettingsForm) => Promise<void>;
     saveError: string | null;
 };
@@ -281,7 +280,6 @@ describe('useBackendSettings', () => {
             expect(getCurrentState()).toMatchObject({
                 isInitialLoading: false,
                 loadError: null,
-                partialLoadError: null,
                 isSaveBlocked: false,
                 isSaving: false,
                 isRefreshing: false,
@@ -318,7 +316,6 @@ describe('useBackendSettings', () => {
         expect(getCurrentState()).toMatchObject({
             isInitialLoading: false,
             loadError: expect.not.stringContaining('Backend exploded.'),
-            partialLoadError: null,
             isSaveBlocked: true,
             backendSettingsFormValues: null,
         });
@@ -399,7 +396,6 @@ describe('useBackendSettings', () => {
             expect(getCurrentState()).toMatchObject({
                 isInitialLoading: false,
                 loadError: partialLoadBackendConfig.loadError,
-                partialLoadError: partialLoadBackendConfig.loadError,
                 isRefreshing: false,
                 isSaveBlocked: true,
                 hasApiKey: true,
@@ -435,7 +431,6 @@ describe('useBackendSettings', () => {
             expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
             expect(getCurrentState()).toMatchObject({
                 loadError: null,
-                partialLoadError: null,
                 isRefreshing: false,
                 isSaveBlocked: false,
                 backendSettingsFormValues: baseStoredKeyFormValues,
@@ -527,7 +522,6 @@ describe('useBackendSettings', () => {
         await waitFor(() => {
             expect(getCurrentState()).toMatchObject({
                 loadError: 'Unable to load backend settings right now.',
-                partialLoadError: null,
                 isRefreshing: false,
                 isSaveBlocked: true,
                 saveError: null,
@@ -569,7 +563,6 @@ describe('useBackendSettings', () => {
                 isSaving: false,
                 isRefreshing: false,
                 loadError: null,
-                partialLoadError: null,
                 isSaveBlocked: false,
                 saveError: null,
                 hasApiKey: true,

@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { flushSync } from 'react-dom';
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { ApiTransportError } from '../../../errors/apiTransportError';
+import {
+    getBlockingLoadErrorMessage,
+    type BlockingLoadErrorState,
+} from '../../../errors/blockingLoadError';
 import { getBackendConfigQueryOptions } from '../../../query/sharedQueries';
 import { setBackendConfig } from '../../../services/backendConfigurationService';
 import {
@@ -25,17 +29,11 @@ type BackendSettingsHookValue = Readonly<{
     isSaving: boolean;
     isRefreshing: boolean;
     loadError: string | null;
-    partialLoadError: string | null;
     saveBackendSettings: (formValues: BackendSettingsForm) => Promise<void>;
     saveError: string | null;
 }>;
 
 type BackendSettingsQueryOptions = ReturnType<typeof getBackendConfigQueryOptions>;
-
-type BlockingLoadErrorState = Readonly<{
-    dataUpdatedAt: number;
-    message: string;
-}>;
 
 type PersistBackendSettingsOutcome =
     | Readonly<{
@@ -102,29 +100,6 @@ function getBackendSettingsLoadError(
     }
 
     return mapBackendSettingsErrorToUserMessage(backendConfigQuery.error, 'load');
-}
-
-/**
- * Returns the blocking load error while the currently cached backend settings remain
- * refresh-invalidated.
- *
- * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
- * @param {number} dataUpdatedAt Timestamp of the currently cached backend config payload.
- * @returns {string | null} Blocking load error message while the cached payload remains invalidated.
- */
-function getBlockingLoadErrorMessage(
-    blockingLoadError: BlockingLoadErrorState | null,
-    dataUpdatedAt: number
-): string | null {
-    if (blockingLoadError === null) {
-        return null;
-    }
-
-    if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
-        return null;
-    }
-
-    return blockingLoadError.message;
 }
 
 type BackendSettingsRefreshQueryState = Readonly<{
@@ -404,7 +379,6 @@ export function useBackendSettings(): BackendSettingsHookValue {
         isSaving,
         isRefreshing,
         loadError,
-        partialLoadError,
         saveBackendSettings,
         saveError,
     };

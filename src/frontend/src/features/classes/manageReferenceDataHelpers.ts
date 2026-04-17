@@ -7,13 +7,33 @@
 
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { ApiTransportError } from '../../errors/apiTransportError';
+import type { BlockingLoadErrorState } from '../../errors/blockingLoadError';
 
 type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
 
-export type BlockingLoadErrorState = Readonly<{
-  dataUpdatedAt: number;
-  message: string;
-}>;
+export { getBlockingLoadErrorMessage, type BlockingLoadErrorState } from '../../errors/blockingLoadError';
+
+/**
+ * Synchronises the outer reference-data modal busy attribute with the current refresh state.
+ *
+ * @param {string} modalSelector Selector for the rendered Ant Design modal dialog element.
+ * @param {boolean} isBusy Whether the modal should expose busy state.
+ * @returns {void} Nothing.
+ */
+export function syncReferenceDataModalBusyState(modalSelector: string, isBusy: boolean): void {
+  const dialog = document.querySelector(modalSelector);
+
+  if (!(dialog instanceof HTMLElement)) {
+    return;
+  }
+
+  if (isBusy) {
+    dialog.setAttribute('aria-busy', 'true');
+    return;
+  }
+
+  dialog.removeAttribute('aria-busy');
+}
 
 /**
  * Returns the query-cache key used to persist a fail-closed reference-data trust boundary.

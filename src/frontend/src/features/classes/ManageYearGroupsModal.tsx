@@ -26,12 +26,14 @@ import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
+  getBlockingLoadErrorMessage,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
   isInUseError,
   refetchRequiredReferenceDataQuery,
   setPersistedBlockingLoadError,
+  syncReferenceDataModalBusyState,
   type BlockingLoadErrorState,
 } from './manageReferenceDataHelpers';
 import {
@@ -378,28 +380,6 @@ function ManageYearGroupsInitialLoadingState() {
 }
 
 /**
- * Returns the blocking load error while the currently cached dataset is still refresh-invalidated.
- *
- * @param {BlockingLoadErrorState | null} blockingLoadError Current blocking load-error state.
- * @param {number} dataUpdatedAt Timestamp of the currently cached dataset.
- * @returns {string | null} Blocking load error message while the dataset remains invalidated.
- */
-function getBlockingLoadErrorMessage(
-  blockingLoadError: BlockingLoadErrorState | null,
-  dataUpdatedAt: number
-): string | null {
-  if (blockingLoadError === null) {
-    return null;
-  }
-
-  if (dataUpdatedAt > blockingLoadError.dataUpdatedAt) {
-    return null;
-  }
-
-  return blockingLoadError.message;
-}
-
-/**
  * Renders the Manage Year Groups modal workflow.
  *
  * @param {ManageYearGroupsModalProperties} properties Component properties.
@@ -419,18 +399,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   const isRefreshing = !isInitialLoading && (yearGroupsQuery).isFetching;
 
   useEffect(() => {
-    const dialog = document.querySelector('.manage-year-groups-modal[role="dialog"]');
-
-    if (!(dialog instanceof HTMLElement)) {
-      return;
-    }
-
-    if (isRefreshing) {
-      dialog.setAttribute('aria-busy', 'true');
-      return;
-    }
-
-    dialog.removeAttribute('aria-busy');
+    syncReferenceDataModalBusyState('.manage-year-groups-modal[role="dialog"]', isRefreshing);
   }, [isRefreshing, properties.open]);
 
   useEffect(() => {

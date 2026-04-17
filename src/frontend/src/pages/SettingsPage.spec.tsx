@@ -68,8 +68,8 @@ const backendSettingsHookState = {
   isInitialLoading: false,
   isSaveBlocked: false,
   isSaving: false,
+  isRefreshing: false,
   loadError: null,
-  partialLoadError: null,
   saveBackendSettings: vi.fn(),
   saveError: null,
 };

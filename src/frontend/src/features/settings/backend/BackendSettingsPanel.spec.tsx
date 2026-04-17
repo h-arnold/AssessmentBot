@@ -15,7 +15,6 @@ const backendSettingsHookState: BackendSettingsPanelHookState = {
   isSaving: false,
   isRefreshing: false,
   loadError: null,
-  partialLoadError: null,
   saveBackendSettings: saveBackendSettingsMock,
   saveError: null,
 } satisfies BackendSettingsPanelHookState;
@@ -114,7 +113,6 @@ describe('BackendSettingsPanel', () => {
       hasApiKey: true,
       isSaveBlocked: true,
       loadError: 'apiKey: REDACTED',
-      partialLoadError: 'apiKey: REDACTED',
     }));
 
     renderBackendSettingsPanel();
