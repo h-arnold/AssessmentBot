@@ -5,13 +5,21 @@
  * Keep this file local to the classes feature.
  */
 
+import { Alert } from 'antd';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
+import { createElement, type ReactElement } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
-import { getBlockingLoadErrorMessage, type BlockingLoadErrorState } from '../../errors/blockingLoadError';
+import {
+  getBlockingLoadErrorMessage,
+  type BlockingLoadErrorState,
+} from '../../errors/blockingLoadError';
 
 type ReferenceDataTrustBoundary = 'cohorts' | 'yearGroups';
 
-export { getBlockingLoadErrorMessage, type BlockingLoadErrorState } from '../../errors/blockingLoadError';
+export {
+  getBlockingLoadErrorMessage,
+  type BlockingLoadErrorState,
+} from '../../errors/blockingLoadError';
 
 /**
  * Synchronises the outer reference-data modal busy attribute with the current refresh state.
@@ -56,9 +64,11 @@ export function getPersistedBlockingLoadError(
   queryClient: QueryClient,
   entity: ReferenceDataTrustBoundary
 ): BlockingLoadErrorState | null {
-  return queryClient.getQueryData<BlockingLoadErrorState>(
-    getReferenceDataBlockingLoadErrorQueryKey(entity)
-  ) ?? null;
+  return (
+    queryClient.getQueryData<BlockingLoadErrorState>(
+      getReferenceDataBlockingLoadErrorQueryKey(entity)
+    ) ?? null
+  );
 }
 
 /**
@@ -74,10 +84,7 @@ export function setPersistedBlockingLoadError(
   entity: ReferenceDataTrustBoundary,
   blockingLoadError: BlockingLoadErrorState
 ): void {
-  queryClient.setQueryData(
-    getReferenceDataBlockingLoadErrorQueryKey(entity),
-    blockingLoadError
-  );
+  queryClient.setQueryData(getReferenceDataBlockingLoadErrorQueryKey(entity), blockingLoadError);
 }
 
 /**
@@ -115,7 +122,11 @@ export function isInUseError(error: unknown): boolean {
  * @param {string} entityLabel Singular lower-case label for the entity (e.g. 'cohort', 'year group').
  * @returns {string} User-facing error message.
  */
-export function getDeleteErrorMessage(error: unknown, blocked: boolean, entityLabel: string): string {
+export function getDeleteErrorMessage(
+  error: unknown,
+  blocked: boolean,
+  entityLabel: string
+): string {
   if (blocked) {
     return `This ${entityLabel} is in use by one or more classes and cannot be deleted.`;
   }
@@ -136,13 +147,16 @@ export async function refetchRequiredReferenceDataQuery(
   queryKey: QueryKey
 ): Promise<boolean> {
   try {
-    await queryClient.refetchQueries({
-      exact: true,
-      queryKey,
-      type: 'active',
-    }, {
-      throwOnError: true,
-    });
+    await queryClient.refetchQueries(
+      {
+        exact: true,
+        queryKey,
+        type: 'active',
+      },
+      {
+        throwOnError: true,
+      }
+    );
 
     return true;
   } catch {
@@ -175,6 +189,34 @@ export function getReferenceDataLoadError(
 
   if (query.isError && query.data === undefined) {
     return failureCopy;
+  }
+
+  return null;
+}
+
+/**
+ * Resolves blocking modal-body content for shared reference-data load states.
+ *
+ * @param {Readonly<{ isInitialLoading: boolean; loadError: string | null; loadingState: ReactElement; }>} properties Body-state properties.
+ * @returns {ReactElement | null} Shared blocking body content, or null when ready-state content should render.
+ */
+export function getReferenceDataBlockingBody(
+  properties: Readonly<{
+    isInitialLoading: boolean;
+    loadError: string | null;
+    loadingState: ReactElement;
+  }>
+): ReactElement | null {
+  if (properties.isInitialLoading) {
+    return properties.loadingState;
+  }
+
+  if (properties.loadError !== null) {
+    return createElement(Alert, {
+      description: properties.loadError,
+      showIcon: true,
+      type: 'error',
+    });
   }
 
   return null;

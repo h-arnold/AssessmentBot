@@ -223,10 +223,12 @@ function setBackendSettingsFieldErrors(
  * @param {Readonly<{ isRefreshing: boolean; saveError: string | null; }>} properties Status flags.
  * @returns {JSX.Element} The status notice content.
  */
-function renderBackendSettingsPanelStatus(properties: Readonly<{
-  isRefreshing: boolean;
-  saveError: string | null;
-}>) {
+function renderBackendSettingsPanelStatus(
+  properties: Readonly<{
+    isRefreshing: boolean;
+    saveError: string | null;
+  }>
+) {
   return (
     <>
       {properties.isRefreshing ? (
@@ -234,8 +236,9 @@ function renderBackendSettingsPanelStatus(properties: Readonly<{
           <Text type="secondary">{backendSettingsRefreshStatusCopy}</Text>
         </div>
       ) : null}
-
-      {properties.saveError !== null && <Alert title={properties.saveError} showIcon type="error" />}
+      {properties.saveError === null ? null : (
+        <Alert title={properties.saveError} showIcon type="error" />
+      )}
     </>
   );
 }
@@ -413,7 +416,6 @@ export function BackendSettingsPanel() {
       aria-busy={isRefreshing ? 'true' : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
-
         {renderBackendSettingsPanelStatus({ isRefreshing, saveError })}
 
         <Form<BackendSettingsForm>

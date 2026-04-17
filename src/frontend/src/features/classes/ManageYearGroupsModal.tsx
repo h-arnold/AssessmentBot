@@ -13,7 +13,17 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Table, Typography, type TableColumnType } from 'antd';
+import {
+  Button,
+  Flex,
+  Form,
+  Modal,
+  Skeleton,
+  Space,
+  Table,
+  Typography,
+  type TableColumnType,
+} from 'antd';
 import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { YearGroup } from '../../services/referenceData.zod';
@@ -26,6 +36,7 @@ import { queryKeys } from '../../query/queryKeys';
 import { getYearGroupsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
+  getReferenceDataBlockingBody,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -79,7 +90,6 @@ type YearGroupColumnsOptions = Readonly<{
   onDelete: (yearGroup: YearGroup) => void;
 }>;
 
-
 type ManageYearGroupsModalBodyProperties = Readonly<{
   columns: TableColumnType<YearGroup>[];
   isInitialLoading: boolean;
@@ -95,13 +105,16 @@ type ManageYearGroupsModalBodyProperties = Readonly<{
  * @param {ManageYearGroupsModalBodyProperties} properties Body render properties.
  * @returns {JSX.Element} The modal body.
  */
-function renderManageYearGroupsModalBody(properties: ManageYearGroupsModalBodyProperties): ReactElement {
-  if (properties.isInitialLoading) {
-    return <ManageYearGroupsInitialLoadingState />;
-  }
-
-  if (properties.loadError !== null) {
-    return <Alert description={properties.loadError} showIcon type="error" />;
+function renderManageYearGroupsModalBody(
+  properties: ManageYearGroupsModalBodyProperties
+): ReactElement {
+  const blockingBody = getReferenceDataBlockingBody({
+    isInitialLoading: properties.isInitialLoading,
+    loadError: properties.loadError,
+    loadingState: <ManageYearGroupsInitialLoadingState />,
+  });
+  if (blockingBody !== null) {
+    return blockingBody;
   }
 
   return (
@@ -144,8 +157,21 @@ function buildYearGroupColumns(options: YearGroupColumnsOptions): TableColumnTyp
       key: 'actions',
       render: (_value: unknown, yearGroup: YearGroup) => (
         <Space>
-          <Button onClick={() => { options.onEdit(yearGroup); }}>Edit</Button>
-          <Button danger onClick={() => { options.onDelete(yearGroup); }}>Delete</Button>
+          <Button
+            onClick={() => {
+              options.onEdit(yearGroup);
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            onClick={() => {
+              options.onDelete(yearGroup);
+            }}
+          >
+            Delete
+          </Button>
         </Space>
       ),
     },
@@ -271,7 +297,9 @@ function createYearGroupFormFinishHandler(properties: YearGroupFormFinishHandler
 
       properties.closeFormDialog();
     } catch (error: unknown) {
-      properties.setFormError(error instanceof Error ? error.message : 'Unable to save the year group.');
+      properties.setFormError(
+        error instanceof Error ? error.message : 'Unable to save the year group.'
+      );
     } finally {
       properties.setFormSubmitting(false);
     }
@@ -375,7 +403,10 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
   }, [isRefreshing, properties.open]);
 
   useEffect(() => {
-    if (blockingLoadError === null || yearGroupsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
+    if (
+      blockingLoadError === null ||
+      yearGroupsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt
+    ) {
       return;
     }
 
@@ -497,9 +528,7 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
       title="Manage Year Groups"
       onCancel={handleModalClose}
       className="manage-year-groups-modal"
-      footer={
-        <Button onClick={handleModalClose}>Cancel</Button>
-      }
+      footer={<Button onClick={handleModalClose}>Cancel</Button>}
       width={700}
     >
       {modalBody}
@@ -513,13 +542,19 @@ export function ManageYearGroupsModal(properties: ManageYearGroupsModalPropertie
         formSubmitting,
         onClose: closeFormDialog,
         onFinish: handleFormFinish,
-        onOk: () => { form.submit(); },
+        onOk: () => {
+          form.submit();
+        },
       })}
 
       {renderYearGroupDeleteDialog({
         deleteState,
-        onClose: () => { setDeleteState(INITIAL_DELETE_STATE); },
-        onConfirm: () => { void handleDeleteConfirm(); },
+        onClose: () => {
+          setDeleteState(INITIAL_DELETE_STATE);
+        },
+        onConfirm: () => {
+          void handleDeleteConfirm();
+        },
       })}
     </Modal>
   );

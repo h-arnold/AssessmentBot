@@ -13,19 +13,28 @@
  * tests while maintaining full ARIA semantics and correct Playwright behaviour.
  */
 
-import { Alert, Button, Flex, Form, Modal, Skeleton, Space, Switch, Table, Typography, type TableColumnType } from 'antd';
+import {
+  Alert,
+  Button,
+  Flex,
+  Form,
+  Modal,
+  Skeleton,
+  Space,
+  Switch,
+  Table,
+  Typography,
+  type TableColumnType,
+} from 'antd';
 import { useEffect, useState, type ReactElement } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Cohort } from '../../services/referenceData.zod';
-import {
-  createCohort,
-  deleteCohort,
-  updateCohort,
-} from '../../services/referenceDataService';
+import { createCohort, deleteCohort, updateCohort } from '../../services/referenceDataService';
 import { queryKeys } from '../../query/queryKeys';
 import { getCohortsQueryOptions } from '../../query/sharedQueries';
 import {
   clearPersistedBlockingLoadError,
+  getReferenceDataBlockingBody,
   getDeleteErrorMessage,
   getPersistedBlockingLoadError,
   getReferenceDataBlockingLoadErrorQueryKey,
@@ -80,7 +89,6 @@ type CohortColumnsOptions = Readonly<{
   onToggleActive: (cohort: Cohort, checked: boolean) => void;
 }>;
 
-
 type ManageCohortsModalBodyProperties = Readonly<{
   cohorts: Cohort[];
   columns: TableColumnType<Cohort>[];
@@ -98,23 +106,18 @@ type ManageCohortsModalBodyProperties = Readonly<{
  * @returns {JSX.Element} The modal body.
  */
 function renderManageCohortsModalBody(properties: ManageCohortsModalBodyProperties): ReactElement {
-  if (properties.isInitialLoading) {
-    return <ManageCohortsInitialLoadingState />;
-  }
-
-  if (properties.loadError !== null) {
-    return <Alert description={properties.loadError} showIcon type="error" />;
+  const blockingBody = getReferenceDataBlockingBody({
+    isInitialLoading: properties.isInitialLoading,
+    loadError: properties.loadError,
+    loadingState: <ManageCohortsInitialLoadingState />,
+  });
+  if (blockingBody !== null) {
+    return blockingBody;
   }
 
   let toggleErrorAlert: ReactElement | null = null;
   if (properties.toggleError !== null) {
-    toggleErrorAlert = (
-      <Alert
-        description={properties.toggleError}
-        type="error"
-        showIcon
-      />
-    );
+    toggleErrorAlert = <Alert description={properties.toggleError} type="error" showIcon />;
   }
 
   return (
@@ -169,7 +172,9 @@ function buildCohortColumns(options: CohortColumnsOptions): TableColumnType<Coho
       render: (_value: unknown, cohort: Cohort) => (
         <Switch
           checked={cohort.active}
-          onChange={(checked) => { options.onToggleActive(cohort, checked); }}
+          onChange={(checked) => {
+            options.onToggleActive(cohort, checked);
+          }}
         />
       ),
     },
@@ -178,8 +183,21 @@ function buildCohortColumns(options: CohortColumnsOptions): TableColumnType<Coho
       key: 'actions',
       render: (_value: unknown, cohort: Cohort) => (
         <Space>
-          <Button onClick={() => { options.onEdit(cohort); }}>Edit</Button>
-          <Button danger onClick={() => { options.onDelete(cohort); }}>Delete</Button>
+          <Button
+            onClick={() => {
+              options.onEdit(cohort);
+            }}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            onClick={() => {
+              options.onDelete(cohort);
+            }}
+          >
+            Delete
+          </Button>
         </Space>
       ),
     },
@@ -336,7 +354,9 @@ function createCohortFormFinishHandler(properties: CohortFormFinishHandlerProper
 
       properties.closeFormDialog();
     } catch (error: unknown) {
-      properties.setFormError(error instanceof Error ? error.message : 'Unable to save the cohort.');
+      properties.setFormError(
+        error instanceof Error ? error.message : 'Unable to save the cohort.'
+      );
     } finally {
       properties.setFormSubmitting(false);
     }
@@ -378,7 +398,9 @@ function createCohortToggleActiveHandler(properties: CohortToggleActiveHandlerPr
         properties.onRequiredRefreshFailure();
       }
     } catch (error: unknown) {
-      properties.setToggleError(error instanceof Error ? error.message : 'Unable to update the cohort active state.');
+      properties.setToggleError(
+        error instanceof Error ? error.message : 'Unable to update the cohort active state.'
+      );
     }
   };
 }
@@ -454,7 +476,10 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   }, [isRefreshing, properties.open]);
 
   useEffect(() => {
-    if (blockingLoadError === null || cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt) {
+    if (
+      blockingLoadError === null ||
+      cohortsQuery.dataUpdatedAt <= blockingLoadError.dataUpdatedAt
+    ) {
       return;
     }
 
@@ -583,7 +608,9 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
   const columns = buildCohortColumns({
     onEdit: openEditForm,
     onDelete: openDeleteDialog,
-    onToggleActive: (cohort, checked) => { void handleToggleActive(cohort, checked); },
+    onToggleActive: (cohort, checked) => {
+      void handleToggleActive(cohort, checked);
+    },
   });
 
   const modalBody = renderManageCohortsModalBody({
@@ -602,9 +629,7 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
       title="Manage Cohorts"
       onCancel={handleModalClose}
       className="manage-cohorts-modal"
-      footer={
-        <Button onClick={handleModalClose}>Cancel</Button>
-      }
+      footer={<Button onClick={handleModalClose}>Cancel</Button>}
       width={800}
     >
       {modalBody}
@@ -618,13 +643,19 @@ export function ManageCohortsModal(properties: ManageCohortsModalProperties) {
         formSubmitting,
         onClose: closeFormDialog,
         onFinish: handleFormFinish,
-        onOk: () => { form.submit(); },
+        onOk: () => {
+          form.submit();
+        },
       })}
 
       {renderCohortDeleteDialog({
         deleteState,
-        onClose: () => { setDeleteState(INITIAL_DELETE_STATE); },
-        onConfirm: () => { void handleDeleteConfirm(); },
+        onClose: () => {
+          setDeleteState(INITIAL_DELETE_STATE);
+        },
+        onConfirm: () => {
+          void handleDeleteConfirm();
+        },
       })}
     </Modal>
   );
