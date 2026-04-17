@@ -35,19 +35,6 @@ type BackendSettingsHookValue = Readonly<{
 
 type BackendSettingsQueryOptions = ReturnType<typeof getBackendConfigQueryOptions>;
 
-type PersistBackendSettingsOutcome =
-    | Readonly<{
-        status: 'success';
-    }>
-    | Readonly<{
-        saveError: string;
-        status: 'save-error';
-    }>
-    | Readonly<{
-        loadError: string;
-        status: 'refresh-failure';
-    }>;
-
 type BackendSettingsSaveDependencies = Readonly<{
     backendSettingsFormValues: BackendSettingsForm | null;
     isSaveBlocked: boolean;
@@ -102,22 +89,6 @@ function getBackendSettingsLoadError(
     return mapBackendSettingsErrorToUserMessage(backendConfigQuery.error, 'load');
 }
 
-type BackendSettingsRefreshQueryState = Readonly<{
-    isFetching: boolean;
-    isPending: boolean;
-}>;
-
-/**
- * Returns whether backend settings are refreshing after a usable payload is already visible.
- *
- * @param {BackendSettingsRefreshQueryState} queryState Backend-config query fetch state.
- * @returns {boolean} True when the panel should publish refresh busy state.
- */
-function isBackendSettingsRefreshing(queryState: BackendSettingsRefreshQueryState): boolean {
-    return queryState.isFetching && !queryState.isPending;
-}
-
-
 /**
  * Refetches the active backend-config query and returns a blocking load error message when the
  * refreshed dataset could not be trusted.
@@ -148,13 +119,17 @@ async function refetchRequiredBackendConfig(dependencies: Readonly<{
  * Writes backend settings and performs the required active refresh.
  *
  * @param {Readonly<{ backendConfigQueryOptions: BackendSettingsQueryOptions; formValues: BackendSettingsForm; queryClient: ReturnType<typeof useQueryClient>; }>} dependencies Save transaction dependencies.
- * @returns {Promise<PersistBackendSettingsOutcome>} Composite write and refresh outcome.
+ * @returns {Promise<Readonly<{ status: 'success'; }> | Readonly<{ saveError: string; status: 'save-error'; }> | Readonly<{ loadError: string; status: 'refresh-failure'; }>>} Composite write and refresh outcome.
  */
 async function runBackendSettingsSaveTransaction(dependencies: Readonly<{
     backendConfigQueryOptions: BackendSettingsQueryOptions;
     formValues: BackendSettingsForm;
     queryClient: ReturnType<typeof useQueryClient>;
-}>): Promise<PersistBackendSettingsOutcome> {
+}>): Promise<
+    | Readonly<{ status: 'success'; }>
+    | Readonly<{ saveError: string; status: 'save-error'; }>
+    | Readonly<{ loadError: string; status: 'refresh-failure'; }>
+> {
     const writeInput = mapBackendSettingsFormValuesToBackendConfigWriteInput(dependencies.formValues);
     const saveResult = await setBackendConfig(writeInput);
 
@@ -180,55 +155,52 @@ async function runBackendSettingsSaveTransaction(dependencies: Readonly<{
     return { status: 'success' };
 }
 
+type BackendSettingsSaveTransactionOutcome = Awaited<
+    ReturnType<typeof runBackendSettingsSaveTransaction>
+>;
+
 /**
- * Returns whether the current backend-settings save request should be ignored.
+ * Maps backend-config query data into editable backend-settings form values.
  *
- * @param {Readonly<{ backendSettingsFormValues: BackendSettingsForm | null; isSaveBlocked: boolean; isSaving: boolean; }>} dependencies Save guard dependencies.
- * @returns {boolean} True when saving should be ignored.
+ * @param {Readonly<{ backendConfig: Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0] | undefined; blockingLoadError: string | null; partialLoadError: string | null; }>} dependencies Form value mapping dependencies.
+ * @returns {BackendSettingsForm | null} Editable form values when the payload is trustworthy.
  */
-function shouldSkipBackendSettingsSave(dependencies: Readonly<{
-    backendSettingsFormValues: BackendSettingsForm | null;
-    isSaveBlocked: boolean;
-    isSaving: boolean;
-}>): boolean {
-    return (
-        dependencies.isSaving
-        || dependencies.isSaveBlocked
-        || dependencies.backendSettingsFormValues === null
-    );
+function getBackendSettingsFormValues(dependencies: Readonly<{
+    backendConfig: Parameters<typeof mapBackendConfigToBackendSettingsFormValues>[0] | undefined;
+    blockingLoadError: string | null;
+    partialLoadError: string | null;
+}>): BackendSettingsForm | null {
+    if (
+        dependencies.backendConfig === undefined
+        || dependencies.partialLoadError !== null
+        || dependencies.blockingLoadError !== null
+    ) {
+        return null;
+    }
+
+    return mapBackendConfigToBackendSettingsFormValues(dependencies.backendConfig);
 }
 
 /**
- * Applies the completed save transaction outcome to hook state.
+ * Resolves the current backend settings load error with blocking precedence.
  *
- * @param {PersistBackendSettingsOutcome} outcome Completed save transaction outcome.
- * @param {Readonly<{ backendConfigQueryOptions: BackendSettingsQueryOptions; message: ReturnType<typeof App.useApp>['message']; queryClient: ReturnType<typeof useQueryClient>; setBlockingLoadErrorState: Dispatch<SetStateAction<BlockingLoadErrorState | null>>; setSaveError: Dispatch<SetStateAction<string | null>>; }>} dependencies Outcome application dependencies.
- * @returns {void} Nothing.
+ * @param {Readonly<{ backendConfigQuery: Readonly<{ error: unknown; isError: boolean; }>; blockingLoadError: string | null; hasLoadedBackendConfig: boolean; partialLoadError: string | null; }>} dependencies Load-error dependencies.
+ * @returns {string | null} The current backend settings load error.
  */
-function applyPersistBackendSettingsOutcome(
-    outcome: PersistBackendSettingsOutcome,
-    dependencies: Readonly<{
-        backendConfigQueryOptions: BackendSettingsQueryOptions;
-        message: ReturnType<typeof App.useApp>['message'];
-        queryClient: ReturnType<typeof useQueryClient>;
-        setBlockingLoadErrorState: Dispatch<SetStateAction<BlockingLoadErrorState | null>>;
-        setSaveError: Dispatch<SetStateAction<string | null>>;
-    }>
-): void {
-    if (outcome.status === 'save-error') {
-        dependencies.setSaveError(outcome.saveError);
-        return;
-    }
-
-    if (outcome.status === 'refresh-failure') {
-        dependencies.setBlockingLoadErrorState({
-            dataUpdatedAt: dependencies.queryClient.getQueryState(dependencies.backendConfigQueryOptions.queryKey)?.dataUpdatedAt ?? 0,
-            message: outcome.loadError,
-        });
-        return;
-    }
-
-    dependencies.message.success('Backend settings saved.');
+function getCurrentBackendSettingsLoadError(dependencies: Readonly<{
+    backendConfigQuery: Readonly<{
+        error: unknown;
+        isError: boolean;
+    }>;
+    blockingLoadError: string | null;
+    hasLoadedBackendConfig: boolean;
+    partialLoadError: string | null;
+}>): string | null {
+    return (
+        dependencies.blockingLoadError
+        ?? getBackendSettingsLoadError(dependencies.backendConfigQuery, dependencies.hasLoadedBackendConfig)
+        ?? dependencies.partialLoadError
+    );
 }
 
 /**
@@ -254,7 +226,7 @@ async function persistBackendSettings(
         setSaveError,
     } = dependencies;
 
-    if (shouldSkipBackendSettingsSave({ backendSettingsFormValues, isSaveBlocked, isSaving })) {
+    if (isSaving || isSaveBlocked || backendSettingsFormValues === null) {
         return;
     }
 
@@ -271,13 +243,36 @@ async function persistBackendSettings(
             queryClient,
         });
 
-        applyPersistBackendSettingsOutcome(outcome, {
-            backendConfigQueryOptions,
-            message,
-            queryClient,
-            setBlockingLoadErrorState,
-            setSaveError,
-        });
+        const applyOutcomeByStatus = {
+            success: (): void => {
+                message.success('Backend settings saved.');
+            },
+            'save-error': (
+                resolvedOutcome: Extract<
+                    BackendSettingsSaveTransactionOutcome,
+                    Readonly<{ status: 'save-error'; }>
+                >
+            ): void => {
+                setSaveError(resolvedOutcome.saveError);
+            },
+            'refresh-failure': (
+                resolvedOutcome: Extract<
+                    BackendSettingsSaveTransactionOutcome,
+                    Readonly<{ status: 'refresh-failure'; }>
+                >
+            ): void => {
+                setBlockingLoadErrorState({
+                    dataUpdatedAt: queryClient.getQueryState(backendConfigQueryOptions.queryKey)?.dataUpdatedAt ?? 0,
+                    message: resolvedOutcome.loadError,
+                });
+            },
+        } satisfies {
+            [status in BackendSettingsSaveTransactionOutcome['status']]: (
+                resolvedOutcome: Extract<BackendSettingsSaveTransactionOutcome, Readonly<{ status: status; }>>
+            ) => void;
+        };
+
+        (applyOutcomeByStatus[outcome.status] as (resolvedOutcome: typeof outcome) => void)(outcome);
     } catch (error: unknown) {
         setSaveError(mapBackendSettingsErrorToUserMessage(error, 'save'));
     } finally {
@@ -314,19 +309,23 @@ export function useBackendSettings(): BackendSettingsHookValue {
         blockingLoadErrorState,
         backendConfigQuery.dataUpdatedAt
     );
-    const isRefreshing = isBackendSettingsRefreshing(backendConfigQuery);
+    const isRefreshing = backendConfigQuery.isFetching && !backendConfigQuery.isPending;
     const backendSettingsFormValues = useMemo(
         (): BackendSettingsForm | null =>
-            backendConfig === undefined || partialLoadError !== null || blockingLoadError !== null
-                ? null
-                : mapBackendConfigToBackendSettingsFormValues(backendConfig),
+            getBackendSettingsFormValues({
+                backendConfig,
+                blockingLoadError,
+                partialLoadError,
+            }),
         [backendConfig, blockingLoadError, partialLoadError]
     );
     const hasApiKey = backendConfig?.hasApiKey ?? false;
-    const loadError =
-        blockingLoadError
-        ?? getBackendSettingsLoadError(backendConfigQuery, backendConfig !== undefined)
-        ?? partialLoadError;
+    const loadError = getCurrentBackendSettingsLoadError({
+        backendConfigQuery,
+        blockingLoadError,
+        hasLoadedBackendConfig: backendConfig !== undefined,
+        partialLoadError,
+    });
     const isSaveBlocked = loadError !== null;
 
     /**
