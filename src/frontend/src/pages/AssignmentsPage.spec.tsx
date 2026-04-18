@@ -66,6 +66,14 @@ const filterAssertions = [
   },
 ] as const;
 
+const expectedFilterNamesByColumn = [
+  { columnHeaderName: 'Title', filterButtonName: 'Filter by title' },
+  { columnHeaderName: 'Topic', filterButtonName: 'Filter by topic' },
+  { columnHeaderName: 'Year group', filterButtonName: 'Filter by year group' },
+  { columnHeaderName: 'Document type', filterButtonName: 'Filter by document type' },
+  { columnHeaderName: 'Last updated', filterButtonName: 'Filter by last updated' },
+] as const;
+
 /**
  * No-op function for deferred promise initialisation in tests.
  *
@@ -349,6 +357,48 @@ describe('AssignmentsPage', () => {
       });
     }
   );
+
+  it('keeps each filter trigger label bound to its column header even if trigger query order changes', async () => {
+    getAssignmentDefinitionPartialsMock.mockResolvedValue(filterRows);
+
+    const originalQuerySelectorAll = HTMLDivElement.prototype.querySelectorAll;
+    const querySelectorAllSpy = vi
+      .spyOn(HTMLDivElement.prototype, 'querySelectorAll')
+      .mockImplementation(function patchedQuerySelectorAll(this: HTMLDivElement, selector: string) {
+        const queryResult = originalQuerySelectorAll.call(this, selector);
+
+        if (selector !== '.ant-table-filter-trigger[role="button"]') {
+          return queryResult;
+        }
+
+        const reversedFilterTriggers = [...queryResult].toReversed();
+
+        return {
+          length: reversedFilterTriggers.length,
+          item(index: number) {
+            return reversedFilterTriggers[index] ?? null;
+          },
+        } as unknown as NodeListOf<Element>;
+      });
+
+    try {
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+
+      for (const expectedFilterNameByColumn of expectedFilterNamesByColumn) {
+        const columnHeader = within(table).getByRole('columnheader', {
+          name: expectedFilterNameByColumn.columnHeaderName,
+        });
+
+        expect(
+          within(columnHeader).getByRole('button', { name: expectedFilterNameByColumn.filterButtonName })
+        ).toBeInTheDocument();
+      }
+    } finally {
+      querySelectorAllSpy.mockRestore();
+    }
+  });
 
   it('scopes retry/refetch to assignmentDefinitionPartials dataset only and disallows unscoped calls', async () => {
     const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);

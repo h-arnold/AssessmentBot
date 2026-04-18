@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FilterFilled } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -15,12 +16,9 @@ import {
 import type { FilterDropdownProps, FilterValue } from 'antd/es/table/interface';
 import {
   useCallback,
-  useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactElement,
-  type RefObject,
 } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { logFrontendError } from '../logging/frontendLogger';
@@ -41,12 +39,6 @@ const BLOCKING_ERROR_MESSAGE = 'Assignment definitions could not be trusted or l
 const DELETE_SUCCESS_MESSAGE = 'Assignment definition deleted.';
 const DELETE_FAILURE_MESSAGE = 'Could not delete assignment definition. Please try again.';
 const UNAVAILABLE_VALUE = '—';
-
-const TITLE_FILTER_TRIGGER_INDEX = 0;
-const TOPIC_FILTER_TRIGGER_INDEX = 1;
-const YEAR_GROUP_FILTER_TRIGGER_INDEX = 2;
-const DOCUMENT_TYPE_FILTER_TRIGGER_INDEX = 3;
-const LAST_UPDATED_FILTER_TRIGGER_INDEX = 4;
 
 const FILTER_DROPDOWN_PROPERTIES = { transitionName: '' } as const;
 
@@ -294,50 +286,6 @@ function isAssignmentsSurfaceBusyState(
 }
 
 /**
- * Applies one aria-label to a table filter trigger when available.
- *
- * @param {Element | undefined} filterTrigger Trigger element.
- * @param {string} label Accessible label value.
- * @returns {void} No return value.
- */
-function setFilterTriggerLabel(filterTrigger: Element | undefined, label: string) {
-  if (filterTrigger !== undefined) {
-    filterTrigger.setAttribute('aria-label', label);
-  }
-}
-
-/**
- * Returns one filter trigger by index when available.
- *
- * @param {NodeListOf<Element>} filterTriggers Table filter triggers.
- * @param {number} index Trigger index.
- * @returns {Element | undefined} Trigger element when present.
- */
-function getFilterTriggerByIndex(filterTriggers: NodeListOf<Element>, index: number): Element | undefined {
-  return filterTriggers.item(index) ?? undefined;
-}
-
-/**
- * Applies stable accessible labels to every filter trigger button.
- *
- * @param {HTMLDivElement | null} tableRegion Table region element.
- * @returns {void} No return value.
- */
-function applyAssignmentsFilterTriggerLabels(tableRegion: HTMLDivElement | null) {
-  const filterTriggers = tableRegion?.querySelectorAll('.ant-table-filter-trigger[role="button"]');
-
-  if (filterTriggers === undefined) {
-    return;
-  }
-
-  setFilterTriggerLabel(getFilterTriggerByIndex(filterTriggers, TITLE_FILTER_TRIGGER_INDEX), 'Filter by title');
-  setFilterTriggerLabel(getFilterTriggerByIndex(filterTriggers, TOPIC_FILTER_TRIGGER_INDEX), 'Filter by topic');
-  setFilterTriggerLabel(getFilterTriggerByIndex(filterTriggers, YEAR_GROUP_FILTER_TRIGGER_INDEX), 'Filter by year group');
-  setFilterTriggerLabel(getFilterTriggerByIndex(filterTriggers, DOCUMENT_TYPE_FILTER_TRIGGER_INDEX), 'Filter by document type');
-  setFilterTriggerLabel(getFilterTriggerByIndex(filterTriggers, LAST_UPDATED_FILTER_TRIGGER_INDEX), 'Filter by last updated');
-}
-
-/**
  * Renders one table filter dropdown with exact-match options.
  *
  * @param {Readonly<{ options: ReadonlyArray<{ text: string; value: string }>; selectedValues: FilterValue | null; onSelectOption: (value: string) => void; dropdownProperties: FilterDropdownProps; }>} properties Filter-dropdown properties.
@@ -381,6 +329,31 @@ function AssignmentsFilterDropdown(
       })}
     </Space>
   );
+}
+
+/**
+ * Renders one table-column filter icon with an explicit accessible label.
+ *
+ * @param {Readonly<{ isFiltered: boolean; label: string; }>} properties Icon properties.
+ * @returns {JSX.Element} Filter icon.
+ */
+function AssignmentsFilterIcon(properties: Readonly<{ isFiltered: boolean; label: string }>) {
+  return (
+    <FilterFilled
+      aria-label={properties.label}
+      style={{ color: properties.isFiltered ? 'var(--ant-color-primary)' : undefined }}
+    />
+  );
+}
+
+/**
+ * Renders one table filter icon callback with stable accessible label.
+ *
+ * @param {string} label Accessible label for the filter trigger.
+ * @returns {(isFiltered: boolean) => JSX.Element} Filter icon renderer.
+ */
+function createFilterIconRenderer(label: string) {
+  return (isFiltered: boolean) => <AssignmentsFilterIcon isFiltered={isFiltered} label={label} />;
 }
 
 /**
@@ -438,7 +411,7 @@ function AssignmentsStatusAndActionsCard(
 /**
  * Renders the assignment definitions table card when the page is not blocked.
  *
- * @param {Readonly<{ shouldRenderBlockingState: boolean; shouldRenderTableLoadingState: boolean; onResetSortAndFilters: () => void; tableRegionReference: RefObject<HTMLDivElement | null>; tableColumns: TableColumnsType<AssignmentDefinitionPartial>; visibleRows: readonly AssignmentDefinitionPartial[]; }>} properties Card properties.
+ * @param {Readonly<{ shouldRenderBlockingState: boolean; shouldRenderTableLoadingState: boolean; onResetSortAndFilters: () => void; tableColumns: TableColumnsType<AssignmentDefinitionPartial>; visibleRows: readonly AssignmentDefinitionPartial[]; }>} properties Card properties.
  * @returns {JSX.Element | null} Card content, or null for blocking state.
  */
 function renderAssignmentsDefinitionsCard(
@@ -446,7 +419,6 @@ function renderAssignmentsDefinitionsCard(
     shouldRenderBlockingState: boolean;
     shouldRenderTableLoadingState: boolean;
     onResetSortAndFilters: () => void;
-    tableRegionReference: RefObject<HTMLDivElement | null>;
     tableColumns: TableColumnsType<AssignmentDefinitionPartial>;
     visibleRows: readonly AssignmentDefinitionPartial[];
   }>
@@ -470,18 +442,16 @@ function renderAssignmentsDefinitionsCard(
           <Skeleton active paragraph={{ rows: 6 }} title={{ width: '30%' }} />
         </div>
       ) : (
-        <div ref={properties.tableRegionReference}>
-          <Table<AssignmentDefinitionPartial>
-            aria-label="Assignment definitions table"
-            columns={properties.tableColumns}
-            dataSource={properties.visibleRows}
-            locale={{
-              emptyText: <Empty description="No assignment definitions found." />,
-            }}
-            pagination={false}
-            rowKey="definitionKey"
-          />
-        </div>
+        <Table<AssignmentDefinitionPartial>
+          aria-label="Assignment definitions table"
+          columns={properties.tableColumns}
+          dataSource={properties.visibleRows}
+          locale={{
+            emptyText: <Empty description="No assignment definitions found." />,
+          }}
+          pagination={false}
+          rowKey="definitionKey"
+        />
       )}
     </Card>
   );
@@ -568,8 +538,6 @@ export function AssignmentsPage() {
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
   const [deleteOutcome, setDeleteOutcome] = useState<DeleteOutcome | null>(null);
 
-  const tableRegionReference = useRef<HTMLDivElement | null>(null);
-
   const sortedRows = useMemo(() => getDefaultSortedRows(assignmentsQuery.data ?? []), [assignmentsQuery.data]);
 
   const filterOptions = useMemo(
@@ -631,6 +599,7 @@ export function AssignmentsPage() {
           />
         ),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+        filterIcon: createFilterIconRenderer('Filter by title'),
         filteredValue: filters.primaryTitle,
         onHeaderCell: () => ({ 'aria-label': 'Title' }),
       },
@@ -647,6 +616,7 @@ export function AssignmentsPage() {
           />
         ),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+        filterIcon: createFilterIconRenderer('Filter by topic'),
         filteredValue: filters.primaryTopic,
         onHeaderCell: () => ({ 'aria-label': 'Topic' }),
       },
@@ -664,6 +634,7 @@ export function AssignmentsPage() {
           />
         ),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+        filterIcon: createFilterIconRenderer('Filter by year group'),
         filteredValue: filters.yearGroup,
         onHeaderCell: () => ({ 'aria-label': 'Year group' }),
       },
@@ -680,6 +651,7 @@ export function AssignmentsPage() {
           />
         ),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+        filterIcon: createFilterIconRenderer('Filter by document type'),
         filteredValue: filters.documentType,
         onHeaderCell: () => ({ 'aria-label': 'Document type' }),
       },
@@ -697,6 +669,7 @@ export function AssignmentsPage() {
           />
         ),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
+        filterIcon: createFilterIconRenderer('Filter by last updated'),
         filteredValue: filters.updatedAt,
         onHeaderCell: () => ({ 'aria-label': 'Last updated' }),
       },
@@ -764,17 +737,9 @@ export function AssignmentsPage() {
     shouldRenderBlockingState: assignmentsSurfaceState.shouldRenderBlockingState,
     shouldRenderTableLoadingState: assignmentsSurfaceState.shouldRenderTableLoadingState,
     tableColumns,
-    tableRegionReference,
     visibleRows,
   });
 
-  useEffect(() => {
-    if (assignmentsSurfaceState.shouldRenderTableLoadingState) {
-      return;
-    }
-
-    applyAssignmentsFilterTriggerLabels(tableRegionReference.current);
-  }, [assignmentsSurfaceState.shouldRenderTableLoadingState]);
 
   /**
    * Refetches assignment definitions using the scoped query key only.
