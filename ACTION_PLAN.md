@@ -92,6 +92,17 @@ Backend controller/API tests:
 4. Missing/invalid timestamp field fails request.
 5. Missing/blank/non-trimmed `definitionKey` fails request.
 
+### Execution status (Section 1)
+
+- [x] Red tests added — **COMPLETE**
+- [x] Red review clean — **COMPLETE**
+- [x] Green implementation complete — **COMPLETE**
+- [x] Green review clean — **COMPLETE**
+- [x] Checks passed — **COMPLETE**
+- [x] Action plan updated — **COMPLETE**
+- [x] Commit created — **COMPLETE**
+- [x] Push completed — **COMPLETE**
+
 ### Section checks
 
 - `npm test -- tests/api`
@@ -103,9 +114,10 @@ Backend controller/API tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
-- **Follow-up implications for later sections:** Populate if needed.
+- **Implementation notes:** Added `getAssignmentDefinitionPartials` to the API constants allowlist and `z_apiHandler` dispatcher, then added a thin `getAssignmentDefinitionPartials` handler with strict required-field/key/timestamp/tasks validation and plain-object output.
+- **Evidence:** Commit `c6e42db3f8e7fabc869ce6e6f3f4792d9cf93118` on branch `feat/assignments-management-v1`; push succeeded to `origin/feat/assignments-management-v1`.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Review-driven fix now enforces strict timestamp validation that rejects canonicalised invalid dates (for example `2026-02-30`); Section 2 should reuse the same strict key-validation policy for the delete endpoint.
 
 ---
 
