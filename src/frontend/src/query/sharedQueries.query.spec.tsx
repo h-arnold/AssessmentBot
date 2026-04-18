@@ -5,6 +5,7 @@ import { queryKeys } from './queryKeys';
 
 const getAuthorisationStatusMock = vi.fn();
 const getABClassPartialsMock = vi.fn();
+const getAssignmentDefinitionPartialsMock = vi.fn();
 const getCohortsMock = vi.fn();
 const getGoogleClassroomsMock = vi.fn();
 const getYearGroupsMock = vi.fn();
@@ -15,6 +16,10 @@ vi.mock('../services/authService', () => ({
 
 vi.mock('../services/classPartialsService', () => ({
   getABClassPartials: getABClassPartialsMock,
+}));
+
+vi.mock('../services/assignmentDefinitionPartialsService', () => ({
+  getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
 }));
 
 vi.mock('../services/googleClassroomsService', () => ({
@@ -61,6 +66,19 @@ describe('shared query definitions', () => {
 
     await expect(queryClient.fetchQuery(getAuthorisationStatusQueryOptions())).resolves.toBe(true);
     expect(getAuthorisationStatusMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('delegates the shared assignment-definition partials query to its service loader', async () => {
+    const assignmentDefinitionPartials = [{ definitionKey: 'algebra-baseline' }];
+    getAssignmentDefinitionPartialsMock.mockResolvedValueOnce(assignmentDefinitionPartials);
+
+    const { getAssignmentDefinitionPartialsQueryOptions } = await import('./sharedQueries');
+    const queryClient = createAppQueryClient();
+    const queryOptions = getAssignmentDefinitionPartialsQueryOptions();
+
+    expect(queryOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+    await expect(queryClient.fetchQuery(queryOptions)).resolves.toEqual(assignmentDefinitionPartials);
+    expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
   });
 
   it('delegates the shared class-partials, cohorts, and year-groups queries to their service loaders', async () => {

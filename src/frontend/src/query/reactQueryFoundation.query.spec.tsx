@@ -36,6 +36,7 @@ type QueryProviderModule = {
 
 type QueryKeysModule = {
   queryKeys: {
+    assignmentDefinitionPartials: () => readonly ['assignmentDefinitionPartials'];
     classPartials: () => readonly ['classPartials'];
     cohorts: () => readonly ['cohorts'];
     yearGroups: () => readonly ['yearGroups'];
@@ -98,9 +99,10 @@ describe('React Query foundation', () => {
     expect(queryClient).toBeTruthy();
   });
 
-  it('exposes shared query-key helpers for classPartials, cohorts, and yearGroups', async () => {
+  it('exposes shared query-key helpers for assignmentDefinitionPartials, classPartials, cohorts, and yearGroups', async () => {
     const { queryKeys } = await importRequiredModule<QueryKeysModule>('./queryKeys.ts');
 
+    expect(queryKeys.assignmentDefinitionPartials()).toEqual(['assignmentDefinitionPartials']);
     expect(queryKeys.classPartials()).toEqual(['classPartials']);
     expect(queryKeys.cohorts()).toEqual(['cohorts']);
     expect(queryKeys.yearGroups()).toEqual(['yearGroups']);

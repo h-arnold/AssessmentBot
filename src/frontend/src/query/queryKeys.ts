@@ -1,4 +1,5 @@
 export const queryKeys = {
+  assignmentDefinitionPartials: () => ['assignmentDefinitionPartials'] as const,
   authorisationStatus: () => ['authorisationStatus'] as const,
   backendConfig: () => ['backendConfig'] as const,
   classPartials: () => ['classPartials'] as const,

@@ -1,6 +1,7 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { getAuthorisationStatus } from '../services/authService';
 import { getBackendConfig } from '../services/backendConfigurationService';
+import { getAssignmentDefinitionPartials } from '../services/assignmentDefinitionPartialsService';
 import type { ClassPartial } from '../services/classPartialsService';
 import { getABClassPartials } from '../services/classPartialsService';
 import { getGoogleClassrooms } from '../services/googleClassroomsService';
@@ -40,6 +41,18 @@ export function getClassPartialsQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.classPartials(),
     queryFn: getABClassPartials,
+  });
+}
+
+/**
+ * Returns the shared assignment-definition partials query definition.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared assignment-definition partials query options.
+ */
+export function getAssignmentDefinitionPartialsQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.assignmentDefinitionPartials(),
+    queryFn: getAssignmentDefinitionPartials,
   });
 }
 
