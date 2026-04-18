@@ -5,11 +5,11 @@ import {
   getCohortsQueryOptions,
   getGoogleClassroomsQueryOptions,
   getYearGroupsQueryOptions,
+  type StartupWarmupDatasetKey,
 } from '../../query/sharedQueries';
 import {
   useStartupWarmupState,
   type StartupWarmupContextValue,
-  type StartupWarmupDatasetKey,
 } from '../auth/startupWarmupState';
 import type { ClassPartial } from '../../services/classPartialsService';
 import type { GoogleClassroom } from '../../services/googleClassroomsService';

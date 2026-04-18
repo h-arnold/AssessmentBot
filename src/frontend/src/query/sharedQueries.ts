@@ -24,6 +24,13 @@ export type StartupWarmupQueriesResult = Readonly<{
   yearGroups: YearGroupListResponse;
 }>;
 
+export type StartupWarmupDatasetKey = keyof StartupWarmupQueriesResult;
+
+type StartupWarmupQueryResultEntry = readonly [
+  StartupWarmupDatasetKey,
+  StartupWarmupQueriesResult[StartupWarmupDatasetKey],
+];
+
 /**
  * Returns the shared auth query definition for the current session.
  *
@@ -107,6 +114,53 @@ export function getYearGroupsQueryOptions() {
     queryFn: getYearGroups,
   });
 }
+
+const startupWarmupQueryDefinitions = [
+  {
+    datasetKey: 'classPartials',
+    getQueryOptions: getClassPartialsQueryOptions,
+  },
+  {
+    datasetKey: 'assignmentDefinitionPartials',
+    getQueryOptions: getAssignmentDefinitionPartialsQueryOptions,
+  },
+  {
+    datasetKey: 'cohorts',
+    getQueryOptions: getCohortsQueryOptions,
+  },
+  {
+    datasetKey: 'yearGroups',
+    getQueryOptions: getYearGroupsQueryOptions,
+  },
+] as const;
+
+
+export const startupWarmupDatasetKeys = Object.freeze(
+  startupWarmupQueryDefinitions.map(({ datasetKey }) => datasetKey)
+) as readonly StartupWarmupDatasetKey[];
+
+export const startupWarmupQueryKeys = Object.freeze(
+  startupWarmupQueryDefinitions.map(({ getQueryOptions }) => getQueryOptions().queryKey)
+);
+
+/**
+ * Returns the shared query key for a startup warm-up dataset.
+ *
+ * @param {StartupWarmupDatasetKey} datasetKey Dataset key.
+ * @returns {readonly [string]} Corresponding query key.
+ */
+export function getStartupWarmupQueryKey(datasetKey: StartupWarmupDatasetKey) {
+  const queryDefinition = startupWarmupQueryDefinitions.find(
+    (currentQueryDefinition) => currentQueryDefinition.datasetKey === datasetKey
+  );
+
+  if (!queryDefinition) {
+    throw new Error('Unknown startup warm-up dataset key: ' + datasetKey + '.');
+  }
+
+  return queryDefinition.getQueryOptions().queryKey;
+}
+
 /**
  * Warms the shared startup datasets in parallel through the provided query client.
  *
@@ -126,12 +180,15 @@ export function warmStartupQueries(
     return existingWarmupPromise;
   }
 
-  const warmupPromise = Promise.allSettled([
-    queryClient.fetchQuery(getClassPartialsQueryOptions()),
-    queryClient.fetchQuery(getAssignmentDefinitionPartialsQueryOptions()),
-    queryClient.fetchQuery(getCohortsQueryOptions()),
-    queryClient.fetchQuery(getYearGroupsQueryOptions()),
-  ])
+  const warmupPromise = Promise.allSettled(
+    startupWarmupQueryDefinitions.map(async (queryDefinition) => {
+      const queryOptions = queryDefinition.getQueryOptions() as Parameters<QueryClient['fetchQuery']>[0];
+      const dataset =
+        (await queryClient.fetchQuery(queryOptions)) as StartupWarmupQueriesResult[StartupWarmupDatasetKey];
+
+      return [queryDefinition.datasetKey, dataset] as const;
+    })
+  )
     .then((results) => {
       const rejectedResult = results.find((result) => result.status === 'rejected');
 
@@ -139,20 +196,9 @@ export function warmStartupQueries(
         throw rejectedResult.reason;
       }
 
-      const fulfilledResults = results as [
-        PromiseFulfilledResult<ClassPartial[]>,
-        PromiseFulfilledResult<AssignmentDefinitionPartialsResponse>,
-        PromiseFulfilledResult<CohortListResponse>,
-        PromiseFulfilledResult<YearGroupListResponse>,
-      ];
-      const [classPartials, assignmentDefinitionPartials, cohorts, yearGroups] = fulfilledResults;
-
-      return {
-        classPartials: classPartials.value,
-        assignmentDefinitionPartials: assignmentDefinitionPartials.value,
-        cohorts: cohorts.value,
-        yearGroups: yearGroups.value,
-      };
+      return Object.fromEntries(
+        (results as PromiseFulfilledResult<StartupWarmupQueryResultEntry>[]).map((result) => result.value)
+      ) as StartupWarmupQueriesResult;
     })
     .finally(() => {
       startupWarmupPromises.delete(queryClient);

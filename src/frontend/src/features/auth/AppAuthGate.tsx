@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react';
 import { ApiTransportError } from '../../errors/apiTransportError';
 import { normaliseUnknownError } from '../../errors/normaliseUnknownError';
 import { logFrontendEvent } from '../../logging/frontendLogger';
-import { queryKeys } from '../../query/queryKeys';
-import { warmStartupQueries } from '../../query/sharedQueries';
+import {
+  getStartupWarmupQueryKey,
+  startupWarmupDatasetKeys,
+  startupWarmupQueryKeys,
+  type StartupWarmupDatasetKey,
+  warmStartupQueries,
+} from '../../query/sharedQueries';
 import {
   StartupWarmupStateProvider,
   createStartupWarmupSnapshotForStatus,
-  type StartupWarmupDatasetKey,
   type StartupWarmupSnapshot,
   type StartupWarmupStatus,
 } from './startupWarmupState';
@@ -46,29 +50,6 @@ function getStoredWarmupCycle(queryClient: QueryClient): StartupWarmupCycle {
 }
 
 /**
- * Returns the shared query key for a startup warm-up dataset.
- *
- * @param {StartupWarmupDatasetKey} datasetKey Dataset key.
- * @returns {readonly [string]} Corresponding query key.
- */
-function getDatasetQueryKey(datasetKey: StartupWarmupDatasetKey) {
-  switch (datasetKey) {
-    case 'classPartials': {
-      return queryKeys.classPartials();
-    }
-    case 'cohorts': {
-      return queryKeys.cohorts();
-    }
-    case 'yearGroups': {
-      return queryKeys.yearGroups();
-    }
-    case 'assignmentDefinitionPartials': {
-      return queryKeys.assignmentDefinitionPartials();
-    }
-  }
-}
-
-/**
  * Maps a query status to startup warm-up dataset status.
  *
  * @param {QueryClient} queryClient Query client holding the dataset query.
@@ -79,7 +60,7 @@ function getDatasetWarmupState(
   queryClient: QueryClient,
   datasetKey: StartupWarmupDatasetKey
 ): StartupWarmupSnapshot['datasets'][StartupWarmupDatasetKey] {
-  const queryState = queryClient.getQueryState(getDatasetQueryKey(datasetKey));
+  const queryState = queryClient.getQueryState(getStartupWarmupQueryKey(datasetKey));
 
   if (!queryState || queryState.status === 'pending') {
     return { status: 'loading', isTrustworthy: false };
@@ -100,12 +81,9 @@ function getDatasetWarmupState(
  */
 function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupWarmupSnapshot {
   return {
-    datasets: {
-      classPartials: getDatasetWarmupState(queryClient, 'classPartials'),
-      cohorts: getDatasetWarmupState(queryClient, 'cohorts'),
-      yearGroups: getDatasetWarmupState(queryClient, 'yearGroups'),
-      assignmentDefinitionPartials: getDatasetWarmupState(queryClient, 'assignmentDefinitionPartials'),
-    },
+    datasets: Object.fromEntries(
+      startupWarmupDatasetKeys.map((datasetKey) => [datasetKey, getDatasetWarmupState(queryClient, datasetKey)])
+    ) as StartupWarmupSnapshot['datasets'],
   };
 }
 
@@ -116,12 +94,7 @@ function createWarmupSnapshotFromQueryClient(queryClient: QueryClient): StartupW
  * @returns {StartupWarmupStatus} Derived scalar status.
  */
 function deriveWarmupStatus(snapshot: StartupWarmupSnapshot): StartupWarmupStatus {
-  const datasetStates = [
-    snapshot.datasets.classPartials,
-    snapshot.datasets.cohorts,
-    snapshot.datasets.yearGroups,
-    snapshot.datasets.assignmentDefinitionPartials,
-  ];
+  const datasetStates = Object.values(snapshot.datasets);
 
   if (datasetStates.some((datasetState) => datasetState.status === 'failed')) {
     return 'failed';
@@ -146,13 +119,8 @@ function resolveNextWarmupSnapshot(
   fallbackStatus: StartupWarmupStatus
 ): StartupWarmupSnapshot {
   const nextSnapshot = createWarmupSnapshotFromQueryClient(queryClient);
-  const allDatasetsStillLoading =
-    nextSnapshot.datasets.classPartials.status === 'loading'
-    && nextSnapshot.datasets.cohorts.status === 'loading'
-    && nextSnapshot.datasets.yearGroups.status === 'loading'
-    && nextSnapshot.datasets.assignmentDefinitionPartials.status === 'loading';
 
-  if (allDatasetsStillLoading) {
+  if (Object.values(nextSnapshot.datasets).every((datasetState) => datasetState.status === 'loading')) {
     return createStartupWarmupSnapshotForStatus(fallbackStatus);
   }
 
@@ -176,13 +144,8 @@ function logStartupWarmupFailure(error: unknown) {
     requestId: apiTransportError?.requestId,
     stack: normalisedError.stack,
     metadata: {
-      datasets: ['classPartials', 'cohorts', 'yearGroups', 'assignmentDefinitionPartials'],
-      queryKeys: [
-        queryKeys.classPartials(),
-        queryKeys.cohorts(),
-        queryKeys.yearGroups(),
-        queryKeys.assignmentDefinitionPartials(),
-      ],
+      datasets: startupWarmupDatasetKeys,
+      queryKeys: startupWarmupQueryKeys,
     },
   });
 }

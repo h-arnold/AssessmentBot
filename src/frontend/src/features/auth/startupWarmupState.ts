@@ -4,17 +4,9 @@ import {
   useContext,
   type PropsWithChildren,
 } from 'react';
+import { startupWarmupDatasetKeys, type StartupWarmupDatasetKey } from '../../query/sharedQueries';
 
 export type StartupWarmupStatus = 'loading' | 'ready' | 'failed';
-
-export const startupWarmupDatasetKeys = [
-  'classPartials',
-  'cohorts',
-  'yearGroups',
-  'assignmentDefinitionPartials',
-] as const;
-
-export type StartupWarmupDatasetKey = (typeof startupWarmupDatasetKeys)[number];
 
 export type StartupWarmupDatasetState = Readonly<{
   status: StartupWarmupStatus;
@@ -48,20 +40,16 @@ function getDatasetState(
   snapshot: StartupWarmupSnapshot,
   datasetKey: StartupWarmupDatasetKey
 ): StartupWarmupDatasetState {
-  switch (datasetKey) {
-    case 'classPartials': {
-      return snapshot.datasets.classPartials;
-    }
-    case 'cohorts': {
-      return snapshot.datasets.cohorts;
-    }
-    case 'yearGroups': {
-      return snapshot.datasets.yearGroups;
-    }
-    case 'assignmentDefinitionPartials': {
-      return snapshot.datasets.assignmentDefinitionPartials;
+  for (const [currentDatasetKey, datasetState] of Object.entries(snapshot.datasets) as [
+    StartupWarmupDatasetKey,
+    StartupWarmupDatasetState,
+  ][]) {
+    if (currentDatasetKey === datasetKey) {
+      return datasetState;
     }
   }
+
+  throw new Error('Unknown startup warm-up dataset key: ' + datasetKey + '.');
 }
 
 /**
@@ -74,14 +62,12 @@ export function createStartupWarmupSnapshotForStatus(
   warmupState: StartupWarmupStatus
 ): StartupWarmupSnapshot {
   const isTrustworthy = warmupState === 'ready';
-  const datasets = {
-    classPartials: { status: warmupState, isTrustworthy },
-    cohorts: { status: warmupState, isTrustworthy },
-    yearGroups: { status: warmupState, isTrustworthy },
-    assignmentDefinitionPartials: { status: warmupState, isTrustworthy },
-  } satisfies Record<StartupWarmupDatasetKey, StartupWarmupDatasetState>;
 
-  return { datasets };
+  return {
+    datasets: Object.fromEntries(
+      startupWarmupDatasetKeys.map((datasetKey) => [datasetKey, { status: warmupState, isTrustworthy }])
+    ) as Record<StartupWarmupDatasetKey, StartupWarmupDatasetState>,
+  };
 }
 
 /**

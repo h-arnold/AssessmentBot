@@ -4,10 +4,17 @@ import type { PropsWithChildren } from 'react';
 import type * as SharedQueriesModule from '../../query/sharedQueries';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiTransportError } from '../../errors/apiTransportError';
+import {
+  startupWarmupDatasetKeys,
+  startupWarmupQueryKeys,
+} from '../../query/sharedQueries';
 import { createAppQueryClient } from '../../query/queryClient';
 import { AuthStatusCard } from './AuthStatusCard';
 import { AppAuthGate } from './AppAuthGate';
-import { useStartupWarmupState } from './startupWarmupState';
+import {
+  useStartupWarmupState,
+  type StartupWarmupSnapshot,
+} from './startupWarmupState';
 
 const {
   getAuthorisationStatusMock,
@@ -53,26 +60,7 @@ vi.mock('../../query/sharedQueries', async () => {
 
 type StartupWarmupDatasetProbeSnapshot = Readonly<{
   warmupState?: string;
-  snapshot?: {
-    datasets?: {
-      classPartials?: {
-        status?: string;
-        isTrustworthy?: boolean;
-      };
-      cohorts?: {
-        status?: string;
-        isTrustworthy?: boolean;
-      };
-      yearGroups?: {
-        status?: string;
-        isTrustworthy?: boolean;
-      };
-      assignmentDefinitionPartials?: {
-        status?: string;
-        isTrustworthy?: boolean;
-      };
-    };
-  };
+  snapshot?: StartupWarmupSnapshot;
   classPartialsReady?: boolean | null;
   assignmentDefinitionPartialsFailed?: boolean | null;
 }>;
@@ -124,21 +112,17 @@ function StartupWarmupProbe() {
  * @returns {JSX.Element} Serialised dataset-level warm-up state.
  */
 function StartupWarmupDatasetProbe() {
-  const warmupState = useStartupWarmupState() as unknown as {
-    warmupState: string;
-    snapshot?: StartupWarmupDatasetProbeSnapshot['snapshot'];
-    isDatasetReady?: (datasetKey: string) => boolean;
-    isDatasetFailed?: (datasetKey: string) => boolean;
-  };
+  const warmupState = useStartupWarmupState();
 
   return (
     <output data-testid="startup-warmup-dataset-probe">
       {JSON.stringify({
         warmupState: warmupState.warmupState,
         snapshot: warmupState.snapshot,
-        classPartialsReady: warmupState.isDatasetReady?.('classPartials') ?? null,
-        assignmentDefinitionPartialsFailed:
-          warmupState.isDatasetFailed?.('assignmentDefinitionPartials') ?? null,
+        classPartialsReady: warmupState.isDatasetReady('classPartials'),
+        assignmentDefinitionPartialsFailed: warmupState.isDatasetFailed(
+          'assignmentDefinitionPartials'
+        ),
       })}
     </output>
   );
@@ -304,7 +288,8 @@ describe('AppAuthGate', () => {
         requestId: 'req-warmup-1',
         errorCode: 'INTERNAL_ERROR',
         metadata: expect.objectContaining({
-          datasets: ['classPartials', 'cohorts', 'yearGroups', 'assignmentDefinitionPartials'],
+          datasets: [...startupWarmupDatasetKeys],
+          queryKeys: [...startupWarmupQueryKeys],
         }),
       })
     );
@@ -350,9 +335,9 @@ describe('AppAuthGate', () => {
       snapshot: {
         datasets: {
           classPartials: { status: 'ready', isTrustworthy: true },
+          assignmentDefinitionPartials: { status: 'failed', isTrustworthy: false },
           cohorts: { status: 'ready', isTrustworthy: true },
           yearGroups: { status: 'ready', isTrustworthy: true },
-          assignmentDefinitionPartials: { status: 'failed', isTrustworthy: false },
         },
       },
     });
