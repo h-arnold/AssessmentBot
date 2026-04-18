@@ -561,7 +561,7 @@ Current phase: **Section complete**.
 - [x] checks passed — **COMPLETE**
 - [x] action plan updated — **COMPLETE**
 - [x] commit created — **COMPLETE**
-- [ ] push completed — **PENDING**
+- [x] push completed — **COMPLETE**
 
 ### Implementation notes / red review findings and resolution
 
@@ -572,7 +572,10 @@ Current phase: **Section complete**.
 
 - Commit SHA: `979b92e83903b542ec4c97de9efc4d75ba051f11`
 - Commit message: `refactor(assignments): replace brittle filter trigger labelling`
+- Commit SHA: `e8c07d9300fd2f7b3e4308da66074e4aaebcf880`
+- Commit message: `docs(action-plan): record filter-trigger follow-up evidence`
 - Branch: `feat/assignments-management-v1`
+- Push confirmation: branch `feat/assignments-management-v1`; push summary: `632f7d9..e8c07d9  feat/assignments-management-v1 -> feat/assignments-management-v1`
 
 ## Suggested implementation order
 
