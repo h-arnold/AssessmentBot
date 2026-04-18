@@ -405,7 +405,7 @@ Current phase: **Section 5 complete**.
 
 ### Execution status (Regression and contract hardening)
 
-Current phase: **Review/check complete — commit/push pending**.
+Current phase: **Section complete**.
 
 - [x] red tests added
 - [x] red review clean
@@ -413,8 +413,8 @@ Current phase: **Review/check complete — commit/push pending**.
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] commit created
+- [x] push completed
 
 ### Section checks
 
@@ -426,6 +426,7 @@ Current phase: **Review/check complete — commit/push pending**.
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** No new tests or production code were required in this hardening section; work was verification-only against already landed changes.
+- **Evidence:** commit SHA `07a1048a30061e832067fa2a21af3d6c7d26a4b0` with message `test(regression): execute contract hardening verification`; branch `feat/assignments-management-v1`; push confirmation `origin push succeeded`.
 - **Checks evidence / outcomes:** `npm run lint` (pass, existing warning only in `src/backend/Models/Cohort.js`), `npm run frontend:lint` (pass), `npm test -- tests/api tests/controllers` (pass, 26 files/351 tests), `npm test -- tests/backend-api` (pass, 4 files/29 tests), `npm run frontend:test -- src/services src/query` (pass, 12 files/139 tests), `npm run frontend:test -- src/features src/pages` (pass, 41 files/263 tests).
 - **Red review follow-up:** Review identified missing backend-api contract coverage in this section's checks; resolved by explicitly running `npm test -- tests/backend-api` and recording the passing result.
 - **Deviations from plan:** Known frontend path-filter mismatch remains for root-prefixed paths (`npm run frontend:test -- src/frontend/src/...`), so equivalent frontend-relative commands were used (`src/services src/query` and `src/features src/pages`). No deviations beyond this command-path equivalence.
