@@ -15,6 +15,11 @@ function normalisePathSeparators(value: string): string {
   return value.replaceAll('\\', '/');
 }
 
+import { normalisePathSeparators } from './lib/fs';
+
+const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:\//;
+const WINDOWS_UNC_PATH_PREFIX = '//';
+
 /**
  * Detects absolute paths across POSIX and Windows-style formats.
  *
