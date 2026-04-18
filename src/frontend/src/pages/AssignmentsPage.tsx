@@ -30,6 +30,7 @@ import {
   deleteAssignmentDefinition,
   type AssignmentDefinitionPartial,
 } from '../services/assignmentDefinitionPartialsService';
+import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinitionPartials.zod';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -47,10 +48,7 @@ const YEAR_GROUP_FILTER_TRIGGER_INDEX = 2;
 const DOCUMENT_TYPE_FILTER_TRIGGER_INDEX = 3;
 const LAST_UPDATED_FILTER_TRIGGER_INDEX = 4;
 
-const DELETE_UNSAFE_PATH_CHARACTERS_PATTERN = /\\|\/|\.\./u;
 const FILTER_DROPDOWN_PROPERTIES = { transitionName: '' } as const;
-const LAST_CONTROL_CHARACTER_CODE = 31;
-const DELETE_CHARACTER_CODE = 127;
 
 type AssignmentsFilterState = Readonly<{
   primaryTitle: FilterValue | null;
@@ -80,39 +78,13 @@ const EMPTY_FILTER_STATE: AssignmentsFilterState = {
 };
 
 /**
- * Returns whether a string contains any ASCII control characters.
- *
- * @param {string} value Value to inspect.
- * @returns {boolean} `true` when any control character is present.
- */
-function hasControlCharacters(value: string): boolean {
-  for (let index = 0; index < value.length; index += 1) {
-    const codePoint = value.codePointAt(index);
-
-    if (
-      codePoint !== undefined
-      && (codePoint <= LAST_CONTROL_CHARACTER_CODE || codePoint === DELETE_CHARACTER_CODE)
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
  * Returns whether an assignment definition key is safe for deletion calls.
  *
  * @param {string} definitionKey Definition key to validate.
  * @returns {boolean} `true` when the key is safe.
  */
 function isSafeDefinitionKey(definitionKey: string): boolean {
-  return (
-    definitionKey.trim().length > 0
-    && definitionKey.trim() === definitionKey
-    && !DELETE_UNSAFE_PATH_CHARACTERS_PATTERN.test(definitionKey)
-    && !hasControlCharacters(definitionKey)
-  );
+  return DeleteAssignmentDefinitionRequestSchema.safeParse({ definitionKey }).success;
 }
 
 /**

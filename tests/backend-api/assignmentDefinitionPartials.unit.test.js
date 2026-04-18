@@ -4,11 +4,7 @@ const modulePath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
 const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
 
 function loadAssignmentDefinitionPartialsModule() {
-  try {
-    delete require.cache[require.resolve(modulePath)];
-  } catch (_error) {
-    // Module may not exist yet during RED phase.
-  }
+  delete require.cache[require.resolve(modulePath)];
   return require(modulePath);
 }
 
@@ -51,11 +47,7 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
   });
 
   afterEach(() => {
-    try {
-      delete require.cache[require.resolve(modulePath)];
-    } catch (_error) {
-      // Module may not exist yet during RED phase.
-    }
+    delete require.cache[require.resolve(modulePath)];
 
     if (originalAssignmentDefinitionController === undefined) {
       delete globalThis.AssignmentDefinitionController;

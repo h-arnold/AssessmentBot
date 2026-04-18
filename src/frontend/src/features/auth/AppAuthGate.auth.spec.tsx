@@ -104,7 +104,18 @@ function createDeferredPromise<T>() {
  * @returns {JSX.Element} Serialised hook state.
  */
 function StartupWarmupProbe() {
-  return <output data-testid="startup-warmup-probe">{JSON.stringify(useStartupWarmupState())}</output>;
+  const warmupState = useStartupWarmupState();
+
+  return (
+    <output data-testid="startup-warmup-probe">
+      {JSON.stringify({
+        warmupState: warmupState.warmupState,
+        isLoading: warmupState.isLoading,
+        isReady: warmupState.isReady,
+        isFailed: warmupState.isFailed,
+      })}
+    </output>
+  );
 }
 
 /**

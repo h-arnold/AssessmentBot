@@ -27,11 +27,6 @@ const MILLISECONDS_PER_SECOND = 1000;
 const MILLISECONDS_PER_MINUTE = MINUTES_PER_HOUR * MILLISECONDS_PER_SECOND;
 const NEGATIVE_TIMEZONE_MULTIPLIER = -1;
 
-const ApiValidationErrorType =
-  typeof module !== 'undefined' && module.exports
-    ? require('../Utils/ErrorTypes/ApiValidationError.js')
-    : ApiValidationError;
-
 /**
  * Returns a new assignment-definition controller instance.
  *
@@ -50,7 +45,7 @@ function getAssignmentDefinitionController() {
  * @throws {ApiValidationError} Always throws.
  */
 function throwValidationError(message, fieldName, rowIndex) {
-  throw new ApiValidationErrorType(message, {
+  throw new ApiValidationError(message, {
     method: 'getAssignmentDefinitionPartials',
     fieldName,
     details: `rowIndex=${rowIndex}`,
@@ -65,7 +60,7 @@ function throwValidationError(message, fieldName, rowIndex) {
  * @throws {ApiValidationError} Always throws.
  */
 function throwDeleteValidationError(message, fieldName) {
-  throw new ApiValidationErrorType(message, {
+  throw new ApiValidationError(message, {
     method: 'deleteAssignmentDefinition',
     fieldName,
   });

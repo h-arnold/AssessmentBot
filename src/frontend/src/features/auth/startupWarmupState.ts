@@ -95,33 +95,19 @@ export function createStartupWarmupContextValue(
   warmupState: StartupWarmupStatus,
   snapshot: StartupWarmupSnapshot = createStartupWarmupSnapshotForStatus(warmupState)
 ): StartupWarmupContextValue {
-  const contextValue = {
+  return {
     warmupState,
     isLoading: warmupState === 'loading',
     isReady: warmupState === 'ready',
     isFailed: warmupState === 'failed',
-  } as StartupWarmupContextValue;
-
-  Object.defineProperties(contextValue, {
-    snapshot: {
-      value: snapshot,
-      enumerable: false,
+    snapshot,
+    isDatasetReady: (datasetKey: StartupWarmupDatasetKey) => {
+      const datasetState = getDatasetState(snapshot, datasetKey);
+      return datasetState.status === 'ready' && datasetState.isTrustworthy;
     },
-    isDatasetReady: {
-      value: (datasetKey: StartupWarmupDatasetKey) => {
-        const datasetState = getDatasetState(snapshot, datasetKey);
-        return datasetState.status === 'ready' && datasetState.isTrustworthy;
-      },
-      enumerable: false,
-    },
-    isDatasetFailed: {
-      value: (datasetKey: StartupWarmupDatasetKey) =>
-        getDatasetState(snapshot, datasetKey).status === 'failed',
-      enumerable: false,
-    },
-  });
-
-  return contextValue;
+    isDatasetFailed: (datasetKey: StartupWarmupDatasetKey) =>
+      getDatasetState(snapshot, datasetKey).status === 'failed',
+  };
 }
 
 type StartupWarmupStateProviderProperties = Readonly<PropsWithChildren<{
