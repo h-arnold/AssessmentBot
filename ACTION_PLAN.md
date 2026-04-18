@@ -274,6 +274,17 @@ Frontend auth/warmup tests:
 3. Classes feature no longer blocks on unrelated warm-up failures.
 4. Assignments blocks when assignment dataset is failed/untrustworthy.
 
+### Execution status (Section 4)
+
+- [x] Red tests added — **COMPLETE**
+- [x] Red review clean — **COMPLETE**
+- [x] Green implementation complete — **COMPLETE**
+- [x] Green review clean — **COMPLETE**
+- [x] Checks passed — **COMPLETE**
+- [x] Action plan updated — **COMPLETE**
+- [x] Commit created — **COMPLETE**
+- [x] Push completed — **COMPLETE**
+
 ### Section checks
 
 - `npm run frontend:test -- src/frontend/src/features/auth`
@@ -285,9 +296,10 @@ Frontend auth/warmup tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
-- **Follow-up implications for later sections:** Populate if needed.
+- **Implementation notes:** Added a dataset-granular startup warm-up contract for hook consumers (snapshot datasets plus isDatasetReady(...) and isDatasetFailed(...) helpers), added assignmentDefinitionPartials to warmStartupQueries, switched Classes gating to dataset-specific owned datasets, and switched Assignments gating to assignment-dataset trust/readiness only. Review follow-up resolved the Promise.all(...) first-failure stale snapshot risk by finalising warm-up state from allSettled(...) results.
+- **Evidence:** commit SHA `a5ee02a7ed70954a77ae59265f25b5f79359620e`; commit message `feat(section-4): implement dataset-granular startup warm-up`; branch `feat/assignments-management-v1`; push confirmation `push to origin succeeded`.
+- **Deviations from plan:** Section checks had a path-filter mismatch, so equivalent executable feature targets (src/features/\*) were used.
+- **Follow-up implications for later sections:** Section 5 should continue using assignment-dataset readiness/trust helpers for blocking and retry behaviour instead of any global warm-up failure-bit assumption.
 
 ---
 
