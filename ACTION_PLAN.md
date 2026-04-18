@@ -534,6 +534,46 @@ Current phase: **Section complete**.
 
 - Branch readiness for final docs sync: **READY**.
 
+## Post-delivery slop follow-up — filter trigger labelling
+
+### Objective
+
+- Resolve slop finding (1) by replacing brittle selector+index filter-trigger labelling with the idiomatic Ant Design API.
+
+### Constraints
+
+- Frontend-only change.
+- Preserve existing filter button accessible names.
+- No behavioural regressions.
+
+### Acceptance criteria
+
+1. No selector+index DOM patching.
+2. Filter button labels remain correctly bound to each header.
+3. Assignments page tests pass.
+
+### Execution checklist status (this section)
+
+- [x] red tests added — **COMPLETE**
+- [x] red review clean — **COMPLETE**
+- [x] green implementation complete — **COMPLETE**
+- [x] green review clean — **COMPLETE**
+- [x] checks passed — **COMPLETE**
+- [x] action plan updated — **COMPLETE**
+- [x] commit created — **COMPLETE**
+- [ ] push completed — **PENDING**
+
+### Implementation notes / red review findings and resolution
+
+- Red review finding: `unicorn/no-array-reverse` flagged reverse-index label mapping; resolution used `toReversed`.
+- Implementation note: Ant Table column `filterIcon` is now used declaratively for filter-trigger labelling.
+
+### Commit evidence
+
+- Commit SHA: `979b92e83903b542ec4c97de9efc4d75ba051f11`
+- Commit message: `refactor(assignments): replace brittle filter trigger labelling`
+- Branch: `feat/assignments-management-v1`
+
 ## Suggested implementation order
 
 1. Section 1 — Backend list transport contract
