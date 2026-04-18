@@ -1,7 +1,10 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import { getAuthorisationStatus } from '../services/authService';
 import { getBackendConfig } from '../services/backendConfigurationService';
-import { getAssignmentDefinitionPartials } from '../services/assignmentDefinitionPartialsService';
+import {
+  getAssignmentDefinitionPartials,
+  type AssignmentDefinitionPartialsResponse,
+} from '../services/assignmentDefinitionPartialsService';
 import type { ClassPartial } from '../services/classPartialsService';
 import { getABClassPartials } from '../services/classPartialsService';
 import { getGoogleClassrooms } from '../services/googleClassroomsService';
@@ -16,6 +19,7 @@ const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQuer
 
 export type StartupWarmupQueriesResult = Readonly<{
   classPartials: ClassPartial[];
+  assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
   cohorts: CohortListResponse;
   yearGroups: YearGroupListResponse;
 }>;
@@ -122,16 +126,34 @@ export function warmStartupQueries(
     return existingWarmupPromise;
   }
 
-  const warmupPromise = Promise.all([
+  const warmupPromise = Promise.allSettled([
     queryClient.fetchQuery(getClassPartialsQueryOptions()),
+    queryClient.fetchQuery(getAssignmentDefinitionPartialsQueryOptions()),
     queryClient.fetchQuery(getCohortsQueryOptions()),
     queryClient.fetchQuery(getYearGroupsQueryOptions()),
   ])
-    .then(([classPartials, cohorts, yearGroups]) => ({
-      classPartials,
-      cohorts,
-      yearGroups,
-    }))
+    .then((results) => {
+      const rejectedResult = results.find((result) => result.status === 'rejected');
+
+      if (rejectedResult) {
+        throw rejectedResult.reason;
+      }
+
+      const fulfilledResults = results as [
+        PromiseFulfilledResult<ClassPartial[]>,
+        PromiseFulfilledResult<AssignmentDefinitionPartialsResponse>,
+        PromiseFulfilledResult<CohortListResponse>,
+        PromiseFulfilledResult<YearGroupListResponse>,
+      ];
+      const [classPartials, assignmentDefinitionPartials, cohorts, yearGroups] = fulfilledResults;
+
+      return {
+        classPartials: classPartials.value,
+        assignmentDefinitionPartials: assignmentDefinitionPartials.value,
+        cohorts: cohorts.value,
+        yearGroups: yearGroups.value,
+      };
+    })
     .finally(() => {
       startupWarmupPromises.delete(queryClient);
     });

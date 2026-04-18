@@ -7,46 +7,140 @@ import {
 
 export type StartupWarmupStatus = 'loading' | 'ready' | 'failed';
 
+export const startupWarmupDatasetKeys = [
+  'classPartials',
+  'cohorts',
+  'yearGroups',
+  'assignmentDefinitionPartials',
+] as const;
+
+export type StartupWarmupDatasetKey = (typeof startupWarmupDatasetKeys)[number];
+
+export type StartupWarmupDatasetState = Readonly<{
+  status: StartupWarmupStatus;
+  isTrustworthy: boolean;
+}>;
+
+export type StartupWarmupSnapshot = Readonly<{
+  datasets: Record<StartupWarmupDatasetKey, StartupWarmupDatasetState>;
+}>;
+
 export type StartupWarmupContextValue = Readonly<{
   warmupState: StartupWarmupStatus;
   isLoading: boolean;
   isReady: boolean;
   isFailed: boolean;
+  snapshot: StartupWarmupSnapshot;
+  isDatasetReady: (datasetKey: StartupWarmupDatasetKey) => boolean;
+  isDatasetFailed: (datasetKey: StartupWarmupDatasetKey) => boolean;
 }>;
 
 const startupWarmupContext = createContext<StartupWarmupContextValue | undefined>(undefined);
 
 /**
+ * Returns the snapshot state for the selected startup dataset.
+ *
+ * @param {StartupWarmupSnapshot} snapshot Dataset snapshot.
+ * @param {StartupWarmupDatasetKey} datasetKey Startup dataset key.
+ * @returns {StartupWarmupDatasetState} Dataset state.
+ */
+function getDatasetState(
+  snapshot: StartupWarmupSnapshot,
+  datasetKey: StartupWarmupDatasetKey
+): StartupWarmupDatasetState {
+  switch (datasetKey) {
+    case 'classPartials': {
+      return snapshot.datasets.classPartials;
+    }
+    case 'cohorts': {
+      return snapshot.datasets.cohorts;
+    }
+    case 'yearGroups': {
+      return snapshot.datasets.yearGroups;
+    }
+    case 'assignmentDefinitionPartials': {
+      return snapshot.datasets.assignmentDefinitionPartials;
+    }
+  }
+}
+
+/**
+ * Creates the dataset snapshot for a scalar warm-up status.
+ *
+ * @param {StartupWarmupStatus} warmupState Shared warm-up status.
+ * @returns {StartupWarmupSnapshot} Dataset snapshot with uniform status.
+ */
+export function createStartupWarmupSnapshotForStatus(
+  warmupState: StartupWarmupStatus
+): StartupWarmupSnapshot {
+  const isTrustworthy = warmupState === 'ready';
+  const datasets = {
+    classPartials: { status: warmupState, isTrustworthy },
+    cohorts: { status: warmupState, isTrustworthy },
+    yearGroups: { status: warmupState, isTrustworthy },
+    assignmentDefinitionPartials: { status: warmupState, isTrustworthy },
+  } satisfies Record<StartupWarmupDatasetKey, StartupWarmupDatasetState>;
+
+  return { datasets };
+}
+
+/**
  * Builds the shared warm-up context value from the current state.
  *
  * @param {StartupWarmupStatus} warmupState Current startup warm-up state.
+ * @param {StartupWarmupSnapshot} [snapshot] Dataset-level warm-up snapshot.
  * @returns {StartupWarmupContextValue} Context value for consumers.
  */
 export function createStartupWarmupContextValue(
-  warmupState: StartupWarmupStatus
+  warmupState: StartupWarmupStatus,
+  snapshot: StartupWarmupSnapshot = createStartupWarmupSnapshotForStatus(warmupState)
 ): StartupWarmupContextValue {
-  return {
+  const contextValue = {
     warmupState,
     isLoading: warmupState === 'loading',
     isReady: warmupState === 'ready',
     isFailed: warmupState === 'failed',
-  };
+  } as StartupWarmupContextValue;
+
+  Object.defineProperties(contextValue, {
+    snapshot: {
+      value: snapshot,
+      enumerable: false,
+    },
+    isDatasetReady: {
+      value: (datasetKey: StartupWarmupDatasetKey) => {
+        const datasetState = getDatasetState(snapshot, datasetKey);
+        return datasetState.status === 'ready' && datasetState.isTrustworthy;
+      },
+      enumerable: false,
+    },
+    isDatasetFailed: {
+      value: (datasetKey: StartupWarmupDatasetKey) =>
+        getDatasetState(snapshot, datasetKey).status === 'failed',
+      enumerable: false,
+    },
+  });
+
+  return contextValue;
 }
+
+type StartupWarmupStateProviderProperties = Readonly<PropsWithChildren<{
+  warmupState: StartupWarmupStatus;
+  snapshot?: StartupWarmupSnapshot;
+}>>;
 
 /**
  * Provides the shared startup warm-up state to descendant consumers.
  *
- * @param {Readonly<PropsWithChildren<{ warmupState: StartupWarmupStatus }>>} properties Provider properties.
+ * @param {StartupWarmupStateProviderProperties} properties Provider properties.
  * @returns {React.ReactNode} Provider wrapper.
  */
-export function StartupWarmupStateProvider(
-  properties: Readonly<PropsWithChildren<{ warmupState: StartupWarmupStatus }>>
-) {
-  const { children, warmupState } = properties;
+export function StartupWarmupStateProvider(properties: StartupWarmupStateProviderProperties) {
+  const { children, warmupState, snapshot } = properties;
 
   return createElement(
     startupWarmupContext.Provider,
-    { value: createStartupWarmupContextValue(warmupState) },
+    { value: createStartupWarmupContextValue(warmupState, snapshot) },
     children
   );
 }
