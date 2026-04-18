@@ -349,6 +349,19 @@ Frontend page/component tests:
 10. Failure flow: row remains + error feedback.
 11. Post-delete refetch failure drives blocking state.
 
+### Execution status (Section 5)
+
+Current phase: **Commit and push in progress**.
+
+- [x] Red tests added — **COMPLETE**
+- [x] Red review clean — **COMPLETE**
+- [x] Green implementation complete — **COMPLETE**
+- [x] Green review clean — **COMPLETE**
+- [x] Checks passed — **COMPLETE**
+- [x] Action plan updated — **COMPLETE**
+- [ ] Commit created — **PENDING**
+- [ ] Push completed — **PENDING**
+
 ### Section checks
 
 - `npm run frontend:test -- src/frontend/src/pages`
@@ -360,9 +373,10 @@ Frontend page/component tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
-- **Follow-up implications for later sections:** Populate if needed.
+- **Implementation notes:** Implemented Assignments page loading/ready/empty/blocking states, assignment-management summary/status card, disabled placeholder create/update buttons, table rendering, deterministic multi-column filters with reset, assignment-only retry/refetch flow, unsafe-key delete disablement, and delete confirmation modal success/failure flows.
+- **Review findings and resolutions:** Green review findings were resolved by adding explicit confirm-loading spinner feedback in the modal, adding explicit error logging for failure paths, and splitting one coverage-timeout-prone test into smaller targeted tests.
+- **Checks evidence / deviations:** Required frontend checks passed; due the known root path-filter mismatch, equivalent executable commands were used (`npm run frontend:test -- src/frontend/src/pages` and `npm run frontend:test -- src/frontend/src/features`) for this section's coverage targets.
+- **Follow-up implications for later sections:** No additional blockers; later regression/docs sections should reference these final Section 5 command equivalents and review-driven fixes.
 
 ---
 
