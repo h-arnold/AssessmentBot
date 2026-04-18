@@ -477,7 +477,7 @@ Current phase: **Section complete**.
 
 - **Implementation notes:** Red/green review findings were: (1) section status was marked complete before commit/push evidence existed, and (2) API method/contract coverage needed explicit documentation confirmation. Resolutions: completion state moved to post-evidence closure, and doc alignment was explicitly verified for `getAssignmentDefinitionPartials` and `deleteAssignmentDefinition` contract details.
 - **Checks evidence / outcomes:** `npm test -- tests/docs/assignmentsDocumentationRolloutAlignment.test.js` (pass, 1 file/4 tests).
-- **Commit evidence:** section commit created on `feat/assignments-management-v1` — `136a7f348dd1785778e53c4ff3d0841fa2de1385` (`test(section-docs): add documentation rollout alignment checks`); push confirmation: `To https://github.com/h-arnold/AssessmentBot ... 8974db1..136a7f3 feat/assignments-management-v1 -> feat/assignments-management-v1`.
+- **Commit evidence:** commits on `feat/assignments-management-v1` — `136a7f348dd1785778e53c4ff3d0841fa2de1385` (`test(section-docs): add documentation rollout alignment checks`) and `375598a954c5d4d737caa7b5b9e6a95ab2ba18a6` (`docs(action-plan): record documentation rollout evidence`); latest push confirmation: `To https://github.com/h-arnold/AssessmentBot ... 136a7f3..375598a feat/assignments-management-v1 -> feat/assignments-management-v1`.
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** None.
 
