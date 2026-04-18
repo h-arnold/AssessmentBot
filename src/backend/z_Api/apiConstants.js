@@ -3,6 +3,7 @@
 const API_METHODS = Object.freeze({
   getAuthorisationStatus: 'getAuthorisationStatus',
   getABClassPartials: 'getABClassPartials',
+  getAssignmentDefinitionPartials: 'getAssignmentDefinitionPartials',
   getGoogleClassrooms: 'getGoogleClassrooms',
   upsertABClass: 'upsertABClass',
   updateABClass: 'updateABClass',
@@ -22,6 +23,7 @@ const API_METHODS = Object.freeze({
 const API_ALLOWLIST = Object.freeze({
   [API_METHODS.getAuthorisationStatus]: API_METHODS.getAuthorisationStatus,
   [API_METHODS.getABClassPartials]: API_METHODS.getABClassPartials,
+  [API_METHODS.getAssignmentDefinitionPartials]: API_METHODS.getAssignmentDefinitionPartials,
   [API_METHODS.getGoogleClassrooms]: API_METHODS.getGoogleClassrooms,
   [API_METHODS.upsertABClass]: API_METHODS.upsertABClass,
   [API_METHODS.updateABClass]: API_METHODS.updateABClass,

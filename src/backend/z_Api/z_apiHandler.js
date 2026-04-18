@@ -28,6 +28,7 @@ const API_ERROR_CODE_MAP = {
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: (parameters) => getAuthorisationStatus(parameters),
   getABClassPartials: (parameters) => getABClassPartials(parameters),
+  getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms(parameters),
   upsertABClass: (parameters) => upsertABClass(parameters),
   updateABClass: (parameters) => updateABClass(parameters),
