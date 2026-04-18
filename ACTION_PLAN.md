@@ -462,7 +462,7 @@ Current phase: **Section complete**.
 
 ### Execution status (Documentation and rollout notes)
 
-Current phase: **Green review approved; commit/push in progress**.
+Current phase: **Section complete**.
 
 - [x] red tests added
 - [x] red review clean
@@ -470,15 +470,16 @@ Current phase: **Green review approved; commit/push in progress**.
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created
-- [ ] push completed
+- [x] commit created
+- [x] push completed
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Confirmed the shipped Assignments summary copy in `src/frontend/src/pages/pageContent.ts` matches the recommended definition-management wording in `ASSIGNMENTS_PAGE_LAYOUT.md` and does not reference marking workflows. Confirmed layout-spec status/action states and table visible-state contracts remain documented and unchanged. Confirmed method/contract doc alignment for both API surfaces in `SPEC.md`: `getAssignmentDefinitionPartials` remains documented as the list/read method, and `deleteAssignmentDefinition` remains documented as accepting `{ definitionKey: string }` while rejecting non-trimmed keys (`definitionKey !== definitionKey.trim()`). Green review then passed clean after one findings loop (premature completion state + API method coverage note).
+- **Implementation notes:** Red/green review findings were: (1) section status was marked complete before commit/push evidence existed, and (2) API method/contract coverage needed explicit documentation confirmation. Resolutions: completion state moved to post-evidence closure, and doc alignment was explicitly verified for `getAssignmentDefinitionPartials` and `deleteAssignmentDefinition` contract details.
 - **Checks evidence / outcomes:** `npm test -- tests/docs/assignmentsDocumentationRolloutAlignment.test.js` (pass, 1 file/4 tests).
+- **Commit evidence:** section commit created on `feat/assignments-management-v1` — `136a7f348dd1785778e53c4ff3d0841fa2de1385` (`test(section-docs): add documentation rollout alignment checks`); push confirmation: `To https://github.com/h-arnold/AssessmentBot ... 8974db1..136a7f3 feat/assignments-management-v1 -> feat/assignments-management-v1`.
 - **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Green review is complete; append commit/push evidence once delivery finalisation is done.
+- **Follow-up implications for later sections:** None.
 
 ---
 
