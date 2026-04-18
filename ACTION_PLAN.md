@@ -209,6 +209,17 @@ Frontend service/query tests:
 4. Schema rejects invalid/missing timestamp fields.
 5. Schema rejects missing/blank/non-trimmed `definitionKey`.
 
+### Execution status (Section 3)
+
+- [x] Red tests added — **COMPLETE**
+- [x] Red review clean — **COMPLETE** (after one review loop)
+- [x] Green implementation complete — **COMPLETE**
+- [x] Green review clean — **COMPLETE** (after multiple review loops)
+- [x] Checks passed — **COMPLETE** (using executable frontend package targets for `src/services` and `src/query` due root path filter mismatch)
+- [x] Action plan updated — **COMPLETE**
+- [x] Commit created — **COMPLETE**
+- [ ] Push completed — **PENDING**
+
 ### Section checks
 
 - `npm run frontend:test -- src/frontend/src/services`
@@ -220,9 +231,10 @@ Frontend service/query tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
-- **Follow-up implications for later sections:** Populate if needed.
+- **Implementation notes:** Added frontend query wiring for `assignmentDefinitionPartials` (query key plus shared query option), plus new assignment-definition partials service methods and Zod schemas covering list and delete contracts.
+- **Evidence:** Commit `1e63e1446ad9d0427a3ce6d075481ebf51a1e17e`; commit message `feat(section-3): add frontend assignment-definition list/delete contracts`; branch `feat/assignments-management-v1`; push remains pending.
+- **Deviations from plan:** Section checks used executable package targets (`src/services`, `src/query`) instead of repository-root-prefixed paths because of a root path filter mismatch; approved equivalent commands were used.
+- **Follow-up implications for later sections:** Red/green review loops resolved test typing and coverage gaps, aligned timestamp/key schema expectations, allowed nullable `yearGroup`/`assignmentWeighting` where required, and tightened timestamp parsing to reject impossible calendar dates.
 
 ---
 
