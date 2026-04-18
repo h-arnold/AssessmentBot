@@ -174,7 +174,7 @@ Backend API tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Added `deleteAssignmentDefinition` to API constants/allowlist and `z_apiHandler` dispatch, then implemented strict delete-key validation in `z_Api/assignmentDefinitionPartials.js` and delegated safe-key delete to `AssignmentDefinitionController.deleteDefinitionByKey(...)` using the original validated key for both registry and full-store targets. Reviewer follow-up fix: `deleteDefinitionByKey(...)` now removes the registry row and drops the dedicated `assdef_full_<key>` collection directly (idempotent when missing) instead of opening/saving the full collection.
-- **Evidence:** commit SHA `e07c74d209d49ae1e534b38519c59cb34af4d58a`; commit message `feat(section-2): add deleteAssignmentDefinition transport contract`; branch `feat/assignments-management-v1`; push confirmation `push to origin succeeded`.
+- **Evidence:** commit SHA `e07c74d209d49ae1e534b38519c59cb34af4d58a`; commit message `feat(section-2): add deleteAssignmentDefinition transport contract`; commit SHA `955f125c2e1d2976410322131e09780e5caefa59`; commit message `docs(action-plan): record section 2 delivery evidence`; branch `feat/assignments-management-v1`; push confirmation `push to origin succeeded`.
 - **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Frontend delete wiring can rely on backend fail-closed key validation and idempotent delete semantics for safe keys.
 
