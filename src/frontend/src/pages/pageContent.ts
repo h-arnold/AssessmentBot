@@ -9,7 +9,8 @@ export const pageContent = {
   },
   assignments: {
     heading: 'Assignments',
-    summary: 'Track assignment status and upcoming marking tasks.',
+    summary:
+      'Review assignment-definition partials and remove obsolete definitions without loading full task data.',
   },
   settings: {
     heading: 'Settings',
