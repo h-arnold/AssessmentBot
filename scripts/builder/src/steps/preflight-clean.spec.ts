@@ -47,6 +47,11 @@ function createBuilderPaths(rootDir: string): BuilderPaths {
   };
 }
 
+import { createTempDir, createBuilderPaths } from '../test/builder-fixture-test-helpers.js';
+
+const PREFLIGHT_STAGE = 'preflight-clean';
+const CLASP_FILE = '.clasp.json';
+
 /**
  * Ensures a file exists with placeholder content.
  *
