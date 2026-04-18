@@ -460,9 +460,25 @@ Current phase: **Section complete**.
 
 - Confirm whether dataset-granular warm-up or strict validation logic needs persistent `@remarks`.
 
+### Execution status (Documentation and rollout notes)
+
+Current phase: **Green review approved; commit/push in progress**.
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created
+- [ ] push completed
+
 ### Implementation notes / deviations / follow-up
 
-- Populate during execution.
+- **Implementation notes:** Confirmed the shipped Assignments summary copy in `src/frontend/src/pages/pageContent.ts` matches the recommended definition-management wording in `ASSIGNMENTS_PAGE_LAYOUT.md` and does not reference marking workflows. Confirmed layout-spec status/action states and table visible-state contracts remain documented and unchanged. Confirmed method/contract doc alignment for both API surfaces in `SPEC.md`: `getAssignmentDefinitionPartials` remains documented as the list/read method, and `deleteAssignmentDefinition` remains documented as accepting `{ definitionKey: string }` while rejecting non-trimmed keys (`definitionKey !== definitionKey.trim()`). Green review then passed clean after one findings loop (premature completion state + API method coverage note).
+- **Checks evidence / outcomes:** `npm test -- tests/docs/assignmentsDocumentationRolloutAlignment.test.js` (pass, 1 file/4 tests).
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Green review is complete; append commit/push evidence once delivery finalisation is done.
 
 ---
 
