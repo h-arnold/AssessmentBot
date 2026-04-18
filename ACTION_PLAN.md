@@ -577,6 +577,49 @@ Current phase: **Section complete**.
 - Branch: `feat/assignments-management-v1`
 - Push confirmation: branch `feat/assignments-management-v1`; push summary: `632f7d9..e8c07d9  feat/assignments-management-v1 -> feat/assignments-management-v1`
 
+## Post-delivery slop follow-up — startup warm-up dataset registry cleanup
+
+### Objective
+
+- Resolve warm-up cleanup problem 2 by removing duplicated startup warm-up dataset key and query-key lists from the auth warm-up path.
+- Centralise the startup warm-up dataset contract in the shared query layer.
+
+### Constraints
+
+- Preserve the current startup warm-up behaviour and dataset set.
+- Keep auth warm-up snapshot derivation, failure logging, and tests aligned to one shared registry.
+- The final solution must be a net LOC reduction.
+
+### Acceptance criteria
+
+1. `src/frontend/src/query/sharedQueries.ts` is the canonical startup warm-up dataset registry.
+2. Auth warm-up logic no longer duplicates startup dataset key or query-key lists.
+3. Warm-up behaviour and coverage remain unchanged apart from the registry cleanup.
+4. The final implementation is a net LOC reduction.
+
+### Execution checklist status (this section)
+
+- [x] red tests added — **COMPLETE**
+- [x] red review clean — **COMPLETE**
+- [x] green implementation complete — **COMPLETE**
+- [x] green review clean — **COMPLETE**
+- [x] checks passed — **COMPLETE**
+- [x] action plan updated — **COMPLETE**
+- [x] commit created — **COMPLETE**
+- [ ] push completed
+
+### Implementation notes / review findings / de-sloppification outcome
+
+- Red review finding: startup warm-up dataset keys and query keys were duplicated across the auth warm-up logic, shared warm-up state, and related tests, creating drift risk whenever the startup dataset set changed.
+- Implementation note: the fix centralised the startup warm-up dataset contract in the shared query layer via `StartupWarmupDatasetKey`, `startupWarmupDatasetKeys`, `startupWarmupQueryKeys`, and `getStartupWarmupQueryKey`, then switched auth warm-up snapshot building, failure logging, and affected tests to consume that registry.
+- De-sloppification outcome: duplicated auth warm-up dataset lists were removed, startup warm-up behaviour stayed the same, and the user constraint that the final solution be a net LOC reduction was satisfied.
+
+### Commit evidence
+
+- Commit SHA: `da5537b58d3b75d8813bf1d8bcf190691a44995f`
+- Commit message: `refactor(frontend): centralise startup warm-up dataset registry`
+- Branch: `feat/assignments-management-v1`
+
 ## Suggested implementation order
 
 1. Section 1 — Backend list transport contract
