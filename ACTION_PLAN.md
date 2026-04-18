@@ -5,8 +5,9 @@
 Before writing or executing this plan:
 
 1. Read `SPEC.md` in repo root.
-2. Treat `SPEC.md` as the source of truth for product behaviour and contracts.
-3. Use this action plan only to sequence implementation and validation.
+2. Read `ASSIGNMENTS_PAGE_LAYOUT.md` in repo root.
+3. Treat `SPEC.md` and `ASSIGNMENTS_PAGE_LAYOUT.md` as the source of truth for product behaviour, contracts, and visible layout rules.
+4. Use this action plan only to sequence implementation and validation.
 
 ## Scope and assumptions
 
@@ -15,11 +16,11 @@ Before writing or executing this plan:
 - Backend transport additions for assignment-definition partial list and single delete.
 - Frontend shared query/service/schema wiring for `assignmentDefinitionPartials`.
 - Dataset-granular startup warm-up state changes so unrelated surfaces do not regress.
-- Assignments page UI for list, filters, reset, retry, and single-row delete with explicit confirmation.
+- Assignments page UI for list, filters, reset, retry, disabled placeholder create/update buttons, and single-row delete with explicit confirmation.
 
 ### Out of scope
 
-- Create/update assignment-definition workflows.
+- Functional create/update assignment-definition workflows beyond disabled placeholders.
 - Bulk delete or archive workflows.
 - Full-definition fetch/hydration from the Assignments page.
 - Legacy data migration tooling.
@@ -29,6 +30,7 @@ Before writing or executing this plan:
 1. `SPEC.md` strict-fail contracts are authoritative, including required field presence and timestamp validity.
 2. Unsafe keys may remain visible but undeletable in v1.
 3. Assignments retry/refresh must refetch `assignmentDefinitionPartials` only.
+4. `ASSIGNMENTS_PAGE_LAYOUT.md` is authoritative for page structure, visible regions, and placeholder-action treatment.
 
 ---
 
@@ -255,17 +257,20 @@ Frontend auth/warmup tests:
 
 ### Objective
 
-- Implement Assignments list UI with deterministic sort/filter/reset, manual retry, and confirmed single-row delete flow.
+- Implement the Assignments page surface defined in `ASSIGNMENTS_PAGE_LAYOUT.md` with deterministic sort/filter/reset, manual retry, disabled placeholder create/update buttons, and confirmed single-row delete flow.
 
 ### Constraints
 
 - Follow frontend loading/width standards for owned surface behaviour.
+- Follow the visible-region, modal, and responsive structure defined in `ASSIGNMENTS_PAGE_LAYOUT.md`.
 - Delete must use explicit confirmation modal.
 - Retry must refetch assignment dataset only.
 
 ### Acceptance criteria
 
 - Assignments page renders loading, ready, empty, and blocking states correctly.
+- Page summary copy matches assignment-definition management rather than marking tasks.
+- Status/actions card renders retry plus disabled placeholder `Create assignment` and `Update assignment` buttons.
 - Visible columns: title, topic, year group, document type, last updated, delete.
 - Filters available on all displayed columns and reset restores defaults.
 - Filter semantics are pinned and tested:
@@ -283,14 +288,16 @@ Frontend auth/warmup tests:
 Frontend page/component tests:
 
 1. State coverage: loading/ready/empty/blocking.
-2. Filter and reset behaviour across all displayed columns.
-3. Retry control triggers only assignment dataset refetch.
-4. Unsafe keys disable delete.
-5. Delete confirmation modal opens with required copy.
-6. Confirm-loading + conflict disabling during mutation.
-7. Success flow: refetch + row removed + success feedback.
-8. Failure flow: row remains + error feedback.
-9. Post-delete refetch failure drives blocking state.
+2. Summary copy and status/actions card layout match `ASSIGNMENTS_PAGE_LAYOUT.md`.
+3. Disabled placeholder create/update buttons render with helper copy and do not launch a workflow.
+4. Filter and reset behaviour across all displayed columns.
+5. Retry control triggers only assignment dataset refetch.
+6. Unsafe keys disable delete.
+7. Delete confirmation modal opens with required copy.
+8. Confirm-loading + conflict disabling during mutation.
+9. Success flow: refetch + row removed + success feedback.
+10. Failure flow: row remains + error feedback.
+11. Post-delete refetch failure drives blocking state.
 
 ### Section checks
 
@@ -358,14 +365,15 @@ Frontend page/component tests:
 ### Acceptance criteria
 
 - Assignments page summary copy matches definition-management purpose.
-- SPEC/ACTION_PLAN remain aligned with implementation.
+- `SPEC.md`, `ASSIGNMENTS_PAGE_LAYOUT.md`, and `ACTION_PLAN.md` remain aligned with implementation.
 - Any deviations are documented before plan closure.
 
 ### Required checks
 
 1. Verify Assignments summary text no longer references marking tasks.
-2. Verify new API methods and contracts are reflected in docs/comments.
-3. Confirm implementation notes/deviations fields updated before closing delivery.
+2. Verify page structure and visible states still match `ASSIGNMENTS_PAGE_LAYOUT.md`.
+3. Verify new API methods and contracts are reflected in docs/comments.
+4. Confirm implementation notes/deviations fields updated before closing delivery.
 
 ### Optional `@remarks` JSDoc review
 
