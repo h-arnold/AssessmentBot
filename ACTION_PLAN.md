@@ -351,7 +351,7 @@ Frontend page/component tests:
 
 ### Execution status (Section 5)
 
-Current phase: **Commit and push in progress**.
+Current phase: **Section 5 complete**.
 
 - [x] Red tests added — **COMPLETE**
 - [x] Red review clean — **COMPLETE**
@@ -359,8 +359,8 @@ Current phase: **Commit and push in progress**.
 - [x] Green review clean — **COMPLETE**
 - [x] Checks passed — **COMPLETE**
 - [x] Action plan updated — **COMPLETE**
-- [ ] Commit created — **PENDING**
-- [ ] Push completed — **PENDING**
+- [x] Commit created — **COMPLETE**
+- [x] Push completed — **COMPLETE**
 
 ### Section checks
 
@@ -374,6 +374,7 @@ Current phase: **Commit and push in progress**.
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Implemented Assignments page loading/ready/empty/blocking states, assignment-management summary/status card, disabled placeholder create/update buttons, table rendering, deterministic multi-column filters with reset, assignment-only retry/refetch flow, unsafe-key delete disablement, and delete confirmation modal success/failure flows.
+- **Evidence:** commit SHA `e213cd1fc69f9524f86026d86cea3ad2305608e2` with message `feat(section-5): implement assignments page workflow and ux`; commit SHA `a1eebdc2bfabbf0b17f022183ef89dacfd806e43` with message `docs(action-plan): record section 5 implementation evidence`; branch `feat/assignments-management-v1`; push confirmation `To https://github.com/h-arnold/AssessmentBot` and `0882410..a1eebdc  feat/assignments-management-v1 -> feat/assignments-management-v1`.
 - **Review findings and resolutions:** Green review findings were resolved by adding explicit confirm-loading spinner feedback in the modal, adding explicit error logging for failure paths, and splitting one coverage-timeout-prone test into smaller targeted tests.
 - **Checks evidence / deviations:** Required frontend checks passed; due the known root path-filter mismatch, equivalent executable commands were used (`npm run frontend:test -- src/frontend/src/pages` and `npm run frontend:test -- src/frontend/src/features`) for this section's coverage targets.
 - **Follow-up implications for later sections:** No additional blockers; later regression/docs sections should reference these final Section 5 command equivalents and review-driven fixes.
