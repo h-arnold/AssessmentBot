@@ -483,6 +483,57 @@ Current phase: **Section complete**.
 
 ---
 
+## Mandatory De-Sloppification pass
+
+### Objective / outcome summary
+
+- Record the actual de-sloppification findings and cleanup implementation before final docs sync.
+
+### Findings from de-sloppification
+
+1. Node-only test shim existed in `src/backend/z_Api/assignmentDefinitionPartials.js` and should be removed.
+2. Duplicate delete-key safety logic existed in `src/frontend/src/pages/AssignmentsPage.tsx` instead of reusing the schema contract.
+3. `startupWarmupState` context used an unnecessary `Object.defineProperties` non-enumerable workaround.
+4. `tests/backend-api/assignmentDefinitionPartials.unit.test.js` still had stale RED-phase `try/catch` scaffolding.
+
+### Cleanup actions applied
+
+1. Removed the Node-only `require` shim and used `ApiValidationError` directly.
+2. Replaced the page-local unsafe-key validator with `DeleteAssignmentDefinitionRequestSchema.safeParse(...).success`.
+3. Simplified startup warmup context value to a plain object and adjusted AppAuthGate auth spec assertions.
+4. Removed stale RED scaffolding from `tests/backend-api/assignmentDefinitionPartials.unit.test.js`.
+
+### Checklist status (this section)
+
+- [x] Findings reviewed and recorded — **COMPLETE**
+- [x] Cleanup actions applied — **COMPLETE**
+- [x] Section checks recorded — **COMPLETE**
+- [x] Action plan updated — **COMPLETE**
+- [x] Commit created — **COMPLETE**
+- [x] Push completed — **COMPLETE**
+
+### Section checks run and passed
+
+- Targeted: `npm test -- tests/backend-api` — pass
+- Targeted: `npm run frontend:test -- src/features src/pages` — pass
+- Lint: `npm run lint` — pass
+- Lint: `npm run frontend:lint` — pass
+- Backend tests: `npm test -- tests/api tests/controllers` — pass
+- Backend tests: `npm test -- tests/backend-api` — pass
+- Frontend tests: `npm run frontend:test -- src/services src/query` — pass
+- Frontend tests: `npm run frontend:test -- src/features src/pages` — pass
+
+### Commit evidence (fill after commit/push)
+
+- Commit SHA: `b3f7c52e96b40958b15e8f303025772c4d4a78f0`
+- Commit message: `refactor: de-sloppify assignment contracts and warmup context`
+- Branch: `feat/assignments-management-v1`
+- Push confirmation: `To https://github.com/h-arnold/AssessmentBot` and `e96b1f4..b3f7c52  feat/assignments-management-v1 -> feat/assignments-management-v1`
+
+### Docs sync readiness
+
+- Branch readiness for final docs sync: **READY**.
+
 ## Suggested implementation order
 
 1. Section 1 — Backend list transport contract
