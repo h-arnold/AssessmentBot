@@ -403,6 +403,19 @@ Current phase: **Section 5 complete**.
 2. Run touched frontend service/query/auth/classes/assignments suites.
 3. Run backend and frontend lint commands.
 
+### Execution status (Regression and contract hardening)
+
+Current phase: **Review/check complete — commit/push pending**.
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created
+- [ ] push completed
+
 ### Section checks
 
 - `npm run lint`
@@ -412,8 +425,10 @@ Current phase: **Section 5 complete**.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
+- **Implementation notes:** No new tests or production code were required in this hardening section; work was verification-only against already landed changes.
+- **Checks evidence / outcomes:** `npm run lint` (pass, existing warning only in `src/backend/Models/Cohort.js`), `npm run frontend:lint` (pass), `npm test -- tests/api tests/controllers` (pass, 26 files/351 tests), `npm test -- tests/backend-api` (pass, 4 files/29 tests), `npm run frontend:test -- src/services src/query` (pass, 12 files/139 tests), `npm run frontend:test -- src/features src/pages` (pass, 41 files/263 tests).
+- **Red review follow-up:** Review identified missing backend-api contract coverage in this section's checks; resolved by explicitly running `npm test -- tests/backend-api` and recording the passing result.
+- **Deviations from plan:** Known frontend path-filter mismatch remains for root-prefixed paths (`npm run frontend:test -- src/frontend/src/...`), so equivalent frontend-relative commands were used (`src/services src/query` and `src/features src/pages`). No deviations beyond this command-path equivalence.
 
 ---
 
