@@ -151,6 +151,17 @@ Backend API tests:
 4. Safe key delete removes registry/full targets.
 5. Safe key delete remains idempotent when targets already absent.
 
+### Execution status (Section 2)
+
+- [x] Red tests added — **COMPLETE**
+- [x] Red review clean — **COMPLETE**
+- [x] Green implementation complete — **COMPLETE**
+- [x] Green review clean — **COMPLETE**
+- [x] Checks passed — **COMPLETE**
+- [x] Action plan updated — **COMPLETE**
+- [ ] Commit created — **NOT STARTED**
+- [ ] Push completed — **NOT STARTED**
+
 ### Section checks
 
 - `npm test -- tests/api`
@@ -162,9 +173,9 @@ Backend API tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Populate during execution.
-- **Deviations from plan:** Populate if needed.
-- **Follow-up implications for later sections:** Populate if needed.
+- **Implementation notes:** Added `deleteAssignmentDefinition` to API constants/allowlist and `z_apiHandler` dispatch, then implemented strict delete-key validation in `z_Api/assignmentDefinitionPartials.js` and delegated safe-key delete to `AssignmentDefinitionController.deleteDefinitionByKey(...)` using the original validated key for both registry and full-store targets. Reviewer follow-up fix: `deleteDefinitionByKey(...)` now removes the registry row and drops the dedicated `assdef_full_<key>` collection directly (idempotent when missing) instead of opening/saving the full collection.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Frontend delete wiring can rely on backend fail-closed key validation and idempotent delete semantics for safe keys.
 
 ---
 

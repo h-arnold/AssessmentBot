@@ -37,7 +37,10 @@ const BACKEND_CONFIG_API_METHOD_ENTRIES = Object.freeze(
   Object.fromEntries(BACKEND_CONFIG_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
 );
 
-const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze(['getAssignmentDefinitionPartials']);
+const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
+  'getAssignmentDefinitionPartials',
+  'deleteAssignmentDefinition',
+]);
 
 const ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES = Object.freeze(
   Object.fromEntries(
@@ -117,6 +120,13 @@ const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
       updatedAt: '2026-01-06T12:30:00.000Z',
     },
   ],
+  deleteAssignmentDefinition: undefined,
+});
+
+const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
+  deleteAssignmentDefinition: {
+    definitionKey: 'algebra-baseline',
+  },
 });
 
 function buildAbClassTransportHandlers() {
@@ -856,16 +866,18 @@ describe('Api/apiHandler dispatcher', () => {
     (methodName) => {
       const { ApiDispatcher } = loadApiHandlerModule();
       const dispatcher = ApiDispatcher.getInstance();
+      const params = ASSIGNMENT_DEFINITION_PARAMS[methodName];
       const expectedData = ASSIGNMENT_DEFINITION_RESULTS[methodName];
 
       globalThis[methodName].mockImplementation(() => expectedData);
 
       const response = dispatcher.handle({
         method: methodName,
+        ...(params === undefined ? {} : { params }),
       });
 
       expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
-      expect(globalThis[methodName]).toHaveBeenCalledWith(undefined);
+      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,

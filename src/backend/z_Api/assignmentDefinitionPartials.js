@@ -23,7 +23,8 @@ const ISO_DATE_TIME_PATTERN =
 const MAX_OFFSET_HOURS = 23;
 const MAX_OFFSET_MINUTES = 59;
 const MINUTES_PER_HOUR = 60;
-const MILLISECONDS_PER_MINUTE = 60 * 1000;
+const MILLISECONDS_PER_SECOND = 1000;
+const MILLISECONDS_PER_MINUTE = MINUTES_PER_HOUR * MILLISECONDS_PER_SECOND;
 const NEGATIVE_TIMEZONE_MULTIPLIER = -1;
 
 const ApiValidationErrorType =
@@ -54,6 +55,82 @@ function throwValidationError(message, fieldName, rowIndex) {
     fieldName,
     details: `rowIndex=${rowIndex}`,
   });
+}
+
+/**
+ * Throws a transport validation error for assignment-definition delete operations.
+ *
+ * @param {string} message - Validation failure message.
+ * @param {string} fieldName - Related field name.
+ * @throws {ApiValidationError} Always throws.
+ */
+function throwDeleteValidationError(message, fieldName) {
+  throw new ApiValidationErrorType(message, {
+    method: 'deleteAssignmentDefinition',
+    fieldName,
+  });
+}
+
+const LAST_CONTROL_CHARACTER_CODE = 31;
+const DELETE_CHARACTER_CODE = 127;
+
+/**
+ * Returns whether the provided key contains control characters.
+ *
+ * @param {string} value - Definition key candidate.
+ * @returns {boolean} True when any control character is present.
+ */
+function hasControlCharacters(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    const codePoint = value.codePointAt(index);
+    if (codePoint <= LAST_CONTROL_CHARACTER_CODE || codePoint === DELETE_CHARACTER_CODE) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Validates delete parameters with strict safe-key requirements.
+ *
+ * @param {*} parameters - Candidate request parameters.
+ * @returns {string} The original validated definition key.
+ * @throws {ApiValidationError} If parameters or definitionKey are invalid.
+ */
+function validateDeleteParameters(parameters) {
+  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
+    throwDeleteValidationError('params must be an object.', 'params');
+  }
+
+  if (!Object.hasOwn(parameters, 'definitionKey')) {
+    throwDeleteValidationError('Missing required field: definitionKey.', 'definitionKey');
+  }
+
+  const { definitionKey } = parameters;
+
+  if (typeof definitionKey !== 'string') {
+    throwDeleteValidationError('definitionKey must be a string.', 'definitionKey');
+  }
+
+  if (definitionKey.trim().length === 0) {
+    throwDeleteValidationError('definitionKey must be a non-empty string.', 'definitionKey');
+  }
+
+  if (definitionKey.trim() !== definitionKey) {
+    throwDeleteValidationError('definitionKey must already be trimmed.', 'definitionKey');
+  }
+
+  if (
+    definitionKey.includes('/') ||
+    definitionKey.includes('\\') ||
+    definitionKey.includes('..') ||
+    hasControlCharacters(definitionKey)
+  ) {
+    throwDeleteValidationError('definitionKey contains unsafe characters.', 'definitionKey');
+  }
+
+  return definitionKey;
 }
 
 /**
@@ -245,8 +322,19 @@ function getAssignmentDefinitionPartials() {
   });
 }
 
+/**
+ * Deletes an assignment definition by key after strict safety validation.
+ *
+ * @param {Object} parameters - Request payload containing definitionKey.
+ */
+function deleteAssignmentDefinition(parameters) {
+  const definitionKey = validateDeleteParameters(parameters);
+  getAssignmentDefinitionController().deleteDefinitionByKey(definitionKey);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getAssignmentDefinitionPartials,
+    deleteAssignmentDefinition,
   };
 }
