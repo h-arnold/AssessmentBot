@@ -281,8 +281,10 @@ class AssignmentDefinition {
   }
 
   /**
-   * Serialises this assignment definition to a partial JSON object (without tasks).
-   * @returns {Object} A plain object representation with metadata but tasks set to null
+   * Serialises this assignment definition to the lightweight registry payload.
+   * Keeps reference and template document IDs, forces `tasks` to `null`, and omits
+   * document-modified timestamp fields that are only stored on full definitions.
+   * @returns {Object} A plain object representation for the `assignment_definitions` registry
    */
   toPartialJSON() {
     return {

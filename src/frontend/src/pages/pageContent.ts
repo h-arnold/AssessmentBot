@@ -1,5 +1,5 @@
 /**
- * Single source of truth for the shell page headings and placeholder summaries.
+ * Single source of truth for the shell page headings and summaries.
  * Navigation labels and page components should stay aligned with these values.
  */
 export const pageContent = {
