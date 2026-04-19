@@ -3,7 +3,6 @@
 const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
   'primaryTopic',
-  'courseId',
   'yearGroup',
   'alternateTitles',
   'alternateTopics',
@@ -283,7 +282,6 @@ function toPlainPartialRow(row) {
   return {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
-    courseId: row.courseId,
     yearGroup: row.yearGroup,
     alternateTitles: row.alternateTitles,
     alternateTopics: row.alternateTopics,

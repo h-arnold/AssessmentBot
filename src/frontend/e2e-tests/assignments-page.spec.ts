@@ -30,7 +30,6 @@ const assignmentRows = [
   {
     primaryTitle: 'Newest algebra recap',
     primaryTopic: 'Algebra',
-    courseId: 'course-1',
     yearGroup: 11,
     alternateTitles: [],
     alternateTopics: [],
@@ -46,7 +45,6 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations',
     primaryTopic: 'Algebra',
-    courseId: 'course-2',
     yearGroup: 10,
     alternateTitles: [],
     alternateTopics: [],
@@ -62,7 +60,6 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations archive',
     primaryTopic: 'Algebra',
-    courseId: 'course-3',
     yearGroup: 10,
     alternateTitles: [],
     alternateTopics: [],
@@ -78,7 +75,6 @@ const assignmentRows = [
   {
     primaryTitle: 'Unsafe legacy row',
     primaryTopic: 'Legacy',
-    courseId: 'course-4',
     yearGroup: null,
     alternateTitles: [],
     alternateTopics: [],

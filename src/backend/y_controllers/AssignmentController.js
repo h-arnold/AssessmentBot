@@ -175,10 +175,10 @@ class AssignmentController {
         );
       }
 
-      const courseId = storedCourseId || definition.courseId;
+      const courseId = storedCourseId;
       if (!courseId) {
         this.progressTracker.logAndThrowError(
-          'Course ID could not be determined. It is missing from stored properties and the assignment definition.'
+          'Course ID could not be determined. It is missing from stored properties.'
         );
       }
 

@@ -82,7 +82,6 @@ describe('Assignment Serialisation', () => {
       expect(partialJson.assignmentDefinition.documentType).toBe('SLIDES');
 
       // Core identifiers should be preserved
-      expect(partialJson.courseId).toBeDefined();
       expect(partialJson.assignmentId).toBeDefined();
       expect(partialJson.assignmentName).toBeDefined();
     });
@@ -178,7 +177,6 @@ describe('Assignment Serialisation', () => {
 
       const json = assignment.toJSON();
 
-      expect(json.courseId).toBe('course-tojson');
       expect(json.assignmentId).toBe('assign-tojson');
       expect(json.documentType).toBe('SLIDES');
       expect(json.assignmentDefinition.referenceDocumentId).toBe('ref-tojson');

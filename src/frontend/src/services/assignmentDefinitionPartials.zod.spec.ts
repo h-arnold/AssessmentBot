@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 type AssignmentDefinitionPartialFixture = {
   primaryTitle: string;
   primaryTopic: string;
-  courseId: string;
   yearGroup: number | null;
   alternateTitles: string[];
   alternateTopics: string[];
@@ -22,7 +21,6 @@ const omittedBackendSuccessPayload = new Map<string, never>().get('missing');
 const validAssignmentDefinitionPartialRow: AssignmentDefinitionPartialFixture = {
   primaryTitle: 'Algebra Baseline',
   primaryTopic: 'Algebra',
-  courseId: 'course-001',
   yearGroup: 10,
   alternateTitles: ['Algebra Starter'],
   alternateTopics: ['Linear Equations'],
