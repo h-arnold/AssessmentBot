@@ -744,15 +744,48 @@ Frontend e2e tests:
 - Recount the cumulative production LOC total for the explicit baseline files.
 - Mandatory-read evidence gate passed for all delegated handoffs.
 
+### Section 5 execution tracker (completed)
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created (pending)
+- [ ] push completed (pending)
+
+### Section 5 red-phase findings and resolutions
+
+1. Finding: regression-baseline tests needed to be rerun across Sections 1-4 contracts to confirm the low-risk sweep did not reintroduce removed duplication or alter preserved lifecycle boundaries.
+   - Resolution: reran the targeted regression-baseline suites and kept the sweep constrained to non-behavioural cleanup, with no contract drift found.
+2. Finding: `pageExpectations` duplication in touched tests still mirrored production page copy beyond what was needed for stable assertions.
+   - Resolution: deduplicated touched test assertions to reuse `pageContent` where appropriate while preserving explicit behaviour-contract checks.
+
+### Section 5 green implementation notes and acceptance summary
+
+- Green implementation completed the approved low-risk cleanup sweep (test copy dedupe, comment cleanup, and trivial glue simplification) without introducing new abstraction layers.
+- Acceptance summary: user-visible behaviour and section contracts remained unchanged, and the cleanup stayed within the agreed no-layout/no-workflow-change boundary.
+
+### Section 5 LOC tracking
+
+- Baseline total: 4136
+- After Section 1 cumulative total: 4034
+- After Section 2 cumulative total: 3987
+- After Section 3 cumulative total: 3896
+- After Section 4 cumulative total: 3709
+- After Section 5 cumulative total: 3709 (no production change)
+- Cumulative delta: -427
+
 ### Optional `@remarks` JSDoc follow-through
 
 - None.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** use this section for safe cleanup that does not justify a dedicated heavier refactor section.
-- **Deviations from plan:** if a deferred modal-shell extraction is attempted here, stop and reopen planning unless it clearly removes code without a new abstraction.
-- **Follow-up implications for later sections:** none.
+- **Implementation notes:** Section 5 is complete; low-risk cleanup items were delivered with regression-baseline confirmation and `pageExpectations` dedupe where production copy reuse was appropriate.
+- **Deviations from plan:** no production-file LOC movement in this section; cleanup landed in tests/documentation-level surfaces while preserving all section contracts.
+- **Follow-up implications for later sections:** next phase is **Regression and contract hardening**, currently **in progress**; red/green loops are complete for Sections 1-5.
 
 ---
 
