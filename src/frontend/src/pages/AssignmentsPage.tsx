@@ -50,7 +50,17 @@ type AssignmentsFilterState = Readonly<{
   updatedAt: FilterValue | null;
 }>;
 
+type AssignmentsFilterColumnKey = keyof AssignmentsFilterState;
+
 type AssignmentsFilterOption = Readonly<{ text: string; value: string }>;
+
+type AssignmentsFilterDescriptor = Readonly<{
+  key: AssignmentsFilterColumnKey;
+  title: string;
+  filterLabel: string;
+  getFilterValue: (row: AssignmentDefinitionPartial) => string;
+  renderCell?: (row: AssignmentDefinitionPartial) => string;
+}>;
 
 type DeleteOutcome = Readonly<{
   type: 'success' | 'error';
@@ -70,6 +80,41 @@ const EMPTY_FILTER_STATE: AssignmentsFilterState = {
   documentType: null,
   updatedAt: null,
 };
+
+const ASSIGNMENTS_FILTER_DESCRIPTORS: ReadonlyArray<AssignmentsFilterDescriptor> = [
+  {
+    filterLabel: 'Filter by title',
+    getFilterValue: (row) => row.primaryTitle,
+    key: 'primaryTitle',
+    title: 'Title',
+  },
+  {
+    filterLabel: 'Filter by topic',
+    getFilterValue: (row) => row.primaryTopic,
+    key: 'primaryTopic',
+    title: 'Topic',
+  },
+  {
+    filterLabel: 'Filter by year group',
+    getFilterValue: (row) => formatYearGroupLabel(row.yearGroup),
+    key: 'yearGroup',
+    renderCell: (row) => formatYearGroupLabel(row.yearGroup),
+    title: 'Year group',
+  },
+  {
+    filterLabel: 'Filter by document type',
+    getFilterValue: (row) => row.documentType,
+    key: 'documentType',
+    title: 'Document type',
+  },
+  {
+    filterLabel: 'Filter by last updated',
+    getFilterValue: (row) => formatUpdatedAtLabel(row.updatedAt),
+    key: 'updatedAt',
+    renderCell: (row) => formatUpdatedAtLabel(row.updatedAt),
+    title: 'Last updated',
+  },
+];
 
 /**
  * Returns whether an assignment definition key is safe for deletion calls.
@@ -178,29 +223,10 @@ function matchesFilterSelection(selectedValues: FilterValue | null, rowValue: st
  */
 function getNextFilters(
   currentFilters: AssignmentsFilterState,
-  columnKey: 'primaryTitle' | 'primaryTopic' | 'yearGroup' | 'documentType' | 'updatedAt',
+  columnKey: AssignmentsFilterColumnKey,
   selectedValues: FilterValue | null
 ): AssignmentsFilterState {
-  switch (columnKey) {
-    case 'primaryTitle': {
-      return { ...currentFilters, primaryTitle: selectedValues };
-    }
-    case 'primaryTopic': {
-      return { ...currentFilters, primaryTopic: selectedValues };
-    }
-    case 'yearGroup': {
-      return { ...currentFilters, yearGroup: selectedValues };
-    }
-    case 'documentType': {
-      return { ...currentFilters, documentType: selectedValues };
-    }
-    case 'updatedAt': {
-      return { ...currentFilters, updatedAt: selectedValues };
-    }
-    default: {
-      throw new Error(`Unsupported filter column: ${columnKey as string}`);
-    }
-  }
+  return { ...currentFilters, [columnKey]: selectedValues };
 }
 
 /**
@@ -567,124 +593,61 @@ export function AssignmentsPage() {
 
   const sortedRows = useMemo(() => getDefaultSortedRows(assignmentsQuery.data ?? []), [assignmentsQuery.data]);
 
-  const filterOptions = useMemo(
-    () => ({
-      primaryTitle: getUniqueSortedFilterOptions(sortedRows.map((row) => row.primaryTitle)),
-      primaryTopic: getUniqueSortedFilterOptions(sortedRows.map((row) => row.primaryTopic)),
-      yearGroup: getUniqueSortedFilterOptions(sortedRows.map((row) => formatYearGroupLabel(row.yearGroup))),
-      documentType: getUniqueSortedFilterOptions(sortedRows.map((row) => row.documentType)),
-      updatedAt: getUniqueSortedFilterOptions(sortedRows.map((row) => formatUpdatedAtLabel(row.updatedAt))),
-    }),
-    [sortedRows]
-  );
+  const filterOptions = useMemo(() => {
+    const nextFilterOptions: Record<AssignmentsFilterColumnKey, ReadonlyArray<AssignmentsFilterOption>> = {
+      primaryTitle: [],
+      primaryTopic: [],
+      yearGroup: [],
+      documentType: [],
+      updatedAt: [],
+    };
+
+    for (const descriptor of ASSIGNMENTS_FILTER_DESCRIPTORS) {
+      nextFilterOptions[descriptor.key] = getUniqueSortedFilterOptions(
+        sortedRows.map((row) => descriptor.getFilterValue(row))
+      );
+    }
+
+    return nextFilterOptions;
+  }, [sortedRows]);
 
   const visibleRows = useMemo(
     () =>
-      sortedRows.filter(
-        (row) =>
-          matchesFilterSelection(filters.primaryTitle, row.primaryTitle)
-          && matchesFilterSelection(filters.primaryTopic, row.primaryTopic)
-          && matchesFilterSelection(filters.yearGroup, formatYearGroupLabel(row.yearGroup))
-          && matchesFilterSelection(filters.documentType, row.documentType)
-          && matchesFilterSelection(filters.updatedAt, formatUpdatedAtLabel(row.updatedAt))
+      sortedRows.filter((row) =>
+        ASSIGNMENTS_FILTER_DESCRIPTORS.every((descriptor) =>
+          matchesFilterSelection(filters[descriptor.key], descriptor.getFilterValue(row))
+        )
       ),
     [filters, sortedRows]
   );
 
-  const handleSelectPrimaryTitleFilter = useCallback((value: string) => {
-    setFilters((currentFilters) => getNextFilters(currentFilters, 'primaryTitle', [value]));
-  }, []);
-
-  const handleSelectPrimaryTopicFilter = useCallback((value: string) => {
-    setFilters((currentFilters) => getNextFilters(currentFilters, 'primaryTopic', [value]));
-  }, []);
-
-  const handleSelectYearGroupFilter = useCallback((value: string) => {
-    setFilters((currentFilters) => getNextFilters(currentFilters, 'yearGroup', [value]));
-  }, []);
-
-  const handleSelectDocumentTypeFilter = useCallback((value: string) => {
-    setFilters((currentFilters) => getNextFilters(currentFilters, 'documentType', [value]));
-  }, []);
-
-  const handleSelectUpdatedAtFilter = useCallback((value: string) => {
-    setFilters((currentFilters) => getNextFilters(currentFilters, 'updatedAt', [value]));
+  const handleSelectFilter = useCallback((columnKey: AssignmentsFilterColumnKey, value: string) => {
+    setFilters((currentFilters) => getNextFilters(currentFilters, columnKey, [value]));
   }, []);
 
   const tableColumns: TableColumnsType<AssignmentDefinitionPartial> = useMemo(
     () => [
-      {
-        title: 'Title',
-        dataIndex: 'primaryTitle',
-        key: 'primaryTitle',
+      ...ASSIGNMENTS_FILTER_DESCRIPTORS.map((descriptor) => ({
+        title: descriptor.title,
+        dataIndex: descriptor.key,
+        key: descriptor.key,
+        ...(descriptor.renderCell === undefined
+          ? {}
+          : {
+              render: (_: unknown, row: AssignmentDefinitionPartial) => descriptor.renderCell!(row),
+            }),
         filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: handleSelectPrimaryTitleFilter,
-          options: filterOptions.primaryTitle,
-          selectedValues: filters.primaryTitle,
+          onSelectOption: (value) => {
+            handleSelectFilter(descriptor.key, value);
+          },
+          options: filterOptions[descriptor.key],
+          selectedValues: filters[descriptor.key],
         }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer('Filter by title'),
-        filteredValue: filters.primaryTitle,
-        onHeaderCell: () => ({ 'aria-label': 'Title' }),
-      },
-      {
-        title: 'Topic',
-        dataIndex: 'primaryTopic',
-        key: 'primaryTopic',
-        filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: handleSelectPrimaryTopicFilter,
-          options: filterOptions.primaryTopic,
-          selectedValues: filters.primaryTopic,
-        }),
-        filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer('Filter by topic'),
-        filteredValue: filters.primaryTopic,
-        onHeaderCell: () => ({ 'aria-label': 'Topic' }),
-      },
-      {
-        title: 'Year group',
-        dataIndex: 'yearGroup',
-        key: 'yearGroup',
-        render: (_, row) => formatYearGroupLabel(row.yearGroup),
-        filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: handleSelectYearGroupFilter,
-          options: filterOptions.yearGroup,
-          selectedValues: filters.yearGroup,
-        }),
-        filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer('Filter by year group'),
-        filteredValue: filters.yearGroup,
-        onHeaderCell: () => ({ 'aria-label': 'Year group' }),
-      },
-      {
-        title: 'Document type',
-        dataIndex: 'documentType',
-        key: 'documentType',
-        filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: handleSelectDocumentTypeFilter,
-          options: filterOptions.documentType,
-          selectedValues: filters.documentType,
-        }),
-        filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer('Filter by document type'),
-        filteredValue: filters.documentType,
-        onHeaderCell: () => ({ 'aria-label': 'Document type' }),
-      },
-      {
-        title: 'Last updated',
-        dataIndex: 'updatedAt',
-        key: 'updatedAt',
-        render: (_, row) => formatUpdatedAtLabel(row.updatedAt),
-        filterDropdown: createFilterDropdownRenderer({
-          onSelectOption: handleSelectUpdatedAtFilter,
-          options: filterOptions.updatedAt,
-          selectedValues: filters.updatedAt,
-        }),
-        filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
-        filterIcon: createFilterIconRenderer('Filter by last updated'),
-        filteredValue: filters.updatedAt,
-        onHeaderCell: () => ({ 'aria-label': 'Last updated' }),
-      },
+        filterIcon: createFilterIconRenderer(descriptor.filterLabel),
+        filteredValue: filters[descriptor.key],
+        onHeaderCell: () => ({ 'aria-label': descriptor.title }),
+      })),
       {
         title: 'Actions',
         key: 'actions',
@@ -703,17 +666,7 @@ export function AssignmentsPage() {
         ),
       },
     ],
-    [
-      deleteMutation.isPending,
-      filterOptions,
-      filters,
-      handleSelectDocumentTypeFilter,
-      handleSelectPrimaryTitleFilter,
-      handleSelectPrimaryTopicFilter,
-      handleSelectUpdatedAtFilter,
-      handleSelectYearGroupFilter,
-      isDeleteSubmitting,
-    ]
+    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, isDeleteSubmitting]
   );
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState({

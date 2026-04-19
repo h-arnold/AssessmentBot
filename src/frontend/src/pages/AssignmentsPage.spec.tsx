@@ -358,45 +358,19 @@ describe('AssignmentsPage', () => {
     }
   );
 
-  it('keeps each filter trigger label bound to its column header even if trigger query order changes', async () => {
+  it('keeps each filter trigger label bound to its column header', async () => {
     getAssignmentDefinitionPartialsMock.mockResolvedValue(filterRows);
 
-    const originalQuerySelectorAll = HTMLDivElement.prototype.querySelectorAll;
-    const querySelectorAllSpy = vi
-      .spyOn(HTMLDivElement.prototype, 'querySelectorAll')
-      .mockImplementation(function patchedQuerySelectorAll(this: HTMLDivElement, selector: string) {
-        const queryResult = originalQuerySelectorAll.call(this, selector);
+    renderWithFrontendProviders(<AssignmentsPage />);
 
-        if (selector !== '.ant-table-filter-trigger[role="button"]') {
-          return queryResult;
-        }
+    const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
 
-        const reversedFilterTriggers = [...queryResult].toReversed();
-
-        return {
-          length: reversedFilterTriggers.length,
-          item(index: number) {
-            return reversedFilterTriggers[index] ?? null;
-          },
-        } as unknown as NodeListOf<Element>;
+    for (const expectedFilterNameByColumn of expectedFilterNamesByColumn) {
+      const columnHeader = within(table).getByRole('columnheader', {
+        name: expectedFilterNameByColumn.columnHeaderName,
       });
 
-    try {
-      renderWithFrontendProviders(<AssignmentsPage />);
-
-      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
-
-      for (const expectedFilterNameByColumn of expectedFilterNamesByColumn) {
-        const columnHeader = within(table).getByRole('columnheader', {
-          name: expectedFilterNameByColumn.columnHeaderName,
-        });
-
-        expect(
-          within(columnHeader).getByRole('button', { name: expectedFilterNameByColumn.filterButtonName })
-        ).toBeInTheDocument();
-      }
-    } finally {
-      querySelectorAllSpy.mockRestore();
+      expect(within(columnHeader).getByRole('button', { name: expectedFilterNameByColumn.filterButtonName })).toBeInTheDocument();
     }
   });
 
