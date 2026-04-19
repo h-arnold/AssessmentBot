@@ -177,6 +177,24 @@ describe('SettingsPage', () => {
     expect(backendPanelRuleBlock).not.toMatch(/\b720px\b/);
   });
 
+  it('keeps backend settings form edits mounted when switching away and back', async () => {
+    renderSettingsPage();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
+
+    const backendUrlInput = screen.getByLabelText('Backend URL');
+
+    fireEvent.change(backendUrlInput, { target: { value: 'https://changed-backend.example.com' } });
+    expect(backendUrlInput).toHaveValue('https://changed-backend.example.com');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Classes' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Backend settings' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Backend URL')).toHaveValue('https://changed-backend.example.com');
+    });
+  });
+
   it('resets the Classes selection when leaving and re-entering the tab', async () => {
     renderSettingsPage();
 

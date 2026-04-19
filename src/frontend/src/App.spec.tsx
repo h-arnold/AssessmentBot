@@ -245,6 +245,7 @@ describe('App', () => {
     vi.resetModules();
     vi.doUnmock('antd');
     vi.doUnmock('react-dom/client');
+    vi.doUnmock('./navigation/appNavigation');
   });
 
   it('menu renders all four entries in expanded mode with expected labels', async () => {
@@ -346,6 +347,79 @@ describe('App', () => {
 
       expectBreadcrumbLabels([appBreadcrumbBaseLabel, label]);
     }
+  });
+
+  it('fails fast when the shell menu receives an unexpected raw navigation key', async () => {
+    vi.resetModules();
+    vi.doMock('antd', async () => {
+      const actualAntd = (await vi.importActual('antd')) as Record<string, unknown>;
+
+      return {
+        ...actualAntd,
+        Menu(properties: { onClick?: (payload: { key: string }) => void }) {
+          properties.onClick?.({ key: 'reports' });
+          return <div data-testid="mock-navigation-menu" />;
+        },
+      };
+    });
+
+    const { AppShell } = await import('./AppShell');
+
+    expect(() =>
+      render(
+        <AppShell
+          dashboardContent={<div />}
+          isDarkMode={false}
+          onThemeModeChange={() => {
+            // Intentionally empty callback for shell contract tests.
+          }}
+        />
+      )
+    ).toThrow(/Unexpected navigation key: reports/);
+  });
+
+  it('uses the shared appNavigation render contract for selected page rendering', async () => {
+    vi.resetModules();
+
+    const renderNavigationPageSpy = vi.fn(() => (
+      <div data-testid="mock-render-contract-page">render contract page</div>
+    ));
+
+    vi.doMock('./navigation/appNavigation', () => ({
+      appBreadcrumbBaseLabel: 'AssessmentBot Frontend',
+      defaultNavigationKey: 'dashboard',
+      getBreadcrumbItems: () => [
+        { title: 'AssessmentBot Frontend' },
+        { title: 'Dashboard' },
+      ],
+      isAppNavigationKey: (key: string) =>
+        key === 'dashboard' || key === 'assignments' || key === 'settings',
+      navigationItems: [
+        {
+          key: 'dashboard',
+          label: 'Dashboard',
+          icon: <span aria-hidden className="app-navigation-icon" />,
+          children: [],
+        },
+      ],
+      renderNavigationPage: renderNavigationPageSpy,
+    }));
+
+    const { AppShell } = await import('./AppShell');
+    const dashboardContent = <div data-testid="mock-dashboard-slot">dashboard slot</div>;
+
+    render(
+      <AppShell
+        dashboardContent={dashboardContent}
+        isDarkMode={false}
+        onThemeModeChange={() => {
+          // Intentionally empty callback for shell contract tests.
+        }}
+      />
+    );
+
+    expect(renderNavigationPageSpy).toHaveBeenCalledWith('dashboard', dashboardContent);
+    expect(screen.getByTestId('mock-render-contract-page')).toBeInTheDocument();
   });
 
   it('no stale breadcrumb state after rapid page switching', async () => {

@@ -12,8 +12,6 @@ import { pageContent } from '../pages/pageContent';
 
 export type AppNavigationKey = 'dashboard' | 'assignments' | 'settings';
 
-type AppNavigationPageRenderer = (contentSlot?: ReactNode) => ReactNode;
-
 /**
  * Shared navigation item metadata stays tree-ready so later sections can add nested children
  * without introducing a second menu contract.
@@ -95,24 +93,29 @@ function buildUnknownPageKeyError(key: string) {
   return new TypeError(`Unknown page key: ${key}`);
 }
 
-const pageRendererMap: Record<AppNavigationKey, AppNavigationPageRenderer> = {
-  dashboard: (contentSlot) => <DashboardPage contentSlot={contentSlot} />,
-  assignments: () => <AssignmentsPage />,
-  settings: () => <SettingsPage />,
-};
-
-export const pageRenderers = new Proxy(pageRendererMap, {
-  get(target, property, receiver) {
-    if (typeof property === 'string' && !isAppNavigationKey(property)) {
-      throw buildUnknownPageKeyError(property);
+/**
+ * Resolves and renders the selected page from the canonical navigation contract.
+ *
+ * @param {AppNavigationKey} key Active navigation key.
+ * @param {ReactNode | undefined} contentSlot Optional dashboard content slot.
+ * @returns {ReactNode} The selected page.
+ */
+export function renderNavigationPage(key: AppNavigationKey, contentSlot?: ReactNode) {
+  switch (key) {
+    case 'dashboard': {
+      return <DashboardPage contentSlot={contentSlot} />;
     }
-
-    return Reflect.get(target, property, receiver);
-  },
-}) as Record<
-  AppNavigationKey,
-  AppNavigationPageRenderer
->;
+    case 'assignments': {
+      return <AssignmentsPage />;
+    }
+    case 'settings': {
+      return <SettingsPage />;
+    }
+    default: {
+      throw buildUnknownPageKeyError(String(key));
+    }
+  }
+}
 
 /**
  * Returns the shared label for a navigation key.

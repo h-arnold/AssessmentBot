@@ -9,7 +9,7 @@ import {
   getBreadcrumbItems,
   isAppNavigationKey,
   navigationItems,
-  pageRenderers,
+  renderNavigationPage,
   type AppNavigationItem,
   type AppNavigationKey,
 } from './navigation/appNavigation';
@@ -69,7 +69,6 @@ export function AppShell(properties: AppShellProperties) {
     '--app-motion-duration-mid': token.motionDurationMid,
     '--app-motion-ease-in-out': token.motionEaseInOut,
   } as CSSProperties;
-  const selectedPage = renderSelectedPage(selectedNavigationKey, dashboardContent);
 
   return (
     <Layout className="app-shell" style={shellStyle}>
@@ -153,33 +152,9 @@ export function AppShell(properties: AppShellProperties) {
             aria-label="Breadcrumb"
             className="app-breadcrumb"
           />
-          {selectedPage}
+          {renderNavigationPage(selectedNavigationKey, dashboardContent)}
         </Content>
       </Layout>
     </Layout>
   );
-}
-
-/**
- * Resolves the page renderer for the active navigation key without dynamic property access.
- *
- * @param {AppNavigationKey} key Active navigation key.
- * @param {ReactNode | undefined} dashboardContent Optional dashboard content slot.
- * @returns {ReactNode} The page renderer output for the active navigation key.
- */
-function renderSelectedPage(key: AppNavigationKey, dashboardContent?: ReactNode) {
-  switch (key) {
-    case 'dashboard': {
-      return pageRenderers.dashboard(dashboardContent);
-    }
-    case 'assignments': {
-      return pageRenderers.assignments(dashboardContent);
-    }
-    case 'settings': {
-      return pageRenderers.settings(dashboardContent);
-    }
-    default: {
-      throw new TypeError(`Unknown navigation key: ${String(key)}`);
-    }
-  }
 }
