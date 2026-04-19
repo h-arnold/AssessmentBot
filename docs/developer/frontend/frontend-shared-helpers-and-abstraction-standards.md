@@ -1,6 +1,6 @@
-# Frontend Shared Helpers and Abstraction Standards (Draft)
+# Frontend Shared Helpers and Abstraction Standards
 
-This document is the draft canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`.
+This document is the canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`.
 
 Use it alongside:
 
@@ -51,6 +51,8 @@ Do not create a new helper only to move code out of a large file.
 ### 3.3 Feature-shared helpers (existing local precedents)
 
 - Classes table shaping/filtering helpers: `src/frontend/src/features/classes/ClassesTable.helpers.ts`
+- Classes bulk-mutation orchestration helper: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/queryInvalidation.ts`
 - Classes reference-data workflow helpers: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
 
@@ -128,10 +130,10 @@ Use topic-specific docs for runtime policy details:
 - Testing helper and harness policy: `docs/developer/frontend/frontend-testing.md`
 - Shell navigation and motion policy: `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
-## 9. Planned cleanup helper entries
+## 9. Frontend de-sloppification helper outcomes
 
-These entries are planning-only records for the current frontend de-sloppification work.
-They are not implemented yet and must be reconciled during the documentation pass once the code changes land.
+These entries record the resolved helper and abstraction decisions from the frontend de-sloppification pass.
+Keep them aligned with the current implementation if later cleanup extends, reverts, or supersedes these outcomes.
 
 ### 9.1 Assignments page filter cleanup
 
@@ -139,8 +141,8 @@ They are not implemented yet and must be reconciled during the documentation pas
 
 - Decision: keep local
 - Owning path: `src/frontend/src/pages/AssignmentsPage.tsx`
-- Status: `Not implemented`
-- Rationale: the duplication is within one page; the goal is to collapse repeated column wiring and callback boilerplate without creating a cross-feature helper prematurely
+- Status: `Implemented`
+- Rationale: the repeated filter callbacks and column wiring now collapse into page-local descriptors plus one typed setter path, without introducing a speculative cross-feature helper
 
 ### 9.2 Shell navigation cleanup
 
@@ -148,8 +150,8 @@ They are not implemented yet and must be reconciled during the documentation pas
 
 - Decision: reuse
 - Owning path: `src/frontend/src/navigation/appNavigation.tsx`
-- Status: `Not implemented`
-- Rationale: the cleanup should keep one authoritative mapping for navigation keys and page rendering instead of maintaining parallel render sources in shell and tests
+- Status: `Implemented`
+- Rationale: `renderNavigationPage(...)` is now the single runtime source of truth for navigation-key-to-page rendering, and `AppShell` consumes that contract instead of keeping a second page-selection switch
 
 ### 9.3 Settings page tab cleanup
 
@@ -157,24 +159,31 @@ They are not implemented yet and must be reconciled during the documentation pas
 
 - Decision: keep local
 - Owning path: `src/frontend/src/pages/SettingsPage.tsx`
-- Status: `Not implemented`
-- Rationale: there is one production caller and two fixed tabs, so the cleanup should simplify by inlining instead of preserving single-use wrapper layers
+- Status: `Implemented`
+- Rationale: the two fixed Settings tabs now stay local to `SettingsPage`, so the page no longer preserves the removed one-caller wrapper chain
 
 ### 9.4 Classes bulk-action cleanup
 
 1. Helper or contract: bulk action descriptor feeding shared orchestration
 
 - Decision: extend
-- Owning path: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
-- Status: `Not implemented`
-- Rationale: the shared orchestration already owns a real cross-action contract; the planned change is to remove repeated handler scaffolding by supplying action-specific copy and mutation behaviour through a smaller descriptor surface
+- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`, `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Status: `Implemented`
+- Rationale: the panel now drives top-level bulk actions through descriptor-shaped action data while preserving `runBulkMutationOrchestration(...)` as the shared mutation boundary
 
-1. Helper or contract: metadata bulk-update contract for editable existing rows
+2. Helper or contract: metadata bulk-update contract for editable existing rows
 
 - Decision: new
 - Owning path: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
-- Status: `Not implemented`
-- Rationale: cohort, year-group, and course-length flows repeat the same editable-row filtering, payload-shaping, mutation-execution, and outcome-mapping pattern; one feature-scoped contract removes a real duplication seam instead of moving code sideways
+- Status: `Implemented`
+- Rationale: cohort, year-group, and course-length updates now converge on one feature-local metadata contract for eligibility filtering, payload validation, and batch mutation dispatch
+
+3. Helper or contract: selected-row derivation for toolbar consumers
+
+- Decision: keep local
+- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`
+- Status: `Implemented`
+- Rationale: the feature root now derives `selectedRows` once and passes that subset into `ClassesToolbar` instead of recomputing it in the child
 
 ### 9.5 Backend settings validation cleanup
 
@@ -182,8 +191,8 @@ They are not implemented yet and must be reconciled during the documentation pas
 
 - Decision: keep local
 - Owning path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
-- Status: `Not implemented`
-- Rationale: repeated `Form.Item` validation wiring should be collapsed through a local descriptor-driven pattern inside the panel rather than a one-caller wrapper extraction
+- Status: `Implemented`
+- Rationale: repeated `Form.Item` wiring now flows through a local descriptor-driven render path inside the panel, and Ant Design form meta remains the single validation-error source of truth
 
 ### 9.6 Page copy reuse in tests
 
@@ -191,5 +200,14 @@ They are not implemented yet and must be reconciled during the documentation pas
 
 - Decision: reuse
 - Owning path: `src/frontend/src/pages/pageContent.ts`
-- Status: `Not implemented`
-- Rationale: where tests are currently duplicating stable page copy only to mirror production constants, the cleanup may reuse the production copy source instead of preserving a second test-only source of truth
+- Status: `Implemented`
+- Rationale: touched tests now reuse `pageContent` where they only need the stable production headings and summaries, rather than mirroring that copy in a separate helper
+
+### 9.7 Classes bulk modal-shell extraction
+
+1. Helper or contract: shared modal submit shell for classes bulk-edit dialogs
+
+- Decision: defer
+- Owning path: `src/frontend/src/features/classes/BulkCreateModal.tsx`, `src/frontend/src/features/classes/BulkSetSelectModal.tsx`
+- Status: `Deferred`
+- Rationale: the current pair still shares similar shell structure, but this pass intentionally kept the duplication local rather than introducing a speculative wrapper without a clearer third caller or tighter shared contract

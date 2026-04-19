@@ -766,6 +766,7 @@ Frontend e2e tests:
 
 - Green implementation completed the approved low-risk cleanup sweep (test copy dedupe, comment cleanup, and trivial glue simplification) without introducing new abstraction layers.
 - Acceptance summary: user-visible behaviour and section contracts remained unchanged, and the cleanup stayed within the agreed no-layout/no-workflow-change boundary.
+- Regression follow-up cleanup landed without scope drift: duplicate doc blocks were removed and an additional trivial wrapper layer was eliminated while keeping existing behaviour contracts intact.
 
 ### Section 5 LOC tracking
 
@@ -775,7 +776,8 @@ Frontend e2e tests:
 - After Section 3 cumulative total: 3896
 - After Section 4 cumulative total: 3709
 - After Section 5 cumulative total: 3709 (no production change)
-- Cumulative delta: -427
+- After regression follow-up cleanup cumulative total: 3670
+- Cumulative delta after regression follow-up: -466
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -784,12 +786,16 @@ Frontend e2e tests:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** Section 5 is complete; low-risk cleanup items were delivered with regression-baseline confirmation and `pageExpectations` dedupe where production copy reuse was appropriate.
-- **Deviations from plan:** no production-file LOC movement in this section; cleanup landed in tests/documentation-level surfaces while preserving all section contracts.
-- **Follow-up implications for later sections:** next phase is **Regression and contract hardening**, currently **in progress**; red/green loops are complete for Sections 1-5.
+- **Deviations from plan:** no behavioural deviations; follow-up regression cleanup removed duplicate doc blocks and one remaining wrapper without reintroducing any abstraction layer.
+- **Follow-up implications for later sections:** regression and contract hardening and mandatory De-Sloppification are complete; the final documentation pass has now completed.
 
 ---
 
 ## Regression and contract hardening
+
+### Status
+
+- Completed.
 
 ### Objective
 
@@ -843,14 +849,62 @@ Code Reviewer mandatory docs:
 - Ensure all commands above are green.
 - Record the starting LOC total and final LOC total in implementation notes.
 
+### Regression and De-Sloppification execution tracker (completed)
+
+- [x] targeted unit regression targets passed
+- [x] targeted Playwright regression suites passed
+- [x] `npm run frontend:lint` passed
+- [x] `npm run frontend:test:coverage` passed
+- [x] initial regression blocker resolved (`app.e2e` missing `pageExpectations` import)
+- [x] remaining low-risk slop findings resolved (duplicate doc blocks + wrapper removal)
+- [x] initial De-Sloppification findings captured (pass-through metadata wrappers + top-level classes scaffolding duplication)
+- [x] De-Sloppification cleanup applied and verified by Code Reviewer with a clean result
+- [x] deferred modal-shell still deferred and no wrapper-layer reintroduction
+- [x] final LOC baseline recorded and gate passed
+
+### Regression checklist outcomes and commands run
+
+Frontend unit/component targets (all passed):
+
+1. `npm run frontend:test -- src/navigation/appNavigation.spec.tsx`
+2. `npm run frontend:test -- src/pages/SettingsPage.spec.tsx`
+3. `npm run frontend:test -- src/pages/AssignmentsPage.spec.tsx`
+4. `npm run frontend:test -- src/features/classes/ClassesManagementPanel.spec.tsx`
+5. `npm run frontend:test -- src/features/classes/ClassesManagementPanel.bulkMetadataFailure.spec.tsx`
+6. `npm run frontend:test -- src/features/classes/ClassesToolbar.spec.tsx`
+7. `npm run frontend:test -- src/features/classes/bulkMutationOrchestration.spec.ts`
+8. `npm run frontend:test -- src/features/settings/backend/BackendSettingsPanel.spec.tsx`
+9. `npm run frontend:test -- src/features/settings/backend/useBackendSettings.spec.ts`
+10. `npm run frontend:test -- src/features/settings/backend/backendSettingsFormMapper.spec.ts`
+11. `npm run frontend:test -- src/features/settings/backend/backendSettingsForm.zod.spec.ts`
+
+Frontend e2e suites (all passed after blocker fix):
+
+1. `npm run frontend:test:e2e -- e2e-tests/app.spec.ts` (initial blocker: missing `pageExpectations` import in `app.e2e`; resolved)
+2. `npm run frontend:test:e2e -- e2e-tests/settings-page.spec.ts`
+3. `npm run frontend:test:e2e -- e2e-tests/assignments-page.spec.ts`
+4. `npm run frontend:test:e2e -- e2e-tests/classes-crud.harness.spec.ts`
+5. `npm run frontend:test:e2e -- e2e-tests/classes-crud-*.spec.ts`
+6. `npm run frontend:test:e2e -- e2e-tests/settings-backend.spec.ts`
+
+Broad validation commands (all passed):
+
+1. `npm run frontend:lint`
+2. `npm run frontend:test:coverage`
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record final production LOC delta against the explicit baseline.
-- **Deviations from plan:** note any temporary LOC increase that was paid back later.
+- **Implementation notes:** regression, contract hardening, and mandatory De-Sloppification are complete. Final baseline total is **3670**, which is **-466** versus the recorded starting baseline of **4136**.
+- **Deviations from plan:** initial regression blocker (`app.e2e` missing `pageExpectations` import) and De-Sloppification findings (pass-through metadata wrappers + top-level classes scaffolding duplication) were resolved without behavioural drift.
+- **Follow-up:** deferred modal-shell extraction remains deferred, no wrapper layers were reintroduced, the branch is ready for documentation sync, and the next phase was the **Final documentation pass** (completed).
 
 ---
 
 ## Documentation and rollout notes
+
+### Status
+
+- Completed: final documentation sync is complete.
 
 ### Objective
 
@@ -880,7 +934,10 @@ Code Reviewer mandatory docs:
 - `/workspaces/AssessmentBot/src/frontend/AGENTS.md`
 - `/workspaces/AssessmentBot/SPEC.md`
 - `/workspaces/AssessmentBot/ACTION_PLAN.md`
+- `/workspaces/AssessmentBot/SLOP_REVIEW.md`
 - `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `/workspaces/AssessmentBot/docs/developer/frontend/frontend-shell-navigation-and-motion.md`
 
 ### Acceptance criteria
 
@@ -901,7 +958,10 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- Record final helper statuses, final production LOC delta, and any deliberate deferrals that remain after implementation.
+- Final helper statuses are now recorded in `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
+- Shell-navigation policy now records `renderNavigationPage(...)` as the single runtime render contract in `docs/developer/frontend/frontend-shell-navigation-and-motion.md`.
+- Deferred modal-shell extraction remains explicitly deferred; no AGENTS updates were needed because the existing routing guidance already matched the final architecture.
+- Final production LOC delta remains **-466** versus the recorded starting baseline.
 
 ---
 
