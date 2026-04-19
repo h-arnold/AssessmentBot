@@ -47,11 +47,12 @@ Do not start by drafting from memory or by asking generic discovery questions th
 7. If a layout spec is required, consult the official Ant Design docs for likely component choices, run a second clarification loop, write the layout spec, then submit it to `Planner Reviewer` and resolve findings before proceeding.
 8. If reviewer findings on the layout spec require further user clarification, stop and ask focused questions before revising it.
 9. If the user's answer is still not clear enough to remove the ambiguity, ask follow-up questions rather than guessing.
-10. After the spec and any required layout spec are complete, write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
-11. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
-12. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
-13. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
-14. Hand the finished planning artefacts back to the calling user or orchestrator with assumptions and open questions called out.
+10. Identify shared-helper or abstraction decisions implied by the agreed scope and record them in the relevant canonical docs as planned-only entries marked `Not implemented`.
+11. After the spec and any required layout spec are complete, write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
+12. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
+13. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
+14. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
+15. Hand the finished planning artefacts back to the calling user or orchestrator with assumptions and open questions called out.
 
 ## 2. Clarification Loop for the Spec
 
@@ -93,6 +94,8 @@ When the clarification loop is complete:
 - If an existing `SPEC.md` already contains valid decisions, preserve and refine them rather than rewriting blindly.
 
 The spec must be concrete enough that a later implementation agent could build and test the feature without inventing core behaviour.
+
+Do not use `SPEC.md` to track implementation status for planned helpers.
 
 ### Mandatory spec review loop
 
@@ -192,6 +195,8 @@ After the spec and any required layout spec are complete:
 - Order sections so enabling contracts and infrastructure land before dependent orchestration or UI work.
 - Avoid giant mixed sections that span too many modules unless that coupling is unavoidable.
 - Include regression/contract hardening and documentation/rollout sections.
+- Include a per-section shared-helper planning block when helper reuse/extension/new extraction is expected.
+- For planned shared helpers, reference the relevant canonical docs where planned-only helper entries were recorded as `Not implemented`.
 
 The plan should be specific enough for the implementation orchestrator to execute sequentially without having to reopen core product decisions.
 

@@ -30,11 +30,12 @@ Review priorities:
 - frontend layout choices that conflict with shell, navigation, accessibility, or component patterns
 - action-plan sections that are too large, not independently testable, or that smuggle unresolved product decisions into implementation sequencing
 - anything likely to create compounding downstream errors if inherited by later documents
+- missing or unclear shared-helper planning where duplication or abstraction decisions are likely, including missing planned-only helper entries in relevant canonical docs
 
 Review method:
-- For `SPEC.md`, check boundaries, decisions versus assumptions, contract clarity, naming consistency, and whether core behaviour has been left unresolved.
+- For `SPEC.md`, check boundaries, decisions versus assumptions, contract clarity, naming consistency, whether core behaviour has been left unresolved, and whether `SPEC.md` is being misused as an implementation-status tracker for planned helpers.
 - For layout specs, check whether the document is warranted, whether component choices suit the behaviour, whether visible states and workflow surfaces are explicit, and whether the layout aligns with existing frontend constraints.
-- For `ACTION_PLAN.md`, check whether the plan derives from the spec, splits work into small independently testable sections, follows genuine Red/Green/Refactor sequencing, orders dependencies sensibly, and includes regression and documentation follow-through.
+- For `ACTION_PLAN.md`, check whether the plan derives from the spec, splits work into small independently testable sections, follows genuine Red/Green/Refactor sequencing, orders dependencies sensibly, includes regression and documentation follow-through, includes shared-helper planning where relevant (reuse/extend/new/keep-local decisions and ownership), and requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts.
 
 Impartiality rules:
 - Review independently rather than echoing the calling agent's framing.

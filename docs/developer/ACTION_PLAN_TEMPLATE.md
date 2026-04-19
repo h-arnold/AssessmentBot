@@ -57,6 +57,15 @@ For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer
 3. verify every mandatory file is listed before accepting the handoff
 4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
 
+### Shared-helper planning gate (mandatory when helper changes are expected)
+
+When a section is likely to introduce helper reuse, helper extension, or new shared helpers:
+
+1. record helper decisions in that section before implementation
+2. include: decision (`reuse` | `extend` | `new` | `keep local`), owning path, and call-site rationale
+3. add planned helper entries to the relevant canonical docs with status `Not implemented`
+4. during documentation pass, reconcile planned entries against actual implementation and update status/details accordingly
+
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint`
@@ -96,6 +105,18 @@ Other delegated agents (if used) mandatory docs:
 
 - ...
 
+### Shared helper plan (when helper changes are expected)
+
+Helper decision entries:
+
+1. Helper: `[name or contract]`
+   - Decision: `[reuse | extend | new | keep local]`
+   - Owning module/path: `[...]`
+   - Call-site rationale: `[...]`
+   - Relevant canonical doc target: `[...]`
+   - Planned doc status: `Not implemented`
+2. ...
+
 ### Acceptance criteria
 
 - Bullet the concrete observable outcomes that must be satisfied.
@@ -123,6 +144,8 @@ Frontend tests:
 
 - `npm test -- tests/...`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
+- Shared-helper planning entries are present when helper changes are expected.
+- Planned helper entries were added to relevant canonical docs with status `Not implemented` before implementation starts.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -200,6 +223,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
 4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
+5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review
 

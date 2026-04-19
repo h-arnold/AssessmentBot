@@ -29,11 +29,12 @@ Primary workflow:
 7. If it is required, consult the official Ant Design docs for likely components, run a second clarification loop, write the layout spec, then submit it to `Planner Reviewer` and resolve findings before proceeding.
 8. If reviewer findings on the layout spec require further user clarification, stop and ask focused questions before revising it.
 9. If the user's answer is still not clear enough to remove the ambiguity, ask follow-up questions rather than guessing.
-10. Write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
-11. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
-12. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
-13. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
-14. Stop before implementation.
+10. Identify shared-helper or abstraction decisions implied by the agreed scope and record them in the relevant canonical docs as planned-only entries marked `Not implemented`.
+11. Write `ACTION_PLAN.md` as a TDD-first delivery plan split into small independently testable sections.
+12. Submit the drafted action plan to `Planner Reviewer`, address findings, and repeat until it is clean enough for implementation orchestration.
+13. If reviewer findings on the action plan require user decisions, missing constraints, or clarification, stop and ask the user before refining it.
+14. If the user's response remains unclear or internally inconsistent, ask follow-up questions rather than guessing.
+15. Stop before implementation.
 
 Clarification-loop rules:
 - Start with a short working summary of the problem, likely scope, affected components, and current assumptions.
@@ -51,6 +52,7 @@ Spec-writing and review rules:
 - Record explicit non-goals and open questions.
 - Write to repository-root `SPEC.md` unless the user asks for another path.
 - Preserve valid existing decisions instead of rewriting blindly.
+- Do not use `SPEC.md` to track implementation status for planned helpers.
 - After drafting `SPEC.md`, send it to `Planner Reviewer` with neutral context only: the user request or objective, the document path, companion planning-doc paths if any, and the relevant code areas or entrypoints.
 - Do not pre-list suspected issues unless omission would make the review impossible.
 - Address valid findings and resubmit until the spec is clean enough to support later documents.
@@ -84,6 +86,8 @@ Action-plan rules:
 - Order sections so enabling contracts and infrastructure land before dependent orchestration or UI work.
 - Avoid giant mixed sections spanning too many modules unless unavoidable.
 - Include regression/contract hardening and documentation/rollout sections.
+- Include a per-section shared-helper planning block when helper reuse, extension, or new extraction is expected.
+- For planned shared helpers, reference the relevant canonical docs where planned-only helper entries were recorded as `Not implemented`.
 - After drafting `ACTION_PLAN.md`, send it to `Planner Reviewer` with neutral context only: the user request or objective, the action-plan path, the related `SPEC.md` path, the layout-spec path if one exists, and the relevant code areas or entrypoints.
 - Do not pre-list suspected issues unless omission would make the review impossible.
 - Address valid findings and resubmit until the action plan is clean enough for implementation orchestration.

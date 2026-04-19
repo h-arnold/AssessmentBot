@@ -51,6 +51,7 @@ Look for:
 5. frontend layout choices that conflict with existing shell, navigation, accessibility, or component patterns
 6. action-plan sections that are too large, not independently testable, or that smuggle unresolved product decisions into implementation sequencing
 7. anything likely to create compounding downstream errors if later documents inherit the mistake
+8. missing or unclear shared-helper planning where duplication or abstraction decisions are likely, including missing planned-only helper entries in relevant canonical docs
 
 ## 2. Review Method
 
@@ -63,6 +64,7 @@ Check that the spec:
 - resolves or explicitly records important contract and ownership questions
 - does not leave core behavioural decisions to `ACTION_PLAN.md`
 - stays consistent with existing code, naming, and data-shape constraints
+- does not misuse `SPEC.md` as an implementation-status tracker for planned helpers
 
 ### For layout specs
 
@@ -85,6 +87,8 @@ Check that the plan:
 - orders sections so dependencies land before dependent work
 - keeps risky or cross-cutting work explicit rather than hiding it inside a broad section
 - includes regression and documentation follow-through
+- includes shared-helper planning where relevant (reuse/extend/new/keep-local decisions, ownership, and relevant doc targets)
+- requires planned helper entries in relevant canonical docs to be marked `Not implemented` before implementation starts
 
 ## 3. Impartiality Rules
 

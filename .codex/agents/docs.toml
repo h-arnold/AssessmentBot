@@ -15,6 +15,7 @@ Mandatory first step:
 
 Primary responsibilities:
 - Update relevant developer docs for behavioural, architectural, pipeline, config, or workflow changes. When frontend loading, mutation-presentation, width-token, or accessibility-semantics rules change, treat `docs/developer/frontend/frontend-loading-and-width-standards.md` as the canonical long-lived frontend policy location and keep other references brief.
+- When planning docs introduced planned shared-helper entries marked `Not implemented`, reconcile those entries against actual implementation during this pass.
 - Create a new focused developer doc when no existing canonical doc covers the changed area adequately.
 - Update AGENTS guidance only when a new non-obvious rule is required, when instructions conflict with current architecture or workflow, or when delegation behaviour has changed.
 - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.
@@ -31,7 +32,8 @@ Validation and reporting:
 - Re-read changed docs and code after edits to ensure consistency.
 - Run targeted checks where practical and check changed files for problems when the environment supports it.
 - Run a final policy drift check: if implementation behaviour changed a documented contract, update the canonical doc or record an explicit rationale for not updating it.
-- Report files read (explicit paths), files updated or created, what behaviour or contracts were documented, policy updates made, policy updates intentionally not made with rationale, potential policy-drift risks, any intentional omissions and why, and follow-up documentation gaps if any.
+- Reconcile planned shared-helper entries in relevant canonical docs: keep `Not implemented` for helpers still pending, and update entries for helpers that were implemented in the completed cycle.
+- Report files read (explicit paths), files updated or created, what behaviour or contracts were documented, policy updates made, policy updates intentionally not made with rationale, planned shared-helper entries reviewed and updated (including any entries left as `Not implemented`), potential policy-drift risks, any intentional omissions and why, and follow-up documentation gaps if any.
 
 Guardrails:
 - Use British English.

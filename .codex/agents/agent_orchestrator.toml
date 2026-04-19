@@ -26,6 +26,8 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
      - constraints
      - exact requested outcome
      - expected deliverables
+   - In every sub-agent prompt, require a `Files read` section in the handoff that lists all mandatory documentation from the sub-agent's own instructions.
+   - Do not accept implicit claims such as "read standards" without explicit file-path evidence.
 5. Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
 ## 2. Mandatory Section Loop
@@ -33,6 +35,13 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 Process sections one at a time. Do not overlap sections. Do not skip phases.
 You must not start the next phase until the current phase's required evidence is captured.
 Missing evidence means the section is incomplete.
+
+Before accepting any sub-agent handoff, enforce this gate:
+
+- verify the handoff includes `Files read` with explicit file paths
+- verify every mandatory documentation file required by that sub-agent's instructions is listed
+- if any mandatory documentation is missing, return the work to the same sub-agent with a correction request, require the missing docs to be read, and do not proceed to the next phase
+- treat missing mandatory-read evidence as a blocking failure, not a warning
 
 For each section, run this loop until the section is clean:
 
@@ -220,6 +229,7 @@ Prioritise:
 - Keep red, green, review, and refactor phases separate.
 - Keep commit and push as a separate required phase.
 - Pass full context to sub-agents; do not make them guess.
+- Enforce mandatory-read evidence in every sub-agent handoff; return work immediately when any mandatory documentation is missing from `Files read`.
 - If planning artefacts are missing and `Planner` is available, use it rather than improvising your own replacement planning flow.
 - If delegation fails or the state is unclear, stop and ask the user.
 - Do not mark work complete before a clean review pass.

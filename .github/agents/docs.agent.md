@@ -27,6 +27,7 @@ Before writing documentation updates, you must:
 1. **Developer documentation updates**:
    - Update relevant docs in `docs/developer/` for behavioural, architectural, pipeline, config, or workflow changes. When frontend loading, mutation-presentation, width-token, or accessibility-semantics rules change, treat `docs/developer/frontend/frontend-loading-and-width-standards.md` as the canonical long-lived frontend policy location and keep other references brief.
    - Keep updates concrete, implementation-grounded, and concise.
+   - When planning docs introduced planned shared-helper entries marked `Not implemented`, reconcile those entries against actual implementation during this pass.
 
 2. **Create missing developer docs when needed**:
    - If a changed module/class/workflow has no suitable developer documentation, create a new focused doc in `docs/developer/`.
@@ -87,6 +88,7 @@ After edits:
 2. Run targeted checks where practical (for example lint/docs link checks if available).
 3. Use `read/problems` to catch markdown or lint issues in changed files.
 4. Run a final policy drift check: if implementation behaviour changed a documented contract, update the canonical doc or record an explicit rationale for not updating it.
+5. Reconcile planned shared-helper entries in relevant canonical docs: keep `Not implemented` for helpers still pending, and update entries for helpers that were implemented in the completed cycle.
 
 Do not claim completion until documentation and JSDoc reflect the implemented code.
 
@@ -99,6 +101,7 @@ Provide a concise handoff summary including:
 - What behaviour or contract changes were documented.
 - Policy updates made.
 - Policy updates intentionally not made, with rationale.
+- Planned shared-helper entries reviewed and updated (including any entries left as `Not implemented`).
 - Any intentional omissions and why.
 - Potential policy-drift risks (if any).
 - Follow-up documentation gaps (if any).
