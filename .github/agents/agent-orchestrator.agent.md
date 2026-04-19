@@ -22,10 +22,8 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
    - Expect the planner to produce `SPEC.md`, any required frontend layout spec, and `ACTION_PLAN.md`.
    - Do not begin implementation sequencing until those artefacts exist, unless the user explicitly instructs you to skip planning.
 4. Detect the delegation environment once and reuse it:
-   - GitHub Copilot: `runSubagent(...)`
-   - Codex: `codex-delegate ...`
    - For both environments, pass full context to every sub-agent request:
-     - files read
+     - files read (this *must* include `ACTION_PLAN.md`, `SPEC.md` and appropriate layout document where needed)
      - constraints
      - exact requested outcome
      - expected deliverables
@@ -47,6 +45,8 @@ Before accepting any sub-agent handoff, enforce this gate:
 - treat missing mandatory-read evidence as a blocking failure, not a warning
 
 For each section, run this loop until the section is clean:
+
+**IMPORTANT NOTE:** If the the action plan allows, **and only if it allows** , you may deviate from this exact loop where it is inappropriate, for example if you are completing a refactor or cleanup where strict adherence to TDD would not make sense. 
 
 ### 2.1 Red: Testing Specialist
 

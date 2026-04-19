@@ -127,3 +127,69 @@ Use topic-specific docs for runtime policy details:
 - Logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Testing helper and harness policy: `docs/developer/frontend/frontend-testing.md`
 - Shell navigation and motion policy: `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
+
+## 9. Planned cleanup helper entries
+
+These entries are planning-only records for the current frontend de-sloppification work.
+They are not implemented yet and must be reconciled during the documentation pass once the code changes land.
+
+### 9.1 Assignments page filter cleanup
+
+1. Helper or contract: assignments column-filter descriptor and single typed filter setter
+
+- Decision: keep local
+- Owning path: `src/frontend/src/pages/AssignmentsPage.tsx`
+- Status: `Not implemented`
+- Rationale: the duplication is within one page; the goal is to collapse repeated column wiring and callback boilerplate without creating a cross-feature helper prematurely
+
+### 9.2 Shell navigation cleanup
+
+1. Helper or contract: navigation page renderer source of truth
+
+- Decision: reuse
+- Owning path: `src/frontend/src/navigation/appNavigation.tsx`
+- Status: `Not implemented`
+- Rationale: the cleanup should keep one authoritative mapping for navigation keys and page rendering instead of maintaining parallel render sources in shell and tests
+
+### 9.3 Settings page tab cleanup
+
+1. Helper or contract: settings tab item construction
+
+- Decision: keep local
+- Owning path: `src/frontend/src/pages/SettingsPage.tsx`
+- Status: `Not implemented`
+- Rationale: there is one production caller and two fixed tabs, so the cleanup should simplify by inlining instead of preserving single-use wrapper layers
+
+### 9.4 Classes bulk-action cleanup
+
+1. Helper or contract: bulk action descriptor feeding shared orchestration
+
+- Decision: extend
+- Owning path: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Status: `Not implemented`
+- Rationale: the shared orchestration already owns a real cross-action contract; the planned change is to remove repeated handler scaffolding by supplying action-specific copy and mutation behaviour through a smaller descriptor surface
+
+1. Helper or contract: metadata bulk-update contract for editable existing rows
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
+- Status: `Not implemented`
+- Rationale: cohort, year-group, and course-length flows repeat the same editable-row filtering, payload-shaping, mutation-execution, and outcome-mapping pattern; one feature-scoped contract removes a real duplication seam instead of moving code sideways
+
+### 9.5 Backend settings validation cleanup
+
+1. Helper or contract: local schema-aware field descriptor path for backend settings fields
+
+- Decision: keep local
+- Owning path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
+- Status: `Not implemented`
+- Rationale: repeated `Form.Item` validation wiring should be collapsed through a local descriptor-driven pattern inside the panel rather than a one-caller wrapper extraction
+
+### 9.6 Page copy reuse in tests
+
+1. Helper or contract: page copy source of truth for frontend tests
+
+- Decision: reuse
+- Owning path: `src/frontend/src/pages/pageContent.ts`
+- Status: `Not implemented`
+- Rationale: where tests are currently duplicating stable page copy only to mirror production constants, the cleanup may reuse the production copy source instead of preserving a second test-only source of truth
