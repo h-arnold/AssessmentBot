@@ -161,6 +161,24 @@ function createQueryWrapper() {
   };
 }
 
+/**
+ * Configures startup warm-up mocks so assignment definitions fail while class datasets succeed.
+ *
+ * @returns {Promise<void>} Resolves once the shared warm-up implementation is wired.
+ */
+async function configureAssignmentDefinitionWarmupFailure(): Promise<void> {
+  const { warmStartupQueries: actualWarmStartupQueries } =
+    await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
+  getAuthorisationStatusMock.mockResolvedValueOnce(true);
+  warmStartupQueriesMock.mockImplementationOnce((queryClient) => actualWarmStartupQueries(queryClient));
+  getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
+  getCohortsMock.mockResolvedValueOnce([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
+  getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
+  getAssignmentDefinitionPartialsMock.mockRejectedValueOnce(
+    new Error('Assignment definitions warm-up failed.')
+  );
+}
+
 describe('AppAuthGate', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -296,17 +314,8 @@ describe('AppAuthGate', () => {
   });
 
   it('publishes mixed dataset warm-up outcomes through AppAuthGate when assignment definitions fail', async () => {
-    const { warmStartupQueries: actualWarmStartupQueries } =
-      await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
+    await configureAssignmentDefinitionWarmupFailure();
     const { QueryWrapper } = createQueryWrapper();
-    getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockImplementationOnce((queryClient) => actualWarmStartupQueries(queryClient));
-    getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
-    getCohortsMock.mockResolvedValueOnce([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
-    getAssignmentDefinitionPartialsMock.mockRejectedValueOnce(
-      new Error('Assignment definitions warm-up failed.')
-    );
 
     render(
       <AppAuthGate>
@@ -344,17 +353,8 @@ describe('AppAuthGate', () => {
   });
 
   it('keeps class datasets ready in helper semantics when assignment definitions fail in warm-up', async () => {
-    const { warmStartupQueries: actualWarmStartupQueries } =
-      await vi.importActual<typeof SharedQueriesModule>('../../query/sharedQueries');
+    await configureAssignmentDefinitionWarmupFailure();
     const { QueryWrapper } = createQueryWrapper();
-    getAuthorisationStatusMock.mockResolvedValueOnce(true);
-    warmStartupQueriesMock.mockImplementationOnce((queryClient) => actualWarmStartupQueries(queryClient));
-    getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
-    getCohortsMock.mockResolvedValueOnce([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
-    getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
-    getAssignmentDefinitionPartialsMock.mockRejectedValueOnce(
-      new Error('Assignment definitions warm-up failed.')
-    );
 
     render(
       <AppAuthGate>

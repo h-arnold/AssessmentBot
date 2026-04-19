@@ -52,6 +52,42 @@ function createDeferredPromise<T>() {
   };
 }
 
+type StartupWarmupDeferreds = Readonly<{
+  classPartialsDeferred: ReturnType<typeof createDeferredPromise<Array<{ classId: string }>>>;
+  assignmentDefinitionPartialsDeferred: ReturnType<
+    typeof createDeferredPromise<Array<{ definitionKey: string }>>
+  >;
+  cohortsDeferred: ReturnType<
+    typeof createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>
+  >;
+  yearGroupsDeferred: ReturnType<
+    typeof createDeferredPromise<Array<{ key: string; name: string }>>
+  >;
+}>;
+
+/**
+ * Creates deferred startup datasets and wires shared query mocks to them.
+ *
+ * @returns {StartupWarmupDeferreds} Deferred datasets bound to startup query mocks.
+ */
+function configureDeferredWarmupDatasets(): StartupWarmupDeferreds {
+  const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
+  const assignmentDefinitionPartialsDeferred = createDeferredPromise<Array<{ definitionKey: string }>>();
+  const cohortsDeferred = createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>();
+  const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
+  getABClassPartialsMock.mockImplementation(() => classPartialsDeferred.promise);
+  getAssignmentDefinitionPartialsMock.mockImplementation(() => assignmentDefinitionPartialsDeferred.promise);
+  getCohortsMock.mockImplementation(() => cohortsDeferred.promise);
+  getYearGroupsMock.mockImplementation(() => yearGroupsDeferred.promise);
+
+  return {
+    classPartialsDeferred,
+    assignmentDefinitionPartialsDeferred,
+    cohortsDeferred,
+    yearGroupsDeferred,
+  };
+}
+
 describe('shared query definitions', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -134,18 +170,12 @@ describe('shared query definitions', () => {
   });
 
   it('warms classPartials, assignmentDefinitionPartials, cohorts, and yearGroups in parallel through shared query options only', async () => {
-    const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
-    const assignmentDefinitionPartialsDeferred = createDeferredPromise<Array<{ definitionKey: string }>>();
-    const cohortsDeferred = createDeferredPromise<
-      Array<{ key: string; name: string; active: boolean }>
-    >();
-    const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
-    getABClassPartialsMock.mockImplementation(() => classPartialsDeferred.promise);
-    getAssignmentDefinitionPartialsMock.mockImplementation(
-      () => assignmentDefinitionPartialsDeferred.promise
-    );
-    getCohortsMock.mockImplementation(() => cohortsDeferred.promise);
-    getYearGroupsMock.mockImplementation(() => yearGroupsDeferred.promise);
+    const {
+      classPartialsDeferred,
+      assignmentDefinitionPartialsDeferred,
+      cohortsDeferred,
+      yearGroupsDeferred,
+    } = configureDeferredWarmupDatasets();
 
     const { warmStartupQueries } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
@@ -200,18 +230,12 @@ describe('shared query definitions', () => {
   });
 
   it('reuses React Query in-flight deduplication for repeated startup warm-up calls including assignmentDefinitionPartials', async () => {
-    const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
-    const assignmentDefinitionPartialsDeferred = createDeferredPromise<Array<{ definitionKey: string }>>();
-    const cohortsDeferred = createDeferredPromise<
-      Array<{ key: string; name: string; active: boolean }>
-    >();
-    const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
-    getABClassPartialsMock.mockImplementation(() => classPartialsDeferred.promise);
-    getAssignmentDefinitionPartialsMock.mockImplementation(
-      () => assignmentDefinitionPartialsDeferred.promise
-    );
-    getCohortsMock.mockImplementation(() => cohortsDeferred.promise);
-    getYearGroupsMock.mockImplementation(() => yearGroupsDeferred.promise);
+    const {
+      classPartialsDeferred,
+      assignmentDefinitionPartialsDeferred,
+      cohortsDeferred,
+      yearGroupsDeferred,
+    } = configureDeferredWarmupDatasets();
 
     const { warmStartupQueries } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
