@@ -373,6 +373,10 @@ Frontend e2e tests:
 
 - Remove duplicated classes bulk-action scaffolding, collapse repeated metadata flow logic, inline the one-caller panel render helper, and stop recomputing the same selected-row subset in parent and toolbar.
 
+### Status
+
+- Completed: Section 3 red and green phases are complete; checks are passing.
+
 ### Constraints
 
 - Preserve `runBulkMutationOrchestration(...)` as the shared mutation boundary unless a simpler internal change within that contract is sufficient.
@@ -479,15 +483,49 @@ Frontend e2e tests:
 - Recount the cumulative production LOC total for the touched classes baseline files.
 - Mandatory-read evidence gate passed for all delegated handoffs.
 
+### Section 3 execution tracker (completed)
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created (pending)
+- [ ] push completed (pending)
+
+### Section 3 red-phase findings and resolutions
+
+1. Finding: early red-phase classes coverage included brittle source-structure assertions that would break on harmless refactors.
+   - Resolution: removed brittle source-coupled assertions and kept behaviour-contract assertions for orchestration, modal outcomes, and selection semantics.
+2. Finding: bulk journey coverage drifted across multiple classes e2e specs.
+   - Resolution: unified bulk journey expectations through the shared classes CRUD harness and aligned touched `classes-crud-*.spec.ts` flows to that single authority.
+
+### Section 3 green implementation notes and acceptance summary
+
+- Green implementation removed duplicated per-action scaffolding in `ClassesManagementPanel`, converged cohort/year-group/course-length updates onto the shared feature-local metadata flow contract, and passed parent-derived `selectedRows` into `ClassesToolbar`.
+- Acceptance summary: panel alert handling, modal outcome-family split, create defaults (`courseLength: 1`), refresh-required handling, selection retention, and modal close-vs-inline-error semantics remained aligned with the section acceptance criteria.
+
+### Section 3 LOC tracking
+
+- Baseline total: 4136
+- After Section 1 cumulative total: 4034
+- After Section 2 cumulative total: 3987
+- After Section 3 cumulative total: 3896
+- Cumulative delta: -240
+- Touched Section 3 baseline files subtotal: 1302 -> 1211 (-91)
+- New feature-local helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts` +78
+- Section 3 net including helper: -13
+
 ### Optional `@remarks` JSDoc follow-through
 
 - Add `@remarks` only if the surviving descriptor-driven orchestration boundary or metadata outcome split would otherwise be easy to flatten incorrectly later.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** preserve create defaults, modal outcome families, and selection retention while removing duplicated scaffolding.
-- **Deviations from plan:** document any classes helper extraction that creates a new file and justify the second caller or coherent contract.
-- **Follow-up implications for later sections:** if comment-noise cleanup remains after this section, close it in Section 5 rather than extending scope here.
+- **Implementation notes:** Section 3 is complete; classes bulk workflows now share the intended orchestration and metadata-update contracts while preserving modal outcomes, selection semantics, and existing defaults.
+- **Deviations from plan:** one new feature-local helper file (`bulkMetadataUpdateFlow.ts`) was introduced to own a coherent multi-caller metadata contract; section net LOC including that helper remains reduced.
+- **Follow-up implications for later sections:** next active phase is **Section 4 red**, currently **pending start**.
 
 ---
 
