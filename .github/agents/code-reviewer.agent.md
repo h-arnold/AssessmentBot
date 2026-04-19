@@ -68,7 +68,7 @@ Test location and naming conventions are defined in the module testing docs and 
 ### 3.2 Frontend (`src/frontend/`)
 
 - **Language**: Idiomatic TypeScript targeting ES2024. No GAS concepts, globals, or service calls.
-- **Framework**: React + Ant Design. Use `@ant-design/v5-patch-for-react-19` patch import in the entrypoint.
+- **Framework**: React + Ant Design. Ant Design v6 does not require `@ant-design/v5-patch-for-react-19`; treat additions of this patch as a regression unless explicitly documented.
 - **App composition boundary**: `App.tsx` must remain a thin composition root and layout shell. Feature state and side effects must not live in `App.tsx`.
 - **Hooks and services**: Async orchestration and side effects belong in feature hooks (`useXyz...`). Service modules handle external/transport boundaries only. Presentational components must be declarative.
 - **Backend boundary**: Do not import anything from `src/backend/` into frontend code. Treat the interface as an API boundary.
@@ -184,7 +184,7 @@ Apply only the rows relevant to the module(s) under review.
 - [ ] `App.tsx` remains a thin composition root; no feature logic or service calls.
 - [ ] Side effects and async orchestration in hooks, not in render or `App.tsx`.
 - [ ] No imports from `src/backend/`.
-- [ ] `@ant-design/v5-patch-for-react-19` patch import present in entrypoint if modified.
+- [ ] `@ant-design/v5-patch-for-react-19` has not been added unless a documented exception explicitly requires it.
 - [ ] No CDN-dependent runtime assets; assets must be inlineable by the builder.
 - [ ] Playwright E2E has passed for any user-visible interaction or browser integration change.
 
