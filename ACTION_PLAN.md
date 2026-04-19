@@ -535,6 +535,10 @@ Frontend e2e tests:
 
 - Collapse repeated backend settings field wiring, remove mirrored validation error state, and preserve the current panel-versus-hook ownership boundary and API-key retention rules.
 
+### Status
+
+- Completed: Section 4 red and green phases are complete; checks are passing.
+
 ### Constraints
 
 - `BackendSettingsPanel` remains the owner of the live Ant Design form instance, local edit state, and field meta.
@@ -623,15 +627,48 @@ Frontend e2e tests:
 - Recount the cumulative production LOC total for the touched backend settings baseline files.
 - Mandatory-read evidence gate passed for all delegated handoffs.
 
+### Section 4 execution tracker (completed)
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created (pending)
+- [ ] push completed (pending)
+
+### Section 4 red-phase findings and resolutions
+
+1. Finding: early red-phase backend settings coverage included brittle raw-source assertions that would fail on harmless refactors.
+   - Resolution: removed brittle raw-source assertions and retained behaviour-contract assertions for field rendering, validation, save flow, and API-key retention.
+2. Finding: hook refresh-failure coverage emitted a mock warning during the red phase.
+   - Resolution: fixed the hook refresh-failure mock warning so red coverage runs cleanly while preserving the intended failure-path contract.
+
+### Section 4 green implementation notes and acceptance summary
+
+- Green implementation completed the descriptor-driven field wiring cleanup in `BackendSettingsPanel`, removed mirrored validation-error state in favour of Ant Design form meta, and preserved panel-versus-hook ownership boundaries.
+- Acceptance summary: blank API-key retention, masked-read handling, save/refresh lifecycle, blocking-load treatment, section card structure, and scroll-to-first-error behaviour remained aligned with the section acceptance criteria.
+
+### Section 4 LOC tracking
+
+- Baseline total: 4136
+- After Section 1 cumulative total: 4034
+- After Section 2 cumulative total: 3987
+- After Section 3 cumulative total: 3896
+- After Section 4 cumulative total: 3709
+- Cumulative delta: -427
+- `BackendSettingsPanel.tsx`: 654 -> 467 (-187)
+
 ### Optional `@remarks` JSDoc follow-through
 
 - Add `@remarks` only if the final form-state versus orchestration boundary becomes easier to violate after simplification.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** preserve save semantics and API-key retention while removing duplicated field wiring and error mirroring.
-- **Deviations from plan:** document if a second validation source survives and why it still owns distinct responsibility.
-- **Follow-up implications for later sections:** page-copy or comment cleanup should be left for Section 5.
+- **Implementation notes:** Section 4 is complete; backend settings form wiring and validation-state ownership are simplified while preserving save semantics and API-key retention rules.
+- **Deviations from plan:** none recorded for Section 4.
+- **Follow-up implications for later sections:** next active phase is **Section 5 red**, currently **pending start**.
 
 ---
 
