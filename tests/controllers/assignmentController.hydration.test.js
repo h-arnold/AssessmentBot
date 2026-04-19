@@ -287,7 +287,7 @@ describe('AssignmentController - Definition Hydration', () => {
       expect(globalThis.SlidesAssignment).toHaveBeenCalled();
     });
 
-    it('uses definition.courseId when stored courseId is missing', () => {
+    it('fails when stored courseId is missing', () => {
       mockProperties.getProperty.mockImplementation((key) => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'Fallback_Topic_10';
@@ -310,9 +310,10 @@ describe('AssignmentController - Definition Hydration', () => {
       mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
 
       const controller = new AssignmentController();
-      controller.processSelectedAssignment();
 
-      expect(mockABClassController.loadClass).toHaveBeenCalledWith('course-from-definition');
+      expect(() => controller.processSelectedAssignment()).toThrow(
+        'Course ID could not be determined. It is missing from stored properties.'
+      );
     });
   });
 

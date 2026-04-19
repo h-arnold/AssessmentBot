@@ -87,7 +87,6 @@ const readyRows = [
   {
     primaryTitle: 'Algebra foundations',
     primaryTopic: 'Algebra',
-    courseId: 'course-1',
     yearGroup: 10,
     alternateTitles: [],
     alternateTopics: [],
@@ -103,7 +102,6 @@ const readyRows = [
   {
     primaryTitle: 'Unsafe legacy row',
     primaryTopic: 'Legacy',
-    courseId: 'course-2',
     yearGroup: null,
     alternateTitles: [],
     alternateTopics: [],

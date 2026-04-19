@@ -11,7 +11,6 @@ const validAssignmentDefinitionPartialsResponse = [
   {
     primaryTitle: 'Algebra Baseline',
     primaryTopic: 'Algebra',
-    courseId: 'course-001',
     yearGroup: 10,
     alternateTitles: ['Algebra Starter'],
     alternateTopics: ['Linear Equations'],

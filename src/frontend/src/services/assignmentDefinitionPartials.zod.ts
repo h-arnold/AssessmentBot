@@ -176,7 +176,6 @@ export const AssignmentDefinitionPartialSchema = z
   .object({
     primaryTitle: z.string(),
     primaryTopic: z.string(),
-    courseId: z.string(),
     yearGroup: z.number().nullable(),
     alternateTitles: z.array(z.string()),
     alternateTopics: z.array(z.string()),
