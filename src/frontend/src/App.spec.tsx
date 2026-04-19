@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import App from './App';
 import { AppAuthGate } from './features/auth/AppAuthGate';
 import appStyles from './index.css?raw';
-import { dashboardPageSummaryText } from './test/pageExpectations';
+import { pageContent } from './pages/pageContent';
 import { createAppQueryClient } from './query/queryClient';
 import {
   appBreadcrumbBaseLabel,
@@ -454,9 +454,9 @@ describe('App', () => {
     const mainRegion = screen.getByRole('main');
 
     expect(
-      within(mainRegion).getByRole('heading', { level: 2, name: 'Dashboard' })
+      within(mainRegion).getByRole('heading', { level: 2, name: pageContent.dashboard.heading })
     ).toBeInTheDocument();
-    expect(within(mainRegion).getByText(dashboardPageSummaryText)).toBeInTheDocument();
+    expect(within(mainRegion).getByText(pageContent.dashboard.summary)).toBeInTheDocument();
   });
 
   it('renders shell landmarks', async () => {
