@@ -144,6 +144,21 @@ Use the allowlisted method names exactly as implemented in `API_METHODS`, for ex
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
 
+- `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Response data: `Array<{ primaryTitle, primaryTopic, courseId, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
+  Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; reference and template document IDs are retained, but `referenceLastModified` and `templateLastModified` are not part of the partial transport shape.
+  Validation: the handler rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` is blank or untrimmed, `createdAt`/`updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
+  Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
+
+- `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Required request field: `definitionKey`.
+  Validation: `definitionKey` must be a non-empty, already-trimmed string and must not contain `/`, `\`, `..`, or ASCII control characters. Invalid payloads are reported as `INVALID_REQUEST` by the transport.
+  Delete behaviour: removes the partial row from `assignment_definitions` and drops the corresponding `assdef_full_<definitionKey>` collection when present. Missing full collections are treated as already deleted, so repeated safe-key deletes remain idempotent.
+  Response data: no data payload (`void`) on success.
+  Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
+
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
   Source: `src/backend/z_Api/googleClassrooms.js`. Dispatched through the `apiHandler` allowlist in `src/backend/z_Api/z_apiHandler.js`.
   Handler behaviour: calls `ClassroomApiClient.fetchAllActiveClassrooms()`, which pages through active Classroom courses, then maps each row to `{ classId, className }`.

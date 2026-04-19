@@ -43,6 +43,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
   let mockRegistryCollection;
   let mockFullCollection;
   let mockDbManager;
+  let mockDropCollection;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,8 +54,12 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
     mockRegistryCollection = registryCollection;
     mockFullCollection = fullCollection;
 
+    mockDropCollection = vi.fn();
     mockDbManager = {
       getCollection: getCollectionFn,
+      getDb: vi.fn(() => ({
+        dropCollection: mockDropCollection,
+      })),
     };
 
     DbManager.getInstance.mockReturnValue(mockDbManager);
@@ -420,6 +425,32 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const registryInsertCall = mockRegistryCollection.insertOne.mock.calls[0];
       const savedPartial = registryReplaceCall ? registryReplaceCall[1] : registryInsertCall[0];
       expect(savedPartial.tasks).toBe(null);
+    });
+  });
+
+  describe('deleteDefinitionByKey - dual-store deletes', () => {
+    it('should delete the matching registry record and drop the full-store collection for a safe key', () => {
+      controller.deleteDefinitionByKey('safe-definition-key');
+
+      expect(mockDbManager.getCollection).toHaveBeenCalledWith('assignment_definitions');
+      expect(mockRegistryCollection.deleteOne).toHaveBeenCalledWith({
+        definitionKey: 'safe-definition-key',
+      });
+      expect(mockRegistryCollection.save).toHaveBeenCalledTimes(1);
+      expect(mockDropCollection).toHaveBeenCalledTimes(1);
+      expect(mockDropCollection).toHaveBeenCalledWith('assdef_full_safe-definition-key');
+    });
+
+    it('should remain idempotent when the registry and full-store records are absent', () => {
+      const missingCollectionError = new Error('Collection missing');
+      missingCollectionError.code = 'COLLECTION_NOT_FOUND';
+      mockDropCollection.mockImplementation(() => {
+        throw missingCollectionError;
+      });
+
+      expect(() => controller.deleteDefinitionByKey('safe-definition-key')).not.toThrow();
+      expect(() => controller.deleteDefinitionByKey('safe-definition-key')).not.toThrow();
+      expect(mockDropCollection).toHaveBeenCalledTimes(2);
     });
   });
 });

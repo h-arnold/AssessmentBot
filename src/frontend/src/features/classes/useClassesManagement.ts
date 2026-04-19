@@ -5,8 +5,12 @@ import {
   getCohortsQueryOptions,
   getGoogleClassroomsQueryOptions,
   getYearGroupsQueryOptions,
+  type StartupWarmupDatasetKey,
 } from '../../query/sharedQueries';
-import { useStartupWarmupState } from '../auth/startupWarmupState';
+import {
+  useStartupWarmupState,
+  type StartupWarmupContextValue,
+} from '../auth/startupWarmupState';
 import type { ClassPartial } from '../../services/classPartialsService';
 import type { GoogleClassroom } from '../../services/googleClassroomsService';
 import type { Cohort, YearGroup } from '../../services/referenceData.zod';
@@ -162,7 +166,7 @@ function isClassesDataWorkflowRefreshing(queryState: ClassesRefreshStateOptions)
  *   queryState: ClassesQueriesState;
  *   selectedRowKeys: string[];
  *   setSelectedRowKeys: (selectedRowKeys: string[]) => void;
- *   startupWarmupFailed: boolean;
+ *   hasFailedClassesStartupDataset: boolean;
  * }>} options Derived readiness inputs.
  * @returns {ClassesManagementState | null} Non-ready state, or null when ready.
  */
@@ -170,7 +174,7 @@ function getNonReadyClassesManagementState(options: Readonly<{
   queryState: ClassesQueriesState;
   selectedRowKeys: string[];
   setSelectedRowKeys: (selectedRowKeys: string[]) => void;
-  startupWarmupFailed: boolean;
+  hasFailedClassesStartupDataset: boolean;
 }>): ClassesManagementState | null {
   if (options.queryState.hasPendingStartupDataset) {
     return {
@@ -206,7 +210,7 @@ function getNonReadyClassesManagementState(options: Readonly<{
     };
   }
 
-  if (options.startupWarmupFailed) {
+  if (options.hasFailedClassesStartupDataset) {
     return {
       blockingErrorMessage: 'Required startup data failed to load. Reload the page and try again.',
       classesManagementViewState: 'error',
@@ -224,6 +228,23 @@ function getNonReadyClassesManagementState(options: Readonly<{
   }
 
   return null;
+}
+
+
+/**
+ * Returns whether any classes-owned startup datasets are currently failed.
+ *
+ * @param {StartupWarmupContextValue} startupWarmupState Shared startup warm-up state.
+ * @returns {boolean} True when a classes-owned startup dataset failed.
+ */
+function hasFailedClassesStartupDataset(startupWarmupState: StartupWarmupContextValue): boolean {
+  const classesStartupDatasetKeys: readonly StartupWarmupDatasetKey[] = [
+    'classPartials',
+    'cohorts',
+    'yearGroups',
+  ];
+
+  return classesStartupDatasetKeys.some((datasetKey) => startupWarmupState.isDatasetFailed(datasetKey));
 }
 
 /**
@@ -256,7 +277,7 @@ export function useClassesManagement(): ClassesManagementState {
     queryState,
     selectedRowKeys,
     setSelectedRowKeys,
-    startupWarmupFailed: startupWarmupState.isFailed,
+    hasFailedClassesStartupDataset: hasFailedClassesStartupDataset(startupWarmupState),
   });
 
   if (nonReadyState !== null) {

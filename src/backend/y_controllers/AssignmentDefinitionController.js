@@ -204,6 +204,44 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Deletes both partial and full assignment-definition records for a key.
+   *
+   * @param {string} definitionKey - Validated definition key.
+   */
+  deleteDefinitionByKey(definitionKey) {
+    Validate.requireParams(
+      { definitionKey },
+      'AssignmentDefinitionController.deleteDefinitionByKey'
+    );
+
+    const filter = { definitionKey };
+    const registry = this._getRegistryCollection();
+    const fullCollectionName = this._getFullCollectionName(definitionKey);
+
+    registry.deleteOne(filter);
+    registry.save();
+
+    try {
+      this.dbManager.getDb().dropCollection(fullCollectionName);
+    } catch (error) {
+      if (!this._isMissingCollectionError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Checks if an error indicates a missing collection in JsonDb.
+   *
+   * @param {Error} error - Error to classify.
+   * @returns {boolean} True when the target collection is already absent.
+   * @private
+   */
+  _isMissingCollectionError(error) {
+    return error?.code === 'COLLECTION_NOT_FOUND';
+  }
+
+  /**
    * Retrieves the registry collection for all definition metadata.
    *
    * @returns {Object} The JsonDb collection instance.

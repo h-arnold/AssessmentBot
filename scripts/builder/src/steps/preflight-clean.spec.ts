@@ -4,48 +4,11 @@ import path from 'node:path';
 
 import { runPreflightClean } from './preflight-clean.js';
 import { BuildStageError } from '../lib/errors.js';
-import { createTempDir } from '../test/builder-fixture-test-helpers.js';
+import { createTempDir, createBuilderPaths } from '../test/builder-fixture-test-helpers.js';
 import type { BuilderPaths } from '../types.js';
 
 const PREFLIGHT_STAGE = 'preflight-clean';
 const CLASP_FILE = '.clasp.json';
-
-/**
- * Builds a complete `BuilderPaths` object rooted at a temporary directory.
- *
- * @param {string} rootDir - Root temporary directory for the test fixture.
- * @returns {BuilderPaths} Resolved builder paths for test setup.
- */
-function createBuilderPaths(rootDir: string): BuilderPaths {
-  const repoRoot = path.join(rootDir, 'repo');
-  const builderRoot = path.join(rootDir, 'builder');
-  const configPath = path.join(builderRoot, 'builder.config.json');
-  const frontendDir = path.join(repoRoot, 'src', 'frontend');
-  const backendDir = path.join(repoRoot, 'src', 'backend');
-  const buildDir = path.join(rootDir, 'build');
-  const buildFrontendDir = path.join(buildDir, 'frontend');
-  const buildWorkDir = path.join(buildDir, 'work');
-  const buildGasDir = path.join(buildDir, 'gas');
-  const buildGasUiDir = path.join(buildGasDir, 'UI');
-
-  return {
-    repoRoot,
-    builderRoot,
-    configPath,
-    frontendDir,
-    backendDir,
-    buildDir,
-    buildFrontendDir,
-    buildWorkDir,
-    buildGasDir,
-    buildGasUiDir,
-    backendManifestPath: path.join(backendDir, 'appsscript.json'),
-    jsonDbAppPinnedSnapshotDir: path.join(repoRoot, 'vendor', 'jsondbapp'),
-    jsonDbAppManifestPath: path.join(repoRoot, 'vendor', 'jsondbapp', 'appsscript.json'),
-    jsonDbAppSourceFiles: ['src/01-core.js'],
-    jsonDbAppPublicExports: ['loadDatabase'],
-  };
-}
 
 /**
  * Ensures a file exists with placeholder content.

@@ -37,6 +37,17 @@ const BACKEND_CONFIG_API_METHOD_ENTRIES = Object.freeze(
   Object.fromEntries(BACKEND_CONFIG_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
 );
 
+const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
+  'getAssignmentDefinitionPartials',
+  'deleteAssignmentDefinition',
+]);
+
+const ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES = Object.freeze(
+  Object.fromEntries(
+    ASSIGNMENT_DEFINITION_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
+  )
+);
+
 const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
   getGoogleClassrooms: {},
   upsertABClass: {
@@ -90,6 +101,34 @@ const REFERENCE_DATA_RESULTS = Object.freeze({
   deleteYearGroup: null,
 });
 
+const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
+  getAssignmentDefinitionPartials: [
+    {
+      primaryTitle: 'Algebra Baseline',
+      primaryTopic: 'Algebra',
+      courseId: 'course-001',
+      yearGroup: 10,
+      alternateTitles: ['Algebra Starter'],
+      alternateTopics: ['Linear Equations'],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      assignmentWeighting: null,
+      definitionKey: 'algebra-baseline',
+      tasks: null,
+      createdAt: '2026-01-05T10:00:00.000Z',
+      updatedAt: '2026-01-06T12:30:00.000Z',
+    },
+  ],
+  deleteAssignmentDefinition: undefined,
+});
+
+const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
+  deleteAssignmentDefinition: {
+    definitionKey: 'algebra-baseline',
+  },
+});
+
 function buildAbClassTransportHandlers() {
   return Object.fromEntries(
     ABCLASS_TRANSPORT_API_METHOD_NAMES.map((methodName) => [
@@ -103,6 +142,7 @@ function buildApiHandlerTestHandlers() {
   return {
     ...buildReferenceDataHandlers(),
     ...buildAbClassTransportHandlers(),
+    ...buildAssignmentDefinitionHandlers(),
   };
 }
 
@@ -126,6 +166,15 @@ function buildReferenceDataHandlers() {
     REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [
       methodName,
       () => REFERENCE_DATA_RESULTS[methodName],
+    ])
+  );
+}
+
+function buildAssignmentDefinitionHandlers() {
+  return Object.fromEntries(
+    ASSIGNMENT_DEFINITION_API_METHOD_NAMES.map((methodName) => [
+      methodName,
+      () => ASSIGNMENT_DEFINITION_RESULTS[methodName],
     ])
   );
 }
@@ -391,6 +440,20 @@ describe('Api/apiConstants', () => {
     const { API_ALLOWLIST } = loadApiConstantsModule();
 
     expect(API_ALLOWLIST).toEqual(expect.objectContaining(BACKEND_CONFIG_API_METHOD_ENTRIES));
+  });
+
+  it('contains assignment-definition partial methods in API_METHODS', () => {
+    const { API_METHODS } = loadApiConstantsModule();
+
+    expect(API_METHODS).toEqual(expect.objectContaining(ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES));
+  });
+
+  it('contains assignment-definition partial methods in API_ALLOWLIST', () => {
+    const { API_ALLOWLIST } = loadApiConstantsModule();
+
+    expect(API_ALLOWLIST).toEqual(
+      expect.objectContaining(ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES)
+    );
   });
 });
 
@@ -785,6 +848,32 @@ describe('Api/apiHandler dispatcher', () => {
       const response = dispatcher.handle({
         method: methodName,
         params,
+      });
+
+      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
+      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: expectedData,
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    }
+  );
+
+  it.each(ASSIGNMENT_DEFINITION_API_METHOD_NAMES)(
+    'routes %s to the matching allowlisted handler',
+    (methodName) => {
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+      const params = ASSIGNMENT_DEFINITION_PARAMS[methodName];
+      const expectedData = ASSIGNMENT_DEFINITION_RESULTS[methodName];
+
+      globalThis[methodName].mockImplementation(() => expectedData);
+
+      const response = dispatcher.handle({
+        method: methodName,
+        ...(params === undefined ? {} : { params }),
       });
 
       expect(globalThis[methodName]).toHaveBeenCalledTimes(1);

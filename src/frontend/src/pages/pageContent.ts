@@ -1,5 +1,5 @@
 /**
- * Single source of truth for the shell page headings and placeholder summaries.
+ * Single source of truth for the shell page headings and summaries.
  * Navigation labels and page components should stay aligned with these values.
  */
 export const pageContent = {
@@ -9,7 +9,8 @@ export const pageContent = {
   },
   assignments: {
     heading: 'Assignments',
-    summary: 'Track assignment status and upcoming marking tasks.',
+    summary:
+      'Review assignment-definition partials and remove obsolete definitions without loading full task data.',
   },
   settings: {
     heading: 'Settings',
