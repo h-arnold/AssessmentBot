@@ -20,6 +20,7 @@ Before writing documentation updates, you must:
 2. **Read Existing Docs**: Read relevant docs under `docs/developer/` (and user-facing docs if impacted). When frontend documentation, frontend standards, or frontend agent guidance may be in scope, explicitly check `docs/developer/frontend/frontend-loading-and-width-standards.md` and `src/frontend/AGENTS.md` alongside any feature-specific frontend docs.
 3. **Read Agent Contracts**: Read `AGENTS.md` and any component-specific agent docs referenced there so your updates remain aligned with current agent guidance.
 4. **Inspect JSDoc**: Check JSDoc in touched files for accuracy against actual function/class behaviour.
+5. **Policy Drift Check Setup**: Identify the canonical policy docs for the changed behaviour and plan to verify that docs remain aligned before completion.
 
 ## 1. Primary Responsibilities
 
@@ -35,6 +36,7 @@ Before writing documentation updates, you must:
    - Update `AGENTS.md` (or relevant component agent docs) only when new constraints are not discoverable by reading code alone, or when agent instructions are out of date.
    - Do not add bulky discoverable implementation detail to top-level agent files.
    - Treat `.github/agents` as the source of truth for project-agent behaviour; when those files change, update the corresponding `.codex/agents/*.toml` instructions to preserve behavioural parity for Codex.
+   - When `.github/agents/*` or `.codex/agents/*` files are changed, verify behavioural parity explicitly and treat unresolved drift as incomplete work.
 
 4. **JSDoc correctness**:
    - Ensure changed public methods/classes have accurate JSDoc descriptions, params, return values, and behaviour notes.
@@ -84,6 +86,7 @@ After edits:
 1. Re-read changed docs and code to ensure consistency.
 2. Run targeted checks where practical (for example lint/docs link checks if available).
 3. Use `read/problems` to catch markdown or lint issues in changed files.
+4. Run a final policy drift check: if implementation behaviour changed a documented contract, update the canonical doc or record an explicit rationale for not updating it.
 
 Do not claim completion until documentation and JSDoc reflect the implemented code.
 
@@ -91,9 +94,13 @@ Do not claim completion until documentation and JSDoc reflect the implemented co
 
 Provide a concise handoff summary including:
 
+- Files read (explicit paths), including mandatory docs from agent instructions.
 - Files updated/created.
 - What behaviour or contract changes were documented.
+- Policy updates made.
+- Policy updates intentionally not made, with rationale.
 - Any intentional omissions and why.
+- Potential policy-drift risks (if any).
 - Follow-up documentation gaps (if any).
 
 ## 7. Guardrails

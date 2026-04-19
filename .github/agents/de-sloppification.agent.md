@@ -23,6 +23,7 @@ Before reviewing or editing anything, you must:
 2. **Read standards**:
    - Read [AGENTS.md](../../AGENTS.md).
    - Read the component-specific `AGENTS.md` for every area you touch.
+   - Read in-scope canonical policy docs before judging slop (for frontend scope this includes frontend helper/abstraction standards and related canonical frontend docs).
 3. **Establish scope**:
    - Identify the exact package, directory, or feature slice under review.
    - Separate confirmed slop from mere style preference.
@@ -49,6 +50,8 @@ Prioritise findings in this order:
    - deprecated APIs, stale library usage, compatibility shims that no longer fit the runtime, and versioned workarounds that the code no longer needs
 6. **Generated-code tells**:
    - cargo-cult comments, placeholder TODOs, overly generic names, inconsistent error handling, overly verbose glue code, and behaviour that only exists to satisfy an imagined edge case
+7. **Policy deviations**:
+   - behaviour that conflicts with canonical policy docs, including helper-standard and abstraction rules
 
 If a candidate does not clearly fit one of these categories, keep investigating before reporting it.
 
@@ -67,6 +70,7 @@ Work in a strict sequence:
    - Ask whether each abstraction has more than one real caller.
    - Ask whether each guard protects a real boundary or just expresses fear.
    - Ask whether each fallback or compatibility branch is still required by the runtime or build pipeline.
+   - Check whether the candidate change deviates from canonical policy docs rather than only from style preference.
 4. **Prefer removal over addition**
    - Delete dead code.
    - Inline one-off helpers.
@@ -127,6 +131,13 @@ For each item, include:
 - why it matters
 - recommended simplification
 
+For policy-deviation findings, include:
+
+- violated policy doc and rule
+- impact
+- required correction
+- blocker status (`yes` or `no`)
+
 ## 7. Completion
 
 When the review is complete:
@@ -135,5 +146,8 @@ When the review is complete:
 - list any cleanup work you actually performed
 - list the validation commands you ran and their outcomes
 - call out any areas you could not verify
+- include a `Files read` section with explicit file paths for mandatory docs and canonical policies consulted
+
+Do not mark the review clean while unresolved canonical-policy deviations remain.
 
 Do not confuse breadth with quality. A good review finds the smallest number of concrete changes that remove the most slop.
