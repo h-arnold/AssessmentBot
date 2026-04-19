@@ -212,15 +212,43 @@ Frontend e2e tests:
 - Recount the current production LOC total for the explicit baseline files touched in this section.
 - Mandatory-read evidence gate passed for all delegated handoffs.
 
+### Section 1 execution tracker (completed)
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created (pending)
+- [ ] push completed (pending)
+
+### Section 1 review findings and resolutions
+
+1. Finding: early red coverage leaned on wrapper/internal structure that would have become brittle after cleanup.
+   - Resolution: moved assertions to stable contracts (navigation render ownership, fail-fast boundary, stable Settings frame and mount behaviour) and removed brittle internals from the test intent.
+2. Finding: review requested explicit protection of invalid raw navigation-key handling after AppShell simplification.
+   - Resolution: retained targeted fail-fast coverage at the surviving shell boundary and cleared red/green review after update.
+
+### Section 1 approved workflow note
+
+- Red phase was approved with contract-focused tests that intentionally removed brittle internal-structure expectations.
+
+### Section 1 LOC tracking
+
+- Baseline total: 4136
+- After Section 1 cumulative total: 4034
+- Cumulative delta: -102
+
 ### Optional `@remarks` JSDoc follow-through
 
 - Consider `@remarks` only if the surviving navigation render contract or Settings remount behaviour becomes non-obvious after simplification.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** preserve the wide Settings frame and dashboard content slot while removing duplicate routing machinery.
-- **Deviations from plan:** document any decision to keep a wrapper that still has one caller and why it survived review.
-- **Follow-up implications for later sections:** any page-copy dedupe that affects `pageContent` should be reflected in Section 5.
+- **Implementation notes:** Section 1 is complete; duplicate shell/settings wrapper machinery was removed while preserving the wide Settings frame, dashboard content slot, width-token routing, remount rules, and mount prefetch behaviour.
+- **Deviations from plan:** none recorded for Section 1.
+- **Follow-up implications for later sections:** next active phase is **Section 2 red**, currently **pending start** (not started yet).
 
 ---
 
@@ -229,6 +257,10 @@ Frontend e2e tests:
 ### Objective
 
 - Remove the repeated Assignments filter plumbing by replacing per-column setter duplication and repeated column filter wiring with one page-local typed filter path and descriptor-driven table configuration.
+
+### Status
+
+- Pending start: Section 2 red phase not started yet.
 
 ### Constraints
 
