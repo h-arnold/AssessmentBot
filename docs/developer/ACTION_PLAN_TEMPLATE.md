@@ -46,6 +46,17 @@ For each section below:
 3. **Refactor**: tidy implementation with all tests still green.
 4. Run section-level verification commands.
 
+### Delegation mandatory-read gate (mandatory for sub-agent execution)
+
+When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+
+For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, `De-Sloppification`, or planning agents when used):
+
+1. list required documentation file paths under that phase before delegation
+2. require the sub-agent handoff to include `Files read` with explicit file paths
+3. verify every mandatory file is listed before accepting the handoff
+4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint`
@@ -66,6 +77,24 @@ For each section below:
 ### Constraints
 
 - List relevant architectural or behavioural constraints.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- ...
+
+Implementation mandatory docs:
+
+- ...
+
+Code Reviewer mandatory docs:
+
+- ...
+
+Other delegated agents (if used) mandatory docs:
+
+- ...
 
 ### Acceptance criteria
 
@@ -93,6 +122,7 @@ Frontend tests:
 ### Section checks
 
 - `npm test -- tests/...`
+- Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
@@ -136,6 +166,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 2. Run touched frontend service/UI suites.
 3. Run backend frontend lint commands.
 4. Run any required e2e tests.
+5. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
 
 ### Section checks
 
@@ -168,6 +199,7 @@ _(Repeat above section template for each logical chunk of work, renumbering sect
 1. Verify docs mention persistence/transport strategies.
 2. Verify API docs list new endpoints/methods.
 3. Confirm notes/deviations fields are filled during implementation.
+4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
 
 ### Optional `@remarks` JSDoc review
 

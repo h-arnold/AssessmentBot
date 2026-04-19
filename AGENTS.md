@@ -50,6 +50,10 @@ Sub-agents are stateless. Provide explicit context in prompts:
 - concrete requirements
 - error/output details
 - exact changes already made
+- mandatory documentation that must be read for the task
+
+Sub-agent handoffs must include a `Files read` section with explicit file paths.
+If mandatory documentation is missing from `Files read`, return the work to the same sub-agent and do not proceed.
 
 #### 4.1 Invocation Directives
 
@@ -64,10 +68,10 @@ Copilot environment:
 // For clarification-driven planning
 runSubagent({
   prompt: [
-    'Files read: AGENTS.md, existing SPEC.md/ACTION_PLAN.md/layout docs, and relevant source entrypoints.',
+    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, existing SPEC.md/ACTION_PLAN.md/layout docs, and relevant source entrypoints.',
     'Constraints: keep planning artefacts separate; use repository templates; no production-code changes.',
     'Exact requested outcome: clarify the feature until you can write SPEC.md, any required frontend layout spec, and ACTION_PLAN.md.',
-    'Expected deliverables: updated planning documents plus explicit assumptions, open questions, and readiness for implementation orchestration.',
+    'Expected deliverables: updated planning documents plus explicit assumptions, open questions, readiness for implementation orchestration, and a Files read section listing all mandatory docs read.',
   ].join('\n'),
   description: 'Planning for a new feature',
   agentName: 'Planner',
@@ -76,10 +80,10 @@ runSubagent({
 // For impartial planning review
 runSubagent({
   prompt: [
-    'Files read: SPEC.md, companion planning docs, and the relevant code areas or entrypoints.',
+    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, SPEC.md, companion planning docs, and the relevant code areas or entrypoints.',
     'Constraints: review impartially; inspect the actual files and code; do not rewrite the document.',
     'Exact requested outcome: review the planning artefact for gaps, inconsistencies, ambiguities, and downstream implementation risks.',
-    'Expected deliverables: findings ordered by severity, open questions or assumptions, and a summary of whether the document is safe to build on.',
+    'Expected deliverables: findings ordered by severity, open questions or assumptions, a summary of whether the document is safe to build on, and a Files read section listing all mandatory docs read.',
   ].join('\n'),
   description: 'Independent review of planning artefact',
   agentName: 'Planner Reviewer',
@@ -88,10 +92,10 @@ runSubagent({
 // For source code review
 runSubagent({
   prompt: [
-    'Files read: updated AssignmentService files, related tests, AGENTS guidance, and any touched docs.',
+    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, updated AssignmentService files, related tests, and any touched docs.',
     'Constraints: review for lint compliance, DRY, SOLID, correctness, and documentation accuracy.',
     'Exact requested outcome: inspect the actual diff and identify any blocking issues or meaningful improvements.',
-    'Expected deliverables: findings ordered by severity, residual risks, and a clear pass/fail summary.',
+    'Expected deliverables: findings ordered by severity, residual risks, a clear pass/fail summary, and a Files read section listing all mandatory docs read.',
   ].join('\n'),
   description: 'Code review for AssignmentService changes',
   agentName: 'Code Reviewer',
@@ -100,10 +104,10 @@ runSubagent({
 // For test implementation and debugging
 runSubagent({
   prompt: [
-    'Files read: SubmissionRepository, related tests, testing docs, and relevant AGENTS guidance.',
+    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, SubmissionRepository, related tests, and required testing docs.',
     'Constraints: stay within the requested edge cases and use the module test conventions.',
     'Exact requested outcome: implement and debug the required tests, then run the relevant test command.',
-    'Expected deliverables: changed test files, commands run, outcomes, assumptions, and any remaining risks.',
+    'Expected deliverables: changed test files, commands run, outcomes, assumptions, any remaining risks, and a Files read section listing all mandatory docs read.',
   ].join('\n'),
   description: 'Test work for SubmissionRepository',
   agentName: 'Testing Specialist',
@@ -112,10 +116,10 @@ runSubagent({
 // For focused implementation
 runSubagent({
   prompt: [
-    'Files read: builder manifest merge code, nearby tests, AGENTS guidance, and any relevant builder docs.',
+    'Files read (mandatory): AGENTS.md, component AGENTS files in scope, builder manifest merge code, nearby tests, and any relevant builder docs.',
     'Constraints: minimal scope, preserve existing builder behaviour, and keep validation green.',
     'Exact requested outcome: implement the requested builder manifest merge fix and run the relevant lint/tests.',
-    'Expected deliverables: files changed, what changed, commands run, outcomes, assumptions, and remaining risks.',
+    'Expected deliverables: files changed, what changed, commands run, outcomes, assumptions, remaining risks, and a Files read section listing all mandatory docs read.',
   ].join('\n'),
   description: 'Implementation for builder manifest merge fix',
   agentName: 'Implementation',
@@ -160,6 +164,8 @@ Rules:
 - Do not mark non-trivial work complete before a clean reviewer pass.
 - Preserve explicit handoff context each cycle: changed files, review findings, constraints, and acceptance criteria.
 - Keep the loop scoped to the requested task; avoid opportunistic refactors unless requested.
+- When using `ACTION_PLAN.md`, include phase-level mandatory documentation paths for delegated agents and enforce a `Files read` evidence gate in every delegated handoff.
+- If any delegated handoff omits mandatory documentation from `Files read`, return the work to the same sub-agent and block progression until corrected.
 
 ### 7. Ambiguity Rule
 
