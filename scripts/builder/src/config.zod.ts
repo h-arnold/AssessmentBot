@@ -2,20 +2,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:\//;
-const WINDOWS_UNC_PATH_PREFIX = '//';
-
-/**
- * Normalises configured path separators to forward slashes.
- *
- * @param {string} value - Raw configured path.
- * @returns {string} Path using forward-slash separators.
- */
-function normalisePathSeparators(value: string): string {
-  return value.replaceAll('\\', '/');
-}
-
-import { normalisePathSeparators } from './lib/fs';
+import { normalisePathSeparators } from './lib/fs.js';
 
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:\//;
 const WINDOWS_UNC_PATH_PREFIX = '//';
