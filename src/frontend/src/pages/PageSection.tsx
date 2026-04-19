@@ -6,9 +6,6 @@ const { Paragraph, Title } = Typography;
 /**
  * Renders the shared page section chrome for navigation views.
  */
-/**
- * Renders the shared page section chrome for navigation views.
- */
 type PageSectionProperties = Readonly<{
   children?: ReactNode;
   contentClassName?: string;

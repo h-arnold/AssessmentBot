@@ -47,20 +47,6 @@ describe('bulkSetCourseLengthFlow', () => {
     vi.clearAllMocks();
   });
 
-  it('keeps active and inactive rows eligible while excluding orphaned and notCreated rows', async () => {
-    const { filterEligibleForBulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
-    const rows: ClassesManagementRow[] = [
-      makeRow({ classId: 'active-1', status: 'active', active: true }),
-      makeRow({ classId: 'inactive-1', status: 'inactive', active: false }),
-      makeRow({ classId: 'orphaned-1', status: 'orphaned', active: false }),
-      makeRow({ classId: 'missing-1', status: 'notCreated', active: null, cohortKey: null, cohortLabel: null, yearGroupKey: null, yearGroupLabel: null, courseLength: null }),
-    ];
-
-    const eligibleRows = filterEligibleForBulkSetCourseLength(rows);
-
-    expect(eligibleRows.map((row) => row.classId)).toEqual(['active-1', 'inactive-1']);
-  });
-
   it('rejects course-length values below 1 before dispatching any mutations', async () => {
     const { bulkSetCourseLength } = await loadBulkSetCourseLengthFlow();
 

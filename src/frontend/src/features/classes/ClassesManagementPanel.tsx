@@ -111,25 +111,29 @@ type MetadataBulkMutationResolution = Readonly<{
   suppressStaleTableData: boolean;
 }>;
 
+type TopLevelBulkMutationCopy = Readonly<{
+  createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
+  fullFailureTitle: string;
+  partialFailureTitle: string;
+}>;
+
+type TopLevelBulkActionDescriptor = TopLevelBulkMutationCopy & Readonly<{
+  closeSurface?: () => void;
+  mutateRows: (rows: ClassesManagementRow[]) => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
+  setSubmitting: (value: boolean) => void;
+}>;
+
 /**
  * Resolves the UI outcome for a top-level bulk mutation.
  *
  * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
  *   Settled batch results and refresh outcome.
- * @param {Readonly<{
- *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
- *   fullFailureTitle: string;
- *   partialFailureTitle: string;
- * }>} options Action-specific copy.
+ * @param {TopLevelBulkMutationCopy} options Action-specific copy.
  * @returns {TopLevelBulkMutationResolution} Derived UI state.
  */
 function buildTopLevelBulkMutationResolution(
   outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
-  options: Readonly<{
-    createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
-    fullFailureTitle: string;
-    partialFailureTitle: string;
-  }>,
+  options: TopLevelBulkMutationCopy,
 ): TopLevelBulkMutationResolution {
   const rejectedResults = getRejectedRowResults(outcome.mutationResult);
   const hasAnyFulfilledResults = hasAnyFulfilledRowResult(outcome.mutationResult);
@@ -539,22 +543,12 @@ export function ClassesManagementPanel() {
    *
    * @param {RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>} outcome
    *   Settled batch results and refresh outcome.
-   * @param {Readonly<{
-   *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
-   *   fullFailureTitle: string;
-   *   partialFailureTitle: string;
-   *   closeSurface?: () => void;
-   * }>} options Action-specific UI copy and close handler.
+   * @param {TopLevelBulkActionDescriptor} options Action-specific UI copy and close handler.
    * @returns {Promise<void>} Completion signal.
    */
   async function handleTopLevelBulkMutationResult(
     outcome: RequiredClassPartialsRefreshOutcome<RowMutationResult<ClassesManagementRow, unknown>[]>,
-    options: Readonly<{
-      createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
-      fullFailureTitle: string;
-      partialFailureTitle: string;
-      closeSurface?: () => void;
-    }>,
+    options: TopLevelBulkActionDescriptor,
   ): Promise<void> {
     const resolution = buildTopLevelBulkMutationResolution(outcome, options);
 
@@ -596,27 +590,13 @@ export function ClassesManagementPanel() {
   /**
    * Runs one top-level bulk action through the shared orchestration boundary.
    *
-   * @param {Readonly<{
-   *   createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
-   *   fullFailureTitle: string;
-   *   partialFailureTitle: string;
-   *   closeSurface?: () => void;
-   *   mutate: () => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
-   *   setSubmitting: (value: boolean) => void;
-   * }>} options Top-level action descriptor.
+   * @param {TopLevelBulkActionDescriptor} options Top-level action descriptor.
    * @returns {Promise<void>} Completion signal.
    */
-  async function runTopLevelBulkAction(options: Readonly<{
-    createFailureMessage: (failedCount: number, totalCount: number, hasRefreshFailure: boolean) => string;
-    fullFailureTitle: string;
-    partialFailureTitle: string;
-    closeSurface?: () => void;
-    mutate: () => Promise<RowMutationResult<ClassesManagementRow, unknown>[]>;
-    setSubmitting: (value: boolean) => void;
-  }>): Promise<void> {
+  async function runTopLevelBulkAction(options: TopLevelBulkActionDescriptor): Promise<void> {
     await runPanelBulkMutation({
       handleOutcome: (outcome) => handleTopLevelBulkMutationResult(outcome, options),
-      mutate: options.mutate,
+      mutate: () => options.mutateRows(selectedRows),
       setSubmitting: options.setSubmitting,
     });
   }
@@ -643,6 +623,78 @@ export function ClassesManagementPanel() {
     });
   }
 
+  const topLevelBulkActionDescriptors = {
+    delete: {
+      createFailureMessage: createBulkDeleteFailureMessage,
+      fullFailureTitle: 'Could not delete selected classes.',
+      partialFailureTitle: 'Some selected classes were not deleted.',
+      closeSurface: () => setDeleteModalOpen(false),
+      mutateRows: (rows: ClassesManagementRow[]) =>
+        runBatchMutation(rows, (row) => callApi('deleteABClass', { classId: row.classId })),
+      setSubmitting: setDeleteSubmitting,
+    },
+    setActive: {
+      createFailureMessage: createBulkSetActiveFailureMessage,
+      fullFailureTitle: 'Could not set selected classes to active.',
+      partialFailureTitle: 'Some selected classes were not set to active.',
+      mutateRows: (rows: ClassesManagementRow[]) => {
+        const eligibleRows = filterEligibleForActiveState(rows, true);
+        return runBatchMutation(eligibleRows, (row) => callApi('updateABClass', { classId: row.classId, active: true }));
+      },
+      setSubmitting: setSetActiveSubmitting,
+    },
+    setInactive: {
+      createFailureMessage: createBulkSetInactiveFailureMessage,
+      fullFailureTitle: 'Could not set selected classes to inactive.',
+      partialFailureTitle: 'Some selected classes were not set to inactive.',
+      mutateRows: (rows: ClassesManagementRow[]) => {
+        const eligibleRows = filterEligibleForActiveState(rows, false);
+        return runBatchMutation(eligibleRows, (row) => callApi('updateABClass', { classId: row.classId, active: false }));
+      },
+      setSubmitting: setSetInactiveSubmitting,
+    },
+  } satisfies Readonly<Record<'delete' | 'setActive' | 'setInactive', TopLevelBulkActionDescriptor>>;
+
+  /**
+   * Builds the create action descriptor with the currently selected metadata input.
+   *
+   * @param {BulkCreateOptions} options Cohort/year-group/course-length selection.
+   * @returns {TopLevelBulkActionDescriptor} Descriptor for the create action.
+   */
+  function getCreateTopLevelBulkActionDescriptor(options: BulkCreateOptions): TopLevelBulkActionDescriptor {
+    return {
+      createFailureMessage: createBulkCreateFailureMessage,
+      fullFailureTitle: 'Could not create selected classes.',
+      partialFailureTitle: 'Some selected classes were not created.',
+      closeSurface: () => setCreateModalOpen(false),
+      mutateRows: (rows: ClassesManagementRow[]) => bulkCreate(filterBulkCreateRows(rows), options),
+      setSubmitting: setCreateSubmitting,
+    };
+  }
+
+  /**
+   * Runs one descriptor-driven top-level action.
+   *
+   * @param {'delete' | 'setActive' | 'setInactive'} actionKey Descriptor key.
+   * @returns {Promise<void>} Completion signal.
+   */
+  async function runTopLevelBulkActionByKey(actionKey: 'delete' | 'setActive' | 'setInactive'): Promise<void> {
+    switch (actionKey) {
+      case 'delete': {
+        await runTopLevelBulkAction(topLevelBulkActionDescriptors.delete);
+        return;
+      }
+      case 'setActive': {
+        await runTopLevelBulkAction(topLevelBulkActionDescriptors.setActive);
+        return;
+      }
+      case 'setInactive': {
+        await runTopLevelBulkAction(topLevelBulkActionDescriptors.setInactive);
+        return;
+      }
+    }
+  }
+
   /**
    * Calls deleteABClass for each selected row through the shared bulk-mutation
    * orchestration helper.
@@ -650,14 +702,7 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all deletions have settled.
    */
   async function handleDeleteConfirm() {
-    await runTopLevelBulkAction({
-      createFailureMessage: createBulkDeleteFailureMessage,
-      fullFailureTitle: 'Could not delete selected classes.',
-      partialFailureTitle: 'Some selected classes were not deleted.',
-      closeSurface: () => setDeleteModalOpen(false),
-      mutate: () => runBatchMutation(selectedRows, (row) => callApi('deleteABClass', { classId: row.classId })),
-      setSubmitting: setDeleteSubmitting,
-    });
+    await runTopLevelBulkActionByKey('delete');
   }
 
   /**
@@ -668,14 +713,7 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all create calls have settled.
    */
   async function handleBulkCreate(options: BulkCreateOptions): Promise<void> {
-    await runTopLevelBulkAction({
-      createFailureMessage: createBulkCreateFailureMessage,
-      fullFailureTitle: 'Could not create selected classes.',
-      partialFailureTitle: 'Some selected classes were not created.',
-      closeSurface: () => setCreateModalOpen(false),
-      mutate: () => bulkCreate(filterBulkCreateRows(selectedRows), options),
-      setSubmitting: setCreateSubmitting,
-    });
+    await runTopLevelBulkAction(getCreateTopLevelBulkActionDescriptor(options));
   }
 
   /**
@@ -685,15 +723,7 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all activations have settled.
    */
   async function handleSetActive() {
-    const eligible = filterEligibleForActiveState(selectedRows, true);
-
-    await runTopLevelBulkAction({
-      createFailureMessage: createBulkSetActiveFailureMessage,
-      fullFailureTitle: 'Could not set selected classes to active.',
-      partialFailureTitle: 'Some selected classes were not set to active.',
-      mutate: () => runBatchMutation(eligible, (row) => callApi('updateABClass', { classId: row.classId, active: true })),
-      setSubmitting: setSetActiveSubmitting,
-    });
+    await runTopLevelBulkActionByKey('setActive');
   }
 
   /**
@@ -703,15 +733,7 @@ export function ClassesManagementPanel() {
    * @returns {Promise<void>} Resolves when all deactivations have settled.
    */
   async function handleSetInactive() {
-    const eligible = filterEligibleForActiveState(selectedRows, false);
-
-    await runTopLevelBulkAction({
-      createFailureMessage: createBulkSetInactiveFailureMessage,
-      fullFailureTitle: 'Could not set selected classes to inactive.',
-      partialFailureTitle: 'Some selected classes were not set to inactive.',
-      mutate: () => runBatchMutation(eligible, (row) => callApi('updateABClass', { classId: row.classId, active: false })),
-      setSubmitting: setSetInactiveSubmitting,
-    });
+    await runTopLevelBulkActionByKey('setInactive');
   }
 
   /**

@@ -1,17 +1,7 @@
 import type { YearGroup } from '../../services/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
-import { bulkMetadataUpdate, filterEligibleForBulkMetadataUpdate } from './bulkMetadataUpdateFlow';
+import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from './classesManagementViewModel';
-
-/**
- * Returns only existing active or inactive rows for bulk year-group editing.
- *
- * @param {ClassesManagementRow[]} rows Candidate rows.
- * @returns {ClassesManagementRow[]} Eligible rows.
- */
-export function filterEligibleForBulkSetYearGroup(rows: ClassesManagementRow[]): ClassesManagementRow[] {
-  return filterEligibleForBulkMetadataUpdate(rows);
-}
 
 /**
  * Builds select options using stable year-group keys as option values.

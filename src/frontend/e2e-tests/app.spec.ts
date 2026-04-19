@@ -1,10 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageExpectations } from '../src/test/pageExpectations';
+import { pageContent } from '../src/pages/pageContent';
 import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
 
 const appBreadcrumbBaseLabel = 'AssessmentBot Frontend';
 const breadcrumbNavigationName = 'Breadcrumb';
 const defaultNavigationLabel = 'Dashboard';
+const pageExpectations = [
+  pageContent.dashboard,
+  pageContent.assignments,
+  pageContent.settings,
+] as const;
+
 const expectedNavigationItemCount = pageExpectations.length;
 const assignmentsNavigationItemIndex = 1;
 const collapseExpandCycles = 2;

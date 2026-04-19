@@ -1,8 +1,4 @@
-import {
-  AppstoreOutlined,
-  HomeOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
+import { AppstoreOutlined, HomeOutlined, SettingOutlined } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 import { AssignmentsPage } from '../pages/AssignmentsPage';
@@ -99,6 +95,10 @@ function buildUnknownPageKeyError(key: string) {
  * @param {AppNavigationKey} key Active navigation key.
  * @param {ReactNode | undefined} contentSlot Optional dashboard content slot.
  * @returns {ReactNode} The selected page.
+ *
+ * @remarks
+ * `AppShell` treats this as the single runtime source of truth for navigation-key-to-page rendering.
+ * Do not reintroduce a second page-selection switch elsewhere in the shell.
  */
 export function renderNavigationPage(key: AppNavigationKey, contentSlot?: ReactNode) {
   switch (key) {
@@ -139,9 +139,7 @@ export function getNavigationLabel(key: AppNavigationKey) {
  * @param {AppNavigationKey} key Active navigation key.
  * @returns {NonNullable<BreadcrumbProps['items']>} Breadcrumb items for the active navigation key.
  */
-export function getBreadcrumbItems(
-  key: AppNavigationKey
-): NonNullable<BreadcrumbProps['items']> {
+export function getBreadcrumbItems(key: AppNavigationKey): NonNullable<BreadcrumbProps['items']> {
   return [
     { title: appBreadcrumbBaseLabel } satisfies AppBreadcrumbDefinition,
     { title: getNavigationLabel(key) } satisfies AppBreadcrumbDefinition,

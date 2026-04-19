@@ -1,17 +1,7 @@
 import type { Cohort } from '../../services/referenceData.zod';
 import type { RowMutationResult } from './batchMutationEngine';
-import { bulkMetadataUpdate, filterEligibleForBulkMetadataUpdate } from './bulkMetadataUpdateFlow';
+import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from './classesManagementViewModel';
-
-/**
- * Returns only existing active or inactive rows for bulk cohort editing.
- *
- * @param {ClassesManagementRow[]} rows Candidate rows.
- * @returns {ClassesManagementRow[]} Eligible rows.
- */
-export function filterEligibleForBulkSetCohort(rows: ClassesManagementRow[]): ClassesManagementRow[] {
-  return filterEligibleForBulkMetadataUpdate(rows);
-}
 
 /**
  * Builds select options from active cohorts only.

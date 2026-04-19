@@ -765,16 +765,6 @@ export function AssignmentsPage() {
 
     setDeleteTarget(null);
   }
-
-  /**
-   * Triggers delete confirmation flow without promise handling in JSX.
-   *
-   * @returns {void} No return value.
-   */
-  function handleConfirmDeleteClick() {
-    handleConfirmDelete();
-  }
-
   return (
     <PageSection heading={pageContent.assignments.heading} summary={pageContent.assignments.summary}>
       <section
@@ -797,7 +787,9 @@ export function AssignmentsPage() {
         isDeleteMutationPending={deleteMutation.isPending}
         isDeleteSubmitting={isDeleteSubmitting}
         onCancel={handleDeleteModalClose}
-        onConfirm={handleConfirmDeleteClick}
+        onConfirm={() => {
+          void handleConfirmDelete();
+        }}
       />
     </PageSection>
   );
