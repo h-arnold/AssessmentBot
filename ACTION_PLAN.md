@@ -248,7 +248,7 @@ Frontend e2e tests:
 
 - **Implementation notes:** Section 1 is complete; duplicate shell/settings wrapper machinery was removed while preserving the wide Settings frame, dashboard content slot, width-token routing, remount rules, and mount prefetch behaviour.
 - **Deviations from plan:** none recorded for Section 1.
-- **Follow-up implications for later sections:** next active phase is **Section 2 red**, currently **pending start** (not started yet).
+- **Follow-up implications for later sections:** Section 1 follow-up completed in Section 2; next active phase is **Section 3 red**, currently **pending start**.
 
 ---
 
@@ -260,7 +260,7 @@ Frontend e2e tests:
 
 ### Status
 
-- Pending start: Section 2 red phase not started yet.
+- Completed: Section 2 red and green phases are complete; checks are passing.
 
 ### Constraints
 
@@ -335,11 +335,35 @@ Frontend e2e tests:
 
 - None unless the local descriptor shape needs explanation to avoid accidental cross-feature extraction later.
 
+### Section 2 execution tracker (completed)
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created (pending)
+- [ ] push completed (pending)
+
+### Section 2 review findings and resolutions
+
+1. Finding: early red-phase coverage included brittle raw-source assertions in the Assignments filter tests.
+   - Resolution: replaced brittle raw-source assertions with regression-baseline behavioural tests that lock visible filter/reset/delete behaviour against the surviving runtime contract.
+
+### Section 2 LOC tracking
+
+- Baseline total: 4136
+- After Section 1 cumulative total: 4034
+- After Section 2 cumulative total: 3987
+- Cumulative delta: -149
+- `AssignmentsPage.tsx`: 851 -> 804 (-47)
+
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** keep the solution inside `AssignmentsPage.tsx` unless implementation proves a second real caller exists.
-- **Deviations from plan:** document any new helper file and justify why the page-local path was insufficient.
-- **Follow-up implications for later sections:** none expected.
+- **Implementation notes:** Section 2 is complete; Assignments filter wiring now uses a single local typed filter path and descriptor-driven column configuration while preserving filter semantics, reset behaviour, accessibility labels, and delete-flow outcomes.
+- **Deviations from plan:** none recorded for Section 2 (solution remained page-local in `AssignmentsPage.tsx`).
+- **Follow-up implications for later sections:** next active phase is **Section 3 red**, currently **pending start**.
 
 ---
 
