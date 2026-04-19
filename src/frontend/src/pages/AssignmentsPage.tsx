@@ -50,6 +50,8 @@ type AssignmentsFilterState = Readonly<{
   updatedAt: FilterValue | null;
 }>;
 
+type AssignmentsFilterOption = Readonly<{ text: string; value: string }>;
+
 type DeleteOutcome = Readonly<{
   type: 'success' | 'error';
   message: string;
@@ -293,7 +295,7 @@ function isAssignmentsSurfaceBusyState(
  */
 function AssignmentsFilterDropdown(
   properties: Readonly<{
-    options: ReadonlyArray<{ text: string; value: string }>;
+    options: ReadonlyArray<AssignmentsFilterOption>;
     selectedValues: FilterValue | null;
     onSelectOption: (value: string) => void;
     dropdownProperties: FilterDropdownProps;
@@ -357,6 +359,31 @@ function createFilterIconRenderer(label: string) {
 }
 
 /**
+ * Creates one stable filter dropdown renderer for a table column.
+ *
+ * @param {Readonly<{ options: ReadonlyArray<AssignmentsFilterOption>; selectedValues: FilterValue | null; onSelectOption: (value: string) => void; }>} properties Renderer inputs.
+ * @returns {(dropdownProperties: FilterDropdownProps) => ReactElement} Filter dropdown renderer.
+ */
+function createFilterDropdownRenderer(
+  properties: Readonly<{
+    options: ReadonlyArray<AssignmentsFilterOption>;
+    selectedValues: FilterValue | null;
+    onSelectOption: (value: string) => void;
+  }>
+): (dropdownProperties: FilterDropdownProps) => ReactElement {
+  return function renderFilterDropdown(dropdownProperties: FilterDropdownProps): ReactElement {
+    return (
+      <AssignmentsFilterDropdown
+        dropdownProperties={dropdownProperties}
+        onSelectOption={properties.onSelectOption}
+        options={properties.options}
+        selectedValues={properties.selectedValues}
+      />
+    );
+  };
+}
+
+/**
  * Renders the status and action card for assignments management.
  *
  * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; }>} properties Card properties.
@@ -386,7 +413,7 @@ function AssignmentsStatusAndActionsCard(
         )}
 
         {properties.shouldRenderActionLoadingState ? (
-          <div aria-label="Assignments actions loading" role="status">
+          <div aria-label="Assignments actions loading" aria-live="polite">
             <Space>
               <Skeleton.Button active />
               <Skeleton.Button active />
@@ -438,7 +465,7 @@ function renderAssignmentsDefinitionsCard(
       }
     >
       {properties.shouldRenderTableLoadingState ? (
-        <div aria-label="Assignments table loading" role="status">
+        <div aria-label="Assignments table loading" aria-live="polite">
           <Skeleton active paragraph={{ rows: 6 }} title={{ width: '30%' }} />
         </div>
       ) : (
@@ -590,14 +617,11 @@ export function AssignmentsPage() {
         title: 'Title',
         dataIndex: 'primaryTitle',
         key: 'primaryTitle',
-        filterDropdown: (dropdownProperties: FilterDropdownProps) => (
-          <AssignmentsFilterDropdown
-            dropdownProperties={dropdownProperties}
-            onSelectOption={handleSelectPrimaryTitleFilter}
-            options={filterOptions.primaryTitle}
-            selectedValues={filters.primaryTitle}
-          />
-        ),
+        filterDropdown: createFilterDropdownRenderer({
+          onSelectOption: handleSelectPrimaryTitleFilter,
+          options: filterOptions.primaryTitle,
+          selectedValues: filters.primaryTitle,
+        }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
         filterIcon: createFilterIconRenderer('Filter by title'),
         filteredValue: filters.primaryTitle,
@@ -607,14 +631,11 @@ export function AssignmentsPage() {
         title: 'Topic',
         dataIndex: 'primaryTopic',
         key: 'primaryTopic',
-        filterDropdown: (dropdownProperties: FilterDropdownProps) => (
-          <AssignmentsFilterDropdown
-            dropdownProperties={dropdownProperties}
-            onSelectOption={handleSelectPrimaryTopicFilter}
-            options={filterOptions.primaryTopic}
-            selectedValues={filters.primaryTopic}
-          />
-        ),
+        filterDropdown: createFilterDropdownRenderer({
+          onSelectOption: handleSelectPrimaryTopicFilter,
+          options: filterOptions.primaryTopic,
+          selectedValues: filters.primaryTopic,
+        }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
         filterIcon: createFilterIconRenderer('Filter by topic'),
         filteredValue: filters.primaryTopic,
@@ -625,14 +646,11 @@ export function AssignmentsPage() {
         dataIndex: 'yearGroup',
         key: 'yearGroup',
         render: (_, row) => formatYearGroupLabel(row.yearGroup),
-        filterDropdown: (dropdownProperties: FilterDropdownProps) => (
-          <AssignmentsFilterDropdown
-            dropdownProperties={dropdownProperties}
-            onSelectOption={handleSelectYearGroupFilter}
-            options={filterOptions.yearGroup}
-            selectedValues={filters.yearGroup}
-          />
-        ),
+        filterDropdown: createFilterDropdownRenderer({
+          onSelectOption: handleSelectYearGroupFilter,
+          options: filterOptions.yearGroup,
+          selectedValues: filters.yearGroup,
+        }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
         filterIcon: createFilterIconRenderer('Filter by year group'),
         filteredValue: filters.yearGroup,
@@ -642,14 +660,11 @@ export function AssignmentsPage() {
         title: 'Document type',
         dataIndex: 'documentType',
         key: 'documentType',
-        filterDropdown: (dropdownProperties: FilterDropdownProps) => (
-          <AssignmentsFilterDropdown
-            dropdownProperties={dropdownProperties}
-            onSelectOption={handleSelectDocumentTypeFilter}
-            options={filterOptions.documentType}
-            selectedValues={filters.documentType}
-          />
-        ),
+        filterDropdown: createFilterDropdownRenderer({
+          onSelectOption: handleSelectDocumentTypeFilter,
+          options: filterOptions.documentType,
+          selectedValues: filters.documentType,
+        }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
         filterIcon: createFilterIconRenderer('Filter by document type'),
         filteredValue: filters.documentType,
@@ -660,14 +675,11 @@ export function AssignmentsPage() {
         dataIndex: 'updatedAt',
         key: 'updatedAt',
         render: (_, row) => formatUpdatedAtLabel(row.updatedAt),
-        filterDropdown: (dropdownProperties: FilterDropdownProps) => (
-          <AssignmentsFilterDropdown
-            dropdownProperties={dropdownProperties}
-            onSelectOption={handleSelectUpdatedAtFilter}
-            options={filterOptions.updatedAt}
-            selectedValues={filters.updatedAt}
-          />
-        ),
+        filterDropdown: createFilterDropdownRenderer({
+          onSelectOption: handleSelectUpdatedAtFilter,
+          options: filterOptions.updatedAt,
+          selectedValues: filters.updatedAt,
+        }),
         filterDropdownProps: FILTER_DROPDOWN_PROPERTIES,
         filterIcon: createFilterIconRenderer('Filter by last updated'),
         filteredValue: filters.updatedAt,

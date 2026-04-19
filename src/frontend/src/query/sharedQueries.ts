@@ -183,8 +183,7 @@ export function warmStartupQueries(
   const warmupPromise = Promise.allSettled(
     startupWarmupQueryDefinitions.map(async (queryDefinition) => {
       const queryOptions = queryDefinition.getQueryOptions() as Parameters<QueryClient['fetchQuery']>[0];
-      const dataset =
-        (await queryClient.fetchQuery(queryOptions)) as StartupWarmupQueriesResult[StartupWarmupDatasetKey];
+      const dataset = await queryClient.fetchQuery(queryOptions);
 
       return [queryDefinition.datasetKey, dataset] as const;
     })

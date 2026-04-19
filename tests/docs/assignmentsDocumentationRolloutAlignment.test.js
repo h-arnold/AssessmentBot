@@ -14,10 +14,10 @@ function readFile(filePath) {
 }
 
 function getMarkdownSection(documentContent, heading, level = 2) {
-  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedHeading = heading.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   const headingPrefix = '#'.repeat(level);
   const sectionRegex = new RegExp(
-    `${headingPrefix} ${escapedHeading}\\n([\\s\\S]*?)(?:\\n${headingPrefix} |$)`
+    String.raw`${headingPrefix} ${escapedHeading}\n([\s\S]*?)(?:\n${headingPrefix} |$)`
   );
   const sectionMatch = documentContent.match(sectionRegex);
 
