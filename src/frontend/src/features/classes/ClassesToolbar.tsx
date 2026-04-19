@@ -2,8 +2,7 @@ import { Button, Card, Space, Typography } from 'antd';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 export interface ClassesToolbarProperties {
-  rows: readonly ClassesManagementRow[];
-  selectedRowKeys: readonly string[];
+  selectedRows: readonly ClassesManagementRow[];
   onBulkCreate?: () => void;
   onBulkDelete?: () => void;
   onSetActive?: () => void;
@@ -143,10 +142,7 @@ function getClassesToolbarDisabledState(
  * @returns {JSX.Element} Toolbar card.
  */
 export function ClassesToolbar(properties: Readonly<ClassesToolbarProperties>) {
-  const selectedRows = properties.rows.filter((row) =>
-    properties.selectedRowKeys.includes(row.classId)
-  );
-  const eligibility = getBulkActionEligibility(selectedRows);
+  const eligibility = getBulkActionEligibility(properties.selectedRows);
   const selectionMessage = getSelectionMessage(eligibility.selectedRows);
   const activeStateMutationInFlight = properties.setActiveLoading === true || properties.setInactiveLoading === true;
   const workflowMutationInFlight = properties.mutationInFlight === true || activeStateMutationInFlight;

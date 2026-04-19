@@ -151,6 +151,30 @@ test.describe('Classes CRUD bulk course-length flow', () => {
     await expect(getRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
   });
 
+  test('keeps the course-length modal open with inline feedback when all selected updates fail', async ({ page }) => {
+    await openClassesTabWithScenario(page, {
+      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      getABClassPartials: [{ kind: 'success', data: courseLengthEligibleClassPartials }],
+      getCohorts: [{ kind: 'success', data: baseCohorts }],
+      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+      getGoogleClassrooms: [{ kind: 'success', data: courseLengthEligibleGoogleClassrooms }],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'First update failed.' },
+        { kind: 'failureEnvelope', message: 'Second update failed.' },
+      ],
+    });
+
+    await selectRowByKey(page, 'gc-active');
+    await selectRowByKey(page, 'gc-inactive');
+    await page.getByRole('button', { name: 'Set course length' }).click();
+    await page.getByRole('spinbutton', { name: 'Course length' }).fill('40');
+    await page.getByRole('dialog', { name: 'Set course length' }).getByRole('button', { name: 'OK' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Set course length' })).toBeVisible();
+    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
+  });
+
   test('keeps bulk course-length disabled for notCreated and orphaned selections', async ({ page }) => {
     await openClassesTabWithScenario(
       page,

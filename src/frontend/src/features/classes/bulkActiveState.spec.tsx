@@ -30,7 +30,6 @@ function makeRow(overrides: Partial<ClassesManagementRow> = {}): ClassesManageme
     ...overrides,
   };
 }
-
 describe('filterEligibleForActiveState', () => {
   it('keeps active and inactive rows eligible while excluding orphaned and notCreated rows', () => {
     const rows: ClassesManagementRow[] = [

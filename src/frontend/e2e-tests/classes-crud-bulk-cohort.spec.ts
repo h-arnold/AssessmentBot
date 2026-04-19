@@ -176,6 +176,31 @@ test.describe('Classes CRUD bulk cohort flow', () => {
     await expect(getRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
   });
 
+  test('keeps the cohort modal open with inline feedback when all selected updates fail', async ({ page }) => {
+    await openClassesTabWithScenario(page, {
+      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      getABClassPartials: [{ kind: 'success', data: cohortEligibleClassPartials }],
+      getCohorts: [{ kind: 'success', data: bulkCohortOptions }],
+      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+      getGoogleClassrooms: [{ kind: 'success', data: cohortEligibleGoogleClassrooms }],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'First update failed.' },
+        { kind: 'failureEnvelope', message: 'Second update failed.' },
+      ],
+    });
+
+    await selectRowByKey(page, 'gc-active');
+    await selectRowByKey(page, 'gc-inactive');
+    await page.getByRole('button', { name: 'Set cohort' }).click();
+    await page.getByRole('combobox', { name: 'Cohort' }).click();
+    await page.getByRole('option', { name: 'Cohort 2025' }).click();
+    await page.getByRole('dialog', { name: 'Set cohort' }).getByRole('button', { name: 'OK' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Set cohort' })).toBeVisible();
+    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
+  });
+
   test('keeps bulk cohort disabled for notCreated and orphaned selections', async ({ page }) => {
     await openClassesTabWithScenario(
       page,

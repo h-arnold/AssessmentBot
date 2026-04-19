@@ -37,9 +37,9 @@ const managementLauncherCases: readonly ManagementLauncherCase[] = [
  * @returns {ReturnType<typeof render>} Testing Library render result.
  */
 function renderToolbar(selectedRowKeys: string[], overrides: Partial<ClassesToolbarProperties> = {}) {
-  return render(
-    <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={selectedRowKeys} {...overrides} />,
-  );
+  const selectedRows = statusCoverageRows.filter((row) => selectedRowKeys.includes(row.classId));
+
+  return render(<ClassesToolbar selectedRows={selectedRows} {...overrides} />);
 }
 
 /**
@@ -123,7 +123,7 @@ describe('ClassesToolbar', () => {
     expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();
 
     rerender(
-      <ClassesToolbar rows={statusCoverageRows} selectedRowKeys={['active-1', 'inactive-1']} />,
+      <ClassesToolbar selectedRows={statusCoverageRows.filter((row) => ['active-1', 'inactive-1'].includes(row.classId))} />,
     );
 
     expect(screen.getByRole('button', { name: buttonName })).toBeEnabled();

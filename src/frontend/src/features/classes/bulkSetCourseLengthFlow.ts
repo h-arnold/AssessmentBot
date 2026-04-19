@@ -1,9 +1,5 @@
-import { callApi } from '../../services/apiService';
-import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
-import {
-  bulkCourseLengthSchema,
-  courseLengthValidationMessage,
-} from './bulkEditValidation.zod';
+import type { RowMutationResult } from './batchMutationEngine';
+import { bulkMetadataUpdate, filterEligibleForBulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from './classesManagementViewModel';
 
 /**
@@ -13,23 +9,7 @@ import type { ClassesManagementRow } from './classesManagementViewModel';
  * @returns {ClassesManagementRow[]} Eligible rows.
  */
 export function filterEligibleForBulkSetCourseLength(rows: ClassesManagementRow[]): ClassesManagementRow[] {
-  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
-}
-
-/**
- * Validates and normalises the supplied course length.
- *
- * @param {number} courseLength Proposed course length.
- * @returns {number} Validated course length.
- */
-function parseCourseLength(courseLength: number): number {
-  const parsedCourseLength = bulkCourseLengthSchema.safeParse(courseLength);
-
-  if (!parsedCourseLength.success) {
-    throw new Error(courseLengthValidationMessage);
-  }
-
-  return parsedCourseLength.data;
+  return filterEligibleForBulkMetadataUpdate(rows);
 }
 
 /**
@@ -43,12 +23,5 @@ export async function bulkSetCourseLength(
   rows: ClassesManagementRow[],
   courseLength: number,
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
-  const parsedCourseLength = parseCourseLength(courseLength);
-
-  return runBatchMutation(rows, (row) =>
-    callApi('updateABClass', {
-      classId: row.classId,
-      courseLength: parsedCourseLength,
-    }),
-  );
+  return bulkMetadataUpdate(rows, { key: 'courseLength', value: courseLength });
 }

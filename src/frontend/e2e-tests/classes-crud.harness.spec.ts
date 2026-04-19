@@ -182,6 +182,33 @@ test.describe('Classes CRUD harness journey', () => {
     }
   });
 
+  test('keeps metadata modal open with inline feedback when every selected row fails to update', async ({ page }) => {
+    await mockClassesCrudRuntime(page, {
+      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      getABClassPartials: [{ kind: 'success', data: matchedClassPartials }],
+      getCohorts: [{ kind: 'success', data: baseCohorts }],
+      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+      getGoogleClassrooms: [{ kind: 'success', data: matchedGoogleClassrooms }],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'First update failed.' },
+        { kind: 'failureEnvelope', message: 'Second update failed.' },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesTab(page);
+    await page.locator('tbody tr[data-row-key="gc-class-201"]').getByRole('checkbox').check();
+    await page.locator('tbody tr[data-row-key="gc-class-202"]').getByRole('checkbox').check();
+    await page.getByRole('button', { name: 'Set cohort' }).click();
+    await page.getByRole('combobox', { name: 'Cohort' }).click();
+    await page.getByRole('option', { name: 'Cohort 2024' }).click();
+    await page.getByRole('dialog', { name: 'Set cohort' }).getByRole('button', { name: 'OK' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Set cohort' })).toBeVisible();
+    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
+  });
+
   test('fails fast when an unexpected backend call is made outside the scenario queue', async ({ page }) => {
     await mockClassesCrudRuntime(page, {
       getAuthorisationStatus: [{ kind: 'success', data: true }],

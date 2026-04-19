@@ -366,6 +366,30 @@ describe('ClassesManagementPanel bulk metadata failure handling', () => {
     );
   });
 
+  it('closes the metadata modal and promotes warning feedback to panel scope on partial failure', async () => {
+    const { ClassesManagementPanel } = await loadPanel();
+    bulkSetCohortMock.mockResolvedValue([
+      { status: 'fulfilled', row: rows[0], data: { ok: true } },
+      { status: 'rejected', row: rows[1], error: new Error('Update failed.') },
+    ]);
+    const { onSelectedRowKeysChange, invalidateQueriesSpy } = renderPanel(<ClassesManagementPanel />);
+
+    await submitSelectModal('Set cohort');
+
+    await waitFor(() => {
+      expect(bulkSetCohortMock).toHaveBeenCalledWith(rows, 'cohort-2025');
+    });
+    await waitFor(() =>
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ queryKey: queryKeys.classPartials(), refetchType: 'none' })
+      )
+    );
+    await expect(screen.queryByRole('dialog', { name: 'Set cohort' })).toBeNull();
+    expect(screen.getByText('Some selected classes were not updated.')).toBeInTheDocument();
+    expect(screen.getByText(/selected classes could not be updated/i)).toBeInTheDocument();
+    expect(onSelectedRowKeysChange).toHaveBeenCalledWith(['inactive-1']);
+  });
+
   it('keeps the course-length modal open with inline feedback and reselects all failed rows after a full failure', async () => {
     const { ClassesManagementPanel } = await loadPanel();
     bulkSetCourseLengthMock.mockResolvedValue([

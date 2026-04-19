@@ -12,7 +12,13 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import {
+  baseCohorts,
+  baseYearGroups,
+  mockClassesCrudRuntime,
+  openClassesTab,
+  type ClassesCrudRuntimeScenario,
+} from './classes-crud.shared';
 
 // ---------------------------------------------------------------------------
 // Label constants (WS3 button labels)
@@ -24,6 +30,7 @@ const bulkActivateButtonLabel = 'Set active';
 const bulkDeactivateButtonLabel = 'Set inactive';
 const TWO_DATA_ROWS_PLUS_HEADER = 3;
 const ONE_DATA_ROW_PLUS_HEADER = 2;
+const DEFAULT_MUTATION_QUEUE_LENGTH = 12;
 
 // ---------------------------------------------------------------------------
 // WS3-format fixtures (cohortKey/yearGroupKey string fields)
@@ -72,7 +79,7 @@ const secondActiveClassPartial = {
 };
 
 // ---------------------------------------------------------------------------
-// Mock runtime helper
+// Shared harness adapter
 // ---------------------------------------------------------------------------
 
 type BulkCoreMutationScenario = Readonly<
@@ -109,139 +116,55 @@ type BulkCoreScenario = Readonly<{
   deleteABClass?: readonly BulkCoreMutationScenario[];
   /** Optional queued update responses. Defaults to success when omitted. */
   updateABClass?: readonly BulkCoreMutationScenario[];
+  /** Optional queued upsert responses. Defaults to success when omitted. */
+  upsertABClass?: readonly BulkCoreMutationScenario[];
 }>;
 
 /**
- * Installs a complete `google.script.run` mock for bulk-core E2E tests.
- * Handles auth, all four data queries, and mutation methods.
+ * Builds a padded queue of successful mutation responses.
+ *
+ * @returns {ReadonlyArray<BulkCoreMutationScenario>} Default success queue.
+ */
+function buildDefaultMutationQueue(): ReadonlyArray<BulkCoreMutationScenario> {
+  return Array.from({ length: DEFAULT_MUTATION_QUEUE_LENGTH }, () => ({ kind: 'success', data: { ok: true } }));
+}
+
+/**
+ * Maps the bulk-core shorthand scenario onto the shared classes CRUD harness scenario.
+ *
+ * @param {BulkCoreScenario} scenario Bulk-core shorthand scenario.
+ * @returns {ClassesCrudRuntimeScenario} Shared harness scenario.
+ */
+function toClassesCrudScenario(scenario: BulkCoreScenario): ClassesCrudRuntimeScenario {
+  const classPartialsQueue: ClassesCrudRuntimeScenario['getABClassPartials'] = [
+    { kind: 'success', data: scenario.classPartials },
+  ];
+
+  if (scenario.classPartialsAfterMutation !== undefined) {
+    classPartialsQueue.push({ kind: 'success', data: scenario.classPartialsAfterMutation });
+  }
+
+  return {
+    getAuthorisationStatus: [{ kind: 'success', data: true }],
+    getABClassPartials: classPartialsQueue,
+    getCohorts: [{ kind: 'success', data: scenario.cohorts ?? baseCohorts }],
+    getYearGroups: [{ kind: 'success', data: scenario.yearGroups ?? baseYearGroups }],
+    getGoogleClassrooms: [{ kind: 'success', data: scenario.googleClassrooms }],
+    deleteABClass: scenario.deleteABClass ?? buildDefaultMutationQueue(),
+    updateABClass: scenario.updateABClass ?? buildDefaultMutationQueue(),
+    upsertABClass: scenario.upsertABClass ?? buildDefaultMutationQueue(),
+  };
+}
+
+/**
+ * Installs a complete `google.script.run` scenario using the shared classes CRUD harness.
  *
  * @param {Page} page Playwright page under test.
  * @param {BulkCoreScenario} scenario API scenario.
  * @returns {Promise<void>} Resolves when the init script is installed.
  */
 async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Promise<void> {
-  await page.addInitScript(`
-    (() => {
-      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const scenario = ${JSON.stringify(scenario)};
-      let classPartialsCallCount = 0;
-      const mutationCallCounts = {
-        deleteABClass: 0,
-        updateABClass: 0,
-      };
-
-      function sendSuccess(successHandler, data, requestId) {
-        if (successHandler !== undefined) {
-          successHandler({ ok: true, requestId, data });
-        }
-      }
-
-      function sendFailureEnvelope(successHandler, requestId, code, message) {
-        if (successHandler !== undefined) {
-          successHandler({
-            ok: false,
-            requestId,
-            error: {
-              code,
-              message,
-              retriable: false,
-            },
-          });
-        }
-      }
-
-      function handleQueuedMutation(method, callbacks) {
-        const responseQueue = scenario[method];
-
-        if (Array.isArray(responseQueue) === false || responseQueue.length === 0) {
-          sendSuccess(callbacks.successHandler, { ok: true }, 'req-' + method + '-default');
-          return;
-        }
-
-        const responseIndex = mutationCallCounts[method];
-        mutationCallCounts[method] = responseIndex + 1;
-        const response = responseQueue[responseIndex];
-
-        if (response === undefined) {
-          callbacks.failureHandler?.(new Error('Unexpected call to ' + method + ' (call index ' + responseIndex + ')'));
-          return;
-        }
-
-        if (response.kind === 'transportFailure') {
-          callbacks.failureHandler?.(new Error(response.message));
-          return;
-        }
-
-        if (response.kind === 'failureEnvelope') {
-          sendFailureEnvelope(
-            callbacks.successHandler,
-            'req-' + method + '-' + responseIndex,
-            response.code ?? 'INTERNAL_ERROR',
-            response.message,
-          );
-          return;
-        }
-
-        sendSuccess(
-          callbacks.successHandler,
-          response.data ?? { ok: true },
-          'req-' + method + '-' + responseIndex,
-        );
-      }
-
-      globalThis.google = {
-        script: {
-          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-            const method = request?.method;
-
-            if (method === 'getAuthorisationStatus') {
-              sendSuccess(callbacks.successHandler, true, 'req-auth');
-              return;
-            }
-
-            if (method === 'getGoogleClassrooms') {
-              sendSuccess(callbacks.successHandler, scenario.googleClassrooms, 'req-gcr');
-              return;
-            }
-
-            if (method === 'getABClassPartials') {
-              const data =
-                classPartialsCallCount === 0 || scenario.classPartialsAfterMutation === undefined
-                  ? scenario.classPartials
-                  : scenario.classPartialsAfterMutation;
-              classPartialsCallCount += 1;
-              sendSuccess(callbacks.successHandler, data, 'req-partials-' + classPartialsCallCount);
-              return;
-            }
-
-            if (method === 'getCohorts') {
-              sendSuccess(callbacks.successHandler, scenario.cohorts ?? [], 'req-cohorts');
-              return;
-            }
-
-            if (method === 'getYearGroups') {
-              sendSuccess(callbacks.successHandler, scenario.yearGroups ?? [], 'req-year-groups');
-              return;
-            }
-
-            if (method === 'deleteABClass' || method === 'updateABClass') {
-              handleQueuedMutation(method, callbacks);
-              return;
-            }
-
-            if (method === 'upsertABClass') {
-              sendSuccess(callbacks.successHandler, { ok: true }, 'req-upsert-default');
-              return;
-            }
-
-            if (callbacks.failureHandler !== undefined) {
-              callbacks.failureHandler(new Error('Unexpected method: ' + method));
-            }
-          }),
-        },
-      };
-    })();
-  `);
+  await mockClassesCrudRuntime(page, toClassesCrudScenario(scenario));
 }
 
 /**
@@ -251,9 +174,7 @@ async function mockBulkCoreRuntime(page: Page, scenario: BulkCoreScenario): Prom
  * @returns {Promise<void>} Resolves once the Classes tab is active and the table is visible.
  */
 async function openClassesManagementTab(page: Page): Promise<void> {
-  await page.getByRole('menuitem', { name: 'Settings' }).click();
-  await expect(page.getByRole('heading', { level: 2, name: 'Settings' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Classes' }).click();
+  await openClassesTab(page);
   await expect(page.getByRole('table', { name: classesTableAriaLabel })).toBeVisible();
 }
 
@@ -302,6 +223,39 @@ test.describe('bulk create flow', () => {
     await table.getByRole('checkbox').first().check();
 
     await expect(page.getByRole('button', { name: bulkCreateButtonLabel })).toBeEnabled();
+  });
+
+  test('seeds the bulk create course-length input with the default value of 1', async ({ page }) => {
+    await mockBulkCoreRuntime(page, {
+      googleClassrooms: [notCreatedGCR],
+      classPartials: [],
+      cohorts: [
+        {
+          key: 'cohort-2025',
+          name: 'Cohort 2025',
+          active: true,
+          startYear: 2025,
+          startMonth: 9,
+        },
+      ],
+      yearGroups: [
+        {
+          key: 'year-11',
+          name: 'Year 11',
+        },
+      ],
+    });
+
+    await page.goto('/');
+    await openClassesManagementTab(page);
+
+    const table = page.getByRole('table', { name: classesTableAriaLabel });
+    await table.getByRole('checkbox').first().check();
+    await page.getByRole('button', { name: bulkCreateButtonLabel }).click();
+
+    const dialog = page.getByRole('dialog', { name: bulkCreateButtonLabel });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('spinbutton', { name: 'Course length' })).toHaveValue('1');
   });
 
   test('submitting bulk create creates selected rows and closes the modal', async ({ page }) => {
