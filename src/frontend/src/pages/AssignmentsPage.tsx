@@ -827,7 +827,6 @@ export function AssignmentsPage() {
       <section
         aria-label={ASSIGNMENTS_PANEL_REGION_LABEL}
         aria-busy={isAssignmentsSurfaceBusy ? 'true' : undefined}
-        role="region"
       >
         <Flex vertical gap={16}>
           <AssignmentsStatusAndActionsCard

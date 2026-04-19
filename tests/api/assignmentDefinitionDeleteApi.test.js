@@ -95,7 +95,7 @@ describe('Api/deleteAssignmentDefinition transport contract', () => {
     },
     {
       caseName: 'contains backslash',
-      params: { definitionKey: 'topic\\algebra' },
+      params: { definitionKey: String.raw`topic\algebra` },
     },
     {
       caseName: 'contains dot-dot traversal token',

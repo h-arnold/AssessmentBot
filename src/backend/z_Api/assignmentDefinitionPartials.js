@@ -184,7 +184,7 @@ function isIsoDateTimeString(value) {
     return false;
   }
 
-  const match = value.match(ISO_DATE_TIME_PATTERN);
+  const match = ISO_DATE_TIME_PATTERN.exec(value);
   if (!match) {
     return false;
   }
