@@ -345,4 +345,5 @@ describe('ClassesManagementPanel', () => {
     expect(screen.queryByText('Transport refresh text.')).not.toBeInTheDocument();
     expect(onSelectedRowKeysChange).toHaveBeenLastCalledWith(['orphaned-1']);
   });
+
 });

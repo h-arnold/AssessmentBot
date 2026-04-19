@@ -15,11 +15,13 @@ For surface loading, fail-closed degraded-data behaviour, and page or panel widt
 
 ## 1. Navigation model and rendering contract
 
-### 1.1 Keep navigation metadata centralised
+### 1.1 Keep navigation metadata and page rendering centralised
 
-Navigation keys, labels, and icons must be defined in `src/frontend/src/navigation/appNavigation.tsx` and consumed from there.
+Navigation keys, labels, icons, and the page-render contract must be defined in `src/frontend/src/navigation/appNavigation.tsx` and consumed from there.
 
-Do not duplicate page labels in multiple feature files.
+- `renderNavigationPage(...)` is the single runtime source of truth for navigation-key-to-page rendering.
+- `AppShell` must consume that contract rather than keeping a second page-selection switch.
+- Do not duplicate page labels in multiple feature files.
 
 ### 1.2 Keep menu item identity stable
 

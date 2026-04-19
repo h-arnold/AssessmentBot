@@ -1,18 +1,7 @@
-import { callApi } from '../../services/apiService';
 import type { YearGroup } from '../../services/referenceData.zod';
-import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
-import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
+import type { RowMutationResult } from './batchMutationEngine';
+import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from './classesManagementViewModel';
-
-/**
- * Returns only existing active or inactive rows for bulk year-group editing.
- *
- * @param {ClassesManagementRow[]} rows Candidate rows.
- * @returns {ClassesManagementRow[]} Eligible rows.
- */
-export function filterEligibleForBulkSetYearGroup(rows: ClassesManagementRow[]): ClassesManagementRow[] {
-  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
-}
 
 /**
  * Builds select options using stable year-group keys as option values.
@@ -38,12 +27,5 @@ export async function bulkSetYearGroup(
   rows: ClassesManagementRow[],
   yearGroupKey: string,
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
-  const parsedYearGroupKey = bulkReferenceKeySchema.parse(yearGroupKey);
-
-  return runBatchMutation(rows, (row) =>
-    callApi('updateABClass', {
-      classId: row.classId,
-      yearGroupKey: parsedYearGroupKey,
-    }),
-  );
+  return bulkMetadataUpdate(rows, { key: 'yearGroupKey', value: yearGroupKey });
 }

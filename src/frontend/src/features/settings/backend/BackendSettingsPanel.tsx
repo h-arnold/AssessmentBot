@@ -11,8 +11,8 @@ import {
   Typography,
 } from 'antd';
 import type { FormInstance } from 'antd';
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Fragment, useEffect } from 'react';
 import { BackendSettingsFormSchema, type BackendSettingsForm } from './backendSettingsForm.zod';
 import { useBackendSettings } from './useBackendSettings';
 
@@ -28,6 +28,16 @@ const jsonDatabaseLogLevelOptions = [
 ];
 
 type BackendSettingsFieldName = Exclude<keyof BackendSettingsForm, 'hasApiKey'>;
+type BackendSettingsFieldSection = 'Backend' | 'Advanced' | 'Database';
+
+type BackendSettingsFieldDescriptor = Readonly<{
+  name: BackendSettingsFieldName | 'jsonDbBackupOnInitialise';
+  label: string;
+  renderInput: () => ReactNode;
+  section: BackendSettingsFieldSection;
+  valuePropName?: 'checked';
+  withSchemaValidation?: boolean;
+}>;
 
 const backendSettingsFieldNames = [
   'apiKey',
@@ -40,6 +50,81 @@ const backendSettingsFieldNames = [
   'jsonDbLogLevel',
   'jsonDbRootFolderId',
 ] as const satisfies ReadonlyArray<BackendSettingsFieldName>;
+
+const backendSettingsFieldDescriptors = [
+  {
+    name: 'apiKey',
+    label: 'API key',
+    renderInput: () => <Input.Password autoComplete="new-password" />,
+    section: 'Backend',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'backendUrl',
+    label: 'Backend URL',
+    renderInput: () => <Input autoComplete="url" />,
+    section: 'Backend',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'backendAssessorBatchSize',
+    label: 'Backend assessor batch size',
+    renderInput: () => <InputNumber min={1} max={500} precision={0} style={{ width: '100%' }} />,
+    section: 'Advanced',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'slidesFetchBatchSize',
+    label: 'Slides fetch batch size',
+    renderInput: () => <InputNumber min={1} max={100} precision={0} style={{ width: '100%' }} />,
+    section: 'Advanced',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'daysUntilAuthRevoke',
+    label: 'Days until auth revoke',
+    renderInput: () => <InputNumber min={1} max={365} precision={0} style={{ width: '100%' }} />,
+    section: 'Advanced',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'jsonDbMasterIndexKey',
+    label: 'JSON DB master index key',
+    renderInput: () => <Input autoComplete="off" />,
+    section: 'Database',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'jsonDbLockTimeoutMs',
+    label: 'JSON DB lock timeout',
+    renderInput: () => <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />,
+    section: 'Database',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'jsonDbLogLevel',
+    label: 'JSON DB log level',
+    renderInput: () => <Select options={jsonDatabaseLogLevelOptions} />,
+    section: 'Database',
+    withSchemaValidation: true,
+  },
+  {
+    name: 'jsonDbBackupOnInitialise',
+    label: 'JSON DB backup on initialise',
+    renderInput: () => <Switch />,
+    section: 'Database',
+    valuePropName: 'checked',
+  },
+  {
+    name: 'jsonDbRootFolderId',
+    label: 'JSON DB root folder ID',
+    renderInput: () => <Input autoComplete="off" />,
+    section: 'Database',
+    withSchemaValidation: true,
+  },
+] as const satisfies ReadonlyArray<BackendSettingsFieldDescriptor>;
+
+const backendSettingsSectionOrder = ['Backend', 'Advanced', 'Database'] as const satisfies ReadonlyArray<BackendSettingsFieldSection>;
 
 type SettingsSectionCardProperties = Readonly<{
   title: string;
@@ -125,96 +210,77 @@ function getApiKeyHelperCopy(hasApiKey: boolean): string {
 }
 
 /**
- * Converts a field error message into a validateStatus value.
- *
- * @param {string | undefined} fieldErrorMessage The current field error message.
- * @returns {'error' | undefined} The Ant Design validation state.
- */
-function getFieldValidateStatus(fieldErrorMessage: string | undefined): 'error' | undefined {
-  return fieldErrorMessage === undefined ? undefined : 'error';
-}
-
-/**
- * Returns the inline error message for a backend settings field.
- *
- * @param {Map<BackendSettingsFieldName, string>} fieldErrorMessages The current field error messages.
- * @param {BackendSettingsFieldName} fieldName The field name to inspect.
- * @returns {string | undefined} The field error message, if present.
- */
-function getBackendSettingsFieldErrorMessage(
-  fieldErrorMessages: Map<BackendSettingsFieldName, string>,
-  fieldName: BackendSettingsFieldName
-): string | undefined {
-  return fieldErrorMessages.get(fieldName);
-}
-
-/**
  * Clears form validation errors for the provided backend settings fields.
  *
  * @param {FormInstance<BackendSettingsForm>} form The Ant Design form instance.
  * @param {ReadonlyArray<BackendSettingsFieldName>} fieldNames The fields whose validation state should be cleared.
- * @param {Dispatch<SetStateAction<Map<BackendSettingsFieldName, string>>>} setFieldErrorMessages The inline error state setter.
  * @returns {void} Nothing.
  */
 function clearBackendSettingsFieldErrors(
   form: FormInstance<BackendSettingsForm>,
-  fieldNames: ReadonlyArray<BackendSettingsFieldName>,
-  setFieldErrorMessages: Dispatch<SetStateAction<Map<BackendSettingsFieldName, string>>>
+  fieldNames: ReadonlyArray<BackendSettingsFieldName>
 ): void {
   if (fieldNames.length === 0) {
     return;
   }
 
   form.setFields(fieldNames.map((fieldName) => ({ name: [fieldName], errors: [] })));
-
-  setFieldErrorMessages((currentFieldErrorMessages) => {
-    if (currentFieldErrorMessages.size === 0) {
-      return currentFieldErrorMessages;
-    }
-
-    const nextFieldErrorMessages = new Map(currentFieldErrorMessages);
-    for (const fieldName of fieldNames) {
-      nextFieldErrorMessages.delete(fieldName);
-    }
-
-    return nextFieldErrorMessages;
-  });
 }
 
 /**
- * Mirrors backend-settings validation issues into both the form meta and the controlled inline help state.
+ * Maps backend-settings validation issues into Ant Design field-error records.
  *
- * @param {FormInstance<BackendSettingsForm>} form The Ant Design form instance.
- * @param {ReadonlyArray<{ fieldName: BackendSettingsFieldName; message: string }>} fieldErrors The validation issues to surface.
- * @param {Dispatch<SetStateAction<Map<BackendSettingsFieldName, string>>>} setFieldErrorMessages The inline error state setter.
- * @returns {void} Nothing.
+ * @param {ReadonlyArray<{ fieldName: BackendSettingsFieldName; message: string }>} fieldErrors Validation issues.
+ * @returns {Array<{ name: [BackendSettingsFieldName]; errors: [string] }>} Ant Design field-error records.
  */
-function setBackendSettingsFieldErrors(
-  form: FormInstance<BackendSettingsForm>,
+function mapBackendSettingsFieldErrorsToFormRecords(
   fieldErrors: ReadonlyArray<{
     fieldName: BackendSettingsFieldName;
     message: string;
-  }>,
-  setFieldErrorMessages: Dispatch<SetStateAction<Map<BackendSettingsFieldName, string>>>
-): void {
-  if (fieldErrors.length === 0) {
-    setFieldErrorMessages(new Map());
-    return;
-  }
+  }>
+): Array<{ name: [BackendSettingsFieldName]; errors: [string] }> {
+  return fieldErrors.map((fieldError) => ({
+    name: [fieldError.fieldName],
+    errors: [fieldError.message],
+  }));
+}
 
-  const nextFieldErrorMessages = new Map<BackendSettingsFieldName, string>();
+/**
+ * Renders one backend settings form item from a local field descriptor.
+ *
+ * @param {Readonly<{ descriptor: BackendSettingsFieldDescriptor; form: FormInstance<BackendSettingsForm>; hasApiKey: boolean; }>} properties Field-render dependencies.
+ * @returns {JSX.Element} The rendered form item.
+ */
+function renderBackendSettingsField(properties: Readonly<{
+  descriptor: BackendSettingsFieldDescriptor;
+  form: FormInstance<BackendSettingsForm>;
+  hasApiKey: boolean;
+}>) {
+  const { descriptor, form, hasApiKey } = properties;
 
-  form.setFields(
-    fieldErrors.map((fieldError) => {
-      nextFieldErrorMessages.set(fieldError.fieldName, fieldError.message);
-      return {
-        name: [fieldError.fieldName],
-        errors: [fieldError.message],
-      };
-    })
+  return (
+    <Form.Item
+      key={descriptor.name}
+      label={descriptor.label}
+      name={descriptor.name}
+      rules={
+        descriptor.withSchemaValidation
+          ? [
+              {
+                validator: createBackendSettingsFieldValidator(
+                  form,
+                  hasApiKey,
+                  descriptor.name as BackendSettingsFieldName
+                ),
+              },
+            ]
+          : undefined
+      }
+      valuePropName={descriptor.valuePropName}
+    >
+      {descriptor.renderInput()}
+    </Form.Item>
   );
-
-  setFieldErrorMessages(nextFieldErrorMessages);
 }
 
 /**
@@ -273,14 +339,11 @@ export function BackendSettingsPanel() {
     saveError,
   } = useBackendSettings();
   const [form] = Form.useForm<BackendSettingsForm>();
-  const [fieldErrorMessages, setFieldErrorMessages] = useState(
-    () => new Map<BackendSettingsFieldName, string>()
-  );
 
   useEffect(() => {
     if (backendSettingsFormValues !== null) {
       form.setFieldsValue(backendSettingsFormValues);
-      clearBackendSettingsFieldErrors(form, backendSettingsFieldNames, setFieldErrorMessages);
+      clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
     }
   }, [backendSettingsFormValues, form]);
 
@@ -292,94 +355,29 @@ export function BackendSettingsPanel() {
 
     const validationResult = BackendSettingsFormSchema.safeParse(formValues);
     if (!validationResult.success) {
-      setBackendSettingsFieldErrors(
-        form,
-        validationResult.error.issues.flatMap((issue) => {
-          const [fieldName] = issue.path;
+      form.setFields(
+        mapBackendSettingsFieldErrorsToFormRecords(
+          validationResult.error.issues.flatMap((issue) => {
+            const [fieldName] = issue.path;
 
-          if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
-            return [];
-          }
+            if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
+              return [];
+            }
 
-          return [
-            {
-              fieldName: fieldName as BackendSettingsFieldName,
-              message: issue.message,
-            },
-          ];
-        }),
-        setFieldErrorMessages
+            return [
+              {
+                fieldName: fieldName as BackendSettingsFieldName,
+                message: issue.message,
+              },
+            ];
+          })
+        )
       );
       return;
     }
 
-    clearBackendSettingsFieldErrors(form, backendSettingsFieldNames, setFieldErrorMessages);
-
+    clearBackendSettingsFieldErrors(form, backendSettingsFieldNames);
     await saveBackendSettings(validationResult.data);
-  };
-
-  /**
-   * Mirrors Ant Design submit validation failures into the panel's controlled inline help state.
-   *
-   * @remarks
-   * The panel keeps these messages local so they can be cleared as soon as the user fixes the
-   * relevant field or the hook rebases the form after a successful save or fresh load.
-   *
-   * @param {object} properties The submit failure details from Ant Design.
-   * @param {Array<{ errors: string[]; name: Array<string | number>; }>} properties.errorFields The
-   * submit validation errors.
-   * @returns {void} Nothing.
-   */
-  const handleFinishFailed = (properties: {
-    errorFields: Array<{
-      errors: string[];
-      name: Array<string | number>;
-    }>;
-  }): void => {
-    setBackendSettingsFieldErrors(
-      form,
-      properties.errorFields.flatMap((errorField) => {
-        const [fieldName] = errorField.name;
-
-        if (typeof fieldName !== 'string' || fieldName === 'hasApiKey') {
-          return [];
-        }
-
-        return [
-          {
-            fieldName: fieldName as BackendSettingsFieldName,
-            message: errorField.errors[0],
-          },
-        ];
-      }),
-      setFieldErrorMessages
-    );
-  };
-
-  const handleValuesChange = (
-    changedValues: Partial<BackendSettingsForm>,
-    allValues: BackendSettingsForm
-  ): void => {
-    const changedFieldNames = Object.keys(changedValues).filter(
-      (fieldName) => fieldName !== 'hasApiKey'
-    ) as BackendSettingsFieldName[];
-
-    if (changedFieldNames.length === 0) {
-      return;
-    }
-
-    const validationResult = BackendSettingsFormSchema.safeParse({
-      ...allValues,
-      hasApiKey,
-    } satisfies BackendSettingsForm);
-
-    const fieldNamesToClear = validationResult.success
-      ? changedFieldNames
-      : changedFieldNames.filter(
-          (fieldName) => !validationResult.error.issues.some((issue) => issue.path[0] === fieldName)
-        );
-
-    clearBackendSettingsFieldErrors(form, fieldNamesToClear, setFieldErrorMessages);
   };
 
   if (loadError !== null) {
@@ -422,219 +420,34 @@ export function BackendSettingsPanel() {
           form={form}
           layout="vertical"
           name="backend-settings"
-          onFinishFailed={handleFinishFailed}
           onFinish={handleFinish}
-          onValuesChange={handleValuesChange}
           scrollToFirstError={{ focus: true }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
-            <SettingsSectionCard title="Backend">
-              <Form.Item
-                label="API key"
-                name="apiKey"
-                help={getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'apiKey')}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'apiKey')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(form, hasApiKey, 'apiKey'),
-                  },
-                ]}
-              >
-                <Input.Password autoComplete="new-password" />
-              </Form.Item>
+            {backendSettingsSectionOrder.map((section) => (
+              <SettingsSectionCard key={section} title={section}>
+                {backendSettingsFieldDescriptors
+                  .filter((fieldDescriptor) => fieldDescriptor.section === section)
+                  .map((fieldDescriptor) => (
+                    <Fragment key={fieldDescriptor.name}>
+                      {renderBackendSettingsField({
+                        descriptor: fieldDescriptor,
+                        form,
+                        hasApiKey,
+                      })}
 
-              <Text type="secondary" style={{ display: 'block', marginBottom: 24, marginTop: -16 }}>
-                {getApiKeyHelperCopy(hasApiKey)}
-              </Text>
-
-              <Form.Item
-                label="Backend URL"
-                name="backendUrl"
-                help={getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'backendUrl')}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'backendUrl')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(form, hasApiKey, 'backendUrl'),
-                  },
-                ]}
-              >
-                <Input autoComplete="url" />
-              </Form.Item>
-            </SettingsSectionCard>
-
-            <SettingsSectionCard title="Advanced">
-              <Form.Item
-                label="Backend assessor batch size"
-                name="backendAssessorBatchSize"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'backendAssessorBatchSize'
-                )}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(
-                    fieldErrorMessages,
-                    'backendAssessorBatchSize'
-                  )
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'backendAssessorBatchSize'
-                    ),
-                  },
-                ]}
-              >
-                <InputNumber min={1} max={500} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item
-                label="Slides fetch batch size"
-                name="slidesFetchBatchSize"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'slidesFetchBatchSize'
-                )}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'slidesFetchBatchSize')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'slidesFetchBatchSize'
-                    ),
-                  },
-                ]}
-              >
-                <InputNumber min={1} max={100} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item
-                label="Days until auth revoke"
-                name="daysUntilAuthRevoke"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'daysUntilAuthRevoke'
-                )}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'daysUntilAuthRevoke')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'daysUntilAuthRevoke'
-                    ),
-                  },
-                ]}
-              >
-                <InputNumber min={1} max={365} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-            </SettingsSectionCard>
-
-            <SettingsSectionCard title="Database">
-              <Form.Item
-                label="JSON DB master index key"
-                name="jsonDbMasterIndexKey"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'jsonDbMasterIndexKey'
-                )}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbMasterIndexKey')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'jsonDbMasterIndexKey'
-                    ),
-                  },
-                ]}
-              >
-                <Input autoComplete="off" />
-              </Form.Item>
-
-              <Form.Item
-                label="JSON DB lock timeout"
-                name="jsonDbLockTimeoutMs"
-                help={getBackendSettingsFieldErrorMessage(
-                  fieldErrorMessages,
-                  'jsonDbLockTimeoutMs'
-                )}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbLockTimeoutMs')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'jsonDbLockTimeoutMs'
-                    ),
-                  },
-                ]}
-              >
-                <InputNumber min={1000} max={600_000} precision={0} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item
-                label="JSON DB log level"
-                name="jsonDbLogLevel"
-                help={getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbLogLevel')}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbLogLevel')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'jsonDbLogLevel'
-                    ),
-                  },
-                ]}
-              >
-                <Select options={jsonDatabaseLogLevelOptions} />
-              </Form.Item>
-
-              <Form.Item
-                label="JSON DB backup on initialise"
-                name="jsonDbBackupOnInitialise"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                label="JSON DB root folder ID"
-                name="jsonDbRootFolderId"
-                help={getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbRootFolderId')}
-                validateStatus={getFieldValidateStatus(
-                  getBackendSettingsFieldErrorMessage(fieldErrorMessages, 'jsonDbRootFolderId')
-                )}
-                rules={[
-                  {
-                    validator: createBackendSettingsFieldValidator(
-                      form,
-                      hasApiKey,
-                      'jsonDbRootFolderId'
-                    ),
-                  },
-                ]}
-              >
-                <Input autoComplete="off" />
-              </Form.Item>
-            </SettingsSectionCard>
+                      {section === 'Backend' && fieldDescriptor.name === 'apiKey' ? (
+                        <Text
+                          type="secondary"
+                          style={{ display: 'block', marginBottom: 24, marginTop: -16 }}
+                        >
+                          {getApiKeyHelperCopy(hasApiKey)}
+                        </Text>
+                      ) : null}
+                    </Fragment>
+                  ))}
+              </SettingsSectionCard>
+            ))}
 
             <Form.Item>
               <Button

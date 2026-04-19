@@ -1,8 +1,4 @@
-import {
-  AppstoreOutlined,
-  HomeOutlined,
-  SettingOutlined,
-} from '@ant-design/icons';
+import { AppstoreOutlined, HomeOutlined, SettingOutlined } from '@ant-design/icons';
 import type { BreadcrumbProps } from 'antd';
 import type { ComponentType, ReactElement, ReactNode } from 'react';
 import { AssignmentsPage } from '../pages/AssignmentsPage';
@@ -11,8 +7,6 @@ import { SettingsPage } from '../pages/SettingsPage';
 import { pageContent } from '../pages/pageContent';
 
 export type AppNavigationKey = 'dashboard' | 'assignments' | 'settings';
-
-type AppNavigationPageRenderer = (contentSlot?: ReactNode) => ReactNode;
 
 /**
  * Shared navigation item metadata stays tree-ready so later sections can add nested children
@@ -95,24 +89,33 @@ function buildUnknownPageKeyError(key: string) {
   return new TypeError(`Unknown page key: ${key}`);
 }
 
-const pageRendererMap: Record<AppNavigationKey, AppNavigationPageRenderer> = {
-  dashboard: (contentSlot) => <DashboardPage contentSlot={contentSlot} />,
-  assignments: () => <AssignmentsPage />,
-  settings: () => <SettingsPage />,
-};
-
-export const pageRenderers = new Proxy(pageRendererMap, {
-  get(target, property, receiver) {
-    if (typeof property === 'string' && !isAppNavigationKey(property)) {
-      throw buildUnknownPageKeyError(property);
+/**
+ * Resolves and renders the selected page from the canonical navigation contract.
+ *
+ * @param {AppNavigationKey} key Active navigation key.
+ * @param {ReactNode | undefined} contentSlot Optional dashboard content slot.
+ * @returns {ReactNode} The selected page.
+ *
+ * @remarks
+ * `AppShell` treats this as the single runtime source of truth for navigation-key-to-page rendering.
+ * Do not reintroduce a second page-selection switch elsewhere in the shell.
+ */
+export function renderNavigationPage(key: AppNavigationKey, contentSlot?: ReactNode) {
+  switch (key) {
+    case 'dashboard': {
+      return <DashboardPage contentSlot={contentSlot} />;
     }
-
-    return Reflect.get(target, property, receiver);
-  },
-}) as Record<
-  AppNavigationKey,
-  AppNavigationPageRenderer
->;
+    case 'assignments': {
+      return <AssignmentsPage />;
+    }
+    case 'settings': {
+      return <SettingsPage />;
+    }
+    default: {
+      throw buildUnknownPageKeyError(String(key));
+    }
+  }
+}
 
 /**
  * Returns the shared label for a navigation key.
@@ -136,9 +139,7 @@ export function getNavigationLabel(key: AppNavigationKey) {
  * @param {AppNavigationKey} key Active navigation key.
  * @returns {NonNullable<BreadcrumbProps['items']>} Breadcrumb items for the active navigation key.
  */
-export function getBreadcrumbItems(
-  key: AppNavigationKey
-): NonNullable<BreadcrumbProps['items']> {
+export function getBreadcrumbItems(key: AppNavigationKey): NonNullable<BreadcrumbProps['items']> {
   return [
     { title: appBreadcrumbBaseLabel } satisfies AppBreadcrumbDefinition,
     { title: getNavigationLabel(key) } satisfies AppBreadcrumbDefinition,

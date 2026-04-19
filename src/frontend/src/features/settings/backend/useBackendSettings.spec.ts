@@ -502,7 +502,9 @@ describe('useBackendSettings', () => {
     });
 
     it('fails closed when a successful save cannot refresh the now-invalid backend settings data', async () => {
-        getBackendConfigMock.mockResolvedValueOnce(baseBackendConfig);
+        getBackendConfigMock
+            .mockResolvedValueOnce(baseBackendConfig)
+            .mockRejectedValueOnce(new Error('Invalid backend settings payload.'));
         mapBackendConfigToBackendSettingsFormValuesMock.mockReturnValueOnce(baseStoredKeyFormValues);
         mapBackendSettingsFormValuesToBackendConfigWriteInputMock.mockReturnValueOnce(
             blankApiKeyWriteInput
@@ -528,6 +530,7 @@ describe('useBackendSettings', () => {
                 backendSettingsFormValues: null,
             });
         });
+        expect(getBackendConfigMock).toHaveBeenCalledTimes(backendConfigReloadCallCount);
         expect(messageSuccessMock).not.toHaveBeenCalled();
     });
 

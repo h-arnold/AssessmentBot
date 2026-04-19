@@ -5,9 +5,6 @@ import { pageContent } from './pageContent';
 /**
  * Renders the dashboard landing page.
  */
-/**
- * Renders the dashboard landing page.
- */
 type DashboardPageProperties = Readonly<{ contentSlot?: ReactNode }>;
 
 /**

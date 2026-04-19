@@ -164,4 +164,5 @@ describe('bulkMutationOrchestration', () => {
     expect(setSubmitting).toHaveBeenLastCalledWith(false);
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
   });
+
 });

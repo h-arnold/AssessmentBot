@@ -1,6 +1,6 @@
-# Frontend Shared Helpers and Abstraction Standards (Draft)
+# Frontend Shared Helpers and Abstraction Standards
 
-This document is the draft canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`.
+This document is the canonical policy for shared-helper discovery and abstraction decisions in `src/frontend`.
 
 Use it alongside:
 
@@ -51,6 +51,8 @@ Do not create a new helper only to move code out of a large file.
 ### 3.3 Feature-shared helpers (existing local precedents)
 
 - Classes table shaping/filtering helpers: `src/frontend/src/features/classes/ClassesTable.helpers.ts`
+- Classes bulk-mutation orchestration helper: `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Classes metadata bulk-update helper: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
 - Classes query refresh and invalidation contract helpers: `src/frontend/src/features/classes/queryInvalidation.ts`
 - Classes reference-data workflow helpers: `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
 
@@ -127,3 +129,85 @@ Use topic-specific docs for runtime policy details:
 - Logging and error-handling policy: `docs/developer/frontend/frontend-logging-and-error-handling.md`
 - Testing helper and harness policy: `docs/developer/frontend/frontend-testing.md`
 - Shell navigation and motion policy: `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
+
+## 9. Frontend de-sloppification helper outcomes
+
+These entries record the resolved helper and abstraction decisions from the frontend de-sloppification pass.
+Keep them aligned with the current implementation if later cleanup extends, reverts, or supersedes these outcomes.
+
+### 9.1 Assignments page filter cleanup
+
+1. Helper or contract: assignments column-filter descriptor and single typed filter setter
+
+- Decision: keep local
+- Owning path: `src/frontend/src/pages/AssignmentsPage.tsx`
+- Status: `Implemented`
+- Rationale: the repeated filter callbacks and column wiring now collapse into page-local descriptors plus one typed setter path, without introducing a speculative cross-feature helper
+
+### 9.2 Shell navigation cleanup
+
+1. Helper or contract: navigation page renderer source of truth
+
+- Decision: reuse
+- Owning path: `src/frontend/src/navigation/appNavigation.tsx`
+- Status: `Implemented`
+- Rationale: `renderNavigationPage(...)` is now the single runtime source of truth for navigation-key-to-page rendering, and `AppShell` consumes that contract instead of keeping a second page-selection switch
+
+### 9.3 Settings page tab cleanup
+
+1. Helper or contract: settings tab item construction
+
+- Decision: keep local
+- Owning path: `src/frontend/src/pages/SettingsPage.tsx`
+- Status: `Implemented`
+- Rationale: the two fixed Settings tabs now stay local to `SettingsPage`, so the page no longer preserves the removed one-caller wrapper chain
+
+### 9.4 Classes bulk-action cleanup
+
+1. Helper or contract: bulk action descriptor feeding shared orchestration
+
+- Decision: extend
+- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`, `src/frontend/src/features/classes/bulkMutationOrchestration.ts`
+- Status: `Implemented`
+- Rationale: the panel now drives top-level bulk actions through descriptor-shaped action data while preserving `runBulkMutationOrchestration(...)` as the shared mutation boundary
+
+2. Helper or contract: metadata bulk-update contract for editable existing rows
+
+- Decision: new
+- Owning path: `src/frontend/src/features/classes/bulkMetadataUpdateFlow.ts`
+- Status: `Implemented`
+- Rationale: cohort, year-group, and course-length updates now converge on one feature-local metadata contract for eligibility filtering, payload validation, and batch mutation dispatch
+
+3. Helper or contract: selected-row derivation for toolbar consumers
+
+- Decision: keep local
+- Owning path: `src/frontend/src/features/classes/ClassesManagementPanel.tsx`
+- Status: `Implemented`
+- Rationale: the feature root now derives `selectedRows` once and passes that subset into `ClassesToolbar` instead of recomputing it in the child
+
+### 9.5 Backend settings validation cleanup
+
+1. Helper or contract: local schema-aware field descriptor path for backend settings fields
+
+- Decision: keep local
+- Owning path: `src/frontend/src/features/settings/backend/BackendSettingsPanel.tsx`
+- Status: `Implemented`
+- Rationale: repeated `Form.Item` wiring now flows through a local descriptor-driven render path inside the panel, and Ant Design form meta remains the single validation-error source of truth
+
+### 9.6 Page copy reuse in tests
+
+1. Helper or contract: page copy source of truth for frontend tests
+
+- Decision: reuse
+- Owning path: `src/frontend/src/pages/pageContent.ts`
+- Status: `Implemented`
+- Rationale: touched tests now reuse `pageContent` where they only need the stable production headings and summaries, rather than mirroring that copy in a separate helper
+
+### 9.7 Classes bulk modal-shell extraction
+
+1. Helper or contract: shared modal submit shell for classes bulk-edit dialogs
+
+- Decision: defer
+- Owning path: `src/frontend/src/features/classes/BulkCreateModal.tsx`, `src/frontend/src/features/classes/BulkSetSelectModal.tsx`
+- Status: `Deferred`
+- Rationale: the current pair still shares similar shell structure, but this pass intentionally kept the duplication local rather than introducing a speculative wrapper without a clearer third caller or tighter shared contract

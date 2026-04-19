@@ -150,6 +150,31 @@ test.describe('Classes CRUD bulk year-group flow', () => {
     await expect(getRow(page, 'gc-inactive').getByRole('checkbox')).toBeChecked();
   });
 
+  test('keeps the year-group modal open with inline feedback when all selected updates fail', async ({ page }) => {
+    await openClassesTabWithScenario(page, {
+      getAuthorisationStatus: [{ kind: 'success', data: true }],
+      getABClassPartials: [{ kind: 'success', data: yearGroupEligibleClassPartials }],
+      getCohorts: [{ kind: 'success', data: baseCohorts }],
+      getYearGroups: [{ kind: 'success', data: baseYearGroups }],
+      getGoogleClassrooms: [{ kind: 'success', data: yearGroupEligibleGoogleClassrooms }],
+      updateABClass: [
+        { kind: 'failureEnvelope', message: 'First update failed.' },
+        { kind: 'failureEnvelope', message: 'Second update failed.' },
+      ],
+    });
+
+    await selectRowByKey(page, 'gc-active');
+    await selectRowByKey(page, 'gc-inactive');
+    await page.getByRole('button', { name: 'Set year group' }).click();
+    await page.getByRole('combobox', { name: 'Year group' }).click();
+    await page.getByRole('option', { name: 'Year 8' }).click();
+    await page.getByRole('dialog', { name: 'Set year group' }).getByRole('button', { name: 'OK' }).click();
+
+    await expect(page.getByRole('dialog', { name: 'Set year group' })).toBeVisible();
+    await expect(page.getByText('Unable to update any of the 2 selected classes. Please review the remaining selection and try again.')).toBeVisible();
+    await expect(page.getByText('Some selected classes were not updated.')).toHaveCount(0);
+  });
+
   test('keeps bulk year-group disabled for notCreated and orphaned selections', async ({ page }) => {
     await openClassesTabWithScenario(
       page,

@@ -1,7 +1,10 @@
 import { screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { pageRenderers } from '../navigation/appNavigation';
-import { pageExpectations } from '../test/pageExpectations';
+import {
+  type AppNavigationKey,
+  renderNavigationPage,
+} from '../navigation/appNavigation';
+import { pageContent } from './pageContent';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
 
 const { getABClassPartialsMock, getCohortsMock, getGoogleClassroomsMock, getYearGroupsMock } = vi.hoisted(
@@ -31,6 +34,12 @@ vi.mock('../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
 }));
+
+const navigationPageExpectations = [
+  { key: 'dashboard', ...pageContent.dashboard },
+  { key: 'assignments', ...pageContent.assignments },
+  { key: 'settings', ...pageContent.settings },
+] as const satisfies ReadonlyArray<{ key: AppNavigationKey; heading: string; summary: string }>;
 
 const classesManagementGoogleClassroom = [{ classId: 'class-1', className: 'Year 10 Maths' }];
 const classesManagementClassPartial = [
@@ -67,10 +76,10 @@ beforeEach(() => {
 });
 
 describe('page components', () => {
-  it.each(pageExpectations)(
+  it.each(navigationPageExpectations)(
     'renders the expected heading and summary text for $heading',
     async ({ heading, key, summary }) => {
-      renderWithFrontendProviders(<>{pageRenderers[key]()}</>);
+      renderWithFrontendProviders(<>{renderNavigationPage(key)}</>);
 
       expect(await screen.findByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
       expect(screen.getByText(summary)).toBeInTheDocument();

@@ -1,18 +1,7 @@
-import { callApi } from '../../services/apiService';
 import type { Cohort } from '../../services/referenceData.zod';
-import { runBatchMutation, type RowMutationResult } from './batchMutationEngine';
-import { bulkReferenceKeySchema } from './bulkEditValidation.zod';
+import type { RowMutationResult } from './batchMutationEngine';
+import { bulkMetadataUpdate } from './bulkMetadataUpdateFlow';
 import type { ClassesManagementRow } from './classesManagementViewModel';
-
-/**
- * Returns only existing active or inactive rows for bulk cohort editing.
- *
- * @param {ClassesManagementRow[]} rows Candidate rows.
- * @returns {ClassesManagementRow[]} Eligible rows.
- */
-export function filterEligibleForBulkSetCohort(rows: ClassesManagementRow[]): ClassesManagementRow[] {
-  return rows.filter((row) => row.status === 'active' || row.status === 'inactive');
-}
 
 /**
  * Builds select options from active cohorts only.
@@ -40,12 +29,5 @@ export async function bulkSetCohort(
   rows: ClassesManagementRow[],
   cohortKey: string,
 ): Promise<RowMutationResult<ClassesManagementRow, unknown>[]> {
-  const parsedCohortKey = bulkReferenceKeySchema.parse(cohortKey);
-
-  return runBatchMutation(rows, (row) =>
-    callApi('updateABClass', {
-      classId: row.classId,
-      cohortKey: parsedCohortKey,
-    }),
-  );
+  return bulkMetadataUpdate(rows, { key: 'cohortKey', value: cohortKey });
 }
