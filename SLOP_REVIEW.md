@@ -11,9 +11,8 @@
 - **Location:** `src/backend/z_Api/z_apiHandler.js:28-47`, `src/backend/z_Api/auth.js:6-8`, `src/backend/z_Api/abclassPartials.js:10-12`, `src/backend/z_Api/referenceData.js:17-18, 28-29, 39-40, 50-51, 59-60, 70-71, 81-82, 92-93`, `src/backend/AGENTS.md:7-20`, `docs/developer/backend/api-layer.md:5-7, 43-45`
 - **Evidence:** `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` forwards to top-level functions such as `getAuthorisationStatus`, `getABClassPartials`, `createCohort`, and `deleteYearGroup`. Those functions are declared as normal global GAS functions in separate `z_Api` files. The backend docs also describe `src/backend/z_Api` as the current frontend-callable entry surface, so these wrappers are not hidden implementation details.
 - **Why it matters:** the allowlist only constrains calls that already choose to go through `apiHandler`. It does **not** materially reduce the exposed callable surface, because the same transport handlers still exist as directly callable globals. That makes the allowlist security theatre: a direct `google.script.run.createCohort(...)` style call would bypass the central request envelope, request ID generation, admission/completion tracking, and boundary error mapping that `apiHandler` is supposed to own.
-- **Recommended simplification:** pick one real boundary. Either:
-  1. keep `apiHandler` as the only exposed global and move allowlisted handlers into private dispatcher/module scope, or
-  2. accept that the wrapper globals are the boundary and remove the extra allowlist layer from `apiHandler`.
+- **Recommended simplification:
+  Accept that the wrapper globals are the boundary and remove the extra allowlist layer from `apiHandler`.
 
 ### 2. The transport method registry is maintained in triplicate
 
@@ -44,16 +43,7 @@
 
 ## ⚪ Nitpick
 
-### 1. The shared frontend transport itself does not read as slop
 
-- **Location:** `src/frontend/src/services/apiService.ts:5-184`, `src/frontend/src/services/apiService.spec.ts:132-528`
-- **Evidence:** `apiService.ts` centralises request validation, envelope validation, transport-error creation, missing-runtime failures, and retriable backoff logic, and the tests exercise those behaviours directly.
-- **Why it matters:** this is the part of the stack that is actually earning its abstraction cost. The backend duplication around it is the problem, not the existence of a shared frontend transport boundary.
-- **Recommended simplification:** none required here for slop reasons.
-
-## Cleanup performed
-
-- Added this review file only. No production code was changed.
 
 ## Validation commands run
 
