@@ -298,9 +298,21 @@ baseline test run to confirm no regressions were introduced by docs changes.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual doc changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 2:** record effects.
+- **Implementation notes:** Section 1 acceptance criteria were already satisfied at baseline; no additional file changes were required for this section.
+- **Deviations from plan:** None.
+- **Follow-up implications for Section 2:** Section 2 can proceed without carry-over work from Section 1; keep the existing docs-first markers intact.
+- **Baseline note:** A pre-existing lint warning was observed and treated as non-blocking for this documentation-only section.
+
+### Section 1 completion checklist
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 
