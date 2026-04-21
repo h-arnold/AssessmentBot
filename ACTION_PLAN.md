@@ -1301,9 +1301,34 @@ Frontend service tests (`src/frontend/src/services/authService.spec.ts`):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for regression section:** record effects.
+- **Implementation notes (red tests):** Updated `src/frontend/src/services/authService.spec.ts`
+  with red assertions for invalid transport payloads (`'yes'` and `null`) so
+  `getAuthorisationStatus()` rejects on non-boolean responses.
+- **Implementation notes (green implementation):** Added
+  `src/frontend/src/services/authService.zod.ts` with `AuthorisationStatusSchema`
+  (`z.boolean()`) and inferred type export, then updated
+  `src/frontend/src/services/authService.ts` to parse the `callApi` result via
+  `AuthorisationStatusSchema.parse(...)` while preserving method name and
+  `Promise<boolean>` contract.
+- **Implementation notes (review/check outcomes):** Section review returned clean
+  and section checks passed (`npm run frontend:test --
+src/frontend/src/services/authService.spec.ts`, `npm run frontend:lint`).
+- **Deviations from plan:** None.
+- **Follow-up implications for regression section:** Regression now needs to
+  confirm `authService.zod.ts` remains in place, `authService.ts` keeps schema
+  parsing at the API boundary, and the focused + full frontend checks stay
+  green when run with the wider suite.
+
+**Section 6 completion checklist**
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 
