@@ -311,8 +311,8 @@ baseline test run to confirm no regressions were introduced by docs changes.
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -440,8 +440,8 @@ API layer tests (update/replace in `tests/api/apiHandler.test.js`):
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -771,8 +771,8 @@ the same GAS global scope'` (lines ≈ 298–339).
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -1020,8 +1020,8 @@ Direct test-file updates for refactored modules:
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -1208,8 +1208,8 @@ ApiValidationError for %s'`. This block currently has four cases:
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -1327,8 +1327,8 @@ src/frontend/src/services/authService.spec.ts`, `npm run frontend:lint`).
 - [x] green review clean
 - [x] checks passed
 - [x] action plan updated
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -1417,8 +1417,8 @@ Code Reviewer mandatory docs:
 - [x] de-sloppification reviewed
 - [x] findings addressed
 - [x] cleanup clean after code-review pass
-- [ ] commit created _(pending)_
-- [ ] push completed _(pending)_
+- [x] commit created _(pending)_
+- [x] push completed _(pending)_
 
 ---
 
@@ -1514,6 +1514,17 @@ Docs mandatory docs:
 - Repo-wide drift check completed across `docs/developer`, `src/backend`, and `src/frontend`: no remaining `API_METHODS`, `API_ALLOWLIST`, or `_invokeAllowlistedMethod` references remain outside planning/template artefacts.
 - Final LOC check completed against the baseline-table files: baseline `5,920`, current `5,713`, net `-207` lines with deleted rows counted as `0`; the `>= 200` reduction gate passed.
 - Deviations from plan: none.
+
+### Execution evidence
+
+- Section 1 — `ee3376f` — `plan: mark Section 1 complete` — branch `feat/ReactFrontend` — push status: success
+- Section 2 — `ef9a488` — `refactor(api): consolidate handler registry dispatch` — branch `feat/ReactFrontend` — push status: success
+- Section 3 — `52b5aa2` — `refactor(api): inline trivial handler closures` — branch `feat/ReactFrontend` — push status: success
+- Section 4 — `0dd2ac0` — `refactor(api): migrate non-trivial transport helpers` — branch `feat/ReactFrontend` — push status: success
+- Section 5 — `aee47de` — `refactor(api): dedupe ABClass mutation validation` — branch `feat/ReactFrontend` — push status: success
+- Section 6 — `a3085f8` — `feat(frontend): validate auth status with Zod` — branch `feat/ReactFrontend` — push status: success
+- De-sloppification cleanup — `638b06d` — `chore: apply de-sloppification cleanup` — branch `feat/ReactFrontend` — push status: success
+- Documentation sync — `857f9a6` — `docs: reconcile transport architecture guidance` — branch `feat/ReactFrontend` — push status: success
 
 ---
 
