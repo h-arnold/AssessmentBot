@@ -100,3 +100,9 @@ Frontend build output is consumed by the GAS builder pipeline.
 For shell navigation and motion conventions (menu metadata, decorative icon semantics, and reduced-motion defaults), use:
 
 - `docs/developer/frontend/frontend-shell-navigation-and-motion.md`
+
+## 10. Modal Patterns and Reuse
+
+For modal-family discovery, reuse decisions, and extraction rules, use:
+
+- `docs/developer/frontend/frontend-modal-patterns.md`

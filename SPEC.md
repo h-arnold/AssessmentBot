@@ -1,536 +1,365 @@
-# Transport Layer De-Sloppification Specification
+# Classes Modal Family Compliance Refactor Specification
 
 ## Status
 
-Draft v1.3 — replaces namespace-object/IIFE transport-helper pattern with trailing-underscore private helper
-function pattern; corrects GAS callable-surface description; adds explicit transport-vs-domain
-validation ownership rules; revised after Planner Reviewer and user decision pass.
+- Draft v1.0
+- Replaces the previous root planning document for this request with a frontend-only modal-refactor specification
 
 ## Purpose
 
-This specification defines the intended refactoring of the `src/backend/z_Api` transport layer and the
-`src/frontend/src/services/authService.ts` frontend service wrapper to resolve confirmed slop identified in
-`SLOP_REVIEW.md`.
+This document defines the intended behaviour for a small frontend refactor in the classes feature modal code.
 
-The refactor will:
+The refactor will be used to:
 
-- Eliminate three trivial pass-through wrapper files (`auth.js`, `abclassPartials.js`, `referenceData.js`)
-  that unnecessarily expose top-level GAS callable globals, making `apiHandler` the sole callable entry
-  point for those specific methods.
-- Collapse the triplicate transport method registry into a single authoritative source.
-- Convert `googleClassrooms.js`, `abclassMutations.js`, `assignmentDefinitionPartials.js`, and
-  `apiConfig.js` from files with callable GAS top-level globals into files whose handler functions
-  use the trailing-underscore private naming convention (`handlerName_`), preventing direct invocation via
-  `google.script.run` per the official Apps Script specification.
-- Reduce duplicated domain-invariant validation between `abclassMutations.js` and `ABClassController`,
-  leaving only genuine transport-boundary validation at the API layer.
-- Bring `authService.ts` into compliance with the frontend service validation policy.
-- Achieve a measurable net reduction in lines of code across all touched files.
+- align the classes modal implementation with the current frontend modal-family policy
+- remove justified shell duplication within the classes bulk form modal family
+- keep shared helper decisions explicit so later implementation does not drift into speculative modal abstraction
 
-**Architectural target**: `apiHandler` is the sole frontend-callable GAS entry point for all active
-z*Api methods. Both trivial handlers (inlined as closures) and non-trivial handlers (implemented as
-private helper functions whose trailing `*`suffix shields them from`google.script.run`per the
-official Apps Script specification) are wired exclusively through`ALLOWLISTED_METHOD_HANDLERS`. See
-agreed product decisions 9–12 for the trailing-underscore private transport-helper pattern and
-validation-ownership rules.
+This feature is **not** intended to:
 
-This refactor is **not** intended to:
-
-- Change the public transport contract (`ok`, `requestId`, `data`/`error` envelope shape) in any way.
-- Alter the admission control, rate limiting, request tracking, or error mapping behaviour of `ApiDispatcher`.
-- Add new API endpoints, features, or frontend UX.
-- Touch the frontend services that already own proper Zod validation (`referenceDataService.ts`,
-  `classPartialsService.ts`, `backendConfigurationService.ts`, etc.).
-- Touch `apiService.ts`, which the slop review confirmed is doing real transport work and is not slop.
-- Remove validation from the transport layer where the controller does not already own an equivalent check.
+- change modal entry points, visible workflow order, or backend/service contracts
+- introduce a new app-wide modal abstraction
+- rework the classes reference-data modal family beyond confirming that the existing feature-local helpers remain sufficient
+- replace one-off destructive confirmation modals with a shared wrapper
 
 ## Agreed product decisions
 
-1. **`ALLOWLISTED_METHOD_HANDLERS` is the single authoritative transport registry.**
-   Every front-end-callable method must appear as an entry in this object inside `z_apiHandler.js`.
-   `API_METHODS` and `API_ALLOWLIST` in `apiConstants.js` are redundant and are deleted.
-
-2. **`handle()` dispatches directly through `ALLOWLISTED_METHOD_HANDLERS`.**
-   The two-step lookup (`apiAllowlist` → `_invokeAllowlistedMethod` → `ALLOWLISTED_METHOD_HANDLERS`) is
-   collapsed to a single lookup: `const handler = ALLOWLISTED_METHOD_HANDLERS[methodName]`. The
-   `UNKNOWN_METHOD` guard is re-anchored to this lookup — if the key is absent (falsy lookup result),
-   `handle()` returns the existing `UNKNOWN_METHOD` failure envelope unchanged. `_invokeAllowlistedMethod`
-   is removed. The `apiAllowlist` module-level variable and its initialisation in both the Node and GAS
-   branches are removed.
-
-3. **`auth.js`, `abclassPartials.js`, and `referenceData.js` are deleted.**
-   The controller calls they wrap are inlined as single-expression closures directly inside
-   `ALLOWLISTED_METHOD_HANDLERS`:
-
-   ```js
-   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
-   getABClassPartials:     () => new ABClassController().getAllClassPartials(),
-   getCohorts:             () => new ReferenceDataController().listCohorts(),
-   createCohort:           (parameters) => new ReferenceDataController().createCohort(parameters.record),
-   updateCohort:           (parameters) => new ReferenceDataController().updateCohort(parameters),
-   deleteCohort:           (parameters) => new ReferenceDataController().deleteCohort(parameters.key),
-   getYearGroups:          () => new ReferenceDataController().listYearGroups(),
-   createYearGroup:        (parameters) => new ReferenceDataController().createYearGroup(parameters.record),
-   updateYearGroup:        (parameters) => new ReferenceDataController().updateYearGroup(parameters),
-   deleteYearGroup:        (parameters) => new ReferenceDataController().deleteYearGroup(parameters.key),
-   ```
-
-   Because these closures are anonymous entries inside a `const` object, they are not exposed as top-level
-   GAS callable globals. Only `apiHandler` (the outer GAS function) remains callable by
-   `google.script.run`.
-
-4. **`getReferenceDataController()` in `referenceData.js` is not reproduced.**
-   The per-call instantiation pattern (`new ReferenceDataController()` per closure invocation) is already
-   the effective runtime behaviour of the old file and is preserved unchanged.
-
-5. **`authService.ts` adds `z.boolean()` Zod validation via a dedicated adjacent schema file.**
-   The service currently delegates to `callApi` without validating the backend response type. This violates
-   the frontend service policy requiring wrappers to own request/response validation. A `z.boolean().parse()`
-   call is added around the `callApi` return before it is returned to callers.
-   `src/frontend/AGENTS.md` § 8 requires validation schemas to live in a dedicated adjacent schema file
-   (e.g. `*.zod.ts`). A new file `src/frontend/src/services/authService.zod.ts` is therefore created to
-   hold the `AuthorisationStatusSchema = z.boolean()` schema and its inferred type.
-   The service wrapper is kept as a separate file; inlining into `sharedQueries.ts` is not pursued because
-   the frontend AGENTS mandate that service modules own transport boundaries and `callApi` must not be
-   called from non-service query helpers.
-
-6. **Thin backend wrapper tests are deleted; dispatcher-level contract tests replace them.**
-   The following test files are deleted because their source files are deleted or their assertions test
-   only the indirection that is being removed:
-   - `tests/backend-api/abclassPartials.unit.test.js` — asserts only that the wrapper delegates.
-   - `tests/backend-api/referenceData.unit.test.js` — asserts only that the wrappers delegate.
-   - `tests/api/auth.test.js` — contains three tests: the two controller-delegation tests
-     (`creates ScriptAppManager and returns true when authorised` and `creates ScriptAppManager and
-returns false when not authorised`) must first be migrated as new tests in `apiHandler.test.js`
-     asserting that the dispatcher's `getAuthorisationStatus` closure calls the mocked `ScriptAppManager`
-     constructor and returns the expected boolean. The third test (`works when module exports are
-unavailable in the runtime context`) tests vm-context loading of the deleted file and is dropped
-     with the file; it must not be migrated.
-   - `tests/api/abclassPartials.test.js` — tests `API_METHODS`, `API_ALLOWLIST`, and the
-     `globalThis.getABClassPartials` global, all of which are removed. Its routing and error-envelope
-     coverage (dispatch to `getABClassPartials`, success envelope, error maps to failure envelope) must
-     be added as new tests in `apiHandler.test.js` using the `ABClassController` constructor mock
-     pattern before this file is deleted.
-     New and updated tests in `tests/api/apiHandler.test.js` verify dispatcher behaviour and parameter
-     extraction contracts at the correct boundary.
-
-7. **`tests/helpers/apiHandlerTestUtils.js` and all dependent suites are updated in two passes.**
-   _Pass A (Section 3 — trivial handler inlining)_: `setupApiHandlerTestContext` is updated to install
-   controller constructor mocks (`globalThis.ScriptAppManager`, `globalThis.ABClassController`,
-   `globalThis.ReferenceDataController`) for the ten inlined methods. The existing `handler` option is
-   retained; after inlining it becomes the default implementation used by the mocked
-   `ScriptAppManager().isAuthorised()` path. The existing `additionalHandlers` option is **temporarily**
-   retained to stub the non-inlined globals (`getGoogleClassrooms`, `upsertABClass`, `updateABClass`,
-   `deleteABClass`, `getAssignmentDefinitionPartials`, `deleteAssignmentDefinition`) — these globals still
-   exist as top-level functions at this stage. `getBackendConfig` and `setBackendConfig` are not in
-   `additionalHandlers` at any stage; they are wired through module-level variables in `z_apiHandler.js`
-   via the guarded Node require block and require no change in the test helper during Pass A.
-   `buildApiHandlerTestHandlers()` in `apiHandler.test.js` is narrowed to supply only those non-inlined
-   method globals; it must not stub the deleted globals.
-   All suites that stub `globalThis.getAuthorisationStatus` must be updated to use the `ScriptAppManager`
-   constructor mock pattern.
-
-   _Pass B (Section 4 — non-trivial transport helper restructure)_: once the non-trivial handler files are
-   renamed to trailing-underscore private helpers, `additionalHandlers` and
-   `buildApiHandlerTestHandlers()` are replaced by helper-function stubs: the test helper sets up
-   `globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, `globalThis.updateABClass_`,
-   `globalThis.deleteABClass_`, `globalThis.getAssignmentDefinitionPartials_`, and
-   `globalThis.deleteAssignmentDefinition_` as `vi.fn()` stubs, consistent with how controller
-   constructor mocks are handled. All handles are merged onto the context object so individual tests
-   can override per-method behaviour without calling separate install helpers.
-
-   Between Section 3 and Section 4, the `additionalHandlers` mechanism is a transitional stop-gap. It must
-   not be carried beyond Section 4.
-
-8. **`docs/developer/backend/api-layer.md` is updated.**
-   The "Dispatch and allowlist pattern" section currently instructs implementers to add new methods to
-   `API_METHODS`, `API_ALLOWLIST`, and `ALLOWLISTED_METHOD_HANDLERS`. After the refactor, the instruction
-   simplifies to: add one entry to `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js`. In addition, the
-   endpoint-specific sections that name `auth.js`, `abclassPartials.js`, and `referenceData.js` as source
-   files must be updated to reflect that these handlers now live inline inside `z_apiHandler.js`.
-
-9. **Trailing-underscore private transport-helper pattern for non-trivial z_Api files.**
-   `googleClassrooms.js`, `abclassMutations.js`, `assignmentDefinitionPartials.js`, and `apiConfig.js`
-   carry genuine boundary logic (external-API shape validation, transform, masking, aggregation) and are
-   retained as separate files. Their handler functions must not be directly callable via
-   `google.script.run`. The official Apps Script specification excludes functions whose names end
-   with an underscore from the callable surface; this is therefore the preferred and sufficient pattern
-   — no IIFE or namespace-object wrapper is required.
-
-   Handler functions in the four files are renamed with a trailing underscore:
-
-   | File                              | Renamed handler functions                                         |
-   | --------------------------------- | ----------------------------------------------------------------- |
-   | `googleClassrooms.js`             | `getGoogleClassrooms_`                                            |
-   | `apiConfig.js`                    | `getBackendConfig_`, `setBackendConfig_`                          |
-   | `assignmentDefinitionPartials.js` | `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_` |
-   | `abclassMutations.js`             | `upsertABClass_`, `updateABClass_`, `deleteABClass_`              |
-
-   Internal helper functions within those files that are not transport-entry functions (e.g. the
-   validation helpers in `abclassMutations.js` and `assignmentDefinitionPartials.js`) also use the
-   trailing underscore for consistency and to prevent accidental GAS-global exposure:
-   `validateParametersObject_`, `throwValidationError_`, etc.
-
-   `ALLOWLISTED_METHOD_HANDLERS` calls each renamed handler via a thin closure:
-
-   ```js
-   getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
-   ```
-
-   The guarded `module.exports` block at the end of each file exports the trailing-underscore handler
-   functions so that Node unit tests can access them:
-
-   ```js
-   if (typeof module !== 'undefined' && module.exports) {
-     module.exports = { getGoogleClassrooms_ };
-   }
-   ```
-
-   `apiConfig.js` retains special wiring in `z_apiHandler.js`: the guarded Node require block imports
-   `getBackendConfig_` and `setBackendConfig_` by name so that the
-   `ALLOWLISTED_METHOD_HANDLERS` closures resolve correctly in the Node test environment. In GAS
-   runtime, `getBackendConfig_` and `setBackendConfig_` are available as private globals and the
-   closures call them directly.
-
-10. **Validation-ownership boundary for abclassMutations.**
-    `ABClassController` already owns the following domain-invariant checks (confirmed in the source):
-    - `_validateClassId` — non-empty string check (throws `TypeError`)
-    - `_validateCourseLength` — positive integer check (throws `TypeError`)
-    - `_validateDeleteClassId` — non-empty string + path-character safety for delete operations
-    - `Validate.requireParams` — required-field completeness (called in `upsertABClass`,
-      `updateABClass`, `deleteABClass`)
-
-    The transport layer (`abclassMutations.js`) currently duplicates these checks. After the refactor,
-    the transport helper retains only:
-    - **Object/type check on `parameters`** (`validateParametersObject`): retained — not in controller.
-    - **Unsafe path-character check on `classId`** (`.includes('..')`, `.includes('/')`,
-      `.includes('\\')`): retained at transport boundary for all three mutations as a
-      defence-in-depth security gate. Note that the controller's `_validateDeleteClassId` only
-      covers delete and only checks `..` and `/`; the transport retains `\\` and covers all
-      mutations. **This check must be guarded so that `.includes()` is only called when
-      `typeof classId === 'string'`**: missing or non-string `classId` values must fall
-      through to the controller rather than crashing with an `INTERNAL_ERROR` in the
-      transport helper.
-    - **Forbidden-fields check for `updateABClass`**: retained — prevents over-patching at transport
-      boundary; not in controller.
-    - **`active` field type check for `updateABClass`** (`boolean or null`): retained — not validated
-      in controller.
-
-    The following checks are removed from the transport layer because `ABClassController` already owns
-    them:
-    - `validateClassId` (non-empty string) — removed; controller owns `_validateClassId`.
-    - `validateCourseLength` (positive integer) — removed; controller owns `_validateCourseLength`.
-    - `requireParameters` wrapper — removed; controller already calls `Validate.requireParams`.
-
-    When the transport layer removes these checks, domain-level errors from the controller
-    (`TypeError`) may propagate rather than the current `ApiValidationError` wrappers. This change in
-    error type is explicitly acceptable; `ApiDispatcher._mapErrorToFailureEnvelope` handles
-    non-`ApiValidationError` errors. Tests must be updated to reflect this where relevant.
-
-11. **Validation-ownership boundary for other non-trivial files.**
-    - `googleClassrooms.js`: External Classroom API response shape validation (object type checks on
-      rows, presence of `id` and `name` fields) is transport-boundary validation for untrusted
-      external data. It is not duplicated lower down and is retained in the transport helper.
-    - `assignmentDefinitionPartials.js`: Row-shape validation, ISO timestamp validation, safe
-      delete-key validation, and the `tasks: null` contract enforcement are transport-contract
-      validations that protect the frontend from corrupt storage data. They are not duplicated lower
-      down and are retained in the transport helper.
-    - `apiConfig.js`: Masking, payload shaping, and partial-update aggregation are transformation
-      logic, not domain validation. The `params is object` check in `setBackendConfig` is a genuine
-      transport-boundary guard and is retained. `ConfigurationManager` already validates setter
-      inputs via `setProperty`/spec validation, so type/range validation of individual config fields
-      is not owned at the transport layer; no changes are needed to that ownership.
-
-12. **Docs-first architecture signpost before implementation.**
-    Before any code changes, `docs/developer/backend/api-layer.md` and `src/backend/AGENTS.md` are
-    updated to describe:
-    - The target architecture: `apiHandler` is the sole callable GAS entry point for all active z_Api
-      methods.
-    - The trivial-inline pattern (for simple handlers with no private helpers).
-    - The non-callable transport-helper pattern (for non-trivial handlers).
-      Planned entries for new patterns are marked `Not implemented` in the canonical docs until the
-      relevant code sections are complete.
-
-## Measurable LOC-reduction target
-
-The refactor must achieve a **net reduction of ≥ 200 lines** across all files touched, measured against the
-baselines in the action plan. With the baseline table tightened to exact current `wc -l` counts for
-every existing affected file (and `0` for planned new files), the expected reduction is ≈ 850 lines based
-on the file-level analysis recorded there, accounting for the expanded scope.
+1. Scope is limited to the frontend classes modal family and the canonical planning documents that guide helper decisions.
+2. A dedicated layout specification is **not required** for this request because the visible modal hierarchy, workflow entry points, and user-facing structure remain unchanged. The work is an internal refactor of existing modal shells.
+3. The only currently justified shared scaffold is a **feature-local classes bulk form modal scaffold** for the existing bulk form family:
+   - `src/frontend/src/features/classes/BulkCreateModal.tsx`
+   - `src/frontend/src/features/classes/BulkSetSelectModal.tsx`
+   - `src/frontend/src/features/classes/BulkSetCourseLengthModal.tsx`
+4. The scaffold is planned to live at `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`. It must remain feature-local and must not become a cross-feature helper, a generic app modal wrapper, or a new shared UI primitive.
+5. The scaffold may own only the repeated shell contract already shared by the family:
+   - Ant Design `Modal` plus Ant Design `Form`
+   - local form-submission lifecycle
+   - reset-on-cancel behaviour
+   - modal OK delegating to `form.submit()`
+   - inline submission error rendering inside the modal body
+   - `confirmLoading` and conflicting-action disabling semantics
+   - `destroyOnHidden` and other shell-level modal props already common to the family
+6. Field-specific behaviour stays local to each modal, including:
+   - modal titles and field labels
+   - Zod-backed validation and per-field validation copy
+   - allowed-option membership checks
+   - initial form values
+   - payload mapping passed to `onConfirm`
+   - workflow-specific fallback error copy
+7. `BulkSetSelectModal` remains a reusable member of the classes bulk form family only. This refactor does not promote it into a generic select modal for the wider app.
+8. No additional shared scaffold is warranted for the classes reference-data modal family. The existing feature-local helpers already cover the shared workflow contract:
+   - `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`
+   - `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`
+   - `src/frontend/src/features/classes/InlineDialog.tsx`
+9. No shared scaffold is warranted for the one-off destructive confirmation modals:
+   - `src/frontend/src/features/classes/BulkDeleteModal.tsx`
+   - `src/frontend/src/pages/AssignmentsPage.tsx` (`AssignmentsDeleteModal`)
+10. Existing user-facing busy and error semantics must remain unchanged:
+    - bulk form submission failures stay inline within the modal body
+    - primary submit actions continue to use modal-loading semantics
+    - conflicting cancellation or duplicate-submit actions stay disabled while submitting
+    - reference-data modal refresh and blocking-load handling stays fail-closed and local to that modal family
+11. The scaffold must preserve the current Ant Design `Modal` close-route defaults used by the existing bulk form modals. No explicit `keyboard`, `maskClosable`, or `closable` override is in scope for this refactor.
+12. During submission, the refactor must preserve only the currently implemented disabling behaviour:
+    - the modal cancel button remains disabled via `cancelButtonProps`
+    - form controls remain disabled where the current modal already disables them
+    - mask click, Escape, and close-icon routes remain on their current Ant Design defaults unless a separate product decision later changes that contract
 
 ## Existing system constraints
 
-### GAS runtime model
+Documented constraints that materially shape the refactor.
 
-- Backend files are concatenated and evaluated as a single GAS V8 script. Any `function` declaration
-  at top level whose name does **not** end with an underscore is callable via `google.script.run`;
-  the official Apps Script specification excludes trailing-underscore functions from the callable
-  surface.
-- Trailing-underscore top-level functions are therefore the preferred pattern for non-callable
-  transport helpers in `z_Api` files; they do not require IIFE or namespace-object wrappers.
-- The Node/test boundary is maintained via the guarded `if (typeof module !== 'undefined' && module.exports)`
-  export block at the end of each file. No production Node compatibility code may be added.
+### Backend or API constraints already in place
 
-### Transport envelope stability
+- None. This is a frontend-only refactor and must not change service contracts or backend method usage.
 
-- The `{ ok, requestId, data }` / `{ ok, requestId, error }` envelope shape is the stable frontend–backend
-  contract and must not change.
-- Admission control, rate limiting, and request tracking behaviour in `_runAdmissionPhase` and
-  `_runCompletionPhase` must not change.
-- The error-mapping logic in `_mapErrorToFailureEnvelope` must not change.
+### Current data-shape constraints
 
-### Load-order and file-naming constraints
+- `BulkSetSelectModal` accepts a `string` key through `onConfirm(value: string)`.
+- `BulkSetCourseLengthModal` accepts a numeric course length through `onConfirm(courseLength: number)`.
+- `BulkCreateModal` accepts `BulkCreateOptions` through `onConfirm(options: BulkCreateOptions)`.
+- Select options within the bulk form family currently use `{ label: string; value: string }`.
+- Existing Zod validators in `bulkEditValidation.zod` remain the authoritative frontend validation contracts for the bulk-edit flows already using them.
 
-- `z_*` and `y_*` directory conventions must be preserved.
-- Deleting files does not require any load-order renaming since the deleted files define only GAS globals
-  that are being eliminated.
+### Frontend or consumer architecture constraints
 
-### Test harness constraints
-
-- The test harness installs GAS-like globals in `tests/setupGlobals.js`. `ScriptAppManager` is already
-  registered there. `ABClassController` and `ReferenceDataController` are **not** currently registered
-  in `setupGlobals.js`; they must be installed and restored per-test by the updated
-  `tests/helpers/apiHandlerTestUtils.js` helper (`installControllerMocks` / `restoreControllerMocks`).
-  No new entries in `setupGlobals.js` are required for `ABClassController` or `ReferenceDataController`.
+- `ClassesManagementPanel.tsx` owns the open-state entry points for the classes modals and must remain the composition root for launching them.
+- `src/frontend/src/features/classes/BulkFormModalScaffold.tsx` is the intended feature-local helper ownership path for the shared shell contract.
+- The frontend modal-family policy requires reuse decisions to be justified by lifecycle and workflow fit rather than by shared use of Ant Design `Modal` alone.
+- The shared-helper policy prefers feature-local helpers unless real cross-feature reuse exists.
+- Modal loading, busy, and error states must continue to follow `docs/developer/frontend/frontend-loading-and-width-standards.md` and `docs/developer/frontend/frontend-modal-patterns.md`.
 
 ## Domain and contract recommendations
 
-### Parameter extraction contract for inlined reference-data closures
+These recommendations should guide implementation unless a later explicit decision supersedes them.
 
-The parameter shapes used by the inlined closures must exactly match the shapes the controllers expect.
-These are unchanged from the existing `referenceData.js` and must be preserved:
+### Why this approach is preferable
 
-- `createCohort` / `createYearGroup`: extract `parameters.record` and pass to the controller create method.
-- `updateCohort` / `updateYearGroup`: pass the full `parameters` object (contains `key` and `record`).
-- `deleteCohort` / `deleteYearGroup`: extract `parameters.key` and pass to the controller delete method.
-- `getCohorts` / `getYearGroups`: no parameters; controller list method called with no arguments.
+- It removes obvious repeated shell logic across three active callers without creating a prop-tunnel abstraction.
+- It matches the current modal-family registry, which already identifies the bulk form modals as a coherent local family and the other modal families as intentionally distinct.
+- It preserves testability by keeping domain validation, field markup, and workflow-specific copy close to each modal instead of hiding them behind a generic wrapper.
 
-### Zod validation for `authService.ts`
+### Recommended behavioural shape
 
-A dedicated schema file `src/frontend/src/services/authService.zod.ts` is created, consistent with
-`src/frontend/AGENTS.md` § 8:
+The shared scaffold should expose a narrow shell contract equivalent to:
 
 ```ts
-import { z } from 'zod';
-export const AuthorisationStatusSchema = z.boolean();
-export type AuthorisationStatus = z.infer<typeof AuthorisationStatusSchema>;
+{
+  modal: {
+    open: boolean;
+    title: string;
+    confirmLoading?: boolean;
+    onCancel: () => void;
+    destroyOnHidden: true;
+  };
+  form: {
+    submitFromModalOk: true;
+    resetOnCancel: true;
+    inlineSubmissionError: string | null;
+    initialValues?: Record<string, unknown>;
+  };
+  body: {
+    formItemsRemainLocal: true;
+    validationRemainsLocal: true;
+  };
+}
 ```
 
-`authService.ts` imports `AuthorisationStatusSchema` from this file and returns:
-`AuthorisationStatusSchema.parse(await callApi<boolean>(GET_AUTHORISATION_STATUS_METHOD))`.
+This is a behavioural contract, not a required prop-type declaration. The implementation may use one component, a small helper pair, or another feature-local shape as long as it preserves the same boundaries.
+The planned ownership path for that shape is `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`.
 
-This is consistent with the pattern used by `classPartialsService.ts`, `referenceDataService.ts`, and
-other compliant frontend services.
+### Naming recommendation
+
+Prefer:
+
+- `bulk form modal scaffold`
+- `classes bulk form modal shell`
+
+Avoid:
+
+- `BaseModal`
+- `GenericFormModal`
+- `CrudModal`
+
+These avoided names imply wider reuse than the accepted scope allows.
+
+### Validation recommendation
+
+#### Frontend
+
+- Keep per-field validation local to each modal.
+- Keep current Zod-backed schema usage where it already exists.
+- Do not move option-membership validation or workflow-specific validation copy into the shared scaffold.
+
+#### Backend
+
+- No backend validation or transport changes are in scope.
+
+### Display-resolution recommendation
+
+- Existing titles, button labels, placeholder copy, and fallback error messages should remain unchanged unless the current refactor requires a tiny wording correction to preserve the pre-existing behaviour.
+- The scaffold should standardise shell placement of the inline submission `Alert`, not the text content itself.
+- The scaffold must preserve the current close-route behaviour of the three bulk form modals by leaving Ant Design `Modal` close defaults unchanged.
 
 ## Feature architecture
 
-### Backend placement
+### Placement
 
-- `src/backend/z_Api/z_apiHandler.js` — sole entry surface; gains inlined handler closures.
-- `src/backend/z_Api/apiConstants.js` — retains all non-slop constants: `ACTIVE_REQUEST_STALE_MINUTES`
-  (the internal helper used to derive `STALE_REQUEST_AGE_MS`), `ACTIVE_LIMIT`, `MAX_TRACKED_REQUESTS`,
-  `STALE_REQUEST_AGE_MS`, `USER_REQUEST_STORE_KEY`, `LOCK_TIMEOUT_MS`, `LOCK_WAIT_WARN_THRESHOLD_MS`.
-  `API_METHODS` and `API_ALLOWLIST` are removed; all other constants remain unchanged.
+- The accepted entry points remain the existing classes feature modals launched from `ClassesManagementPanel.tsx`.
+- The accepted shared-helper ownership path for the new scaffold is `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`.
+- No new shared modal entry point may be added outside the classes feature as part of this refactor.
 
-### Frontend placement
+### Proposed high-level tree
 
-- `src/frontend/src/services/authService.ts` — gains Zod validation call; imports schema from adjacent file.
-- `src/frontend/src/services/authService.zod.ts` — new file containing `AuthorisationStatusSchema` and its
-  inferred type, consistent with `src/frontend/AGENTS.md` § 8.
-- `src/frontend/src/services/authService.spec.ts` — gains Zod validation tests.
+```text
+ClassesManagementPanel
+├── BulkCreateModal
+│   └── BulkFormModalScaffold
+├── BulkSetSelectModal
+│   └── BulkFormModalScaffold
+├── BulkSetCourseLengthModal
+│   └── BulkFormModalScaffold
+├── BulkDeleteModal
+├── ManageCohortsModal
+│   └── Existing manageReferenceData* helpers
+└── ManageYearGroupsModal
+    └── Existing manageReferenceData* helpers
+```
 
 ### Out of scope for this surface
 
-- Adding new API methods.
-- Touching any frontend services other than `authService.ts`.
-- Modifying `apiService.ts`.
+- redesigning `ClassesManagementPanel` or moving modal ownership out of it
+- adding nested modal layers or new workflow steps
+- extracting the reference-data helpers to a wider frontend shared location
+- introducing a shared destructive-confirmation helper
 
-## Backend changes required
+## Data loading and orchestration
 
-1. **`src/backend/z_Api/apiConstants.js`** — remove `API_METHODS` and `API_ALLOWLIST` blocks; remove them
-   from `module.exports`. Retain all other constants unchanged, including `ACTIVE_REQUEST_STALE_MINUTES`
-   (the internal helper used to derive `STALE_REQUEST_AGE_MS`). Do not remove any constant not listed
-   for deletion.
+### Required datasets or dependencies
 
-2. **`src/backend/z_Api/z_apiHandler.js`**:
-   - Remove `let apiAllowlist;` module-level variable.
-   - Remove the `API_ALLOWLIST: apiAllowlist` entry from the Node require block and the
-     `apiAllowlist = API_ALLOWLIST;` line from the GAS branch.
-   - Inline the ten handler closures for `getAuthorisationStatus`, `getABClassPartials`, and the eight
-     reference-data methods into `ALLOWLISTED_METHOD_HANDLERS`, replacing their current delegations to
-     top-level GAS globals.
-   - Simplify `handle()` to look up `methodName` directly in `ALLOWLISTED_METHOD_HANDLERS`:
-     `const handler = ALLOWLISTED_METHOD_HANDLERS[methodName]`. The existing `UNKNOWN_METHOD` guard is
-     re-anchored to this lookup — if `handler` is falsy (key absent), return the existing `UNKNOWN_METHOD`
-     failure envelope unchanged. Remove the `apiAllowlist` lookup step.
-   - Remove `_invokeAllowlistedMethod` entirely.
+- `cohortOptions` and `yearGroupOptions` continue to be passed into the bulk form family exactly as they are today
+- existing local form state and submission state inside each bulk modal remain the owned mutation boundary
 
-3. **Delete `src/backend/z_Api/auth.js`**.
+### Prefetch or initialisation policy
 
-4. **Delete `src/backend/z_Api/abclassPartials.js`**.
+#### Startup
 
-5. **Delete `src/backend/z_Api/referenceData.js`**.
+- No new prefetch or startup logic is introduced by this refactor.
 
-6. **Refactor `src/backend/z_Api/googleClassrooms.js`** — rename the top-level `function getGoogleClassrooms`
-   to `function getGoogleClassrooms_`. The trailing underscore prevents GAS from exposing it to
-   `google.script.run`. Update the `module.exports` guarded block to export `{ getGoogleClassrooms_ }`. Update
-   `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` to reference
-   `(parameters) => getGoogleClassrooms_(parameters)`.
+#### Feature entry
 
-7. **Refactor `src/backend/z_Api/assignmentDefinitionPartials.js`** — rename all handler functions and
-   private helpers to use a trailing underscore: `getAssignmentDefinitionPartials_`,
-   `deleteAssignmentDefinition_`, `throwValidationError_`, `validateDefinitionKey_`, etc. The
-   trailing underscore prevents GAS from exposing any of these to `google.script.run`. Update the
-   `module.exports` guarded block to export `{ getAssignmentDefinitionPartials_, deleteAssignmentDefinition_ }`. Update
-   `ALLOWLISTED_METHOD_HANDLERS` to reference closures that call the renamed handler functions.
+- Modal data readiness continues to be owned by the existing classes page and modal props.
+- The scaffold must not add new query calls, cache ownership, or initialisation behaviour.
 
-8. **Refactor `src/backend/z_Api/apiConfig.js`** — rename `getBackendConfig` to `getBackendConfig_` and
-   `setBackendConfig` to `setBackendConfig_`. Any existing module-scope helper (e.g. `maskApiKey`)
-   that is not a handler entry point should also be renamed to `maskApiKey_` for consistency. Update
-   the `module.exports` guarded block to export `{ getBackendConfig_, setBackendConfig_ }`. Remove the
-   old `getBackendConfigHandler` / `setBackendConfigHandler` indirection in `z_apiHandler.js` so both
-   GAS and Node code paths call `getBackendConfig_` / `setBackendConfig_` directly from
-   `ALLOWLISTED_METHOD_HANDLERS`. The guarded Node require block imports the renamed helpers by name;
-   no non-underscore `getBackendConfig` / `setBackendConfig` reference remains in any GAS-executed path.
-   In the Node test path, the guarded require block assigns the imported functions onto
-   `global.getBackendConfig_` / `global.setBackendConfig_`; do not introduce module-level
-   `let`/`const` shadow bindings with those same names in `z_apiHandler.js`, because that would collide
-   with the GAS top-level function declarations after concatenation.
+#### Manual refresh
 
-9. **Refactor `src/backend/z_Api/abclassMutations.js`** — rename all handler and helper functions to
-   use a trailing underscore: `upsertABClass_`, `updateABClass_`, `deleteABClass_`,
-   `getAbClassController_`, `validateParametersObject_`, `validateMutationClassId_`,
-   `validateUpsertABClassParameters_`, `validateUpdateABClassParameters_`,
-   `validateDeleteABClassParameters_`. Remove the following functions (they duplicate domain-invariant
-   validation already owned by `ABClassController`):
-   - `validateClassId` (non-empty string check — `ABClassController._validateClassId` owns this)
-   - `validateCourseLength` (positive integer check — `ABClassController._validateCourseLength` owns
-     this)
-   - `requireParameters` wrapper (required-field completeness — `ABClassController` already calls
-     `Validate.requireParams`)
-     The following validation stays, renamed to private trailing-underscore helpers:
-   - `validateParametersObject_` (plain object check — transport boundary, not in controller)
-   - Unsafe path-character check on `classId` (`..`, `/`, `\\` — transport security, not fully
-     covered by controller for all three mutations)
-   - Forbidden-fields check in `updateABClass_` (transport boundary)
-   - `active` boolean/null type check in `updateABClass_` (not in controller)
-     Update the `module.exports` guarded block to export
-     `{ upsertABClass_, updateABClass_, deleteABClass_ }`. Update `ALLOWLISTED_METHOD_HANDLERS`
-     to reference closures that call `upsertABClass_`, `updateABClass_`, `deleteABClass_`.
-     `validateMutationClassId_` is retained as the shared guarded path-character safety helper once the
-     duplicate domain checks are removed.
+- No manual refresh control is introduced.
 
-## Frontend changes required
+### Query or transport additions
 
-1. **Create `src/frontend/src/services/authService.zod.ts`** — define `AuthorisationStatusSchema = z.boolean()`
-   and export `AuthorisationStatus = z.infer<typeof AuthorisationStatusSchema>`.
+- None.
 
-2. **Update `src/frontend/src/services/authService.ts`** — import `AuthorisationStatusSchema` from the new
-   zod file; wrap the `callApi` return in `AuthorisationStatusSchema.parse(...)`.
+## Core view model or behavioural model
 
-## Testing expectations
+### Suggested shape
 
-- `tests/api/apiHandler.test.js` must retain full coverage of the dispatcher lifecycle
-  (admission, completion, error mapping, rate limiting, request ID generation, success/failure envelopes).
-- Tests that currently mock `globalThis.getAuthorisationStatus`, `globalThis.getABClassPartials`, and the
-  eight reference-data globals must be updated to mock the corresponding controller constructors.
-- The basic success-envelope test in `apiHandler.test.js` (currently `data: { authorised: true }`) must
-  be updated to `data: true` once the auth dispatch returns the raw boolean from
-  `ScriptAppManager.isAuthorised()` rather than the legacy `{ authorised: true }` object.
-- New contract tests must verify the parameter extraction shapes for `createCohort`, `updateCohort`,
-  `deleteCohort`, `createYearGroup`, `updateYearGroup`, `deleteYearGroup`.
-- The `API_METHODS` and `API_ALLOWLIST` presence tests in `apiHandler.test.js` are removed; new tests
-  verify that `ALLOWLISTED_METHOD_HANDLERS` is the single authoritative registry.
-- The following test files are deleted:
-  - `tests/backend-api/abclassPartials.unit.test.js`
-  - `tests/backend-api/referenceData.unit.test.js`
-  - `tests/api/auth.test.js`
-  - `tests/api/abclassPartials.test.js`
-- `tests/api/apiHandlerLocking.test.js`, `tests/api/apiHandlerTiming.test.js`, and
-  `tests/api/staleAdmission.test.js` must be updated alongside the helper so that stubs target
-  controller constructors rather than `globalThis.getAuthorisationStatus`.
-- `src/frontend/src/services/authService.spec.ts` gains tests asserting that a non-boolean backend
-  response throws a Zod parse error.
-- All existing `apiHandler.test.js` non-registry tests (lifecycle, error mapping, VM context, rate
-  limiting, request tracking) must pass unchanged or with only stub-update changes.
-- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` is updated to load handlers via
-  the private trailing-underscore exports `getAssignmentDefinitionPartials_` and `deleteAssignmentDefinition_`
-  rather than any namespace object or top-level function name.
-- `tests/backend-api/abclassMutations.unit.test.js` is updated to load handlers via the
-  private trailing-underscore exports `upsertABClass_`, `updateABClass_`, `deleteABClass_` and to remove test
-  cases for validation that has been removed from the transport layer (duplicate domain-invariant
-  checks: `validateClassId`, `validateCourseLength`, `requireParameters`).
-- `tests/api/abclassMutations.test.js` is updated across three sections: VM coexistence tests removed
-  in Section 3; direct function accesses updated to `upsertABClass_`, `updateABClass_`, `deleteABClass_`
-  from the module in Section 4; `requireParameters` test block, `courseLength` test block, and the
-  `'missing classId'`/`'empty classId'` cases in the `deleteABClass` `it.each` block are all removed
-  in Section 5.
-- `tests/api/apiHandler.test.js` is updated to stub the private trailing-underscore transport helpers
-  (`globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, `globalThis.updateABClass_`,
-  `globalThis.deleteABClass_`, `globalThis.getAssignmentDefinitionPartials_`,
-  `globalThis.deleteAssignmentDefinition_`) for the non-trivial handlers, replacing the existing
-  non-underscore global function stubs.
-- `tests/api/googleClassrooms.test.js` is updated so all direct handler accesses use
-  `getGoogleClassrooms_` from the module export; the export-shape assertion checks for
-  `getGoogleClassrooms_` as a function rather than a namespace object.
-- `tests/api/assignmentDefinitionDeleteApi.test.js` is updated so all direct handler accesses use
-  `deleteAssignmentDefinition_` from the module export.
-- `tests/api/backendConfigApi.test.js` requires no changes; it routes through the dispatcher.
+```ts
+{
+  submissionError: string | null;
+  confirmLoading?: boolean;
+  handleCancel: () => void;
+  handleOk: () => void;
+  handleFinish: (values: unknown) => Promise<void>;
+}
+```
 
-## Documentation and rollout notes
+### Derivation or merge rules
 
-- `docs/developer/backend/api-layer.md` — before code changes (docs-first section): describe the
-  target architecture (apiHandler as sole entry, trivial-inline and trailing-underscore private transport-helper
-  patterns); mark new patterns `Not implemented`. During final rollout: remove the `Not implemented`
-  markers; update endpoint sections for all affected files; update the step list for adding new
-  endpoints to a single step.
-- `src/backend/AGENTS.md` — before code changes: update `§ 0.1` to describe both patterns, codify
-  validation ownership rules, and mark the trailing-underscore private helper pattern `Not implemented`. After
-  code changes: reconcile to `Implemented`.
-- `src/frontend/AGENTS.md` — § 4.1 currently instructs implementers to "keep method names aligned with
-  backend `API_METHODS` in `src/backend/z_Api/apiConstants.js`". After deleting `API_METHODS`, update
-  this instruction to reference `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` as the authoritative
-  method-name registry instead.
-- Perform a repo-wide search for any remaining `API_METHODS` or `API_ALLOWLIST` references in production
-  and documentation files; remove or update each occurrence found.
-- No migration or reset steps are required; this is a pure code-structure change with no data or
-  persistence impact.
+#### Idle
 
-## Planning handoff notes
+- no inline submission error is visible
+- cancel remains available
+- OK triggers form submission
 
-- Section 1 of the action plan is a docs pass only; no production code changes are permitted in that
-  section. This ensures agents executing later sections cannot revert to the old multi-entry-point pattern.
-- Section 2 (registry consolidation) must land before Section 3 (trivial wrapper elimination), because
-  simplifying the dispatch path is a prerequisite for closure inlining.
-- `tests/helpers/apiHandlerTestUtils.js` must be updated in Section 3 before or alongside the
-  `apiHandler.test.js` updates (Pass A), and again in Section 4 (Pass B) when `additionalHandlers` is
-  replaced by trailing-underscore private function stubs.
-- Section 4 (non-trivial transport helpers) depends on Section 3 being complete — the non-trivial
-  globals must still exist as top-level callable functions during Section 3 to maintain a green test
-  suite throughout.
-- Section 5 (abclassMutations validation deduplication) depends on Section 4; it must not be started
-  before the trailing-underscore renaming for `abclassMutations.js` is in place.
-- The `authService.ts` change (Section 6) is independent and may be done in any order relative to
-  Sections 2–5.
+#### Submitting
 
-## V1 scope
+- the modal primary action shows busy state
+- only the current cancel-button and form-control disabling behaviour is preserved during submit
+- field inputs that would cause conflicting writes remain disabled
+- Ant Design `Modal` close routes keep their current defaults
 
-### Include in v1
+#### Submission failure
 
-- Docs-first architecture signpost pass.
-- Registry consolidation: delete `API_METHODS` and `API_ALLOWLIST`; simplify dispatch.
-- Wrapper file deletion: `auth.js`, `abclassPartials.js`, `referenceData.js`.
-- Inlined handler closures in `ALLOWLISTED_METHOD_HANDLERS` for trivial methods.
-- Non-callable transport-helper restructure for `googleClassrooms.js`,
-  `assignmentDefinitionPartials.js`, `apiConfig.js`, `abclassMutations.js` using trailing-underscore private
-  helper function pattern.
-- abclassMutations validation deduplication.
-- Test cleanup and dispatcher contract tests.
-- `authService.ts` Zod validation.
-- `docs/developer/backend/api-layer.md`, `src/backend/AGENTS.md`, and `src/frontend/AGENTS.md`
-  documentation updates.
+- the modal stays open
+- the inline submission error alert is shown above the form body
+- form values remain available so the user can correct and resubmit
 
-### Defer from v1
+#### Cancel or close
 
-- Any changes to the frontend services already passing Zod validation.
-- Performance optimisation of the controller instantiation pattern (one controller per request).
+- local form state resets
+- local submission error state clears
+- ownership returns to the parent modal-open state in `ClassesManagementPanel`
+
+### Sort order or priority rules
+
+1. blocking or invalid load states already defined by the owning modal family
+2. active submission busy state
+3. inline submission error state
+4. normal ready state
+
+## Main user-facing surface specification
+
+### Recommended components or primitives
+
+- Ant Design `Modal`
+- Ant Design `Form`
+- inline Ant Design `Alert` for submission errors
+
+### Fields, columns, or visible sections
+
+1. bulk form modal title region
+2. inline submission error region when present
+3. local form fields owned by the concrete modal
+
+### Sorting, filtering, or navigation rules
+
+- None added or changed by this refactor.
+
+### Rendering rules
+
+#### Classes bulk form modals
+
+- continue rendering as one modal with one form
+- continue submitting through the modal primary action
+- keep validation messages and field content local to each concrete modal
+- continue leaving close icon, mask click, and Escape handling on the current Ant Design defaults
+
+#### Classes reference-data modals
+
+- keep the current outer modal plus inline dialog workflow
+- continue using the existing feature-local helper files
+
+#### Destructive confirmation modals
+
+- keep workflow-specific footer copy and action labelling local
+- do not adopt the bulk form scaffold
+
+## Workflow specification
+
+## Bulk form modal open, cancel, and resubmit
+
+### Eligible inputs or preconditions
+
+- the parent surface has already decided to open one of the three bulk form modals
+- the concrete modal has the data it already requires today
+
+### Inputs, fields, or confirmation copy
+
+- each modal keeps its current field set, copy, and validation rules
+
+### Behaviour
+
+- opening the modal presents the existing title and fields
+- pressing the modal OK action submits the local form
+- cancelling resets local form values and any inline submission error before delegating close
+- a failed submission keeps the modal open and shows the inline error above the form
+- the refactor must not add new close-route restrictions during submit beyond the existing cancel-button and form-control disabling
+
+## Classes reference-data workflows
+
+### Eligible inputs or preconditions
+
+- `ManageCohortsModal` and `ManageYearGroupsModal` continue to own their current inner create, edit, and delete workflows
+
+### Behaviour
+
+- the current helper split across `manageReferenceDataDialogs.tsx`, `manageReferenceDataHelpers.ts`, and `InlineDialog.tsx` remains the accepted shared shape
+- no further abstraction is required unless a later feature introduces genuinely new same-family duplication
+
+## One-off destructive confirmations
+
+### Eligible inputs or preconditions
+
+- one destructive action is being confirmed within one workflow
+
+### Behaviour
+
+- `BulkDeleteModal` and `AssignmentsDeleteModal` remain local to their owning workflows
+- copy, footer actions, and busy-state semantics remain workflow-specific
+- this refactor must not introduce a generic destructive-confirmation wrapper
+
+## Non-goals and deliberate deferrals
+
+- no redesign of visible modal copy or layout
+- no attempt to unify the bulk form family with the reference-data family
+- no attempt to unify destructive confirmations across classes and assignments
+- no changes to tests outside the touched modal family except where existing suites need minimal updates to reflect refactored internal structure without changing behaviour
+
+## Open questions
+
+- None at present. The user request and current codebase provide enough evidence to proceed with a planning-only refactor specification.
+
+## Assumptions
+
+1. The refactor should preserve the current `BulkCreateModal` initial course-length value of `1` because changing that behaviour would exceed the requested scope.
+2. Existing public modal component names and parent call sites should remain stable unless a tiny internal rename is required inside the classes feature to support the new scaffold.
