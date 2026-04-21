@@ -52,6 +52,8 @@ Use this family when:
 Default decision:
 
 - keep local unless two or more destructive confirmation modals need the same busy-state, footer, and copy structure
+- accepted boundary for the classes modal-family compliance refactor: keep `src/frontend/src/features/classes/BulkDeleteModal.tsx` and `AssignmentsDeleteModal` in `src/frontend/src/pages/AssignmentsPage.tsx` local to their workflows
+- shared destructive-confirmation helper status for that refactor: `Not implemented`
 
 ### 3.2 Classes bulk form modals
 
@@ -79,6 +81,8 @@ Default decision:
 
 - reuse the family shape
 - extract helper behaviour only when repeated shell logic clearly outweighs the helper surface
+- accepted boundary for the classes modal-family compliance refactor: a narrow feature-local `src/frontend/src/features/classes/BulkFormModalScaffold.tsx` may be introduced for this family only
+- scaffold status for that refactor: `Not implemented`; do not treat the scaffold as shipped until the implementation lands and the docs are reconciled
 
 ### 3.3 Classes reference-data workflow modals
 
@@ -107,6 +111,8 @@ Default decision:
 
 - extend the existing feature-local helpers for similar reference-data workflows
 - do not replace this family with a generic app-wide CRUD modal abstraction
+- accepted boundary for the classes modal-family compliance refactor: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is
+- helper-change status for that refactor: `Not implemented`
 
 ## 4. Keep-local rules
 
