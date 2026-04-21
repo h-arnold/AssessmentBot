@@ -29,21 +29,59 @@ function callAuthorisationStatus(dispatcher, request = {}) {
   });
 }
 
-function installApiMethodHandlers(vi, handlers) {
-  const originals = {};
+function installTransportHelperMocks(
+  vi,
+  {
+    googleClassroomsBehaviour = () => undefined,
+    abclassMutationsBehaviour = {},
+    assignmentDefinitionBehaviour = {},
+  } = {}
+) {
+  const originals = {
+    getGoogleClassrooms_: globalThis.getGoogleClassrooms_,
+    upsertABClass_: globalThis.upsertABClass_,
+    updateABClass_: globalThis.updateABClass_,
+    deleteABClass_: globalThis.deleteABClass_,
+    getAssignmentDefinitionPartials_: globalThis.getAssignmentDefinitionPartials_,
+    deleteAssignmentDefinition_: globalThis.deleteAssignmentDefinition_,
+  };
 
-  Object.entries(handlers).forEach(([handlerName, handler]) => {
-    originals[handlerName] = globalThis[handlerName];
-    globalThis[handlerName] = vi.fn(handler);
-  });
+  const getGoogleClassrooms_ = vi.fn(googleClassroomsBehaviour);
+  const upsertABClass_ = vi.fn(abclassMutationsBehaviour.upsertABClass_ || (() => undefined));
+  const updateABClass_ = vi.fn(abclassMutationsBehaviour.updateABClass_ || (() => undefined));
+  const deleteABClass_ = vi.fn(abclassMutationsBehaviour.deleteABClass_ || (() => undefined));
+  const getAssignmentDefinitionPartials_ = vi.fn(
+    assignmentDefinitionBehaviour.getAssignmentDefinitionPartials_ || (() => undefined)
+  );
+  const deleteAssignmentDefinition_ = vi.fn(
+    assignmentDefinitionBehaviour.deleteAssignmentDefinition_ || (() => undefined)
+  );
 
-  return originals;
+  globalThis.getGoogleClassrooms_ = getGoogleClassrooms_;
+  globalThis.upsertABClass_ = upsertABClass_;
+  globalThis.updateABClass_ = updateABClass_;
+  globalThis.deleteABClass_ = deleteABClass_;
+  globalThis.getAssignmentDefinitionPartials_ = getAssignmentDefinitionPartials_;
+  globalThis.deleteAssignmentDefinition_ = deleteAssignmentDefinition_;
+
+  return {
+    originals,
+    getGoogleClassrooms_,
+    upsertABClass_,
+    updateABClass_,
+    deleteABClass_,
+    getAssignmentDefinitionPartials_,
+    deleteAssignmentDefinition_,
+  };
 }
 
-function restoreApiMethodHandlers(originals) {
-  Object.entries(originals).forEach(([handlerName, originalValue]) => {
-    restoreGlobal(handlerName, originalValue);
-  });
+function restoreTransportHelperMocks(originals) {
+  restoreGlobal('getGoogleClassrooms_', originals.getGoogleClassrooms_);
+  restoreGlobal('upsertABClass_', originals.upsertABClass_);
+  restoreGlobal('updateABClass_', originals.updateABClass_);
+  restoreGlobal('deleteABClass_', originals.deleteABClass_);
+  restoreGlobal('getAssignmentDefinitionPartials_', originals.getAssignmentDefinitionPartials_);
+  restoreGlobal('deleteAssignmentDefinition_', originals.deleteAssignmentDefinition_);
 }
 
 function installControllerMocks(
@@ -183,16 +221,29 @@ function installRealAbLoggerSpies(vi) {
  */
 function setupApiHandlerTestContext(
   vi,
-  { installLogger = false, installLock = false, handler = () => true, additionalHandlers = {} } = {}
+  {
+    installLogger = false,
+    installLock = false,
+    handler = () => true,
+    googleClassroomsBehaviour,
+    abclassMutationsBehaviour,
+    assignmentDefinitionBehaviour,
+  } = {}
 ) {
   resetUserProperties();
 
   const controllerMocks = installControllerMocks(vi, { handler });
+  const transportHelperMocks = installTransportHelperMocks(vi, {
+    googleClassroomsBehaviour,
+    abclassMutationsBehaviour,
+    assignmentDefinitionBehaviour,
+  });
 
   const context = {
     ...controllerMocks,
+    ...transportHelperMocks,
     originalControllerMocks: controllerMocks.originals,
-    originalApiMethodHandlers: installApiMethodHandlers(vi, additionalHandlers),
+    originalTransportHelperMocks: transportHelperMocks.originals,
   };
 
   const loggerMode = installLogger === true ? 'mock' : installLogger;
@@ -219,7 +270,7 @@ function teardownApiHandlerTestContext(vi, context) {
   resetUserProperties();
 
   restoreControllerMocks(context.originalControllerMocks);
-  restoreApiMethodHandlers(context.originalApiMethodHandlers);
+  restoreTransportHelperMocks(context.originalTransportHelperMocks);
 
   if ('originalABLogger' in context) {
     if (typeof globalThis.ABLogger?.resetForTests === 'function') {
@@ -283,4 +334,6 @@ module.exports = {
   REFERENCE_DATA_API_METHOD_NAMES,
   installControllerMocks,
   restoreControllerMocks,
+  installTransportHelperMocks,
+  restoreTransportHelperMocks,
 };

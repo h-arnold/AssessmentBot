@@ -997,11 +997,31 @@ Direct test-file updates for refactored modules:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 5:** record effects. In particular, confirm the internal
-  validation helper names used in `abclassMutations.js` (e.g. `_validateParametersObject`) so that
-  Section 5 removes the correct functions.
+- **Implementation notes:** Red-phase work completed: Pass B test/helper migration landed by replacing
+  transitional `additionalHandlers` wiring in `tests/helpers/apiHandlerTestUtils.js` with
+  trailing-underscore transport helper stubs, and updating affected API/backend-api tests to consume
+  underscore handler names.
+- **Implementation notes:** Green-phase production work completed: non-trivial API handlers and related
+  helper functions were renamed to trailing-underscore forms in `googleClassrooms.js`,
+  `assignmentDefinitionPartials.js`, `apiConfig.js`, and `abclassMutations.js`; `z_apiHandler.js`
+  ALLOWLISTED*METHOD_HANDLERS now dispatches directly to underscore helpers, with
+  `getBackendConfig*`/`setBackendConfig\_`wired through the Node bridge onto`global`.
+- **Implementation notes:** Code review returned clean and required section checks passed.
+- **Deviations from plan:** None.
+- **Follow-up implications for Section 5:** Section 5 should now target underscore helper names only
+  (for example `validateParametersObject_`/other renamed validation helpers) when removing duplicated
+  transport-layer validation; the planned validation removals are still pending.
+
+**Section 4 completion checklist**
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 

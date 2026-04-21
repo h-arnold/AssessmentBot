@@ -6,7 +6,7 @@
  * @returns {Array<{classId: string, className: string}>} List of available classrooms.
  * @throws {ApiValidationError} If classroom data is missing required fields.
  */
-function getGoogleClassrooms(parameters) {
+function getGoogleClassrooms_(parameters) {
   const classrooms = ClassroomApiClient.fetchAllActiveClassrooms();
 
   return classrooms.map((classroom) => {
@@ -40,6 +40,6 @@ function getGoogleClassrooms(parameters) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    getGoogleClassrooms,
+    getGoogleClassrooms_,
   };
 }

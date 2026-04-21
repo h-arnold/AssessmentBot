@@ -8,7 +8,7 @@ const API_KEY_MASK_PREFIX = '****';
  * @param {string} key - Raw API key value.
  * @returns {string} Masked API key.
  */
-function maskApiKey(key) {
+function maskApiKey_(key) {
   if (!key) {
     return '';
   }
@@ -25,7 +25,7 @@ function maskApiKey(key) {
  * Reads the current backend configuration using the legacy public payload shape.
  * @returns {Object} Public configuration payload.
  */
-function getBackendConfig() {
+function getBackendConfig_() {
   const configManager = ConfigurationManager.getInstance();
   configManager.ensureDefaultConfiguration();
 
@@ -33,7 +33,7 @@ function getBackendConfig() {
   const jsonDatabaseRootFolderId = configManager.getJsonDbRootFolderId();
   const config = {
     backendAssessorBatchSize: configManager.getBackendAssessorBatchSize(),
-    apiKey: maskApiKey(rawApiKey),
+    apiKey: maskApiKey_(rawApiKey),
     hasApiKey: !!rawApiKey,
     backendUrl: configManager.getBackendUrl(),
     revokeAuthTriggerSet: configManager.getRevokeAuthTriggerSet(),
@@ -54,7 +54,7 @@ function getBackendConfig() {
  * @param {Object} config - Partial configuration payload.
  * @returns {{ success: boolean, error?: string }} Result payload.
  */
-function setBackendConfig(config) {
+function setBackendConfig_(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new ApiValidationError('params must be an object.', {
       method: 'setBackendConfig',
@@ -162,7 +162,7 @@ function setBackendConfig(config) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    getBackendConfig,
-    setBackendConfig,
+    getBackendConfig_,
+    setBackendConfig_,
   };
 }

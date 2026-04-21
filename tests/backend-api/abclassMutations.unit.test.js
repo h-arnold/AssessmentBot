@@ -55,10 +55,10 @@ describe('Api/abclassMutations classId validation', () => {
       }
     }
 
-    const { upsertABClass } = loadAbclassMutationsModuleWithController(MockABClassController);
+    const { upsertABClass_ } = loadAbclassMutationsModuleWithController(MockABClassController);
 
     expect(() =>
-      upsertABClass({
+      upsertABClass_({
         classId,
         ...baseUpsertParams,
       })
@@ -75,10 +75,10 @@ describe('Api/abclassMutations classId validation', () => {
       }
     }
 
-    const { updateABClass } = loadAbclassMutationsModuleWithController(MockABClassController);
+    const { updateABClass_ } = loadAbclassMutationsModuleWithController(MockABClassController);
 
     expect(() =>
-      updateABClass({
+      updateABClass_({
         classId,
       })
     ).toThrow(ApiValidationError);

@@ -87,14 +87,14 @@ afterEach(() => {
 });
 
 describe('Api/abclassMutations exports', () => {
-  it('exports upsertABClass, updateABClass, and deleteABClass in Node test runtime', () => {
+  it('exports upsertABClass_, updateABClass_, and deleteABClass_ in Node test runtime', () => {
     const abclassMutationsModule = require('../../src/backend/z_Api/abclassMutations.js');
 
     expect(abclassMutationsModule).toEqual(
       expect.objectContaining({
-        upsertABClass: expect.any(Function),
-        updateABClass: expect.any(Function),
-        deleteABClass: expect.any(Function),
+        upsertABClass_: expect.any(Function),
+        updateABClass_: expect.any(Function),
+        deleteABClass_: expect.any(Function),
       })
     );
   });
@@ -117,11 +117,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
       }
     }
 
-    const { upsertABClass } = loadAbclassMutationsModuleWithGlobals({
+    const { upsertABClass_ } = loadAbclassMutationsModuleWithGlobals({
       controllerCtor: MockABClassController,
     });
 
-    expect(upsertABClass(params)).toEqual(controllerResult);
+    expect(upsertABClass_(params)).toEqual(controllerResult);
     expect(upsertSpy).toHaveBeenCalledTimes(1);
     expect(upsertSpy).toHaveBeenCalledWith(params);
     expect(controllerResult).not.toHaveProperty('students');
@@ -150,11 +150,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
       }
     }
 
-    const { updateABClass } = loadAbclassMutationsModuleWithGlobals({
+    const { updateABClass_ } = loadAbclassMutationsModuleWithGlobals({
       controllerCtor: MockABClassController,
     });
 
-    expect(updateABClass(params)).toEqual(controllerResult);
+    expect(updateABClass_(params)).toEqual(controllerResult);
     expect(updateSpy).toHaveBeenCalledTimes(1);
     expect(updateSpy).toHaveBeenCalledWith(params);
     expect(controllerResult).not.toHaveProperty('students');
@@ -162,11 +162,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
   });
 
   it.each([
-    ['upsertABClass', { cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', yearGroupKey: 'yg-10', courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', cohortKey: 'coh-2026', courseLength: 2 }],
-    ['upsertABClass', { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10' }],
-    ['updateABClass', {}],
+    ['upsertABClass_', { cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 2 }],
+    ['upsertABClass_', { classId: 'class-001', yearGroupKey: 'yg-10', courseLength: 2 }],
+    ['upsertABClass_', { classId: 'class-001', cohortKey: 'coh-2026', courseLength: 2 }],
+    ['upsertABClass_', { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10' }],
+    ['updateABClass_', {}],
   ])('throws ApiValidationError when required params are missing for %s', (methodName, params) => {
     const upsertSpy = vi.fn();
     const updateSpy = vi.fn();
@@ -203,11 +203,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
       }
     }
 
-    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+    const { deleteABClass_ } = loadAbclassMutationsModuleWithGlobals({
       controllerCtor: MockABClassController,
     });
 
-    expect(deleteABClass(params)).toEqual(controllerResult);
+    expect(deleteABClass_(params)).toEqual(controllerResult);
     expect(deleteSpy).toHaveBeenCalledTimes(1);
     expect(deleteSpy).toHaveBeenCalledWith(params);
   });
@@ -226,11 +226,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
       }
     }
 
-    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+    const { deleteABClass_ } = loadAbclassMutationsModuleWithGlobals({
       controllerCtor: MockABClassController,
     });
 
-    expect(() => deleteABClass(params)).toThrow(ApiValidationError);
+    expect(() => deleteABClass_(params)).toThrow(ApiValidationError);
     expect(deleteSpy).not.toHaveBeenCalled();
   });
 
@@ -243,24 +243,24 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
       }
     }
 
-    const { deleteABClass } = loadAbclassMutationsModuleWithGlobals({
+    const { deleteABClass_ } = loadAbclassMutationsModuleWithGlobals({
       controllerCtor: MockABClassController,
     });
 
-    expect(() => deleteABClass({ classId: 'class-001' })).toThrow(controllerError);
+    expect(() => deleteABClass_({ classId: 'class-001' })).toThrow(controllerError);
   });
 
   it.each([
     [
-      'upsertABClass',
+      'upsertABClass_',
       { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: '2' },
     ],
     [
-      'upsertABClass',
+      'upsertABClass_',
       { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 0 },
     ],
-    ['updateABClass', { classId: 'class-001', courseLength: '2' }],
-    ['updateABClass', { classId: 'class-001', courseLength: 0 }],
+    ['updateABClass_', { classId: 'class-001', courseLength: '2' }],
+    ['updateABClass_', { classId: 'class-001', courseLength: 0 }],
   ])('throws ApiValidationError when courseLength is invalid for %s', (methodName, params) => {
     const upsertSpy = vi.fn();
     const updateSpy = vi.fn();
@@ -328,11 +328,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
         }
       }
 
-      const { updateABClass } = loadAbclassMutationsModuleWithGlobals({
+      const { updateABClass_ } = loadAbclassMutationsModuleWithGlobals({
         controllerCtor: MockABClassController,
       });
 
-      expect(() => updateABClass(params)).toThrow(ApiValidationError);
+      expect(() => updateABClass_(params)).toThrow(ApiValidationError);
       expect(updateSpy).not.toHaveBeenCalled();
     }
   );
@@ -354,11 +354,11 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
         }
       }
 
-      const { updateABClass } = loadAbclassMutationsModuleWithGlobals({
+      const { updateABClass_ } = loadAbclassMutationsModuleWithGlobals({
         controllerCtor: MockABClassController,
       });
 
-      expect(updateABClass(params)).toEqual(controllerResult);
+      expect(updateABClass_(params)).toEqual(controllerResult);
       expect(updateSpy).toHaveBeenCalledTimes(1);
       expect(updateSpy).toHaveBeenCalledWith(params);
     }

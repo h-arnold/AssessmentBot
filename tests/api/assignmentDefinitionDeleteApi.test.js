@@ -41,9 +41,9 @@ describe('Api/deleteAssignmentDefinition transport contract', () => {
   it('deletes registry and full-store targets for a safe definitionKey', () => {
     const { AssignmentDefinitionController, deleteDefinitionByKey } =
       installAssignmentDefinitionControllerStub();
-    const { deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule();
+    const { deleteAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-    const result = deleteAssignmentDefinition({ definitionKey: 'algebra-baseline' });
+    const result = deleteAssignmentDefinition_({ definitionKey: 'algebra-baseline' });
 
     expect(result).toBeUndefined();
     expect(AssignmentDefinitionController).toHaveBeenCalledTimes(1);
@@ -53,10 +53,10 @@ describe('Api/deleteAssignmentDefinition transport contract', () => {
 
   it('treats safe-key deletes as idempotent when records are already absent', () => {
     const { deleteDefinitionByKey } = installAssignmentDefinitionControllerStub();
-    const { deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule();
+    const { deleteAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => deleteAssignmentDefinition({ definitionKey: 'algebra-baseline' })).not.toThrow();
-    expect(() => deleteAssignmentDefinition({ definitionKey: 'algebra-baseline' })).not.toThrow();
+    expect(() => deleteAssignmentDefinition_({ definitionKey: 'algebra-baseline' })).not.toThrow();
+    expect(() => deleteAssignmentDefinition_({ definitionKey: 'algebra-baseline' })).not.toThrow();
 
     expect(deleteDefinitionByKey).toHaveBeenCalledTimes(2);
     expect(deleteDefinitionByKey).toHaveBeenNthCalledWith(1, 'algebra-baseline');
@@ -82,9 +82,9 @@ describe('Api/deleteAssignmentDefinition transport contract', () => {
     },
   ])('rejects invalid trimmed-shape key: $caseName', ({ params }) => {
     const { deleteDefinitionByKey } = installAssignmentDefinitionControllerStub();
-    const { deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule();
+    const { deleteAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => deleteAssignmentDefinition(params)).toThrow(ApiValidationError);
+    expect(() => deleteAssignmentDefinition_(params)).toThrow(ApiValidationError);
     expect(deleteDefinitionByKey).not.toHaveBeenCalled();
   });
 
@@ -107,9 +107,9 @@ describe('Api/deleteAssignmentDefinition transport contract', () => {
     },
   ])('rejects unsafe key tokens: $caseName', ({ params }) => {
     const { deleteDefinitionByKey } = installAssignmentDefinitionControllerStub();
-    const { deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule();
+    const { deleteAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => deleteAssignmentDefinition(params)).toThrow(ApiValidationError);
+    expect(() => deleteAssignmentDefinition_(params)).toThrow(ApiValidationError);
     expect(deleteDefinitionByKey).not.toHaveBeenCalled();
   });
 });

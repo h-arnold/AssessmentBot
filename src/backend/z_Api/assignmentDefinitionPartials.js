@@ -31,7 +31,7 @@ const NEGATIVE_TIMEZONE_MULTIPLIER = -1;
  *
  * @returns {AssignmentDefinitionController} Controller instance.
  */
-function getAssignmentDefinitionController() {
+function getAssignmentDefinitionController_() {
   return new AssignmentDefinitionController();
 }
 
@@ -43,7 +43,7 @@ function getAssignmentDefinitionController() {
  * @param {number} rowIndex - Invalid row index.
  * @throws {ApiValidationError} Always throws.
  */
-function throwValidationError(message, fieldName, rowIndex) {
+function throwValidationError_(message, fieldName, rowIndex) {
   throw new ApiValidationError(message, {
     method: 'getAssignmentDefinitionPartials',
     fieldName,
@@ -58,7 +58,7 @@ function throwValidationError(message, fieldName, rowIndex) {
  * @param {string} fieldName - Related field name.
  * @throws {ApiValidationError} Always throws.
  */
-function throwDeleteValidationError(message, fieldName) {
+function throwDeleteValidationError_(message, fieldName) {
   throw new ApiValidationError(message, {
     method: 'deleteAssignmentDefinition',
     fieldName,
@@ -74,7 +74,7 @@ const DELETE_CHARACTER_CODE = 127;
  * @param {string} value - Definition key candidate.
  * @returns {boolean} True when any control character is present.
  */
-function hasControlCharacters(value) {
+function hasControlCharacters_(value) {
   for (let index = 0; index < value.length; index += 1) {
     const codePoint = value.codePointAt(index);
     if (codePoint <= LAST_CONTROL_CHARACTER_CODE || codePoint === DELETE_CHARACTER_CODE) {
@@ -92,36 +92,36 @@ function hasControlCharacters(value) {
  * @returns {string} The original validated definition key.
  * @throws {ApiValidationError} If parameters or definitionKey are invalid.
  */
-function validateDeleteParameters(parameters) {
+function validateDeleteParameters_(parameters) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
-    throwDeleteValidationError('params must be an object.', 'params');
+    throwDeleteValidationError_('params must be an object.', 'params');
   }
 
   if (!Object.hasOwn(parameters, 'definitionKey')) {
-    throwDeleteValidationError('Missing required field: definitionKey.', 'definitionKey');
+    throwDeleteValidationError_('Missing required field: definitionKey.', 'definitionKey');
   }
 
   const { definitionKey } = parameters;
 
   if (typeof definitionKey !== 'string') {
-    throwDeleteValidationError('definitionKey must be a string.', 'definitionKey');
+    throwDeleteValidationError_('definitionKey must be a string.', 'definitionKey');
   }
 
   if (definitionKey.trim().length === 0) {
-    throwDeleteValidationError('definitionKey must be a non-empty string.', 'definitionKey');
+    throwDeleteValidationError_('definitionKey must be a non-empty string.', 'definitionKey');
   }
 
   if (definitionKey.trim() !== definitionKey) {
-    throwDeleteValidationError('definitionKey must already be trimmed.', 'definitionKey');
+    throwDeleteValidationError_('definitionKey must already be trimmed.', 'definitionKey');
   }
 
   if (
     definitionKey.includes('/') ||
     definitionKey.includes('\\') ||
     definitionKey.includes('..') ||
-    hasControlCharacters(definitionKey)
+    hasControlCharacters_(definitionKey)
   ) {
-    throwDeleteValidationError('definitionKey contains unsafe characters.', 'definitionKey');
+    throwDeleteValidationError_('definitionKey contains unsafe characters.', 'definitionKey');
   }
 
   return definitionKey;
@@ -134,9 +134,9 @@ function validateDeleteParameters(parameters) {
  * @param {number} rowIndex - Candidate row index.
  * @throws {ApiValidationError} If the row shape is invalid.
  */
-function validateRequiredFields(row, rowIndex) {
+function validateRequiredFields_(row, rowIndex) {
   if (!row || typeof row !== 'object' || Array.isArray(row)) {
-    throwValidationError(
+    throwValidationError_(
       'Each assignment definition partial row must be an object.',
       null,
       rowIndex
@@ -145,7 +145,7 @@ function validateRequiredFields(row, rowIndex) {
 
   PARTIAL_REQUIRED_FIELDS.forEach((fieldName) => {
     if (!Object.hasOwn(row, fieldName)) {
-      throwValidationError(`Missing required field: ${fieldName}.`, fieldName, rowIndex);
+      throwValidationError_(`Missing required field: ${fieldName}.`, fieldName, rowIndex);
     }
   });
 }
@@ -157,18 +157,18 @@ function validateRequiredFields(row, rowIndex) {
  * @param {number} rowIndex - Row index.
  * @throws {ApiValidationError} If definitionKey is missing, blank, or untrimmed.
  */
-function validateDefinitionKey(definitionKey, rowIndex) {
+function validateDefinitionKey_(definitionKey, rowIndex) {
   if (typeof definitionKey !== 'string') {
-    throwValidationError('definitionKey must be a string.', 'definitionKey', rowIndex);
+    throwValidationError_('definitionKey must be a string.', 'definitionKey', rowIndex);
   }
 
   const trimmedDefinitionKey = definitionKey.trim();
   if (trimmedDefinitionKey.length === 0) {
-    throwValidationError('definitionKey must be a non-empty string.', 'definitionKey', rowIndex);
+    throwValidationError_('definitionKey must be a non-empty string.', 'definitionKey', rowIndex);
   }
 
   if (trimmedDefinitionKey !== definitionKey) {
-    throwValidationError('definitionKey must already be trimmed.', 'definitionKey', rowIndex);
+    throwValidationError_('definitionKey must already be trimmed.', 'definitionKey', rowIndex);
   }
 }
 
@@ -178,7 +178,7 @@ function validateDefinitionKey(definitionKey, rowIndex) {
  * @param {*} value - Candidate timestamp value.
  * @returns {boolean} True when value is a valid ISO datetime string.
  */
-function isIsoDateTimeString(value) {
+function isIsoDateTimeString_(value) {
   if (typeof value !== 'string') {
     return false;
   }
@@ -240,13 +240,13 @@ function isIsoDateTimeString(value) {
  * @param {number} rowIndex - Row index.
  * @throws {ApiValidationError} If value is not null and not a valid ISO datetime string.
  */
-function validateTimestamp(value, fieldName, rowIndex) {
+function validateTimestamp_(value, fieldName, rowIndex) {
   if (value === null) {
     return;
   }
 
-  if (!isIsoDateTimeString(value)) {
-    throwValidationError(
+  if (!isIsoDateTimeString_(value)) {
+    throwValidationError_(
       `${fieldName} must be null or an ISO datetime string.`,
       fieldName,
       rowIndex
@@ -261,14 +261,14 @@ function validateTimestamp(value, fieldName, rowIndex) {
  * @param {number} rowIndex - Row index.
  * @throws {ApiValidationError} If the row violates the strict contract.
  */
-function validatePartialRow(row, rowIndex) {
-  validateRequiredFields(row, rowIndex);
-  validateDefinitionKey(row.definitionKey, rowIndex);
-  validateTimestamp(row.createdAt, 'createdAt', rowIndex);
-  validateTimestamp(row.updatedAt, 'updatedAt', rowIndex);
+function validatePartialRow_(row, rowIndex) {
+  validateRequiredFields_(row, rowIndex);
+  validateDefinitionKey_(row.definitionKey, rowIndex);
+  validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
+  validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
   if (row.tasks !== null) {
-    throwValidationError('tasks must be null in partial transport.', 'tasks', rowIndex);
+    throwValidationError_('tasks must be null in partial transport.', 'tasks', rowIndex);
   }
 }
 
@@ -278,7 +278,7 @@ function validatePartialRow(row, rowIndex) {
  * @param {Object} row - Valid partial row.
  * @returns {Object} Plain transport row.
  */
-function toPlainPartialRow(row) {
+function toPlainPartialRow_(row) {
   return {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
@@ -302,16 +302,16 @@ function toPlainPartialRow(row) {
  * @returns {Array<Object>} Plain assignment-definition partial rows.
  * @throws {ApiValidationError} If any row violates the strict transport contract.
  */
-function getAssignmentDefinitionPartials() {
-  const partialRows = getAssignmentDefinitionController().getAllPartialDefinitions();
+function getAssignmentDefinitionPartials_() {
+  const partialRows = getAssignmentDefinitionController_().getAllPartialDefinitions();
 
   if (!Array.isArray(partialRows)) {
-    throwValidationError('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
+    throwValidationError_('Controller response must be an array.', RESPONSE_FIELD_NAME, 0);
   }
 
   return partialRows.map((row, rowIndex) => {
-    validatePartialRow(row, rowIndex);
-    return toPlainPartialRow(row);
+    validatePartialRow_(row, rowIndex);
+    return toPlainPartialRow_(row);
   });
 }
 
@@ -320,14 +320,14 @@ function getAssignmentDefinitionPartials() {
  *
  * @param {Object} parameters - Request payload containing definitionKey.
  */
-function deleteAssignmentDefinition(parameters) {
-  const definitionKey = validateDeleteParameters(parameters);
-  getAssignmentDefinitionController().deleteDefinitionByKey(definitionKey);
+function deleteAssignmentDefinition_(parameters) {
+  const definitionKey = validateDeleteParameters_(parameters);
+  getAssignmentDefinitionController_().deleteDefinitionByKey(definitionKey);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    getAssignmentDefinitionPartials,
-    deleteAssignmentDefinition,
+    getAssignmentDefinitionPartials_,
+    deleteAssignmentDefinition_,
   };
 }

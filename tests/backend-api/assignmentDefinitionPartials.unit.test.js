@@ -74,8 +74,8 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const { AssignmentDefinitionController, getAllPartialDefinitions } =
       installAssignmentDefinitionControllerStub(controllerRows);
 
-    const { getAssignmentDefinitionPartials } = loadAssignmentDefinitionPartialsModule();
-    const result = getAssignmentDefinitionPartials();
+    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+    const result = getAssignmentDefinitionPartials_();
     const expectedRows = [
       buildValidPartial(),
       buildValidPartial({ definitionKey: 'geometry-baseline', tasks: null }),
@@ -98,9 +98,9 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
     installAssignmentDefinitionControllerStub([validRow, malformedRow]);
 
-    const { getAssignmentDefinitionPartials } = loadAssignmentDefinitionPartialsModule();
+    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => getAssignmentDefinitionPartials()).toThrow(ApiValidationError);
+    expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
   });
 
   it.each([
@@ -140,9 +140,9 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
     installAssignmentDefinitionControllerStub([validRow, malformedRow]);
 
-    const { getAssignmentDefinitionPartials } = loadAssignmentDefinitionPartialsModule();
+    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => getAssignmentDefinitionPartials()).toThrow(ApiValidationError);
+    expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
   });
 
   it.each([
@@ -170,8 +170,8 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
     installAssignmentDefinitionControllerStub([validRow, malformedRow]);
 
-    const { getAssignmentDefinitionPartials } = loadAssignmentDefinitionPartialsModule();
+    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
 
-    expect(() => getAssignmentDefinitionPartials()).toThrow(ApiValidationError);
+    expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
   });
 });

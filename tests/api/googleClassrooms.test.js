@@ -25,12 +25,12 @@ afterEach(() => {
 });
 
 describe('Api/googleClassrooms exports', () => {
-  it('exports getGoogleClassrooms in Node test runtime', () => {
+  it('exports getGoogleClassrooms_ in Node test runtime', () => {
     const googleClassroomsModule = require('../../src/backend/z_Api/googleClassrooms.js');
 
     expect(googleClassroomsModule).toEqual(
       expect.objectContaining({
-        getGoogleClassrooms: expect.any(Function),
+        getGoogleClassrooms_: expect.any(Function),
       })
     );
   });
@@ -39,30 +39,30 @@ describe('Api/googleClassrooms exports', () => {
 describe('Api/getGoogleClassrooms direct handler', () => {
   it('delegates to ClassroomApiClient.fetchAllActiveClassrooms and leaves params unused', () => {
     const fetchAllActiveClassrooms = vi.fn(() => []);
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: { fetchAllActiveClassrooms },
     });
 
-    getGoogleClassrooms({ includeArchived: true });
+    getGoogleClassrooms_({ includeArchived: true });
 
     expect(fetchAllActiveClassrooms).toHaveBeenCalledTimes(1);
     expect(fetchAllActiveClassrooms).toHaveBeenCalledWith();
   });
 
   it('maps Classroom records from id and name to classId and className', () => {
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: {
         fetchAllActiveClassrooms: vi.fn(() => [{ id: 'course-001', name: '10A Computer Science' }]),
       },
     });
 
-    const result = getGoogleClassrooms();
+    const result = getGoogleClassrooms_();
 
     expect(result).toEqual([{ classId: 'course-001', className: '10A Computer Science' }]);
   });
 
   it('strips non-contract fields such as enrollmentCode from classroom summaries', () => {
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: {
         fetchAllActiveClassrooms: vi.fn(() => [
           {
@@ -77,7 +77,7 @@ describe('Api/getGoogleClassrooms direct handler', () => {
       },
     });
 
-    const result = getGoogleClassrooms();
+    const result = getGoogleClassrooms_();
 
     expect(result).toEqual([{ classId: 'course-001', className: '10A Computer Science' }]);
     expect(result[0]).not.toHaveProperty('enrollmentCode');
@@ -87,31 +87,31 @@ describe('Api/getGoogleClassrooms direct handler', () => {
   });
 
   it('returns an empty array when the classroom client returns no classrooms', () => {
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: { fetchAllActiveClassrooms: vi.fn(() => []) },
     });
 
-    const result = getGoogleClassrooms();
+    const result = getGoogleClassrooms_();
 
     expect(result).toEqual([]);
   });
 
   it('throws ApiValidationError when a classroom record is malformed and not an object', () => {
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: { fetchAllActiveClassrooms: vi.fn(() => [null]) },
     });
 
-    expect(() => getGoogleClassrooms()).toThrow(ApiValidationError);
+    expect(() => getGoogleClassrooms_()).toThrow(ApiValidationError);
   });
 
   it.each([
     ['id', { name: '10A Computer Science' }],
     ['name', { id: 'course-001' }],
   ])('throws ApiValidationError when a classroom record is missing %s', (_fieldName, record) => {
-    const { getGoogleClassrooms } = loadGoogleClassroomsModuleWithGlobals({
+    const { getGoogleClassrooms_ } = loadGoogleClassroomsModuleWithGlobals({
       classroomApiClient: { fetchAllActiveClassrooms: vi.fn(() => [record]) },
     });
 
-    expect(() => getGoogleClassrooms()).toThrow(ApiValidationError);
+    expect(() => getGoogleClassrooms_()).toThrow(ApiValidationError);
   });
 });

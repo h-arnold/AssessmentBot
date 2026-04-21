@@ -4,6 +4,9 @@ import vm from 'node:vm';
 
 const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
 const googleClassroomsHandlerPath = '../../src/backend/z_Api/googleClassrooms.js';
+const assignmentDefinitionPartialsPath = '../../src/backend/z_Api/assignmentDefinitionPartials.js';
+const apiConfigPath = '../../src/backend/z_Api/apiConfig.js';
+const abclassMutationsPath = '../../src/backend/z_Api/abclassMutations.js';
 const originalClassroomApiClient = globalThis.ClassroomApiClient;
 
 const {
@@ -121,22 +124,6 @@ const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
   },
 });
 
-function buildAbClassTransportHandlers() {
-  return Object.fromEntries(
-    ABCLASS_TRANSPORT_API_METHOD_NAMES.map((methodName) => [
-      methodName,
-      () => ABCLASS_TRANSPORT_RESULTS[methodName],
-    ])
-  );
-}
-
-function buildApiHandlerTestHandlers() {
-  return {
-    ...buildAbClassTransportHandlers(),
-    ...buildAssignmentDefinitionHandlers(),
-  };
-}
-
 const REFERENCE_DATA_PARAMS = Object.freeze({
   createCohort: { record: { name: 'Cohort 2026', active: true } },
   updateCohort: {
@@ -165,13 +152,12 @@ function getReferenceDataControllerMethodSpy(context, methodName) {
   return context.referenceDataControllerInstance[getReferenceDataControllerMethodName(methodName)];
 }
 
-function buildAssignmentDefinitionHandlers() {
-  return Object.fromEntries(
-    ASSIGNMENT_DEFINITION_API_METHOD_NAMES.map((methodName) => [
-      methodName,
-      () => ASSIGNMENT_DEFINITION_RESULTS[methodName],
-    ])
-  );
+function getAllowlistedHandlerSpy(context, handlerName) {
+  if (REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)) {
+    return getReferenceDataControllerMethodSpy(context, handlerName);
+  }
+
+  return context[`${handlerName}_`] || globalThis[handlerName];
 }
 
 function handleApiRequest(method, params) {
@@ -301,7 +287,7 @@ function clearGoogleClassroomsHandlerModuleCache() {
 function loadRealGoogleClassroomsHandlerWithGlobals({ classroomApiClient } = {}) {
   clearGoogleClassroomsHandlerModuleCache();
   globalThis.ClassroomApiClient = classroomApiClient;
-  return require(googleClassroomsHandlerPath).getGoogleClassrooms;
+  return require(googleClassroomsHandlerPath).getGoogleClassrooms_;
 }
 
 function loadApiHandlerInVmContext({ globals = {} } = {}) {
@@ -318,6 +304,17 @@ function loadApiHandlerInVmContext({ globals = {} } = {}) {
     ...sandbox.__exports,
     context: sandbox,
   };
+}
+
+function loadModuleGlobalsInVmContext(modulePath, { globals = {} } = {}) {
+  const source = fs.readFileSync(require.resolve(modulePath), 'utf8');
+  const sandbox = { ...globals };
+
+  sandbox.globalThis = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox, { filename: modulePath });
+
+  return sandbox;
 }
 
 function makeVmGlobals(overrides = {}) {
@@ -398,13 +395,58 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
   });
 });
 
+describe('Api/non-trivial transport helper global exposure', () => {
+  it('exposes only getGoogleClassrooms_ in vm context after loading googleClassrooms module', () => {
+    const context = loadModuleGlobalsInVmContext(googleClassroomsHandlerPath);
+
+    expect(context.getGoogleClassrooms).toBeUndefined();
+    expect(context.getGoogleClassrooms_).toEqual(expect.any(Function));
+  });
+
+  it('exposes only trailing-underscore globals for non-trivial transport modules in vm context', () => {
+    const abclassContext = loadModuleGlobalsInVmContext(abclassMutationsPath);
+    expect(abclassContext.upsertABClass).toBeUndefined();
+    expect(abclassContext.updateABClass).toBeUndefined();
+    expect(abclassContext.deleteABClass).toBeUndefined();
+    expect(abclassContext.upsertABClass_).toEqual(expect.any(Function));
+    expect(abclassContext.updateABClass_).toEqual(expect.any(Function));
+    expect(abclassContext.deleteABClass_).toEqual(expect.any(Function));
+
+    const assignmentDefinitionContext = loadModuleGlobalsInVmContext(
+      assignmentDefinitionPartialsPath
+    );
+    expect(assignmentDefinitionContext.getAssignmentDefinitionPartials).toBeUndefined();
+    expect(assignmentDefinitionContext.deleteAssignmentDefinition).toBeUndefined();
+    expect(assignmentDefinitionContext.getAssignmentDefinitionPartials_).toEqual(
+      expect.any(Function)
+    );
+    expect(assignmentDefinitionContext.deleteAssignmentDefinition_).toEqual(expect.any(Function));
+
+    const backendConfigContext = loadModuleGlobalsInVmContext(apiConfigPath);
+    expect(backendConfigContext.getBackendConfig).toBeUndefined();
+    expect(backendConfigContext.setBackendConfig).toBeUndefined();
+    expect(backendConfigContext.getBackendConfig_).toEqual(expect.any(Function));
+    expect(backendConfigContext.setBackendConfig_).toEqual(expect.any(Function));
+  });
+});
+
 describe('Api/apiHandler dispatcher', () => {
   let context;
 
   beforeEach(() => {
     context = setupApiHandlerTestContext(vi, {
       installLogger: true,
-      additionalHandlers: buildApiHandlerTestHandlers(),
+      googleClassroomsBehaviour: () => ABCLASS_TRANSPORT_RESULTS.getGoogleClassrooms,
+      abclassMutationsBehaviour: {
+        upsertABClass_: () => ABCLASS_TRANSPORT_RESULTS.upsertABClass,
+        updateABClass_: () => ABCLASS_TRANSPORT_RESULTS.updateABClass,
+        deleteABClass_: () => ABCLASS_TRANSPORT_RESULTS.deleteABClass,
+      },
+      assignmentDefinitionBehaviour: {
+        getAssignmentDefinitionPartials_: () =>
+          ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
+        deleteAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
+      },
     });
   });
 
@@ -682,7 +724,6 @@ describe('Api/apiHandler dispatcher', () => {
       teardownApiHandlerTestContext(vi, context);
       context = setupApiHandlerTestContext(vi, {
         installLogger: 'real',
-        additionalHandlers: buildApiHandlerTestHandlers(),
       });
 
       const thrownError = new Error('controlled downstream ' + loggerMethod + ' failure');
@@ -717,7 +758,6 @@ describe('Api/apiHandler dispatcher', () => {
     teardownApiHandlerTestContext(vi, context);
     context = setupApiHandlerTestContext(vi, {
       installLogger: 'real',
-      additionalHandlers: buildApiHandlerTestHandlers(),
     });
 
     const thrownError = new Error('controlled downstream request-path failure');
@@ -850,15 +890,17 @@ describe('Api/apiHandler dispatcher', () => {
       const params = ABCLASS_TRANSPORT_PARAMS[methodName];
       const expectedData = ABCLASS_TRANSPORT_RESULTS[methodName];
 
-      globalThis[methodName].mockImplementation(() => expectedData);
+      const transportHelperSpy = context[`${methodName}_`];
+      expect(globalThis[methodName]).toBeUndefined();
+      transportHelperSpy.mockImplementation(() => expectedData);
 
       const response = dispatcher.handle({
         method: methodName,
         params,
       });
 
-      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
-      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(transportHelperSpy).toHaveBeenCalledTimes(1);
+      expect(transportHelperSpy).toHaveBeenCalledWith(params);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -876,15 +918,17 @@ describe('Api/apiHandler dispatcher', () => {
       const params = ASSIGNMENT_DEFINITION_PARAMS[methodName];
       const expectedData = ASSIGNMENT_DEFINITION_RESULTS[methodName];
 
-      globalThis[methodName].mockImplementation(() => expectedData);
+      const transportHelperSpy = context[`${methodName}_`];
+      expect(globalThis[methodName]).toBeUndefined();
+      transportHelperSpy.mockImplementation(() => expectedData);
 
       const response = dispatcher.handle({
         method: methodName,
         ...(params === undefined ? {} : { params }),
       });
 
-      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
-      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(transportHelperSpy).toHaveBeenCalledTimes(1);
+      expect(transportHelperSpy).toHaveBeenCalledWith(params);
       expect(response).toEqual({
         ok: true,
         requestId: response.requestId,
@@ -895,7 +939,7 @@ describe('Api/apiHandler dispatcher', () => {
   );
 
   it('keeps the success envelope unchanged for getGoogleClassrooms when using the real handler', () => {
-    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+    globalThis.getGoogleClassrooms_ = loadRealGoogleClassroomsHandlerWithGlobals({
       classroomApiClient: {
         fetchAllActiveClassrooms: vi.fn(() => [
           {
@@ -924,7 +968,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps getGoogleClassrooms validation failures from the real handler to INVALID_REQUEST', () => {
-    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+    globalThis.getGoogleClassrooms_ = loadRealGoogleClassroomsHandlerWithGlobals({
       classroomApiClient: {
         fetchAllActiveClassrooms: vi.fn(() => [{ name: '10A Computer Science' }]),
       },
@@ -956,7 +1000,7 @@ describe('Api/apiHandler dispatcher', () => {
     };
 
     try {
-      globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+      globalThis.getGoogleClassrooms_ = loadRealGoogleClassroomsHandlerWithGlobals({
         classroomApiClient: {
           fetchAllActiveClassrooms: vi.fn(() => [null]),
         },
@@ -989,7 +1033,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps unexpected getGoogleClassrooms failures through the existing internal-error envelope path', () => {
-    globalThis.getGoogleClassrooms = loadRealGoogleClassroomsHandlerWithGlobals({
+    globalThis.getGoogleClassrooms_ = loadRealGoogleClassroomsHandlerWithGlobals({
       classroomApiClient: {
         fetchAllActiveClassrooms: vi.fn(() => {
           throw new Error('Classroom client exploded');
@@ -1053,6 +1097,38 @@ describe('Api/apiHandler dispatcher', () => {
     });
   });
 
+  it('dispatches backend-config methods through trailing-underscore helpers in vm runtime', () => {
+    const getBackendConfig_ = vi.fn(() => ({ backendUrl: 'https://example.test' }));
+    const setBackendConfig_ = vi.fn((params) => ({ success: true, params }));
+    const { ApiDispatcher } = loadApiHandlerInVmContext({
+      globals: makeVmGlobals({
+        getBackendConfig_,
+        setBackendConfig_,
+      }),
+    });
+    const dispatcher = ApiDispatcher.getInstance();
+
+    const getResponse = dispatcher.handle({ method: 'getBackendConfig' });
+
+    expect(getBackendConfig_).toHaveBeenCalledTimes(1);
+    expect(getResponse).toMatchObject({
+      ok: true,
+      data: { backendUrl: 'https://example.test' },
+    });
+
+    const params = { backendUrl: 'https://updated.example.test' };
+    const setResponse = dispatcher.handle({
+      method: 'setBackendConfig',
+      params,
+    });
+
+    expect(setBackendConfig_).toHaveBeenCalledTimes(1);
+    expect(setBackendConfig_).toHaveBeenCalledWith(params);
+    expect(setResponse).toMatchObject({
+      ok: true,
+      data: { success: true, params },
+    });
+  });
   it('returns plain handler data for successful reference-data requests without re-enveloping it', () => {
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -1075,9 +1151,7 @@ describe('Api/apiHandler dispatcher', () => {
   it.each(INVALID_REQUEST_FAILURE_CASES)(
     '$description',
     ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
-      const handlerSpy = REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)
-        ? getReferenceDataControllerMethodSpy(context, handlerName)
-        : globalThis[handlerName];
+      const handlerSpy = getAllowlistedHandlerSpy(context, handlerName);
       handlerSpy.mockImplementation(() => {
         throw new ApiValidationError(errorMessage, { requestId });
       });
@@ -1096,9 +1170,7 @@ describe('Api/apiHandler dispatcher', () => {
     'emits one boundary diagnostic for $methodName validation failures while preserving the INVALID_REQUEST envelope',
     ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
       const thrownError = new ApiValidationError(errorMessage, { requestId });
-      const handlerSpy = REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)
-        ? getReferenceDataControllerMethodSpy(context, handlerName)
-        : globalThis[handlerName];
+      const handlerSpy = getAllowlistedHandlerSpy(context, handlerName);
       handlerSpy.mockImplementation(() => {
         throw thrownError;
       });
@@ -1193,7 +1265,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps unexpected failures from deleteABClass to INTERNAL_ERROR and preserves the failure envelope shape', () => {
-    globalThis.deleteABClass.mockImplementation(() => {
+    context.deleteABClass_.mockImplementation(() => {
       throw new Error('delete exploded');
     });
 

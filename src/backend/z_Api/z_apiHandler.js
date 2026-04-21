@@ -10,12 +10,6 @@ let requestStoreFns;
 let apiRateLimitErrorName;
 let apiValidationErrorName;
 let apiDisabledErrorName;
-let getBackendConfigHandler = function () {
-  return getBackendConfig();
-};
-let setBackendConfigHandler = function (parameters) {
-  return setBackendConfig(parameters);
-};
 
 const API_ERROR_CODE_MAP = {
   RATE_LIMITED: 'RATE_LIMITED',
@@ -27,14 +21,14 @@ const API_ERROR_CODE_MAP = {
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
   getABClassPartials: () => new ABClassController().getAllClassPartials(),
-  getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials(parameters),
-  deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition(parameters),
-  getGoogleClassrooms: (parameters) => getGoogleClassrooms(parameters),
-  upsertABClass: (parameters) => upsertABClass(parameters),
-  updateABClass: (parameters) => updateABClass(parameters),
-  deleteABClass: (parameters) => deleteABClass(parameters),
-  getBackendConfig: () => getBackendConfigHandler(),
-  setBackendConfig: (parameters) => setBackendConfigHandler(parameters),
+  getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials_(parameters),
+  deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition_(parameters),
+  getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
+  upsertABClass: (parameters) => upsertABClass_(parameters),
+  updateABClass: (parameters) => updateABClass_(parameters),
+  deleteABClass: (parameters) => deleteABClass_(parameters),
+  getBackendConfig: () => getBackendConfig_(),
+  setBackendConfig: (parameters) => setBackendConfig_(parameters),
   getCohorts: () => new ReferenceDataController().listCohorts(),
   createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
   updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters),
@@ -46,10 +40,9 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
 });
 
 if (typeof module !== 'undefined' && module.exports) {
-  ({
-    getBackendConfig: getBackendConfigHandler,
-    setBackendConfig: setBackendConfigHandler,
-  } = require('./apiConfig.js'));
+  const apiConfigFns = require('./apiConfig.js');
+  globalThis.getBackendConfig_ = apiConfigFns.getBackendConfig_;
+  globalThis.setBackendConfig_ = apiConfigFns.setBackendConfig_;
   ({
     LOCK_TIMEOUT_MS: lockTimeoutMs,
     LOCK_WAIT_WARN_THRESHOLD_MS: lockWaitWarnThresholdMs,

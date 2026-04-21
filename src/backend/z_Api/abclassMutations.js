@@ -3,7 +3,7 @@
  *
  * @returns {ABClassController} A new controller instance.
  */
-function getAbClassController() {
+function getAbClassController_() {
   return new ABClassController();
 }
 
@@ -15,7 +15,7 @@ function getAbClassController() {
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If parameters is not a plain object.
  */
-function validateParametersObject(parameters, methodName) {
+function validateParametersObject_(parameters, methodName) {
   if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
     throw new ApiValidationError('params must be an object.', {
       method: methodName,
@@ -32,7 +32,7 @@ function validateParametersObject(parameters, methodName) {
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If any required parameter is missing.
  */
-function requireParameters(parameters, methodName) {
+function requireParameters_(parameters, methodName) {
   try {
     Validate.requireParams(parameters, methodName);
   } catch (error) {
@@ -50,7 +50,7 @@ function requireParameters(parameters, methodName) {
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If classId is not a non-empty string.
  */
-function validateClassId(classId, methodName) {
+function validateClassId_(classId, methodName) {
   if (!Validate.isNonEmptyString(classId)) {
     throw new ApiValidationError('classId must be a non-empty string.', {
       method: methodName,
@@ -66,8 +66,8 @@ function validateClassId(classId, methodName) {
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
-function validateMutationClassId(classId, methodName) {
-  validateClassId(classId, methodName);
+function validateMutationClassId_(classId, methodName) {
+  validateClassId_(classId, methodName);
 
   if (classId.includes('..') || classId.includes('/') || classId.includes('\\')) {
     throw new ApiValidationError('classId must not contain unsafe path characters.', {
@@ -84,7 +84,7 @@ function validateMutationClassId(classId, methodName) {
  * @param {string} methodName - Name of the calling method (for error messages).
  * @throws {ApiValidationError} If courseLength is not a positive integer.
  */
-function validateCourseLength(courseLength, methodName) {
+function validateCourseLength_(courseLength, methodName) {
   if (!Number.isInteger(courseLength) || courseLength < 1) {
     throw new ApiValidationError('courseLength must be an integer greater than or equal to 1.', {
       method: methodName,
@@ -99,11 +99,11 @@ function validateCourseLength(courseLength, methodName) {
  * @param {*} parameters - Request parameters to validate.
  * @throws {ApiValidationError} If any required parameter is invalid.
  */
-function validateUpsertABClassParameters(parameters) {
+function validateUpsertABClassParameters_(parameters) {
   const methodName = 'upsertABClass';
 
-  validateParametersObject(parameters, methodName);
-  requireParameters(
+  validateParametersObject_(parameters, methodName);
+  requireParameters_(
     {
       classId: parameters.classId,
       cohortKey: parameters.cohortKey,
@@ -112,8 +112,8 @@ function validateUpsertABClassParameters(parameters) {
     },
     methodName
   );
-  validateMutationClassId(parameters.classId, methodName);
-  validateCourseLength(parameters.courseLength, methodName);
+  validateMutationClassId_(parameters.classId, methodName);
+  validateCourseLength_(parameters.courseLength, methodName);
 }
 
 /**
@@ -123,16 +123,16 @@ function validateUpsertABClassParameters(parameters) {
  * @param {*} parameters - Request parameters to validate.
  * @throws {ApiValidationError} If any parameter is invalid or protected fields are supplied.
  */
-function validateUpdateABClassParameters(parameters) {
+function validateUpdateABClassParameters_(parameters) {
   const methodName = 'updateABClass';
   const forbiddenFields = ['classOwner', 'teachers', 'students', 'assignments'];
 
-  validateParametersObject(parameters, methodName);
-  requireParameters({ classId: parameters.classId }, methodName);
-  validateMutationClassId(parameters.classId, methodName);
+  validateParametersObject_(parameters, methodName);
+  requireParameters_({ classId: parameters.classId }, methodName);
+  validateMutationClassId_(parameters.classId, methodName);
 
   if (Object.hasOwn(parameters, 'courseLength')) {
-    validateCourseLength(parameters.courseLength, methodName);
+    validateCourseLength_(parameters.courseLength, methodName);
   }
 
   if (
@@ -162,12 +162,12 @@ function validateUpdateABClassParameters(parameters) {
  * @param {*} parameters - Request parameters to validate.
  * @throws {ApiValidationError} If any required parameter is invalid.
  */
-function validateDeleteABClassParameters(parameters) {
+function validateDeleteABClassParameters_(parameters) {
   const methodName = 'deleteABClass';
 
-  validateParametersObject(parameters, methodName);
-  requireParameters({ classId: parameters.classId }, methodName);
-  validateMutationClassId(parameters.classId, methodName);
+  validateParametersObject_(parameters, methodName);
+  requireParameters_({ classId: parameters.classId }, methodName);
+  validateMutationClassId_(parameters.classId, methodName);
 }
 
 /**
@@ -178,9 +178,9 @@ function validateDeleteABClassParameters(parameters) {
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
  */
-function upsertABClass(parameters) {
-  validateUpsertABClassParameters(parameters);
-  return getAbClassController().upsertABClass(parameters);
+function upsertABClass_(parameters) {
+  validateUpsertABClassParameters_(parameters);
+  return getAbClassController_().upsertABClass(parameters);
 }
 
 /**
@@ -191,9 +191,9 @@ function upsertABClass(parameters) {
  * @returns {Object} Partial ABClass summary from the controller.
  * @throws {ApiValidationError} If parameters fail validation.
  */
-function updateABClass(parameters) {
-  validateUpdateABClassParameters(parameters);
-  return getAbClassController().updateABClass(parameters);
+function updateABClass_(parameters) {
+  validateUpdateABClassParameters_(parameters);
+  return getAbClassController_().updateABClass(parameters);
 }
 
 /**
@@ -204,15 +204,15 @@ function updateABClass(parameters) {
  * @returns {Object} Deletion result with classId and deletion status flags.
  * @throws {ApiValidationError} If parameters fail validation.
  */
-function deleteABClass(parameters) {
-  validateDeleteABClassParameters(parameters);
-  return getAbClassController().deleteABClass(parameters);
+function deleteABClass_(parameters) {
+  validateDeleteABClassParameters_(parameters);
+  return getAbClassController_().deleteABClass(parameters);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    upsertABClass,
-    updateABClass,
-    deleteABClass,
+    upsertABClass_,
+    updateABClass_,
+    deleteABClass_,
   };
 }
