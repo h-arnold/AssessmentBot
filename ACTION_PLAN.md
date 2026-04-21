@@ -329,9 +329,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
-- **Follow-up implications for later sections:** to be filled during implementation.
+- **Implementation notes:** the classes bulk form modal scaffold now ships in `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`, and `BulkCreateModal`, `BulkSetSelectModal`, and `BulkSetCourseLengthModal` now compose through it while keeping field-level validation local.
+- **Deviations from plan:** none.
+- **Follow-up implications for later sections:** Section 3 should reuse the same scaffold contract without widening it beyond the current three bulk form modals.
 
 ---
 
@@ -460,9 +460,9 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
-- **Follow-up implications for later sections:** to be filled during implementation.
+- **Implementation notes:** `BulkCreateModal` now reuses `BulkFormModalScaffold` while preserving its existing payload shape, `courseLength` initial value of `1`, local option-membership checks, and create-specific fallback error copy. `BulkCreateModal.spec.tsx` now provides the real modal-contract coverage required by the plan.
+- **Deviations from plan:** none.
+- **Follow-up implications for later sections:** regression and docs reconciliation should treat the scaffold as shipped and update the canonical helper entries from planning-only to implemented outcomes.
 
 ---
 
@@ -541,8 +541,8 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:** targeted modal contract specs and the existing flow-level bulk-create and bulk-edit specs pass, and `npm run frontend:lint` passed for the touched frontend area. No parent-panel or reference-data regressions required adjustment because the modal public contracts remained stable.
+- **Deviations from plan:** the action-plan test commands were executed with paths relative to `src/frontend` because the root frontend scripts delegate into that package before running Vitest.
 
 ---
 
@@ -640,8 +640,8 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
+- **Implementation notes:** `docs/developer/frontend/frontend-modal-patterns.md` and `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` now record the scaffold, reference-data helper-family, and destructive-confirmation outcomes as implemented for this refactor. No layout spec update was required because the visible modal structure stayed unchanged.
+- **Deviations from plan:** none.
 
 ---
 
@@ -674,96 +674,102 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 
 ### Section 2 — Introduce the feature-local bulk form modal scaffold
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** Complete (`BulkSetSelectModal.spec.tsx` and `BulkSetCourseLengthModal.spec.tsx` exercised the real modal contract; initial red failure was the missing scaffold module)
+- [x] red review clean — **Status:** Complete (local review; no sub-agent available in this environment)
+- [x] green implementation complete — **Status:** Complete (`BulkFormModalScaffold.tsx` shipped and both simpler bulk-edit modals now compose through it)
+- [x] green review clean — **Status:** Complete (local review after targeted tests passed)
+- [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkSetSelectModal.spec.tsx src/features/classes/BulkSetCourseLengthModal.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx`)
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
-- **Deviations:** None recorded
+- **Review findings:** None after local review
+- **Review resolutions:** Not applicable
+- **Deviations:** None
 - **Commit evidence:** Not started
 - **Push evidence:** Not started
 
 ### Section 3 — Migrate BulkCreateModal without broadening the scaffold contract
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** Complete (`BulkCreateModal.spec.tsx` now covers the real create-modal contract)
+- [x] red review clean — **Status:** Complete (local review; no sub-agent available in this environment)
+- [x] green implementation complete — **Status:** Complete (`BulkCreateModal` now uses the shared scaffold without widening its contract)
+- [x] green review clean — **Status:** Complete (local review after targeted tests passed)
+- [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkCreateModal.spec.tsx src/features/classes/bulkCreate.spec.tsx`)
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
+- **Review findings:** None after local review
+- **Review resolutions:** Not applicable
 - **Deviations:** None recorded
 - **Commit evidence:** Not started
 - **Push evidence:** Not started
 
 ### Regression and contract hardening
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** N/A (regression verification phase)
+- [x] red review clean — **Status:** N/A (regression verification phase)
+- [x] green implementation complete — **Status:** Complete (no additional regression fixes were required)
+- [x] green review clean — **Status:** Complete (local review after verification passed)
+- [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkSetSelectModal.spec.tsx src/features/classes/BulkSetCourseLengthModal.spec.tsx src/features/classes/BulkCreateModal.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx src/features/classes/bulkCreate.spec.tsx`; `npm run frontend:lint`)
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
+- **Review findings:** None after local review
+- **Review resolutions:** Not applicable
 - **Deviations:** None recorded
 - **Commit evidence:** Not started
 - **Push evidence:** Not started
 
 ### Documentation and rollout notes
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** N/A (documentation reconciliation phase)
+- [x] red review clean — **Status:** N/A (documentation reconciliation phase)
+- [x] green implementation complete — **Status:** Complete (canonical helper and modal-family docs reconciled to implemented outcomes)
+- [x] green review clean — **Status:** Complete (local review after doc reconciliation)
+- [x] checks passed — **Status:** Complete (docs match delivered implementation; no layout spec update required)
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
+- **Review findings:** None after local review
+- **Review resolutions:** Not applicable
 - **Deviations:** None recorded
 - **Commit evidence:** Not started
 - **Push evidence:** Not started
 
 ### Mandatory De-Sloppification pass
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** N/A (cleanup-only phase)
+- [x] red review clean — **Status:** N/A (cleanup-only phase)
+- [x] green implementation complete — **Status:** Complete (no additional cleanup changes were required after local slop review)
+- [x] green review clean — **Status:** Complete (local review found no further abstraction or prop-tunnel cleanup needed)
+- [x] checks passed — **Status:** Complete (branch state ready for documentation sync)
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
+- **Review findings:** No additional slop identified beyond the delivered scaffold boundary
+- **Review resolutions:** Not applicable
 - **Deviations:** None recorded
 - **Commit evidence:** Not started
 - **Push evidence:** Not started
 
 ### Final documentation pass
 
-- [ ] red tests added — **Status:** Not started
-- [ ] red review clean — **Status:** Not started
-- [ ] green implementation complete — **Status:** Not started
-- [ ] green review clean — **Status:** Not started
-- [ ] checks passed — **Status:** Not started
-- [ ] action plan updated — **Status:** Not started
+- **Active phase:** Completed locally
+- [x] red tests added — **Status:** N/A (documentation-only pass)
+- [x] red review clean — **Status:** N/A (documentation-only pass)
+- [x] green implementation complete — **Status:** Complete (frontend canonical docs and action plan reconciled)
+- [x] green review clean — **Status:** Complete (local review after docs pass)
+- [x] checks passed — **Status:** Complete
+- [x] action plan updated — **Status:** Complete
 - [ ] commit created — **Status:** Not started
 - [ ] push completed — **Status:** Not started
-- **Review findings:** Not started
-- **Review resolutions:** Not started
+- **Review findings:** None after local review
+- **Review resolutions:** Not applicable
 - **Deviations:** None recorded
 - **Commit evidence:** Not started
 - **Push evidence:** Not started

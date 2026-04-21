@@ -214,27 +214,26 @@ Keep them aligned with the current implementation if later cleanup extends, reve
 
 ### 9.8 Classes modal-family compliance refactor (planned)
 
-These entries record the planning-only helper decisions for the classes modal-family compliance refactor.
-Keep the status as `Not implemented` until the related implementation lands and documentation is reconciled.
-This planned section supersedes the earlier Section 9.7 defer decision for the specific three-caller refactor now in scope.
+These entries record the delivered helper decisions for the classes modal-family compliance refactor.
+This section supersedes the earlier Section 9.7 defer decision for the specific three-caller refactor now in scope.
 
 1. Helper or contract: classes bulk form modal scaffold
 
 - Decision: new
 - Owning path: `src/frontend/src/features/classes/BulkFormModalScaffold.tsx`
-- Status: `Not implemented`
+- Status: `Implemented`
 - Rationale: `BulkCreateModal.tsx`, `BulkSetSelectModal.tsx`, and `BulkSetCourseLengthModal.tsx` now present a justified three-caller family for a narrow feature-local shell that owns reset-on-cancel, submit-on-OK, inline submission error rendering, and modal busy semantics without becoming a generic wrapper
 
 2. Helper or contract: classes reference-data modal helper family
 
 - Decision: reuse
 - Owning path: `src/frontend/src/features/classes/manageReferenceDataDialogs.tsx`, `src/frontend/src/features/classes/manageReferenceDataHelpers.ts`, `src/frontend/src/features/classes/InlineDialog.tsx`
-- Status: `Not implemented`
+- Status: `Implemented`
 - Rationale: the current helper split already covers the shared reference-data workflow and should not be replaced or widened during this refactor
 
 3. Helper or contract: one-off destructive confirmation modals
 
 - Decision: keep local
 - Owning path: `src/frontend/src/features/classes/BulkDeleteModal.tsx`, `src/frontend/src/pages/AssignmentsPage.tsx`
-- Status: `Not implemented`
+- Status: `Implemented`
 - Rationale: both confirmation flows remain workflow-specific one-offs whose copy and footer semantics do not yet justify a shared abstraction
