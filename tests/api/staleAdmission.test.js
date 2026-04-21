@@ -42,7 +42,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
-    expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
+    expect(context.scriptAppManagerInstance.isAuthorised).toHaveBeenCalledTimes(1);
   });
 
   it('recent started entries still count towards the active limit and cause RATE_LIMITED', () => {
@@ -66,7 +66,7 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
       ok: false,
       error: { code: 'RATE_LIMITED', retriable: true },
     });
-    expect(globalThis.getAuthorisationStatus).not.toHaveBeenCalled();
+    expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();
   });
 
   it('calls ABLogger.warn once for each stale entry that is pruned', () => {
@@ -178,6 +178,6 @@ describe('Api/apiHandler – stale-entry pruning during admission', () => {
     const result = callAuthorisationStatus(dispatcher);
 
     expect(result).toMatchObject({ ok: true, requestId: expect.any(String) });
-    expect(globalThis.getAuthorisationStatus).toHaveBeenCalledTimes(1);
+    expect(context.scriptAppManagerInstance.isAuthorised).toHaveBeenCalledTimes(1);
   });
 });

@@ -36,9 +36,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
     mockLock.releaseLock.mockImplementation(() => {
       callOrder.push('releaseLock');
     });
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       callOrder.push('handler');
-      return { authorised: true };
+      return true;
     });
 
     callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-1' });
@@ -70,9 +70,9 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       releaseCount++;
       callOrder.push(`releaseLock-${releaseCount}`);
     });
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       callOrder.push('handler');
-      return { authorised: true };
+      return true;
     });
 
     callAuthorisationStatus(dispatcher, { params: {}, requestId: 'req-lock-3' });
@@ -97,7 +97,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
   });
 
   it('releases the lock even when the handler throws', () => {
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new Error('handler failure');
     });
 
@@ -129,7 +129,7 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       error: { code: 'RATE_LIMITED', retriable: true },
     });
     // Handler must not have been called
-    expect(globalThis.getAuthorisationStatus).not.toHaveBeenCalled();
+    expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();
   });
 
   it('logs a warning and leaves the request in started state when completion-phase lock acquisition fails', () => {
@@ -189,6 +189,6 @@ describe('Api/apiHandler – atomicity and lock-protected tracking', () => {
       error: { code: 'RATE_LIMITED', retriable: true },
     });
     // Handler must not have been called.
-    expect(globalThis.getAuthorisationStatus).not.toHaveBeenCalled();
+    expect(context.scriptAppManagerInstance.isAuthorised).not.toHaveBeenCalled();
   });
 });

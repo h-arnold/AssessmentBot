@@ -132,7 +132,6 @@ function buildAbClassTransportHandlers() {
 
 function buildApiHandlerTestHandlers() {
   return {
-    ...buildReferenceDataHandlers(),
     ...buildAbClassTransportHandlers(),
     ...buildAssignmentDefinitionHandlers(),
   };
@@ -153,13 +152,17 @@ const REFERENCE_DATA_PARAMS = Object.freeze({
   deleteYearGroup: { key: 'yg-10' },
 });
 
-function buildReferenceDataHandlers() {
-  return Object.fromEntries(
-    REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [
-      methodName,
-      () => REFERENCE_DATA_RESULTS[methodName],
-    ])
-  );
+const REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD = Object.freeze({
+  getCohorts: 'listCohorts',
+  getYearGroups: 'listYearGroups',
+});
+
+function getReferenceDataControllerMethodName(methodName) {
+  return REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD[methodName] || methodName;
+}
+
+function getReferenceDataControllerMethodSpy(context, methodName) {
+  return context.referenceDataControllerInstance[getReferenceDataControllerMethodName(methodName)];
 }
 
 function buildAssignmentDefinitionHandlers() {
@@ -369,6 +372,9 @@ function makeVmGlobals(overrides = {}) {
     ApiRateLimitError: function ApiRateLimitError() {},
     ApiValidationError: function ApiValidationError() {},
     ApiDisabledError: function ApiDisabledError() {},
+    ScriptAppManager: function ScriptAppManager() {
+      this.isAuthorised = () => true;
+    },
     ...overrides,
   };
 }
@@ -423,8 +429,28 @@ describe('Api/apiHandler dispatcher', () => {
 
     expect(response).toMatchObject({
       ok: true,
-      data: { authorised: true },
+      data: true,
     });
+  });
+
+  it('routes getAuthorisationStatus through ScriptAppManager and returns true when authorised', () => {
+    context.scriptAppManagerInstance.isAuthorised.mockReturnValueOnce(true);
+
+    const response = handleApiRequest('getAuthorisationStatus');
+
+    expect(context.scriptAppManagerCtor).toHaveBeenCalledTimes(1);
+    expect(context.scriptAppManagerInstance.isAuthorised).toHaveBeenCalledTimes(1);
+    expect(response).toMatchObject({ ok: true, data: true });
+  });
+
+  it('routes getAuthorisationStatus through ScriptAppManager and returns false when not authorised', () => {
+    context.scriptAppManagerInstance.isAuthorised.mockReturnValueOnce(false);
+
+    const response = handleApiRequest('getAuthorisationStatus');
+
+    expect(context.scriptAppManagerCtor).toHaveBeenCalledTimes(1);
+    expect(context.scriptAppManagerInstance.isAuthorised).toHaveBeenCalledTimes(1);
+    expect(response).toMatchObject({ ok: true, data: false });
   });
 
   it.each([
@@ -561,7 +587,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('returns INTERNAL_ERROR when an allowlisted handler throws an unexpected error', () => {
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new Error('dispatch exploded');
     });
 
@@ -584,7 +610,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('captures boundary error diagnostics for unexpected handler failures through the shared logger harness', () => {
     const thrownError = new Error('dispatch exploded');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw thrownError;
     });
 
@@ -616,7 +642,7 @@ describe('Api/apiHandler dispatcher', () => {
     context = setupApiHandlerTestContext(vi, { installLogger: 'real' });
 
     const thrownError = new TypeError('dispatch exploded');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw thrownError;
     });
 
@@ -660,7 +686,7 @@ describe('Api/apiHandler dispatcher', () => {
       });
 
       const thrownError = new Error('controlled downstream ' + loggerMethod + ' failure');
-      globalThis.getAuthorisationStatus = vi.fn(() => {
+      context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
         ABLogger.getInstance()[loggerMethod](downstreamMessage, {
           source: 'controlled-downstream-stub',
         });
@@ -695,7 +721,7 @@ describe('Api/apiHandler dispatcher', () => {
     });
 
     const thrownError = new Error('controlled downstream request-path failure');
-    globalThis.updateYearGroup = vi.fn(() => {
+    context.referenceDataControllerInstance.updateYearGroup.mockImplementation(() => {
       ABLogger.getInstance().error('ProgressTracker logged a user-facing error.', {
         errorMessage: 'Could not update the year group.',
       });
@@ -753,20 +779,66 @@ describe('Api/apiHandler dispatcher', () => {
       const dispatcher = ApiDispatcher.getInstance();
       const params = REFERENCE_DATA_PARAMS[methodName];
       const expectedData = REFERENCE_DATA_RESULTS[methodName];
+      const controllerMethodSpy = getReferenceDataControllerMethodSpy(context, methodName);
 
-      globalThis[methodName].mockImplementation(() => expectedData);
+      controllerMethodSpy.mockImplementation(() => expectedData);
 
       const response = dispatcher.handle({
         method: methodName,
         params,
       });
 
-      expect(globalThis[methodName]).toHaveBeenCalledTimes(1);
-      expect(globalThis[methodName]).toHaveBeenCalledWith(params);
+      expect(context.referenceDataControllerCtor).toHaveBeenCalledTimes(1);
+      expect(controllerMethodSpy).toHaveBeenCalledTimes(1);
+      if (methodName === 'createCohort' || methodName === 'createYearGroup') {
+        expect(controllerMethodSpy).toHaveBeenCalledWith(params.record);
+      } else if (methodName === 'deleteCohort' || methodName === 'deleteYearGroup') {
+        expect(controllerMethodSpy).toHaveBeenCalledWith(params.key);
+      } else if (params === undefined) {
+        expect(controllerMethodSpy).toHaveBeenCalledWith();
+      } else {
+        expect(controllerMethodSpy).toHaveBeenCalledWith(params);
+      }
       expect(response.ok).toBe(true);
       expect(response.data).toEqual(expectedData);
       expect(response.data?.ok).toBeUndefined();
       expect(response.data?.error).toBeUndefined();
+    }
+  );
+
+  it.each([
+    ['createCohort', REFERENCE_DATA_PARAMS.createCohort, REFERENCE_DATA_PARAMS.createCohort.record],
+    ['updateCohort', REFERENCE_DATA_PARAMS.updateCohort, REFERENCE_DATA_PARAMS.updateCohort],
+    ['deleteCohort', REFERENCE_DATA_PARAMS.deleteCohort, REFERENCE_DATA_PARAMS.deleteCohort.key],
+    [
+      'createYearGroup',
+      REFERENCE_DATA_PARAMS.createYearGroup,
+      REFERENCE_DATA_PARAMS.createYearGroup.record,
+    ],
+    [
+      'updateYearGroup',
+      REFERENCE_DATA_PARAMS.updateYearGroup,
+      REFERENCE_DATA_PARAMS.updateYearGroup,
+    ],
+    [
+      'deleteYearGroup',
+      REFERENCE_DATA_PARAMS.deleteYearGroup,
+      REFERENCE_DATA_PARAMS.deleteYearGroup.key,
+    ],
+  ])(
+    'passes expected parameters to ReferenceDataController.%s',
+    (methodName, params, expectedArgument) => {
+      const controllerMethodSpy = getReferenceDataControllerMethodSpy(context, methodName);
+      const { ApiDispatcher } = loadApiHandlerModule();
+      const dispatcher = ApiDispatcher.getInstance();
+
+      dispatcher.handle({
+        method: methodName,
+        params,
+      });
+
+      expect(controllerMethodSpy).toHaveBeenCalledTimes(1);
+      expect(controllerMethodSpy).toHaveBeenCalledWith(expectedArgument);
     }
   );
 
@@ -946,7 +1018,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('keeps existing getABClassPartials dispatch behaviour unchanged', () => {
     const expectedData = [{ classId: 'ab-class-001', className: 'Existing transport method' }];
-    globalThis.getABClassPartials = vi.fn(() => expectedData);
+    context.abClassControllerInstance.getAllClassPartials.mockImplementation(() => expectedData);
 
     const { ApiDispatcher } = loadApiHandlerModule();
     const dispatcher = ApiDispatcher.getInstance();
@@ -956,14 +1028,29 @@ describe('Api/apiHandler dispatcher', () => {
       params: { pageSize: 10 },
     });
 
-    expect(globalThis.getABClassPartials).toHaveBeenCalledTimes(1);
-    expect(globalThis.getABClassPartials).toHaveBeenCalledWith({ pageSize: 10 });
+    expect(context.abClassControllerCtor).toHaveBeenCalledTimes(1);
+    expect(context.abClassControllerInstance.getAllClassPartials).toHaveBeenCalledTimes(1);
+    expect(context.abClassControllerInstance.getAllClassPartials).toHaveBeenCalledWith();
     expect(response).toEqual({
       ok: true,
       requestId: response.requestId,
       data: expectedData,
     });
     expect(response.requestId).toEqual(expect.any(String));
+  });
+
+  it('maps getABClassPartials controller errors to INTERNAL_ERROR', () => {
+    context.abClassControllerInstance.getAllClassPartials.mockImplementation(() => {
+      throw new Error('DB read failure');
+    });
+
+    const response = handleApiRequest('getABClassPartials');
+
+    expectFailureEnvelope(response, {
+      code: 'INTERNAL_ERROR',
+      message: 'Internal API error.',
+      withRequestId: true,
+    });
   });
 
   it('returns plain handler data for successful reference-data requests without re-enveloping it', () => {
@@ -973,7 +1060,7 @@ describe('Api/apiHandler dispatcher', () => {
       { key: 'coh-2026', name: 'Cohort 2026', active: true, startYear: 2025, startMonth: 9 },
     ];
 
-    globalThis.getCohorts.mockImplementation(() => expectedData);
+    context.referenceDataControllerInstance.listCohorts.mockImplementation(() => expectedData);
 
     const response = dispatcher.handle({
       method: 'getCohorts',
@@ -988,7 +1075,10 @@ describe('Api/apiHandler dispatcher', () => {
   it.each(INVALID_REQUEST_FAILURE_CASES)(
     '$description',
     ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
-      globalThis[handlerName].mockImplementation(() => {
+      const handlerSpy = REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)
+        ? getReferenceDataControllerMethodSpy(context, handlerName)
+        : globalThis[handlerName];
+      handlerSpy.mockImplementation(() => {
         throw new ApiValidationError(errorMessage, { requestId });
       });
 
@@ -1006,7 +1096,10 @@ describe('Api/apiHandler dispatcher', () => {
     'emits one boundary diagnostic for $methodName validation failures while preserving the INVALID_REQUEST envelope',
     ({ methodName, params, handlerName, errorMessage, requestId, withRequestId }) => {
       const thrownError = new ApiValidationError(errorMessage, { requestId });
-      globalThis[handlerName].mockImplementation(() => {
+      const handlerSpy = REFERENCE_DATA_API_METHOD_NAMES.includes(handlerName)
+        ? getReferenceDataControllerMethodSpy(context, handlerName)
+        : globalThis[handlerName];
+      handlerSpy.mockImplementation(() => {
         throw thrownError;
       });
 
@@ -1030,7 +1123,8 @@ describe('Api/apiHandler dispatcher', () => {
     ({ methodName, params, handlerName, errorMessage }) => {
       const blockedError = new Error(errorMessage);
       blockedError.reason = 'IN_USE';
-      globalThis[handlerName].mockImplementation(() => {
+      const handlerSpy = getReferenceDataControllerMethodSpy(context, handlerName);
+      handlerSpy.mockImplementation(() => {
         throw blockedError;
       });
 
@@ -1049,7 +1143,8 @@ describe('Api/apiHandler dispatcher', () => {
     ({ methodName, params, handlerName, errorMessage }) => {
       const blockedError = new Error(errorMessage);
       blockedError.reason = 'IN_USE';
-      globalThis[handlerName].mockImplementation(() => {
+      const handlerSpy = getReferenceDataControllerMethodSpy(context, handlerName);
+      handlerSpy.mockImplementation(() => {
         throw blockedError;
       });
 
@@ -1069,7 +1164,7 @@ describe('Api/apiHandler dispatcher', () => {
   );
 
   it('does not map a plain Error without reason = IN_USE to IN_USE (generic errors remain INTERNAL_ERROR)', () => {
-    globalThis.deleteCohort.mockImplementation(() => {
+    context.referenceDataControllerInstance.deleteCohort.mockImplementation(() => {
       throw new Error('Something else exploded');
     });
 
@@ -1085,7 +1180,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps unexpected controller failures for reference-data handlers to the existing API failure envelope', () => {
-    globalThis.updateYearGroup.mockImplementation(() => {
+    context.referenceDataControllerInstance.updateYearGroup.mockImplementation(() => {
       throw new Error('year-group update exploded');
     });
 
@@ -1114,7 +1209,9 @@ describe('Api/apiHandler dispatcher', () => {
   it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: makeVmGlobals({
-        getAuthorisationStatus: () => ({ authorised: true }),
+        ScriptAppManager: function ScriptAppManager() {
+          this.isAuthorised = () => true;
+        },
         Utilities: {
           getUuid: () => 'uuid-vm-singleton',
         },
@@ -1135,8 +1232,10 @@ describe('Api/apiHandler dispatcher', () => {
   it('returns INTERNAL_ERROR when an allowlisted method handler throws in vm context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: makeVmGlobals({
-        getAuthorisationStatus: () => {
-          throw new Error('vm handler exploded');
+        ScriptAppManager: function ScriptAppManager() {
+          this.isAuthorised = () => {
+            throw new Error('vm handler exploded');
+          };
         },
         Utilities: {
           getUuid: () => 'uuid-vm-dispatch-error',
@@ -1162,7 +1261,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('maps ApiRateLimitError to RATE_LIMITED with retriable true', () => {
     const ApiRateLimitError = require('../../src/backend/Utils/ErrorTypes/ApiRateLimitError.js');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new ApiRateLimitError('Rate limit exceeded', { requestId: 'req-map-rl' });
     });
 
@@ -1185,7 +1284,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('maps ApiValidationError to INVALID_REQUEST with retriable false', () => {
     const ApiValidationError = require('../../src/backend/Utils/ErrorTypes/ApiValidationError.js');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new ApiValidationError('Validation failed', { requestId: 'req-map-val' });
     });
 
@@ -1208,7 +1307,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('maps ApiDisabledError to UNKNOWN_METHOD with retriable false', () => {
     const ApiDisabledError = require('../../src/backend/Utils/ErrorTypes/ApiDisabledError.js');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new ApiDisabledError('Method is disabled', { requestId: 'req-map-dis' });
     });
 
@@ -1230,7 +1329,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps known custom error names with missing message to INTERNAL_ERROR', () => {
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       const error = new Error('placeholder message');
       error.name = 'ApiValidationError';
       error.message = undefined;
@@ -1260,7 +1359,7 @@ describe('Api/apiHandler dispatcher', () => {
     ['ApiDisabledError', '../../src/backend/Utils/ErrorTypes/ApiDisabledError.js'],
   ])('maps %s with a blank message to INTERNAL_ERROR', (_errorName, errorModulePath) => {
     const ApiErrorType = require(errorModulePath);
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new ApiErrorType('   ', { requestId: 'req-blank-message' });
     });
 
@@ -1280,7 +1379,7 @@ describe('Api/apiHandler dispatcher', () => {
 
   it('logs non-Error thrown values deterministically while preserving the INTERNAL_ERROR envelope', () => {
     const thrownValue = { detail: 'plain-object-failure', severity: 'high' };
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw thrownValue;
     });
 
@@ -1332,7 +1431,7 @@ describe('Api/apiHandler dispatcher', () => {
     context.errorSpy.mockImplementation(() => {
       callOrder.push('boundaryLog');
     });
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new Error('completion should follow boundary logging');
     });
 
@@ -1367,7 +1466,7 @@ describe('Api/apiHandler dispatcher', () => {
   });
 
   it('maps null thrown values to INTERNAL_ERROR', () => {
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw null;
     });
 

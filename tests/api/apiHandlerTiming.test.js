@@ -148,7 +148,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
   });
 
   it('logs info for completion phase even when the handler produced an error', () => {
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw new Error('handler failure');
     });
 
@@ -167,7 +167,7 @@ describe('Api/apiHandler – lock timing observability and logging', () => {
 
   it('keeps boundary failure diagnostics separate from timing logs when the handler throws', () => {
     const thrownError = new Error('handler failure');
-    globalThis.getAuthorisationStatus = vi.fn(() => {
+    context.scriptAppManagerInstance.isAuthorised.mockImplementation(() => {
       throw thrownError;
     });
 

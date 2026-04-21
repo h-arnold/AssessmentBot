@@ -1,6 +1,6 @@
 // z_apiHandler.js
 
-/* global BaseSingleton, Utilities, LockService, ABLogger */
+/* global BaseSingleton, Utilities, LockService, ABLogger, ScriptAppManager, ABClassController, ReferenceDataController */
 
 let lockTimeoutMs;
 let lockWaitWarnThresholdMs;
@@ -25,8 +25,8 @@ const API_ERROR_CODE_MAP = {
 };
 
 const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
-  getAuthorisationStatus: (parameters) => getAuthorisationStatus(parameters),
-  getABClassPartials: (parameters) => getABClassPartials(parameters),
+  getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
+  getABClassPartials: () => new ABClassController().getAllClassPartials(),
   getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials(parameters),
   deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms(parameters),
@@ -35,14 +35,14 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   deleteABClass: (parameters) => deleteABClass(parameters),
   getBackendConfig: () => getBackendConfigHandler(),
   setBackendConfig: (parameters) => setBackendConfigHandler(parameters),
-  getCohorts: (parameters) => getCohorts(parameters),
-  createCohort: (parameters) => createCohort(parameters),
-  updateCohort: (parameters) => updateCohort(parameters),
-  deleteCohort: (parameters) => deleteCohort(parameters),
-  getYearGroups: (parameters) => getYearGroups(parameters),
-  createYearGroup: (parameters) => createYearGroup(parameters),
-  updateYearGroup: (parameters) => updateYearGroup(parameters),
-  deleteYearGroup: (parameters) => deleteYearGroup(parameters),
+  getCohorts: () => new ReferenceDataController().listCohorts(),
+  createCohort: (parameters) => new ReferenceDataController().createCohort(parameters.record),
+  updateCohort: (parameters) => new ReferenceDataController().updateCohort(parameters),
+  deleteCohort: (parameters) => new ReferenceDataController().deleteCohort(parameters.key),
+  getYearGroups: () => new ReferenceDataController().listYearGroups(),
+  createYearGroup: (parameters) => new ReferenceDataController().createYearGroup(parameters.record),
+  updateYearGroup: (parameters) => new ReferenceDataController().updateYearGroup(parameters),
+  deleteYearGroup: (parameters) => new ReferenceDataController().deleteYearGroup(parameters.key),
 });
 
 if (typeof module !== 'undefined' && module.exports) {

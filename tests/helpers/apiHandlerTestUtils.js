@@ -46,6 +46,73 @@ function restoreApiMethodHandlers(originals) {
   });
 }
 
+function installControllerMocks(
+  vi,
+  {
+    handler = () => true,
+    scriptAppManagerBehaviour = {},
+    abClassControllerBehaviour = {},
+    referenceDataControllerBehaviour = {},
+  } = {}
+) {
+  const originals = {
+    ScriptAppManager: globalThis.ScriptAppManager,
+    ABClassController: globalThis.ABClassController,
+    ReferenceDataController: globalThis.ReferenceDataController,
+  };
+
+  const scriptAppManagerInstance = {
+    isAuthorised: vi.fn(handler),
+    ...scriptAppManagerBehaviour,
+  };
+  const scriptAppManagerCtor = vi.fn(function ScriptAppManagerMock() {
+    return scriptAppManagerInstance;
+  });
+
+  const abClassControllerInstance = {
+    getAllClassPartials: vi.fn(),
+    ...abClassControllerBehaviour,
+  };
+  const abClassControllerCtor = vi.fn(function ABClassControllerMock() {
+    return abClassControllerInstance;
+  });
+
+  const referenceDataControllerInstance = {
+    listCohorts: vi.fn(),
+    createCohort: vi.fn(),
+    updateCohort: vi.fn(),
+    deleteCohort: vi.fn(),
+    listYearGroups: vi.fn(),
+    createYearGroup: vi.fn(),
+    updateYearGroup: vi.fn(),
+    deleteYearGroup: vi.fn(),
+    ...referenceDataControllerBehaviour,
+  };
+  const referenceDataControllerCtor = vi.fn(function ReferenceDataControllerMock() {
+    return referenceDataControllerInstance;
+  });
+
+  globalThis.ScriptAppManager = scriptAppManagerCtor;
+  globalThis.ABClassController = abClassControllerCtor;
+  globalThis.ReferenceDataController = referenceDataControllerCtor;
+
+  return {
+    originals,
+    scriptAppManagerCtor,
+    scriptAppManagerInstance,
+    abClassControllerCtor,
+    abClassControllerInstance,
+    referenceDataControllerCtor,
+    referenceDataControllerInstance,
+  };
+}
+
+function restoreControllerMocks(originals) {
+  restoreGlobal('ScriptAppManager', originals.ScriptAppManager);
+  restoreGlobal('ABClassController', originals.ABClassController);
+  restoreGlobal('ReferenceDataController', originals.ReferenceDataController);
+}
+
 function resetUserProperties() {
   globalThis.PropertiesService._resetUserProperties();
 }
@@ -116,20 +183,16 @@ function installRealAbLoggerSpies(vi) {
  */
 function setupApiHandlerTestContext(
   vi,
-  {
-    installLogger = false,
-    installLock = false,
-    handler = () => ({ authorised: true }),
-    additionalHandlers = {},
-  } = {}
+  { installLogger = false, installLock = false, handler = () => true, additionalHandlers = {} } = {}
 ) {
   resetUserProperties();
 
+  const controllerMocks = installControllerMocks(vi, { handler });
+
   const context = {
-    originalApiMethodHandlers: installApiMethodHandlers(vi, {
-      getAuthorisationStatus: handler,
-      ...additionalHandlers,
-    }),
+    ...controllerMocks,
+    originalControllerMocks: controllerMocks.originals,
+    originalApiMethodHandlers: installApiMethodHandlers(vi, additionalHandlers),
   };
 
   const loggerMode = installLogger === true ? 'mock' : installLogger;
@@ -155,6 +218,7 @@ function setupApiHandlerTestContext(
 function teardownApiHandlerTestContext(vi, context) {
   resetUserProperties();
 
+  restoreControllerMocks(context.originalControllerMocks);
   restoreApiMethodHandlers(context.originalApiMethodHandlers);
 
   if ('originalABLogger' in context) {
@@ -217,4 +281,6 @@ module.exports = {
   persistUserRequestStore,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,
+  installControllerMocks,
+  restoreControllerMocks,
 };

@@ -757,10 +757,22 @@ the same GAS global scope'` (lines ≈ 298–339).
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 4:** record effects. In particular, note which `additionalHandlers`
-  entries remain and confirm all non-trivial global stubs are still wired for the non-trivial handlers.
+- **Implementation notes:** Red-phase migration completed by deleting wrapper-focused tests/files (`tests/backend-api/abclassPartials.unit.test.js`, `tests/backend-api/referenceData.unit.test.js`, `tests/api/auth.test.js`, `tests/api/abclassPartials.test.js`), removing the two `referenceData.js` VM coexistence tests from `tests/api/abclassMutations.test.js`, and updating `tests/helpers/apiHandlerTestUtils.js` plus API-layer suites to use controller-constructor mocks (`ScriptAppManager`, `ABClassController`, `ReferenceDataController`) for the inlined transport methods.
+- **Implementation notes:** Green-phase implementation completed by deleting `src/backend/z_Api/auth.js`, `src/backend/z_Api/abclassPartials.js`, and `src/backend/z_Api/referenceData.js`, and inlining the corresponding trivial handler closures directly in `src/backend/z_Api/z_apiHandler.js` (including required parameter extraction shapes).
+- **Implementation notes:** Review and required checks completed clean for this section.
+- **Deviations from plan:** None.
+- **Follow-up implications for Section 4:** Transitional `additionalHandlers` entries intentionally retained only for non-trivial handlers: `getGoogleClassrooms`, `upsertABClass`, `updateABClass`, `deleteABClass`, `getAssignmentDefinitionPartials`, and `deleteAssignmentDefinition` (with `getBackendConfig`/`setBackendConfig` still excluded).
+
+**Section 3 completion checklist**
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 
