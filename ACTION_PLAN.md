@@ -18,26 +18,32 @@ Before writing or executing this plan:
 
 - `src/backend/z_Api/apiConstants.js` — delete `API_METHODS` and `API_ALLOWLIST`.
 - `src/backend/z_Api/z_apiHandler.js` — simplify dispatch; inline ten handler closures for trivial
-  methods; wire non-trivial transport namespace object calls; remove `_invokeAllowlistedMethod`.
+  methods; wire trailing-underscore private transport helper calls for non-trivial methods; remove
+  `_invokeAllowlistedMethod`.
 - `src/backend/z_Api/auth.js` — delete.
 - `src/backend/z_Api/abclassPartials.js` — delete.
 - `src/backend/z_Api/referenceData.js` — delete.
-- `src/backend/z_Api/googleClassrooms.js` — refactor to `GoogleClassroomsTransport` object literal;
-  remove top-level function declaration.
-- `src/backend/z_Api/assignmentDefinitionPartials.js` — refactor to
-  `AssignmentDefinitionPartialsTransport` IIFE; all helpers private within IIFE scope.
-- `src/backend/z_Api/apiConfig.js` — refactor to `ApiConfigTransport` object literal; update
-  `z_apiHandler.js` Node-compat wiring.
-- `src/backend/z_Api/abclassMutations.js` — refactor to `AbclassMutationsTransport` IIFE; remove
-  `validateClassId`, `validateCourseLength`, `requireParameters` (duplicate of controller logic).
+- `src/backend/z_Api/googleClassrooms.js` — rename `getGoogleClassrooms` to `getGoogleClassrooms_`;
+  update exports; update `z_apiHandler.js` closure to call `getGoogleClassrooms_(parameters)`.
+- `src/backend/z_Api/assignmentDefinitionPartials.js` — rename handler and helper functions to
+  a trailing underscore: `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, and all
+  internal helpers; update exports.
+- `src/backend/z_Api/apiConfig.js` — rename `getBackendConfig` → `getBackendConfig_`,
+  `setBackendConfig` → `setBackendConfig_`, `maskApiKey` → `maskApiKey_`; update exports; update
+  `z_apiHandler.js` Node-compat wiring to import the renamed helpers.
+- `src/backend/z_Api/abclassMutations.js` — rename handler and helper functions to a trailing underscore
+  (`upsertABClass_`, `updateABClass_`, `deleteABClass_`, `getAbClassController_`,
+  `validateParametersObject_`, `validateMutationClassId_`, and the per-operation validators); remove
+  `validateClassId`, `validateCourseLength`, `requireParameters` (duplicate of controller logic);
+  retain remaining transport-boundary checks under trailing-underscore private names.
 - `src/frontend/src/services/authService.ts` — add `z.boolean()` Zod validation.
 - `src/frontend/src/services/authService.zod.ts` — new file with `AuthorisationStatusSchema`.
 - `src/frontend/src/services/authService.spec.ts` — add Zod validation tests.
-- `tests/api/apiHandler.test.js` — update registry tests; update handler stubs to transport namespace
-  objects for non-trivial methods; add parameter extraction contract tests; remove
+- `tests/api/apiHandler.test.js` — update registry tests; update handler stubs to trailing-underscore private
+  function globals for non-trivial methods; add parameter extraction contract tests; remove
   `_invokeAllowlistedMethod` direct test; update VM context tests.
 - `tests/api/apiHandlerLocking.test.js` — update stubs from handler globals to controller constructor
-  mocks (Pass A), then transport namespace objects (Pass B).
+  mocks (Pass A), then trailing-underscore private function globals (Pass B).
 - `tests/api/apiHandlerTiming.test.js` — same two-pass update.
 - `tests/api/staleAdmission.test.js` — update all three `globalThis.getAuthorisationStatus`
   assertions to check `context.scriptAppManagerInstance.isAuthorised` instead.
@@ -46,32 +52,34 @@ Before writing or executing this plan:
   (`getGoogleClassrooms`, `upsertABClass`, `updateABClass`, `deleteABClass`,
   `getAssignmentDefinitionPartials`, `deleteAssignmentDefinition`) only. `getBackendConfig` and
   `setBackendConfig` are NOT in `additionalHandlers` at any stage — they are wired via module-level
-  variables in `z_apiHandler.js`. Pass B: replace `additionalHandlers` with transport-namespace stubs;
-  remove global-function wiring.
+  variables in `z_apiHandler.js`. Pass B: replace `additionalHandlers` with trailing-underscore
+  function globals (`globalThis.getGoogleClassrooms_`, etc.); remove all non-underscore global-function
+  wiring.
 - `tests/backend-api/abclassPartials.unit.test.js` — delete.
 - `tests/backend-api/referenceData.unit.test.js` — delete.
 - `tests/api/auth.test.js` — delete (two controller-delegation tests migrated to `apiHandler.test.js`;
   vm-context file test dropped).
 - `tests/api/abclassPartials.test.js` — delete (routing/envelope coverage migrated before deletion).
-- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` — update module-load pattern to use
-  `AssignmentDefinitionPartialsTransport`; validation tests are unaffected.
-- `tests/backend-api/abclassMutations.unit.test.js` — update module-load pattern to use
-  `AbclassMutationsTransport`; remove tests for deleted validation (classId non-empty,
-  courseLength range, requireParams).
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` — update module-load pattern to
+  destructure `getAssignmentDefinitionPartials_` / `deleteAssignmentDefinition_` from the module
+  export; validation tests are unaffected.
+- `tests/backend-api/abclassMutations.unit.test.js` — update module-load pattern to destructure
+  `upsertABClass_`, `updateABClass_`, `deleteABClass_`; remove tests for deleted validation
+  (classId non-empty, courseLength range, requireParams).
 - `tests/api/googleClassrooms.test.js` — update all direct `getGoogleClassrooms` accesses to use
-  `GoogleClassroomsTransport.getGoogleClassrooms`.
+  `getGoogleClassrooms_` from the module export; update export-shape assertion.
 - `tests/api/assignmentDefinitionDeleteApi.test.js` — update all direct `deleteAssignmentDefinition`
-  accesses to use `AssignmentDefinitionPartialsTransport.deleteAssignmentDefinition`.
+  accesses to use `deleteAssignmentDefinition_` from the module export.
 - `tests/api/abclassMutations.test.js` — Section 3: delete two VM coexistence tests that
   `fs.readFileSync` `referenceData.js` (lines ≈ 256–339); these tests become obsolete once
   `referenceData.js` is deleted. Section 4: update all direct function accesses (`upsertABClass`,
-  `updateABClass`, `deleteABClass`) to use `AbclassMutationsTransport.*`. Section 5: remove
-  `courseLength` validation test cases (lines ≈ 341–373) that test validation now removed from the
-  transport layer.
-- `tests/api/backendConfigApi.test.js` — confirm green after Section 4 apiConfig.js namespace
-  refactor; the test routes through apiHandler dispatch so no module-load changes required.
-- `docs/developer/backend/api-layer.md` — two passes: docs-first signpost (Section 1), reconciliation
-  (Documentation section).
+  `updateABClass`, `deleteABClass`) to use `upsertABClass_`, `updateABClass_`, `deleteABClass_`
+  from the module export. Section 5: remove `courseLength` validation test cases (lines ≈ 341–373)
+  that test validation now removed from the transport layer.
+- `tests/api/backendConfigApi.test.js` — confirm green after Section 4 apiConfig.js rename; the
+  test routes through apiHandler dispatch so no module-load changes required.
+- `docs/developer/backend/api-layer.md` — two passes: docs-first signpost (Section 1),
+  reconciliation (Documentation section).
 - `src/backend/AGENTS.md` — two passes: docs-first signpost (Section 1), reconciliation.
 - `src/frontend/AGENTS.md` — update § 4.1 method-name alignment guidance.
 
@@ -103,38 +111,38 @@ These are the current measured line counts for every file this plan intends to t
 pass-gate for the whole refactor is a **net reduction of ≥ 200 lines** across all files in this table at
 the point the documentation and rollout section is complete.
 
-| File                                                          | Baseline LOC | Expected LOC after | Expected Δ | Reason                                                                                                                                                                                                                                                                 |
-| ------------------------------------------------------------- | ------------ | ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/backend/z_Api/auth.js`                                   | 13           | 0 (deleted)        | −13        | Inlined into apiHandler; top-level global removed                                                                                                                                                                                                                      |
-| `src/backend/z_Api/abclassPartials.js`                        | 16           | 0 (deleted)        | −16        | Inlined into apiHandler; top-level global removed                                                                                                                                                                                                                      |
-| `src/backend/z_Api/referenceData.js`                          | 107          | 0 (deleted)        | −107       | Inlined into apiHandler; top-level globals removed                                                                                                                                                                                                                     |
-| `src/backend/z_Api/apiConstants.js`                           | 69           | ≈ 29               | ≈ −40      | Delete `API_METHODS` (18+2 lines) + `API_ALLOWLIST` (18+2 lines) blocks and their exports                                                                                                                                                                              |
-| `src/backend/z_Api/z_apiHandler.js`                           | 432          | ≈ 415              | ≈ −17      | Remove `apiAllowlist` var and init (3 lines), remove `_invokeAllowlistedMethod` (15 lines), simplify dispatch call (1 line); handler closures stay as single-expression entries; non-trivial handlers wired via namespace refs                                         |
-| `src/backend/z_Api/googleClassrooms.js`                       | 45           | ≈ 47               | ≈ +2       | Wrap `getGoogleClassrooms` in `GoogleClassroomsTransport` object literal; minor wrapping overhead                                                                                                                                                                      |
-| `src/backend/z_Api/assignmentDefinitionPartials.js`           | 333          | ≈ 337              | ≈ +4       | Wrap all helpers in IIFE `AssignmentDefinitionPartialsTransport`; minor overhead; validation unchanged                                                                                                                                                                 |
-| `src/backend/z_Api/apiConfig.js`                              | 168          | ≈ 170              | ≈ +2       | Wrap `getBackendConfig`/`setBackendConfig` in `ApiConfigTransport` object literal; minor overhead                                                                                                                                                                      |
-| `src/backend/z_Api/abclassMutations.js`                       | 219          | ≈ 165              | ≈ −54      | IIFE wrapping; remove `validateClassId` (≈8 lines), `validateCourseLength` (≈8 lines), `requireParameters` (≈10 lines), simplify validation callers (≈20 lines)                                                                                                        |
-| `src/frontend/src/services/authService.ts`                    | 12           | ≈ 14               | +2         | Add import of `AuthorisationStatusSchema` and wrap `callApi` return                                                                                                                                                                                                    |
-| `src/frontend/src/services/authService.zod.ts`                | 0 (new)      | ≈ 5                | +5         | New schema file: 3 content lines + schema + type export                                                                                                                                                                                                                |
-| `src/frontend/src/services/authService.spec.ts`               | 23           | ≈ 33               | +10        | Add two Zod rejection tests                                                                                                                                                                                                                                            |
-| `tests/backend-api/abclassPartials.unit.test.js`              | 53           | 0 (deleted)        | −53        | Wrapper no longer exists; tests were asserting indirection only                                                                                                                                                                                                        |
-| `tests/backend-api/referenceData.unit.test.js`                | 114          | 0 (deleted)        | −114       | Wrapper no longer exists; tests were asserting indirection only                                                                                                                                                                                                        |
-| `tests/backend-api/assignmentDefinitionPartials.unit.test.js` | 178          | ≈ 178              | ≈ 0        | Update module-load to use `AssignmentDefinitionPartialsTransport`; validation tests unchanged                                                                                                                                                                          |
-| `tests/backend-api/abclassMutations.unit.test.js`             | 88           | ≈ 60               | ≈ −28      | Update module-load to use `AbclassMutationsTransport`; remove test cases for deleted classId non-empty and courseLength validation; unsafe path-char tests retained                                                                                                    |
-| `tests/api/googleClassrooms.test.js`                          | 118          | ≈ 118              | ≈ 0        | Update all direct `getGoogleClassrooms` accesses to use `GoogleClassroomsTransport.getGoogleClassrooms`; test count and content unchanged                                                                                                                              |
-| `tests/api/assignmentDefinitionDeleteApi.test.js`             | 116          | ≈ 116              | ≈ 0        | Update direct `deleteAssignmentDefinition` accesses to use `AssignmentDefinitionPartialsTransport.deleteAssignmentDefinition`; test content unchanged                                                                                                                  |
-| `tests/api/abclassMutations.test.js`                          | 455          | ≈ 330              | ≈ −125     | Delete two VM coexistence tests referencing `referenceData.js` (≈84 lines); update function accesses to `AbclassMutationsTransport`; remove `courseLength` tests (≈33 lines), requireParams tests (≈28 lines), restructure deleteABClass classId `it.each` (≈−5 lines) |
-| `tests/api/backendConfigApi.test.js`                          | 504          | ≈ 504              | ≈ 0        | Routes through apiHandler dispatch; no direct module-load changes; confirm green after Section 4                                                                                                                                                                       |
-| `tests/api/auth.test.js`                                      | 67           | 0 (deleted)        | −67        | Tests the now-deleted `auth.js`; two controller-delegation tests migrated to `apiHandler.test.js`; vm-context file test dropped                                                                                                                                        |
-| `tests/api/abclassPartials.test.js`                           | 119          | 0 (deleted)        | −119       | Tests `API_METHODS`, `API_ALLOWLIST`, and `globalThis.getABClassPartials`, all removed; routing/envelope coverage migrated to `apiHandler.test.js`                                                                                                                     |
-| `tests/api/apiHandler.test.js`                                | 1,491        | ≈ 1,420            | ≈ −71      | Remove `API_METHODS`/`API_ALLOWLIST` tests (≈70 lines); remove `_invokeAllowlistedMethod` test (8 lines); add parameter-extraction contract tests and namespace-object coverage (≈6 lines net after global-function stubs removed)                                     |
-| `tests/api/apiHandlerLocking.test.js`                         | 194          | ≈ 194              | ≈ 0        | Stub type changes: controller constructor mocks (Pass A), then transport namespace objects (Pass B); count stable                                                                                                                                                      |
-| `tests/api/apiHandlerTiming.test.js`                          | 216          | ≈ 216              | ≈ 0        | Same two-pass stub updates; count stable                                                                                                                                                                                                                               |
-| `tests/api/staleAdmission.test.js`                            | 183          | ≈ 183              | ≈ 0        | Update `getAuthorisationStatus` assertion to check controller instance; count stable                                                                                                                                                                                   |
-| `tests/helpers/apiHandlerTestUtils.js`                        | 220          | ≈ 250              | ≈ +30      | Add `installControllerMocks`/`restoreControllerMocks`; Pass A `additionalHandlers` retained; Pass B replace with transport namespace stubs; net smaller than original estimate as `additionalHandlers` is removed                                                      |
-| `docs/developer/backend/api-layer.md`                         | 205          | ≈ 192              | ≈ −13      | Update dispatch section + endpoint source notes for deleted and restructured files                                                                                                                                                                                     |
-| `src/backend/AGENTS.md`                                       | 162          | ≈ 162              | ≈ 0        | Update migration pattern signpost; add transport-helper pattern description; count stable                                                                                                                                                                              |
-| **Total (affected files)**                                    | **≈ 5,442**  | **≈ 4,590**        | **≈ −852** | Expanded scope with corrected baseline counts; net reduction well above the ≥ 200 line pass-gate                                                                                                                                                                       |
+| File                                                          | Baseline LOC | Expected LOC after | Expected Δ | Reason                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------- | ------------ | ------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/backend/z_Api/auth.js`                                   | 13           | 0 (deleted)        | −13        | Inlined into apiHandler; top-level global removed                                                                                                                                                                                                                                               |
+| `src/backend/z_Api/abclassPartials.js`                        | 16           | 0 (deleted)        | −16        | Inlined into apiHandler; top-level global removed                                                                                                                                                                                                                                               |
+| `src/backend/z_Api/referenceData.js`                          | 107          | 0 (deleted)        | −107       | Inlined into apiHandler; top-level globals removed                                                                                                                                                                                                                                              |
+| `src/backend/z_Api/apiConstants.js`                           | 69           | ≈ 29               | ≈ −40      | Delete `API_METHODS` (18+2 lines) + `API_ALLOWLIST` (18+2 lines) blocks and their exports                                                                                                                                                                                                       |
+| `src/backend/z_Api/z_apiHandler.js`                           | 432          | ≈ 415              | ≈ −17      | Remove `apiAllowlist` var and init (3 lines), remove `_invokeAllowlistedMethod` (15 lines), simplify dispatch call (1 line); handler closures stay as single-expression entries; non-trivial handlers wired via trailing-underscore private function calls                                      |
+| `src/backend/z_Api/googleClassrooms.js`                       | 45           | ≈ 45               | ≈ 0        | Rename `getGoogleClassrooms` → `getGoogleClassrooms_`; update exports; no structural change                                                                                                                                                                                                     |
+| `src/backend/z_Api/assignmentDefinitionPartials.js`           | 333          | ≈ 333              | ≈ 0        | Rename handler and helper functions to a trailing underscore; no structural wrapping overhead; validation unchanged                                                                                                                                                                             |
+| `src/backend/z_Api/apiConfig.js`                              | 168          | ≈ 168              | ≈ 0        | Rename `getBackendConfig` → `getBackendConfig_`, `setBackendConfig` → `setBackendConfig_`, `maskApiKey` → `maskApiKey_`; update exports; no structural change                                                                                                                                   |
+| `src/backend/z_Api/abclassMutations.js`                       | 219          | ≈ 165              | ≈ −54      | Rename handlers and helpers to a trailing underscore; remove `validateClassId` (≈8 lines), `validateCourseLength` (≈8 lines), `requireParameters` (≈10 lines), simplify validation callers (≈20 lines); no structural wrapping overhead                                                         |
+| `src/frontend/src/services/authService.ts`                    | 12           | ≈ 14               | +2         | Add import of `AuthorisationStatusSchema` and wrap `callApi` return                                                                                                                                                                                                                             |
+| `src/frontend/src/services/authService.zod.ts`                | 0 (new)      | ≈ 5                | +5         | New schema file: 3 content lines + schema + type export                                                                                                                                                                                                                                         |
+| `src/frontend/src/services/authService.spec.ts`               | 23           | ≈ 33               | +10        | Add two Zod rejection tests                                                                                                                                                                                                                                                                     |
+| `tests/backend-api/abclassPartials.unit.test.js`              | 53           | 0 (deleted)        | −53        | Wrapper no longer exists; tests were asserting indirection only                                                                                                                                                                                                                                 |
+| `tests/backend-api/referenceData.unit.test.js`                | 114          | 0 (deleted)        | −114       | Wrapper no longer exists; tests were asserting indirection only                                                                                                                                                                                                                                 |
+| `tests/backend-api/assignmentDefinitionPartials.unit.test.js` | 178          | ≈ 178              | ≈ 0        | Update module-load to destructure `getAssignmentDefinitionPartials_` / `deleteAssignmentDefinition_`; validation tests unchanged                                                                                                                                                                |
+| `tests/backend-api/abclassMutations.unit.test.js`             | 88           | ≈ 60               | ≈ −28      | Update module-load to destructure `upsertABClass_`, `updateABClass_`, `deleteABClass_`; remove test cases for deleted classId non-empty and courseLength validation; unsafe path-char tests retained                                                                                            |
+| `tests/api/googleClassrooms.test.js`                          | 118          | ≈ 118              | ≈ 0        | Update all direct handler accesses to use `getGoogleClassrooms_` from module export; update export-shape assertion; test count and content unchanged                                                                                                                                            |
+| `tests/api/assignmentDefinitionDeleteApi.test.js`             | 116          | ≈ 116              | ≈ 0        | Update direct handler accesses to use `deleteAssignmentDefinition_` from module export; test content unchanged                                                                                                                                                                                  |
+| `tests/api/abclassMutations.test.js`                          | 455          | ≈ 330              | ≈ −125     | Delete two VM coexistence tests referencing `referenceData.js` (≈84 lines); update function accesses to `upsertABClass_`, `updateABClass_`, `deleteABClass_`; remove `courseLength` tests (≈33 lines), requireParams tests (≈28 lines), restructure deleteABClass classId `it.each` (≈−5 lines) |
+| `tests/api/backendConfigApi.test.js`                          | 504          | ≈ 504              | ≈ 0        | Routes through apiHandler dispatch; no direct module-load changes; confirm green after Section 4                                                                                                                                                                                                |
+| `tests/api/auth.test.js`                                      | 67           | 0 (deleted)        | −67        | Tests the now-deleted `auth.js`; two controller-delegation tests migrated to `apiHandler.test.js`; vm-context file test dropped                                                                                                                                                                 |
+| `tests/api/abclassPartials.test.js`                           | 119          | 0 (deleted)        | −119       | Tests `API_METHODS`, `API_ALLOWLIST`, and `globalThis.getABClassPartials`, all removed; routing/envelope coverage migrated to `apiHandler.test.js`                                                                                                                                              |
+| `tests/api/apiHandler.test.js`                                | 1,491        | ≈ 1,420            | ≈ −71      | Remove `API_METHODS`/`API_ALLOWLIST` tests (≈70 lines); remove `_invokeAllowlistedMethod` test (8 lines); add parameter-extraction contract tests and trailing-underscore private function stubs (≈6 lines net after old global-function stubs removed)                                         |
+| `tests/api/apiHandlerLocking.test.js`                         | 194          | ≈ 194              | ≈ 0        | Stub type changes: controller constructor mocks (Pass A), then trailing-underscore private function globals (Pass B); count stable                                                                                                                                                              |
+| `tests/api/apiHandlerTiming.test.js`                          | 216          | ≈ 216              | ≈ 0        | Same two-pass stub updates; count stable                                                                                                                                                                                                                                                        |
+| `tests/api/staleAdmission.test.js`                            | 183          | ≈ 183              | ≈ 0        | Update `getAuthorisationStatus` assertion to check controller instance; count stable                                                                                                                                                                                                            |
+| `tests/helpers/apiHandlerTestUtils.js`                        | 220          | ≈ 250              | ≈ +30      | Add `installControllerMocks`/`restoreControllerMocks`; Pass A `additionalHandlers` retained; Pass B replace with trailing-underscore private function globals; net smaller than original estimate as `additionalHandlers` is removed                                                            |
+| `docs/developer/backend/api-layer.md`                         | 205          | ≈ 192              | ≈ −13      | Update dispatch section + endpoint source notes for deleted and restructured files                                                                                                                                                                                                              |
+| `src/backend/AGENTS.md`                                       | 162          | ≈ 162              | ≈ 0        | Update migration pattern signpost; add transport-helper pattern description; count stable                                                                                                                                                                                                       |
+| **Total (affected files)**                                    | **≈ 5,442**  | **≈ 4,582**        | **≈ −860** | Expanded scope with corrected baseline counts; net reduction well above the ≥ 200 line pass-gate; trailing-underscore renaming adds no overhead versus IIFE/object-literal patterns, marginally improving the delta                                                                             |
 
 > Every existing-file baseline LOC figure in this table is an exact current `wc -l` measurement where
 > available; estimated rows are marked `≈`. New-file rows use a baseline of `0` by definition. Expected
@@ -213,6 +221,7 @@ Docs mandatory docs:
 - `src/backend/AGENTS.md`
 - `SPEC.md`
 - `docs/developer/backend/api-layer.md`
+- `docs/developer/backend/backend-testing.md`
 - `src/backend/z_Api/z_apiHandler.js`
 - `src/backend/z_Api/googleClassrooms.js`
 - `src/backend/z_Api/abclassMutations.js`
@@ -223,15 +232,17 @@ Docs mandatory docs:
 
 Helper decision entries:
 
-1. Helper: non-callable transport-helper IIFE pattern (for non-trivial z_Api files)
+1. Helper: trailing-underscore private transport-helper function pattern (for non-trivial z_Api files)
    - Decision: `new`
    - Owning module/path: `src/backend/z_Api/*` (per-file)
-   - Call-site rationale: GAS exposes top-level `function` declarations as callable globals; wrapping
-     handler functions in a `const` IIFE or object literal prevents direct invocation from outside
-     `apiHandler`.
+   - Call-site rationale: the official Apps Script specification excludes functions whose names end
+     with `_` from the callable surface exposed to `google.script.run`. Renaming handler functions
+     with a trailing underscore prevents direct invocation without requiring IIFE or namespace-object wrappers.
    - Relevant canonical doc target: `docs/developer/backend/api-layer.md` and
      `src/backend/AGENTS.md`
    - Planned doc status: **Not implemented** — add to both docs in this section before code lands
+     (already added in the current doc-update pass; confirm markers are present before code changes
+     start)
 
 2. Helper: `installControllerMocks` / `restoreControllerMocks` in `apiHandlerTestUtils.js`
    - Decision: `new`
@@ -242,11 +253,11 @@ Helper decision entries:
      test helper patterns) — check before adding.
    - Planned doc status: **Not implemented** — add entry in this section
 
-3. Helper: transport-namespace stubs in `apiHandlerTestUtils.js` (Pass B)
+3. Helper: trailing-underscore private stubs in `apiHandlerTestUtils.js` (Pass B)
    - Decision: `new`
    - Owning module/path: `tests/helpers/apiHandlerTestUtils.js`
-   - Call-site rationale: after non-trivial handlers are wrapped in namespace objects, test stubs
-     must target `globalThis.GoogleClassroomsTransport` etc. rather than global handler functions.
+   - Call-site rationale: after non-trivial handlers move to trailing-underscore private helpers, test
+     stubs must target `globalThis.getGoogleClassrooms_` etc. rather than public global handler functions.
    - Planned doc status: **Not implemented** — add entry in this section
 
 ### Acceptance criteria
@@ -254,18 +265,20 @@ Helper decision entries:
 - `docs/developer/backend/api-layer.md` contains a clearly labelled section describing:
   - The architectural target: `apiHandler` as the sole frontend-callable GAS entry point.
   - The trivial-inline pattern (anonymous closure in `ALLOWLISTED_METHOD_HANDLERS`).
-  - The non-callable transport-helper pattern (IIFE or object literal with `Transport` suffix),
-    marked `Not implemented`.
+  - The trailing-underscore private transport-helper pattern (`function handlerName_(…)`), marked
+    `Not implemented`.
+  - The validation ownership rules (transport boundary vs domain invariants).
 - `src/backend/AGENTS.md` § 0.1 is updated to:
   - Remove the instruction to register in `API_METHODS` and `API_ALLOWLIST` (still to be removed
     from code, but the doc instruction is updated now so agents do not follow the old pattern during
     the refactor).
-  - Describe both the trivial-inline and non-callable transport-helper patterns.
-  - Mark the transport-helper pattern `Not implemented`.
+  - Describe both the trivial-inline and trailing-underscore private transport-helper patterns.
+  - Codify the transport-vs-domain validation ownership rules (§ 0.2).
+  - Mark the trailing-underscore private helper pattern `Not implemented`.
 - No production source files are changed.
 - All tests remain green (no code changed; test run confirms baseline still passes).
 - Planned helper entries in `docs/developer/backend/backend-testing.md` are added with status
-  `Not implemented` for `installControllerMocks` and the transport-namespace stub pattern.
+  `Not implemented` for `installControllerMocks` and the trailing-underscore private function stub pattern.
 
 ### Required test cases (Red first)
 
@@ -589,7 +602,7 @@ API layer tests (update/add in `tests/api/apiHandler.test.js`):
    likewise for the other reference-data methods in the loop). The `upsertABClass` and `updateABClass`
    cases in the same loop are **not** inlined in Section 3 — those handler globals remain on `globalThis`
    until Section 4, and their `mockImplementation` overrides stay as global stubs in this section; do not
-   migrate them to transport namespace object mocks until Section 4.
+   migrate them to trailing-underscore private helper mocks until Section 4.
 6. **Update**: `IN_USE` error tests for `deleteCohort` / `deleteYearGroup` — update stubs to throw from
    `context.referenceDataControllerInstance[handlerName]`, not a global function.
 7. **Update**: the basic success-envelope test (line ≈ 480, `data: { authorised: true }`) — once the auth
@@ -644,8 +657,8 @@ Test helper updates (`tests/helpers/apiHandlerTestUtils.js`):
    `() => true`. Retain `additionalHandlers` for non-inlined globals only (`googleClassrooms`,
    `abclassMutations`, `assignmentDefinitionPartials`). Note: `getBackendConfig` and `setBackendConfig`
    are **not** installed via `additionalHandlers` or as `globalThis` function globals; they are wired
-   through module-level variables (`getBackendConfigHandler` / `setBackendConfigHandler`) in
-   `z_apiHandler.js` via the guarded Node require block and require no change in the test helper.
+   through `getBackendConfig_` / `setBackendConfig_` imports in `z_apiHandler.js` via the guarded
+   Node require block and require no change in the test helper.
    Remove `buildReferenceDataHandlers()` from `buildApiHandlerTestHandlers()` in `apiHandler.test.js`
    — reference-data methods are now dispatched through `ReferenceDataController` constructor mocks and
    must not be stubbed as global handler functions. Keep only the remaining non-inlined handler globals
@@ -732,26 +745,30 @@ the same GAS global scope'` (lines ≈ 298–339).
 
 ### Objective
 
-Restructure `googleClassrooms.js`, `assignmentDefinitionPartials.js`, `apiConfig.js`, and
-`abclassMutations.js` so that none of their handler functions remain as top-level GAS callable
-`function` declarations. Wrap handlers in non-callable transport namespace objects (`const` object
-literal or IIFE). Wire the new namespace methods into `ALLOWLISTED_METHOD_HANDLERS` via closures.
-Update the test harness (Pass B): replace `additionalHandlers` and global-function stubs with
-transport-namespace object stubs. Confirm no top-level handler globals remain.
+Rename handler functions in `googleClassrooms.js`, `assignmentDefinitionPartials.js`, `apiConfig.js`,
+and `abclassMutations.js` to use trailing-underscore private names. The trailing underscore prevents
+GAS from exposing them to `google.script.run` per the official Apps Script specification, making IIFE
+and namespace-object wrappers unnecessary. Update `ALLOWLISTED_METHOD_HANDLERS` closures and
+Node-compat wiring to reference the renamed functions. Update the test harness (Pass B): replace
+`additionalHandlers` and non-underscore global-function stubs with trailing-underscore private
+function globals. Confirm no non-underscore handler globals remain.
 
 ### Constraints
 
-- Each file's validation and transformation logic is unchanged in this section. Logic moves inside the
-  namespace wrapper; no validation is added or removed here (that is Section 5's remit).
-- The IIFE pattern is required for `assignmentDefinitionPartials.js` and `abclassMutations.js` (which
-  have private helper functions); a plain object literal is acceptable for `googleClassrooms.js` and
-  `apiConfig.js`.
-- `apiConfig.js` has special wiring: `z_apiHandler.js` currently imports
-  `getBackendConfigHandler` / `setBackendConfigHandler` via the guarded Node require block. After
-  this section, it imports `ApiConfigTransport` and references `ApiConfigTransport.getBackendConfig`
-  / `ApiConfigTransport.setBackendConfig` from the Node require block. No ALLOWLISTED_METHOD_HANDLERS
-  entry for `getBackendConfig` / `setBackendConfig` changes; only the wiring in the Node require
-  block changes.
+- Each file's validation and transformation logic is unchanged in this section. Functions are renamed
+  in place; no validation is added or removed here (that is Section 5's remit).
+- No IIFE or namespace-object wrappers are introduced; the trailing underscore alone is sufficient.
+- `apiConfig.js` has special wiring today: `z_apiHandler.js` currently uses
+  `getBackendConfigHandler` / `setBackendConfigHandler` indirection. In this section, remove that
+  indirection entirely so both GAS and Node paths call `getBackendConfig_` / `setBackendConfig_`
+  directly from `ALLOWLISTED_METHOD_HANDLERS`. The guarded Node require block must import the renamed
+  helpers by name; no non-underscore `getBackendConfig` / `setBackendConfig` reference may remain in
+  any GAS-executed code path.
+- Node-compat bridge rule: do **not** add module-level `let`/`const getBackendConfig_` or
+  `setBackendConfig_` bindings in `z_apiHandler.js`, because those would collide with the GAS
+  top-level function declarations after concatenation. Instead, the guarded Node require block assigns
+  the imported functions onto `global.getBackendConfig_` / `global.setBackendConfig_` so the
+  `ALLOWLISTED_METHOD_HANDLERS` closures resolve the same names in both Node and GAS.
 - After this section, `additionalHandlers` must be removed from `apiHandlerTestUtils.js` entirely;
   no `additionalHandlers` usages may remain in the codebase.
 - All tests that were green after Section 3 must remain green after Section 4.
@@ -814,49 +831,55 @@ Code Reviewer mandatory docs:
 
 Helper decision entries:
 
-1. Helper: transport-namespace stubs in `apiHandlerTestUtils.js` (Pass B)
+1. Helper: trailing-underscore private function stubs in `apiHandlerTestUtils.js` (Pass B)
    - Decision: `implement` (entry was added as `Not implemented` in Section 1)
    - Owning module/path: `tests/helpers/apiHandlerTestUtils.js`
    - Call-site rationale: replaces the transitional `additionalHandlers` mechanism with a structured
-     stub pattern aligned with how controller mocks work.
+     stub pattern aligned with how controller mocks work. Installs `globalThis.getGoogleClassrooms_`,
+     `globalThis.upsertABClass_`, etc. as `vi.fn()` stubs; merges handles onto the context object.
    - Planned doc status: update `Not implemented` → `Implemented` in `docs/developer/backend/backend-testing.md`
 
 ### Acceptance criteria
 
-- `src/backend/z_Api/googleClassrooms.js` exports `GoogleClassroomsTransport` (an object with a
-  `getGoogleClassrooms` method); no top-level `function getGoogleClassrooms` declaration exists.
+- `src/backend/z_Api/googleClassrooms.js` exports `{ getGoogleClassrooms_ }` from its guarded
+  `module.exports` block; no non-underscore top-level `function getGoogleClassrooms` declaration exists.
 - `src/backend/z_Api/assignmentDefinitionPartials.js` exports
-  `AssignmentDefinitionPartialsTransport` (an IIFE-created object with `getAssignmentDefinitionPartials`
-  and `deleteAssignmentDefinition` methods); no top-level `function` declarations for those handlers
-  exist; all helper functions are private within the IIFE.
-- `src/backend/z_Api/apiConfig.js` exports `ApiConfigTransport` (an object with `getBackendConfig`
-  and `setBackendConfig` methods); no top-level `function` declarations for those handlers exist.
-- `src/backend/z_Api/abclassMutations.js` exports `AbclassMutationsTransport` (an IIFE-created object
-  with `upsertABClass`, `updateABClass`, `deleteABClass` methods); no top-level `function` declarations
-  for those handlers or their helpers exist.
-- `z_apiHandler.js` ALLOWLISTED_METHOD_HANDLERS contains closures that call into the transport
-  namespace objects for `getGoogleClassrooms`, `upsertABClass`, `updateABClass`, `deleteABClass`,
-  `getAssignmentDefinitionPartials`, `deleteAssignmentDefinition`.
-- `z_apiHandler.js` Node require block imports `ApiConfigTransport` from `apiConfig.js` and
-  references `ApiConfigTransport.getBackendConfig` / `ApiConfigTransport.setBackendConfig` in the
-  module-level variable wiring.
+  `{ getAssignmentDefinitionPartials_, deleteAssignmentDefinition_ }` from its guarded `module.exports`
+  block; all handler and helper function names end with `_`; no non-underscore top-level function
+  declarations for handlers or helpers exist.
+- `src/backend/z_Api/apiConfig.js` exports `{ getBackendConfig_, setBackendConfig_ }` from its guarded
+  `module.exports` block; no non-underscore top-level function declarations for those handlers exist.
+  `maskApiKey_` (or equivalent) also uses the trailing-underscore convention.
+- `src/backend/z_Api/abclassMutations.js` exports `{ upsertABClass_, updateABClass_, deleteABClass_ }`
+  from its guarded `module.exports` block; all function names end with `_`; `getAbClassController_`
+  and `validateMutationClassId_` are explicitly renamed; no non-underscore
+  top-level function declarations for handlers or helpers exist.
+- `z_apiHandler.js` ALLOWLISTED*METHOD_HANDLERS contains closures that call the trailing-underscore private
+  functions directly: `(parameters) => getGoogleClassrooms*(parameters)`, etc.
+- `z_apiHandler.js` no longer contains `getBackendConfigHandler` / `setBackendConfigHandler`
+  indirection; the Node require block imports `getBackendConfig_` and `setBackendConfig_` by name
+  from `apiConfig.js`, assigns them to `global.getBackendConfig_` / `global.setBackendConfig_`, and
+  the dispatcher closures call those private helpers directly.
 - `tests/helpers/apiHandlerTestUtils.js` no longer contains `additionalHandlers` or
-  `buildApiHandlerTestHandlers()` global-function stub wiring; transport namespace objects are set up
-  on `globalThis` and their method handles are merged onto the context object.
-- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` loads the module and accesses the
-  transport namespace object; all existing validation tests pass.
-- `tests/backend-api/abclassMutations.unit.test.js` loads the module and accesses the transport
-  namespace object; tests for the transport boundary (path-character safety, validateParametersObject)
-  still pass; tests for now-retained checks (active type, forbidden fields) still pass.
-- `tests/api/googleClassrooms.test.js` — all tests updated to access `GoogleClassroomsTransport.getGoogleClassrooms`
-  from the module; export assertion checks for `GoogleClassroomsTransport` (object), not a top-level
-  `getGoogleClassrooms` function.
-- `tests/api/assignmentDefinitionDeleteApi.test.js` — all tests updated to access
-  `AssignmentDefinitionPartialsTransport.deleteAssignmentDefinition` from the module.
+  `buildApiHandlerTestHandlers()` global-function stub wiring; trailing-underscore private function stubs are
+  set up on `globalThis` (`globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, etc.) and
+  their handles are merged onto the context object.
+- `tests/backend-api/assignmentDefinitionPartials.unit.test.js` loads the module and accesses
+  `getAssignmentDefinitionPartials_` / `deleteAssignmentDefinition_` directly; all existing validation
+  tests pass.
+- `tests/backend-api/abclassMutations.unit.test.js` loads the module and accesses `upsertABClass_`,
+  `updateABClass_`, `deleteABClass_` directly; tests for transport boundary (path-character safety,
+  `validateParametersObject_`) still pass; `getAbClassController_` and `validateMutationClassId_`
+  follow the trailing-underscore convention; tests for now-retained checks (`active` type, forbidden
+  fields) still pass.
+- `tests/api/googleClassrooms.test.js` — all tests updated to destructure `getGoogleClassrooms_` from
+  the module and call it directly; export assertion checks for `getGoogleClassrooms_` as a function.
+- `tests/api/assignmentDefinitionDeleteApi.test.js` — all tests updated to destructure
+  `deleteAssignmentDefinition_` from the module and call it directly.
 - `tests/api/abclassMutations.test.js` (function-delegation tests) — all direct accesses to
   `upsertABClass`, `updateABClass`, `deleteABClass` from the module are updated to use
-  `AbclassMutationsTransport.*`; the `courseLength` validation test cases (lines ≈ 341–373) are
-  **not** removed in this section — they are removed in Section 5 when the validation is deleted.
+  `upsertABClass_`, `updateABClass_`, `deleteABClass_`; the `courseLength` validation test cases
+  (lines ≈ 341–373) are **not** removed in this section — they are removed in Section 5.
 - `tests/api/backendConfigApi.test.js` — all tests pass green; the test routes through the apiHandler
   dispatch path, so no direct module-load changes are needed.
 - A grep for `globalThis.getGoogleClassrooms`, `globalThis.upsertABClass`, `globalThis.updateABClass`,
@@ -866,49 +889,50 @@ Helper decision entries:
 
 ### Required test cases (Red first)
 
-Transport namespace structural tests (add to `tests/api/apiHandler.test.js` or a new focused file):
+Trailing-underscore private structural tests (add to `tests/api/apiHandler.test.js` or a new focused file):
 
-1. **Red**: assert `typeof globalThis.getGoogleClassrooms === 'undefined'` after loading z_apiHandler
-   in a vm context that provides `GoogleClassroomsTransport` but no top-level `getGoogleClassrooms`
-   global.
-2. **Red**: assert `typeof globalThis.upsertABClass === 'undefined'` (similarly for each of the
-   eight non-trivial handler names).
+1. **Red**: load the renamed `googleClassrooms.js` source in a vm context and assert
+   `typeof globalThis.getGoogleClassrooms === 'undefined'` while
+   `typeof globalThis.getGoogleClassrooms_ === 'function'`.
+2. **Red**: repeat the same direct-module vm assertion for the other renamed non-trivial handler
+   names (`upsertABClass_`, `updateABClass_`, `deleteABClass_`,
+   `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`,
+   `getBackendConfig_`, `setBackendConfig_`), confirming the public non-underscore names are absent.
 3. **Red**: dispatching `getGoogleClassrooms` via `apiHandler` calls
-   `globalThis.GoogleClassroomsTransport.getGoogleClassrooms` and returns its result in the success
-   envelope.
+   `globalThis.getGoogleClassrooms_` and returns its result in the success envelope.
 4. **Red**: dispatching `upsertABClass`, `updateABClass`, `deleteABClass` via `apiHandler` calls the
-   corresponding methods on `globalThis.AbclassMutationsTransport`.
+   corresponding private globals (`globalThis.upsertABClass_`, etc.).
 5. **Red**: dispatching `getAssignmentDefinitionPartials`, `deleteAssignmentDefinition` via `apiHandler`
-   calls the corresponding methods on `globalThis.AssignmentDefinitionPartialsTransport`.
+   calls `globalThis.getAssignmentDefinitionPartials_` / `globalThis.deleteAssignmentDefinition_`.
 
 Test helper updates (`tests/helpers/apiHandlerTestUtils.js`):
 
-1. Add `installTransportNamespaceMocks(vi, { googleClassroomsBehaviour, abclassMutationsBehaviour, assignmentDefinitionBehaviour, apiConfigBehaviour })` — installs `globalThis.GoogleClassroomsTransport`, `globalThis.AbclassMutationsTransport`, `globalThis.AssignmentDefinitionPartialsTransport`, `globalThis.ApiConfigTransport` as stub objects with `vi.fn()` methods. Returns originals and all stub objects/method handles merged as a flat object. The returned handles must be merged onto the context object by `setupApiHandlerTestContext`.
-2. Add `restoreTransportNamespaceMocks(originals)` counterpart.
-3. Remove `additionalHandlers` option from `setupApiHandlerTestContext`; remove `buildApiHandlerTestHandlers()` and all global-function stub wiring that was previously installed via that mechanism.
+1. Add `installTransportHelperMocks(vi, { googleClassroomsBehaviour, abclassMutationsBehaviour, assignmentDefinitionBehaviour })` — installs `globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, `globalThis.updateABClass_`, `globalThis.deleteABClass_`, `globalThis.getAssignmentDefinitionPartials_`, `globalThis.deleteAssignmentDefinition_` as `vi.fn()` stubs. Returns originals and all stub handles as a flat object. The returned handles must be merged onto the context object by `setupApiHandlerTestContext`. `getBackendConfig_` / `setBackendConfig_` are intentionally excluded because the module's own require bridge wires those names.
+2. Add `restoreTransportHelperMocks(originals)` counterpart.
+3. Remove `additionalHandlers` option from `setupApiHandlerTestContext`; remove `buildApiHandlerTestHandlers()` and all non-underscore global-function stub wiring that was previously installed via that mechanism.
 
 Backend-api unit tests:
 
 1. **Update** `tests/backend-api/assignmentDefinitionPartials.unit.test.js`: change all
-   `const { getAssignmentDefinitionPartials, deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule()` patterns to `const { AssignmentDefinitionPartialsTransport } = loadAssignmentDefinitionPartialsModule()` and call via the object.
+   `const { getAssignmentDefinitionPartials, deleteAssignmentDefinition } = loadAssignmentDefinitionPartialsModule()` patterns to `const { getAssignmentDefinitionPartials_, deleteAssignmentDefinition_ } = loadAssignmentDefinitionPartialsModule()` and call the functions directly.
 2. **Update** `tests/backend-api/abclassMutations.unit.test.js`: change all module-load patterns to
-   access `AbclassMutationsTransport`; confirm unsafe path-character tests still pass; confirm
-   `validateParametersObject` tests still pass.
+   destructure `upsertABClass_`, `updateABClass_`, `deleteABClass_`; confirm unsafe path-character tests
+   still pass; confirm `validateParametersObject_` tests still pass.
 
 Direct test-file updates for refactored modules:
 
 3. **Update** `tests/api/googleClassrooms.test.js`: change `loadGoogleClassroomsModuleWithGlobals`
-   destructuring from `{ getGoogleClassrooms }` to `{ GoogleClassroomsTransport }` in all tests; update
-   all `getGoogleClassrooms(...)` calls to `GoogleClassroomsTransport.getGoogleClassrooms(...)`; update
-   the export-shape assertion to check `{ GoogleClassroomsTransport: expect.objectContaining({ getGoogleClassrooms: expect.any(Function) }) }`.
+   destructuring from `{ getGoogleClassrooms }` to `{ getGoogleClassrooms_ }` in all tests; update
+   all calls to `getGoogleClassrooms_(...)`; update the export-shape assertion to check
+   `{ getGoogleClassrooms_: expect.any(Function) }`.
 4. **Update** `tests/api/assignmentDefinitionDeleteApi.test.js`: change `loadAssignmentDefinitionPartialsModule`
-   destructuring from `{ deleteAssignmentDefinition }` to `{ AssignmentDefinitionPartialsTransport }` in
-   all tests; update all calls to `AssignmentDefinitionPartialsTransport.deleteAssignmentDefinition(...)`.
+   destructuring from `{ deleteAssignmentDefinition }` to `{ deleteAssignmentDefinition_ }` in all
+   tests; update all calls to `deleteAssignmentDefinition_(...)`.
 5. **Update** `tests/api/abclassMutations.test.js` (function-delegation tests): change
    `loadAbclassMutationsModuleWithGlobals` destructuring from `{ upsertABClass }`, `{ updateABClass }`,
-   `{ deleteABClass }` to `{ AbclassMutationsTransport }`; update all direct function calls to
-   `AbclassMutationsTransport.upsertABClass(...)` etc. Do NOT remove the `courseLength` validation tests
-   in this section — they are removed in Section 5.
+   `{ deleteABClass }` to `{ upsertABClass_, updateABClass_, deleteABClass_ }`; update all direct
+   function calls. Do NOT remove the `courseLength` validation tests in this section — they are
+   removed in Section 5.
 6. **Confirm green** `tests/api/backendConfigApi.test.js` — no changes required; test routes through
    dispatcher dispatch only.
 
@@ -924,23 +948,25 @@ Direct test-file updates for refactored modules:
 - `npm test -- tests/backend-api/abclassMutations.unit.test.js` — all tests green.
 - `npm test -- tests/api/` — all tests green.
 - `npm run lint` — no backend lint errors.
-- `grep -r 'globalThis\.getGoogleClassrooms\|globalThis\.upsertABClass\|globalThis\.updateABClass\|globalThis\.deleteABClass\|globalThis\.getAssignmentDefinitionPartials\|globalThis\.deleteAssignmentDefinition\|globalThis\.getBackendConfig\|globalThis\.setBackendConfig' tests/` returns zero results.
+- `grep -r 'globalThis\.getGoogleClassrooms\|globalThis\.upsertABClass\|globalThis\.updateABClass\|globalThis\.deleteABClass\|globalThis\.getAssignmentDefinitionPartials\|globalThis\.deleteAssignmentDefinition\|globalThis\.getBackendConfig\|globalThis\.setBackendConfig' tests/` returns zero results (note: `globalThis.getGoogleClassrooms_` and other trailing-underscore variants ARE expected to exist; only the non-underscore forms must be absent).
 - Mandatory-read evidence gate passed for all delegated handoffs.
-- Planned transport-namespace stub helper entry in `docs/developer/backend/backend-testing.md`
+- Planned trailing-underscore private function stub helper entry in `docs/developer/backend/backend-testing.md`
   updated to `Implemented`.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Confirm each transport namespace object (`GoogleClassroomsTransport` etc.) carries a `@remarks`
-  note explaining it is intentionally non-callable as a GAS global (const object, not a function
-  declaration).
+- Confirm each trailing-underscore private handler function (`getGoogleClassrooms_`, `upsertABClass_`, etc.)
+  carries a `@remarks` note explaining it is intentionally private to `google.script.run` by virtue
+  of its trailing underscore per the Apps Script specification, and is called exclusively from the
+  `ALLOWLISTED_METHOD_HANDLERS` closure in `z_apiHandler.js`.
 
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** record actual changes when done.
 - **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 5:** record effects. In particular, note the IIFE structure
-  used for `abclassMutations.js` as Section 5 will modify the validation logic within it.
+- **Follow-up implications for Section 5:** record effects. In particular, confirm the internal
+  validation helper names used in `abclassMutations.js` (e.g. `_validateParametersObject`) so that
+  Section 5 removes the correct functions.
 
 ---
 
@@ -948,9 +974,11 @@ Direct test-file updates for refactored modules:
 
 ### Objective
 
-Remove the validation logic from `AbclassMutationsTransport` that is already owned by
+Remove the validation logic from `abclassMutations.js` that is already owned by
 `ABClassController`. Confirm that `ABClassController` covers each removed check. Retain only genuine
 transport-boundary validation. Update the `abclassMutations` unit tests to match.
+`validateMutationClassId_` is retained as the shared guarded path-character safety helper and
+simplified so it keeps only that responsibility after the duplicate domain checks are removed.
 
 ### Constraints
 
@@ -978,6 +1006,7 @@ Testing Specialist mandatory docs:
 - `AGENTS.md`
 - `src/backend/AGENTS.md`
 - `SPEC.md`
+- `docs/developer/backend/backend-testing.md`
 - `tests/backend-api/abclassMutations.unit.test.js`
 - `tests/api/abclassMutations.test.js`
 - `src/backend/z_Api/abclassMutations.js`
@@ -1010,14 +1039,15 @@ No new shared helpers are expected in this section.
 ### Acceptance criteria
 
 - `abclassMutations.js` no longer contains `validateClassId`, `validateCourseLength`, or
-  `requireParameters` functions (or their equivalents).
-- `validateUpsertABClassParameters` inside `AbclassMutationsTransport` retains only:
-  `validateParametersObject` call and the path-character safety check.
-- `validateUpdateABClassParameters` inside `AbclassMutationsTransport` retains only:
-  `validateParametersObject` call, path-character safety check, forbidden-fields check, and `active`
+  `requireParameters` functions (or any trailing-underscore transport equivalents of those removed checks) —
+  these are deleted entirely, not merely renamed.
+- `validateUpsertABClassParameters_` inside the file retains only:
+  `validateParametersObject_` call and the path-character safety check.
+- `validateUpdateABClassParameters_` inside the file retains only:
+  `validateParametersObject_` call, path-character safety check, forbidden-fields check, and `active`
   type check.
-- `validateDeleteABClassParameters` inside `AbclassMutationsTransport` retains only:
-  `validateParametersObject` call and path-character safety check.
+- `validateDeleteABClassParameters_` inside the file retains only:
+  `validateParametersObject_` call and path-character safety check.
 - Each path-character safety check is guarded: `.includes()` is only called when
   `typeof classId === 'string'`. Passing `{ classId: undefined }`, `{ classId: null }`, or
   any non-string `classId` to any of the three mutations does not throw from within the
@@ -1092,7 +1122,7 @@ ApiValidationError for %s'`. This block currently has four cases:
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Add a `@remarks` note to `validateUpsertABClassParameters` (and equivalent) inside the IIFE
+- Add a `@remarks` note to `validateUpsertABClassParameters_` (and equivalent) inside the file
   explaining which checks are intentionally absent because the controller already owns them.
 
 ### Implementation notes / deviations / follow-up
@@ -1241,15 +1271,16 @@ Code Reviewer mandatory docs:
 - No `_invokeAllowlistedMethod` reference remains in any production or test file.
 - No `globalThis.getAuthorisationStatus` mock or stub remains in any test file.
 - No `additionalHandlers` option or `buildApiHandlerTestHandlers()` call remains in any test file.
-- No top-level `function getGoogleClassrooms`, `function upsertABClass`, `function updateABClass`,
-  `function deleteABClass`, `function getAssignmentDefinitionPartials`,
+- No top-level non-underscore `function getGoogleClassrooms`, `function upsertABClass`,
+  `function updateABClass`, `function deleteABClass`, `function getAssignmentDefinitionPartials`,
   `function deleteAssignmentDefinition`, `function getBackendConfig`, `function setBackendConfig`
-  declarations remain in any backend file.
+  declarations remain in any backend file (trailing-underscore forms `getGoogleClassrooms_` etc.
+  ARE expected to remain).
 - No `fs.readFileSync(referenceDataPath)` or vm coexistence code referencing `referenceData.js`
   remains in `tests/api/abclassMutations.test.js`.
-- `tests/api/googleClassrooms.test.js` exports-assertion checks for `GoogleClassroomsTransport`.
-- `tests/api/assignmentDefinitionDeleteApi.test.js` uses `AssignmentDefinitionPartialsTransport`.
-- `tests/api/abclassMutations.test.js` uses `AbclassMutationsTransport`; `courseLength` test block absent.
+- `tests/api/googleClassrooms.test.js` exports-assertion checks for `getGoogleClassrooms_` as a function.
+- `tests/api/assignmentDefinitionDeleteApi.test.js` uses `deleteAssignmentDefinition_` directly.
+- `tests/api/abclassMutations.test.js` uses `upsertABClass_`, `updateABClass_`, `deleteABClass_`; `courseLength` test block absent.
 - `apiService.ts` is byte-for-byte unchanged from the baseline.
 - Net LOC reduction across all files in the baseline table is **≥ 200 lines**.
 
@@ -1312,19 +1343,20 @@ Docs mandatory docs:
 
 ### Acceptance criteria
 
-- `docs/developer/backend/api-layer.md` contains the architecture signpost section added in Section 1,
+- `docs/developer/backend/api-layer.md` contains the architecture signpost sections added in Section 1,
   now updated to reflect the implemented state (all `Not implemented` entries removed or updated).
 - `docs/developer/backend/api-layer.md` "Dispatch and allowlist pattern" section describes the
   single-registry approach: one entry in `ALLOWLISTED_METHOD_HANDLERS`, no `API_METHODS` or
   `API_ALLOWLIST`.
 - All references to `API_METHODS` and `API_ALLOWLIST` are removed from `api-layer.md`.
 - The endpoint-specific sections for trivially inlined methods reference `z_apiHandler.js` (inline).
-- The endpoint-specific sections for non-trivial methods reference their transport namespace object
-  and file (e.g. `GoogleClassroomsTransport` in `googleClassrooms.js`).
-- The non-callable transport-helper pattern is documented as the authoritative approach for non-trivial
-  handlers (no longer marked `Not implemented`).
-- `src/backend/AGENTS.md` § 0.1 describes both the trivial-inline and non-callable transport-helper
-  patterns; no reference to `API_METHODS`, `API_ALLOWLIST`, or `_invokeAllowlistedMethod`.
+- The endpoint-specific sections for non-trivial methods reference their trailing-underscore private handler
+  function and file (e.g. `getGoogleClassrooms_` in `googleClassrooms.js`).
+- The trailing-underscore private transport-helper pattern is documented as the authoritative approach for
+  non-trivial handlers (no longer marked `Not implemented`).
+- `src/backend/AGENTS.md` § 0.1 describes both the trivial-inline and trailing-underscore private
+  transport-helper patterns; § 0.2 codifies the transport-vs-domain validation ownership rules;
+  no reference to `API_METHODS`, `API_ALLOWLIST`, or `_invokeAllowlistedMethod` remains.
 - `src/frontend/AGENTS.md` § 4.1 method-name alignment instruction references
   `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` rather than the deleted `API_METHODS`.
 - The step list for adding a new transport method in `api-layer.md` reads as a single step (add to
@@ -1332,34 +1364,35 @@ Docs mandatory docs:
 - A repo-wide search confirms no remaining `API_METHODS` or `API_ALLOWLIST` references in any
   production or documentation file.
 - All planned helper entries in `docs/developer/backend/backend-testing.md` are reconciled:
-  `installControllerMocks` and transport-namespace stub patterns updated from `Not implemented` to
-  `Implemented`.
+  `installControllerMocks` and trailing-underscore private function stub patterns updated from
+  `Not implemented` to `Implemented`.
 - `wc -l` on all surviving and new files in the LOC baseline table, with deleted rows counted as
   final LOC `0`, confirms net reduction ≥ 200 lines.
 
 ### Required checks
 
 1. Read `docs/developer/backend/api-layer.md` and confirm no `API_METHODS`/`API_ALLOWLIST` references
-   remain. Specifically update:
-   - **Configuration transport sentence** (line ≈ 30): update to reference `ALLOWLISTED_METHOD_HANDLERS`
-     in `z_apiHandler.js` rather than `apiConstants.js`.
-   - **Request contract bullet** (line ≈ 51): update to reference `ALLOWLISTED_METHOD_HANDLERS`.
-   - **Frontend usage pattern sentence** (line ≈ 113): update to reference `ALLOWLISTED_METHOD_HANDLERS`.
-     Run a full-text search across the file to catch any additional occurrences.
-2. Read `src/backend/AGENTS.md` and confirm § 0.1 is updated to describe both patterns.
+   remain. Specifically confirm:
+   - The "Dispatch and allowlist pattern" section now describes a single-step add to
+     `ALLOWLISTED_METHOD_HANDLERS` with no `Not implemented` markers.
+   - The "Non-callable transport helpers" section is updated to remove `Not implemented` markers and
+     names the actual trailing-underscore private functions now in production.
+   - Run a full-text search across the file to catch any additional occurrences.
+2. Read `src/backend/AGENTS.md` and confirm § 0.1 and § 0.2 are correct post-implementation.
 3. Read `src/frontend/AGENTS.md` and confirm § 4.1 no longer references `API_METHODS`.
 4. Run `wc -l` on all surviving and new baseline-table files, treat deleted rows as final LOC `0`,
    and compare the final total against the baseline table.
 5. Verify mandatory-read evidence (`Files read`) is complete for delegated docs handoffs.
 6. Reconcile all planned helper entries in `docs/developer/backend/backend-testing.md`: update status
-   to `Implemented` for `installControllerMocks` and transport-namespace stub patterns.
+   to `Implemented` for `installControllerMocks` and trailing-underscore private stub patterns.
 
 ### Optional `@remarks` JSDoc review
 
 - Confirm `ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` carries the `@remarks` note planned in
   Sections 2 and 3 about it being the sole callable registry.
-- Confirm each transport namespace object carries a `@remarks` note per Section 4.
-- Confirm the Section 5 `@remarks` notes on `validateUpsertABClassParameters` etc. are present.
+- Confirm each trailing-underscore private handler function (`getGoogleClassrooms_`, `upsertABClass_`, etc.)
+  carries a `@remarks` note per Section 4.
+- Confirm the Section 5 `@remarks` notes on `validateUpsertABClassParameters_` etc. are present.
 - Confirm no other `@remarks` are needed for changed areas.
 
 ### Implementation notes / deviations / follow-up
@@ -1377,7 +1410,7 @@ implemented` markers).
    Section 2's simplified dispatch).
 4. Section 4 — Non-trivial transport helper restructure; test harness Pass B (depends on Section 3's
    green test suite with `additionalHandlers` in place).
-5. Section 5 — abclassMutations validation deduplication (depends on Section 4's IIFE wrapping).
+5. Section 5 — abclassMutations validation deduplication (depends on Section 4's trailing-underscore rename).
 6. Section 6 — `authService.ts` Zod validation (independent; may be done in parallel with 2–5).
 7. Regression and contract hardening.
 8. Documentation and rollout notes.

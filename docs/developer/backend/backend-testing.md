@@ -105,6 +105,41 @@ Rules:
 - In tests, load or expose prerequisites before loading dependent files.
 - When updating test imports, follow the real current file layout instead of stale alias paths.
 
+## Planned helper patterns for transport-refactor test work
+
+The following helper patterns are planned by the transport-layer de-sloppification action plan but are
+not yet implemented in the current codebase.
+
+### `installControllerMocks` / `restoreControllerMocks`
+
+> **Not implemented**
+
+Planned location: `tests/helpers/apiHandlerTestUtils.js`
+
+Purpose:
+
+- install per-test constructor mocks for `ScriptAppManager`, `ABClassController`, and
+  `ReferenceDataController`
+- let dispatcher tests assert controller delegation after trivial wrapper removal without adding
+  Node-specific fallbacks to production files
+
+### `installTransportHelperMocks` / `restoreTransportHelperMocks`
+
+> **Not implemented**
+
+Planned location: `tests/helpers/apiHandlerTestUtils.js`
+
+Purpose:
+
+- install per-test stubs for trailing-underscore private transport helpers such as
+  `globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, `globalThis.updateABClass_`,
+  `globalThis.deleteABClass_`, `globalThis.getAssignmentDefinitionPartials_`, and
+  `globalThis.deleteAssignmentDefinition_`
+- support Section 4 transport-helper migration tests once non-trivial handlers move behind
+  `apiHandler`
+- exclude `getBackendConfig_` / `setBackendConfig_`, which are planned to be wired by the module's own
+  guarded Node bridge rather than this helper
+
 ## Anti-Patterns Seen In This Repository
 
 The following problems caused backend test failures and should be treated as regressions if reintroduced:

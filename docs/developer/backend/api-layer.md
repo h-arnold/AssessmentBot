@@ -17,8 +17,83 @@ This layer is deliberately REST-ish in structure:
 1. Keep API functions as thin as possible.
 2. Delegate business logic to the appropriate controller class by default.
 3. Only keep logic in API functions when delegation would create unnecessary verbosity with no architectural benefit.
-4. Validate direct inputs and fail fast; do not hide backend wiring errors.
+4. Validate transport inputs and fail fast; do not hide backend wiring errors. See "Validation ownership rules" below for which layer owns which checks.
 5. Keep allowlisted method names stable once used by frontend callers.
+
+## Non-callable transport helpers (trailing-underscore private pattern)
+
+`apiHandler` is the sole frontend-callable GAS entry point for all active `z_Api` methods.
+Closures registered in `ALLOWLISTED_METHOD_HANDLERS` are not individually reachable via
+`google.script.run` and need no special wrapper to prevent that.
+
+For **trivial handlers** (a single controller delegation with no private helpers), inline the call
+as an anonymous closure directly in `ALLOWLISTED_METHOD_HANDLERS`:
+
+```js
+getABClassPartials: () => new ABClassController().getAllClassPartials(),
+```
+
+For **non-trivial handlers** (requiring validation helpers, multi-step logic, or data transformation),
+define trailing-underscore helper functions in the relevant `z_Api` file and call them from a thin
+closure in `ALLOWLISTED_METHOD_HANDLERS`:
+
+```js
+// In googleClassrooms.js — GAS will NOT expose getGoogleClassrooms_ to google.script.run
+function getGoogleClassrooms_(parameters) { … }
+```
+
+```js
+// In z_apiHandler.js ALLOWLISTED_METHOD_HANDLERS
+getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
+```
+
+The official Apps Script specification excludes functions whose names end with an underscore from
+the callable surface exposed to `google.script.run`. This makes the trailing underscore the preferred,
+sufficient pattern for non-callable transport helpers — no IIFE or namespace-object wrapper is
+required.
+
+Internal helper functions within a `z_Api` file that are not themselves transport-entry functions
+(e.g. `validateParametersObject_`, `throwValidationError_`) also use the trailing underscore for
+consistency and to prevent accidental GAS-global exposure.
+
+The guarded `module.exports` block at the end of each file exports the trailing-underscore handler
+functions so that Node unit tests can access them:
+
+```js
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { getGoogleClassrooms_ };
+}
+```
+
+> **Not implemented** — the trailing-underscore private helper pattern is the planned target for
+> `googleClassrooms.js`, `assignmentDefinitionPartials.js`, `apiConfig.js`, and
+> `abclassMutations.js`. These files currently expose top-level callable globals; the rename to
+> trailing-underscore helpers is covered in the associated action plan.
+
+## Validation ownership rules
+
+Transport-boundary validation (shape of the incoming request, type of envelope fields, path-safety
+of untrusted string identifiers, foreign-API response shape) belongs in the API layer — specifically
+in the trailing-underscore helper functions of the relevant `z_Api` file.
+
+Domain invariants (business rules about what constitutes a valid entity, required field completeness,
+value range constraints) belong in the called controller, class, or manager.
+
+Rules:
+
+1. **Transport validation lives in API-layer trailing-underscore helpers.** Checks that guard the transport
+   surface — such as `params` being a plain object, path-character safety on string identifiers, or
+   shape validation of an external API response — are the responsibility of the `z_Api` helper.
+2. **Domain invariants live in the controller.** Non-empty string checks, integer range checks,
+   required-field completeness, and other business rules are owned by the controller that receives
+   the call. Do not reimplement them in the transport layer.
+3. **Do not duplicate the same rule in both layers** unless it is an explicit security
+   defence-in-depth guard — in which case mark it as such in a code comment so it is not removed
+   during future de-sloppification passes.
+4. **All new functionality must follow this rule** from the point of introduction.
+5. **Old functionality should be opportunistically refactored** toward this rule when the code is
+   already being touched. Keep the scope of opportunistic refactoring local and low-risk; do not
+   expand a focused change into a broad validation audit.
 
 ## Relationship to `globals.js`
 
@@ -27,7 +102,7 @@ Legacy backend `globals.js` files are reference-only during migration and are no
 - `src/backend/AssignmentProcessor/globals.js`
 - `src/backend/y_controllers/globals.js`
 
-Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/z_apiHandler.js`, with allowlisted method names registered in `src/backend/z_Api/apiConstants.js` and implemented in `src/backend/z_Api/apiConfig.js`.
+Configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed. Backend configuration reads and writes now go through `src/backend/z_Api/z_apiHandler.js`, with callable method names owned by `ALLOWLISTED_METHOD_HANDLERS` in that file and the implementation living in `src/backend/z_Api/apiConfig.js`.
 
 Migration rule:
 
@@ -48,7 +123,7 @@ Migration rule:
 
 `apiHandler` accepts a request object with:
 
-- `method` (string, required): allowlisted method name from `API_METHODS`
+- `method` (string, required): allowlisted method name intended for `ALLOWLISTED_METHOD_HANDLERS`
 - `params` (optional): method-specific payload
 
 If the payload is invalid, `apiHandler` returns an `INVALID_REQUEST` envelope and does not throw.
@@ -64,12 +139,22 @@ This envelope shape is stable and should be treated as the transport contract be
 
 ### Dispatch and allowlist pattern
 
+`ALLOWLISTED_METHOD_HANDLERS` in `z_apiHandler.js` is the single authoritative registry for all
+frontend-callable methods. A method is reachable from the frontend if and only if it has an entry
+in this object.
+
 To add a new frontend-callable API method:
 
-1. Add the method to `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
-2. Add the method to `API_ALLOWLIST` in `src/backend/z_Api/apiConstants.js`.
-3. Add dispatch handling in `ApiDispatcher._invokeAllowlistedMethod(...)` in `src/backend/z_Api/z_apiHandler.js`.
-4. Keep business logic in controllers/services; keep the dispatcher branch thin.
+1. Add one entry to `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`:
+   - For trivial handlers, inline the controller call as an anonymous closure.
+   - For non-trivial handlers, define a trailing-underscore private helper in the relevant `z_Api` file and
+     call it from a thin closure here.
+2. Keep business logic in controllers or services; keep the handler closure thin.
+
+> **Not implemented** — the current codebase still registers methods in `API_METHODS` and
+> `API_ALLOWLIST` in `apiConstants.js` and dispatches through `_invokeAllowlistedMethod`. These
+> are being removed in the associated action plan; the single-registry approach above is the target
+> architecture.
 
 ### Admission control and tracking
 
@@ -110,12 +195,12 @@ Request-store persistence stays compact. Failed entries record a stringified fai
 
 Frontend code should call `callApi` from `src/frontend/src/services/apiService.ts`, not `google.script.run` directly.
 Feature services should expose typed helpers per method and return parsed `data` from `callApi`.
-Use the allowlisted method names exactly as implemented in `API_METHODS`, for example `callApi('getGoogleClassrooms')`.
+Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_HANDLERS`, for example `callApi('getGoogleClassrooms')`.
 
 ### Current migrated endpoints
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
-  Source: `src/backend/z_Api/apiConfig.js`. Registered in `src/backend/z_Api/apiConstants.js` and dispatched through `src/backend/z_Api/z_apiHandler.js`.
+  Source: `src/backend/z_Api/apiConfig.js`. Owned by `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js` and dispatched through that entrypoint.
   Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
   Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
