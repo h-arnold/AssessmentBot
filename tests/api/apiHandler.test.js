@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const apiHandlerPath = '../../src/backend/z_Api/z_apiHandler.js';
-const apiConstantsPath = '../../src/backend/z_Api/apiConstants.js';
 const googleClassroomsHandlerPath = '../../src/backend/z_Api/googleClassrooms.js';
 const originalClassroomApiClient = globalThis.ClassroomApiClient;
 
@@ -25,28 +24,21 @@ const ABCLASS_TRANSPORT_API_METHOD_NAMES = Object.freeze([
   'deleteABClass',
 ]);
 
-const ABCLASS_TRANSPORT_API_METHOD_ENTRIES = Object.freeze(
-  Object.fromEntries(
-    ABCLASS_TRANSPORT_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
-  )
-);
-
 const BACKEND_CONFIG_API_METHOD_NAMES = Object.freeze(['getBackendConfig', 'setBackendConfig']);
-
-const BACKEND_CONFIG_API_METHOD_ENTRIES = Object.freeze(
-  Object.fromEntries(BACKEND_CONFIG_API_METHOD_NAMES.map((methodName) => [methodName, methodName]))
-);
 
 const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
   'getAssignmentDefinitionPartials',
   'deleteAssignmentDefinition',
 ]);
 
-const ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES = Object.freeze(
-  Object.fromEntries(
-    ASSIGNMENT_DEFINITION_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
-  )
-);
+const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
+  'getAuthorisationStatus',
+  'getABClassPartials',
+  ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
+  ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
+  ...BACKEND_CONFIG_API_METHOD_NAMES,
+  ...REFERENCE_DATA_API_METHOD_NAMES,
+]);
 
 const ABCLASS_TRANSPORT_PARAMS = Object.freeze({
   getGoogleClassrooms: {},
@@ -299,11 +291,6 @@ const IN_USE_FAILURE_CASES = Object.freeze([
   },
 ]);
 
-function loadApiConstantsModule() {
-  delete require.cache[require.resolve(apiConstantsPath)];
-  return require(apiConstantsPath);
-}
-
 function clearGoogleClassroomsHandlerModuleCache() {
   delete require.cache[require.resolve(googleClassroomsHandlerPath)];
 }
@@ -386,73 +373,21 @@ function makeVmGlobals(overrides = {}) {
   };
 }
 
-describe('Api/apiConstants', () => {
-  it('defines getAuthorisationStatus in the API allowlist', () => {
-    const { API_METHODS } = loadApiConstantsModule();
+describe('Api/apiHandler allowlisted method handler registry', () => {
+  it('contains all expected API method keys in ALLOWLISTED_METHOD_HANDLERS', () => {
+    const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
-    expect(API_METHODS).toBeTypeOf('object');
-    expect(API_METHODS.getAuthorisationStatus).toBe('getAuthorisationStatus');
-  });
-
-  it('contains all reference-data methods in API_METHODS', () => {
-    const { API_METHODS } = loadApiConstantsModule();
-
-    expect(API_METHODS).toEqual(
+    expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(18);
+    expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
-          REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
+          EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS.map((methodName) => [
+            methodName,
+            expect.any(Function),
+          ])
         )
       )
-    );
-  });
-
-  it('contains all reference-data methods in API_ALLOWLIST', () => {
-    const { API_ALLOWLIST } = loadApiConstantsModule();
-
-    expect(API_ALLOWLIST).toEqual(
-      expect.objectContaining(
-        Object.fromEntries(
-          REFERENCE_DATA_API_METHOD_NAMES.map((methodName) => [methodName, methodName])
-        )
-      )
-    );
-  });
-
-  it('contains all ABClass transport methods in API_METHODS', () => {
-    const { API_METHODS } = loadApiConstantsModule();
-
-    expect(API_METHODS).toEqual(expect.objectContaining(ABCLASS_TRANSPORT_API_METHOD_ENTRIES));
-  });
-
-  it('contains all ABClass transport methods in API_ALLOWLIST', () => {
-    const { API_ALLOWLIST } = loadApiConstantsModule();
-
-    expect(API_ALLOWLIST).toEqual(expect.objectContaining(ABCLASS_TRANSPORT_API_METHOD_ENTRIES));
-  });
-
-  it('contains the backend configuration methods in API_METHODS', () => {
-    const { API_METHODS } = loadApiConstantsModule();
-
-    expect(API_METHODS).toEqual(expect.objectContaining(BACKEND_CONFIG_API_METHOD_ENTRIES));
-  });
-
-  it('contains the backend configuration methods in API_ALLOWLIST', () => {
-    const { API_ALLOWLIST } = loadApiConstantsModule();
-
-    expect(API_ALLOWLIST).toEqual(expect.objectContaining(BACKEND_CONFIG_API_METHOD_ENTRIES));
-  });
-
-  it('contains assignment-definition partial methods in API_METHODS', () => {
-    const { API_METHODS } = loadApiConstantsModule();
-
-    expect(API_METHODS).toEqual(expect.objectContaining(ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES));
-  });
-
-  it('contains assignment-definition partial methods in API_ALLOWLIST', () => {
-    const { API_ALLOWLIST } = loadApiConstantsModule();
-
-    expect(API_ALLOWLIST).toEqual(
-      expect.objectContaining(ASSIGNMENT_DEFINITION_API_METHOD_ENTRIES)
     );
   });
 });
@@ -1176,21 +1111,9 @@ describe('Api/apiHandler dispatcher', () => {
     });
   });
 
-  it('throws when an unrecognised handler name is passed to _invokeAllowlistedMethod', () => {
-    const { ApiDispatcher } = loadApiHandlerModule();
-    const dispatcher = ApiDispatcher.getInstance();
-
-    expect(() => dispatcher._invokeAllowlistedMethod('unknownHandler', {})).toThrow(
-      'Allowlisted handler is not implemented.'
-    );
-  });
-
   it('operates correctly via BaseSingleton in a GAS-like VM context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: makeVmGlobals({
-        API_ALLOWLIST: {
-          getAuthorisationStatus: 'getAuthorisationStatus',
-        },
         getAuthorisationStatus: () => ({ authorised: true }),
         Utilities: {
           getUuid: () => 'uuid-vm-singleton',
@@ -1209,11 +1132,11 @@ describe('Api/apiHandler dispatcher', () => {
     ).toMatchObject({ ok: true, requestId: 'uuid-vm-singleton' });
   });
 
-  it('uses global API_ALLOWLIST in vm context and returns INTERNAL_ERROR for unknown mapped handler', () => {
+  it('returns INTERNAL_ERROR when an allowlisted method handler throws in vm context', () => {
     const { ApiDispatcher } = loadApiHandlerInVmContext({
       globals: makeVmGlobals({
-        API_ALLOWLIST: {
-          getAuthorisationStatus: 'notImplementedHandler',
+        getAuthorisationStatus: () => {
+          throw new Error('vm handler exploded');
         },
         Utilities: {
           getUuid: () => 'uuid-vm-dispatch-error',

@@ -2,7 +2,6 @@
 
 /* global BaseSingleton, Utilities, LockService, ABLogger */
 
-let apiAllowlist;
 let lockTimeoutMs;
 let lockWaitWarnThresholdMs;
 let activeLimit;
@@ -52,7 +51,6 @@ if (typeof module !== 'undefined' && module.exports) {
     setBackendConfig: setBackendConfigHandler,
   } = require('./apiConfig.js'));
   ({
-    API_ALLOWLIST: apiAllowlist,
     LOCK_TIMEOUT_MS: lockTimeoutMs,
     LOCK_WAIT_WARN_THRESHOLD_MS: lockWaitWarnThresholdMs,
     ACTIVE_LIMIT: activeLimit,
@@ -64,7 +62,6 @@ if (typeof module !== 'undefined' && module.exports) {
   apiDisabledErrorName = require('../Utils/ErrorTypes/ApiDisabledError.js').name;
 } else {
   // In GAS, these are loaded as global constants and functions from the bundle.
-  apiAllowlist = API_ALLOWLIST;
   lockTimeoutMs = LOCK_TIMEOUT_MS;
   lockWaitWarnThresholdMs = LOCK_WAIT_WARN_THRESHOLD_MS;
   activeLimit = ACTIVE_LIMIT;
@@ -110,9 +107,9 @@ class ApiDispatcher extends BaseSingleton {
     }
 
     const methodName = request.method.trim();
-    const allowlistedHandler = apiAllowlist[methodName];
+    const handler = ALLOWLISTED_METHOD_HANDLERS[methodName];
 
-    if (!allowlistedHandler) {
+    if (!handler) {
       return this._failure(requestId, 'UNKNOWN_METHOD', 'Unknown API method.', false);
     }
 
@@ -125,7 +122,7 @@ class ApiDispatcher extends BaseSingleton {
     let handlerFailed = false;
     let data;
     try {
-      data = this._invokeAllowlistedMethod(allowlistedHandler, request.params);
+      data = handler(request.params);
     } catch (error) {
       handlerFailed = true;
       handlerError = error;
@@ -308,26 +305,6 @@ class ApiDispatcher extends BaseSingleton {
   }
 
   /**
-   * Invokes the named allowlisted handler function with the given parameters.
-   * Dispatches to the appropriate handler based on the method name.
-   *
-   * @param {string} handlerName - The allowlisted method name.
-   * @param {*} parameters - Optional request parameters.
-   * @returns {*} The handler response data.
-   * @throws {Error} Re-throws any error from the handler or if handler name is unknown.
-   * @private
-   */
-  _invokeAllowlistedMethod(handlerName, parameters) {
-    const handler = ALLOWLISTED_METHOD_HANDLERS[handlerName];
-
-    if (handler) {
-      return handler(parameters);
-    }
-
-    throw new Error('Allowlisted handler is not implemented.');
-  }
-
-  /**
    * Builds a successful response envelope.
    *
    * @remarks This transport layer must not reshape handler payload contracts.
@@ -428,5 +405,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     apiHandler,
     ApiDispatcher,
+    ALLOWLISTED_METHOD_HANDLERS,
   };
 }

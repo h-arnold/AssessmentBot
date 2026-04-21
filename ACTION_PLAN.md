@@ -428,9 +428,20 @@ API layer tests (update/replace in `tests/api/apiHandler.test.js`):
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 3:** record effects.
+- **Implementation notes:** Red phase completed by replacing legacy allowlist/API-method assertions with handler-registry coverage updates in `tests/api/apiHandler.test.js`, including VM-context updates that no longer depend on `API_ALLOWLIST`. Green phase completed by removing legacy registry exports from `src/backend/z_Api/apiConstants.js` and consolidating dispatch onto `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
+- **Deviations from plan:** None.
+- **Follow-up implications for Section 3:** Section 3 can proceed on the consolidated handler registry baseline with no additional Section 2 carry-over.
+
+**Section 2 completion checklist**
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 
