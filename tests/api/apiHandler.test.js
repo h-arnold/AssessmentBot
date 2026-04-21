@@ -157,7 +157,7 @@ function getAllowlistedHandlerSpy(context, handlerName) {
     return getReferenceDataControllerMethodSpy(context, handlerName);
   }
 
-  return context[`${handlerName}_`] || globalThis[handlerName];
+  return context[`${handlerName}_`];
 }
 
 function handleApiRequest(method, params) {

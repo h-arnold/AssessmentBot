@@ -332,8 +332,4 @@ module.exports = {
   persistUserRequestStore,
   readPersistedUserRequestStore,
   REFERENCE_DATA_API_METHOD_NAMES,
-  installControllerMocks,
-  restoreControllerMocks,
-  installTransportHelperMocks,
-  restoreTransportHelperMocks,
 };
