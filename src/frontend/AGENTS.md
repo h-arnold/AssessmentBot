@@ -49,7 +49,7 @@ Root scripts execute frontend tasks via `npm --prefix src/frontend ...`.
 - **Hard rule:** all frontend-to-backend calls must be routed through `src/frontend/src/services/apiService.ts` (`callApi`).
 - Never call backend API methods directly from frontend feature code, components, hooks, or services via `google.script.run`, backend globals, or any other transport shortcut.
 - Wrap backend methods in a frontend service module that owns request/response validation and calls `callApi(...)`.
-- Keep method names aligned with backend `API_METHODS` in `src/backend/z_Api/apiConstants.js`.
+- Keep method names aligned with backend `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
 - Treat backend responses as envelopes handled by `callApi`; feature services should consume typed `data` results only.
 - Keep retry behaviour centralised in `callApi`; do not add per-feature retry loops for rate-limit handling.
 - Use `src/frontend/src/services/backendConfigurationService.ts` for backend configuration reads and writes; keep request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.

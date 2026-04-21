@@ -65,10 +65,9 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-> **Not implemented** — the trailing-underscore private helper pattern is the planned target for
-> `googleClassrooms.js`, `assignmentDefinitionPartials.js`, `apiConfig.js`, and
-> `abclassMutations.js`. These files currently expose top-level callable globals; the rename to
-> trailing-underscore helpers is covered in the associated action plan.
+This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
+`deleteAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`,
+`updateABClass_`, and `deleteABClass_`.
 
 ## Validation ownership rules
 
@@ -145,16 +144,11 @@ in this object.
 
 To add a new frontend-callable API method:
 
-1. Add one entry to `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`:
-   - For trivial handlers, inline the controller call as an anonymous closure.
-   - For non-trivial handlers, define a trailing-underscore private helper in the relevant `z_Api` file and
-     call it from a thin closure here.
-2. Keep business logic in controllers or services; keep the handler closure thin.
+1. Add one entry to `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`, either by
+   inlining a trivial controller delegation as an anonymous closure or by delegating to a
+   trailing-underscore private helper in the relevant `z_Api` file.
 
-> **Not implemented** — the current codebase still registers methods in `API_METHODS` and
-> `API_ALLOWLIST` in `apiConstants.js` and dispatches through `_invokeAllowlistedMethod`. These
-> are being removed in the associated action plan; the single-registry approach above is the target
-> architecture.
+Keep business logic in controllers or services; keep the handler closure thin.
 
 ### Admission control and tracking
 
@@ -200,7 +194,7 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
 ### Current migrated endpoints
 
 - `getBackendConfig` and `setBackendConfig` — canonical backend configuration transport methods.
-  Source: `src/backend/z_Api/apiConfig.js`. Owned by `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js` and dispatched through that entrypoint.
+  Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `getBackendConfig_()` and `setBackendConfig_()` in `src/backend/z_Api/apiConfig.js`.
   Frontend wrapper: `src/frontend/src/services/backendConfigurationService.ts`, with request and response validation in `src/frontend/src/services/backendConfiguration.zod.ts`.
   Legacy note: configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`.
   Ownership note: first-time default seeding now belongs to `ConfigurationManager.ensureDefaultConfiguration()`. `getBackendConfig()` remains a thin transport read that delegates bootstrap to the manager before shaping the public payload.
@@ -218,26 +212,27 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
 - Dedicated transport tests for backend configuration live in `tests/api/backendConfigApi.test.js`.
   Keep broader dispatcher coverage in `tests/api/apiHandler.test.js`.
 
-- `getAuthorisationStatus` — returns current script authorisation status. Source: `src/backend/z_Api/auth.js`.
+- `getAuthorisationStatus` — returns current script authorisation status.
+  Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ScriptAppManager().isAuthorised()`.
   Do not call `google.script.run.getAuthorisationStatus` from frontend feature or service modules.
 
 - `getABClassPartials` — returns all class partial documents from the `abclass_partials` registry.
-  Source: `src/backend/z_Api/abclassPartials.js`. Delegates to `ABClassController.getAllClassPartials()`.
+  Source: inline closure in `src/backend/z_Api/z_apiHandler.js` delegating to `new ABClassController().getAllClassPartials()`.
   Frontend wrapper: `src/frontend/src/services/classPartialsService.ts` (`getABClassPartials()`).
-  Handler behaviour: instantiates `ABClassController` inside `getABClassPartials()` at call time; the production file keeps only the standard guarded export block at end of file for Node unit tests.
+  Handler behaviour: instantiates `ABClassController` inside the inline closure at call time.
   The controller normalises stored records before returning them, so transport consumers receive only the documented class-partial fields and not storage metadata such as `_id`.
   The frontend service models `classOwner` and `teachers` as explicit `TeacherSummary` objects (`userId`, `email`, `teacherName`).
   See `docs/developer/backend/DATA_SHAPES.md` for the class partial shape and persistence strategy.
 
 - `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
   Response data: `Array<{ primaryTitle, primaryTopic, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
   Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; reference and template document IDs are retained, but `referenceLastModified` and `templateLastModified` are not part of the partial transport shape.
-  Validation: the handler rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` is blank or untrimmed, `createdAt`/`updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
+  Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` is blank or untrimmed, `createdAt`/`updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
 
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
-  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `deleteAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.deleteDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
   Required request field: `definitionKey`.
   Validation: `definitionKey` must be a non-empty, already-trimmed string and must not contain `/`, `\`, `..`, or ASCII control characters. Invalid payloads are reported as `INVALID_REQUEST` by the transport.
   Delete behaviour: removes the partial row from `assignment_definitions` and drops the corresponding `assdef_full_<definitionKey>` collection when present. Missing full collections are treated as already deleted, so repeated safe-key deletes remain idempotent.
@@ -245,7 +240,7 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
-  Source: `src/backend/z_Api/googleClassrooms.js`. Dispatched through the `apiHandler` allowlist in `src/backend/z_Api/z_apiHandler.js`.
+  Source: `src/backend/z_Api/googleClassrooms.js`, via the `getGoogleClassrooms_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
   Handler behaviour: calls `ClassroomApiClient.fetchAllActiveClassrooms()`, which pages through active Classroom courses, then maps each row to `{ classId, className }`.
   Response data: `Array<{ classId: string, className: string }>`.
   Contract boundary: the payload intentionally omits `teachers`, `students`, `classOwner`, and `enrollmentCode`.
@@ -253,38 +248,38 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Failure nuance: upstream Classroom fetch failures currently log inside `ClassroomApiClient.fetchAllActiveClassrooms()` and return `[]`, so not every upstream Classroom failure becomes a transport error envelope today.
 
 - `upsertABClass` — creates a new ABClass or refreshes an existing one using Classroom data plus user-supplied metadata.
-  Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `upsertABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.upsertABClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request fields: `classId`, `cohortKey`, `yearGroupKey`, `courseLength`.
-  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`; `courseLength` must be an integer greater than or equal to `1`.
+  Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters (`..`, `/`, `\`) when `classId` is supplied as a string; controller validation owns required-field completeness, non-empty `classId`, and `courseLength` integer/range checks.
   Write-path behaviour: hydrates `className`, `classOwner`, `teachers`, and `students` from Google Classroom. When the class already exists, the controller refreshes the roster and preserves existing `assignments`.
   Response data: the partial class summary returned by `ABClass.toPartialJSON()`, not the full class document. `students` and `assignments` are not returned.
 
 - `updateABClass` — applies a lightweight patch to editable ABClass fields.
-  Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `updateABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.updateABClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request field: `classId`.
   Optional patch fields: `cohortKey`, `yearGroupKey`, `courseLength`, `active`.
   Forbidden request fields: `classOwner`, `teachers`, `students`, `assignments`.
-  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`; `active` must be boolean or `null` when supplied.
+  Validation: transport enforces `params` as an object, rejects unsafe `classId` path characters when `classId` is a string, blocks forbidden fields, and requires `active` to be boolean or `null` when supplied; controller validation owns non-empty `classId` and `courseLength` integer/range checks.
   Existing-class behaviour: updates only the supplied patch fields, persists the partial registry row, and does not mutate the excluded fields.
   Missing-class behaviour: throws `RangeError`; `updateABClass` is not an upsert path.
   Response data: the same partial class summary shape used by `upsertABClass()`.
 
 - `deleteABClass` — deletes the stored class record and its class-partial registry row.
-  Source: `src/backend/z_Api/abclassMutations.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController.js`.
+  Source: `src/backend/z_Api/abclassMutations.js`, via the `deleteABClass_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `ABClassController.deleteABClass()` in `src/backend/y_controllers/ABClassController.js`.
   Required request field: `classId`.
-  Validation: `classId` must be a non-empty string and must not contain `..`, `/`, or `\`.
+  Validation: transport enforces `params` as an object and rejects unsafe `classId` path characters when `classId` is a string; controller validation owns missing, non-string, and non-empty `classId` checks.
   Controller behaviour: deletes the full-class collection with `dropCollection(classId)` and removes the matching `abclass_partials` row with `deleteOne({ classId })`.
   Response data: `{ classId, fullClassDeleted, partialDeleted }`.
   Idempotency: repeated deletes succeed and the boolean flags report what was deleted in that call only.
 
 - Cohort reference data — exposes `getCohorts`, `createCohort`, `updateCohort`, and `deleteCohort`.
-  Source: `src/backend/z_Api/referenceData.js`. Delegates to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.
+  Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `cohorts` JsonDbApp collection.
   Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getCohorts()`, `createCohort()`, `updateCohort()`, `deleteCohort()`).
   List, create, and update responses return plain `{ key, name, active, startYear, startMonth }` objects with storage metadata such as `_id` stripped at the controller boundary. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
   Delete requests are key-based and succeed with no `data` payload.
 
 - Year-group reference data — exposes `getYearGroups`, `createYearGroup`, `updateYearGroup`, and `deleteYearGroup`.
-  Source: `src/backend/z_Api/referenceData.js`. Delegates to `ReferenceDataController` CRUD helpers backed by the `year_groups` JsonDbApp collection.
+  Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `year_groups` JsonDbApp collection.
   Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, `deleteYearGroup()`).
   List, create, and update responses return plain `{ key, name }` objects with storage metadata removed. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
   Delete requests are key-based and succeed with no `data` payload.

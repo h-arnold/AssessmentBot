@@ -1409,8 +1409,16 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** summarise regression findings when done.
+- **Implementation notes:** De-Sloppification review completed before documentation pass; findings were addressed (dead test-helper exports removed, stale fallback removed, unused zod type export removed), and cleanup is now clean after the code-review pass.
 - **Deviations from plan:** note any additional work discovered.
+
+**Regression completion checklist**
+
+- [x] de-sloppification reviewed
+- [x] findings addressed
+- [x] cleanup clean after code-review pass
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 
@@ -1502,7 +1510,10 @@ Docs mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- Record final LOC counts here once verified.
+- Updated `docs/developer/backend/api-layer.md`, `src/backend/AGENTS.md`, `src/frontend/AGENTS.md`, and `docs/developer/backend/backend-testing.md` to reflect the single `ALLOWLISTED_METHOD_HANDLERS` registry, the implemented trailing-underscore private helper pattern, the inline trivial-handler closures, and the implemented `apiHandler` test-helper patterns.
+- Repo-wide drift check completed across `docs/developer`, `src/backend`, and `src/frontend`: no remaining `API_METHODS`, `API_ALLOWLIST`, or `_invokeAllowlistedMethod` references remain outside planning/template artefacts.
+- Final LOC check completed against the baseline-table files: baseline `5,920`, current `5,713`, net `-207` lines with deleted rows counted as `0`; the `>= 200` reduction gate passed.
+- Deviations from plan: none.
 
 ---
 

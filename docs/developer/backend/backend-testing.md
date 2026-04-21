@@ -105,29 +105,28 @@ Rules:
 - In tests, load or expose prerequisites before loading dependent files.
 - When updating test imports, follow the real current file layout instead of stale alias paths.
 
-## Planned helper patterns for transport-refactor test work
+## Shared helper patterns for transport-refactor test work
 
-The following helper patterns are planned by the transport-layer de-sloppification action plan but are
-not yet implemented in the current codebase.
+The transport-layer refactor helper patterns are now implemented in `tests/helpers/apiHandlerTestUtils.js`.
 
 ### `installControllerMocks` / `restoreControllerMocks`
 
-> **Not implemented**
+> **Implemented**
 
-Planned location: `tests/helpers/apiHandlerTestUtils.js`
+Location: `tests/helpers/apiHandlerTestUtils.js`
 
 Purpose:
 
 - install per-test constructor mocks for `ScriptAppManager`, `ABClassController`, and
   `ReferenceDataController`
-- let dispatcher tests assert controller delegation after trivial wrapper removal without adding
-  Node-specific fallbacks to production files
+- expose the mocked instances alongside the constructors so dispatcher tests can assert controller
+  delegation after trivial wrapper removal without adding Node-specific fallbacks to production files
 
 ### `installTransportHelperMocks` / `restoreTransportHelperMocks`
 
-> **Not implemented**
+> **Implemented**
 
-Planned location: `tests/helpers/apiHandlerTestUtils.js`
+Location: `tests/helpers/apiHandlerTestUtils.js`
 
 Purpose:
 
@@ -135,10 +134,10 @@ Purpose:
   `globalThis.getGoogleClassrooms_`, `globalThis.upsertABClass_`, `globalThis.updateABClass_`,
   `globalThis.deleteABClass_`, `globalThis.getAssignmentDefinitionPartials_`, and
   `globalThis.deleteAssignmentDefinition_`
-- support Section 4 transport-helper migration tests once non-trivial handlers move behind
-  `apiHandler`
-- exclude `getBackendConfig_` / `setBackendConfig_`, which are planned to be wired by the module's own
-  guarded Node bridge rather than this helper
+- let dispatcher tests override non-trivial transport-helper behaviour without reinstating public
+  global handler functions
+- keep `getBackendConfig_` / `setBackendConfig_` out of this helper because `z_apiHandler.js` wires
+  those through its own guarded Node bridge
 
 ## Anti-Patterns Seen In This Repository
 

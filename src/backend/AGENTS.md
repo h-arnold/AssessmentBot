@@ -13,22 +13,15 @@ Applies when editing `src/backend/**` and backend runtime behaviour.
 
 - Treat `src/backend/z_Api/z_apiHandler.js` as the single frontend transport entrypoint.
 - `apiHandler` is the **sole** function callable by `google.script.run` for all active `z_Api` methods.
-- Register all frontend-callable methods as entries in `ALLOWLISTED_METHOD_HANDLERS` inside
-  `z_apiHandler.js`. `API_METHODS` and `API_ALLOWLIST` in `apiConstants.js` are being removed; do
-  not add new methods there.
-- Return plain response data from handler closures; envelope shaping (`ok`, `requestId`, `error`)
-  must stay in `apiHandler`.
-- Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all
-  allowlisted methods.
-- Treat `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js` as the
-  canonical backend configuration transport methods.
-- Do not reintroduce configuration transport through `src/backend/ConfigurationManager/99_globals.js`;
-  that legacy transport file has been removed.
+- Register all frontend-callable methods as entries in `ALLOWLISTED_METHOD_HANDLERS` inside `z_apiHandler.js`. This object is the sole transport registry; do not add parallel method-name registries elsewhere.
+- Return plain response data from handler closures; envelope shaping (`ok`, `requestId`, `error`) must stay in `apiHandler`.
+- Keep admission/completion tracking (`_runAdmissionPhase`, `_runCompletionPhase`) intact for all allowlisted methods.
+- Treat `getBackendConfig` and `setBackendConfig` in `src/backend/z_Api/apiConfig.js` as the canonical backend configuration transport methods.
+- Do not reintroduce configuration transport through `src/backend/ConfigurationManager/99_globals.js`; that legacy transport file has been removed.
 
 #### Trivial handlers — inline closures
 
-For simple one-liner controller delegations with no private helpers, inline the call as an
-anonymous closure directly in `ALLOWLISTED_METHOD_HANDLERS`:
+For simple one-liner controller delegations with no private helpers, inline the call as an anonymous closure directly in `ALLOWLISTED_METHOD_HANDLERS`:
 
 ```javascript
 getABClassPartials: () => new ABClassController().getAllClassPartials(),
@@ -38,9 +31,7 @@ Anonymous closures in a `const` object are not exposed to `google.script.run`.
 
 #### Non-trivial handlers — trailing-underscore private helper functions
 
-For handlers that require validation helpers, multi-step logic, or data transformation, define
-trailing-underscore helper functions in the relevant `z_Api` file and call them from a
-thin closure in `ALLOWLISTED_METHOD_HANDLERS`:
+For handlers that require validation helpers, multi-step logic, or data transformation, define trailing-underscore helper functions in the relevant `z_Api` file and call them from a thin closure in `ALLOWLISTED_METHOD_HANDLERS`:
 
 ```javascript
 // In googleClassrooms.js — trailing underscore prevents GAS from exposing this to google.script.run
@@ -52,16 +43,11 @@ function getGoogleClassrooms_(parameters) { … }
 getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
 ```
 
-The official Apps Script specification excludes functions whose names end with `_` from the callable
-surface exposed to `google.script.run`. No IIFE or namespace-object wrapper is required; the
-trailing underscore is sufficient and cleaner.
+The official Apps Script specification excludes functions whose names end with `_` from the callable surface exposed to `google.script.run`. No IIFE or namespace-object wrapper is required; the trailing underscore is sufficient and cleaner.
 
-Internal helper functions within a `z_Api` file that are not transport-entry functions (e.g.
-`validateParametersObject_`) also use the trailing underscore for consistency and to prevent
-accidental GAS-global exposure.
+Internal helper functions within a `z_Api` file that are not transport-entry functions (e.g. `validateParametersObject_`) also use the trailing underscore for consistency and to prevent accidental GAS-global exposure.
 
-Export trailing-underscore handlers from the guarded `module.exports` block so that Node unit tests
-can access them without polluting `globalThis`:
+Export trailing-underscore handlers from the guarded `module.exports` block so that Node unit tests can access them without polluting `globalThis`:
 
 ```javascript
 if (typeof module !== 'undefined' && module.exports) {
@@ -69,33 +55,21 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 ```
 
-> **Not implemented** — the trailing-underscore private helper pattern is the planned target for
-> `googleClassrooms.js`, `assignmentDefinitionPartials.js`, `apiConfig.js`, and
-> `abclassMutations.js`. These files currently expose top-level callable globals; the rename is
-> covered in the associated action plan.
+This pattern is now used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`, `deleteAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`, `updateABClass_`, and `deleteABClass_` in their respective `z_Api` files.
 
 ### 0.2 Validation ownership
 
-Transport-boundary validation belongs in API-layer trailing-underscore helpers. Domain invariants belong
-in the called controller, class, or manager.
+Transport-boundary validation belongs in API-layer trailing-underscore helpers. Domain invariants belong in the called controller, class, or manager.
 
 Rules:
 
-1. **Transport validation in API-layer trailing-underscore helpers** — shape of the incoming request,
-   type of envelope fields, path-character safety on string identifiers, foreign-API response
-   shape validation.
-2. **Domain invariants in the controller** — non-empty string checks, integer range checks,
-   required-field completeness, business-rule validation. Do not reimplement these in the
-   transport layer.
-3. **No duplication** unless an explicit security defence-in-depth guard is required; mark any
-   deliberate duplicate with a code comment explaining the intent so it survives future
-   de-sloppification reviews.
+1. **Transport validation in API-layer trailing-underscore helpers** — shape of the incoming request, type of envelope fields, path-character safety on string identifiers, foreign-API response shape validation.
+2. **Domain invariants in the controller** — non-empty string checks, integer range checks, required-field completeness, business-rule validation. Do not reimplement these in the transport layer.
+3. **No duplication** unless an explicit security defence-in-depth guard is required; mark any deliberate duplicate with a code comment explaining the intent so it survives future de-sloppification reviews.
 4. **All new functionality must follow this rule** from the point of introduction.
-5. **Old functionality touched during a change should be opportunistically refactored** toward
-   this rule; keep opportunistic scope local and low-risk.
+5. **Old functionality touched during a change should be opportunistically refactored** toward this rule; keep opportunistic scope local and low-risk.
 
-See `docs/developer/backend/api-layer.md` — "Validation ownership rules" — for the canonical
-policy and examples.
+See `docs/developer/backend/api-layer.md` — "Validation ownership rules" — for the canonical policy and examples.
 
 ## 1. Runtime Model (GAS V8 Script)
 
