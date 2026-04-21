@@ -664,13 +664,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete
 - [x] checks passed — **Status:** Complete (manual review + mandatory-read gate)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** In progress (pending)
-- [ ] push completed — **Status:** In progress (pending)
+- [x] commit created — **Status:** Complete (`a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None
 - **Review resolutions:** Not applicable
 - **Deviations:** approved deviation: documentation-only section, red/green test phases not applicable
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Section 2 — Introduce the feature-local bulk form modal scaffold
 
@@ -681,13 +681,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review after targeted tests passed)
 - [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkSetSelectModal.spec.tsx src/features/classes/BulkSetCourseLengthModal.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx`)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`000ac0f26f55a347fa43927308c3fd07df000013` — `refactor classes bulk modal scaffold`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None after local review
 - **Review resolutions:** Not applicable
 - **Deviations:** None
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `000ac0f26f55a347fa43927308c3fd07df000013` — `refactor classes bulk modal scaffold`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Section 3 — Migrate BulkCreateModal without broadening the scaffold contract
 
@@ -698,13 +698,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review after targeted tests passed)
 - [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkCreateModal.spec.tsx src/features/classes/bulkCreate.spec.tsx`)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`000ac0f26f55a347fa43927308c3fd07df000013` — `refactor classes bulk modal scaffold`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None after local review
 - **Review resolutions:** Not applicable
 - **Deviations:** None recorded
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `000ac0f26f55a347fa43927308c3fd07df000013` — `refactor classes bulk modal scaffold`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Regression and contract hardening
 
@@ -715,13 +715,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review after verification passed)
 - [x] checks passed — **Status:** Complete (`npm run frontend:test -- src/features/classes/BulkSetSelectModal.spec.tsx src/features/classes/BulkSetCourseLengthModal.spec.tsx src/features/classes/BulkCreateModal.spec.tsx src/features/classes/bulkSetCohort.spec.tsx src/features/classes/bulkSetYearGroup.spec.tsx src/features/classes/bulkSetCourseLength.spec.tsx src/features/classes/bulkCreate.spec.tsx`; `npm run frontend:lint`)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`000ac0f26f55a347fa43927308c3fd07df000013`; `a6de7e26710cef9431fdc4267980a667bc332702`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None after local review
 - **Review resolutions:** Not applicable
 - **Deviations:** None recorded
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `000ac0f26f55a347fa43927308c3fd07df000013` — `refactor classes bulk modal scaffold`; `a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Documentation and rollout notes
 
@@ -732,13 +732,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review after doc reconciliation)
 - [x] checks passed — **Status:** Complete (docs match delivered implementation; no layout spec update required)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None after local review
 - **Review resolutions:** Not applicable
 - **Deviations:** None recorded
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Mandatory De-Sloppification pass
 
@@ -749,13 +749,13 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review found no further abstraction or prop-tunnel cleanup needed)
 - [x] checks passed — **Status:** Complete (branch state ready for documentation sync)
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** No additional slop identified beyond the delivered scaffold boundary
 - **Review resolutions:** Not applicable
 - **Deviations:** None recorded
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
 
 ### Final documentation pass
 
@@ -766,10 +766,10 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 - [x] green review clean — **Status:** Complete (local review after docs pass)
 - [x] checks passed — **Status:** Complete
 - [x] action plan updated — **Status:** Complete
-- [ ] commit created — **Status:** Not started
-- [ ] push completed — **Status:** Not started
+- [x] commit created — **Status:** Complete (`a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`)
+- [x] push completed — **Status:** Complete (`git push -u origin feat/classes-modal-refactor-plan`)
 - **Review findings:** None after local review
 - **Review resolutions:** Not applicable
 - **Deviations:** None recorded
-- **Commit evidence:** Not started
-- **Push evidence:** Not started
+- **Commit evidence:** `a6de7e26710cef9431fdc4267980a667bc332702` — `docs reconcile classes modal refactor plan`
+- **Push evidence:** pushed to `origin/feat/classes-modal-refactor-plan`
