@@ -161,35 +161,6 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     expect(controllerResult).not.toHaveProperty('assignments');
   });
 
-  it.each([
-    ['upsertABClass_', { cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 2 }],
-    ['upsertABClass_', { classId: 'class-001', yearGroupKey: 'yg-10', courseLength: 2 }],
-    ['upsertABClass_', { classId: 'class-001', cohortKey: 'coh-2026', courseLength: 2 }],
-    ['upsertABClass_', { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10' }],
-    ['updateABClass_', {}],
-  ])('throws ApiValidationError when required params are missing for %s', (methodName, params) => {
-    const upsertSpy = vi.fn();
-    const updateSpy = vi.fn();
-
-    class MockABClassController {
-      upsertABClass(args) {
-        return upsertSpy(args);
-      }
-
-      updateABClass(args) {
-        return updateSpy(args);
-      }
-    }
-
-    const abclassMutationsModule = loadAbclassMutationsModuleWithGlobals({
-      controllerCtor: MockABClassController,
-    });
-
-    expect(() => abclassMutationsModule[methodName](params)).toThrow(ApiValidationError);
-    expect(upsertSpy).not.toHaveBeenCalled();
-    expect(updateSpy).not.toHaveBeenCalled();
-  });
-
   it('deleteABClass delegates valid classId to controller and returns the delete summary payload', () => {
     const params = {
       classId: 'class-001',
@@ -214,8 +185,6 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
 
   it.each([
     ['missing params', undefined],
-    ['missing classId', {}],
-    ['empty classId', { classId: '' }],
     ['unsafe classId', { classId: '../class-001' }],
   ])('deleteABClass throws ApiValidationError for %s', (_caseName, params) => {
     const deleteSpy = vi.fn();
@@ -248,40 +217,6 @@ describe('Api/abclassMutations direct handlers (key-based contract)', () => {
     });
 
     expect(() => deleteABClass_({ classId: 'class-001' })).toThrow(controllerError);
-  });
-
-  it.each([
-    [
-      'upsertABClass_',
-      { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: '2' },
-    ],
-    [
-      'upsertABClass_',
-      { classId: 'class-001', cohortKey: 'coh-2026', yearGroupKey: 'yg-10', courseLength: 0 },
-    ],
-    ['updateABClass_', { classId: 'class-001', courseLength: '2' }],
-    ['updateABClass_', { classId: 'class-001', courseLength: 0 }],
-  ])('throws ApiValidationError when courseLength is invalid for %s', (methodName, params) => {
-    const upsertSpy = vi.fn();
-    const updateSpy = vi.fn();
-
-    class MockABClassController {
-      upsertABClass(args) {
-        return upsertSpy(args);
-      }
-
-      updateABClass(args) {
-        return updateSpy(args);
-      }
-    }
-
-    const abclassMutationsModule = loadAbclassMutationsModuleWithGlobals({
-      controllerCtor: MockABClassController,
-    });
-
-    expect(() => abclassMutationsModule[methodName](params)).toThrow(ApiValidationError);
-    expect(upsertSpy).not.toHaveBeenCalled();
-    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it.each([

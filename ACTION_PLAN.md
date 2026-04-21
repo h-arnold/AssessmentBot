@@ -1182,9 +1182,34 @@ ApiValidationError for %s'`. This block currently has four cases:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** record actual changes when done.
-- **Deviations from plan:** note any departures.
-- **Follow-up implications for Section 6:** record effects.
+- **Implementation notes (red tests):** Updated `tests/backend-api/abclassMutations.unit.test.js`
+  and `tests/api/abclassMutations.test.js` to remove transport-layer assertions for duplicated
+  domain checks (`requireParameters`, non-empty `classId`, `courseLength` range/type), retained
+  transport-owned checks, and added/kept regression coverage for guarded path-character validation.
+  Expected red failures were assertion mismatches where tests still expected `ApiValidationError`
+  from transport validation now owned by `ABClassController`.
+- **Implementation notes (green implementation):** Completed `abclassMutations.js`
+  transport-validation dedup so upsert/update/delete validators keep only
+  `validateParametersObject_`, guarded `validateMutationClassId_` path-safety checks,
+  plus update-specific forbidden-fields and `active` type checks; removed duplicate transport
+  validation for required-field, non-empty-string `classId`, and `courseLength` domain rules.
+- **Implementation notes (review/check outcomes):** Section review returned clean and section checks
+  passed (`abclassMutations` backend-api tests, API tests, `apiHandler` tests, full backend tests,
+  backend lint).
+- **Deviations from plan:** None.
+- **Follow-up implications for Section 6:** No blocker introduced; Section 6 can proceed as planned
+  on frontend `authService.ts` Zod validation without backend carry-over work from Section 5.
+
+**Section 5 completion checklist**
+
+- [x] red tests added
+- [x] red review clean
+- [x] green implementation complete
+- [x] green review clean
+- [x] checks passed
+- [x] action plan updated
+- [ ] commit created _(pending)_
+- [ ] push completed _(pending)_
 
 ---
 

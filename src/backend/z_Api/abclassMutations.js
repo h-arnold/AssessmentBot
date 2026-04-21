@@ -25,41 +25,6 @@ function validateParametersObject_(parameters, methodName) {
 }
 
 /**
- * Validates that required parameters are present.
- * Wraps validation errors as ApiValidationError.
- *
- * @param {*} parameters - Parameters object to validate; should not be empty.
- * @param {string} methodName - Name of the calling method (for error messages).
- * @throws {ApiValidationError} If any required parameter is missing.
- */
-function requireParameters_(parameters, methodName) {
-  try {
-    Validate.requireParams(parameters, methodName);
-  } catch (error) {
-    throw new ApiValidationError(error.message, {
-      method: methodName,
-      cause: error,
-    });
-  }
-}
-
-/**
- * Validates that classId is a non-empty string.
- *
- * @param {*} classId - The class ID to validate.
- * @param {string} methodName - Name of the calling method (for error messages).
- * @throws {ApiValidationError} If classId is not a non-empty string.
- */
-function validateClassId_(classId, methodName) {
-  if (!Validate.isNonEmptyString(classId)) {
-    throw new ApiValidationError('classId must be a non-empty string.', {
-      method: methodName,
-      fieldName: 'classId',
-    });
-  }
-}
-
-/**
  * Validates a mutation classId used across create, update, and delete flows, disallowing unsafe path characters.
  *
  * @param {*} classId - The class ID to validate.
@@ -67,28 +32,13 @@ function validateClassId_(classId, methodName) {
  * @throws {ApiValidationError} If classId is invalid or contains unsafe characters.
  */
 function validateMutationClassId_(classId, methodName) {
-  validateClassId_(classId, methodName);
-
-  if (classId.includes('..') || classId.includes('/') || classId.includes('\\')) {
+  if (
+    typeof classId === 'string' &&
+    (classId.includes('..') || classId.includes('/') || classId.includes('\\'))
+  ) {
     throw new ApiValidationError('classId must not contain unsafe path characters.', {
       method: methodName,
       fieldName: 'classId',
-    });
-  }
-}
-
-/**
- * Validates that courseLength is a positive integer.
- *
- * @param {*} courseLength - The course length to validate.
- * @param {string} methodName - Name of the calling method (for error messages).
- * @throws {ApiValidationError} If courseLength is not a positive integer.
- */
-function validateCourseLength_(courseLength, methodName) {
-  if (!Number.isInteger(courseLength) || courseLength < 1) {
-    throw new ApiValidationError('courseLength must be an integer greater than or equal to 1.', {
-      method: methodName,
-      fieldName: 'courseLength',
     });
   }
 }
@@ -103,17 +53,7 @@ function validateUpsertABClassParameters_(parameters) {
   const methodName = 'upsertABClass';
 
   validateParametersObject_(parameters, methodName);
-  requireParameters_(
-    {
-      classId: parameters.classId,
-      cohortKey: parameters.cohortKey,
-      yearGroupKey: parameters.yearGroupKey,
-      courseLength: parameters.courseLength,
-    },
-    methodName
-  );
   validateMutationClassId_(parameters.classId, methodName);
-  validateCourseLength_(parameters.courseLength, methodName);
 }
 
 /**
@@ -128,12 +68,7 @@ function validateUpdateABClassParameters_(parameters) {
   const forbiddenFields = ['classOwner', 'teachers', 'students', 'assignments'];
 
   validateParametersObject_(parameters, methodName);
-  requireParameters_({ classId: parameters.classId }, methodName);
   validateMutationClassId_(parameters.classId, methodName);
-
-  if (Object.hasOwn(parameters, 'courseLength')) {
-    validateCourseLength_(parameters.courseLength, methodName);
-  }
 
   if (
     Object.hasOwn(parameters, 'active') &&
@@ -166,7 +101,6 @@ function validateDeleteABClassParameters_(parameters) {
   const methodName = 'deleteABClass';
 
   validateParametersObject_(parameters, methodName);
-  requireParameters_({ classId: parameters.classId }, methodName);
   validateMutationClassId_(parameters.classId, methodName);
 }
 
