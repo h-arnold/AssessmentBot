@@ -188,9 +188,9 @@ No new tests are written in this section because it is documentation-only.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** to be filled during implementation.
-- **Deviations from plan:** to be filled during implementation.
-- **Follow-up implications for later sections:** to be filled during implementation.
+- **Implementation notes:** docs-only update to frontend modal patterns signposts; shared-helpers planned entries already `Not implemented`.
+- **Deviations from plan:** approved deviation from strict TDD loop because this section is documentation-only with no test cases.
+- **Follow-up implications for later sections:** Section 2 should keep shared-helper entries as `Not implemented` until final docs reconciliation.
 
 ---
 
@@ -652,3 +652,118 @@ If the scaffold and modal component specs ship in the implementation outcome, Co
 3. Section 3 — Migrate `BulkCreateModal` without broadening the contract.
 4. Regression and contract hardening.
 5. Documentation and rollout notes.
+
+## Implementation tracker
+
+### Section 1 — Docs-first modal signpost pass
+
+- **Active phase:** Docs implementation in progress (approved deviation: documentation-only section, red/green test phases not applicable)
+- [x] red tests added — **Status:** N/A (documentation-only section)
+- [x] red review clean — **Status:** N/A (documentation-only section)
+- [x] green implementation complete — **Status:** Complete
+- [x] green review clean — **Status:** Complete
+- [x] checks passed — **Status:** Complete (manual review + mandatory-read gate)
+- [x] action plan updated — **Status:** Complete
+- [ ] commit created — **Status:** In progress (pending)
+- [ ] push completed — **Status:** In progress (pending)
+- **Review findings:** None
+- **Review resolutions:** Not applicable
+- **Deviations:** approved deviation: documentation-only section, red/green test phases not applicable
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Section 2 — Introduce the feature-local bulk form modal scaffold
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Section 3 — Migrate BulkCreateModal without broadening the scaffold contract
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Regression and contract hardening
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Documentation and rollout notes
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Mandatory De-Sloppification pass
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
+
+### Final documentation pass
+
+- [ ] red tests added — **Status:** Not started
+- [ ] red review clean — **Status:** Not started
+- [ ] green implementation complete — **Status:** Not started
+- [ ] green review clean — **Status:** Not started
+- [ ] checks passed — **Status:** Not started
+- [ ] action plan updated — **Status:** Not started
+- [ ] commit created — **Status:** Not started
+- [ ] push completed — **Status:** Not started
+- **Review findings:** Not started
+- **Review resolutions:** Not started
+- **Deviations:** None recorded
+- **Commit evidence:** Not started
+- **Push evidence:** Not started
