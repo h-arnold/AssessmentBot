@@ -1,5 +1,4 @@
 import { fireEvent, screen } from '@testing-library/react';
-import { vi } from 'vitest';
 import React, { useState } from 'react';
 
 /* eslint-disable react-refresh/only-export-components */
@@ -45,21 +44,31 @@ export async function chooseOption(fieldLabel: string, optionLabel: string): Pro
 /**
  * Creates a harness component that controls modal open state for testing reset-on-cancel behaviour.
  *
- * @param {React.ReactElement} modalComponent The modal component to test.
+ * @template TProperties
+ * @param {Readonly<{ modalComponent: React.ReactElement<TProperties> }>} properties Test harness properties.
  * @returns {React.ReactNode} Harness output.
  */
-export function CreateModalResetHarness({ modalComponent }: Readonly<{ modalComponent: React.ReactElement }>): React.ReactNode {
+export function CreateModalResetHarness<TProperties extends object>({ modalComponent }: Readonly<{ modalComponent: React.ReactElement<TProperties> }>): React.ReactNode {
   const [open, setOpen] = useState(true);
   
   const handleReopen = () => setOpen(true);
   const handleCancel = () => setOpen(false);
+  
+  // Create a new element with updated props, preserving type safety
+  const ModalComponent = modalComponent.type;
+  const updatedProperties = {
+    ...modalComponent.props,
+    open: open as TProperties extends { open: infer TOpen } ? TOpen : boolean,
+    onCancel: handleCancel as TProperties extends { onCancel: infer TOnCancel } ? TOnCancel : (() => void),
+    key: 'test-harness-modal',
+  };
   
   return (
     <>
       <button type="button" onClick={handleReopen} aria-label="Reopen modal">
         Reopen
       </button>
-      {React.cloneElement(modalComponent, { open, onCancel: handleCancel })}
+      <ModalComponent {...updatedProperties} />
     </>
   );
 }
@@ -85,21 +94,3 @@ export function assertControlDisabled(role: string, name: string): void {
   expect(screen.getByRole(role, { name })).toBeDisabled();
 }
 
-/**
- * Creates a mock confirm function that can be used to test modal submission.
- *
- * @returns {ReturnType<typeof vi.fn>} Mocked confirm function.
- */
-export function createMockConfirm(): ReturnType<typeof vi.fn> {
-  return vi.fn().mockImplementation(async () => {});
-}
-
-/**
- * Creates a mock confirm function that rejects with an error.
- *
- * @param {Error} error The error to reject with.
- * @returns {ReturnType<typeof vi.fn>} Mocked confirm function.
- */
-export function createMockConfirmWithError(error: Error): ReturnType<typeof vi.fn> {
-  return vi.fn().mockRejectedValue(error);
-}

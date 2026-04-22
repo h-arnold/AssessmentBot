@@ -6,8 +6,6 @@ import {
   changeCourseLength,
   assertMessage,
   assertControlDisabled,
-  createMockConfirm,
-  createMockConfirmWithError,
   CreateModalResetHarness,
 } from '../../test/classes/modalTestHelpers';
 
@@ -64,7 +62,7 @@ describe('BulkCreateModal', () => {
   });
 
   it('keeps validation and allowed-option checks local and unchanged', async () => {
-    const onConfirm = createMockConfirm();
+    const onConfirm = vi.fn().mockImplementation(async () => {});
     const { rerender } = render(
       <BulkCreateModal
         open
@@ -103,7 +101,7 @@ describe('BulkCreateModal', () => {
         cohortOptions={cohortOptions}
         yearGroupOptions={yearGroupOptions}
         onCancel={vi.fn()}
-        onConfirm={createMockConfirm()}
+        onConfirm={vi.fn().mockImplementation(async () => {})}
       />,
     );
 
@@ -121,7 +119,7 @@ describe('BulkCreateModal', () => {
         cohortOptions={cohortOptions}
         yearGroupOptions={yearGroupOptions}
         onCancel={vi.fn()}
-        onConfirm={createMockConfirmWithError(new Error('Create failed.'))}
+        onConfirm={vi.fn().mockRejectedValue(new Error('Create failed.'))}
       />,
     );
 
@@ -169,7 +167,7 @@ describe('BulkCreateModal', () => {
         cohortOptions={cohortOptions}
         yearGroupOptions={yearGroupOptions}
         onCancel={vi.fn()}
-        onConfirm={createMockConfirm()}
+        onConfirm={vi.fn().mockImplementation(async () => {})}
       />,
     );
 

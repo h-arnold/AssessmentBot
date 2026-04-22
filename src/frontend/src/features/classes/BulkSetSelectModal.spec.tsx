@@ -5,8 +5,6 @@ import {
   chooseOption,
   assertMessage,
   assertControlDisabled,
-  createMockConfirm,
-  createMockConfirmWithError,
   CreateModalResetHarness,
 } from '../../test/classes/modalTestHelpers';
 
@@ -39,7 +37,7 @@ describe('BulkSetSelectModal', () => {
   });
 
   it('shows validation messages for missing and invalid selections', async () => {
-    const onConfirm = createMockConfirm();
+    const onConfirm = vi.fn().mockImplementation(async () => {});
     const { rerender } = render(
       <BulkSetSelectModal
         fieldLabel="Cohort"
@@ -78,7 +76,7 @@ describe('BulkSetSelectModal', () => {
         options={selectOptions}
         title="Set cohort"
         onCancel={vi.fn()}
-        onConfirm={createMockConfirmWithError(new Error('Update failed.'))}
+        onConfirm={vi.fn().mockRejectedValue(new Error('Update failed.'))}
       />,
     );
 
@@ -125,7 +123,7 @@ describe('BulkSetSelectModal', () => {
         options={selectOptions}
         title="Set cohort"
         onCancel={vi.fn()}
-        onConfirm={createMockConfirm()}
+        onConfirm={vi.fn().mockImplementation(async () => {})}
       />,
     );
 

@@ -6,8 +6,6 @@ import {
   changeCourseLength,
   assertMessage,
   assertControlDisabled,
-  createMockConfirm,
-  createMockConfirmWithError,
 } from '../../test/classes/modalTestHelpers';
 
 const submittedCourseLength = 4;
@@ -46,7 +44,7 @@ describe('BulkSetCourseLengthModal', () => {
       <BulkSetCourseLengthModal
         open
         onCancel={vi.fn()}
-        onConfirm={createMockConfirmWithError(new Error('Update failed.'))}
+        onConfirm={vi.fn().mockRejectedValue(new Error('Update failed.'))}
       />,
     );
 
@@ -102,7 +100,7 @@ describe('BulkSetCourseLengthModal', () => {
         confirmLoading
         open
         onCancel={vi.fn()}
-        onConfirm={createMockConfirm()}
+        onConfirm={vi.fn().mockImplementation(async () => {})}
       />,
     );
 
