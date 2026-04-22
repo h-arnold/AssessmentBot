@@ -540,8 +540,23 @@ API layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** place the transport helper beside the existing assignment-definition read/delete helpers unless the file becomes too mixed.
-- **Deviations from plan:** record if splitting read/delete and mutation transport files becomes necessary for clarity.
+- **Implementation notes:** kept the transport helper alongside the existing assignment-definition API helpers. Red-phase review found the initial tests overfit to a single helper location, so the assertions were loosened to verify behaviour instead. Green-phase review then caught missing validation for unsafe `taskWeightings[].taskId` values; transport safe-key validation and targeted tests were added to clear the blocker.
+- **Deviations from plan:** none.
+- **Status checklist:**
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
+- **Evidence:**
+  - Branch: `feature/assignment-definition-upsert`
+  - Commit SHA: `a67a098a682c856fb36deecad0a1be530568fedb`
+  - Commit message: `feat: add assignment definition upsert transport (section 3)`
+  - Push confirmation: successful to `origin/feature/assignment-definition-upsert`
+- **Non-blocking review items:** none noted.
 - **Follow-up implications for later sections:** frontend service work can build directly on the stable envelope and full-definition response shape.
 
 ---
