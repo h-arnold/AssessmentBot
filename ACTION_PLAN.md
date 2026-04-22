@@ -158,7 +158,12 @@ Helper decision entries:
 ### Implementation notes / deviations / follow-up
 
 - **Implementation notes:** this section is intentionally front-loaded to reduce doc drift during the implementation loop.
-- **Deviations from plan:** record any canonical doc that should not be updated until the implementation lands.
+- **Progress checklist:**
+  - [x] `docs/developer/backend/AssessmentFlow.md` updated so the planned assignment-definition contract uses a stable opaque `definitionKey` and treats metadata-derived key building as legacy flow context only.
+  - [x] `docs/developer/backend/DATA_SHAPES.md` updated so assignment-definition planning now uses authoritative `primaryTopicKey` reference data plus stable identifiers.
+  - [x] `docs/developer/backend/api-layer.md` updated so planned upsert transport validation ownership is explicit.
+  - [x] Planned helper entries verified in all cited canonical docs with status `Not implemented`.
+- **Deviations from plan:** none in Section 0.
 - **Follow-up implications for later sections:** subsequent agents should treat the synced docs plus `SPEC.md` and `ACTION_PLAN.md` as the working contract.
 
 ---

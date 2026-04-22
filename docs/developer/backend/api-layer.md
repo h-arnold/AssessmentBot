@@ -16,7 +16,7 @@ This layer is deliberately REST-ish in structure:
 
 - Assignment-definition upsert request validator
   - Status: `Not implemented`
-  - Planning purpose: own request-shape, safe-key, and structural array validation for the assignment-definition upsert transport helper without duplicating controller business rules.
+  - Planning purpose: own request-shape, optional-update-key safety, and structural `taskWeightings` array validation for the assignment-definition upsert transport helper without duplicating controller business rules.
 
 ## Design Rules
 
@@ -99,6 +99,27 @@ Rules:
 5. **Old functionality should be opportunistically refactored** toward this rule when the code is
    already being touched. Keep the scope of opportunistic refactoring local and low-risk; do not
    expand a focused change into a broad validation audit.
+
+### Planned assignment-definition upsert validation split (`upsertAssignmentDefinition`)
+
+Status: `Not implemented`
+
+When the assignment-definition upsert transport is introduced, its trailing-underscore validator helper should own only transport-boundary checks, while the controller owns the domain contract.
+
+Transport helper ownership:
+
+- require `params` to be a plain object
+- accept `definitionKey` as absent/`null` for create and as a trimmed safe string for update
+- validate the structural shape of `taskWeightings` when supplied (`Array` entries with transport-safe `taskId` and `taskWeighting` fields)
+- reject malformed container types or unsafe identifier strings before controller delegation
+
+Controller ownership:
+
+- reject blank `primaryTitle`, unknown `primaryTopicKey`, invalid `yearGroup`, identical or mismatched source documents, unknown update targets, duplicate business-identity tuples, and invalid task-weighting references
+- generate a stable opaque `definitionKey` on create and preserve the stored key on update
+- resolve `primaryTopic` from authoritative assignment-topic reference data rather than treating copied topic strings as the source of truth
+
+The transport layer must not derive or rotate `definitionKey` from metadata.
 
 ## Relationship to `globals.js`
 
@@ -234,6 +255,7 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
   Response data: `Array<{ primaryTitle, primaryTopic, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
   Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; reference and template document IDs are retained, but `referenceLastModified` and `templateLastModified` are not part of the partial transport shape.
+  Planning note: the current partials transport still reflects the pre-upsert runtime shape. The planned upsert/topic-reference-data contract will move topic authority to `primaryTopicKey`, treat `primaryTopic` as a resolved label, preserve stable opaque `definitionKey` values across metadata edits, and keep `alternateTopics` out of the greenfield upsert request contract.
   Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` is blank or untrimmed, `createdAt`/`updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
 
