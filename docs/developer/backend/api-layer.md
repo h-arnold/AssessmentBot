@@ -12,11 +12,12 @@ This layer is deliberately REST-ish in structure:
 - keep endpoint-style naming coherent within each file
 - use each `.js` file as an API surface for a specific capability area
 
-## Planned Helper Entries (Not Implemented)
+## Shared Helper Status
 
 - Assignment-definition upsert request validator
-  - Status: `Not implemented`
-  - Planning purpose: own request-shape, optional-update-key safety, and structural `taskWeightings` array validation for the assignment-definition upsert transport helper without duplicating controller business rules.
+  - Status: `Implemented`
+  - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
 
 ## Design Rules
 
@@ -72,8 +73,8 @@ if (typeof module !== 'undefined' && module.exports) {
 ```
 
 This pattern is currently used by `getGoogleClassrooms_`, `getAssignmentDefinitionPartials_`,
-`deleteAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`, `upsertABClass_`,
-`updateABClass_`, and `deleteABClass_`.
+`deleteAssignmentDefinition_`, `upsertAssignmentDefinition_`, `getBackendConfig_`, `setBackendConfig_`,
+`upsertABClass_`, `updateABClass_`, and `deleteABClass_`.
 
 ## Validation ownership rules
 
@@ -100,26 +101,28 @@ Rules:
    already being touched. Keep the scope of opportunistic refactoring local and low-risk; do not
    expand a focused change into a broad validation audit.
 
-### Planned assignment-definition upsert validation split (`upsertAssignmentDefinition`)
+### Assignment-definition upsert validation split (`upsertAssignmentDefinition`)
 
-Status: `Not implemented`
+Status: `Implemented`
 
-When the assignment-definition upsert transport is introduced, its trailing-underscore validator helper should own only transport-boundary checks, while the controller owns the domain contract.
+`upsertAssignmentDefinition` now uses a transport validator in `src/backend/z_Api/assignmentDefinitionPartials.js` that owns only transport-boundary checks, while `AssignmentDefinitionController.upsertDefinition()` owns the domain contract.
 
 Transport helper ownership:
 
 - require `params` to be a plain object
-- accept `definitionKey` as absent/`null` for create and as a trimmed safe string for update
-- validate the structural shape of `taskWeightings` when supplied (`Array` entries with transport-safe `taskId` and `taskWeighting` fields)
-- reject malformed container types or unsafe identifier strings before controller delegation
+- require transport-presence of `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`
+- accept `definitionKey` as absent/`null` for create and as an already-trimmed safe string for update
+- validate the structural shape of `taskWeightings` when supplied (`Array` entries with transport-safe `taskId` and required `taskWeighting` fields)
+- reject malformed container types, unsafe identifier strings, and control-character payloads before controller delegation
 
 Controller ownership:
 
-- reject blank `primaryTitle`, unknown `primaryTopicKey`, invalid `yearGroup`, identical or mismatched source documents, unknown update targets, duplicate business-identity tuples, and invalid task-weighting references
-- generate a stable opaque `definitionKey` on create and preserve the stored key on update
+- reject blank `primaryTitle`, unknown `primaryTopicKey`, invalid `yearGroup`, identical source documents, unknown update targets, duplicate business-identity tuples, and invalid task-weighting references
+- require `documentType` on create, reuse the stored `documentType` on update when omitted, generate a stable opaque `definitionKey` on create, and preserve the stored key on update
 - resolve `primaryTopic` from authoritative assignment-topic reference data rather than treating copied topic strings as the source of truth
+- parse or refresh tasks, apply assignment/task weighting values, and manage rollback when registry persistence fails after the full-store write
 
-The transport layer must not derive or rotate `definitionKey` from metadata.
+The transport layer does not derive or rotate `definitionKey` from metadata.
 
 ## Relationship to `globals.js`
 
@@ -195,7 +198,7 @@ Known backend error types are mapped to transport error codes:
 - `ApiRateLimitError` -> `RATE_LIMITED`
 - `ApiValidationError` -> `INVALID_REQUEST`
 - `ApiDisabledError` -> `UNKNOWN_METHOD`
-- errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort or year group cannot be deleted because it is still assigned to one or more `ABClass` records)
+- errors thrown with `reason === 'IN_USE'` -> `IN_USE` (used by `ReferenceDataController` when a cohort, year group, or assignment topic cannot be deleted because it is still referenced by persisted records)
 
 Unmapped or malformed errors return `INTERNAL_ERROR` with a generic message.
 
@@ -253,10 +256,9 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
 
 - `getAssignmentDefinitionPartials` — returns assignment-definition registry rows for the Assignments page without loading task artifacts.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinitionPartials_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getAllPartialDefinitions()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
-  Response data: `Array<{ primaryTitle, primaryTopic, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
-  Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; reference and template document IDs are retained, but `referenceLastModified` and `templateLastModified` are not part of the partial transport shape.
-  Planning note: the current partials transport still reflects the pre-upsert runtime shape. The planned upsert/topic-reference-data contract will move topic authority to `primaryTopicKey`, treat `primaryTopic` as a resolved label, preserve stable opaque `definitionKey` values across metadata edits, and keep `alternateTopics` out of the greenfield upsert request contract.
-  Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` is blank or untrimmed, `createdAt`/`updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
+  Response data: `Array<{ primaryTitle, primaryTopic, primaryTopicKey, yearGroup, alternateTitles, alternateTopics, documentType, referenceDocumentId, templateDocumentId, assignmentWeighting, definitionKey, tasks: null, createdAt: string | null, updatedAt: string | null }>` inside the standard success envelope.
+  Registry contract: rows come from the lightweight `assignment_definitions` collection and intentionally keep `tasks` fixed to `null`; `primaryTopicKey` is authoritative, `primaryTopic` is the resolved label, and `referenceLastModified` / `templateLastModified` are not part of the partial transport shape.
+  Validation: the helper rejects malformed rows with `ApiValidationError` when required fields are missing, `definitionKey` or `primaryTopicKey` are blank or untrimmed, `createdAt` / `updatedAt` are not `string | null`, non-null timestamps are not strict ISO datetime strings with timezone information, or `tasks` is not `null`.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`getAssignmentDefinitionPartials()`), with payload validation in `src/frontend/src/services/assignmentDefinitionPartials.zod.ts`.
 
 - `deleteAssignmentDefinition` — deletes one assignment definition from both the registry and its dedicated full-definition collection.
@@ -266,6 +268,15 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Delete behaviour: removes the partial row from `assignment_definitions` and drops the corresponding `assdef_full_<definitionKey>` collection when present. Missing full collections are treated as already deleted, so repeated safe-key deletes remain idempotent.
   Response data: no data payload (`void`) on success.
   Frontend wrapper: `src/frontend/src/services/assignmentDefinitionPartialsService.ts` (`deleteAssignmentDefinition()`).
+
+- `upsertAssignmentDefinition` — creates or updates a full assignment definition and synchronised registry partial.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
+  Optional request fields: `definitionKey`, `yearGroup`, `alternateTitles`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
+  Validation split: the transport helper enforces request shape, safe-key rules for `definitionKey` and `taskWeightings[].taskId`, and structural `taskWeightings` shape; the controller owns topic membership, duplicate-tuple rejection, numeric weighting rules, document-type rules, task-ID matching, and persistence semantics.
+  Create behaviour: when `definitionKey` is absent or `null`, the controller requires `documentType`, parses tasks from the source documents, resolves `primaryTopic` from `assignment_topics`, generates a stable UUID-style `definitionKey`, and writes both the full store and the registry partial.
+  Update behaviour: when `definitionKey` is present, the controller preserves the stored key, reuses the stored `documentType` when omitted, reparses only when source document IDs changed or refresh is required, and reapplies stored or supplied task weightings before persistence.
+  Response data: the full persisted `AssignmentDefinition` payload, including resolved `primaryTopic`, stable `definitionKey`, full `tasks`, `referenceLastModified`, `templateLastModified`, `createdAt`, and `updatedAt`.
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
   Source: `src/backend/z_Api/googleClassrooms.js`, via the `getGoogleClassrooms_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.
@@ -311,3 +322,9 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
   Frontend wrapper: `src/frontend/src/services/referenceDataService.ts` (`getYearGroups()`, `createYearGroup()`, `updateYearGroup()`, `deleteYearGroup()`).
   List, create, and update responses return plain `{ key, name }` objects with storage metadata removed. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
   Delete requests are key-based and succeed with no `data` payload.
+
+- Assignment-topic reference data — exposes `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, and `deleteAssignmentTopic`.
+  Source: inline closures in `src/backend/z_Api/z_apiHandler.js` delegating to `ReferenceDataController` CRUD helpers backed by the `assignment_topics` JsonDbApp collection.
+  List, create, and update responses return plain `{ key, name }` objects with storage metadata removed. Updates use `{ key, record }`, and duplicate detection is based on `record.name.trim().toLowerCase()` while preserving submitted display casing.
+  Delete requests are key-based and succeed with no `data` payload when unused.
+  Delete-blocked contract: when one or more assignment definitions still reference the topic via `assignment_definitions.primaryTopicKey`, `ReferenceDataController` throws a plain error with `reason === 'IN_USE'`, and `apiHandler` maps that to the standard `{ ok: false, error: { code: 'IN_USE', ... } }` envelope.

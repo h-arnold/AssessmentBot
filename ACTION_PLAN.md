@@ -588,17 +588,32 @@ API layer tests:
 ### Section checks
 
 - `npm test -- tests/controllers/referenceDataController.test.js`
-- `npm test -- tests/controllers/assignmentDefinitionController.test.js`
-- `npm test -- tests/controllers/assignmentDefinitionController.fullStore.test.js`
+- `npm test -- tests/controllers/assignmentDefinitionController.upsert.test.js`
 - `npm test -- tests/backend-api/assignmentDefinitionPartials.unit.test.js`
+- `npm test -- tests/api/assignmentDefinitionUpsertApi.test.js`
 - `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js`
 - `npm test -- tests/api/apiHandler.test.js`
 - `npm run lint`
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** summarise any regression failures that expose older drift in parser/controller contracts.
-- **Deviations from plan:** note any extra contract hardening required to keep touched tests stable.
+- **Implementation notes:** focused regression coverage landed in the dedicated `tests/controllers/assignmentDefinitionController.upsert.test.js` suite rather than the broader legacy controller suites originally listed here. The touched controller/API suites now pass, and the existing partials/delete transport contract remains green.
+- **Mandatory de-sloppification outcome:** completed. Cleanup commit `c40499bb192ea37c89e66b5b9c3d9a41d1155afa` (`fix: enforce primaryTopicKey in partial transport`) hardened the registry partial transport so `primaryTopicKey` is now mandatory, trimmed, and authoritative in the documented response contract.
+- **Deviations from plan:** backend lint completed with no errors and one pre-existing unrelated warning in `src/backend/Models/Cohort.js` (`no-magic-numbers`). No additional production cleanup was required in this phase.
+- **Status checklist:**
+  - [x] touched controller suites passed
+  - [x] touched API suites passed
+  - [x] existing assignment-definition partials/delete transport regression suites passed
+  - [x] backend lint completed
+  - [x] mandatory-read evidence gate satisfied for recorded delegated handoffs
+  - [x] action plan updated
+- **Evidence:**
+  - Verified commands: `npm test -- tests/controllers/referenceDataController.test.js tests/controllers/assignmentDefinitionController.upsert.test.js tests/api/assignmentDefinitionUpsertApi.test.js tests/api/apiHandler.test.js tests/backend-api/assignmentDefinitionPartials.unit.test.js`
+  - Verified command: `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js`
+  - Verified command: `npm run lint`
+  - Cleanup commit SHA: `c40499bb192ea37c89e66b5b9c3d9a41d1155afa`
+  - Cleanup commit message: `fix: enforce primaryTopicKey in partial transport`
+  - Branch ready for docs sync confirmation: `feature/assignment-definition-upsert`
 
 ---
 
@@ -632,8 +647,21 @@ API layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- The future assignments UI should add assignment topics to startup warm-up alongside cohorts and year groups.
-- No layout spec is required for this phase because the planned work is backend-only.
+- **Implementation notes:** `docs/developer/backend/DATA_SHAPES.md`, `docs/developer/backend/AssessmentFlow.md`, and `docs/developer/backend/api-layer.md` now describe the shipped assignment-topic CRUD endpoints, `upsertAssignmentDefinition` transport/domain split, stable-key behaviour, rollback expectations, and the authoritative `primaryTopicKey` partial-transport contract.
+- **Shared-helper reconciliation:** implemented entries were updated for the assignment-topic keyed resource config, assignment-definition upsert orchestration, assignment-definition rollback helper, assignment-definition task-weighting application helper, and assignment-definition upsert request validator. The planned transport response-normaliser helper remains explicitly `Not implemented` because the upsert transport currently returns the controller payload directly.
+- **Deviations from plan:** no production-code or test edits were needed in this documentation pass.
+- **Status checklist:**
+  - [x] backend docs updated for the final topic CRUD and assignment-definition upsert contract
+  - [x] weighting persistence and rollback caveats documented
+  - [x] mandatory-read evidence gate satisfied for this docs pass
+  - [x] planned shared-helper entries reconciled
+  - [x] action plan updated
+- **Completion notes:**
+  - Partial transport docs now state that `primaryTopicKey` is authoritative and required, matching cleanup commit `c40499bb192ea37c89e66b5b9c3d9a41d1155afa`.
+  - Branch ready for docs sync confirmation remains `feature/assignment-definition-upsert`.
+- **Follow-up:**
+  - The future assignments UI should add assignment topics to startup warm-up alongside cohorts and year groups.
+  - No layout spec is required for this phase because the planned work is backend-only.
 
 ---
 
