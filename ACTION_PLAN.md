@@ -607,12 +607,15 @@ API layer tests:
   - [x] backend lint completed
   - [x] mandatory-read evidence gate satisfied for recorded delegated handoffs
   - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
 - **Evidence:**
   - Verified commands: `npm test -- tests/controllers/referenceDataController.test.js tests/controllers/assignmentDefinitionController.upsert.test.js tests/api/assignmentDefinitionUpsertApi.test.js tests/api/apiHandler.test.js tests/backend-api/assignmentDefinitionPartials.unit.test.js`
   - Verified command: `npm test -- tests/api/assignmentDefinitionDeleteApi.test.js`
   - Verified command: `npm run lint`
   - Cleanup commit SHA: `c40499bb192ea37c89e66b5b9c3d9a41d1155afa`
   - Cleanup commit message: `fix: enforce primaryTopicKey in partial transport`
+  - Push: cleanup commit already pushed to `origin/feature/assignment-definition-upsert`
   - Branch ready for docs sync confirmation: `feature/assignment-definition-upsert`
 
 ---
@@ -656,6 +659,11 @@ API layer tests:
   - [x] mandatory-read evidence gate satisfied for this docs pass
   - [x] planned shared-helper entries reconciled
   - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
+- **Evidence:**
+  - Docs commit SHA: `2d8fa7e00fbe6aa6b365f67f2e51b6f4d9b1d4bb`
+  - Push: successful to `origin/feature/assignment-definition-upsert`
 - **Completion notes:**
   - Partial transport docs now state that `primaryTopicKey` is authoritative and required, matching cleanup commit `c40499bb192ea37c89e66b5b9c3d9a41d1155afa`.
   - Branch ready for docs sync confirmation remains `feature/assignment-definition-upsert`.
