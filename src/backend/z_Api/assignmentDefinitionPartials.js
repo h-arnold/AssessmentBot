@@ -67,6 +67,12 @@ function throwDeleteValidationError_(message, fieldName) {
 
 const LAST_CONTROL_CHARACTER_CODE = 31;
 const DELETE_CHARACTER_CODE = 127;
+const UPSERT_REQUIRED_FIELDS = Object.freeze([
+  'primaryTitle',
+  'primaryTopicKey',
+  'referenceDocumentId',
+  'templateDocumentId',
+]);
 
 /**
  * Returns whether the provided key contains control characters.
@@ -125,6 +131,127 @@ function validateDeleteParameters_(parameters) {
   }
 
   return definitionKey;
+}
+
+/**
+ * Throws a transport validation error for assignment-definition upsert operations.
+ *
+ * @param {string} message - Validation failure message.
+ * @param {string|null} fieldName - Related field name.
+ * @throws {ApiValidationError} Always throws.
+ */
+function throwUpsertValidationError_(message, fieldName) {
+  throw new ApiValidationError(message, {
+    method: 'upsertAssignmentDefinition',
+    fieldName,
+  });
+}
+
+/**
+ * Validates payload shape and required fields for assignment-definition upsert transport.
+ *
+ * @param {*} parameters - Candidate request payload.
+ * @throws {ApiValidationError} If the payload violates transport contract rules.
+ */
+function validateUpsertParameters_(parameters) {
+  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
+    throwUpsertValidationError_('params must be an object.', 'params');
+  }
+
+  UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
+    if (!Object.hasOwn(parameters, fieldName)) {
+      throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);
+    }
+  });
+
+  if (typeof parameters.primaryTopicKey !== 'string') {
+    throwUpsertValidationError_('primaryTopicKey must be a string.', 'primaryTopicKey');
+  }
+
+  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
+    if (typeof parameters.definitionKey !== 'string') {
+      throwUpsertValidationError_('definitionKey must be a string when provided.', 'definitionKey');
+    }
+
+    if (parameters.definitionKey.trim().length === 0) {
+      throwUpsertValidationError_('definitionKey must be a non-empty string.', 'definitionKey');
+    }
+
+    if (parameters.definitionKey.trim() !== parameters.definitionKey) {
+      throwUpsertValidationError_('definitionKey must already be trimmed.', 'definitionKey');
+    }
+
+    if (
+      parameters.definitionKey.includes('/') ||
+      parameters.definitionKey.includes('\\') ||
+      parameters.definitionKey.includes('..') ||
+      hasControlCharacters_(parameters.definitionKey)
+    ) {
+      throwUpsertValidationError_('definitionKey contains unsafe characters.', 'definitionKey');
+    }
+  }
+
+  if (!Object.hasOwn(parameters, 'taskWeightings')) {
+    return;
+  }
+
+  if (!Array.isArray(parameters.taskWeightings)) {
+    throwUpsertValidationError_('taskWeightings must be an array when provided.', 'taskWeightings');
+  }
+
+  parameters.taskWeightings.forEach((taskWeighting, index) => {
+    if (!taskWeighting || typeof taskWeighting !== 'object' || Array.isArray(taskWeighting)) {
+      throwUpsertValidationError_('taskWeightings entries must be objects.', 'taskWeightings');
+    }
+
+    if (!Object.hasOwn(taskWeighting, 'taskId')) {
+      throwUpsertValidationError_(
+        'taskWeightings entries must include taskId.',
+        `taskWeightings[${index}].taskId`
+      );
+    }
+
+    if (typeof taskWeighting.taskId !== 'string') {
+      throwUpsertValidationError_(
+        'taskWeightings.taskId must be a string.',
+        'taskWeightings.taskId'
+      );
+    }
+
+    const trimmedTaskId = taskWeighting.taskId.trim();
+    if (trimmedTaskId.length === 0) {
+      throwUpsertValidationError_(
+        'taskWeightings.taskId must be a non-empty string.',
+        'taskWeightings[' + index + '].taskId'
+      );
+    }
+
+    if (trimmedTaskId !== taskWeighting.taskId) {
+      throwUpsertValidationError_(
+        'taskWeightings.taskId must already be trimmed.',
+        'taskWeightings[' + index + '].taskId'
+      );
+    }
+
+    if (
+      taskWeighting.taskId.includes('/') ||
+      taskWeighting.taskId.includes('\\') ||
+      taskWeighting.taskId.includes('..') ||
+      hasControlCharacters_(taskWeighting.taskId)
+    ) {
+      throwUpsertValidationError_(
+        'taskWeightings.taskId contains unsafe characters.',
+        'taskWeightings[' + index + '].taskId'
+      );
+    }
+
+    if (!Object.hasOwn(taskWeighting, 'taskWeighting')) {
+      throwUpsertValidationError_(
+        'taskWeightings entries must include taskWeighting.',
+        `taskWeightings[${index}].taskWeighting`
+      );
+    }
+  });
 }
 
 /**
@@ -325,9 +452,21 @@ function deleteAssignmentDefinition_(parameters) {
   getAssignmentDefinitionController_().deleteDefinitionByKey(definitionKey);
 }
 
+/**
+ * Creates or updates an assignment definition through strict transport-boundary validation.
+ *
+ * @param {Object} parameters - Assignment-definition upsert payload.
+ * @returns {AssignmentDefinition|Object} Persisted full definition payload.
+ */
+function upsertAssignmentDefinition_(parameters) {
+  validateUpsertParameters_(parameters);
+  return getAssignmentDefinitionController_().upsertDefinition(parameters);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getAssignmentDefinitionPartials_,
     deleteAssignmentDefinition_,
+    upsertAssignmentDefinition_,
   };
 }

@@ -38,6 +38,7 @@ const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
   'getAuthorisationStatus',
   'getABClassPartials',
   ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
+  'upsertAssignmentDefinition',
   ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
   ...BACKEND_CONFIG_API_METHOD_NAMES,
   ...REFERENCE_DATA_API_METHOD_NAMES,
@@ -400,7 +401,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(22);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(23);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
@@ -1258,6 +1259,83 @@ describe('Api/apiHandler dispatcher', () => {
       });
     }
   );
+
+  it('delegates successful upsertAssignmentDefinition requests and returns the standard success envelope', () => {
+    const originalUpsertAssignmentDefinition = globalThis.upsertAssignmentDefinition_;
+    const params = {
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      yearGroup: 10,
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      taskWeightings: [{ taskId: 'task-1', taskWeighting: 25 }],
+    };
+    const expectedData = {
+      definitionKey: 'definition-001',
+      tasks: {
+        'task-1': { id: 'task-1', taskWeighting: 25 },
+      },
+    };
+    const upsertAssignmentDefinition_ = vi.fn(() => expectedData);
+
+    globalThis.upsertAssignmentDefinition_ = upsertAssignmentDefinition_;
+
+    try {
+      const response = handleApiRequest('upsertAssignmentDefinition', params);
+
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledTimes(1);
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledWith(params);
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: expectedData,
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      if (originalUpsertAssignmentDefinition === undefined) {
+        delete globalThis.upsertAssignmentDefinition_;
+      } else {
+        globalThis.upsertAssignmentDefinition_ = originalUpsertAssignmentDefinition;
+      }
+    }
+  });
+  it('maps controller-thrown ApiValidationError from upsertAssignmentDefinition to INVALID_REQUEST', () => {
+    const originalUpsertAssignmentDefinition = globalThis.upsertAssignmentDefinition_;
+    const thrownError = new ApiValidationError('Invalid assignment-definition payload');
+    const upsertAssignmentDefinition_ = vi.fn(() => {
+      throw thrownError;
+    });
+
+    globalThis.upsertAssignmentDefinition_ = upsertAssignmentDefinition_;
+
+    try {
+      const response = handleApiRequest('upsertAssignmentDefinition', {
+        primaryTitle: 'Algebra Baseline',
+        primaryTopicKey: 'topic-algebra',
+        yearGroup: 10,
+        referenceDocumentId: 'ref-doc-001',
+        templateDocumentId: 'tpl-doc-001',
+      });
+
+      expectFailureEnvelope(response, {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid assignment-definition payload',
+        withRequestId: true,
+      });
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledTimes(1);
+      expectBoundaryFailureLog(context.errorSpy, {
+        response,
+        methodName: 'upsertAssignmentDefinition',
+        thrownValue: thrownError,
+      });
+    } finally {
+      if (originalUpsertAssignmentDefinition === undefined) {
+        delete globalThis.upsertAssignmentDefinition_;
+      } else {
+        globalThis.upsertAssignmentDefinition_ = originalUpsertAssignmentDefinition;
+      }
+    }
+  });
 
   it.each(IN_USE_FAILURE_CASES)(
     '$description',
