@@ -163,7 +163,21 @@ Helper decision entries:
   - [x] `docs/developer/backend/DATA_SHAPES.md` updated so assignment-definition planning now uses authoritative `primaryTopicKey` reference data plus stable identifiers.
   - [x] `docs/developer/backend/api-layer.md` updated so planned upsert transport validation ownership is explicit.
   - [x] Planned helper entries verified in all cited canonical docs with status `Not implemented`.
-- **Deviations from plan:** none in Section 0.
+- **Approved deviation:** strict red/green TDD phases were not applicable because Section 0 is documentation-only by plan constraint.
+- **Status checklist:**
+  - [x] red tests added — not applicable (docs-only section)
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
+- **Evidence:**
+  - Branch: `feature/assignment-definition-upsert`
+  - Commit SHA: `3f96e1cedf6a283686cb0be3a9de556ff3485797`
+  - Commit message: `docs: sync backend upsert contract (section 0)`
+  - Push: successful to `origin/feature/assignment-definition-upsert`
 - **Follow-up implications for later sections:** subsequent agents should treat the synced docs plus `SPEC.md` and `ACTION_PLAN.md` as the working contract.
 
 ---
