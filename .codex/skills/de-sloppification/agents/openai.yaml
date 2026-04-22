@@ -1,0 +1,6 @@
+interface:
+  display_name: "De-Sloppification"
+  short_description: "Trim dead code and duplication"
+  icon_small: "./assets/de-sloppification-small.svg"
+  icon_large: "./assets/de-sloppification-large.svg"
+  default_prompt: "Use $de-sloppification to review a scoped area for dead code, duplication, and unnecessary complexity."

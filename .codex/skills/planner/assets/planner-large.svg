@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Planner">
+  <rect width="64" height="64" rx="14" fill="#2D6CDF"/>
+  <path d="M20 16h24a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V20a4 4 0 0 1 4-4Zm0 6v20h24V22H20Zm4 4h16v4H24v-4Zm0 7h16v4H24v-4Zm0 7h10v4H24v-4Z" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Planner"
+  short_description: "Draft SPEC and ACTION_PLAN"
+  icon_small: "./assets/planner-small.svg"
+  icon_large: "./assets/planner-large.svg"
+  default_prompt: "Use $planner to clarify the request and draft SPEC.md, any required layout spec, and ACTION_PLAN.md."

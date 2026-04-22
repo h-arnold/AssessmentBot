@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" role="img" aria-label="Planner">
+  <rect width="20" height="20" rx="5" fill="#2D6CDF"/>
+  <path d="M6 5.25h8a1.25 1.25 0 0 1 1.25 1.25v7.5A1.25 1.25 0 0 1 14 15.25H6A1.25 1.25 0 0 1 4.75 14V6.5A1.25 1.25 0 0 1 6 5.25Zm0 1.5v7h8v-7H6Zm1.25 1.5h5.5v1.25h-5.5V8.25Zm0 2.25h5.5v1.25h-5.5v-1.25Zm0 2.25h3.5v1.25h-3.5v-1.25Z" fill="#FFFFFF"/>
+</svg>
