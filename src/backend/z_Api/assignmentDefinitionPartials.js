@@ -3,6 +3,7 @@
 const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
   'primaryTopic',
+  'primaryTopicKey',
   'yearGroup',
   'alternateTitles',
   'alternateTopics',
@@ -300,6 +301,32 @@ function validateDefinitionKey_(definitionKey, rowIndex) {
 }
 
 /**
+ * Validates the strict primary-topic-key transport contract.
+ *
+ * @param {*} primaryTopicKey - Candidate topic key.
+ * @param {number} rowIndex - Row index.
+ * @throws {ApiValidationError} If primaryTopicKey is missing, blank, or untrimmed.
+ */
+function validatePrimaryTopicKey_(primaryTopicKey, rowIndex) {
+  if (typeof primaryTopicKey !== 'string') {
+    throwValidationError_('primaryTopicKey must be a string.', 'primaryTopicKey', rowIndex);
+  }
+
+  const trimmedPrimaryTopicKey = primaryTopicKey.trim();
+  if (trimmedPrimaryTopicKey.length === 0) {
+    throwValidationError_(
+      'primaryTopicKey must be a non-empty string.',
+      'primaryTopicKey',
+      rowIndex
+    );
+  }
+
+  if (trimmedPrimaryTopicKey !== primaryTopicKey) {
+    throwValidationError_('primaryTopicKey must already be trimmed.', 'primaryTopicKey', rowIndex);
+  }
+}
+
+/**
  * Checks whether a value is an ISO datetime string with timezone info.
  *
  * @param {*} value - Candidate timestamp value.
@@ -391,6 +418,7 @@ function validateTimestamp_(value, fieldName, rowIndex) {
 function validatePartialRow_(row, rowIndex) {
   validateRequiredFields_(row, rowIndex);
   validateDefinitionKey_(row.definitionKey, rowIndex);
+  validatePrimaryTopicKey_(row.primaryTopicKey, rowIndex);
   validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
   validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
@@ -409,6 +437,7 @@ function toPlainPartialRow_(row) {
   return {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
+    primaryTopicKey: row.primaryTopicKey,
     yearGroup: row.yearGroup,
     alternateTitles: row.alternateTitles,
     alternateTopics: row.alternateTopics,
