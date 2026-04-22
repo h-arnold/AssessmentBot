@@ -109,9 +109,278 @@ class AssignmentDefinitionController {
   }
 
   /**
-   * Retrieve a definition by its composite key.
+   * Creates or updates a reusable assignment definition.
+   *
+   * @param {Object} payload - Upsert payload.
+   * @returns {AssignmentDefinition} Persisted full definition.
+   */
+  upsertDefinition(payload) {
+    Validate.requireParams({ payload }, 'AssignmentDefinitionController.upsertDefinition');
+
+    const context = this._buildUpsertContext(payload);
+    const topicRecord = this._requireExistingAssignmentTopic(context.primaryTopicKey);
+
+    this._assertNoDuplicateBusinessTuple({
+      definitionKeyToIgnore: context.isUpdate ? context.existingDefinition.definitionKey : null,
+      primaryTitle: context.primaryTitle,
+      primaryTopicKey: context.primaryTopicKey,
+      yearGroup: context.yearGroup,
+    });
+
+    const taskState = this._resolveTaskStateForUpsert({
+      isUpdate: context.isUpdate,
+      existingDefinition: context.existingDefinition,
+      documentType: context.documentType,
+      referenceDocumentId: context.referenceDocumentId,
+      templateDocumentId: context.templateDocumentId,
+    });
+
+    const finalTasks = this._applyTaskWeightingsIfProvided({
+      tasks: taskState.finalTasks,
+      payload,
+    });
+
+    const definition = new AssignmentDefinition({
+      primaryTitle: context.primaryTitle,
+      primaryTopicKey: context.primaryTopicKey,
+      primaryTopic: topicRecord.name,
+      yearGroup: context.yearGroup,
+      alternateTitles: context.alternateTitles,
+      alternateTopics: context.isUpdate ? context.existingDefinition.alternateTopics || [] : [],
+      documentType: context.documentType,
+      referenceDocumentId: context.referenceDocumentId,
+      templateDocumentId: context.templateDocumentId,
+      referenceLastModified: taskState.referenceLastModified,
+      templateLastModified: taskState.templateLastModified,
+      assignmentWeighting: context.assignmentWeighting,
+      tasks: finalTasks,
+      createdAt: context.isUpdate ? context.existingDefinition.createdAt : null,
+      updatedAt: context.isUpdate ? context.existingDefinition.updatedAt : null,
+      definitionKey: context.definitionKey,
+    });
+
+    return this._persistDefinitionWithRollback({
+      definition,
+      previousFullDefinition: context.existingDefinition,
+    });
+  }
+
+  /**
+   * Builds validated upsert context values.
+   *
+   * @param {Object} payload - Upsert payload.
+   * @returns {Object} Normalised context.
+   * @private
+   */
+  _buildUpsertContext(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new TypeError('upsertDefinition payload must be an object.');
+    }
+
+    const isUpdate = this._isNonEmptyString(payload.definitionKey);
+    const existingDefinition = isUpdate
+      ? this._getStoredFullDocument(payload.definitionKey.trim())
+      : null;
+
+    if (isUpdate && !existingDefinition) {
+      throw new Error(`Unknown definitionKey for update: ${payload.definitionKey}`);
+    }
+
+    const primaryTitle = this._requireTrimmedString(payload.primaryTitle, 'primaryTitle');
+    const primaryTopicKey = this._requireTrimmedString(payload.primaryTopicKey, 'primaryTopicKey');
+    const referenceDocumentId = this._requireTrimmedString(
+      payload.referenceDocumentId,
+      'referenceDocumentId'
+    );
+    const templateDocumentId = this._requireTrimmedString(
+      payload.templateDocumentId,
+      'templateDocumentId'
+    );
+
+    if (referenceDocumentId === templateDocumentId) {
+      throw new Error('referenceDocumentId and templateDocumentId must be different.');
+    }
+
+    return {
+      isUpdate,
+      existingDefinition,
+      primaryTitle,
+      primaryTopicKey,
+      referenceDocumentId,
+      templateDocumentId,
+      yearGroup: this._normaliseYearGroup(payload.yearGroup),
+      alternateTitles: this._resolveAlternateTitlesForUpsert({
+        payload,
+        isUpdate,
+        existingDefinition,
+      }),
+      assignmentWeighting: this._resolveAssignmentWeightingForUpsert({
+        payload,
+        isUpdate,
+        existingDefinition,
+      }),
+      definitionKey: isUpdate
+        ? existingDefinition.definitionKey
+        : this._generateStableDefinitionKey(),
+      documentType: this._resolveDocumentTypeForUpsert({ payload, existingDefinition }),
+    };
+  }
+
+  /**
+   * Resolves alternate titles for upsert operations.
+   *
+   * @param {Object} params - Resolution parameters.
+   * @param {Object} params.payload - Upsert payload.
+   * @param {boolean} params.isUpdate - Whether this is an update.
+   * @param {Object|null} params.existingDefinition - Existing definition when updating.
+   * @returns {Array<string>} Resolved alternate titles.
+   * @private
+   */
+  _resolveAlternateTitlesForUpsert({ payload, isUpdate, existingDefinition }) {
+    const shouldPreserveAlternateTitles = isUpdate && !Object.hasOwn(payload, 'alternateTitles');
+
+    if (shouldPreserveAlternateTitles) {
+      return existingDefinition.alternateTitles || [];
+    }
+
+    return this._normaliseAlternateTitles(payload.alternateTitles);
+  }
+
+  /**
+   * Resolves assignment weighting for upsert operations.
+   *
+   * @param {Object} params - Resolution parameters.
+   * @param {Object} params.payload - Upsert payload.
+   * @param {boolean} params.isUpdate - Whether this is an update.
+   * @param {Object|null} params.existingDefinition - Existing definition when updating.
+   * @returns {number|null} Assignment weighting.
+   * @private
+   */
+  _resolveAssignmentWeightingForUpsert({ payload, isUpdate, existingDefinition }) {
+    if (Object.hasOwn(payload, 'assignmentWeighting')) {
+      return this._requireNumericOrNullWeighting(
+        payload.assignmentWeighting,
+        'assignmentWeighting'
+      );
+    }
+
+    return isUpdate ? existingDefinition.assignmentWeighting : null;
+  }
+
+  /**
+   * Resolves task state and timestamp updates for upsert operations.
+   *
+   * @param {Object} params - Resolution parameters.
+   * @param {boolean} params.isUpdate - Whether this is an update.
+   * @param {Object|null} params.existingDefinition - Existing definition when updating.
+   * @param {string} params.documentType - Document type.
+   * @param {string} params.referenceDocumentId - Reference document ID.
+   * @param {string} params.templateDocumentId - Template document ID.
+   * @returns {{finalTasks: Object, referenceLastModified: string|null, templateLastModified: string|null}} Task state.
+   * @private
+   */
+  _resolveTaskStateForUpsert({
+    isUpdate,
+    existingDefinition,
+    documentType,
+    referenceDocumentId,
+    templateDocumentId,
+  }) {
+    const existingTasks = isUpdate ? existingDefinition.tasks || {} : {};
+    let referenceLastModified = isUpdate ? existingDefinition.referenceLastModified : null;
+    let templateLastModified = isUpdate ? existingDefinition.templateLastModified : null;
+
+    if (
+      !isUpdate ||
+      this._hasDocumentIdChanges(existingDefinition, referenceDocumentId, templateDocumentId)
+    ) {
+      referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
+      templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
+      return {
+        finalTasks: this._applyStoredWeightings(
+          existingTasks,
+          this._parseTasks({
+            documentType,
+            referenceDocumentId,
+            templateDocumentId,
+          })
+        ),
+        referenceLastModified,
+        templateLastModified,
+      };
+    }
+
+    const latestReferenceModified = DriveManager.getFileModifiedTime(referenceDocumentId);
+    const latestTemplateModified = DriveManager.getFileModifiedTime(templateDocumentId);
+    const needsRefresh = Utils.definitionNeedsRefresh(
+      existingDefinition,
+      latestReferenceModified,
+      latestTemplateModified
+    );
+
+    if (!needsRefresh) {
+      return {
+        finalTasks: existingTasks,
+        referenceLastModified,
+        templateLastModified,
+      };
+    }
+
+    return {
+      finalTasks: this._applyStoredWeightings(
+        existingTasks,
+        this._parseTasks({
+          documentType,
+          referenceDocumentId,
+          templateDocumentId,
+        })
+      ),
+      referenceLastModified: latestReferenceModified,
+      templateLastModified: latestTemplateModified,
+    };
+  }
+
+  /**
+   * Applies task-weighting patches when present in payload.
+   *
+   * @param {Object} params - Parameters.
+   * @param {Object} params.tasks - Task map.
+   * @param {Object} params.payload - Upsert payload.
+   * @returns {Object} Patched or original tasks.
+   * @private
+   */
+  _applyTaskWeightingsIfProvided({ tasks, payload }) {
+    if (!Object.hasOwn(payload, 'taskWeightings')) {
+      return tasks;
+    }
+
+    return this._applyTaskWeightings(tasks, payload.taskWeightings);
+  }
+
+  /**
+   * Returns whether reference/template IDs changed during update.
+   *
+   * @param {Object|null} existingDefinition - Existing definition.
+   * @param {string} referenceDocumentId - New reference ID.
+   * @param {string} templateDocumentId - New template ID.
+   * @returns {boolean} True when IDs changed.
+   * @private
+   */
+  _hasDocumentIdChanges(existingDefinition, referenceDocumentId, templateDocumentId) {
+    if (!existingDefinition) {
+      return true;
+    }
+
+    return (
+      existingDefinition.referenceDocumentId !== referenceDocumentId ||
+      existingDefinition.templateDocumentId !== templateDocumentId
+    );
+  }
+
+  /**
+   * Retrieve a definition by its stable definition key.
    * Returns the full definition if available, or a partial metadata entry from the registry.
-   * @param {string} definitionKey - The composite definition key.
+   * @param {string} definitionKey - The stable definition key.
    * @param {Object} [options] - Retrieval options.
    * @param {'full'|'partial'} [options.form='full'] - Which store to query.
    * @returns {AssignmentDefinition|null} The definition instance, or null if not found.
@@ -154,23 +423,11 @@ class AssignmentDefinitionController {
       definition instanceof AssignmentDefinition
         ? definition
         : new AssignmentDefinition(definition);
-    definitionInstance.touchUpdated();
-    const fullPayload = definitionInstance.toJSON();
-    const fullCollection = this._getFullCollection(definitionInstance.definitionKey);
-    const filter = { definitionKey: definitionInstance.definitionKey };
-    const existingFull = fullCollection.findOne(filter);
 
-    if (existingFull) {
-      fullCollection.replaceOne(filter, fullPayload);
-    } else {
-      fullCollection.insertOne(fullPayload);
-    }
-
-    fullCollection.save();
-
-    this.savePartialDefinition(definitionInstance);
-
-    return AssignmentDefinition.fromJSON(fullPayload);
+    return this._persistDefinitionWithRollback({
+      definition: definitionInstance,
+      previousFullDefinition: this._getStoredFullDocument(definitionInstance.definitionKey),
+    });
   }
 
   /**
@@ -251,7 +508,7 @@ class AssignmentDefinitionController {
   /**
    * Generates the collection name for storing a full definition.
    *
-   * @param {string} definitionKey - The definition composite key.
+   * @param {string} definitionKey - The stable definition key.
    * @returns {string} Collection name with prefix and key.
    * @private
    */
@@ -262,13 +519,29 @@ class AssignmentDefinitionController {
   /**
    * Retrieves the JsonDb collection for storing a full definition.
    *
-   * @param {string} definitionKey - The definition composite key.
+   * @param {string} definitionKey - The stable definition key.
    * @returns {Object} The JsonDb collection instance.
    * @private
    */
   _getFullCollection(definitionKey) {
     const name = this._getFullCollectionName(definitionKey);
     return this.dbManager.getCollection(name);
+  }
+
+  /**
+   * Retrieves a raw full-definition document without model hydration.
+   *
+   * @param {string} definitionKey - Definition key.
+   * @returns {Object|null} Stored full-definition JSON or null.
+   * @private
+   */
+  _getStoredFullDocument(definitionKey) {
+    if (!definitionKey) {
+      return null;
+    }
+
+    const fullCollection = this._getFullCollection(definitionKey);
+    return fullCollection.findOne({ definitionKey }) || null;
   }
 
   /**
@@ -374,6 +647,397 @@ class AssignmentDefinitionController {
     return Object.fromEntries(
       definitions.map((td) => [td.getId(), TaskDefinition.fromJSON(td.toJSON())])
     );
+  }
+
+  /**
+   * Writes full-store first and registry second, then attempts rollback on registry failure.
+   *
+   * @param {Object} params - Persistence options.
+   * @param {AssignmentDefinition|Object} params.definition - Target definition.
+   * @param {AssignmentDefinition|null} [params.previousFullDefinition=null] - Existing persisted full definition.
+   * @returns {AssignmentDefinition} Persisted definition.
+   * @private
+   */
+  _persistDefinitionWithRollback({ definition, previousFullDefinition = null }) {
+    const definitionInstance =
+      definition instanceof AssignmentDefinition
+        ? definition
+        : new AssignmentDefinition(definition);
+
+    definitionInstance.touchUpdated();
+
+    const fullPayload = definitionInstance.toJSON();
+    const partialPayload = definitionInstance.toPartialJSON();
+    const filter = { definitionKey: definitionInstance.definitionKey };
+
+    const fullCollection = this._getFullCollection(definitionInstance.definitionKey);
+    const registryCollection = this._getRegistryCollection();
+
+    try {
+      if (previousFullDefinition) {
+        fullCollection.replaceOne(filter, fullPayload);
+      } else {
+        fullCollection.insertOne(fullPayload);
+      }
+      fullCollection.save();
+    } catch (error) {
+      const wrapped = new Error(
+        `Failed to persist assignment definition to full store for ${definitionInstance.definitionKey}`
+      );
+      wrapped.cause = error;
+      throw wrapped;
+    }
+
+    const previousRegistryRecord = registryCollection.findOne(filter);
+
+    try {
+      if (previousRegistryRecord) {
+        registryCollection.replaceOne(filter, partialPayload);
+      } else {
+        registryCollection.insertOne(partialPayload);
+      }
+      registryCollection.save();
+    } catch (registryError) {
+      try {
+        this._rollbackFullStoreWrite({
+          fullCollection,
+          filter,
+          previousFullDefinition,
+        });
+      } catch (rollbackError) {
+        const repairError = new Error(
+          'Registry write failed and rollback failed. Manual repair is required.'
+        );
+        repairError.cause = {
+          registryError,
+          rollbackError,
+        };
+        throw repairError;
+      }
+
+      const wrapped = new Error(
+        `Failed to persist assignment definition to registry for ${definitionInstance.definitionKey}`
+      );
+      wrapped.cause = registryError;
+      throw wrapped;
+    }
+
+    return AssignmentDefinition.fromJSON(fullPayload);
+  }
+
+  /**
+   * Attempts to restore full-store state after a later write failure.
+   *
+   * @param {Object} params - Rollback parameters.
+   * @param {Object} params.fullCollection - Full-store collection instance.
+   * @param {Object} params.filter - Definition filter.
+   * @param {AssignmentDefinition|null} params.previousFullDefinition - Previous definition state.
+   * @private
+   */
+  _rollbackFullStoreWrite({ fullCollection, filter, previousFullDefinition }) {
+    if (previousFullDefinition) {
+      const previousPayload =
+        previousFullDefinition instanceof AssignmentDefinition
+          ? previousFullDefinition.toJSON()
+          : previousFullDefinition;
+      fullCollection.replaceOne(filter, previousPayload);
+    } else {
+      fullCollection.deleteOne(filter);
+    }
+
+    fullCollection.save();
+  }
+
+  /**
+   * Applies existing task weightings to parsed task sets.
+   *
+   * @param {Object} existingTasks - Existing task map.
+   * @param {Object} parsedTasks - Parsed task map.
+   * @returns {Object} Parsed tasks with preserved matching weightings.
+   * @private
+   */
+  _applyStoredWeightings(existingTasks, parsedTasks) {
+    const existingEntries = Object.entries(existingTasks || {});
+
+    existingEntries.forEach(([taskId, existingTask]) => {
+      const parsedTask = this._findTaskById(parsedTasks, taskId);
+      if (!parsedTask) {
+        return;
+      }
+
+      if (!Object.hasOwn(existingTask, 'taskWeighting')) {
+        return;
+      }
+
+      parsedTask.taskWeighting = existingTask.taskWeighting;
+    });
+
+    return parsedTasks;
+  }
+
+  /**
+   * Applies payload task-weighting patches to known tasks.
+   *
+   * @param {Object} tasks - Task map.
+   * @param {Array<Object>} taskWeightings - Patch list.
+   * @returns {Object} Patched task map.
+   * @private
+   */
+  _applyTaskWeightings(tasks, taskWeightings) {
+    if (!Array.isArray(taskWeightings)) {
+      throw new TypeError('taskWeightings must be an array when provided.');
+    }
+
+    taskWeightings.forEach((patch) => {
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+        throw new TypeError('taskWeightings entries must be objects.');
+      }
+
+      const taskId = this._requireTrimmedString(patch.taskId, 'taskWeightings.taskId');
+
+      const task = this._findTaskById(tasks, taskId);
+      if (!task) {
+        throw new Error(`taskWeightings contains unknown taskId: ${taskId}`);
+      }
+
+      const taskWeightingValue = Object.hasOwn(patch, 'taskWeighting') ? patch.taskWeighting : null;
+
+      task.taskWeighting = this._requireNumericOrNullWeighting(
+        taskWeightingValue,
+        `taskWeightings.${taskId}.taskWeighting`
+      );
+    });
+
+    return tasks;
+  }
+
+  /**
+   * Finds a task object by ID from a task map.
+   *
+   * @param {Object} tasks - Task map.
+   * @param {string} taskId - Task ID.
+   * @returns {Object|null} Task object or null.
+   * @private
+   */
+  _findTaskById(tasks, taskId) {
+    const entries = Object.entries(tasks || {});
+    const matched = entries.find(([candidateTaskId]) => candidateTaskId === taskId);
+    return matched ? matched[1] : null;
+  }
+
+  /**
+   * Validates that no duplicate business tuple exists in registry rows.
+   *
+   * @param {Object} params - Duplicate-check params.
+   * @param {string|null} params.definitionKeyToIgnore - Definition key to exclude from duplicate checks.
+   * @param {string} params.primaryTitle - Candidate title.
+   * @param {string} params.primaryTopicKey - Candidate topic key.
+   * @param {number|null} params.yearGroup - Candidate year group.
+   * @private
+   */
+  _assertNoDuplicateBusinessTuple({
+    definitionKeyToIgnore,
+    primaryTitle,
+    primaryTopicKey,
+    yearGroup,
+  }) {
+    const rows = this.dbManager.readAll(this.registryCollectionName) || [];
+    const expectedTitle = this._normaliseTitleForDuplicate(primaryTitle);
+
+    const conflict = rows.find((row) => {
+      if (!row || typeof row !== 'object') {
+        return false;
+      }
+
+      if (definitionKeyToIgnore && row.definitionKey === definitionKeyToIgnore) {
+        return false;
+      }
+
+      return (
+        this._normaliseTitleForDuplicate(row.primaryTitle) === expectedTitle &&
+        row.primaryTopicKey === primaryTopicKey &&
+        (row.yearGroup ?? null) === yearGroup
+      );
+    });
+
+    if (conflict) {
+      throw new Error(
+        `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroup})`
+      );
+    }
+  }
+
+  /**
+   * Resolves and validates an assignment topic by key.
+   *
+   * @param {string} primaryTopicKey - Topic key.
+   * @returns {{key: string, name: string}} Topic record.
+   * @private
+   */
+  _requireExistingAssignmentTopic(primaryTopicKey) {
+    const topics = this._listAssignmentTopics();
+    const topicRecord = topics.find((topic) => topic && topic.key === primaryTopicKey) || null;
+
+    if (!topicRecord) {
+      throw new Error(`Unknown primaryTopicKey: ${primaryTopicKey}`);
+    }
+
+    return topicRecord;
+  }
+
+  /**
+   * Lists assignment-topic records.
+   *
+   * @returns {Array<{key: string, name: string}>} Topic records.
+   * @private
+   */
+  _listAssignmentTopics() {
+    const controller = new ReferenceDataController();
+    return controller.listAssignmentTopics();
+  }
+
+  /**
+   * Returns the document type used for upsert parsing.
+   *
+   * @param {Object} params - Resolution params.
+   * @param {Object} params.payload - Upsert payload.
+   * @param {Object|null} params.existingDefinition - Existing definition for updates.
+   * @returns {string} Document type.
+   * @private
+   */
+  _resolveDocumentTypeForUpsert({ payload, existingDefinition }) {
+    if (this._isNonEmptyString(payload.documentType)) {
+      return payload.documentType.trim().toUpperCase();
+    }
+
+    if (existingDefinition?.documentType) {
+      return existingDefinition.documentType;
+    }
+
+    throw new Error('documentType must be provided for create upserts.');
+  }
+
+  /**
+   * Generates a stable opaque definition key.
+   *
+   * @returns {string} Stable identifier.
+   * @private
+   */
+  _generateStableDefinitionKey() {
+    if (typeof Utilities === 'undefined' || typeof Utilities.getUuid !== 'function') {
+      throw new TypeError('Utilities.getUuid must be available to generate definitionKey.');
+    }
+
+    const generatedDefinitionKey = Utilities.getUuid();
+
+    if (!this._isNonEmptyString(generatedDefinitionKey)) {
+      throw new TypeError('Utilities.getUuid must return a non-empty string definitionKey.');
+    }
+
+    return generatedDefinitionKey.trim();
+  }
+
+  /**
+   * Validates weighting values for assignment and task contracts.
+   *
+   * @param {*} value - Candidate weighting.
+   * @param {string} fieldName - Field label for diagnostics.
+   * @returns {number|null} Validated weighting.
+   * @private
+   */
+  _requireNumericOrNullWeighting(value, fieldName) {
+    if (value === null) {
+      return null;
+    }
+
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new TypeError(`${fieldName} must be a number or null.`);
+    }
+
+    return value;
+  }
+
+  /**
+   * Returns whether the value is a non-empty string after trim.
+   *
+   * @param {*} value - Value to check.
+   * @returns {boolean} True when non-empty trimmed string.
+   * @private
+   */
+  _isNonEmptyString(value) {
+    return typeof value === 'string' && value.trim().length > 0;
+  }
+
+  /**
+   * Requires a non-empty string and returns trimmed value.
+   *
+   * @param {*} value - Candidate value.
+   * @param {string} fieldName - Field for diagnostics.
+   * @returns {string} Trimmed string.
+   * @private
+   */
+  _requireTrimmedString(value, fieldName) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      throw new Error(`${fieldName} must be a non-empty string.`);
+    }
+
+    return value.trim();
+  }
+
+  /**
+   * Normalises duplicate-check title format.
+   *
+   * @param {string} title - Candidate title.
+   * @returns {string} Normalised title.
+   * @private
+   */
+  _normaliseTitleForDuplicate(title) {
+    return String(title || '')
+      .trim()
+      .toLowerCase();
+  }
+
+  /**
+   * Normalises year-group payload values.
+   *
+   * @param {*} yearGroup - Candidate year group.
+   * @returns {number|null} Normalised value.
+   * @private
+   */
+  _normaliseYearGroup(yearGroup) {
+    if (yearGroup === null || yearGroup === undefined) {
+      return null;
+    }
+
+    if (!Number.isInteger(yearGroup)) {
+      throw new TypeError('yearGroup must be an integer or null.');
+    }
+
+    return yearGroup;
+  }
+
+  /**
+   * Normalises alternate titles payload.
+   *
+   * @param {*} alternateTitles - Candidate title list.
+   * @returns {Array<string>} Normalised title list.
+   * @private
+   */
+  _normaliseAlternateTitles(alternateTitles) {
+    if (alternateTitles === undefined || alternateTitles === null) {
+      return [];
+    }
+
+    if (!Array.isArray(alternateTitles)) {
+      throw new TypeError('alternateTitles must be an array when provided.');
+    }
+
+    return alternateTitles.map((title, index) => {
+      if (typeof title !== 'string' || title.trim().length === 0) {
+        throw new Error(`alternateTitles[${index}] must be a non-empty string.`);
+      }
+      return title.trim();
+    });
   }
 }
 

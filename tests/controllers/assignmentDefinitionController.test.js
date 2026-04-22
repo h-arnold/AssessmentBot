@@ -160,6 +160,7 @@ describe('AssignmentDefinitionController', () => {
         _id: '585c9ad9-2993-4a0d-b3a4-f513133da1a0',
         primaryTitle: '1.1 Learning to Research',
         primaryTopic: 'Space',
+        primaryTopicKey: 'topic-space',
         yearGroup: null,
         documentType: 'SLIDES',
         referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
@@ -171,6 +172,7 @@ describe('AssignmentDefinitionController', () => {
         _id: '9387cd91-c034-4e0a-a896-f25a7bcfca4a',
         primaryTitle: '8. Secondary Storage - Cloud',
         primaryTopic: '1.1 Computer Architecture',
+        primaryTopicKey: 'topic-computer-architecture',
         yearGroup: null,
         documentType: 'SLIDES',
         referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
@@ -182,6 +184,7 @@ describe('AssignmentDefinitionController', () => {
         _id: 'cb412c10-a619-4e3c-bba2-821b0ce33a08',
         primaryTitle: '1. DigiTech Pathways',
         primaryTopic: 'Pathways',
+        primaryTopicKey: 'topic-pathways',
         yearGroup: null,
         documentType: 'SLIDES',
         referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
@@ -193,6 +196,7 @@ describe('AssignmentDefinitionController', () => {
         _id: '7fc01a34-4301-4b69-941d-eb629c126b8f',
         primaryTitle: '7. Social Engineering',
         primaryTopic: 'Starters',
+        primaryTopicKey: 'topic-starters',
         yearGroup: null,
         documentType: 'SLIDES',
         referenceDocumentId: '13UhXRtuJf8uqwH5wYJkjVTBQhqpniZwPBhpMjT7KQxc',
@@ -204,6 +208,7 @@ describe('AssignmentDefinitionController', () => {
         _id: 'c130e72f-ed48-4045-917e-688244da35c7',
         primaryTitle: '7. Survival Challenges Reflect and Review',
         primaryTopic: 'Survival',
+        primaryTopicKey: 'topic-survival',
         yearGroup: null,
         documentType: 'SLIDES',
         referenceDocumentId: '1MXnBAxkTLcg8CIPxVWa0wEc9CgIz3DPfjqXMv3LPmNw',
@@ -228,6 +233,8 @@ describe('AssignmentDefinitionController', () => {
     expect(defs[0]).toBeInstanceOf(AssignmentDefinition);
     const keys = defs.map((d) => d.definitionKey);
     expect(keys).toEqual(sampleDocs.map((d) => d.definitionKey));
+    const topicKeys = defs.map((d) => d.primaryTopicKey);
+    expect(topicKeys).toEqual(sampleDocs.map((d) => d.primaryTopicKey));
   });
 
   it('getAllPartialDefinitions returns empty array when registry empty', () => {
