@@ -10,6 +10,10 @@ const REFERENCE_DATA_API_METHOD_NAMES = Object.freeze([
   'createYearGroup',
   'updateYearGroup',
   'deleteYearGroup',
+  'getAssignmentTopics',
+  'createAssignmentTopic',
+  'updateAssignmentTopic',
+  'deleteAssignmentTopic',
 ]);
 
 function loadApiHandlerModule() {
@@ -124,6 +128,10 @@ function installControllerMocks(
     createYearGroup: vi.fn(),
     updateYearGroup: vi.fn(),
     deleteYearGroup: vi.fn(),
+    listAssignmentTopics: vi.fn(),
+    createAssignmentTopic: vi.fn(),
+    updateAssignmentTopic: vi.fn(),
+    deleteAssignmentTopic: vi.fn(),
     ...referenceDataControllerBehaviour,
   };
   const referenceDataControllerCtor = vi.fn(function ReferenceDataControllerMock() {

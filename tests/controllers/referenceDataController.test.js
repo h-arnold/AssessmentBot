@@ -42,12 +42,20 @@ function expectedAcademicYearStart(date) {
   return month >= 9 ? date.getFullYear() : date.getFullYear() - 1;
 }
 
-function setupReferenceDataDbMocks(cohortsCollection, yearGroupsCollection, partialsCollection) {
+function setupReferenceDataDbMocks(
+  cohortsCollection,
+  yearGroupsCollection,
+  partialsCollection,
+  assignmentTopicsCollection,
+  assignmentDefinitionPartialsCollection
+) {
   const mockDbManager = {
     getCollection: vi.fn((name) => {
       if (name === 'cohorts') return cohortsCollection;
       if (name === 'year_groups') return yearGroupsCollection;
       if (name === 'abclass_partials') return partialsCollection;
+      if (name === 'assignment_topics') return assignmentTopicsCollection;
+      if (name === 'assignment_definitions') return assignmentDefinitionPartialsCollection;
       throw new Error(`Unexpected collection: ${name}`);
     }),
   };
@@ -93,18 +101,24 @@ let ReferenceDataController;
 let cohortsCollection;
 let yearGroupsCollection;
 let partialsCollection;
+let assignmentTopicsCollection;
+let assignmentDefinitionPartialsCollection;
 let mockDbManager;
 
 beforeEach(async () => {
   cohortsCollection = createMockCollection(vi);
   yearGroupsCollection = createMockCollection(vi);
   partialsCollection = createMockCollection(vi);
+  assignmentTopicsCollection = createMockCollection(vi);
+  assignmentDefinitionPartialsCollection = createMockCollection(vi);
 
   setupControllerTestMocks(vi);
   mockDbManager = setupReferenceDataDbMocks(
     cohortsCollection,
     yearGroupsCollection,
-    partialsCollection
+    partialsCollection,
+    assignmentTopicsCollection,
+    assignmentDefinitionPartialsCollection
   );
 
   const controllerModule =
@@ -484,6 +498,102 @@ describe('ReferenceDataController – year-group key-based persistence', () => {
     expect(error.reason ?? error.code ?? error.message).toMatch(/IN_USE|in.use|in_use|referenced/i);
     expect(yearGroupsCollection.deleteOne).not.toHaveBeenCalled();
     expect(yearGroupsCollection.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('ReferenceDataController – assignment-topic key-based persistence', () => {
+  it('listing assignment topics returns { key, name } items sorted by name', () => {
+    primeCollectionLookupByKey(assignmentTopicsCollection, [
+      { _id: 'topic-2', key: 'topic-z', name: 'Trigonometry' },
+      { _id: 'topic-1', key: 'topic-a', name: 'Algebra' },
+      { _id: 'topic-3', key: 'topic-l', name: 'Linear Equations' },
+    ]);
+
+    const result = new ReferenceDataController().listAssignmentTopics();
+
+    expect(result).toEqual([
+      { key: 'topic-a', name: 'Algebra' },
+      { key: 'topic-l', name: 'Linear Equations' },
+      { key: 'topic-z', name: 'Trigonometry' },
+    ]);
+    expect(result[0]).not.toHaveProperty('_id');
+  });
+
+  it('creating assignment topic generates a stable key and rejects duplicates', () => {
+    primeCollectionLookupByKey(assignmentTopicsCollection, []);
+
+    const created = new ReferenceDataController().createAssignmentTopic({ name: 'Algebra' });
+
+    expect(assignmentTopicsCollection.insertOne).toHaveBeenCalledTimes(1);
+    const persisted = assignmentTopicsCollection.insertOne.mock.calls[0][0];
+    expect(created).toEqual({ key: persisted.key, name: 'Algebra' });
+    expect(typeof created.key).toBe('string');
+    expect(created.key.length).toBeGreaterThan(0);
+
+    primeCollectionLookupByKey(assignmentTopicsCollection, [persisted]);
+    expect(() =>
+      new ReferenceDataController().createAssignmentTopic({ name: ' algebra ' })
+    ).toThrow(/duplicate/i);
+    expect(assignmentTopicsCollection.insertOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('updating assignment topic preserves key and rejects duplicate replacement names', () => {
+    primeCollectionLookupByKey(assignmentTopicsCollection, [
+      { key: 'topic-algebra', name: 'Algebra' },
+      { key: 'topic-geometry', name: 'Geometry' },
+    ]);
+
+    const updated = new ReferenceDataController().updateAssignmentTopic({
+      key: 'topic-algebra',
+      record: { name: 'Advanced Algebra' },
+    });
+
+    expect(updated).toEqual({ key: 'topic-algebra', name: 'Advanced Algebra' });
+    expect(assignmentTopicsCollection.replaceOne).toHaveBeenCalledWith(
+      { key: 'topic-algebra' },
+      expect.objectContaining({ key: 'topic-algebra', name: 'Advanced Algebra' })
+    );
+
+    expect(() =>
+      new ReferenceDataController().updateAssignmentTopic({
+        key: 'topic-algebra',
+        record: { name: ' geometry ' },
+      })
+    ).toThrow(/duplicate/i);
+  });
+
+  it('deleting assignment topic removes keyed record when unused', () => {
+    primeCollectionLookupByKey(assignmentTopicsCollection, [
+      { key: 'topic-algebra', name: 'Algebra' },
+    ]);
+    assignmentDefinitionPartialsCollection.find.mockReturnValue([]);
+
+    new ReferenceDataController().deleteAssignmentTopic('topic-algebra');
+
+    expect(assignmentTopicsCollection.deleteOne).toHaveBeenCalledWith({ key: 'topic-algebra' });
+    expect(assignmentTopicsCollection.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('deleteAssignmentTopic rejects with machine-readable IN_USE when one or more definitions reference the topic key', () => {
+    primeCollectionLookupByKey(assignmentTopicsCollection, [
+      { key: 'topic-algebra', name: 'Algebra' },
+    ]);
+    assignmentDefinitionPartialsCollection.find.mockReturnValue([
+      { definitionKey: 'def-001', primaryTopicKey: 'topic-algebra' },
+      { definitionKey: 'def-002', primaryTopicKey: 'topic-geometry' },
+    ]);
+
+    let error;
+    try {
+      new ReferenceDataController().deleteAssignmentTopic('topic-algebra');
+    } catch (err) {
+      error = err;
+    }
+
+    expect(error).toBeDefined();
+    expect(error.reason === 'IN_USE' || error.code === 'IN_USE').toBe(true);
+    expect(assignmentTopicsCollection.deleteOne).not.toHaveBeenCalled();
+    expect(assignmentTopicsCollection.save).not.toHaveBeenCalled();
   });
 });
 

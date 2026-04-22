@@ -91,9 +91,13 @@ const REFERENCE_DATA_RESULTS = Object.freeze({
   getYearGroups: [{ key: 'yg-10', name: 'Year 10' }],
   createYearGroup: { key: 'yg-10', name: 'Year 10' },
   updateYearGroup: { key: 'yg-9', name: 'Year 10' },
+  getAssignmentTopics: [{ key: 'topic-algebra', name: 'Algebra' }],
+  createAssignmentTopic: { key: 'topic-algebra', name: 'Algebra' },
+  updateAssignmentTopic: { key: 'topic-algebra', name: 'Advanced Algebra' },
   // Delete handlers are intentionally transport-void; keep explicit nulls to avoid implicit undefined stubs.
   deleteCohort: null,
   deleteYearGroup: null,
+  deleteAssignmentTopic: null,
 });
 
 const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
@@ -137,11 +141,18 @@ const REFERENCE_DATA_PARAMS = Object.freeze({
     record: { key: 'yg-9', name: 'Year 10' },
   },
   deleteYearGroup: { key: 'yg-10' },
+  createAssignmentTopic: { record: { name: 'Algebra' } },
+  updateAssignmentTopic: {
+    key: 'topic-algebra',
+    record: { key: 'topic-algebra', name: 'Advanced Algebra' },
+  },
+  deleteAssignmentTopic: { key: 'topic-algebra' },
 });
 
 const REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD = Object.freeze({
   getCohorts: 'listCohorts',
   getYearGroups: 'listYearGroups',
+  getAssignmentTopics: 'listAssignmentTopics',
 });
 
 function getReferenceDataControllerMethodName(methodName) {
@@ -278,6 +289,14 @@ const IN_USE_FAILURE_CASES = Object.freeze([
     handlerName: 'deleteYearGroup',
     errorMessage: 'Year group record is referenced by one or more classes',
   },
+  {
+    description:
+      'maps a plain Error with reason = IN_USE from deleteAssignmentTopic to error.code = IN_USE (delete-blocked contract)',
+    methodName: 'deleteAssignmentTopic',
+    params: REFERENCE_DATA_PARAMS.deleteAssignmentTopic,
+    handlerName: 'deleteAssignmentTopic',
+    errorMessage: 'Assignment topic record is referenced by one or more assignment definitions',
+  },
 ]);
 
 function clearGoogleClassroomsHandlerModuleCache() {
@@ -381,7 +400,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(18);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(22);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
@@ -830,9 +849,17 @@ describe('Api/apiHandler dispatcher', () => {
 
       expect(context.referenceDataControllerCtor).toHaveBeenCalledTimes(1);
       expect(controllerMethodSpy).toHaveBeenCalledTimes(1);
-      if (methodName === 'createCohort' || methodName === 'createYearGroup') {
+      if (
+        methodName === 'createCohort' ||
+        methodName === 'createYearGroup' ||
+        methodName === 'createAssignmentTopic'
+      ) {
         expect(controllerMethodSpy).toHaveBeenCalledWith(params.record);
-      } else if (methodName === 'deleteCohort' || methodName === 'deleteYearGroup') {
+      } else if (
+        methodName === 'deleteCohort' ||
+        methodName === 'deleteYearGroup' ||
+        methodName === 'deleteAssignmentTopic'
+      ) {
         expect(controllerMethodSpy).toHaveBeenCalledWith(params.key);
       } else if (params === undefined) {
         expect(controllerMethodSpy).toHaveBeenCalledWith();
@@ -865,6 +892,21 @@ describe('Api/apiHandler dispatcher', () => {
       REFERENCE_DATA_PARAMS.deleteYearGroup,
       REFERENCE_DATA_PARAMS.deleteYearGroup.key,
     ],
+    [
+      'createAssignmentTopic',
+      REFERENCE_DATA_PARAMS.createAssignmentTopic,
+      REFERENCE_DATA_PARAMS.createAssignmentTopic.record,
+    ],
+    [
+      'updateAssignmentTopic',
+      REFERENCE_DATA_PARAMS.updateAssignmentTopic,
+      REFERENCE_DATA_PARAMS.updateAssignmentTopic,
+    ],
+    [
+      'deleteAssignmentTopic',
+      REFERENCE_DATA_PARAMS.deleteAssignmentTopic,
+      REFERENCE_DATA_PARAMS.deleteAssignmentTopic.key,
+    ],
   ])(
     'passes expected parameters to ReferenceDataController.%s',
     (methodName, params, expectedArgument) => {
@@ -881,6 +923,33 @@ describe('Api/apiHandler dispatcher', () => {
       expect(controllerMethodSpy).toHaveBeenCalledWith(expectedArgument);
     }
   );
+
+  it.each([
+    'getAssignmentTopics',
+    'createAssignmentTopic',
+    'updateAssignmentTopic',
+    'deleteAssignmentTopic',
+  ])('maps %s failures to the standard API envelope', (methodName) => {
+    const params = REFERENCE_DATA_PARAMS[methodName];
+    const controllerMethodSpy = getReferenceDataControllerMethodSpy(context, methodName);
+    const thrownError = new ApiValidationError('Invalid assignment-topic payload');
+    controllerMethodSpy.mockImplementation(() => {
+      throw thrownError;
+    });
+
+    const response = handleApiRequest(methodName, params);
+
+    expectBoundaryFailureLog(context.errorSpy, {
+      response,
+      methodName,
+      thrownValue: thrownError,
+    });
+    expectFailureEnvelope(response, {
+      code: 'INVALID_REQUEST',
+      message: 'Invalid assignment-topic payload',
+      withRequestId: true,
+    });
+  });
 
   it.each(ABCLASS_TRANSPORT_API_METHOD_NAMES)(
     'routes %s to the matching allowlisted handler',

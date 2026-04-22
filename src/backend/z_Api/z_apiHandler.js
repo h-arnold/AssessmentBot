@@ -37,6 +37,13 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   createYearGroup: (parameters) => new ReferenceDataController().createYearGroup(parameters.record),
   updateYearGroup: (parameters) => new ReferenceDataController().updateYearGroup(parameters),
   deleteYearGroup: (parameters) => new ReferenceDataController().deleteYearGroup(parameters.key),
+  getAssignmentTopics: () => new ReferenceDataController().listAssignmentTopics(),
+  createAssignmentTopic: (parameters) =>
+    new ReferenceDataController().createAssignmentTopic(parameters.record),
+  updateAssignmentTopic: (parameters) =>
+    new ReferenceDataController().updateAssignmentTopic(parameters),
+  deleteAssignmentTopic: (parameters) =>
+    new ReferenceDataController().deleteAssignmentTopic(parameters.key),
 });
 
 if (typeof module !== 'undefined' && module.exports) {
