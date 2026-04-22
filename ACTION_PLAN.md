@@ -274,8 +274,23 @@ API layer tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** extend the existing keyed reference-data controller rather than introducing a new topic-specific controller unless reuse becomes materially unsafe.
-- **Deviations from plan:** record any reason the topic resource cannot live inside `ReferenceDataController`.
+- **Implementation notes:** extended the existing keyed reference-data controller rather than introducing a new topic-specific controller. Red-phase review found the delete-blocked test needed a strict machine-readable `IN_USE` assertion; the test was tightened before green work.
+- **Deviations from plan:** none.
+- **Status checklist:**
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
+- **Evidence:**
+  - Branch: `feature/assignment-definition-upsert`
+  - Commit SHA: `bc3f3785034726bdaa0f25ad35fdc05a2cd4742c`
+  - Commit message: `feat: add assignment topic reference data (section 1)`
+  - Push confirmation: successful to `origin/feature/assignment-definition-upsert`
+- **Non-blocking review items:** none noted.
 - **Follow-up implications for later sections:** later frontend work should add assignment topics to startup warm-up and to the assignments create/edit flows.
 
 ---
