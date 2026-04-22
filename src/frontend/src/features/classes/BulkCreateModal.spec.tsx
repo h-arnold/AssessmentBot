@@ -10,6 +10,7 @@ import {
   assertControlDisabled,
   createMockConfirm,
   createMockConfirmWithError,
+  CreateModalResetHarness,
 } from '../../test/classes/modalTestHelpers';
 
 const cohortOptions = [
@@ -136,30 +137,17 @@ describe('BulkCreateModal', () => {
   it('resets local state when the modal closes', async () => {
     const onConfirm = vi.fn().mockRejectedValue(new Error('Create failed.'));
 
-    /**
-     * Controls modal open state to verify reset-on-cancel behaviour.
-     *
-     * @returns {JSX.Element} Harness output.
-     */
-    function Harness() {
-      const [open, setOpen] = useState(true);
-      return (
-        <>
-          <button type="button" onClick={() => setOpen(true)}>
-            Reopen
-          </button>
-          <BulkCreateModal
-            open={open}
-            cohortOptions={cohortOptions}
-            yearGroupOptions={yearGroupOptions}
-            onCancel={() => setOpen(false)}
-            onConfirm={onConfirm}
-          />
-        </>
-      );
-    }
+    const modalComponent = (
+      <BulkCreateModal
+        open={true}
+        cohortOptions={cohortOptions}
+        yearGroupOptions={yearGroupOptions}
+        onCancel={() => {}}
+        onConfirm={onConfirm}
+      />
+    );
 
-    render(<Harness />);
+    render(<CreateModalResetHarness modalComponent={modalComponent} />);
 
     await chooseOption('Cohort', 'Cohort 2025');
     await chooseOption('Year group', 'Year 10');
