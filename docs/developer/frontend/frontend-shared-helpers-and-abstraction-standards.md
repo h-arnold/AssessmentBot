@@ -212,7 +212,7 @@ Keep them aligned with the current implementation if later cleanup extends, reve
 - Status: `Deferred`
 - Rationale: the current pair still shares similar shell structure, but this pass intentionally kept the duplication local rather than introducing a speculative wrapper without a clearer third caller or tighter shared contract
 
-### 9.8 Classes modal-family compliance refactor (planned)
+### 9.8 Classes modal-family compliance refactor
 
 These entries record the delivered helper decisions for the classes modal-family compliance refactor.
 This section supersedes the earlier Section 9.7 defer decision for the specific three-caller refactor now in scope.
