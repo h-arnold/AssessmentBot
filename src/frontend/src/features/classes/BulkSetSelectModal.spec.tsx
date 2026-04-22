@@ -3,8 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BulkSetSelectModal } from './BulkSetSelectModal';
 import {
   chooseOption,
-  assertValidationMessage,
-  assertErrorMessage,
+  assertMessage,
   assertControlDisabled,
   createMockConfirm,
   createMockConfirmWithError,
@@ -53,7 +52,7 @@ describe('BulkSetSelectModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Please select a cohort.');
+    await assertMessage('Please select a cohort.');
 
     await chooseOption('Cohort', 'Cohort 2025');
     rerender(
@@ -68,7 +67,7 @@ describe('BulkSetSelectModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Please select a valid cohort.');
+    await assertMessage('Please select a valid cohort.');
   });
 
   it('renders submission failures as an inline error alert', async () => {
@@ -86,7 +85,7 @@ describe('BulkSetSelectModal', () => {
     await chooseOption('Cohort', 'Cohort 2025');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    await assertErrorMessage('Update failed.');
+    await assertMessage('Update failed.');
   });
 
   it('resets local state when the modal closes', async () => {
@@ -110,7 +109,7 @@ describe('BulkSetSelectModal', () => {
     expect(await screen.findByText('Update failed.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen modal' }));
 
     expect(screen.queryByText('Update failed.')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));

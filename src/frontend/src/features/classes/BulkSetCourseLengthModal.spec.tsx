@@ -4,8 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BulkSetCourseLengthModal } from './BulkSetCourseLengthModal';
 import {
   changeCourseLength,
-  assertValidationMessage,
-  assertErrorMessage,
+  assertMessage,
   assertControlDisabled,
   createMockConfirm,
   createMockConfirmWithError,
@@ -35,11 +34,11 @@ describe('BulkSetCourseLengthModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Course length must be an integer greater than or equal to 1.');
+    await assertMessage('Course length must be an integer greater than or equal to 1.');
 
     changeCourseLength('0');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Course length must be an integer greater than or equal to 1.');
+    await assertMessage('Course length must be an integer greater than or equal to 1.');
   });
 
   it('renders submission failures as an inline error alert', async () => {
@@ -54,7 +53,7 @@ describe('BulkSetCourseLengthModal', () => {
     changeCourseLength('3');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    await assertErrorMessage('Update failed.');
+    await assertMessage('Update failed.');
   });
 
   it('resets local state when the modal closes', async () => {

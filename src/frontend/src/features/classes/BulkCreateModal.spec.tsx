@@ -4,8 +4,7 @@ import { BulkCreateModal } from './BulkCreateModal';
 import {
   chooseOption,
   changeCourseLength,
-  assertValidationMessage,
-  assertErrorMessage,
+  assertMessage,
   assertControlDisabled,
   createMockConfirm,
   createMockConfirmWithError,
@@ -77,8 +76,8 @@ describe('BulkCreateModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Please select a cohort.');
-    await assertValidationMessage('Please select a year group.');
+    await assertMessage('Please select a cohort.');
+    await assertMessage('Please select a year group.');
 
     await chooseOption('Cohort', 'Cohort 2025');
     await chooseOption('Year group', 'Year 10');
@@ -93,8 +92,8 @@ describe('BulkCreateModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Please select a valid cohort.');
-    await assertValidationMessage('Please select a valid year group.');
+    await assertMessage('Please select a valid cohort.');
+    await assertMessage('Please select a valid year group.');
   });
 
   it('shows validation message for invalid course length values', async () => {
@@ -112,7 +111,7 @@ describe('BulkCreateModal', () => {
     await chooseOption('Year group', 'Year 10');
     changeCourseLength('');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    await assertValidationMessage('Course length must be an integer greater than or equal to 1.');
+    await assertMessage('Course length must be an integer greater than or equal to 1.');
   });
 
   it('renders submission failures as an inline error alert', async () => {
@@ -130,7 +129,7 @@ describe('BulkCreateModal', () => {
     await chooseOption('Year group', 'Year 10');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    await assertErrorMessage('Create failed.');
+    await assertMessage('Create failed.');
   });
 
   it('resets local state when the modal closes', async () => {
@@ -154,7 +153,7 @@ describe('BulkCreateModal', () => {
     expect(await screen.findByText('Create failed.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen modal' }));
 
     expect(screen.queryByText('Create failed.')).not.toBeInTheDocument();
     expect(screen.getByRole('spinbutton', { name: 'Course length' })).toHaveValue('1');

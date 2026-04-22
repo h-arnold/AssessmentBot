@@ -45,38 +45,32 @@ export async function chooseOption(fieldLabel: string, optionLabel: string): Pro
 /**
  * Creates a harness component that controls modal open state for testing reset-on-cancel behaviour.
  *
- * @param {React.ReactNode} modalComponent The modal component to test.
+ * @param {React.ReactElement} modalComponent The modal component to test.
  * @returns {React.ReactNode} Harness output.
  */
-export function CreateModalResetHarness({ modalComponent }: Readonly<{ modalComponent: React.ReactNode }>): React.ReactNode {
+export function CreateModalResetHarness({ modalComponent }: Readonly<{ modalComponent: React.ReactElement }>): React.ReactNode {
   const [open, setOpen] = useState(true);
+  
+  const handleReopen = () => setOpen(true);
+  const handleCancel = () => setOpen(false);
+  
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>
+      <button type="button" onClick={handleReopen} aria-label="Reopen modal">
         Reopen
       </button>
-      {React.cloneElement(modalComponent as React.ReactElement, { open, onCancel: () => setOpen(false) })}
+      {React.cloneElement(modalComponent, { open, onCancel: handleCancel })}
     </>
   );
 }
 
 /**
- * Asserts that a validation message is displayed.
+ * Asserts that a message is displayed in the document.
  *
- * @param {string} message The validation message to check.
+ * @param {string} message The message to check.
  * @returns {Promise<void>}
  */
-export async function assertValidationMessage(message: string): Promise<void> {
-  expect(await screen.findByText(message)).toBeInTheDocument();
-}
-
-/**
- * Asserts that an error message is displayed.
- *
- * @param {string} message The error message to check.
- * @returns {Promise<void>}
- */
-export async function assertErrorMessage(message: string): Promise<void> {
+export async function assertMessage(message: string): Promise<void> {
   expect(await screen.findByText(message)).toBeInTheDocument();
 }
 
@@ -94,9 +88,9 @@ export function assertControlDisabled(role: string, name: string): void {
 /**
  * Creates a mock confirm function that can be used to test modal submission.
  *
- * @returns {vi.Mock} Mocked confirm function.
+ * @returns {ReturnType<typeof vi.fn>} Mocked confirm function.
  */
-export function createMockConfirm(): vi.Mock {
+export function createMockConfirm(): ReturnType<typeof vi.fn> {
   return vi.fn().mockImplementation(async () => {});
 }
 
@@ -104,8 +98,8 @@ export function createMockConfirm(): vi.Mock {
  * Creates a mock confirm function that rejects with an error.
  *
  * @param {Error} error The error to reject with.
- * @returns {vi.Mock} Mocked confirm function.
+ * @returns {ReturnType<typeof vi.fn>} Mocked confirm function.
  */
-export function createMockConfirmWithError(error: Error): vi.Mock {
+export function createMockConfirmWithError(error: Error): ReturnType<typeof vi.fn> {
   return vi.fn().mockRejectedValue(error);
 }
