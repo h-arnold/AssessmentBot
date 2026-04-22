@@ -2,22 +2,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { BulkSetSelectModal } from './BulkSetSelectModal';
+import {
+  chooseOption,
+  assertValidationMessage,
+  assertErrorMessage,
+  assertControlDisabled,
+  createMockConfirm,
+  createMockConfirmWithError,
+} from '../../test/classes/modalTestHelpers';
 
 const selectOptions = [
   { label: 'Cohort 2025', value: 'cohort-2025' },
   { label: 'Cohort 2026', value: 'cohort-2026' },
 ];
-
-/**
- * Opens the cohort selector and chooses one option by visible label.
- *
- * @param {string} label Option label to choose.
- * @returns {Promise<void>} Completion signal.
- */
-async function chooseOption(label: string): Promise<void> {
-  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Cohort' }));
-  fireEvent.click(await screen.findByText(label));
-}
 
 describe('BulkSetSelectModal', () => {
   it('submits through the modal OK action', async () => {
@@ -34,7 +31,7 @@ describe('BulkSetSelectModal', () => {
       />,
     );
 
-    await chooseOption('Cohort 2025');
+    await chooseOption('Cohort', 'Cohort 2025');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
     await waitFor(() => {
@@ -43,7 +40,7 @@ describe('BulkSetSelectModal', () => {
   });
 
   it('shows validation messages for missing and invalid selections', async () => {
-    const onConfirm = vi.fn().mockImplementation(async () => {});
+    const onConfirm = createMockConfirm();
     const { rerender } = render(
       <BulkSetSelectModal
         fieldLabel="Cohort"
@@ -56,9 +53,9 @@ describe('BulkSetSelectModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    expect(await screen.findByText('Please select a cohort.')).toBeInTheDocument();
+    await assertValidationMessage('Please select a cohort.');
 
-    await chooseOption('Cohort 2025');
+    await chooseOption('Cohort', 'Cohort 2025');
     rerender(
       <BulkSetSelectModal
         fieldLabel="Cohort"
@@ -71,7 +68,7 @@ describe('BulkSetSelectModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    expect(await screen.findByText('Please select a valid cohort.')).toBeInTheDocument();
+    await assertValidationMessage('Please select a valid cohort.');
   });
 
   it('renders submission failures as an inline error alert', async () => {
@@ -82,14 +79,14 @@ describe('BulkSetSelectModal', () => {
         options={selectOptions}
         title="Set cohort"
         onCancel={vi.fn()}
-        onConfirm={vi.fn().mockRejectedValue(new Error('Update failed.'))}
+        onConfirm={createMockConfirmWithError(new Error('Update failed.'))}
       />,
     );
 
-    await chooseOption('Cohort 2025');
+    await chooseOption('Cohort', 'Cohort 2025');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    expect(await screen.findByText('Update failed.')).toBeInTheDocument();
+    await assertErrorMessage('Update failed.');
   });
 
   it('resets local state when the modal closes', async () => {
@@ -121,7 +118,7 @@ describe('BulkSetSelectModal', () => {
 
     render(<Harness />);
 
-    await chooseOption('Cohort 2025');
+    await chooseOption('Cohort', 'Cohort 2025');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
     expect(await screen.findByText('Update failed.')).toBeInTheDocument();
 
@@ -142,12 +139,12 @@ describe('BulkSetSelectModal', () => {
         options={selectOptions}
         title="Set cohort"
         onCancel={vi.fn()}
-        onConfirm={vi.fn().mockImplementation(async () => {})}
+        onConfirm={createMockConfirm()}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-    expect(screen.getByRole('combobox', { name: 'Cohort' })).toBeDisabled();
+    assertControlDisabled('button', 'Cancel');
+    assertControlDisabled('combobox', 'Cohort');
   });
 
 });

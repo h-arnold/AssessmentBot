@@ -185,11 +185,31 @@ Use shared helpers to keep fixtures and mocks consistent and avoid duplicate tes
 - Frontend provider render helper: `src/frontend/src/test/renderWithFrontendProviders.tsx` (QueryClient + startup-warmup providers for component tests; prefer this over ad-hoc `QueryClientProvider` wrappers).
 - Frontend `apiHandler` mock helper: `src/frontend/src/test/googleScriptRunHarness.ts`.
 - Classes fixture/state helper: `src/frontend/src/test/classes/classesTestHelpers.ts` (shared rows, ready-state builders, and batch-result builders for Classes table/toolbar/panel specs).
+- Classes modal test helpers: `src/frontend/src/test/classes/modalTestHelpers.tsx` (shared interaction helpers, assertion utilities, and mock creators for Classes modal components).
 - Builder fixture helpers: `scripts/builder/src/test/builder-fixture-test-helpers.ts` (shared by builder specs to build release archives, create path fixtures, and write release files/manifests).
 
-When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders rather than redefining near-identical active/inactive/notCreated/orphaned datasets in each file.
+When adding test scenarios, prefer extending an existing helper before copying setup logic into each spec. In particular, Classes feature specs should reuse `src/frontend/src/test/classes/classesTestHelpers.ts` for row fixtures and state builders, and `src/frontend/src/test/classes/modalTestHelpers.tsx` for modal interaction patterns, rather than redefining near-identical test utilities in each file.
 
 Shared frontend test helpers belong under `src/frontend/src/test/**`. Feature-scoped subfolders are allowed when they keep related fixtures together, but production feature folders should stay free of shared test helpers.
+
+### Classes Modal Test Helpers
+
+The `src/frontend/src/test/classes/modalTestHelpers.tsx` module provides reusable utilities for testing modal components in the Classes feature:
+
+- **Interaction helpers:**
+  - `changeCourseLength(value: string): void` - Changes the course length input value
+  - `chooseOption(fieldLabel: string, optionLabel: string): Promise<void>` - Opens a selector and chooses an option by visible label
+
+- **Assertion utilities:**
+  - `assertValidationMessage(message: string): Promise<void>` - Asserts that a validation message is displayed
+  - `assertErrorMessage(message: string): Promise<void>` - Asserts that an error message is displayed
+  - `assertControlDisabled(role: string, name: string): void` - Asserts that a control is disabled
+
+- **Mock creators:**
+  - `createMockConfirm(): Function` - Creates a mock confirm function for successful submissions
+  - `createMockConfirmWithError(error: Error): Function` - Creates a mock confirm function that rejects with an error
+
+These helpers eliminate duplication across modal test files and ensure consistent testing patterns.
 
 Production source must not import from `src/test/**`. The frontend ESLint config enforces that boundary so helper placement and import paths stay explicit.
 

@@ -2,20 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { BulkSetCourseLengthModal } from './BulkSetCourseLengthModal';
+import {
+  changeCourseLength,
+  assertValidationMessage,
+  assertErrorMessage,
+  assertControlDisabled,
+  createMockConfirm,
+  createMockConfirmWithError,
+} from '../../test/classes/modalTestHelpers';
 
 const submittedCourseLength = 4;
-
-/**
- * Changes the course-length control value.
- *
- * @param {string} value Input value.
- * @returns {void}
- */
-function changeCourseLength(value: string): void {
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'Course length' }), {
-    target: { value },
-  });
-}
 
 describe('BulkSetCourseLengthModal', () => {
   it('submits through the modal OK action', async () => {
@@ -39,15 +35,11 @@ describe('BulkSetCourseLengthModal', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    expect(
-      await screen.findByText('Course length must be an integer greater than or equal to 1.'),
-    ).toBeInTheDocument();
+    await assertValidationMessage('Course length must be an integer greater than or equal to 1.');
 
     changeCourseLength('0');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
-    expect(
-      await screen.findByText('Course length must be an integer greater than or equal to 1.'),
-    ).toBeInTheDocument();
+    await assertValidationMessage('Course length must be an integer greater than or equal to 1.');
   });
 
   it('renders submission failures as an inline error alert', async () => {
@@ -55,14 +47,14 @@ describe('BulkSetCourseLengthModal', () => {
       <BulkSetCourseLengthModal
         open
         onCancel={vi.fn()}
-        onConfirm={vi.fn().mockRejectedValue(new Error('Update failed.'))}
+        onConfirm={createMockConfirmWithError(new Error('Update failed.'))}
       />,
     );
 
     changeCourseLength('3');
     fireEvent.click(screen.getByRole('button', { name: 'OK' }));
 
-    expect(await screen.findByText('Update failed.')).toBeInTheDocument();
+    await assertErrorMessage('Update failed.');
   });
 
   it('resets local state when the modal closes', async () => {
@@ -111,12 +103,12 @@ describe('BulkSetCourseLengthModal', () => {
         confirmLoading
         open
         onCancel={vi.fn()}
-        onConfirm={vi.fn().mockImplementation(async () => {})}
+        onConfirm={createMockConfirm()}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
-    expect(screen.getByRole('spinbutton', { name: 'Course length' })).toBeDisabled();
+    assertControlDisabled('button', 'Cancel');
+    assertControlDisabled('spinbutton', 'Course length');
   });
 
 });
