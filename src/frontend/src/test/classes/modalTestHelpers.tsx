@@ -1,7 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import { useState } from 'react';
-import React from 'react';
+import React, { useState } from 'react';
 
 /* eslint-disable react-refresh/only-export-components */
 // Note: This file contains test helper functions, not React components.
