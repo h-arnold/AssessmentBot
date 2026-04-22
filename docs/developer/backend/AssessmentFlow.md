@@ -1,5 +1,14 @@
 # Assessment Flow Documentation
 
+## Planned Helper Entries (Not Implemented)
+
+- `AssignmentDefinitionController` upsert orchestration helper
+  - Status: `Not implemented`
+  - Planning purpose: centralise create/update upsert sequencing, parsing, persistence, and rollback handling for assignment-definition mutations.
+- `AssignmentDefinitionController` legacy-key compatibility / rollback helper
+  - Status: `Not implemented`
+  - Planning purpose: isolate rollback behaviour and rollout compatibility while stable opaque definition keys replace metadata-derived identifiers.
+
 ## Summary Outline
 
 This document traces the complete assessment flow in AssessmentBot, starting from the user clicking "Assess Student Work" in the menu and ending with completed assessments written to the Analysis and Overview sheets.

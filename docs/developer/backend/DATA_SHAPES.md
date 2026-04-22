@@ -37,6 +37,18 @@ This document captures the serialized structures produced by the models shared i
 - `StudentSubmissionItem`
 - `BaseTaskArtifact`
 
+## Planned Helper Entries (Not Implemented)
+
+- Assignment-definition task-weighting application helper
+  - Status: `Not implemented`
+  - Planning purpose: apply validated task-weighting patches to parsed or persisted `TaskDefinition` records before final save.
+- Assignment-definition transport response normaliser
+  - Status: `Not implemented`
+  - Planning purpose: keep the full-definition upsert response contract explicit when the backend transport surface is added.
+- Assignment-topics keyed resource config
+  - Status: `Not implemented`
+  - Planning purpose: extend the keyed reference-data pattern to assignment topics so topic authority matches cohorts and year groups.
+
 ## Persistence Strategy & Rationale
 
 To balance performance with data fidelity in the Google Apps Script environment, we use a **Split Persistence Model**:

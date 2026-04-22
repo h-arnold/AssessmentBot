@@ -12,6 +12,12 @@ This layer is deliberately REST-ish in structure:
 - keep endpoint-style naming coherent within each file
 - use each `.js` file as an API surface for a specific capability area
 
+## Planned Helper Entries (Not Implemented)
+
+- Assignment-definition upsert request validator
+  - Status: `Not implemented`
+  - Planning purpose: own request-shape, safe-key, and structural array validation for the assignment-definition upsert transport helper without duplicating controller business rules.
+
 ## Design Rules
 
 1. Keep API functions as thin as possible.
