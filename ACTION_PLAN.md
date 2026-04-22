@@ -421,8 +421,23 @@ Backend model/controller tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** prefer evolving `AssignmentDefinitionController` rather than routing new create/update behaviour through `AssignmentController.createDefinitionFromWizardInputs`.
-- **Deviations from plan:** record any reason a dedicated rollback helper becomes necessary.
+- **Implementation notes:** evolved `AssignmentDefinitionController` rather than routing new create/update behaviour through `AssignmentController.createDefinitionFromWizardInputs`. Red-phase review found overfit test/setup assumptions, and those were corrected before green implementation. Green review blockers were then cleared by removing the silent `documentType` default, adding `Validate.requireParams` to `upsertDefinition`, and validating the returned UUID.
+- **Deviations from plan:** none.
+- **Status checklist:**
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [x] commit created
+  - [x] push completed
+- **Evidence:**
+  - Branch: `feature/assignment-definition-upsert`
+  - Commit SHA: `3eb6ab41e594d8ba8d995b2156cc5977a9ce4865`
+  - Commit message: `feat: add assignment definition upsert domain logic (section 2)`
+  - Push confirmation: successful to `origin/feature/assignment-definition-upsert`
+- **Non-blocking review items:** none noted.
 - **Follow-up implications for later sections:** the API layer can stay thin once this controller owns the full upsert flow.
 
 ---
