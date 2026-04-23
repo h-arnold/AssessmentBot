@@ -11,6 +11,7 @@ class AssignmentDefinition {
    * @param {Object} params - Assignment definition properties.
    * @param {string} params.primaryTitle - Canonical assignment title.
    * @param {string} params.primaryTopic - Canonical topic name.
+   * @param {string|null} [params.primaryTopicKey=null] - Authoritative keyed topic reference.
    * @param {number|null} [params.yearGroup=null] - Intended year group; may be null until enriched.
    * @param {string[]} [params.alternateTitles=[]] - Known title variants.
    * @param {string[]} [params.alternateTopics=[]] - Known topic variants.
@@ -23,11 +24,12 @@ class AssignmentDefinition {
    * @param {Object<string, TaskDefinition>|Object} [params.tasks={}] - Task definitions keyed by taskId.
    * @param {string|null} [params.createdAt=null] - ISO created timestamp; defaults to now when null.
    * @param {string|null} [params.updatedAt=null] - ISO updated timestamp; defaults to now when null.
-   * @param {string|null} [params.definitionKey=null] - Composite key used for persistence.
+   * @param {string|null} [params.definitionKey=null] - Stable definition key used for persistence.
    */
   constructor({
     primaryTitle,
     primaryTopic,
+    primaryTopicKey = null,
     yearGroup = null,
     alternateTitles = [],
     alternateTopics = [],
@@ -44,6 +46,7 @@ class AssignmentDefinition {
   } = {}) {
     this.primaryTitle = primaryTitle;
     this.primaryTopic = primaryTopic;
+    this.primaryTopicKey = primaryTopicKey ?? null;
     this.yearGroup = yearGroup ?? null;
     this.alternateTitles = alternateTitles || [];
     this.alternateTopics = alternateTopics || [];
@@ -213,13 +216,13 @@ class AssignmentDefinition {
   }
 
   /**
-   * Generates the canonical definition key for persistence.
+   * Generates the legacy metadata-derived definition key for compatibility flows.
    * Format: `${primaryTitle}_${primaryTopic}_${yearGroup || 'null'}`.
    * @param {Object} params - Parameters for key generation
    * @param {string} params.primaryTitle - The primary assignment title
    * @param {string} params.primaryTopic - The primary topic name
    * @param {number|null|undefined} params.yearGroup - The year group (or null/undefined)
-   * @returns {string} The canonical definition key
+   * @returns {string} Legacy metadata-derived definition key
    */
   static buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup }) {
     const yr = yearGroup === undefined || yearGroup === null ? 'null' : yearGroup;
@@ -255,6 +258,7 @@ class AssignmentDefinition {
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
+      primaryTopicKey: this.primaryTopicKey,
       yearGroup: this.yearGroup,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
@@ -286,6 +290,7 @@ class AssignmentDefinition {
     return {
       primaryTitle: this.primaryTitle,
       primaryTopic: this.primaryTopic,
+      primaryTopicKey: this.primaryTopicKey,
       yearGroup: this.yearGroup,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
@@ -313,6 +318,7 @@ class AssignmentDefinition {
     return new AssignmentDefinition({
       primaryTitle: json.primaryTitle,
       primaryTopic: json.primaryTopic,
+      primaryTopicKey: json.primaryTopicKey ?? null,
       yearGroup: json.yearGroup ?? null,
       alternateTitles: json.alternateTitles ?? [],
       alternateTopics: json.alternateTopics ?? [],

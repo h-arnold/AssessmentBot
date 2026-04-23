@@ -38,6 +38,7 @@ const EXPECTED_ALLOWLISTED_METHOD_HANDLER_KEYS = Object.freeze([
   'getAuthorisationStatus',
   'getABClassPartials',
   ...ASSIGNMENT_DEFINITION_API_METHOD_NAMES,
+  'upsertAssignmentDefinition',
   ...ABCLASS_TRANSPORT_API_METHOD_NAMES,
   ...BACKEND_CONFIG_API_METHOD_NAMES,
   ...REFERENCE_DATA_API_METHOD_NAMES,
@@ -91,9 +92,13 @@ const REFERENCE_DATA_RESULTS = Object.freeze({
   getYearGroups: [{ key: 'yg-10', name: 'Year 10' }],
   createYearGroup: { key: 'yg-10', name: 'Year 10' },
   updateYearGroup: { key: 'yg-9', name: 'Year 10' },
+  getAssignmentTopics: [{ key: 'topic-algebra', name: 'Algebra' }],
+  createAssignmentTopic: { key: 'topic-algebra', name: 'Algebra' },
+  updateAssignmentTopic: { key: 'topic-algebra', name: 'Advanced Algebra' },
   // Delete handlers are intentionally transport-void; keep explicit nulls to avoid implicit undefined stubs.
   deleteCohort: null,
   deleteYearGroup: null,
+  deleteAssignmentTopic: null,
 });
 
 const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
@@ -137,11 +142,18 @@ const REFERENCE_DATA_PARAMS = Object.freeze({
     record: { key: 'yg-9', name: 'Year 10' },
   },
   deleteYearGroup: { key: 'yg-10' },
+  createAssignmentTopic: { record: { name: 'Algebra' } },
+  updateAssignmentTopic: {
+    key: 'topic-algebra',
+    record: { key: 'topic-algebra', name: 'Advanced Algebra' },
+  },
+  deleteAssignmentTopic: { key: 'topic-algebra' },
 });
 
 const REFERENCE_DATA_CONTROLLER_METHODS_BY_API_METHOD = Object.freeze({
   getCohorts: 'listCohorts',
   getYearGroups: 'listYearGroups',
+  getAssignmentTopics: 'listAssignmentTopics',
 });
 
 function getReferenceDataControllerMethodName(methodName) {
@@ -278,6 +290,14 @@ const IN_USE_FAILURE_CASES = Object.freeze([
     handlerName: 'deleteYearGroup',
     errorMessage: 'Year group record is referenced by one or more classes',
   },
+  {
+    description:
+      'maps a plain Error with reason = IN_USE from deleteAssignmentTopic to error.code = IN_USE (delete-blocked contract)',
+    methodName: 'deleteAssignmentTopic',
+    params: REFERENCE_DATA_PARAMS.deleteAssignmentTopic,
+    handlerName: 'deleteAssignmentTopic',
+    errorMessage: 'Assignment topic record is referenced by one or more assignment definitions',
+  },
 ]);
 
 function clearGoogleClassroomsHandlerModuleCache() {
@@ -381,7 +401,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(18);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(23);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
@@ -830,9 +850,17 @@ describe('Api/apiHandler dispatcher', () => {
 
       expect(context.referenceDataControllerCtor).toHaveBeenCalledTimes(1);
       expect(controllerMethodSpy).toHaveBeenCalledTimes(1);
-      if (methodName === 'createCohort' || methodName === 'createYearGroup') {
+      if (
+        methodName === 'createCohort' ||
+        methodName === 'createYearGroup' ||
+        methodName === 'createAssignmentTopic'
+      ) {
         expect(controllerMethodSpy).toHaveBeenCalledWith(params.record);
-      } else if (methodName === 'deleteCohort' || methodName === 'deleteYearGroup') {
+      } else if (
+        methodName === 'deleteCohort' ||
+        methodName === 'deleteYearGroup' ||
+        methodName === 'deleteAssignmentTopic'
+      ) {
         expect(controllerMethodSpy).toHaveBeenCalledWith(params.key);
       } else if (params === undefined) {
         expect(controllerMethodSpy).toHaveBeenCalledWith();
@@ -865,6 +893,21 @@ describe('Api/apiHandler dispatcher', () => {
       REFERENCE_DATA_PARAMS.deleteYearGroup,
       REFERENCE_DATA_PARAMS.deleteYearGroup.key,
     ],
+    [
+      'createAssignmentTopic',
+      REFERENCE_DATA_PARAMS.createAssignmentTopic,
+      REFERENCE_DATA_PARAMS.createAssignmentTopic.record,
+    ],
+    [
+      'updateAssignmentTopic',
+      REFERENCE_DATA_PARAMS.updateAssignmentTopic,
+      REFERENCE_DATA_PARAMS.updateAssignmentTopic,
+    ],
+    [
+      'deleteAssignmentTopic',
+      REFERENCE_DATA_PARAMS.deleteAssignmentTopic,
+      REFERENCE_DATA_PARAMS.deleteAssignmentTopic.key,
+    ],
   ])(
     'passes expected parameters to ReferenceDataController.%s',
     (methodName, params, expectedArgument) => {
@@ -881,6 +924,33 @@ describe('Api/apiHandler dispatcher', () => {
       expect(controllerMethodSpy).toHaveBeenCalledWith(expectedArgument);
     }
   );
+
+  it.each([
+    'getAssignmentTopics',
+    'createAssignmentTopic',
+    'updateAssignmentTopic',
+    'deleteAssignmentTopic',
+  ])('maps %s failures to the standard API envelope', (methodName) => {
+    const params = REFERENCE_DATA_PARAMS[methodName];
+    const controllerMethodSpy = getReferenceDataControllerMethodSpy(context, methodName);
+    const thrownError = new ApiValidationError('Invalid assignment-topic payload');
+    controllerMethodSpy.mockImplementation(() => {
+      throw thrownError;
+    });
+
+    const response = handleApiRequest(methodName, params);
+
+    expectBoundaryFailureLog(context.errorSpy, {
+      response,
+      methodName,
+      thrownValue: thrownError,
+    });
+    expectFailureEnvelope(response, {
+      code: 'INVALID_REQUEST',
+      message: 'Invalid assignment-topic payload',
+      withRequestId: true,
+    });
+  });
 
   it.each(ABCLASS_TRANSPORT_API_METHOD_NAMES)(
     'routes %s to the matching allowlisted handler',
@@ -1189,6 +1259,83 @@ describe('Api/apiHandler dispatcher', () => {
       });
     }
   );
+
+  it('delegates successful upsertAssignmentDefinition requests and returns the standard success envelope', () => {
+    const originalUpsertAssignmentDefinition = globalThis.upsertAssignmentDefinition_;
+    const params = {
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      yearGroup: 10,
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      taskWeightings: [{ taskId: 'task-1', taskWeighting: 25 }],
+    };
+    const expectedData = {
+      definitionKey: 'definition-001',
+      tasks: {
+        'task-1': { id: 'task-1', taskWeighting: 25 },
+      },
+    };
+    const upsertAssignmentDefinition_ = vi.fn(() => expectedData);
+
+    globalThis.upsertAssignmentDefinition_ = upsertAssignmentDefinition_;
+
+    try {
+      const response = handleApiRequest('upsertAssignmentDefinition', params);
+
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledTimes(1);
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledWith(params);
+      expect(response).toEqual({
+        ok: true,
+        requestId: response.requestId,
+        data: expectedData,
+      });
+      expect(response.requestId).toEqual(expect.any(String));
+    } finally {
+      if (originalUpsertAssignmentDefinition === undefined) {
+        delete globalThis.upsertAssignmentDefinition_;
+      } else {
+        globalThis.upsertAssignmentDefinition_ = originalUpsertAssignmentDefinition;
+      }
+    }
+  });
+  it('maps controller-thrown ApiValidationError from upsertAssignmentDefinition to INVALID_REQUEST', () => {
+    const originalUpsertAssignmentDefinition = globalThis.upsertAssignmentDefinition_;
+    const thrownError = new ApiValidationError('Invalid assignment-definition payload');
+    const upsertAssignmentDefinition_ = vi.fn(() => {
+      throw thrownError;
+    });
+
+    globalThis.upsertAssignmentDefinition_ = upsertAssignmentDefinition_;
+
+    try {
+      const response = handleApiRequest('upsertAssignmentDefinition', {
+        primaryTitle: 'Algebra Baseline',
+        primaryTopicKey: 'topic-algebra',
+        yearGroup: 10,
+        referenceDocumentId: 'ref-doc-001',
+        templateDocumentId: 'tpl-doc-001',
+      });
+
+      expectFailureEnvelope(response, {
+        code: 'INVALID_REQUEST',
+        message: 'Invalid assignment-definition payload',
+        withRequestId: true,
+      });
+      expect(upsertAssignmentDefinition_).toHaveBeenCalledTimes(1);
+      expectBoundaryFailureLog(context.errorSpy, {
+        response,
+        methodName: 'upsertAssignmentDefinition',
+        thrownValue: thrownError,
+      });
+    } finally {
+      if (originalUpsertAssignmentDefinition === undefined) {
+        delete globalThis.upsertAssignmentDefinition_;
+      } else {
+        globalThis.upsertAssignmentDefinition_ = originalUpsertAssignmentDefinition;
+      }
+    }
+  });
 
   it.each(IN_USE_FAILURE_CASES)(
     '$description',

@@ -21,6 +21,9 @@
     - [`deleteABClass` response data](#deleteabclass-response-data)
   - [Assignment Definition](#assignment-definition)
     - [Full Assignment Definition Record (dedicated collection)](#full-assignment-definition-record-dedicated-collection)
+    - [Assignment-topic reference record](#assignment-topic-reference-record)
+    - [`getAssignmentDefinitionPartials` response data](#getassignmentdefinitionpartials-response-data)
+    - [`upsertAssignmentDefinition` request and response data](#upsertassignmentdefinition-request-and-response-data)
   - [Partial Hydration (summary-level)](#partial-hydration-summary-level)
   - [Full Hydration (complete payload)](#full-hydration-complete-payload)
   - [Feedback Structure](#feedback-structure)
@@ -28,7 +31,7 @@
   - [Full Hydration Example with Assessments and Feedback](#full-hydration-example-with-assessments-and-feedback)
     - [Hydration Guidelines](#hydration-guidelines)
 
-This document captures the serialized structures produced by the models shared in this repository. Every field shown is emitted today by the existing `toJSON()` implementations in:
+This document captures the serialised structures produced by the models shared in this repository. For most domains it reflects the current runtime output directly. Assignment-definition sections also capture the current upsert and topic-reference-data contract implemented by the backend transport and controller layers.
 
 - `Assignment`
 - `AssignmentDefinition`
@@ -37,17 +40,19 @@ This document captures the serialized structures produced by the models shared i
 - `StudentSubmissionItem`
 - `BaseTaskArtifact`
 
-## Planned Helper Entries (Not Implemented)
+## Shared Helper Status
 
 - Assignment-definition task-weighting application helper
-  - Status: `Not implemented`
-  - Planning purpose: apply validated task-weighting patches to parsed or persisted `TaskDefinition` records before final save.
+  - Status: `Implemented`
+  - Location: `AssignmentDefinitionController._applyTaskWeightingsIfProvided()` and `AssignmentDefinitionController._applyTaskWeightings()` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Behaviour: applies validated `taskWeightings` patches to parsed or persisted task maps after refresh/reparse resolution and before final persistence.
 - Assignment-definition transport response normaliser
   - Status: `Not implemented`
-  - Planning purpose: keep the full-definition upsert response contract explicit when the backend transport surface is added.
+  - Current note: `upsertAssignmentDefinition` currently returns the controller's full persisted `AssignmentDefinition` payload directly; no separate response-normaliser helper was introduced in this cycle.
 - Assignment-topics keyed resource config
-  - Status: `Not implemented`
-  - Planning purpose: extend the keyed reference-data pattern to assignment topics so topic authority matches cohorts and year groups.
+  - Status: `Implemented`
+  - Location: `ReferenceDataController._getConfig('assignmentTopic')` in `src/backend/y_controllers/ReferenceDataController.js`
+  - Behaviour: extends the shared keyed reference-data CRUD pattern to the `assignment_topics` collection and enforces delete-blocking against `assignment_definitions.primaryTopicKey` references.
 
 ## Persistence Strategy & Rationale
 
@@ -69,16 +74,23 @@ To balance performance with data fidelity in the Google Apps Script environment,
 3. **Assignment Definition Registry (`assignment_definitions`)**:
 
 - **Purpose**: Lightweight index of definitions shared across classes/years.
-- **Storage**: Single collection keyed by `${primaryTitle}_${primaryTopic}_${yearGroup}`; when `yearGroup` is absent the canonical key uses the literal `null` sentinel (for example `${primaryTitle}_${primaryTopic}_null`).
-- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (titles, topics, yearGroup, weighting), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
-- **Relationship**: Embedded into `Assignment` instances (Copy-on-Construct) and stored alongside partial assignments in `ABClass`.
+- **Storage**: Single collection keyed by stable opaque `definitionKey`. Duplicate business identity is tracked separately by the canonical tuple `{ primaryTitle, primaryTopicKey, yearGroup }`; metadata edits must not rotate `definitionKey`.
+- **Content**: **Partial** definition with `tasks: null` (no artifacts); includes metadata (`primaryTitle`, `alternateTitles`, `yearGroup`, `assignmentWeighting`), authoritative topic reference (`primaryTopicKey` plus resolved `primaryTopic` label), `documentType` for routing, and doc IDs (`referenceDocumentId`, `templateDocumentId`) for reference.
+- **Relationship**: Embedded into `Assignment` instances (copy-on-construct) and stored alongside partial assignments in `ABClass`.
 
-1. **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
+4. **Full Assignment Definition Record (`assdef_full_<definitionKey>`)**:
 
 - **Purpose**: Full-fidelity definition cache (all artifacts and hashes) for parsing and reuse without re-reading Drive when unchanged.
-- **Storage**: Dedicated collection per definition key (mirrors the `assign_full_*` pattern for assignments).
-- **Content**: Full artifacts, cached content, hashes, and timestamps.
+- **Storage**: Dedicated collection per stable opaque definition key (mirrors the `assign_full_*` pattern for assignments).
+- **Content**: Full artifacts, cached content, hashes, timestamps, and the same authoritative topic-key relationship as the registry row.
 - **Lazy Loading**: On run start, the controller fetches the full record synchronously and re-parses only when Drive timestamps are newer.
+
+5. **Assignment Topics Reference Data (`assignment_topics`)**:
+
+- **Purpose**: Authoritative keyed dataset for assignment-definition topic selection.
+- **Storage**: Dedicated keyed reference-data collection following the same CRUD pattern as cohorts and year groups.
+- **Content**: Transport-safe `{ key, name }` records only.
+- **Relationship**: `AssignmentDefinition.primaryTopicKey` stores the foreign key; `primaryTopic` is a resolved display label rather than the source of truth.
 
 ## ABClass (root) and JsonDbApp partial hydration
 
@@ -113,15 +125,15 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
       "documentType": "SLIDES",
       "assignmentDefinition": {
         "primaryTitle": "Essay 1",
+        "primaryTopicKey": "topic_english",
         "primaryTopic": "English",
         "yearGroup": 10,
         "alternateTitles": [],
-        "alternateTopics": [],
         "documentType": "SLIDES",
         "referenceDocumentId": "DriveRef123",
         "templateDocumentId": "DriveTemplate123",
         "assignmentWeighting": null,
-        "definitionKey": "Essay 1_English_10",
+        "definitionKey": "11111111-2222-4333-8444-555555555555",
         "tasks": null,
         "createdAt": "2025-09-01T10:00:00Z",
         "updatedAt": "2025-09-01T10:00:00Z"
@@ -135,7 +147,9 @@ are partially hydrated (note the embedded `assignmentDefinition` has `tasks: nul
 Key notes:
 
 - The `ABClass` top-level fields are present and usable immediately.
-- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker) to minimize payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
+- **Partial Assignment Definitions**: The embedded `assignmentDefinition` has `tasks: null` (explicit marker) to minimise payload size while retaining `referenceDocumentId` and `templateDocumentId` for reference.
+- **Authoritative topic identity**: `primaryTopicKey` is the persisted source of truth for topic selection; `primaryTopic` is the resolved display label carried for convenience.
+- **Stable identifier direction**: `definitionKey` is planned as an opaque stable identifier rather than a metadata-derived string that rotates when title/topic/year-group values change.
 - **Root `documentType`**: Preserved at assignment root for polymorphic routing (allows `Assignment.fromJSON` to instantiate correct subclass).
 - **Fail-Fast Design**: Code expecting tasks will throw immediately on `null` rather than silently operating on empty objects.
 - **Assignment Definition Embedding**: The `assignmentDefinition` object is embedded directly. For partial assignments in ABClass, the definition has `tasks: null` but includes doc IDs. Full assignments contain complete definitions with all tasks and artifacts. The assignment root includes `documentType` for polymorphic routing.
@@ -418,22 +432,22 @@ Key notes:
 
 ## Assignment Definition
 
-The `AssignmentDefinition` model encapsulates reusable lesson properties. It is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy.
+The `AssignmentDefinition` model encapsulates reusable lesson properties. For the current upsert contract, it is persisted twice: a partial copy in `assignment_definitions` (for embedding) and a full copy in `assdef_full_<definitionKey>` (for reuse without re-parsing). Assignments embed the partial copy. `definitionKey` is the stable opaque identifier for those writes, while `{ primaryTitle, primaryTopicKey, yearGroup }` remains the duplicate-detection tuple.
 
 ```json
 {
   "primaryTitle": "Essay 1",
+  "primaryTopicKey": "topic_english",
   "primaryTopic": "English",
   "yearGroup": 10,
   "alternateTitles": [],
-  "alternateTopics": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
   "referenceLastModified": "2025-09-01T10:00:00Z",
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
-  "definitionKey": "Essay 1_English_10",
+  "definitionKey": "11111111-2222-4333-8444-555555555555",
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -458,20 +472,35 @@ The `AssignmentDefinition` model encapsulates reusable lesson properties. It is 
 
 Stored under `assdef_full_<definitionKey>`, containing full artifact content/hashes for reuse.
 
+### Assignment-topic reference record
+
+```json
+{
+  "key": "topic_english",
+  "name": "English"
+}
+```
+
+Key notes:
+
+- `assignment_topics` is the authoritative dataset for assignment-definition topic selection in the current upsert flow.
+- Assignment definitions should persist `primaryTopicKey` as the foreign key and expose `primaryTopic` only as the resolved label.
+- Topic deletion should fail fast when one or more assignment definitions still reference the topic key.
+
 ```json
 {
   "primaryTitle": "Essay 1",
+  "primaryTopicKey": "topic_english",
   "primaryTopic": "English",
   "yearGroup": 10,
   "alternateTitles": [],
-  "alternateTopics": [],
   "documentType": "SLIDES",
   "referenceDocumentId": "DriveRef123",
   "templateDocumentId": "DriveTemplate123",
   "referenceLastModified": "2025-09-01T10:00:00Z",
   "templateLastModified": "2025-09-01T10:00:00Z",
   "assignmentWeighting": null,
-  "definitionKey": "Essay 1_English_10",
+  "definitionKey": "11111111-2222-4333-8444-555555555555",
   "tasks": {
     "t_ab12": {
       "id": "t_ab12",
@@ -514,16 +543,99 @@ Stored under `assdef_full_<definitionKey>`, containing full artifact content/has
   "createdAt": "2025-09-01T10:00:00Z",
   "updatedAt": "2025-09-01T10:00:00Z"
 }
+```
 
 ### Controller API 🔧
 
 - **getAllPartialDefinitions()** — `AssignmentDefinitionController.getAllPartialDefinitions()` returns an array of rehydrated `AssignmentDefinition` model instances loaded from the registry collection (`assignment_definitions`).
   - Uses `DbManager.readAll('assignment_definitions')` to obtain a snapshot of documents and `AssignmentDefinition.fromJSON()` to rehydrate each document.
-  - Preserves *partial* hydration semantics (i.e., `tasks === null`) — callers should rehydrate to full definitions via the controller when they require task artifacts.
+  - Preserves _partial_ hydration semantics (i.e., `tasks === null`) — callers should rehydrate to full definitions via the controller when they require task artifacts.
   - Returns an empty array when the registry collection is empty.
 
-Tests: `tests/controllers/assignmentDefinitionController.test.js` (covers populated and empty-registry cases).
+Tests: `tests/controllers/assignmentDefinitionController.upsert.test.js` and `tests/backend-api/assignmentDefinitionPartials.unit.test.js`.
+
+### `getAssignmentDefinitionPartials` response data
+
+Response rows are plain registry partials returned inside the standard `apiHandler` success envelope:
+
+```json
+{
+  "primaryTitle": "Essay 1",
+  "primaryTopic": "English",
+  "primaryTopicKey": "topic_english",
+  "yearGroup": 10,
+  "alternateTitles": [],
+  "alternateTopics": [],
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "assignmentWeighting": null,
+  "definitionKey": "11111111-2222-4333-8444-555555555555",
+  "tasks": null,
+  "createdAt": "2025-09-01T10:00:00.000Z",
+  "updatedAt": "2025-09-01T10:00:00.000Z"
+}
 ```
+
+Key notes:
+
+- `primaryTopicKey` is authoritative and mandatory in partial transport; `primaryTopic` is the resolved display label only.
+- `tasks` is always `null` in this transport shape.
+- `referenceLastModified` and `templateLastModified` are omitted from partial transport.
+- `alternateTopics` remains present in partial responses for registry compatibility, even though it is not part of the greenfield upsert request contract.
+- The transport helper rejects rows where `definitionKey` or `primaryTopicKey` are missing, blank, or untrimmed, and where `createdAt` / `updatedAt` are neither `null` nor strict ISO datetime strings with timezone information.
+
+### `upsertAssignmentDefinition` request and response data
+
+Request payloads are controller-driven upserts returned inside the standard `apiHandler` success envelope.
+
+Example create payload:
+
+```json
+{
+  "primaryTitle": "Essay 1",
+  "primaryTopicKey": "topic_english",
+  "yearGroup": 10,
+  "alternateTitles": ["Essay One"],
+  "documentType": "SLIDES",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "assignmentWeighting": 25,
+  "taskWeightings": [
+    {
+      "taskId": "t_ab12",
+      "taskWeighting": 25
+    }
+  ]
+}
+```
+
+Example update payload:
+
+```json
+{
+  "definitionKey": "11111111-2222-4333-8444-555555555555",
+  "primaryTitle": "Essay 1",
+  "primaryTopicKey": "topic_english",
+  "referenceDocumentId": "DriveRef123",
+  "templateDocumentId": "DriveTemplate123",
+  "taskWeightings": []
+}
+```
+
+Request notes:
+
+- Transport-required fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
+- `definitionKey` is absent or `null` on create and must be an already-trimmed transport-safe string on update.
+- `documentType` is required by the controller for create upserts; updates may omit it and reuse the stored `documentType`.
+- `taskWeightings` is optional and, when supplied, must be an array of `{ taskId, taskWeighting }` objects. Transport validation checks only structural shape and safe-key rules; numeric weighting semantics remain controller-owned.
+- `primaryTopicKey` membership in `assignment_topics`, duplicate business-tuple detection, document-ID mismatch rules, and unknown task IDs are controller-owned domain checks.
+
+Response notes:
+
+- Successful upserts return the full persisted `AssignmentDefinition` shape, including resolved `primaryTopic`, stable `definitionKey`, full `tasks`, and `referenceLastModified` / `templateLastModified` timestamps.
+- Create upserts generate a stable opaque UUID-style `definitionKey`; update upserts preserve the stored key even when business metadata changes.
+- `assignmentWeighting` persists at definition level, and matching `taskWeightings` patches persist on individual tasks before the full definition is returned.
 
 ## Partial Hydration (summary-level)
 
@@ -539,15 +651,15 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
   "documentType": "SLIDES",
   "assignmentDefinition": {
     "primaryTitle": "Essay 1",
+    "primaryTopicKey": "topic_english",
     "primaryTopic": "English",
     "yearGroup": 10,
     "alternateTitles": [],
-    "alternateTopics": [],
     "documentType": "SLIDES",
     "referenceDocumentId": "DriveRef123",
     "templateDocumentId": "DriveTemplate123",
     "assignmentWeighting": null,
-    "definitionKey": "Essay 1_English_10",
+    "definitionKey": "11111111-2222-4333-8444-555555555555",
     "tasks": null,
     "createdAt": "2025-09-01T10:00:00Z",
     "updatedAt": "2025-09-01T10:00:00Z"
@@ -671,17 +783,17 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
   },
   "assignmentDefinition": {
     "primaryTitle": "Essay 1",
+    "primaryTopicKey": "topic_english",
     "primaryTopic": "English",
     "yearGroup": 10,
     "alternateTitles": [],
-    "alternateTopics": [],
     "documentType": "SLIDES",
     "referenceDocumentId": "DriveRef123",
     "templateDocumentId": "DriveTemplate123",
     "referenceLastModified": "2025-09-01T10:00:00Z",
     "templateLastModified": "2025-09-01T10:00:00Z",
     "assignmentWeighting": null,
-    "definitionKey": "Essay 1_English_10",
+    "definitionKey": "11111111-2222-4333-8444-555555555555",
     "tasks": {
       "t_ab12": {
         "id": "t_ab12",

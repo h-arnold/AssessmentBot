@@ -23,6 +23,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getABClassPartials: () => new ABClassController().getAllClassPartials(),
   getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials_(parameters),
   deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition_(parameters),
+  upsertAssignmentDefinition: (parameters) => upsertAssignmentDefinition_(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),
   upsertABClass: (parameters) => upsertABClass_(parameters),
   updateABClass: (parameters) => updateABClass_(parameters),
@@ -37,6 +38,13 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   createYearGroup: (parameters) => new ReferenceDataController().createYearGroup(parameters.record),
   updateYearGroup: (parameters) => new ReferenceDataController().updateYearGroup(parameters),
   deleteYearGroup: (parameters) => new ReferenceDataController().deleteYearGroup(parameters.key),
+  getAssignmentTopics: () => new ReferenceDataController().listAssignmentTopics(),
+  createAssignmentTopic: (parameters) =>
+    new ReferenceDataController().createAssignmentTopic(parameters.record),
+  updateAssignmentTopic: (parameters) =>
+    new ReferenceDataController().updateAssignmentTopic(parameters),
+  deleteAssignmentTopic: (parameters) =>
+    new ReferenceDataController().deleteAssignmentTopic(parameters.key),
 });
 
 if (typeof module !== 'undefined' && module.exports) {

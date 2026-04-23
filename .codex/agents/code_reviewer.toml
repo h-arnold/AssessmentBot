@@ -1,7 +1,7 @@
 name = "Code Reviewer"
 description = "Review agent focused on correctness, regressions, standards, and missing tests."
 sandbox_mode = "read-only"
-model = "gpt-5.4"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "high"
 nickname_candidates = ["Code Reviewer", "Reviewer"]
 developer_instructions = """

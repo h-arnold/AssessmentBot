@@ -12,6 +12,7 @@ function buildValidPartial(overrides = {}) {
   return {
     primaryTitle: 'Algebra Baseline',
     primaryTopic: 'Algebra',
+    primaryTopicKey: 'topic-algebra',
     yearGroup: 10,
     alternateTitles: ['Algebra Starter'],
     alternateTopics: ['Linear Equations'],
@@ -168,6 +169,36 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
     const malformedRow = buildValidPartial();
     mutateRow(malformedRow);
     const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
+    installAssignmentDefinitionControllerStub([validRow, malformedRow]);
+
+    const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();
+
+    expect(() => getAssignmentDefinitionPartials_()).toThrow(ApiValidationError);
+  });
+
+  it.each([
+    {
+      caseName: 'primaryTopicKey is null',
+      mutateRow: (row) => {
+        row.primaryTopicKey = null;
+      },
+    },
+    {
+      caseName: 'primaryTopicKey is blank',
+      mutateRow: (row) => {
+        row.primaryTopicKey = '   ';
+      },
+    },
+    {
+      caseName: 'primaryTopicKey is not already trimmed',
+      mutateRow: (row) => {
+        row.primaryTopicKey = ' topic-algebra ';
+      },
+    },
+  ])('fails when primaryTopicKey contract is invalid: $caseName', ({ mutateRow }) => {
+    const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
+    const malformedRow = buildValidPartial();
+    mutateRow(malformedRow);
     installAssignmentDefinitionControllerStub([validRow, malformedRow]);
 
     const { getAssignmentDefinitionPartials_ } = loadAssignmentDefinitionPartialsModule();

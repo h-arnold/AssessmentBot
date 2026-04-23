@@ -110,9 +110,49 @@ class ReferenceDataController {
   }
 
   /**
+   * Retrieves all assignment-topic records from storage.
+   * @returns {Array<{key: string, name: string}>} List of all assignment topics sorted by name.
+   */
+  listAssignmentTopics() {
+    return this._listRecords(this._getConfig('assignmentTopic'));
+  }
+
+  /**
+   * Creates a new assignment-topic record in storage.
+   * @param {{name: string}} record - The assignment-topic data to create.
+   * @returns {{key: string, name: string}} The persisted assignment-topic record.
+   */
+  createAssignmentTopic(record) {
+    Validate.requireParams({ record }, 'ReferenceDataController.createAssignmentTopic');
+    return this._createRecord(this._getConfig('assignmentTopic'), record);
+  }
+
+  /**
+   * Updates an existing assignment-topic record in storage.
+   * @param {{key: string, record: {name: string}}} payload - Object containing key and updated record data.
+   * @returns {{key: string, name: string}} The updated assignment-topic record.
+   */
+  updateAssignmentTopic(payload) {
+    Validate.requireParams({ payload }, 'ReferenceDataController.updateAssignmentTopic');
+    const { key, record } = payload;
+    Validate.requireParams({ key, record }, 'ReferenceDataController.updateAssignmentTopic');
+    return this._updateRecord(this._getConfig('assignmentTopic'), key, record);
+  }
+
+  /**
+   * Deletes an assignment-topic record from storage.
+   * @param {string} key - The key of the assignment topic to delete.
+   * @returns {void}
+   */
+  deleteAssignmentTopic(key) {
+    Validate.requireParams({ key }, 'ReferenceDataController.deleteAssignmentTopic');
+    this._deleteRecord(this._getConfig('assignmentTopic'), key);
+  }
+
+  /**
    * Returns config for a supported resource type.
    * @param {string} resourceType - Supported reference-data resource.
-   * @returns {{collectionName: string, modelClass: Function, partialsReferenceField: string}} Resource config.
+   * @returns {{collectionName: string, modelClass: Function, partialsReferenceField: string, inUseCollectionName: string, inUseErrorMessage: string}} Resource config.
    */
   _getConfig(resourceType) {
     if (resourceType === 'cohort') {
@@ -120,6 +160,8 @@ class ReferenceDataController {
         collectionName: 'cohorts',
         modelClass: Cohort,
         partialsReferenceField: 'cohortKey',
+        inUseCollectionName: 'abclass_partials',
+        inUseErrorMessage: 'Cohort record is referenced by one or more classes',
       };
     }
 
@@ -128,6 +170,19 @@ class ReferenceDataController {
         collectionName: 'year_groups',
         modelClass: YearGroup,
         partialsReferenceField: 'yearGroupKey',
+        inUseCollectionName: 'abclass_partials',
+        inUseErrorMessage: 'Year group record is referenced by one or more classes',
+      };
+    }
+
+    if (resourceType === 'assignmentTopic') {
+      return {
+        collectionName: 'assignment_topics',
+        modelClass: YearGroup,
+        partialsReferenceField: 'primaryTopicKey',
+        inUseCollectionName: 'assignment_definitions',
+        inUseErrorMessage:
+          'Assignment topic record is referenced by one or more assignment definitions',
       };
     }
 
@@ -207,8 +262,8 @@ class ReferenceDataController {
   }
 
   /**
-   * Deletes a keyed record if unused by class partials.
-   * @param {{collectionName: string, partialsReferenceField: string}} config - Resource configuration.
+   * Deletes a keyed record if not referenced by configured dependent records.
+   * @param {{collectionName: string, partialsReferenceField: string, inUseCollectionName: string, inUseErrorMessage: string}} config - Resource configuration.
    * @param {string} key - Stable key to delete.
    * @returns {void}
    */
@@ -222,7 +277,7 @@ class ReferenceDataController {
       throw new Error(`${config.collectionName} record not found: ${trimmedKey}`);
     }
 
-    const partialsCollection = this.dbManager.getCollection('abclass_partials');
+    const partialsCollection = this.dbManager.getCollection(config.inUseCollectionName);
     const partials = partialsCollection.find({});
     const isInUse = partials.some(
       (partial) =>
@@ -232,9 +287,7 @@ class ReferenceDataController {
     );
 
     if (isInUse) {
-      const error = new Error(
-        `${config.collectionName} record is referenced by one or more classes`
-      );
+      const error = new Error(config.inUseErrorMessage);
       error.reason = 'IN_USE';
       throw error;
     }

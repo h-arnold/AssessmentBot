@@ -3,6 +3,7 @@
 const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
   'primaryTopic',
+  'primaryTopicKey',
   'yearGroup',
   'alternateTitles',
   'alternateTopics',
@@ -67,6 +68,12 @@ function throwDeleteValidationError_(message, fieldName) {
 
 const LAST_CONTROL_CHARACTER_CODE = 31;
 const DELETE_CHARACTER_CODE = 127;
+const UPSERT_REQUIRED_FIELDS = Object.freeze([
+  'primaryTitle',
+  'primaryTopicKey',
+  'referenceDocumentId',
+  'templateDocumentId',
+]);
 
 /**
  * Returns whether the provided key contains control characters.
@@ -83,6 +90,55 @@ function hasControlCharacters_(value) {
   }
 
   return false;
+}
+
+/**
+ * Validates a safe, non-empty, already-trimmed identifier string.
+ *
+ * @param {*} value - Identifier candidate.
+ * @param {Object} options - Validation options.
+ * @param {Function} options.throwValidationError - Context-specific validation thrower.
+ * @param {string} options.typeErrorMessage - Type-validation error message.
+ * @param {string} options.nonEmptyErrorMessage - Non-empty-validation error message.
+ * @param {string} options.trimmedErrorMessage - Trimmed-shape-validation error message.
+ * @param {string} options.unsafeErrorMessage - Unsafe-character-validation error message.
+ * @param {Object} options.fieldNames - Field names for diagnostics.
+ * @param {string} options.fieldNames.type - Field name for type errors.
+ * @param {string} options.fieldNames.nonEmpty - Field name for non-empty errors.
+ * @param {string} options.fieldNames.trimmed - Field name for trimmed-shape errors.
+ * @param {string} options.fieldNames.unsafe - Field name for unsafe-character errors.
+ */
+function validateSafeTrimmedIdentifier_(value, options) {
+  const {
+    throwValidationError,
+    typeErrorMessage,
+    nonEmptyErrorMessage,
+    trimmedErrorMessage,
+    unsafeErrorMessage,
+    fieldNames,
+  } = options;
+
+  if (typeof value !== 'string') {
+    throwValidationError(typeErrorMessage, fieldNames.type);
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) {
+    throwValidationError(nonEmptyErrorMessage, fieldNames.nonEmpty);
+  }
+
+  if (trimmedValue !== value) {
+    throwValidationError(trimmedErrorMessage, fieldNames.trimmed);
+  }
+
+  if (
+    value.includes('/') ||
+    value.includes('\\') ||
+    value.includes('..') ||
+    hasControlCharacters_(value)
+  ) {
+    throwValidationError(unsafeErrorMessage, fieldNames.unsafe);
+  }
 }
 
 /**
@@ -103,28 +159,137 @@ function validateDeleteParameters_(parameters) {
 
   const { definitionKey } = parameters;
 
-  if (typeof definitionKey !== 'string') {
-    throwDeleteValidationError_('definitionKey must be a string.', 'definitionKey');
-  }
-
-  if (definitionKey.trim().length === 0) {
-    throwDeleteValidationError_('definitionKey must be a non-empty string.', 'definitionKey');
-  }
-
-  if (definitionKey.trim() !== definitionKey) {
-    throwDeleteValidationError_('definitionKey must already be trimmed.', 'definitionKey');
-  }
-
-  if (
-    definitionKey.includes('/') ||
-    definitionKey.includes('\\') ||
-    definitionKey.includes('..') ||
-    hasControlCharacters_(definitionKey)
-  ) {
-    throwDeleteValidationError_('definitionKey contains unsafe characters.', 'definitionKey');
-  }
+  validateSafeTrimmedIdentifier_(definitionKey, {
+    throwValidationError: throwDeleteValidationError_,
+    typeErrorMessage: 'definitionKey must be a string.',
+    nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+    trimmedErrorMessage: 'definitionKey must already be trimmed.',
+    unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+    fieldNames: {
+      type: 'definitionKey',
+      nonEmpty: 'definitionKey',
+      trimmed: 'definitionKey',
+      unsafe: 'definitionKey',
+    },
+  });
 
   return definitionKey;
+}
+
+/**
+ * Throws a transport validation error for assignment-definition upsert operations.
+ *
+ * @param {string} message - Validation failure message.
+ * @param {string|null} fieldName - Related field name.
+ * @throws {ApiValidationError} Always throws.
+ */
+function throwUpsertValidationError_(message, fieldName) {
+  throw new ApiValidationError(message, {
+    method: 'upsertAssignmentDefinition',
+    fieldName,
+  });
+}
+
+/**
+ * Validates payload shape and required fields for assignment-definition upsert transport.
+ *
+ * @param {*} parameters - Candidate request payload.
+ * @throws {ApiValidationError} If the payload violates transport contract rules.
+ */
+function validateUpsertParameters_(parameters) {
+  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
+    throwUpsertValidationError_('params must be an object.', 'params');
+  }
+
+  UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
+    if (!Object.hasOwn(parameters, fieldName)) {
+      throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);
+    }
+  });
+
+  if (typeof parameters.primaryTitle !== 'string') {
+    throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
+  }
+
+  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'primaryTopicKey must be a string.',
+    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
+    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
+    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+    fieldNames: {
+      type: 'primaryTopicKey',
+      nonEmpty: 'primaryTopicKey',
+      trimmed: 'primaryTopicKey',
+      unsafe: 'primaryTopicKey',
+    },
+  });
+
+  if (typeof parameters.referenceDocumentId !== 'string') {
+    throwUpsertValidationError_('referenceDocumentId must be a string.', 'referenceDocumentId');
+  }
+
+  if (typeof parameters.templateDocumentId !== 'string') {
+    throwUpsertValidationError_('templateDocumentId must be a string.', 'templateDocumentId');
+  }
+
+  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
+    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+      throwValidationError: throwUpsertValidationError_,
+      typeErrorMessage: 'definitionKey must be a string when provided.',
+      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+      trimmedErrorMessage: 'definitionKey must already be trimmed.',
+      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+      fieldNames: {
+        type: 'definitionKey',
+        nonEmpty: 'definitionKey',
+        trimmed: 'definitionKey',
+        unsafe: 'definitionKey',
+      },
+    });
+  }
+
+  if (!Object.hasOwn(parameters, 'taskWeightings')) {
+    return;
+  }
+
+  if (!Array.isArray(parameters.taskWeightings)) {
+    throwUpsertValidationError_('taskWeightings must be an array when provided.', 'taskWeightings');
+  }
+
+  parameters.taskWeightings.forEach((taskWeighting, index) => {
+    if (!taskWeighting || typeof taskWeighting !== 'object' || Array.isArray(taskWeighting)) {
+      throwUpsertValidationError_('taskWeightings entries must be objects.', 'taskWeightings');
+    }
+
+    if (!Object.hasOwn(taskWeighting, 'taskId')) {
+      throwUpsertValidationError_(
+        'taskWeightings entries must include taskId.',
+        `taskWeightings[${index}].taskId`
+      );
+    }
+
+    validateSafeTrimmedIdentifier_(taskWeighting.taskId, {
+      throwValidationError: throwUpsertValidationError_,
+      typeErrorMessage: 'taskWeightings.taskId must be a string.',
+      nonEmptyErrorMessage: 'taskWeightings.taskId must be a non-empty string.',
+      trimmedErrorMessage: 'taskWeightings.taskId must already be trimmed.',
+      unsafeErrorMessage: 'taskWeightings.taskId contains unsafe characters.',
+      fieldNames: {
+        type: 'taskWeightings[' + index + '].taskId',
+        nonEmpty: 'taskWeightings[' + index + '].taskId',
+        trimmed: 'taskWeightings[' + index + '].taskId',
+        unsafe: 'taskWeightings[' + index + '].taskId',
+      },
+    });
+
+    if (!Object.hasOwn(taskWeighting, 'taskWeighting')) {
+      throwUpsertValidationError_(
+        'taskWeightings entries must include taskWeighting.',
+        `taskWeightings[${index}].taskWeighting`
+      );
+    }
+  });
 }
 
 /**
@@ -169,6 +334,32 @@ function validateDefinitionKey_(definitionKey, rowIndex) {
 
   if (trimmedDefinitionKey !== definitionKey) {
     throwValidationError_('definitionKey must already be trimmed.', 'definitionKey', rowIndex);
+  }
+}
+
+/**
+ * Validates the strict primary-topic-key transport contract.
+ *
+ * @param {*} primaryTopicKey - Candidate topic key.
+ * @param {number} rowIndex - Row index.
+ * @throws {ApiValidationError} If primaryTopicKey is missing, blank, or untrimmed.
+ */
+function validatePrimaryTopicKey_(primaryTopicKey, rowIndex) {
+  if (typeof primaryTopicKey !== 'string') {
+    throwValidationError_('primaryTopicKey must be a string.', 'primaryTopicKey', rowIndex);
+  }
+
+  const trimmedPrimaryTopicKey = primaryTopicKey.trim();
+  if (trimmedPrimaryTopicKey.length === 0) {
+    throwValidationError_(
+      'primaryTopicKey must be a non-empty string.',
+      'primaryTopicKey',
+      rowIndex
+    );
+  }
+
+  if (trimmedPrimaryTopicKey !== primaryTopicKey) {
+    throwValidationError_('primaryTopicKey must already be trimmed.', 'primaryTopicKey', rowIndex);
   }
 }
 
@@ -264,6 +455,7 @@ function validateTimestamp_(value, fieldName, rowIndex) {
 function validatePartialRow_(row, rowIndex) {
   validateRequiredFields_(row, rowIndex);
   validateDefinitionKey_(row.definitionKey, rowIndex);
+  validatePrimaryTopicKey_(row.primaryTopicKey, rowIndex);
   validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
   validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
@@ -282,6 +474,7 @@ function toPlainPartialRow_(row) {
   return {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
+    primaryTopicKey: row.primaryTopicKey,
     yearGroup: row.yearGroup,
     alternateTitles: row.alternateTitles,
     alternateTopics: row.alternateTopics,
@@ -325,9 +518,21 @@ function deleteAssignmentDefinition_(parameters) {
   getAssignmentDefinitionController_().deleteDefinitionByKey(definitionKey);
 }
 
+/**
+ * Creates or updates an assignment definition through strict transport-boundary validation.
+ *
+ * @param {Object} parameters - Assignment-definition upsert payload.
+ * @returns {AssignmentDefinition|Object} Persisted full definition payload.
+ */
+function upsertAssignmentDefinition_(parameters) {
+  validateUpsertParameters_(parameters);
+  return getAssignmentDefinitionController_().upsertDefinition(parameters);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getAssignmentDefinitionPartials_,
     deleteAssignmentDefinition_,
+    upsertAssignmentDefinition_,
   };
 }

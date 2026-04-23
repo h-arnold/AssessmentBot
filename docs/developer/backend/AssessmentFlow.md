@@ -1,13 +1,21 @@
 # Assessment Flow Documentation
 
-## Planned Helper Entries (Not Implemented)
+## Shared Helper Status
 
-- `AssignmentDefinitionController` upsert orchestration helper
-  - Status: `Not implemented`
-  - Planning purpose: centralise create/update upsert sequencing, parsing, persistence, and rollback handling for assignment-definition mutations.
-- `AssignmentDefinitionController` legacy-key compatibility / rollback helper
-  - Status: `Not implemented`
-  - Planning purpose: isolate rollback behaviour and rollout compatibility while stable opaque definition keys replace metadata-derived identifiers.
+- `AssignmentDefinitionController.upsertDefinition()` assignment-definition upsert orchestration helper
+  - Status: `Implemented`
+  - Supporting helpers: `_buildUpsertContext()`, `_resolveTaskStateForUpsert()`, `_applyTaskWeightingsIfProvided()`, and `_persistDefinitionWithRollback()` in `src/backend/y_controllers/AssignmentDefinitionController.js`
+  - Behaviour: centralises create/update sequencing, stable opaque `definitionKey` handling, authoritative topic-key joins, duplicate-tuple rejection, parsing/reparse decisions, weighting application, and dual-store persistence.
+- `AssignmentDefinitionController._rollbackFullStoreWrite()` rollback helper
+  - Status: `Implemented`
+  - Behaviour: restores or deletes the full-definition write when the later registry write fails; if rollback itself fails, the controller throws a repair-required error.
+- Legacy wizard / trigger metadata-derived definition-key compatibility helper
+  - Status: `Pending / unchanged`
+  - Current note: the AdminSheet wizard and trigger flow still use `AssignmentDefinition.buildDefinitionKey(...)`; they have not been migrated to the `apiHandler` upsert contract in this cycle.
+
+### Assignment-definition upsert contract note
+
+The active backend upsert surface now treats `definitionKey` as a stable opaque identifier generated on create and preserved on update. Assignment topics are authoritative keyed reference data via `primaryTopicKey`, with `primaryTopic` retained only as a resolved display label. Legacy flow notes below that mention metadata-derived key building or Classroom-topic string lookup remain historical current-state references for the AdminSheet wizard path only.
 
 ## Summary Outline
 
@@ -69,6 +77,24 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 - Remaining `globals.js` files in backend are temporary references and should be deleted once equivalent API functions exist.
 - Backend configuration transport no longer uses `src/backend/ConfigurationManager/99_globals.js`; the canonical read/write methods are `getBackendConfig` and `setBackendConfig` through `src/backend/z_Api/z_apiHandler.js`.
 - Some detailed examples below still describe legacy AdminSheet/UI flows and should be treated as reference until fully migrated.
+
+### Current assignment-definition API contract
+
+The backend now exposes three assignment-definition API surfaces that sit alongside the legacy AdminSheet wizard flow:
+
+1. **Assignment-topic CRUD via `apiHandler`**
+   - `getAssignmentTopics`, `createAssignmentTopic`, `updateAssignmentTopic`, and `deleteAssignmentTopic` are allowlisted in `src/backend/z_Api/z_apiHandler.js`.
+   - They reuse `ReferenceDataController` keyed CRUD behaviour against the `assignment_topics` collection.
+   - Delete operations fail with machine-readable `IN_USE` errors when one or more registry rows in `assignment_definitions` still reference `primaryTopicKey`.
+2. **Assignment-definition upsert via `apiHandler`**
+   - `upsertAssignmentDefinition` delegates to `AssignmentDefinitionController.upsertDefinition()`.
+   - The controller resolves `primaryTopic` from `assignment_topics`, rejects duplicate `{ primaryTitle, primaryTopicKey, yearGroup }` tuples, generates a UUID-style `definitionKey` on create, preserves the stored key on update, reparses tasks when source documents change, reapplies stored or supplied task weightings, and writes the full store before the registry.
+   - Registry-write failures trigger `_rollbackFullStoreWrite()`; rollback failures surface as repair-required hard failures.
+3. **Assignment-definition partial transport**
+   - `getAssignmentDefinitionPartials` returns registry rows with `tasks: null` and requires `primaryTopicKey` to be present, trimmed, and authoritative.
+   - `primaryTopic` remains a resolved display label only.
+
+The rest of this document still describes the legacy trigger-driven assessment pipeline. Where that flow still references metadata-derived keys, treat those sections as legacy implementation notes rather than the contract for the new API transport.
 
 ---
 
@@ -145,11 +171,12 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
   3. Fetches courseWork details from Google Classroom API
   4. Extracts `topicId` from courseWork
   5. Loads `ABClass` instance to get `yearGroup`
-  6. Fetches topic name if topicId exists
-  7. Builds `definitionKey` using `AssignmentDefinition.buildDefinitionKey()`
-  8. Attempts to load existing definition via `AssignmentDefinitionController`
-  9. Extracts saved document IDs from definition if it exists
-  10. Shows modal with assignment data and saved document IDs
+  6. Fetches topic name if `topicId` exists so the legacy wizard flow can keep displaying the current Classroom topic label
+  7. Uses `AssignmentDefinition.buildDefinitionKey()` only for the legacy metadata-derived lookup path that current wizard code still uses
+  8. **Planning note for new upsert work**: this derived lookup key is not the target contract for the assignment-definition upsert surface; the new contract uses a stable opaque `definitionKey` generated once and preserved across metadata edits, with topic authority moving to keyed reference data via `primaryTopicKey`
+  9. Attempts to load existing definition via `AssignmentDefinitionController`
+  10. Extracts saved document IDs from definition if it exists
+  11. Shows modal with assignment data and saved document IDs
 - **Data Passed to Template**:
 
   ```javascript
@@ -172,10 +199,10 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
   - `getDefinitionByKey(definitionKey)`: Returns `AssignmentDefinition` or null
 - `ClassroomApiClient`: Fetches topic information
   - `fetchTopicName(courseId, topicId)`: Returns topic name string
-- `AssignmentDefinition`: Static method for key generation
-  - `buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup })`: Returns definition key string
-    - Format: `"{primaryTitle}_{primaryTopic}_{yearGroup}"` (e.g., "Essay 1_English_10")
-    - Used to uniquely identify definitions across courses and years
+- `AssignmentDefinition`: legacy current-state helper for wizard-era metadata lookup
+  - `buildDefinitionKey({ primaryTitle, primaryTopic, yearGroup })`: returns the currently derived lookup key string
+    - Existing format: `"{primaryTitle}_{primaryTopic}_{yearGroup}"` (e.g., "Essay 1_English_10")
+    - Planning constraint: do not treat this derived format as the future upsert identifier contract; the greenfield upsert surface should use a stable opaque `definitionKey` generated on create and preserved on update
 
 **HTML Template**: `SlideIdsModal.html`
 
@@ -280,7 +307,7 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 - **Location**: `/src/AdminSheet/y_controllers/AssignmentController.js:68-95`
 - **Parameters**:
   - `assignmentId` (string): Google Classroom assignment ID
-  - `definitionKey` (string): Assignment definition key
+  - `definitionKey` (string): Current legacy metadata-derived assignment-definition lookup key used by the wizard/trigger path
 - **Process**:
   1. Creates TriggerController instance
   2. Gets PropertiesService.getDocumentProperties()
@@ -327,10 +354,12 @@ The active backend currently uses `src/backend/z_Api` as the canonical GAS entry
 ```javascript
 {
   assignmentId: "123456789",
-  definitionKey: "Essay 1_English_10",
+  definitionKey: "Essay 1_English_10", // current legacy metadata-derived lookup key
   triggerId: "trigger_id_string"
 }
 ```
+
+Current state: this trigger path still stores the metadata-derived lookup key produced by `AssignmentDefinition.buildDefinitionKey(...)`. The planned upsert contract's stable opaque `definitionKey` is not live in this legacy wizard/trigger flow yet.
 
 ---
 
@@ -1117,14 +1146,17 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 ```javascript
 {
   primaryTitle: string,
-  primaryTopic: string | null,
+  primaryTopicKey: string | null,
+  primaryTopic: string | null, // resolved display label / legacy compatibility
   yearGroup: number | null,
+  alternateTitles: string[],
   documentType: "SLIDES" | "SHEETS",
   referenceDocumentId: string,
   templateDocumentId: string,
   referenceLastModified: ISO date string,
   templateLastModified: ISO date string,
-  definitionKey: string,
+  assignmentWeighting: number | null,
+  definitionKey: string, // stable opaque identifier for current API upsert; legacy wizard flow still uses metadata-derived values
   tasks: {
     [taskId]: TaskDefinition
   },
@@ -1271,6 +1303,11 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
   - Compare Drive file modification times
   - Re-parse only if reference or template changed
   - Update timestamps in definition after refresh
+- **Write ordering for API upserts**:
+  - Persist the full-definition store first
+  - Persist the registry partial second
+  - Attempt rollback of the full-definition write if the later registry write fails
+  - Surface a repair-required hard failure if rollback also fails
 
 ---
 
