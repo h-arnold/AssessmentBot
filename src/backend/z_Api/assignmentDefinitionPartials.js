@@ -93,6 +93,55 @@ function hasControlCharacters_(value) {
 }
 
 /**
+ * Validates a safe, non-empty, already-trimmed identifier string.
+ *
+ * @param {*} value - Identifier candidate.
+ * @param {Object} options - Validation options.
+ * @param {Function} options.throwValidationError - Context-specific validation thrower.
+ * @param {string} options.typeErrorMessage - Type-validation error message.
+ * @param {string} options.nonEmptyErrorMessage - Non-empty-validation error message.
+ * @param {string} options.trimmedErrorMessage - Trimmed-shape-validation error message.
+ * @param {string} options.unsafeErrorMessage - Unsafe-character-validation error message.
+ * @param {Object} options.fieldNames - Field names for diagnostics.
+ * @param {string} options.fieldNames.type - Field name for type errors.
+ * @param {string} options.fieldNames.nonEmpty - Field name for non-empty errors.
+ * @param {string} options.fieldNames.trimmed - Field name for trimmed-shape errors.
+ * @param {string} options.fieldNames.unsafe - Field name for unsafe-character errors.
+ */
+function validateSafeTrimmedIdentifier_(value, options) {
+  const {
+    throwValidationError,
+    typeErrorMessage,
+    nonEmptyErrorMessage,
+    trimmedErrorMessage,
+    unsafeErrorMessage,
+    fieldNames,
+  } = options;
+
+  if (typeof value !== 'string') {
+    throwValidationError(typeErrorMessage, fieldNames.type);
+  }
+
+  const trimmedValue = value.trim();
+  if (trimmedValue.length === 0) {
+    throwValidationError(nonEmptyErrorMessage, fieldNames.nonEmpty);
+  }
+
+  if (trimmedValue !== value) {
+    throwValidationError(trimmedErrorMessage, fieldNames.trimmed);
+  }
+
+  if (
+    value.includes('/') ||
+    value.includes('\\') ||
+    value.includes('..') ||
+    hasControlCharacters_(value)
+  ) {
+    throwValidationError(unsafeErrorMessage, fieldNames.unsafe);
+  }
+}
+
+/**
  * Validates delete parameters with strict safe-key requirements.
  *
  * @param {*} parameters - Candidate request parameters.
@@ -110,26 +159,19 @@ function validateDeleteParameters_(parameters) {
 
   const { definitionKey } = parameters;
 
-  if (typeof definitionKey !== 'string') {
-    throwDeleteValidationError_('definitionKey must be a string.', 'definitionKey');
-  }
-
-  if (definitionKey.trim().length === 0) {
-    throwDeleteValidationError_('definitionKey must be a non-empty string.', 'definitionKey');
-  }
-
-  if (definitionKey.trim() !== definitionKey) {
-    throwDeleteValidationError_('definitionKey must already be trimmed.', 'definitionKey');
-  }
-
-  if (
-    definitionKey.includes('/') ||
-    definitionKey.includes('\\') ||
-    definitionKey.includes('..') ||
-    hasControlCharacters_(definitionKey)
-  ) {
-    throwDeleteValidationError_('definitionKey contains unsafe characters.', 'definitionKey');
-  }
+  validateSafeTrimmedIdentifier_(definitionKey, {
+    throwValidationError: throwDeleteValidationError_,
+    typeErrorMessage: 'definitionKey must be a string.',
+    nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+    trimmedErrorMessage: 'definitionKey must already be trimmed.',
+    unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+    fieldNames: {
+      type: 'definitionKey',
+      nonEmpty: 'definitionKey',
+      trimmed: 'definitionKey',
+      unsafe: 'definitionKey',
+    },
+  });
 
   return definitionKey;
 }
@@ -170,26 +212,19 @@ function validateUpsertParameters_(parameters) {
   }
 
   if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
-    if (typeof parameters.definitionKey !== 'string') {
-      throwUpsertValidationError_('definitionKey must be a string when provided.', 'definitionKey');
-    }
-
-    if (parameters.definitionKey.trim().length === 0) {
-      throwUpsertValidationError_('definitionKey must be a non-empty string.', 'definitionKey');
-    }
-
-    if (parameters.definitionKey.trim() !== parameters.definitionKey) {
-      throwUpsertValidationError_('definitionKey must already be trimmed.', 'definitionKey');
-    }
-
-    if (
-      parameters.definitionKey.includes('/') ||
-      parameters.definitionKey.includes('\\') ||
-      parameters.definitionKey.includes('..') ||
-      hasControlCharacters_(parameters.definitionKey)
-    ) {
-      throwUpsertValidationError_('definitionKey contains unsafe characters.', 'definitionKey');
-    }
+    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+      throwValidationError: throwUpsertValidationError_,
+      typeErrorMessage: 'definitionKey must be a string when provided.',
+      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+      trimmedErrorMessage: 'definitionKey must already be trimmed.',
+      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+      fieldNames: {
+        type: 'definitionKey',
+        nonEmpty: 'definitionKey',
+        trimmed: 'definitionKey',
+        unsafe: 'definitionKey',
+      },
+    });
   }
 
   if (!Object.hasOwn(parameters, 'taskWeightings')) {
@@ -212,39 +247,19 @@ function validateUpsertParameters_(parameters) {
       );
     }
 
-    if (typeof taskWeighting.taskId !== 'string') {
-      throwUpsertValidationError_(
-        'taskWeightings.taskId must be a string.',
-        'taskWeightings.taskId'
-      );
-    }
-
-    const trimmedTaskId = taskWeighting.taskId.trim();
-    if (trimmedTaskId.length === 0) {
-      throwUpsertValidationError_(
-        'taskWeightings.taskId must be a non-empty string.',
-        'taskWeightings[' + index + '].taskId'
-      );
-    }
-
-    if (trimmedTaskId !== taskWeighting.taskId) {
-      throwUpsertValidationError_(
-        'taskWeightings.taskId must already be trimmed.',
-        'taskWeightings[' + index + '].taskId'
-      );
-    }
-
-    if (
-      taskWeighting.taskId.includes('/') ||
-      taskWeighting.taskId.includes('\\') ||
-      taskWeighting.taskId.includes('..') ||
-      hasControlCharacters_(taskWeighting.taskId)
-    ) {
-      throwUpsertValidationError_(
-        'taskWeightings.taskId contains unsafe characters.',
-        'taskWeightings[' + index + '].taskId'
-      );
-    }
+    validateSafeTrimmedIdentifier_(taskWeighting.taskId, {
+      throwValidationError: throwUpsertValidationError_,
+      typeErrorMessage: 'taskWeightings.taskId must be a string.',
+      nonEmptyErrorMessage: 'taskWeightings.taskId must be a non-empty string.',
+      trimmedErrorMessage: 'taskWeightings.taskId must already be trimmed.',
+      unsafeErrorMessage: 'taskWeightings.taskId contains unsafe characters.',
+      fieldNames: {
+        type: 'taskWeightings.taskId',
+        nonEmpty: 'taskWeightings[' + index + '].taskId',
+        trimmed: 'taskWeightings[' + index + '].taskId',
+        unsafe: 'taskWeightings[' + index + '].taskId',
+      },
+    });
 
     if (!Object.hasOwn(taskWeighting, 'taskWeighting')) {
       throwUpsertValidationError_(
