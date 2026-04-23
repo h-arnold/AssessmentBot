@@ -416,6 +416,30 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
   });
 
+  it('preserves existing yearGroup when updates omit yearGroup', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key', yearGroup: 9 }),
+      primaryTopic: 'Science',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+    const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
+    delete payload.yearGroup;
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.yearGroup).toBe(9);
+  });
+
   it('attempts rollback and throws when registry write fails after full-store write', () => {
     mockFullCollection.findOne.mockReturnValue(null);
     mockRegistryCollection.findOne.mockReturnValue(null);

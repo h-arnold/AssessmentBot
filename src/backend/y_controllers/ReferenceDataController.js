@@ -152,7 +152,7 @@ class ReferenceDataController {
   /**
    * Returns config for a supported resource type.
    * @param {string} resourceType - Supported reference-data resource.
-   * @returns {{collectionName: string, modelClass: Function, partialsReferenceField: string}} Resource config.
+   * @returns {{collectionName: string, modelClass: Function, partialsReferenceField: string, inUseCollectionName: string, inUseErrorMessage: string}} Resource config.
    */
   _getConfig(resourceType) {
     if (resourceType === 'cohort') {
@@ -161,7 +161,7 @@ class ReferenceDataController {
         modelClass: Cohort,
         partialsReferenceField: 'cohortKey',
         inUseCollectionName: 'abclass_partials',
-        inUseErrorMessage: 'cohorts record is referenced by one or more classes',
+        inUseErrorMessage: 'Cohort record is referenced by one or more classes',
       };
     }
 
@@ -171,7 +171,7 @@ class ReferenceDataController {
         modelClass: YearGroup,
         partialsReferenceField: 'yearGroupKey',
         inUseCollectionName: 'abclass_partials',
-        inUseErrorMessage: 'year_groups record is referenced by one or more classes',
+        inUseErrorMessage: 'Year group record is referenced by one or more classes',
       };
     }
 
@@ -182,7 +182,7 @@ class ReferenceDataController {
         partialsReferenceField: 'primaryTopicKey',
         inUseCollectionName: 'assignment_definitions',
         inUseErrorMessage:
-          'assignment_topics record is referenced by one or more assignment definitions',
+          'Assignment topic record is referenced by one or more assignment definitions',
       };
     }
 
@@ -262,8 +262,8 @@ class ReferenceDataController {
   }
 
   /**
-   * Deletes a keyed record if unused by class partials.
-   * @param {{collectionName: string, partialsReferenceField: string}} config - Resource configuration.
+   * Deletes a keyed record if not referenced by configured dependent records.
+   * @param {{collectionName: string, partialsReferenceField: string, inUseCollectionName: string, inUseErrorMessage: string}} config - Resource configuration.
    * @param {string} key - Stable key to delete.
    * @returns {void}
    */

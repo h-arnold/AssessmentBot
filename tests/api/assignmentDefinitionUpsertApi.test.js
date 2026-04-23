@@ -187,6 +187,18 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
         return payload;
       })(),
     },
+    {
+      caseName: 'primaryTitle is not a string',
+      params: buildValidUpsertPayload({ primaryTitle: 42 }),
+    },
+    {
+      caseName: 'referenceDocumentId is not a string',
+      params: buildValidUpsertPayload({ referenceDocumentId: { id: 'ref-doc-001' } }),
+    },
+    {
+      caseName: 'templateDocumentId is not a string',
+      params: buildValidUpsertPayload({ templateDocumentId: ['tpl-doc-001'] }),
+    },
   ])(
     'rejects payloads missing required fields at the transport boundary: $caseName',
     ({ params }) => {
@@ -275,6 +287,14 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
       caseName: 'primaryTopicKey is not a string',
       params: buildValidUpsertPayload({ primaryTopicKey: { key: 'topic-algebra' } }),
     },
+    {
+      caseName: 'primaryTopicKey has leading whitespace',
+      params: buildValidUpsertPayload({ primaryTopicKey: ' topic-algebra' }),
+    },
+    {
+      caseName: 'primaryTopicKey contains slash',
+      params: buildValidUpsertPayload({ primaryTopicKey: 'topic/algebra' }),
+    },
   ])(
     'rejects missing or malformed primaryTopicKey payload shape at the transport boundary: $caseName',
     ({ params }) => {
@@ -285,4 +305,22 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
       expect(upsertDefinition).not.toHaveBeenCalled();
     }
   );
+
+  it('reports indexed field metadata when taskWeightings taskId type is invalid', () => {
+    const { upsertDefinition } = installAssignmentDefinitionControllerStub();
+    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionUpsertTransportModule();
+
+    try {
+      upsertAssignmentDefinition_(
+        buildValidUpsertPayload({
+          taskWeightings: [{ taskId: 123, taskWeighting: 25 }],
+        })
+      );
+      throw new Error('Expected upsertAssignmentDefinition_ to throw ApiValidationError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiValidationError);
+      expect(error.fieldName).toBe('taskWeightings[0].taskId');
+      expect(upsertDefinition).not.toHaveBeenCalled();
+    }
+  });
 });

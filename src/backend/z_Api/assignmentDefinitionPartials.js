@@ -207,8 +207,30 @@ function validateUpsertParameters_(parameters) {
     }
   });
 
-  if (typeof parameters.primaryTopicKey !== 'string') {
-    throwUpsertValidationError_('primaryTopicKey must be a string.', 'primaryTopicKey');
+  if (typeof parameters.primaryTitle !== 'string') {
+    throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
+  }
+
+  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'primaryTopicKey must be a string.',
+    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
+    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
+    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+    fieldNames: {
+      type: 'primaryTopicKey',
+      nonEmpty: 'primaryTopicKey',
+      trimmed: 'primaryTopicKey',
+      unsafe: 'primaryTopicKey',
+    },
+  });
+
+  if (typeof parameters.referenceDocumentId !== 'string') {
+    throwUpsertValidationError_('referenceDocumentId must be a string.', 'referenceDocumentId');
+  }
+
+  if (typeof parameters.templateDocumentId !== 'string') {
+    throwUpsertValidationError_('templateDocumentId must be a string.', 'templateDocumentId');
   }
 
   if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
@@ -254,7 +276,7 @@ function validateUpsertParameters_(parameters) {
       trimmedErrorMessage: 'taskWeightings.taskId must already be trimmed.',
       unsafeErrorMessage: 'taskWeightings.taskId contains unsafe characters.',
       fieldNames: {
-        type: 'taskWeightings.taskId',
+        type: 'taskWeightings[' + index + '].taskId',
         nonEmpty: 'taskWeightings[' + index + '].taskId',
         trimmed: 'taskWeightings[' + index + '].taskId',
         unsafe: 'taskWeightings[' + index + '].taskId',

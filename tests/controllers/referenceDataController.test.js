@@ -351,6 +351,7 @@ describe('ReferenceDataController – cohort key-based persistence', () => {
     }
 
     expect(error).toBeDefined();
+    expect(error.message).toBe('Cohort record is referenced by one or more classes');
     expect(error.reason ?? error.code ?? error.message).toMatch(/IN_USE|in.use|in_use|referenced/i);
     expect(cohortsCollection.deleteOne).not.toHaveBeenCalled();
     expect(cohortsCollection.save).not.toHaveBeenCalled();
@@ -495,6 +496,7 @@ describe('ReferenceDataController – year-group key-based persistence', () => {
     }
 
     expect(error).toBeDefined();
+    expect(error.message).toBe('Year group record is referenced by one or more classes');
     expect(error.reason ?? error.code ?? error.message).toMatch(/IN_USE|in.use|in_use|referenced/i);
     expect(yearGroupsCollection.deleteOne).not.toHaveBeenCalled();
     expect(yearGroupsCollection.save).not.toHaveBeenCalled();
@@ -591,6 +593,9 @@ describe('ReferenceDataController – assignment-topic key-based persistence', (
     }
 
     expect(error).toBeDefined();
+    expect(error.message).toBe(
+      'Assignment topic record is referenced by one or more assignment definitions'
+    );
     expect(error.reason === 'IN_USE' || error.code === 'IN_USE').toBe(true);
     expect(assignmentTopicsCollection.deleteOne).not.toHaveBeenCalled();
     expect(assignmentTopicsCollection.save).not.toHaveBeenCalled();

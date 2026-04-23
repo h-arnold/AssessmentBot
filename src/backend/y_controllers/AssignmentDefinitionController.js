@@ -208,7 +208,10 @@ class AssignmentDefinitionController {
       primaryTopicKey,
       referenceDocumentId,
       templateDocumentId,
-      yearGroup: this._normaliseYearGroup(payload.yearGroup),
+      yearGroup:
+        isUpdate && !Object.hasOwn(payload, 'yearGroup')
+          ? existingDefinition.yearGroup
+          : this._normaliseYearGroup(payload.yearGroup),
       alternateTitles: this._resolveAlternateTitlesForUpsert({
         payload,
         isUpdate,
