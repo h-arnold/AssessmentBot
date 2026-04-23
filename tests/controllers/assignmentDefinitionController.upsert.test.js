@@ -230,7 +230,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       templateLastModified: '2025-04-01T00:00:00.000Z',
     };
     mockFullCollection.findOne.mockImplementation((filter) => {
-      if (filter && filter.definitionKey === 'existing-stable-key') return existing;
+      if (filter?.definitionKey === 'existing-stable-key') return existing;
       return null;
     });
     mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });

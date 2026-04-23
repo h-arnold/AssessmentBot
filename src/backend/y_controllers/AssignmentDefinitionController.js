@@ -879,7 +879,7 @@ class AssignmentDefinitionController {
    */
   _requireExistingAssignmentTopic(primaryTopicKey) {
     const topics = this._listAssignmentTopics();
-    const topicRecord = topics.find((topic) => topic && topic.key === primaryTopicKey) || null;
+    const topicRecord = topics.find((topic) => topic?.key === primaryTopicKey) || null;
 
     if (!topicRecord) {
       throw new Error(`Unknown primaryTopicKey: ${primaryTopicKey}`);

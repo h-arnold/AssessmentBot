@@ -214,7 +214,7 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
     { caseName: 'leading whitespace', definitionKey: ' definition-001' },
     { caseName: 'trailing whitespace', definitionKey: 'definition-001 ' },
     { caseName: 'contains slash', definitionKey: 'definition/001' },
-    { caseName: 'contains backslash', definitionKey: 'definition\\001' },
+    { caseName: 'contains backslash', definitionKey: String.raw`definition\001` },
     { caseName: 'contains dot-dot', definitionKey: 'definition..001' },
     { caseName: 'contains control character', definitionKey: 'definition\u0007-001' },
   ])(
@@ -256,7 +256,7 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
     { caseName: 'taskWeightings taskId has leading whitespace', taskId: ' task-1' },
     { caseName: 'taskWeightings taskId has trailing whitespace', taskId: 'task-1 ' },
     { caseName: 'taskWeightings taskId contains slash', taskId: 'task/1' },
-    { caseName: 'taskWeightings taskId contains backslash', taskId: 'task\\1' },
+    { caseName: 'taskWeightings taskId contains backslash', taskId: String.raw`task\1` },
     { caseName: 'taskWeightings taskId contains dot-dot', taskId: 'task..1' },
     { caseName: 'taskWeightings taskId contains control character', taskId: 'task\u0007-1' },
   ])(
