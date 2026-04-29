@@ -4,6 +4,11 @@
 .VSCodeCounter
 *.clasprc.json
 *credentials.json
-coverage
 /site
-
+.codex-home
+/scripts/builder/dist/
+/scripts/builder/node_modules/
+build
+coverage
+test-results/
+nohup.out
