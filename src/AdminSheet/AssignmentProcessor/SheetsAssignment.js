@@ -9,8 +9,7 @@ class SheetsAssignment extends Assignment {
    * Constructs a SheetsAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
-   * @param {string} templateDocumentId - The ID of the template spreadsheet document.
+   * @param {AssignmentDefinition|Object} assignmentDefinition - The spreadsheet assignment definition instance or serialised data.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     const defInstance =
@@ -106,7 +105,7 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Assesses all student spreadsheet responses using the dedicated assessor.
+   * Assesses all student spreadsheet responses and applies cell-colour feedback.
    */
   assessResponses() {
     const assessor = new SheetsAssessor(this.getTasks(), this.submissions);

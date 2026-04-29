@@ -8,7 +8,7 @@
 class SheetsFeedback {
   /**
    * Creates an instance of SheetsFeedback.
-   * @param {Array} studentTasks - Array of StudentTask objects to process feedback for.
+   * @param {Array} studentTasksOrSubmissions - Array of submissions to process feedback for.
    */
   constructor(studentTasksOrSubmissions) {
     // Accept new model submissions array; fall back for backward compatibility.
@@ -56,7 +56,7 @@ class SheetsFeedback {
 
   /**
    * Generates all batch update requests for a single student's spreadsheet.
-   * @param {StudentTask} studentTask - The student task to generate requests for.
+   * @param {Object} sub - Submission containing assessed spreadsheet items.
    * @return {Array} Array of batch update request objects.
    */
   generateBatchRequestsForSubmission(sub) {
