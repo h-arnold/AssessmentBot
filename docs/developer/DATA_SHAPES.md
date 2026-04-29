@@ -307,11 +307,11 @@ Used when we want a lightweight snapshot for list views or quick comparisons. Th
               "createdAt": "2025-09-10T12:00:00Z",
               "items": [
                 {
-                  "location": "A1",
+                  "location": [0, 0],
                   "status": "correct"
                 },
                 {
-                  "location": "B3",
+                  "location": [1, 2],
                   "status": "incorrect"
                 }
               ]
@@ -476,11 +476,11 @@ Partial JSONs also redact artifact `content`/`contentHash` and drop the `reasoni
               "createdAt": "2025-09-10T12:00:00Z",
               "items": [
                 {
-                  "location": "A1",
+                  "location": [0, 0],
                   "status": "correct"
                 },
                 {
-                  "location": "B2",
+                  "location": [1, 1],
                   "status": "correct"
                 }
               ]
@@ -541,15 +541,15 @@ For spreadsheet tasks, tracks cell-level correctness:
     "createdAt": "2025-09-10T12:00:00Z",
     "items": [
       {
-        "location": "A1",
+        "location": [0, 0],
         "status": "correct"
       },
       {
-        "location": "B3",
+        "location": [1, 2],
         "status": "incorrect"
       },
       {
-        "location": "C5",
+        "location": [2, 4],
         "status": "notAttempted"
       }
     ]
@@ -568,6 +568,7 @@ For spreadsheet tasks, tracks cell-level correctness:
 - `type`: String; identifies feedback class (`'cellReference'`)
 - `createdAt`: ISO string timestamp of when feedback was generated
 - `items`: Array of cell feedback objects, each with `location` and `status`
+- `location`: Two-element array of zero-based `[rowIndex, columnIndex]` coordinates used directly for Sheets batch updates
 
 ## Full Hydration Example with Assessments and Feedback
 
@@ -622,15 +623,15 @@ When assessments and feedback data exists, both partial and full hydration inclu
               "createdAt": "2025-09-10T12:00:00Z",
               "items": [
                 {
-                  "location": "A1",
+                  "location": [0, 0],
                   "status": "correct"
                 },
                 {
-                  "location": "B2",
+                  "location": [1, 1],
                   "status": "correct"
                 },
                 {
-                  "location": "C3",
+                  "location": [2, 2],
                   "status": "incorrect"
                 }
               ]

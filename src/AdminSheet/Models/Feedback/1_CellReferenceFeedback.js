@@ -1,6 +1,7 @@
 /**
  * Feedback specific to cell references in spreadsheet tasks.
  * Tracks which cells have correct, incorrect, or missing formulae.
+ * Locations are stored as zero-based `[rowIndex, columnIndex]` pairs.
  */
 class CellReferenceFeedback extends Feedback {
   /**
@@ -14,7 +15,7 @@ class CellReferenceFeedback extends Feedback {
 
   /**
    * Adds a feedback item for a specific cell.
-   * @param {string} location - The cell location (e.g., "A1").
+   * @param {Array<number>} location - Zero-based `[rowIndex, columnIndex]` cell coordinates.
    * @param {string} status - The status of the cell ("correct", "incorrect", "notAttempted").
    */
   addItem(location, status) {

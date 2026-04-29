@@ -5,11 +5,10 @@
  * However, today is not that day.
  * @class SheetsFeedback
  */
-
 class SheetsFeedback {
   /**
    * Creates an instance of SheetsFeedback.
-   * @param {Array} studentTasks - Array of StudentTask objects to process feedback for.
+   * @param {Array} studentTasksOrSubmissions - Array of submissions to process feedback for.
    */
   constructor(studentTasksOrSubmissions) {
     // Accept new model submissions array; fall back for backward compatibility.
@@ -22,63 +21,70 @@ class SheetsFeedback {
    * Uses different colors for correct, incorrect, and not attempted cells.
    */
   applyFeedback() {
-    try {
-      const batchUpdates = [];
-      (this.submissions || []).forEach((sub) => {
-        if (!sub || !sub.documentId) {
-          console.warn(
-            `Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`
-          );
-          return;
-        }
-        const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
-        this.progressTracker.updateProgress(
-          `Generating feedback for ${studentLabel}'s spreadsheet.`,
-          false
+    const batchUpdates = [];
+    (this.submissions || []).forEach((sub) => {
+      if (!sub || !sub.documentId) {
+        ABLogger.getInstance().warn(
+          `Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`
         );
-        const requests = this.generateBatchRequestsForSubmission(sub);
-        if (requests && requests.length) {
-          batchUpdates.push({ requests, spreadsheetId: sub.documentId });
-        }
-      });
-      this.progressTracker.updateProgress(`Applying feedback to student sheets`);
-      if (batchUpdates.length) {
-        BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
-        this.progressTracker.updateProgress(
-          `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
-          false
-        );
-      } else {
-        this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
+        return;
       }
-    } catch (e) {
-      console.error('Error applying spreadsheet feedback:', e);
-      this.progressTracker.logError('Failed to apply spreadsheet feedback', e);
+
+      const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
+      this.progressTracker.updateProgress(
+        `Generating feedback for ${studentLabel}'s spreadsheet.`,
+        false
+      );
+
+      const requests = this.generateBatchRequestsForSubmission(sub);
+      if (requests.length) {
+        batchUpdates.push({ requests, spreadsheetId: sub.documentId });
+      }
+    });
+
+    this.progressTracker.updateProgress('Applying feedback to student sheets');
+    if (batchUpdates.length) {
+      BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
+      this.progressTracker.updateProgress(
+        `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
+        false
+      );
+    } else {
+      this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
     }
   }
 
   /**
    * Generates all batch update requests for a single student's spreadsheet.
-   * @param {StudentTask} studentTask - The student task to generate requests for.
+   * @param {Object} sub - Submission containing assessed spreadsheet items.
    * @return {Array} Array of batch update request objects.
    */
   generateBatchRequestsForSubmission(sub) {
     const requests = [];
     const items = sub.items || {};
     Object.values(items).forEach((item) => {
-      if (!item || !item.feedback || item.pageId === undefined || item.pageId === null) return;
-      const sheetId = item.pageId; // spreadsheet sheetId
+      if (!item || !item.feedback) return;
+
+      const sheetId = item.artifact?.pageId ?? item.pageId;
+      if (sheetId === undefined || sheetId === null) {
+        ABLogger.getInstance().warn(
+          `Skipping spreadsheet feedback item without pageId for task ${item.taskId || 'Unknown'}`
+        );
+        return;
+      }
+
       const cellFeedback = item.getFeedback
         ? item.getFeedback('cellReference')
         : item.feedback.cellReference || null;
-      if (cellFeedback && cellFeedback.getItems) {
-        cellFeedback.getItems().forEach((cfItem) => {
-          const rowIndex = cfItem.location[0] || 0;
-          const colIndex = cfItem.location[1] || 0;
-          const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
-          if (req) requests.push(req);
-        });
-      }
+      const feedbackItems = cellFeedback?.getItems ? cellFeedback.getItems() : cellFeedback?.items;
+      if (!Array.isArray(feedbackItems)) return;
+
+      feedbackItems.forEach((cfItem) => {
+        const rowIndex = cfItem.location[0] || 0;
+        const colIndex = cfItem.location[1] || 0;
+        const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
+        if (req) requests.push(req);
+      });
     });
     return requests;
   }
@@ -161,4 +167,8 @@ class SheetsFeedback {
         };
     }
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SheetsFeedback;
 }

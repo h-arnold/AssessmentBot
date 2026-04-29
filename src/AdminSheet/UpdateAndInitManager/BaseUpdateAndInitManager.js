@@ -12,12 +12,15 @@
  * - Validating and setting the template file IDs.
  */
 class BaseUpdateAndInit {
+  /**
+   * Creates the shared update and initialisation state.
+   */
   constructor() {
     // Set up common properties
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();
     this.uiManager = UIManager.getInstance();
     this.destinationFolderId = ''; // to be set later from configuration or during the process
-    this.versionNo = '0.7.7';
+    this.versionNo = '0.7.8';
     // This needs to before getting the new template Ids otherwise they'll stay with whatever value was set before.
     this.versionDetails = this.fetchVersionDetails();
     // Retrieve stored Assessment Record Template ID (may be empty string if unset)
@@ -68,7 +71,7 @@ class BaseUpdateAndInit {
     }
 
     const status = response.getResponseCode();
-    if (status !== 200) {
+    if (status !== HTTP_STATUS_OK) {
       const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${status} Returned Message: ${response.getContentText()}.`;
       ABLogger.getInstance().error(errorMessage);
       throw new Error(errorMessage);
@@ -255,3 +258,5 @@ class BaseUpdateAndInit {
     }
   }
 }
+
+const HTTP_STATUS_OK = 200;

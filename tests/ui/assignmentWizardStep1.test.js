@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderTemplateWithIncludes } from '../helpers/htmlTemplateRenderer.js';
+import { renderTemplateWithIncludes, evalWizardScripts } from '../helpers/htmlTemplateRenderer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,6 +92,8 @@ function setupWizard() {
   const { window } = dom;
   const googleMock = createGoogleMock();
   window.google = googleMock.google;
+
+  evalWizardScripts(window, vi);
 
   const inlineScript = Array.from(window.document.querySelectorAll('script')).find(
     (script) => !script.src && script.textContent.includes('assignmentWizard')
@@ -282,11 +284,12 @@ describe('Assessment wizard Step 1', () => {
       googleRun.triggerFailure('fetchAssignmentsForWizard', { message: 'Network error' });
 
       const assignmentInput = document.getElementById('assignmentInput');
+      const assignmentMenu = document.getElementById('assignmentMenu');
       const spinner = document.getElementById('assignmentLoadingSpinner');
       const startButton = document.getElementById('startAssessment');
       const errorMessage = document.getElementById('assignmentErrorMessage');
 
-      expect(assignmentSelect.disabled).toBe(true);
+      expect(assignmentInput.disabled).toBe(true);
       expect(spinner.hidden).toBe(true);
       expect(startButton.disabled).toBe(true);
       expect(errorMessage.hidden).toBe(false);

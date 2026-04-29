@@ -742,6 +742,7 @@ assignment.submissions = [
 **For Sheets Assignments**: `SheetsAssignment.assessResponses()` (overridden)
 
 - Uses `SheetsAssessor` for formula-based assessment instead of LLM
+- Applies spreadsheet cell-colour feedback afterwards via `SheetsFeedback`
 
 #### Step 4.2: LLM Assessment Process (for Slides/Text/Images)
 
@@ -863,7 +864,9 @@ submission.items["task_001"] = {
 - **Process**:
   1. Creates `SheetsAssessor` instance with tasks and submissions
   2. Calls `assessor.assessResponses()`
-  3. Does NOT use LLM - formula-based assessment only
+  3. Creates `SheetsFeedback` with the same submissions
+  4. Calls `feedbackPopulator.applyFeedback()` to colour spreadsheet cells
+  5. Does NOT use LLM - formula-based assessment only
 
 **Class**: `SheetsAssessor`
 
@@ -875,22 +878,22 @@ submission.items["task_001"] = {
 - **Process**:
   1. Iterates through submissions
   2. For each submission's items:
-     - Gets corresponding task definition
-     - Skips non-formula responses
-     - Calls `assessFormulaeTasks()` for formula assessment
-     - Adds assessments to submission
-     - Adds formula comparison results
-     - Adds cell reference feedback
+  - Gets corresponding task definition
+  - Skips non-spreadsheet items
+  - Calls `assessFormulaeTasks()` for formula assessment
+  - Adds assessments directly to the submission item
+  - Stores serialised `formulaComparison` results on the item
+  - Adds `cellReference` feedback to the item for later formatting
 
 **Method**: `assessFormulaeTasks()`
 
 - **Purpose**: Compares student formulas against reference formulas
 - **Process**:
-  1. Extracts formulas from student response and reference
-  2. Compares formulas cell by cell
+  1. Extracts formulas from the current submission item artifact and reference artifact, falling back to legacy shapes when needed
+  2. Compares either 2D spreadsheet grids or legacy flat formula lists
   3. Generates completeness assessment (% of cells completed)
   4. Generates accuracy assessment (% of formulas correct)
-  5. Generates spag assessment (formula syntax quality)
+  5. Sets SPaG to `'N'` because formula tasks do not use SPaG assessment
   6. Creates feedback for incorrect cell references
 - **Returns**:
 
@@ -900,10 +903,23 @@ submission.items["task_001"] = {
     accuracyAssessment: Assessment,
     spagAssessment: Assessment,
     formulaComparisonResults: {
-      cellReferenceFeedback: Feedback[]
+      correct: number,
+      incorrect: number,
+      notAttempted: number,
+      totalFormulae: number,
+      cellReferenceFeedback: CellReferenceFeedback
     }
   }
   ```
+
+**Class**: `SheetsFeedback`
+
+- **Location**: `/src/AdminSheet/FeedbackPopulators/SheetsFeedback.js`
+- **Purpose**: Converts stored `cellReference` feedback into Google Sheets batch update requests
+- **Notes**:
+  - Reads feedback from each submission item rather than from the legacy submission wrapper
+  - Resolves sheet IDs from `item.artifact.pageId`, falling back to legacy `item.pageId`
+  - Uses zero-based `[rowIndex, columnIndex]` feedback locations directly in `repeatCell` requests
 
 ---
 
@@ -1044,7 +1060,7 @@ submission.items["task_001"] = {
 
 **Analysis Sheet Structure**:
 
-```
+```text
 | Student Name | Task 1 - Completeness | Task 1 - Accuracy | Task 1 - SPaG | ... | Averages - Completeness | Averages - Accuracy | Averages - SPaG |
 |--------------|----------------------|-------------------|---------------|-----|------------------------|---------------------|-----------------|
 | Jane Doe     | 4                    | 5                 | 4             | ... | 4.2                    | 4.5                 | 4.3             |
@@ -1056,7 +1072,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 **Overview Sheet Structure**:
 
-```
+```text
 | Assignment Name | Avg Completeness | Avg Accuracy | Avg SPaG | Last Updated        |
 |----------------|------------------|--------------|----------|---------------------|
 | Essay 1        | 80               | 85           | 90       | 2025-01-15T10:30:00 |
@@ -1256,7 +1272,7 @@ Note: Scores are 0-5 (or 'N' for not attempted). Feedback is stored in the data 
 
 Here's the complete chain from user action to completion:
 
-```
+```text
 User clicks "Assess Student Work"
   ↓
 showAssignmentDropdown() [globals]

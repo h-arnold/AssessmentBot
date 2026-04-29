@@ -9,8 +9,7 @@ class SheetsAssignment extends Assignment {
    * Constructs a SheetsAssignment instance.
    * @param {string} courseId - The ID of the course.
    * @param {string} assignmentId - The ID of the assignment.
-   * @param {string} referenceDocumentId - The ID of the reference spreadsheet document.
-   * @param {string} templateDocumentId - The ID of the template spreadsheet document.
+   * @param {AssignmentDefinition|Object} assignmentDefinition - The spreadsheet assignment definition instance or serialised data.
    */
   constructor(courseId, assignmentId, assignmentDefinition) {
     const defInstance =
@@ -31,6 +30,9 @@ class SheetsAssignment extends Assignment {
     return inst;
   }
 
+  /**
+   * Populates task definitions extracted from the reference and template spreadsheets.
+   */
   populateTasks() {
     const { referenceDocumentId, templateDocumentId } = this.assignmentDefinition;
     const parser = new SheetsParser();
@@ -102,16 +104,15 @@ class SheetsAssignment extends Assignment {
     return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
   }
 
+  /**
+   * Assesses all student spreadsheet responses and applies cell-colour feedback.
+   */
   assessResponses() {
-    // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
-    // Placeholder: integrate AssessmentEngineRouter in later phase.
-    if (typeof SheetsAssessor === 'undefined') {
-      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
-    } else {
-      const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
-      // Use optional chaining to call assessResponses if present
-      assessor.assessResponses?.();
-    }
+    const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
+    assessor.assessResponses();
+
+    const feedbackPopulator = new SheetsFeedback(this.submissions);
+    feedbackPopulator.applyFeedback();
   }
 }
 
