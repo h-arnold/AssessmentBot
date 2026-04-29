@@ -38,7 +38,7 @@ class SheetsAssignment extends Assignment {
     const parser = new SheetsParser();
     const defs = parser.extractTaskDefinitions(referenceDocumentId, templateDocumentId);
     this.assignmentDefinition.tasks = Object.fromEntries(defs.map((td) => [td.getId(), td]));
-    console.log(`Populated ${defs.length} spreadsheet TaskDefinitions.`);
+    ABLogger.getInstance().info(`Populated ${defs.length} spreadsheet TaskDefinitions.`);
   }
 
   /**
@@ -64,14 +64,16 @@ class SheetsAssignment extends Assignment {
         false
       );
       if (!sub.documentId) {
-        console.warn(`No document ID for studentId ${sub.studentId}; skipping.`);
+        ABLogger.getInstance().warn(`No document ID for studentId ${sub.studentId}; skipping.`);
         return;
       }
       const artifacts = parser.extractSubmissionArtifacts(sub.documentId, taskDefs);
       artifacts.forEach((a) => {
         const taskDefinition = this.assignmentDefinition.tasks[a.taskId];
         if (!taskDefinition) {
-          console.warn('Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction');
+          ABLogger.getInstance().warn(
+            'Unknown taskId ' + a.taskId + ' in spreadsheet submission extraction'
+          );
           return;
         }
         sub.upsertItemFromExtraction(taskDefinition, {
@@ -109,15 +111,17 @@ class SheetsAssignment extends Assignment {
    * Routes assessment through the dedicated assessor using response artefacts.
    */
   assessResponses() {
-    // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
-    // Placeholder: integrate AssessmentEngineRouter in later phase.
     if (typeof SheetsAssessor === 'undefined') {
-      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
-    } else {
-      const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
-      // Use optional chaining to call assessResponses if present
-      assessor.assessResponses?.();
+      const errorMessage = 'SheetsAssessor not available; cannot assess spreadsheet responses.';
+      ABLogger.getInstance().error(errorMessage);
+      this.progressTracker.logAndThrowError(errorMessage);
     }
+
+    const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
+    assessor.assessResponses();
+
+    const feedbackPopulator = new SheetsFeedback(this.submissions);
+    feedbackPopulator.applyFeedback();
   }
 }
 

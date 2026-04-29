@@ -189,7 +189,6 @@ describe('AssignmentController - Definition Hydration', () => {
       const fullDefinition = new AssignmentDefinition({
         primaryTitle: 'Essay 1',
         primaryTopic: 'English',
-        courseId: 'course-123',
         yearGroup: 10,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref-123',
@@ -235,7 +234,6 @@ describe('AssignmentController - Definition Hydration', () => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'NonExistent_Topic_10';
         if (key === 'triggerId') return 'trigger-789';
-        if (key === 'courseId') return 'course-123';
         return null;
       });
 
@@ -260,7 +258,6 @@ describe('AssignmentController - Definition Hydration', () => {
       const fullDefinition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
-        courseId: 'course-123',
         yearGroup: 10,
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
@@ -285,35 +282,6 @@ describe('AssignmentController - Definition Hydration', () => {
 
       // Verify SlidesAssignment was created (based on documentType)
       expect(globalThis.SlidesAssignment).toHaveBeenCalled();
-    });
-
-    it('fails when stored courseId is missing', () => {
-      mockProperties.getProperty.mockImplementation((key) => {
-        if (key === 'assignmentId') return 'assignment-456';
-        if (key === 'definitionKey') return 'Fallback_Topic_10';
-        if (key === 'triggerId') return 'trigger-789';
-        if (key === 'courseId') return null;
-        return null;
-      });
-
-      const fullDefinition = new AssignmentDefinition({
-        primaryTitle: 'Fallback',
-        primaryTopic: 'Topic',
-        courseId: 'course-from-definition',
-        yearGroup: 10,
-        documentType: 'SLIDES',
-        referenceDocumentId: 'ref',
-        templateDocumentId: 'tpl',
-        tasks: {},
-      });
-
-      mockDefinitionController.getDefinitionByKey.mockReturnValue(fullDefinition);
-
-      const controller = new AssignmentController();
-
-      expect(() => controller.processSelectedAssignment()).toThrow(
-        'Course ID could not be determined. It is missing from stored properties.'
-      );
     });
   });
 

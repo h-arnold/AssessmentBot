@@ -30,7 +30,7 @@ class SheetsAssessor {
     this.submissions.forEach((submission) => {
       // Essential check - skip if student task or items don't exist
       if (!submission.items) {
-        console.warn(
+        ABLogger.getInstance().warn(
           `Submission or items missing for student: ${
             submission?.student?.name || submission.studentId || 'Unknown'
           }`
@@ -105,7 +105,7 @@ class SheetsAssessor {
    */
   assessFormulaeTasks(studentResponseEntry, referenceTask, taskKey, studentName) {
     if (!studentResponseEntry?.response || !referenceTask?.taskReference) {
-      console.warn(
+      ABLogger.getInstance().warn(
         `Invalid input for assessFormulaeTasks for taskKey: ${taskKey}, student: ${studentName}`
       );
       this.progressTracker.logError(
@@ -142,7 +142,7 @@ class SheetsAssessor {
       'SPaG is not assessed for formulae tasks.'
     );
 
-    console.log(
+    ABLogger.getInstance().info(
       `Assessed formulae task ${taskKey} for ${studentName}: ${JSON.stringify(comparisonResults)}`,
       false
     );
@@ -319,4 +319,8 @@ class SheetsAssessor {
       (scores.correct / (countOfFormulae - scores.notAttempted)) * FORMULAE_SCORE_MAX;
     return Number(accuracyScore.toFixed(FORMULAE_SCORE_DECIMAL_PLACES)); // Round score to 2 decimal places
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SheetsAssessor;
 }

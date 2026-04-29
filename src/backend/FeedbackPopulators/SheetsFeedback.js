@@ -24,38 +24,33 @@ class SheetsFeedback {
    * Applies visual feedback to all student spreadsheets based on their assessments.
    * Uses different colors for correct, incorrect, and not attempted cells.   * @returns {void}   */
   applyFeedback() {
-    try {
-      const batchUpdates = [];
-      (this.submissions || []).forEach((sub) => {
-        if (!sub || !sub.documentId) {
-          console.warn(
-            `Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`
-          );
-          return;
-        }
-        const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
-        this.progressTracker.updateProgress(
-          `Generating feedback for ${studentLabel}'s spreadsheet.`,
-          false
+    const batchUpdates = [];
+    (this.submissions || []).forEach((sub) => {
+      if (!sub || !sub.documentId) {
+        ABLogger.getInstance().warn(
+          `Missing submission or document ID for student: ${sub?.studentId || 'Unknown'}`
         );
-        const requests = this.generateBatchRequestsForSubmission(sub);
-        if (requests && requests.length > 0) {
-          batchUpdates.push({ requests, spreadsheetId: sub.documentId });
-        }
-      });
-      this.progressTracker.updateProgress(`Applying feedback to student sheets`);
-      if (batchUpdates.length > 0) {
-        BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
-        this.progressTracker.updateProgress(
-          `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
-          false
-        );
-      } else {
-        this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
+        return;
       }
-    } catch (error) {
-      console.error('Error applying spreadsheet feedback:', error);
-      this.progressTracker.logError('Failed to apply spreadsheet feedback', error);
+      const studentLabel = sub.student?.name || sub.studentName || sub.studentId;
+      this.progressTracker.updateProgress(
+        `Generating feedback for ${studentLabel}'s spreadsheet.`,
+        false
+      );
+      const requests = this.generateBatchRequestsForSubmission(sub);
+      if (requests.length > 0) {
+        batchUpdates.push({ requests, spreadsheetId: sub.documentId });
+      }
+    });
+    this.progressTracker.updateProgress('Applying feedback to student sheets');
+    if (batchUpdates.length > 0) {
+      BatchUpdateUtility.executeMultipleBatchUpdates(batchUpdates);
+      this.progressTracker.updateProgress(
+        `Applied cell colour feedback to ${batchUpdates.length} student sheets.`,
+        false
+      );
+    } else {
+      this.progressTracker.updateProgress('No spreadsheet feedback to apply.', false);
     }
   }
 
@@ -68,19 +63,28 @@ class SheetsFeedback {
     const requests = [];
     const items = sub.items || {};
     Object.values(items).forEach((item) => {
-      if (!item || !item.feedback || item.pageId === undefined || item.pageId === null) return;
-      const sheetId = item.pageId; // spreadsheet sheetId
+      if (!item || !item.feedback) return;
+
+      const sheetId = item.artifact?.pageId ?? item.pageId;
+      if (sheetId === undefined || sheetId === null) {
+        ABLogger.getInstance().warn(
+          `Skipping spreadsheet feedback item without pageId for task ${item.taskId || 'Unknown'}`
+        );
+        return;
+      }
+
       const cellFeedback = item.getFeedback
         ? item.getFeedback('cellReference')
         : item.feedback.cellReference || null;
-      if (cellFeedback && cellFeedback.getItems) {
-        cellFeedback.getItems().forEach((cfItem) => {
-          const rowIndex = cfItem.location[0] || 0;
-          const colIndex = cfItem.location[1] || 0;
-          const request = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
-          if (request) requests.push(request);
-        });
-      }
+      const feedbackItems = cellFeedback?.getItems ? cellFeedback.getItems() : cellFeedback?.items;
+      if (!Array.isArray(feedbackItems)) return;
+
+      feedbackItems.forEach((cfItem) => {
+        const rowIndex = cfItem.location[0] || 0;
+        const colIndex = cfItem.location[1] || 0;
+        const request = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
+        if (request) requests.push(request);
+      });
     });
     return requests;
   }
@@ -167,4 +171,8 @@ class SheetsFeedback {
       }
     }
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = SheetsFeedback;
 }
