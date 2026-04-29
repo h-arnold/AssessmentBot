@@ -1,13 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-
-function loadSheetsFeedback() {
-  const source = readFileSync(
-    new URL('../../src/AdminSheet/FeedbackPopulators/SheetsFeedback.js', import.meta.url),
-    'utf8'
-  );
-  return new Function(`${source}\nreturn SheetsFeedback;`)();
-}
+import SheetsFeedback from '../../src/AdminSheet/FeedbackPopulators/SheetsFeedback.js';
 
 describe('SheetsFeedback', () => {
   let originalProgressTracker;
@@ -28,7 +20,6 @@ describe('SheetsFeedback', () => {
   });
 
   it('builds requests from serialised cell reference feedback items', () => {
-    const SheetsFeedback = loadSheetsFeedback();
     const feedbackPopulator = new SheetsFeedback([]);
     const submission = {
       items: {

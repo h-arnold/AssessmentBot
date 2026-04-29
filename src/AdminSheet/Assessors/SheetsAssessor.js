@@ -17,15 +17,13 @@ class SheetsAssessor {
    */
   assessResponses() {
     this.submissions.forEach((submission) => {
+      const studentName =
+        submission?.studentName || submission?.student?.name || submission?.studentId || 'Unknown';
+
       if (!submission?.items) {
-        ABLogger.getInstance().warn(
-          `Submission or items missing for student: ${submission?.studentId || 'Unknown'}`
-        );
+        ABLogger.getInstance().warn(`Submission or items missing for student: ${studentName}`);
         return;
       }
-
-      const studentName =
-        submission.studentName || submission.student?.name || submission.studentId;
 
       this.progressTracker.updateProgress(`Assessing ${studentName}'s spreadsheet.`, false);
 
@@ -34,9 +32,8 @@ class SheetsAssessor {
           return;
         }
 
-        const itemType =
-          typeof submissionItem.getType === 'function' ? submissionItem.getType() : null;
-        if (itemType && itemType !== 'SPREADSHEET') {
+        const itemType = submissionItem.getType();
+        if (itemType !== 'SPREADSHEET') {
           return;
         }
 
@@ -199,8 +196,8 @@ class SheetsAssessor {
     const cellReferenceFeedback = new CellReferenceFeedback();
     const incorrectFormulae = [];
     const bbox = taskMetadata.bbox || taskMetadata.boundingBox || null;
-    const rowOffset = bbox ? bbox.startRow - 1 : 0;
-    const columnOffset = bbox ? bbox.startColumn - 1 : 0;
+    const rowOffset = bbox ? (bbox.startRow || 1) - 1 : 0;
+    const columnOffset = bbox ? (bbox.startColumn || 1) - 1 : 0;
     let totalFormulae = 0;
 
     for (let row = 0; row < referenceGrid.length; row++) {

@@ -132,4 +132,36 @@ describe('SheetsAssessor', () => {
     });
     expect(mockProgressTracker.logError).not.toHaveBeenCalled();
   });
+
+  it.each([
+    {
+      caseName: 'defaults a missing start row to the top row',
+      bbox: { startColumn: 4 },
+      expectedLocation: [0, 3],
+    },
+    {
+      caseName: 'defaults a missing start column to the first column',
+      bbox: { startRow: 3 },
+      expectedLocation: [2, 0],
+    },
+    {
+      caseName: 'defaults both missing bbox coordinates to the first cell',
+      bbox: {},
+      expectedLocation: [0, 0],
+    },
+  ])(
+    'uses safe defaults when bbox metadata is partial: $caseName',
+    ({ bbox, expectedLocation }) => {
+      const assessor = new SheetsAssessor({}, []);
+
+      const comparisonResults = assessor._compareGridFormulaArrays([['=A1']], [['=A1']], {
+        bbox,
+      });
+
+      expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+        { location: expectedLocation, status: 'correct' },
+      ]);
+      expect(comparisonResults.cellReferenceFeedback.getItems()[0].location).not.toContain(NaN);
+    }
+  );
 });
