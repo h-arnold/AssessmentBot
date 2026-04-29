@@ -71,14 +71,14 @@ class SheetsFeedback {
       const cellFeedback = item.getFeedback
         ? item.getFeedback('cellReference')
         : item.feedback.cellReference || null;
-      if (cellFeedback && cellFeedback.getItems) {
-        cellFeedback.getItems().forEach((cfItem) => {
-          const rowIndex = cfItem.location[0] || 0;
-          const colIndex = cfItem.location[1] || 0;
-          const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
-          if (req) requests.push(req);
-        });
-      }
+      const feedbackItems = cellFeedback?.getItems ? cellFeedback.getItems() : cellFeedback?.items;
+      if (!Array.isArray(feedbackItems)) return;
+      feedbackItems.forEach((cfItem) => {
+        const rowIndex = cfItem.location[0] || 0;
+        const colIndex = cfItem.location[1] || 0;
+        const req = this.createCellFormatRequest(rowIndex, colIndex, cfItem.status, sheetId);
+        if (req) requests.push(req);
+      });
     });
     return requests;
   }

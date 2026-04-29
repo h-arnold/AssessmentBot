@@ -17,32 +17,29 @@ class SheetsAssessor {
    */
   assessResponses() {
     this.submissions.forEach((submission) => {
-      // Essential check - skip if student task or items don't exist
-      if (!submission.items) {
-        console.warn(
-          `Submission or items missing for student: ${
-            submission?.student?.name || submission.studentId || 'Unknown'
-          }`
+      if (!submission?.items) {
+        ABLogger.getInstance().warn(
+          `Submission or items missing for student: ${submission?.studentId || 'Unknown'}`
         );
         return;
       }
 
-      const studentName = submission.student?.name || submission.studentId || 'Unknown';
+      const studentName =
+        submission.studentName || submission.student?.name || submission.studentId;
 
       this.progressTracker.updateProgress(`Assessing ${studentName}'s spreadsheet.`, false);
 
-      Object.entries(submission.items).forEach(([taskKey, studentResponseEntry]) => {
-        // Skip null responses (intentionally not attempted tasks)
-        if (studentResponseEntry === null) {
+      Object.entries(submission.items).forEach(([taskKey, submissionItem]) => {
+        if (!submissionItem) {
           return;
         }
 
-        // Skip non-formula responses or empty responses
-        if (!Array.isArray(studentResponseEntry?.response)) {
+        const itemType =
+          typeof submissionItem.getType === 'function' ? submissionItem.getType() : null;
+        if (itemType && itemType !== 'SPREADSHEET') {
           return;
         }
 
-        // Get reference task
         const referenceTask = this.tasks[taskKey];
         if (!referenceTask) {
           this.progressTracker.logAndThrowError(
@@ -50,9 +47,8 @@ class SheetsAssessor {
           );
         }
 
-        // Assess formulas
         const assessmentResults = this.assessFormulaeTasks(
-          studentResponseEntry,
+          submissionItem,
           referenceTask,
           taskKey,
           studentName
@@ -62,20 +58,16 @@ class SheetsAssessor {
           return;
         }
 
-        // Add assessments to the submission
-        submission.addAssessment(taskKey, 'completeness', assessmentResults.completenessAssessment);
-        submission.addAssessment(taskKey, 'accuracy', assessmentResults.accuracyAssessment);
-        submission.addAssessment(taskKey, 'spag', assessmentResults.spagAssessment);
+        submissionItem.addAssessment('completeness', assessmentResults.completenessAssessment);
+        submissionItem.addAssessment('accuracy', assessmentResults.accuracyAssessment);
+        submissionItem.addAssessment('spag', assessmentResults.spagAssessment);
+        submissionItem.assessments.formulaComparison = this._serialiseFormulaComparisonResults(
+          assessmentResults.formulaComparisonResults
+        );
 
-        // Ensure assessments container exists and add formula comparison results
-        studentResponseEntry.assessments = studentResponseEntry.assessments || {};
-        studentResponseEntry.assessments.formulaComparison =
-          assessmentResults.formulaComparisonResults;
-
-        // Add cell reference feedback to the response using the feedback model
         if (assessmentResults.formulaComparisonResults.cellReferenceFeedback) {
-          submission.addFeedback(
-            taskKey,
+          submissionItem.addFeedback(
+            'cellReference',
             assessmentResults.formulaComparisonResults.cellReferenceFeedback
           );
         }
@@ -86,44 +78,43 @@ class SheetsAssessor {
   /**
    * Assesses an individual student's formula response against a reference task and returns assessment data.
    * This method is called by `assessResponses` when a formula-based response is identified.
-   * @param {Object} studentResponseEntry - The student's response entry for the task, containing the `response` array.
-   * @param {Object} referenceTask - The reference task object, containing the `taskReference` array.
+   * @param {Object} submissionItem - The student's submission item for the task.
+   * @param {Object} referenceTask - The task definition or legacy reference task.
    * @param {string} taskKey - The key identifying the task.
    * @param {string} studentName - The name of the student (for logging purposes).
    * @return {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
    */
-  assessFormulaeTasks(studentResponseEntry, referenceTask, taskKey, studentName) {
-    if (!studentResponseEntry?.response || !referenceTask?.taskReference) {
-      console.warn(
-        `Invalid input for assessFormulaeTasks for taskKey: ${taskKey}, student: ${studentName}`
-      );
+  assessFormulaeTasks(submissionItem, referenceTask, taskKey, studentName) {
+    const studentArray = this._getStudentFormulaContent(submissionItem) || [];
+    const referenceArray = this._getReferenceFormulaContent(referenceTask);
+    if (!referenceArray) {
       this.progressTracker.logError(
         `Invalid data for formula assessment for task ${taskKey}, student ${studentName}`
       );
       return null;
     }
 
-    const studentArray = studentResponseEntry.response;
-    const referenceArray = referenceTask.taskReference;
+    const comparisonResults = this._compareFormulaArrays(
+      referenceArray,
+      studentArray,
+      referenceTask.taskMetadata || {}
+    );
+    const totalFormulae = comparisonResults.totalFormulae;
+    if (totalFormulae === 0) {
+      ABLogger.getInstance().warn(
+        `No reference formulae found for spreadsheet task ${taskKey}, student ${studentName}`
+      );
+      return null;
+    }
 
-    // Compare the two arrays of formula objects and count correct, incorrect, and not attempted responses
-    const comparisonResults = this._compareFormulaArrays(referenceArray, studentArray);
+    const scores = this.calculateFormulaeAssessmentScores(comparisonResults, totalFormulae);
 
-    // Calculate assessment scores based on the comparison results
-    const scores = this.calculateFormulaeAssessmentScores(comparisonResults, referenceArray.length);
-
-    // Add reasoning stats to the completeness and accuracy scores.
-    // No need for SPaG reasoning as it's not applicable for formulae.
     const completenessReasoning = this._generateCompletenessReasoning(
       comparisonResults,
-      referenceArray.length
+      totalFormulae
     );
-    const accuracyReasoning = this._generateAccuracyReasoning(
-      comparisonResults,
-      referenceArray.length
-    );
+    const accuracyReasoning = this._generateAccuracyReasoning(comparisonResults, totalFormulae);
 
-    // Create assessment objects for completeness, accuracy, and SPaG (SPaG will always be 'N')
     const completenessAssessment = new Assessment(scores.completenessScore, completenessReasoning);
     const accuracyAssessment = new Assessment(scores.accuracyScore, accuracyReasoning);
     const spagAssessment = new Assessment(
@@ -131,9 +122,12 @@ class SheetsAssessor {
       'SPaG is not assessed for formulae tasks.'
     );
 
-    console.log(
-      `Assessed formulae task ${taskKey} for ${studentName}: ${JSON.stringify(comparisonResults)}`,
-      false
+    ABLogger.getInstance().info(
+      `Assessed formulae task ${taskKey} for ${studentName}: ${JSON.stringify({
+        correct: comparisonResults.correct,
+        incorrect: comparisonResults.incorrect,
+        notAttempted: comparisonResults.notAttempted,
+      })}`
     );
 
     return {
@@ -144,39 +138,103 @@ class SheetsAssessor {
     };
   }
 
+  _getStudentFormulaContent(submissionItem) {
+    if (Array.isArray(submissionItem?.artifact?.content)) {
+      return submissionItem.artifact.content;
+    }
+    if (Array.isArray(submissionItem?.response)) {
+      return submissionItem.response;
+    }
+    return null;
+  }
+
+  _getReferenceFormulaContent(referenceTask) {
+    const referenceArtifact =
+      typeof referenceTask?.getPrimaryReference === 'function'
+        ? referenceTask.getPrimaryReference()
+        : null;
+    if (Array.isArray(referenceArtifact?.content)) {
+      return referenceArtifact.content;
+    }
+    if (Array.isArray(referenceTask?.taskReference)) {
+      return referenceTask.taskReference;
+    }
+    return null;
+  }
+
+  _serialiseFormulaComparisonResults(comparisonResults) {
+    return {
+      ...comparisonResults,
+      cellReferenceFeedback: comparisonResults.cellReferenceFeedback?.toJSON
+        ? comparisonResults.cellReferenceFeedback.toJSON()
+        : comparisonResults.cellReferenceFeedback,
+    };
+  }
+
   /**
-   * Compares two arrays of formula objects and counts correct, incorrect, and not attempted responses.
-   * Also outputs a list of incorrect formulae with student and reference formulae.
-   * @param {Array} referenceArray - Array of reference formula objects ({referenceFormula, location} or similar).
-   * @param {Array} studentArray - Array of student formula objects ({formula, location} or similar).
+   * Compares either legacy formula lists or current 2D spreadsheet grids.
+   * @param {Array} referenceArray - Reference formulas.
+   * @param {Array} studentArray - Student formulas.
+   * @param {Object} taskMetadata - Bounding-box metadata for spreadsheet grids.
    * @return {Object} Object with counts and feedback objects.
    */
-  _compareFormulaArrays(referenceArray, studentArray) {
+  _compareFormulaArrays(referenceArray, studentArray, taskMetadata = {}) {
+    if (this._isLegacyFormulaList(referenceArray)) {
+      return this._compareLegacyFormulaArrays(referenceArray, studentArray);
+    }
+    return this._compareGridFormulaArrays(referenceArray, studentArray, taskMetadata);
+  }
+
+  _isLegacyFormulaList(formulaArray) {
+    return (
+      Array.isArray(formulaArray) &&
+      formulaArray.some((item) => item && typeof item === 'object' && Array.isArray(item.location))
+    );
+  }
+
+  _compareGridFormulaArrays(referenceGrid, studentGrid, taskMetadata = {}) {
     let correct = 0;
     let incorrect = 0;
     let notAttempted = 0;
     const cellReferenceFeedback = new CellReferenceFeedback();
-    let incorrectFormulae = [];
+    const incorrectFormulae = [];
+    const bbox = taskMetadata.bbox || taskMetadata.boundingBox || null;
+    const rowOffset = bbox ? bbox.startRow - 1 : 0;
+    const columnOffset = bbox ? bbox.startColumn - 1 : 0;
+    let totalFormulae = 0;
 
-    for (let i = 0; i < referenceArray.length; i++) {
-      const ref = referenceArray[i];
-      const student = studentArray[i] || {};
-      const refFormula = ref.referenceFormula || ref.formula || '';
-      const studentFormula = student.formula || '';
+    for (let row = 0; row < referenceGrid.length; row++) {
+      const refRow = Array.isArray(referenceGrid[row]) ? referenceGrid[row] : [];
+      const studentRow = Array.isArray(studentGrid[row]) ? studentGrid[row] : [];
 
-      if (studentFormula === refFormula) {
-        cellReferenceFeedback.addItem(student.location, 'correct');
-        correct++;
-      } else if (studentFormula === '') {
-        cellReferenceFeedback.addItem(student.location, 'notAttempted');
-        notAttempted++;
-      } else {
-        cellReferenceFeedback.addItem(student.location, 'incorrect');
+      for (let column = 0; column < refRow.length; column++) {
+        const refFormula = refRow[column] || '';
+        if (!refFormula) {
+          continue;
+        }
+
+        totalFormulae++;
+        const studentFormula = studentRow[column] || '';
+        const location = [row + rowOffset, column + columnOffset];
+
+        if (studentFormula === refFormula) {
+          cellReferenceFeedback.addItem(location, 'correct');
+          correct++;
+          continue;
+        }
+
+        if (!studentFormula) {
+          cellReferenceFeedback.addItem(location, 'notAttempted');
+          notAttempted++;
+          continue;
+        }
+
+        cellReferenceFeedback.addItem(location, 'incorrect');
         incorrect++;
-
         incorrectFormulae.push({
-          studentFormula: studentFormula,
+          studentFormula,
           referenceFormula: refFormula,
+          location,
         });
       }
     }
@@ -187,6 +245,48 @@ class SheetsAssessor {
       notAttempted,
       incorrectFormulae,
       cellReferenceFeedback,
+      totalFormulae,
+    };
+  }
+
+  _compareLegacyFormulaArrays(referenceArray, studentArray) {
+    let correct = 0;
+    let incorrect = 0;
+    let notAttempted = 0;
+    const cellReferenceFeedback = new CellReferenceFeedback();
+    const incorrectFormulae = [];
+
+    for (let i = 0; i < referenceArray.length; i++) {
+      const ref = referenceArray[i];
+      const student = studentArray[i] || {};
+      const refFormula = ref.referenceFormula || ref.formula || '';
+      const studentFormula = student.formula || '';
+      const location = student.location || ref.location;
+
+      if (studentFormula === refFormula) {
+        cellReferenceFeedback.addItem(location, 'correct');
+        correct++;
+      } else if (studentFormula === '') {
+        cellReferenceFeedback.addItem(location, 'notAttempted');
+        notAttempted++;
+      } else {
+        cellReferenceFeedback.addItem(location, 'incorrect');
+        incorrect++;
+        incorrectFormulae.push({
+          studentFormula,
+          referenceFormula: refFormula,
+          location,
+        });
+      }
+    }
+
+    return {
+      correct,
+      incorrect,
+      notAttempted,
+      incorrectFormulae,
+      cellReferenceFeedback,
+      totalFormulae: referenceArray.length,
     };
   }
 
@@ -313,4 +413,8 @@ class SheetsAssessor {
     const accuracyScore = (scores.correct / (countOfFormulae - scores.notAttempted)) * 5;
     return Number(accuracyScore.toFixed(2)); // Round score to 2 decimal places
   }
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = SheetsAssessor;
 }
