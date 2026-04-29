@@ -109,15 +109,11 @@ class SheetsAssignment extends Assignment {
    * Assesses all student spreadsheet responses using the dedicated assessor.
    */
   assessResponses() {
-    // Spreadsheet assessment now expected to route via dedicated assessor using artifacts.
-    // Placeholder: integrate AssessmentEngineRouter in later phase.
-    if (typeof SheetsAssessor === 'undefined') {
-      console.log('SheetsAssessor not available; skipping spreadsheet assessment.');
-    } else {
-      const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
-      // Use optional chaining to call assessResponses if present
-      assessor.assessResponses?.();
-    }
+    const assessor = new SheetsAssessor(this.getTasks(), this.submissions);
+    assessor.assessResponses();
+
+    const feedbackPopulator = new SheetsFeedback(this.submissions);
+    feedbackPopulator.applyFeedback();
   }
 }
 
