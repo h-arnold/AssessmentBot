@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-const SheetsFeedback = require('../../src/backend/FeedbackPopulators/SheetsFeedback.js');
+import SheetsFeedback from '../../src/backend/FeedbackPopulators/SheetsFeedback.js';
 
 describe('SheetsFeedback', () => {
   let originalProgressTracker;

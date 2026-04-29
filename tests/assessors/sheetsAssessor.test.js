@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-const SheetsAssessor = require('../../src/backend/Assessors/SheetsAssessor.js');
+import SheetsAssessor from '../../src/backend/Assessors/SheetsAssessor.js';
+import { TaskDefinition } from '../../src/backend/Models/TaskDefinition.js';
+import { StudentSubmission } from '../../src/backend/Models/StudentSubmission.js';
 import { createMockABLogger } from '../helpers/mockFactories.js';
 
 class TestAssessment {
@@ -79,55 +81,48 @@ describe('SheetsAssessor', () => {
   });
 
   it('assesses spreadsheet items from artifact content and primary references', () => {
-    const taskId = 'task-1';
-    const submission = {
-      studentId: 'student-1',
-      student: { name: 'Student One' },
-      items: {
-        [taskId]: {
-          response: [
-            { formula: '=SUM(A1:A2)', location: [1, 2] },
-            { formula: '', location: [1, 3] },
-            { formula: '=C2', location: [2, 2] },
-          ],
+    const taskDefinition = new TaskDefinition({
+      taskTitle: 'Formula task',
+      pageId: 17,
+      taskMetadata: {
+        bbox: {
+          startRow: 2,
+          startColumn: 3,
         },
       },
-      addAssessment(taskKey, criterion, assessment) {
-        const item = this.items[taskKey];
-        item.assessments = item.assessments || {};
-        item.assessments[criterion] = assessment.toJSON ? assessment.toJSON() : assessment;
-      },
-      addFeedback(taskKey, feedback) {
-        const item = this.items[taskKey];
-        item.feedback = item.feedback || {};
-        item.feedback.cellReference = feedback.toJSON ? feedback.toJSON() : feedback;
-      },
-    };
-    const assessor = new SheetsAssessor(
-      {
-        [taskId]: {
-          taskReference: [
-            { referenceFormula: '=SUM(A1:A2)' },
-            { referenceFormula: '=B1' },
-            { referenceFormula: '=C1' },
-          ],
-        },
-      },
-      [submission]
-    );
+    });
+    taskDefinition.addReferenceArtifact({
+      type: 'SPREADSHEET',
+      content: [
+        ['=SUM(A1:A2)', '=B1'],
+        ['=C1', ''],
+      ],
+    });
+
+    const submission = new StudentSubmission('student-1', 'assignment-1', 'doc-1', 'Student One');
+    submission.upsertItemFromExtraction(taskDefinition, {
+      content: [
+        ['=SUM(A1:A2)', ''],
+        ['=C2', ''],
+      ],
+    });
+
+    const taskId = taskDefinition.getId();
+    const assessor = new SheetsAssessor({ [taskId]: taskDefinition }, [submission]);
 
     assessor.assessResponses();
 
-    const submissionItem = submission.items[taskId];
-    expect(submissionItem.assessments.completeness).toMatchObject({ score: 3.33 });
-    expect(submissionItem.assessments.accuracy).toMatchObject({ score: 2.5 });
-    expect(submissionItem.assessments.spag).toMatchObject({ score: 'N' });
+    const submissionItem = submission.getItem(taskId);
+    expect(submissionItem.getAssessment('completeness')).toMatchObject({ score: 3.33 });
+    expect(submissionItem.getAssessment('accuracy')).toMatchObject({ score: 2.5 });
+    expect(submissionItem.getAssessment('spag')).toMatchObject({ score: 'N' });
     expect(submissionItem.assessments.formulaComparison).toMatchObject({
       correct: 1,
       incorrect: 1,
       notAttempted: 1,
+      totalFormulae: 3,
     });
-    expect(submissionItem.feedback.cellReference).toEqual({
+    expect(submissionItem.getFeedback('cellReference')).toEqual({
       type: 'cellReference',
       items: [
         { location: [1, 2], status: 'correct' },
@@ -159,9 +154,9 @@ describe('SheetsAssessor', () => {
     ({ bbox, expectedLocation }) => {
       const assessor = new SheetsAssessor({}, []);
 
-      const referenceArray = [{ referenceFormula: '=A1' }];
-      const studentArray = [{ formula: '=A1', location: expectedLocation }];
-      const comparisonResults = assessor._compareFormulaArrays(referenceArray, studentArray);
+      const comparisonResults = assessor._compareGridFormulaArrays([['=A1']], [['=A1']], {
+        bbox,
+      });
 
       expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
         { location: expectedLocation, status: 'correct' },

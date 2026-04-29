@@ -234,6 +234,7 @@ describe('AssignmentController - Definition Hydration', () => {
         if (key === 'assignmentId') return 'assignment-456';
         if (key === 'definitionKey') return 'NonExistent_Topic_10';
         if (key === 'triggerId') return 'trigger-789';
+        if (key === 'courseId') return 'course-123';
         return null;
       });
 
