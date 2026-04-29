@@ -12,6 +12,9 @@
  * - Validating and setting the template file IDs.
  */
 class BaseUpdateAndInit {
+  /**
+   * Creates the shared update and initialisation state.
+   */
   constructor() {
     // Set up common properties
     this.sheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -68,7 +71,7 @@ class BaseUpdateAndInit {
     }
 
     const status = response.getResponseCode();
-    if (status !== 200) {
+    if (status !== HTTP_STATUS_OK) {
       const errorMessage = `Failed to fetch assessmentBotVersions.json. Status Code: ${status} Returned Message: ${response.getContentText()}.`;
       ABLogger.getInstance().error(errorMessage);
       throw new Error(errorMessage);
@@ -255,3 +258,5 @@ class BaseUpdateAndInit {
     }
   }
 }
+
+const HTTP_STATUS_OK = 200;

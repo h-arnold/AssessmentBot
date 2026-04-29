@@ -1,9 +1,15 @@
-/**  Sheets Assessor Class
- * Handles the non-LLM assessment of student responses in Google Sheets assignments.
- *
- */
+const FORMULA_SCORE_MAX = 5;
+const SCORE_PRECISION = 2;
 
+/**
+ * Handles non-LLM assessment of student responses in Google Sheets assignments.
+ */
 class SheetsAssessor {
+  /**
+   * Creates a SheetsAssessor instance.
+   * @param {Object<string, Object>} tasks - Task definitions keyed by task ID.
+   * @param {Array} studentTasks - Student submissions to assess.
+   */
   constructor(tasks, studentTasks) {
     this.tasks = tasks;
     this.submissions = studentTasks;
@@ -135,6 +141,11 @@ class SheetsAssessor {
     };
   }
 
+  /**
+   * Gets the student's formula content from the current submission item shape.
+   * @param {Object} submissionItem - Submission item to inspect.
+   * @return {Array|null} Formula grid or legacy response list.
+   */
   _getStudentFormulaContent(submissionItem) {
     if (Array.isArray(submissionItem?.artifact?.content)) {
       return submissionItem.artifact.content;
@@ -145,6 +156,11 @@ class SheetsAssessor {
     return null;
   }
 
+  /**
+   * Gets the reference formula content from the task definition or legacy task shape.
+   * @param {Object} referenceTask - Task definition to inspect.
+   * @return {Array|null} Reference formula grid or legacy reference list.
+   */
   _getReferenceFormulaContent(referenceTask) {
     const referenceArtifact =
       typeof referenceTask?.getPrimaryReference === 'function'
@@ -159,6 +175,11 @@ class SheetsAssessor {
     return null;
   }
 
+  /**
+   * Converts formula comparison results into plain JSON-safe data.
+   * @param {Object} comparisonResults - Comparison results to serialise.
+   * @return {Object} Serialised comparison results.
+   */
   _serialiseFormulaComparisonResults(comparisonResults) {
     return {
       ...comparisonResults,
@@ -182,6 +203,11 @@ class SheetsAssessor {
     return this._compareGridFormulaArrays(referenceArray, studentArray, taskMetadata);
   }
 
+  /**
+   * Detects whether the supplied reference content uses the legacy flat list shape.
+   * @param {Array} formulaArray - Reference content to inspect.
+   * @return {boolean} Whether the content is a legacy list.
+   */
   _isLegacyFormulaList(formulaArray) {
     return (
       Array.isArray(formulaArray) &&
@@ -189,6 +215,13 @@ class SheetsAssessor {
     );
   }
 
+  /**
+   * Compares spreadsheet grids of formulas against each other.
+   * @param {Array<Array<string>>} referenceGrid - Reference formulas arranged in a grid.
+   * @param {Array<Array<string>>} studentGrid - Student formulas arranged in a grid.
+   * @param {Object} taskMetadata - Task metadata containing bounding-box information.
+   * @return {Object} Comparison summary and cell feedback.
+   */
   _compareGridFormulaArrays(referenceGrid, studentGrid, taskMetadata = {}) {
     let correct = 0;
     let incorrect = 0;
@@ -246,6 +279,12 @@ class SheetsAssessor {
     };
   }
 
+  /**
+   * Compares legacy flat formula lists.
+   * @param {Array} referenceArray - Reference formula list.
+   * @param {Array} studentArray - Student formula list.
+   * @return {Object} Comparison summary and cell feedback.
+   */
   _compareLegacyFormulaArrays(referenceArray, studentArray) {
     let correct = 0;
     let incorrect = 0;
@@ -375,15 +414,16 @@ class SheetsAssessor {
     }
     // If all formulae are attempted, return 5 to avoid division by zero
     if (scores.notAttempted === 0) {
-      return 5;
+      return FORMULA_SCORE_MAX;
     }
     // Calculate completeness score based on the number of attempted formulae
     // and the total number of formulae
     // Scale the score to a range of 0 to 5
     // and round to 2 decimal places
 
-    const completenessScore = ((countOfFormulae - scores.notAttempted) / countOfFormulae) * 5;
-    return Number(completenessScore.toFixed(2)); // Round score to  2 decimal places
+    const completenessScore =
+      ((countOfFormulae - scores.notAttempted) / countOfFormulae) * FORMULA_SCORE_MAX;
+    return Number(completenessScore.toFixed(SCORE_PRECISION)); // Round score to  2 decimal places
   }
 
   /**
@@ -401,14 +441,15 @@ class SheetsAssessor {
     }
     // If all formulae are correct, return 5 to avoid division by zero
     if (scores.correct === countOfFormulae) {
-      return 5;
+      return FORMULA_SCORE_MAX;
     }
     // Calculate accuracy score based on the number of correct formulae
     // and the total number of formulae
     // Scale the score to a range of 0 to 5
     // and round to 2 decimal places
-    const accuracyScore = (scores.correct / (countOfFormulae - scores.notAttempted)) * 5;
-    return Number(accuracyScore.toFixed(2)); // Round score to 2 decimal places
+    const accuracyScore =
+      (scores.correct / (countOfFormulae - scores.notAttempted)) * FORMULA_SCORE_MAX;
+    return Number(accuracyScore.toFixed(SCORE_PRECISION)); // Round score to 2 decimal places
   }
 }
 
