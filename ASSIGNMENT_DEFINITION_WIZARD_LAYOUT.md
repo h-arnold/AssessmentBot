@@ -39,11 +39,9 @@ This document does **not** redefine:
 6. Keep the task-weighting surface readable without turning the modal into a second page.
 7. Allow one secondary confirmation modal only for explicit close-with-discard decisions when unsaved post-parse edits would otherwise be lost.
 
-## Official Ant Design documentation limitation
+## Ant Design references consulted
 
-Live retrieval of `https://ant.design/llms.txt` was attempted during this planning pass, but the available toolset could not fetch the external resource. This document therefore records the intended component choices and implementation constraints, and implementation should verify those choices against the official Ant Design docs before code is merged.
-
-Official references to verify during implementation:
+The following official Ant Design references were consulted during this planning update and should remain the source of truth for the component choices below:
 
 - `https://ant.design/llms.txt`
 - `https://ant.design/components/modal`
@@ -57,6 +55,8 @@ Official references to verify during implementation:
 - `https://ant.design/components/empty`
 - `https://ant.design/components/flex`
 - `https://ant.design/components/space`
+
+Implementation should still re-check the linked docs before merge if the installed Ant Design version exposes materially different props or defaults.
 
 ## Surface hierarchy
 
@@ -94,6 +94,10 @@ The wizard should use the approved wide-data modal width for its owned dialog su
 
 The body should scroll within that chosen width. Implementation should avoid nested inner scroll panes unless final component constraints make them unavoidable.
 
+On narrower viewports, that approved width should behave as a maximum rather than a rigid fixed size: the modal should clamp within viewport gutters and move toward an almost full-screen dialog before any content is allowed to overflow the viewport.
+
+At those narrower sizes, the modal body should remain the single vertical scroll owner. The task-weighting table may introduce horizontal overflow inside the modal body only if needed to preserve readable columns at the clamped width.
+
 Because the current shared width standards define page and panel tokens rather than a modal-specific token family, this feature requires a centralised width-standards update that introduces one approved wide-data modal exception before implementation is merged. Feature-local width literals are not allowed.
 
 ## Recommended page skeleton
@@ -120,7 +124,16 @@ Use `Modal` for:
 Reason:
 
 - the workflow is an owned secondary surface launched from an existing page
-- modal confirm-loading and footer actions align with the repository's existing modal patterns
+- modal confirm-loading and footer customisation align with the repository's existing modal patterns
+- official Modal guidance fits a floating workflow surface that should stay on the Assignments page instead of moving to a drawer or route
+
+Implementation notes:
+
+- use the modal `onCancel` path as the single owner for close behaviour so the close button, mask click, Escape key, and footer cancel do not drift apart
+- keep `maskClosable` and `keyboard` aligned with the current guarded-close state rather than allowing background dismissal to bypass document-change or mutation guards
+- prefer a custom footer so the footer can keep `Cancel` and the current primary action while document re-parse actions remain inline in the document region
+- because the footer is custom, the active primary footer button owns its own loading and disabled state directly rather than relying on the stock OK button contract
+- keep region-level skeletons or alerts inside the modal body for local load and error treatment
 
 ### 2. `Form`
 
@@ -135,6 +148,13 @@ Reason:
 
 - validation, disabled state, and submit wiring stay in one owned surface
 - a single form model reduces drift between create stage two and update mode
+
+Implementation notes:
+
+- use one shared form instance for the wizard body after the modal opens
+- prefer `layout="vertical"` for the modal body so labels remain readable at the approved wide-data dialog width and on narrower viewports
+- use form-level `disabled` for whole-surface lock states where possible so metadata and weighting controls freeze consistently during pending document-change resolution or mutation states
+- task-weight inputs remain part of that same shared form surface through form-managed table cells rather than a separate local state island
 
 ### 3. `Alert`
 
@@ -160,6 +180,7 @@ Use `Flex` and `Space` for:
 Reason:
 
 - they match existing frontend layout patterns and avoid bespoke spacing wrappers
+- they align with Ant Design's documented layout primitives for simple stacking and action-group composition without introducing extra wrapper abstractions
 
 ## Region-by-region design
 
@@ -194,6 +215,7 @@ List what belongs in this region:
 
 - this region is informational only; the actionable `Re-parse` and `Cancel` controls live in the document inputs region
 - alert copy must identify whether the reference document, template document, or both changed
+- alert actions should remain minimal in this region; the main recovery path stays in-body rather than moving into the modal footer or a toast
 
 ## 2. Document inputs region
 
@@ -243,6 +265,7 @@ Document region
 
 1. **No pending document change**
    - the main modal close affordance, mask click, Escape key, and footer cancel follow the normal close rules for the current dirty state
+   - in create mode before the first successful parse, those close paths discard any local draft inputs without opening the discard-confirmation modal
 2. **Pending document change**
    - the main modal close affordance, mask click, Escape key, and footer cancel are disabled until the inline `Re-parse` or `Cancel` path is resolved
    - the user must resolve the document-change state from this region rather than through a second confirmation surface
@@ -256,6 +279,7 @@ Document region
 - cancel restores the last persisted canonical URLs
 - if the user manually restores both URL fields to their persisted values, the pending document-change state clears automatically without requiring explicit `Cancel`
 - this is the sole region that owns the actionable re-parse controls
+- guarded-close behaviour must be reflected in the modal configuration itself so mask dismissal and Escape do not bypass this inline resolution state
 
 ## 3. Metadata and assignment-weighting region
 
@@ -297,6 +321,7 @@ List what belongs in this region:
 
 - topic and year-group fields are dropdown-only
 - assignment weighting appears on the shared post-parse edit surface and uses the same required numeric range as task weighting
+- whole-region disabled states should be applied through the shared form surface rather than piecemeal field toggles unless one field is intentionally exempt
 
 ## 4. Task-weighting region
 
@@ -333,6 +358,10 @@ Task-weighting region
 
 - pagination should be avoided in the first iteration unless task counts prove unmanageable
 - the table should preserve a deterministic row order from the backend response so tests do not depend on client-side reshuffling
+- use a deterministic `rowKey` based on `taskId`
+- set pagination off explicitly rather than relying on defaults
+- keep the modal body as the primary scroll owner; only introduce table-local scroll if final row volume proves unmanageable within the single modal-body scroll region
+- each task-weighting input should live in a form-managed table cell so validation, disable rules, and final save submission stay in the same shared form contract as the rest of the wizard body
 
 ## Footer action region
 
@@ -369,11 +398,17 @@ Task-weighting region
 7. **Mutation in progress**
    - the active primary button shows loading
    - conflicting actions are disabled
+8. **Successful final save**
+   - a successful stage-two `Save` in either create or update mode closes the wizard
+   - the Assignments list refresh path should be triggered as part of that success flow, and focus should return to the control that launched the wizard once close completes
+   - no additional success modal is shown for this workflow
 
 ### Notes
 
 - the footer should not expose both `Save` and `Re-parse` as active primary actions at the same time
-- while a background refresh is rebasing the open modal against trusted persisted data, keep the current usable content visible, mark the modal busy locally, and disable conflicting write actions on the owned modal surface
+- after a successful modal-owned write, or while the modal is otherwise pristine, keep the current usable content visible during the follow-up refresh, mark the modal busy locally, and disable conflicting write actions on the owned modal surface
+- external refreshes must not silently rebase unsaved stage-two local edits; dirty local state should either remain authoritative until resolved or the affected surface should fail closed instead of overwriting those edits in place
+- use a custom modal footer rather than the stock OK/Cancel pair so mode-specific labels, disabled states, and loading ownership stay explicit
 
 ## Close-with-discard confirmation workflow
 
@@ -406,6 +441,7 @@ Task-weighting region
 - this is the only approved secondary confirmation surface for the workflow
 - re-parse resolution remains inline in the main wizard and must not use this secondary confirmation modal
 - discard confirmation is not required before stage-one create because the spec treats stage-one persistence as already saved work
+- discard confirmation is also not required before the first successful parse; pre-parse create input is disposable local draft state in this phase
 
 ## Data-heavy regions
 
@@ -446,6 +482,7 @@ Task-weighting region
 - Initial body focus: document URL form surface
 - Initial primary action: parse and persist via `upsertAssignmentDefinition`
 - After first success: remain in the same modal, switch to the shared edit surface, and keep document URLs visible for possible re-parse
+- After successful final save: close the wizard and return focus to the create trigger after the list refresh path has been started
 
 ## Update mode
 
@@ -453,12 +490,14 @@ Task-weighting region
 - Initial body focus: metadata edit surface once the full definition loads
 - Entry is row-level only from the assignment definitions table
 - The modal opens directly into the shared edit surface with reconstructed canonical URLs and parsed tasks
+- After successful final save: close the wizard and return focus to the triggering row action after the list refresh path has been started
 
 ## Assignments table action cluster
 
 - Top-level page actions remain `Refresh assignments data` plus `Create assignment` only.
 - Row-level update is added alongside the existing delete action in the current actions column.
 - Delete remains an existing independent action and is not redesigned by this feature.
+- The top-level `Create assignment` action is owned by the page actions surface rather than by the table surface; it may remain available when the assignment-definition table fails closed, provided the wizard-required startup reference data remains trustworthy.
 
 ## Responsive and accessibility expectations
 
@@ -471,3 +510,4 @@ Task-weighting region
 - Error and warning treatments should remain inside the modal rather than relying on page-level toasts for critical workflow state.
 - The primary wizard modal should use the approved wide-data dialog width rather than an ad hoc literal, with one scrolling body region inside that width.
 - If the discard-confirmation modal opens, focus should move to that confirmation surface and return to the wizard trigger that launched it when the confirmation is dismissed.
+- Implementation should preserve Ant Design's built-in dialog focus trapping and focus-return behaviour rather than opting out of it for this workflow.

@@ -27,7 +27,7 @@ Before writing or executing this plan:
 
 1. Stage-one create persists a legitimate assignment definition and must obey duplicate business-tuple validation before persistence.
 2. `upsertAssignmentDefinition` is the single write transport for stage-one create, final save, and document-change re-parse.
-3. Official Ant Design documentation verification could not be completed in this planning session because live external retrieval was unavailable; implementation must verify the selected component usage against `https://ant.design/llms.txt` and the linked official component docs before merge.
+3. Relevant official Ant Design documentation was consulted during this planning update; frontend implementation and review must still use the linked official docs below as the source of truth for component behaviour before merge.
 4. `assignmentTopics` joins startup warm-up in this phase because the same reference-data set is expected to support additional modal workflows.
 5. No existing persisted assignment-definition data needs compatibility handling or migration in this feature; implementation may replace the old persistence contract directly.
 
@@ -52,6 +52,8 @@ Implementation mandatory docs:
 - `src/frontend/AGENTS.md`
 - `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
 
 Code Reviewer mandatory docs:
 
@@ -59,6 +61,8 @@ Code Reviewer mandatory docs:
 - `src/frontend/AGENTS.md`
 - `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
 
 ### Acceptance criteria
 
@@ -178,6 +182,7 @@ Code Reviewer mandatory docs:
 - `AGENTS.md`
 - `src/backend/AGENTS.md`
 - `SPEC.md`
+- `docs/developer/backend/api-layer.md`
 
 ### Shared helper plan (when helper changes are expected)
 
@@ -280,6 +285,7 @@ Code Reviewer mandatory docs:
 - `AGENTS.md`
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
+- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
 
 ### Shared helper plan (when helper changes are expected)
 
@@ -367,6 +373,18 @@ Testing Specialist mandatory docs:
 - `docs/developer/frontend/frontend-modal-patterns.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
 - `docs/developer/frontend/frontend-testing.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/table`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 Implementation mandatory docs:
 
@@ -378,6 +396,18 @@ Implementation mandatory docs:
 - `docs/developer/backend/api-layer.md`
 - `docs/developer/frontend/frontend-modal-patterns.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/table`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 Code Reviewer mandatory docs:
 
@@ -386,6 +416,21 @@ Code Reviewer mandatory docs:
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
 - `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `docs/developer/backend/api-layer.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/table`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 ### Shared helper plan (when helper changes are expected)
 
@@ -469,6 +514,18 @@ Testing Specialist mandatory docs:
 - `docs/developer/frontend/frontend-modal-patterns.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
 - `docs/developer/frontend/frontend-testing.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 Implementation mandatory docs:
 
@@ -478,6 +535,18 @@ Implementation mandatory docs:
 - `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
 - `docs/developer/frontend/frontend-modal-patterns.md`
 - `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 Code Reviewer mandatory docs:
 
@@ -485,6 +554,20 @@ Code Reviewer mandatory docs:
 - `src/frontend/AGENTS.md`
 - `SPEC.md`
 - `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 ### Shared helper plan (when helper changes are expected)
 
@@ -571,6 +654,59 @@ Playwright tests:
 
 - Prefer focused suites before broader validation.
 
+### Delegation mandatory reads (when sub-agents are used)
+
+Testing Specialist mandatory docs:
+
+- `AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `ACTION_PLAN.md`
+- `docs/developer/backend/api-layer.md`
+- `docs/developer/backend/backend-testing.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `docs/developer/frontend/frontend-testing.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
+
+Code Reviewer mandatory docs:
+
+- `AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `ACTION_PLAN.md`
+- `docs/developer/backend/api-layer.md`
+- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
+
 ### Acceptance criteria
 
 - Touched backend transport tests pass.
@@ -607,6 +743,57 @@ Playwright tests:
 ### Constraints
 
 - Only update documents relevant to assignment-definition contracts, frontend modal guidance, and reference-data compatibility.
+
+### Delegation mandatory reads (when sub-agents are used)
+
+Docs mandatory docs:
+
+- `AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `ACTION_PLAN.md`
+- `docs/developer/backend/api-layer.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
+
+Code Reviewer mandatory docs:
+
+- `AGENTS.md`
+- `src/backend/AGENTS.md`
+- `src/frontend/AGENTS.md`
+- `SPEC.md`
+- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `ACTION_PLAN.md`
+- `docs/developer/backend/api-layer.md`
+- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `https://ant.design/llms.txt`
+- `https://ant.design/components/modal`
+- `https://ant.design/components/form`
+- `https://ant.design/components/input`
+- `https://ant.design/components/select`
+- `https://ant.design/components/input-number`
+- `https://ant.design/components/table`
+- `https://ant.design/components/alert`
+- `https://ant.design/components/skeleton`
+- `https://ant.design/components/empty`
+- `https://ant.design/components/flex`
+- `https://ant.design/components/space`
 
 ### Acceptance criteria
 
