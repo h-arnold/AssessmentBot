@@ -114,6 +114,29 @@ Default decision:
 - accepted boundary for the classes modal-family compliance refactor: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is
 - helper-change status for that refactor: `Implemented`; the existing feature-local helper family remains the accepted reuse boundary
 
+### 3.4 Assignment definition create/update wizard modal
+
+- Planned surface: assignment-definition create/update workflow launched from the Assignments page
+- Planned owner: `src/frontend/src/pages/**` or a feature-local assignments workflow module under `src/frontend/src/**`
+
+Shared traits:
+
+- one modal surface used for both create and update
+- stage-one parse/persist followed by a shared edit surface
+- explicit in-modal re-parse gating when document URLs change
+- task-weight editing with feature-specific state rules
+
+Use this family when:
+
+- the caller is the Assignments page assignment-definition workflow
+- the modal state machine depends on parsed tasks, re-parse resolution, and year-group compatibility handling
+
+Default decision:
+
+- keep local to the assignment-definition workflow unless a second accepted in-scope caller emerges
+- do not extract a generic app-wide wizard helper for this feature
+- helper-change status for this planned family: `Not implemented`
+
 ## 4. Keep-local rules
 
 Keep a modal implementation local to one file when any of these are true:
