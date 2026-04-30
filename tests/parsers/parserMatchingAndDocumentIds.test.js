@@ -470,5 +470,19 @@ describe('Parser matching and document ID propagation', () => {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0].documentId).toBe(studentDocId);
     });
+
+    it('keeps raw reference formulas unchanged when building referenceFormula entries', () => {
+      const parser = new SheetsParser();
+      const rawReferenceFormula = '=sum( \'Challenge 6\'!c11, "Mi xed" )';
+
+      const differences = parser._compareFormulaArrays([[rawReferenceFormula]], [['=DIFFERENT']]);
+
+      expect(differences).toEqual([
+        {
+          referenceFormula: rawReferenceFormula,
+          location: [0, 0],
+        },
+      ]);
+    });
   });
 });

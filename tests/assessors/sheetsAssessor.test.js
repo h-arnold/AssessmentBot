@@ -133,6 +133,53 @@ describe('SheetsAssessor', () => {
     expect(mockProgressTracker.logError).not.toHaveBeenCalled();
   });
 
+  it('canonicalises non-canonical spreadsheet formulae before assessment and still scores equivalent additions correctly', () => {
+    const taskDefinition = new TaskDefinition({
+      taskTitle: 'Canonical formula task',
+      pageId: 21,
+      taskMetadata: {
+        bbox: {
+          startRow: 1,
+          startColumn: 1,
+        },
+      },
+    });
+    taskDefinition.addReferenceArtifact({
+      type: 'SPREADSHEET',
+      content: [['= sum(a1:a2)']],
+    });
+
+    const submission = new StudentSubmission('student-1', 'assignment-1', 'doc-1', 'Student One');
+    submission.upsertItemFromExtraction(taskDefinition, {
+      content: [['=a1 + a2']],
+    });
+
+    const taskId = taskDefinition.getId();
+
+    expect(taskDefinition.getPrimaryReference().content).toEqual([['=SUM(A1:A2)']]);
+    expect(submission.getItem(taskId).artifact.content).toEqual([['=A1+A2']]);
+
+    const assessor = new SheetsAssessor({ [taskId]: taskDefinition }, [submission]);
+
+    assessor.assessResponses();
+
+    const submissionItem = submission.getItem(taskId);
+    expect(submissionItem.getAssessment('completeness')).toMatchObject({ score: 5 });
+    expect(submissionItem.getAssessment('accuracy')).toMatchObject({ score: 5 });
+    expect(submissionItem.getAssessment('spag')).toMatchObject({ score: 'N' });
+    expect(submissionItem.assessments.formulaComparison).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(submissionItem.getFeedback('cellReference')).toEqual({
+      type: 'cellReference',
+      items: [{ location: [0, 0], status: 'correct' }],
+    });
+    expect(mockProgressTracker.logError).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       caseName: 'defaults a missing start row to the top row',
@@ -164,4 +211,76 @@ describe('SheetsAssessor', () => {
       expect(comparisonResults.cellReferenceFeedback.getItems()[0].location).not.toContain(NaN);
     }
   );
+
+  it('treats vertical SUM ranges and direct addition as equivalent in grid comparisons', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:A2)']], [['=A1+A2']], {
+      bbox: {
+        startRow: 4,
+        startColumn: 2,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [3, 1], status: 'correct' },
+    ]);
+  });
+
+  it('treats reversed addition order as equivalent to a horizontal SUM range in grid comparisons', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:B1)']], [['=B1+A1']], {
+      bbox: {
+        startRow: 1,
+        startColumn: 1,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [0, 0], status: 'correct' },
+    ]);
+  });
+
+  it('keeps wider SUM ranges incorrect when they are outside the supported equivalence rules', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:A3)']], [['=A1+A2']], {
+      bbox: {
+        startRow: 2,
+        startColumn: 5,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 0,
+      incorrect: 1,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([
+      {
+        studentFormula: '=A1+A2',
+        referenceFormula: '=SUM(A1:A3)',
+        location: [1, 4],
+      },
+    ]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [1, 4], status: 'incorrect' },
+    ]);
+  });
 });

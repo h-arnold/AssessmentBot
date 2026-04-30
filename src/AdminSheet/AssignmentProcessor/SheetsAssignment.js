@@ -85,26 +85,6 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Helper to determine if a student response entry is valid (not undefined/null and has a response).
-   * @param {Object} studentResponseEntry
-   * @return {boolean}
-   */
-  hasValidStudentResponse(studentResponseEntry) {
-    // Use optional chaining to check presence of response property and ensure it's not null/undefined
-    return studentResponseEntry?.response !== undefined && studentResponseEntry?.response !== null;
-  }
-
-  /**
-   * Helper to determine if a reference task entry is valid (not undefined/null and has a taskReference).
-   * @param {Object} referenceTask
-   * @return {boolean}
-   */
-  hasValidReferenceTask(referenceTask) {
-    // Optional chaining for concise existence check
-    return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
-  }
-
-  /**
    * Assesses all student spreadsheet responses and applies cell-colour feedback.
    */
   assessResponses() {

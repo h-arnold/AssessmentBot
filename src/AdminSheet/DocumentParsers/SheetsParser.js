@@ -131,59 +131,6 @@ class SheetsParser extends DocumentParser {
   }
 
   /**
-   * Normalises the case of a spreadsheet formula by converting all characters to upper case
-   * except for those within double quotes (string literals). Handles escaped quotes.
-   * Also handles formulas returned by Google Apps Script which are wrapped in quotes.
-   * Trims spaces from any formulae when they are not in quotes.
-   *
-   * @param {string} formula - The formula to normalise
-   * @return {string} The normalised formula
-   * @private
-   */
-  _normaliseFormulaCase(formula) {
-    if (!formula) return formula;
-
-    // Remove surrounding quotes if they exist (as returned by getFormulas in GAS)
-    if (formula.length >= 2 && formula.startsWith('"') && formula.endsWith('"')) {
-      // Extract the content between quotes, handling escape sequences
-      try {
-        // Use a safe way to remove the surrounding quotes
-        formula = formula.substring(1, formula.length - 1);
-        // Un-escape any doubled quotes within the formula (literal replace of all occurrences)
-        // Use replaceAll for clarity and to avoid regex pitfalls — safe because we're replacing a literal string.
-        formula = formula.replaceAll('""', '"');
-      } catch (error) {
-        this.progressTracker.captureError(error, 'Error preprocessing formula');
-      }
-    }
-
-    // Now process the formula normally
-    let result = '';
-    let inQuotes = false;
-    for (let i = 0; i < formula.length; i++) {
-      const char = formula.charAt(i);
-      if (char === '"') {
-        // Handle escaped quotes inside string literals
-        if (inQuotes && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
-          result += '""';
-          i++; // Skip next char
-        } else {
-          inQuotes = !inQuotes;
-          result += char;
-        }
-      } else if (inQuotes) {
-        result += char;
-      } else {
-        // Trim spaces when not in quotes
-        if (char !== ' ') {
-          result += char.toUpperCase();
-        }
-      }
-    }
-    return result;
-  }
-
-  /**
    * Compares two formula arrays and identifies differences.
    *
    * @param {Array<Array<string>>} referenceArray - The reference formula array
@@ -206,13 +153,10 @@ class SheetsParser extends DocumentParser {
         // Template cell might not exist if template row is shorter
         const tempFormula = tempRow[col] || '';
 
-        // Check if there's a non-empty reference formula and it doesn't match the template
+        // Keep raw formulas here; SpreadsheetTaskArtifact owns canonicalisation.
         if (refFormula && refFormula !== tempFormula) {
-          // Normalise the formulae that are going to make it into the reference tasks.
-
-          const normalisedRefFormula = this._normaliseFormulaCase(refFormula);
           referenceFormulaeArray.push({
-            referenceFormula: normalisedRefFormula,
+            referenceFormula: refFormula,
             location: [row, col],
           });
         }
