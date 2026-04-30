@@ -1,8 +1,6 @@
-if (typeof module !== 'undefined') {
-  // Required for testing in a Node.js environment with Vitest
-  BaseTaskArtifact = require('./0_BaseTaskArtifact.js');
-}
-
+/**
+ * Represents a spreadsheet task artifact with shared content normalisation.
+ */
 class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   /**
    * Return the artifact type identifier.
@@ -14,7 +12,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   /**
    * Normalize spreadsheet-like content into a trimmed 2D array.
    * Strings are rejected (returns null). Formula strings starting with '='
-   * are canonicalised (uppercase outside quoted regions).
+   * are canonicalised using the shared spreadsheet formula normaliser.
    * @param {Array<Array<any>>|null} content
    * @returns {Array<Array<any>>|null}
    */
@@ -85,21 +83,45 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
     return !row.some((c) => !(c == null || c === ''));
   }
   /**
-   * Canonicalise a formula string by uppercasing outside quoted literals.
+   * Canonicalise a formula string for consistent spreadsheet comparison.
+   * Removes GAS wrapper quotes when present, preserves text inside quoted
+   * literals, strips spaces elsewhere, and uppercases the remaining text.
    * @private
    * @param {string} f
    * @returns {string}
    */
   _canonicaliseFormula(f) {
+    if (!f) return f;
+
+    let formula = String(f);
+    const wrapperQuoteLength = 2;
+    if (formula.length >= wrapperQuoteLength && formula.startsWith('"') && formula.endsWith('"')) {
+      formula = formula.substring(1, formula.length - 1).replaceAll('""', '"');
+    }
+
     let result = '';
     let inQuote = false;
-    for (const ch of String(f)) {
+    for (let i = 0; i < formula.length; i++) {
+      const ch = formula.charAt(i);
       if (ch === '"') {
+        if (inQuote && i + 1 < formula.length && formula.charAt(i + 1) === '"') {
+          result += '""';
+          i++;
+          continue;
+        }
         inQuote = !inQuote;
         result += ch;
         continue;
       }
-      result += inQuote ? ch : ch.toUpperCase();
+
+      if (inQuote) {
+        result += ch;
+        continue;
+      }
+
+      if (ch !== ' ') {
+        result += ch.toUpperCase();
+      }
     }
     return result;
   }
