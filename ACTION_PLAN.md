@@ -377,8 +377,8 @@ Frontend tests:
   - [x] green review clean (complete)
   - [x] checks passed (complete)
   - [x] action plan updated (complete)
-  - [ ] commit created (pending)
-  - [ ] push completed (pending)
+  - [x] commit created (complete)
+  - [x] push completed (complete)
 
 ---
 
