@@ -164,4 +164,106 @@ describe('SheetsAssessor', () => {
       expect(comparisonResults.cellReferenceFeedback.getItems()[0].location).not.toContain(NaN);
     }
   );
+
+  it('treats vertical SUM ranges and direct addition as equivalent in grid comparisons', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:A2)']], [['=A1+A2']], {
+      bbox: {
+        startRow: 4,
+        startColumn: 2,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [3, 1], status: 'correct' },
+    ]);
+  });
+
+  it('treats reversed addition order as equivalent to a horizontal SUM range in grid comparisons', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:B1)']], [['=B1+A1']], {
+      bbox: {
+        startRow: 1,
+        startColumn: 1,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [0, 0], status: 'correct' },
+    ]);
+  });
+
+  it('keeps wider SUM ranges incorrect when they are outside the supported equivalence rules', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareGridFormulaArrays([['=SUM(A1:A3)']], [['=A1+A2']], {
+      bbox: {
+        startRow: 2,
+        startColumn: 5,
+      },
+    });
+
+    expect(comparisonResults).toMatchObject({
+      correct: 0,
+      incorrect: 1,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([
+      {
+        studentFormula: '=A1+A2',
+        referenceFormula: '=SUM(A1:A3)',
+        location: [1, 4],
+      },
+    ]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [1, 4], status: 'incorrect' },
+    ]);
+  });
+
+  it('treats equivalent SUM and addition formulae as correct in legacy comparisons', () => {
+    const assessor = new SheetsAssessor({}, []);
+
+    const comparisonResults = assessor._compareLegacyFormulaArrays(
+      [
+        {
+          referenceFormula: '=SUM(A1:A2)',
+          location: [6, 3],
+        },
+      ],
+      [
+        {
+          formula: '=A1+A2',
+          location: [6, 3],
+        },
+      ]
+    );
+
+    expect(comparisonResults).toMatchObject({
+      correct: 1,
+      incorrect: 0,
+      notAttempted: 0,
+      totalFormulae: 1,
+    });
+    expect(comparisonResults.incorrectFormulae).toEqual([]);
+    expect(comparisonResults.cellReferenceFeedback.getItems()).toEqual([
+      { location: [6, 3], status: 'correct' },
+    ]);
+  });
 });

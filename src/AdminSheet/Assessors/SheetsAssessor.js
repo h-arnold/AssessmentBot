@@ -247,7 +247,7 @@ class SheetsAssessor {
         const studentFormula = studentRow[column] || '';
         const location = [row + rowOffset, column + columnOffset];
 
-        if (studentFormula === refFormula) {
+        if (SpreadsheetFormulaEquivalence.areEquivalent(studentFormula, refFormula)) {
           cellReferenceFeedback.addItem(location, 'correct');
           correct++;
           continue;
@@ -299,7 +299,7 @@ class SheetsAssessor {
       const studentFormula = student.formula || '';
       const location = student.location || ref.location;
 
-      if (studentFormula === refFormula) {
+      if (SpreadsheetFormulaEquivalence.areEquivalent(studentFormula, refFormula)) {
         cellReferenceFeedback.addItem(location, 'correct');
         correct++;
       } else if (studentFormula === '') {

@@ -12,7 +12,9 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   /**
    * Normalize spreadsheet-like content into a trimmed 2D array.
    * Strings are rejected (returns null). Formula strings starting with '='
-   * are canonicalised using the shared spreadsheet formula normaliser.
+   * are canonicalised at artifact-creation time so later comparison logic can
+   * rely on a stable stored representation instead of re-normalising during
+   * assessment.
    * @param {Array<Array<any>>|null} content
    * @returns {Array<Array<any>>|null}
    */
@@ -86,6 +88,8 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
    * Canonicalise a formula string for consistent spreadsheet comparison.
    * Removes GAS wrapper quotes when present, preserves text inside quoted
    * literals, strips spaces elsewhere, and uppercases the remaining text.
+   * This is the single normalisation point for spreadsheet formula content,
+   * including formulae that may later be checked for supported equivalence.
    * @private
    * @param {string} f
    * @returns {string}
