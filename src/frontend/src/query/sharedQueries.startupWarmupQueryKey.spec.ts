@@ -12,6 +12,7 @@ describe('getStartupWarmupQueryKey', () => {
     ).toEqual([
       ['classPartials', queryKeys.classPartials()],
       ['assignmentDefinitionPartials', queryKeys.assignmentDefinitionPartials()],
+      ['assignmentTopics', queryKeys.assignmentTopics()],
       ['cohorts', queryKeys.cohorts()],
       ['yearGroups', queryKeys.yearGroups()],
     ]);

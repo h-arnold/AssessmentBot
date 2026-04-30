@@ -1,12 +1,16 @@
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { getAuthorisationStatus } from '../services/authService';
-import { getBackendConfig } from '../services/backendConfigurationService';
+import { getAssignmentDefinition } from '../services/assignmentDefinitionService';
 import {
   getAssignmentDefinitionPartials,
   type AssignmentDefinitionPartialsResponse,
 } from '../services/assignmentDefinitionPartialsService';
-import type { ClassPartial } from '../services/classPartialsService';
-import { getABClassPartials } from '../services/classPartialsService';
+import {
+  getAssignmentTopics,
+  type AssignmentTopicsResponse,
+} from '../services/assignmentTopicsService';
+import { getAuthorisationStatus } from '../services/authService';
+import { getBackendConfig } from '../services/backendConfigurationService';
+import { getABClassPartials, type ClassPartial } from '../services/classPartialsService';
 import { getGoogleClassrooms } from '../services/googleClassroomsService';
 import { getCohorts, getYearGroups } from '../services/referenceDataService';
 import type {
@@ -20,6 +24,7 @@ const startupWarmupPromises = new WeakMap<QueryClient, Promise<StartupWarmupQuer
 export type StartupWarmupQueriesResult = Readonly<{
   classPartials: ClassPartial[];
   assignmentDefinitionPartials: AssignmentDefinitionPartialsResponse;
+  assignmentTopics: AssignmentTopicsResponse;
   cohorts: CohortListResponse;
   yearGroups: YearGroupListResponse;
 }>;
@@ -64,6 +69,31 @@ export function getAssignmentDefinitionPartialsQueryOptions() {
   return queryOptions({
     queryKey: queryKeys.assignmentDefinitionPartials(),
     queryFn: getAssignmentDefinitionPartials,
+  });
+}
+
+/**
+ * Returns the shared assignment-topics query definition.
+ *
+ * @returns {ReturnType<typeof queryOptions>} Shared assignment-topics query options.
+ */
+export function getAssignmentTopicsQueryOptions() {
+  return queryOptions({
+    queryKey: queryKeys.assignmentTopics(),
+    queryFn: getAssignmentTopics,
+  });
+}
+
+/**
+ * Returns the shared assignment-definition full-read query definition.
+ *
+ * @param {string} definitionKey Assignment definition key.
+ * @returns {ReturnType<typeof queryOptions>} Shared full-definition query options.
+ */
+export function getAssignmentDefinitionQueryOptions(definitionKey: string) {
+  return queryOptions({
+    queryKey: queryKeys.assignmentDefinitionByKey(definitionKey),
+    queryFn: () => getAssignmentDefinition({ definitionKey }),
   });
 }
 
@@ -125,6 +155,10 @@ const startupWarmupQueryDefinitions = [
     getQueryOptions: getAssignmentDefinitionPartialsQueryOptions,
   },
   {
+    datasetKey: 'assignmentTopics',
+    getQueryOptions: getAssignmentTopicsQueryOptions,
+  },
+  {
     datasetKey: 'cohorts',
     getQueryOptions: getCohortsQueryOptions,
   },
@@ -133,7 +167,6 @@ const startupWarmupQueryDefinitions = [
     getQueryOptions: getYearGroupsQueryOptions,
   },
 ] as const;
-
 
 export const startupWarmupDatasetKeys = Object.freeze(
   startupWarmupQueryDefinitions.map(({ datasetKey }) => datasetKey)

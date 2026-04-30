@@ -367,9 +367,18 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** pending.
-- **Deviations from plan:** pending.
-- **Follow-up implications for later sections:** the modal shell should treat the service contracts as canonical and avoid custom data reshaping; the shared partial-definition DTO migration is intentionally deferred to Section 3.
+- **Implementation notes:** Green-phase work is complete: added assignment definition services and Zod schemas; added the `assignmentTopics` service and schema; added query keys/options for `assignmentTopics` and `assignmentDefinitionByKey`; integrated `assignmentTopics` into startup warm-up and trust handling; added the upsert-mutation cache refresh helper for the partial list and selected full-definition query; and confirmed the Section 2 guard remains unchanged by keeping the live partial DTO/page consumer contract untouched.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** the modal shell should treat the service contracts as canonical and avoid custom data reshaping; the shared partial-definition DTO migration is intentionally deferred to Section 3; and the frontend React Query policy doc may need syncing during the docs phase.
+- **Checklist:**
+  - [x] red tests added (complete)
+  - [x] red review clean (complete)
+  - [x] green implementation complete (complete)
+  - [x] green review clean (complete)
+  - [x] checks passed (complete)
+  - [x] action plan updated (complete)
+  - [ ] commit created (pending)
+  - [ ] push completed (pending)
 
 ---
 
