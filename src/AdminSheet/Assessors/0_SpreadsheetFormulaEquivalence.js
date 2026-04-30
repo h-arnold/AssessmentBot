@@ -129,14 +129,16 @@ class SpreadsheetFormulaEquivalence {
       return null;
     }
 
-    const rangeMatch = canonicalFormula.match(/^=SUM\(([^:()]+):([^:()]+)\)$/);
+    const rangeRegex = /^=SUM\(([^:()]+):([^:()]+)\)$/;
+    const rangeMatch = rangeRegex.exec(canonicalFormula);
     if (rangeMatch) {
       const startReference = this._parseA1Reference(rangeMatch[1]);
       const endReference = this._parseA1Reference(rangeMatch[2]);
       return this._createTwoCellRangeSignature(startReference, endReference);
     }
 
-    const additionMatch = canonicalFormula.match(/^=([^+()]+)\+([^+()]+)$/);
+    const additionRegex = /^=([^+()]+)\+([^+()]+)$/;
+    const additionMatch = additionRegex.exec(canonicalFormula);
     if (!additionMatch) {
       return null;
     }
@@ -161,14 +163,15 @@ class SpreadsheetFormulaEquivalence {
    * @return {Object|null} Parsed reference details, or null when unsupported.
    */
   static _parseA1Reference(reference) {
-    const match = String(reference).match(/^(?:(.+)!)?(\$?[A-Z]+)(\$?\d+)$/);
+    const referenceRegex = /^(?:(.+)!)?(\$?[A-Z]+)(\$?\d+)$/;
+    const match = referenceRegex.exec(String(reference));
     if (!match) {
       return null;
     }
 
     const sheetName = match[1] || '';
-    const columnLetters = match[2].replace(/\$/g, '');
-    const rowNumber = Number(match[3].replace(/\$/g, ''));
+    const columnLetters = match[2].replaceAll('$', '');
+    const rowNumber = Number(match[3].replaceAll('$', ''));
     if (!rowNumber) {
       return null;
     }
@@ -176,7 +179,7 @@ class SpreadsheetFormulaEquivalence {
     let columnNumber = 0;
     for (let i = 0; i < columnLetters.length; i++) {
       columnNumber =
-        columnNumber * ALPHABET_LENGTH + (columnLetters.charCodeAt(i) - ASCII_UPPERCASE_OFFSET);
+        columnNumber * ALPHABET_LENGTH + (columnLetters.codePointAt(i) - ASCII_UPPERCASE_OFFSET);
     }
 
     return {
@@ -236,7 +239,7 @@ class SpreadsheetFormulaEquivalence {
   static _buildReferencePairSignature(references) {
     return references
       .map((reference) => `${reference.sheetName}|${reference.rowNumber}|${reference.columnNumber}`)
-      .sort()
+      .sort((left, right) => left.localeCompare(right))
       .join('::');
   }
 }

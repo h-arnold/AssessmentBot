@@ -86,8 +86,8 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   }
   /**
    * Canonicalise a formula string for consistent spreadsheet comparison.
-   * Removes GAS wrapper quotes when present, preserves text inside quoted
-   * literals, strips spaces elsewhere, and uppercases the remaining text.
+   * Preserves text inside quoted literals, strips spaces elsewhere, and
+   * uppercases the remaining text.
    * This is the single normalisation point for spreadsheet formula content,
    * including formulae that may later be checked for supported equivalence.
    * @private
@@ -97,11 +97,7 @@ class SpreadsheetTaskArtifact extends BaseTaskArtifact {
   _canonicaliseFormula(f) {
     if (!f) return f;
 
-    let formula = String(f);
-    const wrapperQuoteLength = 2;
-    if (formula.length >= wrapperQuoteLength && formula.startsWith('"') && formula.endsWith('"')) {
-      formula = formula.substring(1, formula.length - 1).replaceAll('""', '"');
-    }
+    const formula = String(f);
 
     let result = '';
     let inQuote = false;
