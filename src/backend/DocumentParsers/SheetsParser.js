@@ -1,6 +1,4 @@
-const WRAPPED_FORMULA_MIN_LENGTH = 2;
 const BOUNDING_BOX_EMPTY_INDEX = -1;
-const STRIP_TRAILING_QUOTE_SLICE_INDEX = -1;
 
 /**
  * SheetsParser Class
@@ -127,76 +125,6 @@ class SheetsParser extends DocumentParser {
   }
 
   /**
-   * Normalises the case of a spreadsheet formula by converting all characters to upper case
-   * except for those within double quotes (string literals). Handles escaped quotes.
-   * Also handles formulas returned by Google Apps Script which are wrapped in quotes.
-   * Trims spaces from any formulae when they are not in quotes.
-   *
-   * @param {string} formula - The formula to normalise
-   * @returns {string} The normalised formula
-   * @private
-   */
-  _normaliseFormulaCase(formula) {
-    if (!formula) return formula;
-
-    const preparedFormula = this._unwrapWrappedFormula(formula);
-    let result = '';
-    let inQuotes = false;
-    let index = 0;
-
-    while (index < preparedFormula.length) {
-      const char = preparedFormula.charAt(index);
-
-      if (char === '"') {
-        if (inQuotes && preparedFormula.charAt(index + 1) === '"') {
-          result += '""';
-          index += WRAPPED_FORMULA_MIN_LENGTH;
-          continue;
-        }
-        inQuotes = !inQuotes;
-        result += char;
-        index++;
-        continue;
-      }
-
-      if (inQuotes) {
-        result += char;
-      } else if (char !== ' ') {
-        result += char.toUpperCase();
-      }
-
-      index++;
-    }
-
-    return result;
-  }
-
-  /**
-   * Removes wrapped formula quotes returned by GAS and unescapes doubled quotes.
-   * @param {string} formula - The formula to unwrap.
-   * @returns {string} The unwrapped formula.
-   * @private
-   */
-  _unwrapWrappedFormula(formula) {
-    const isWrappedFormula =
-      formula.length >= WRAPPED_FORMULA_MIN_LENGTH &&
-      formula.startsWith('"') &&
-      formula.endsWith('"');
-
-    if (!isWrappedFormula) {
-      return formula;
-    }
-
-    try {
-      const withoutWrapper = formula.slice(1, STRIP_TRAILING_QUOTE_SLICE_INDEX);
-      return withoutWrapper.replaceAll('""', '"');
-    } catch (error) {
-      this.progressTracker.captureError(error, 'Error preprocessing formula');
-      return formula;
-    }
-  }
-
-  /**
    * Compares two formula arrays and identifies differences.
    *
    * @param {Array<Array<string>>} referenceArray - The reference formula array
@@ -219,13 +147,10 @@ class SheetsParser extends DocumentParser {
         // Template cell might not exist if template row is shorter
         const temporaryFormula = temporaryRow[col] || '';
 
-        // Check if there's a non-empty reference formula and it doesn't match the template
+        // Keep raw formulas here; SpreadsheetTaskArtifact owns canonicalisation.
         if (referenceFormula && referenceFormula !== temporaryFormula) {
-          // Normalise the formulae that are going to make it into the reference tasks.
-
-          const normalisedReferenceFormula = this._normaliseFormulaCase(referenceFormula);
           referenceFormulaeArray.push({
-            referenceFormula: normalisedReferenceFormula,
+            referenceFormula,
             location: [row, col],
           });
         }
@@ -327,7 +252,8 @@ class SheetsParser extends DocumentParser {
         taskMetadata,
       });
       definition.index = index++;
-      // Add primary reference SpreadsheetTaskArtifact: represent reference formulas as 2D array skeleton with normalised formulas
+      // Add primary reference SpreadsheetTaskArtifact: represent reference formulas as a 2D array skeleton.
+      // SpreadsheetTaskArtifact canonicalises formulas when the artifact is created.
       // We convert differences list into a sparse array (leave nulls) sized to bbox dims
       const bbox = sheetData.boundingBox;
       let grid = [];

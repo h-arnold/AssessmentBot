@@ -131,6 +131,7 @@ const { TaskDefinition } = require('../src/backend/Models/TaskDefinition.js');
 g.TaskDefinition = TaskDefinition;
 const { AssignmentDefinition } = require('../src/backend/Models/AssignmentDefinition.js');
 g.AssignmentDefinition = AssignmentDefinition;
+g.SpreadsheetFormulaEquivalence = require('../src/backend/Assessors/0_SpreadsheetFormulaEquivalence.js');
 
 // Load and expose ConfigurationManager validators as globals so modules that
 // expect Apps Script-style globals won't redeclare them during runtime. This

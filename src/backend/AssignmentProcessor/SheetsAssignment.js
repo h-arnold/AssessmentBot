@@ -87,26 +87,6 @@ class SheetsAssignment extends Assignment {
   }
 
   /**
-   * Determines if a student response entry is valid (not undefined/null and has a response).
-   * @param {Object} studentResponseEntry - The student's response entry object to validate.
-   * @returns {boolean} True if the response entry is valid and contains a response.
-   */
-  hasValidStudentResponse(studentResponseEntry) {
-    // Use optional chaining to check presence of response property and ensure it's not null/undefined
-    return studentResponseEntry?.response !== undefined && studentResponseEntry?.response !== null;
-  }
-
-  /**
-   * Determines if a reference task entry is valid (not undefined/null and has a taskReference).
-   * @param {Object} referenceTask - The reference task object to validate.
-   * @returns {boolean} True if the reference task is valid and contains a taskReference.
-   */
-  hasValidReferenceTask(referenceTask) {
-    // Optional chaining for concise existence check
-    return referenceTask?.taskReference !== undefined && referenceTask?.taskReference !== null;
-  }
-
-  /**
    * Assesses all student responses using the SheetsAssessor.
    * Routes assessment through the dedicated assessor using response artefacts.
    */

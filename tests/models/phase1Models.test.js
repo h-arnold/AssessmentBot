@@ -96,14 +96,28 @@ describe('Phase1 Model Requirements', () => {
     ).toThrow(/Failed to normalise table content/);
   });
 
-  it('SpreadsheetTaskArtifact canonicalisation uppercase outside quotes and idempotent with immediate hash', () => {
+  it('SpreadsheetTaskArtifact canonicalisation intentionally strips spaces outside quotes and remains idempotent with immediate hash', () => {
     const ss = ArtifactFactory.spreadsheet({
       taskId: 'tSS',
       role: 'reference',
-      content: [['=sum("a")', '=if("Text",1,2)']],
+      content: [
+        [
+          '=sum("a")',
+          '=if("Text",1,2)',
+          "='Challenge 6'!c11",
+          "='Challenge 6 Data'!c11",
+          '=sum( a1 : a2 )',
+          '=SUM (A1:C10)',
+        ],
+      ],
     });
     expect(ss.content[0][0]).toBe('=SUM("a")');
     expect(ss.content[0][1]).toBe('=IF("Text",1,2)');
+    expect(ss.content[0][2]).toBe("='Challenge 6'!C11");
+    expect(ss.content[0][3]).toBe("='Challenge 6 Data'!C11");
+    expect(ss.content[0][4]).toBe('=SUM(A1:A2)');
+    expect(ss.content[0][5]).toBe('=SUM(A1:C10)');
+    expect(ss.content[0][3]).toContain("'Challenge 6 Data'");
     expect(ss.contentHash).toBeTruthy();
     const firstHash = ss.contentHash;
     ss.ensureHash(); // still stable

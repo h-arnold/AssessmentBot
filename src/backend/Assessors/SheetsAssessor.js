@@ -244,7 +244,7 @@ class SheetsAssessor {
     incorrectFormulae,
     totals,
   }) {
-    if (studentFormula === referenceFormula) {
+    if (SpreadsheetFormulaEquivalence.areEquivalent(studentFormula, referenceFormula)) {
       cellReferenceFeedback.addItem(location, 'correct');
       totals.correct++;
       return;
