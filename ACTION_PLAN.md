@@ -79,8 +79,18 @@ Code Reviewer mandatory docs:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** pending.
-- **Deviations from plan:** pending.
+- **Implementation notes:** red tests added in `src/frontend/src/index.css.spec.ts`; red review finding about over-specified wording/token naming resolved; shared token `--app-modal-width-wide-data` added to canonical width standards and shared stylesheet.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Sections 3/4 must consume `--app-modal-width-wide-data` and avoid feature-local width literals.
+- **Checklist:**
+  - [x] red tests added
+  - [x] red review clean
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated
+  - [ ] commit created
+  - [ ] push completed
 
 ---
 

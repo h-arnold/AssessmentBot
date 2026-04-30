@@ -83,8 +83,11 @@ Use it alongside:
   - `--app-page-width-wide-data`
   - `--app-panel-width-default`
   - `--app-panel-width-wide-data`
+- The approved shared modal-width exception token set is:
+  - `--app-modal-width-wide-data`
 - Page and tab containers consume page-width tokens for outer-frame sizing.
 - Inner panels, standalone cards, and comparable owned containers consume panel-width tokens inside that frame.
+- Modal surfaces should keep default component width behaviour unless a workflow has a clear wide-data requirement that uses the approved shared modal-width exception token.
 - Named exceptions must stay centralised, be few in number, and be named by intent rather than by feature.
 - Prefer the default panel width unless there is a clear data-density or workflow reason to use an approved exception width.
 - Do not duplicate raw width literals across feature code or CSS.
