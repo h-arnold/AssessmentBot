@@ -89,8 +89,8 @@ Code Reviewer mandatory docs:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created
+  - [x] push completed
 
 ---
 
