@@ -1,5 +1,6 @@
 const ALPHABET_LENGTH = 26;
 const ASCII_UPPERCASE_OFFSET = 64;
+const NOT_FOUND_INDEX = -1;
 
 /**
  * Provides a deliberately narrow equivalence check for spreadsheet formulae.
@@ -75,8 +76,8 @@ class SpreadsheetFormulaEquivalence {
    * @return {boolean} Whether the pair is worth attempting to parse.
    */
   static _canUseSimpleAdditionEquivalence(studentFormula, referenceFormula) {
-    const studentHasPlus = studentFormula.indexOf('+') !== -1;
-    const referenceHasPlus = referenceFormula.indexOf('+') !== -1;
+    const studentHasPlus = studentFormula.indexOf('+') !== NOT_FOUND_INDEX;
+    const referenceHasPlus = referenceFormula.indexOf('+') !== NOT_FOUND_INDEX;
 
     if (studentHasPlus && referenceHasPlus) {
       return true;
@@ -103,7 +104,11 @@ class SpreadsheetFormulaEquivalence {
    * @return {boolean} Whether the formula looks like a possible `SUM(range)`.
    */
   static _isSumCandidate(formula) {
-    return formula.startsWith('=SUM(') && formula.endsWith(')') && formula.indexOf(':') !== -1;
+    return (
+      formula.startsWith('=SUM(') &&
+      formula.endsWith(')') &&
+      formula.indexOf(':') !== NOT_FOUND_INDEX
+    );
   }
 
   /**

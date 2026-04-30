@@ -82,7 +82,7 @@ class SheetsAssessor {
    * Assesses an individual student's formula response against a reference task and returns assessment data.
    * This method is called by `assessResponses` when a formula-based response is identified.
    * @param {Object} submissionItem - The student's submission item for the task.
-   * @param {Object} referenceTask - The task definition or legacy reference task.
+   * @param {Object} referenceTask - The task definition for the spreadsheet task.
    * @param {string} taskKey - The key identifying the task.
    * @param {string} studentName - The name of the student (for logging purposes).
    * @return {Object|null} An object containing assessment instances and comparison results, or null if inputs are invalid.
@@ -144,22 +144,19 @@ class SheetsAssessor {
   /**
    * Gets the student's formula content from the current submission item shape.
    * @param {Object} submissionItem - Submission item to inspect.
-   * @return {Array|null} Formula grid or legacy response list.
+   * @return {Array|null} Formula grid.
    */
   _getStudentFormulaContent(submissionItem) {
     if (Array.isArray(submissionItem?.artifact?.content)) {
       return submissionItem.artifact.content;
     }
-    if (Array.isArray(submissionItem?.response)) {
-      return submissionItem.response;
-    }
     return null;
   }
 
   /**
-   * Gets the reference formula content from the task definition or legacy task shape.
+   * Gets the reference formula content from the task definition.
    * @param {Object} referenceTask - Task definition to inspect.
-   * @return {Array|null} Reference formula grid or legacy reference list.
+   * @return {Array|null} Reference formula grid.
    */
   _getReferenceFormulaContent(referenceTask) {
     const referenceArtifact =
@@ -168,9 +165,6 @@ class SheetsAssessor {
         : null;
     if (Array.isArray(referenceArtifact?.content)) {
       return referenceArtifact.content;
-    }
-    if (Array.isArray(referenceTask?.taskReference)) {
-      return referenceTask.taskReference;
     }
     return null;
   }
@@ -190,29 +184,14 @@ class SheetsAssessor {
   }
 
   /**
-   * Compares either legacy formula lists or current 2D spreadsheet grids.
+   * Compares spreadsheet formula grids.
    * @param {Array} referenceArray - Reference formulas.
    * @param {Array} studentArray - Student formulas.
    * @param {Object} taskMetadata - Bounding-box metadata for spreadsheet grids.
    * @return {Object} Object with counts and feedback objects.
    */
   _compareFormulaArrays(referenceArray, studentArray, taskMetadata = {}) {
-    if (this._isLegacyFormulaList(referenceArray)) {
-      return this._compareLegacyFormulaArrays(referenceArray, studentArray);
-    }
     return this._compareGridFormulaArrays(referenceArray, studentArray, taskMetadata);
-  }
-
-  /**
-   * Detects whether the supplied reference content uses the legacy flat list shape.
-   * @param {Array} formulaArray - Reference content to inspect.
-   * @return {boolean} Whether the content is a legacy list.
-   */
-  _isLegacyFormulaList(formulaArray) {
-    return (
-      Array.isArray(formulaArray) &&
-      formulaArray.some((item) => item && typeof item === 'object' && Array.isArray(item.location))
-    );
   }
 
   /**
@@ -276,53 +255,6 @@ class SheetsAssessor {
       incorrectFormulae,
       cellReferenceFeedback,
       totalFormulae,
-    };
-  }
-
-  /**
-   * Compares legacy flat formula lists.
-   * @param {Array} referenceArray - Reference formula list.
-   * @param {Array} studentArray - Student formula list.
-   * @return {Object} Comparison summary and cell feedback.
-   */
-  _compareLegacyFormulaArrays(referenceArray, studentArray) {
-    let correct = 0;
-    let incorrect = 0;
-    let notAttempted = 0;
-    const cellReferenceFeedback = new CellReferenceFeedback();
-    const incorrectFormulae = [];
-
-    for (let i = 0; i < referenceArray.length; i++) {
-      const ref = referenceArray[i];
-      const student = studentArray[i] || {};
-      const refFormula = ref.referenceFormula || ref.formula || '';
-      const studentFormula = student.formula || '';
-      const location = student.location || ref.location;
-
-      if (SpreadsheetFormulaEquivalence.areEquivalent(studentFormula, refFormula)) {
-        cellReferenceFeedback.addItem(location, 'correct');
-        correct++;
-      } else if (studentFormula === '') {
-        cellReferenceFeedback.addItem(location, 'notAttempted');
-        notAttempted++;
-      } else {
-        cellReferenceFeedback.addItem(location, 'incorrect');
-        incorrect++;
-        incorrectFormulae.push({
-          studentFormula,
-          referenceFormula: refFormula,
-          location,
-        });
-      }
-    }
-
-    return {
-      correct,
-      incorrect,
-      notAttempted,
-      incorrectFormulae,
-      cellReferenceFeedback,
-      totalFormulae: referenceArray.length,
     };
   }
 
