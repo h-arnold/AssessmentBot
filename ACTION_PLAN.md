@@ -109,10 +109,10 @@ When a section is delegated to sub-agents, the plan must define and enforce mand
 
 For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, or `De-Sloppification`):
 
-1. list required documentation file paths under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit file paths
-3. verify every mandatory file is listed before accepting the handoff
-4. if any mandatory file is missing, return the work to the same sub-agent and block progression to the next phase
+1. list required workspace documentation file paths and any required external documentation URLs under that phase before delegation
+2. require the sub-agent handoff to include `Files read` with explicit workspace file paths and `External docs consulted` with explicit URLs whenever external references are mandatory
+3. verify every mandatory file path and mandatory URL is listed before accepting the handoff
+4. if any mandatory item is missing, return the work to the same sub-agent and block progression to the next phase
 
 ### Shared-helper planning gate (mandatory when helper changes are expected)
 
@@ -329,8 +329,8 @@ Frontend tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/services/...`
-- `npm run frontend:test -- src/frontend/src/query/...`
+- `npm run frontend:test -- src/services/...`
+- `npm run frontend:test -- src/query/...`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
@@ -473,7 +473,7 @@ Playwright tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/pages/...Assignments...`
+- `npm run frontend:test -- src/pages/...Assignments...`
 - `npm test -- tests/...assignment-definition...`
 - `npm run frontend:test:e2e -- <target>`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
@@ -581,6 +581,7 @@ Code Reviewer mandatory docs:
 ### Acceptance criteria
 
 - The page action area exposes a working create action, and each table row exposes a working update action.
+- The page action area keeps `Refresh assignments data` plus `Create assignment` only; the obsolete top-level `Update assignment` button is removed.
 - Create mode performs parse-and-persist before task editing is available.
 - After stage-one create, the same modal session exposes document URLs, metadata, and task weightings through the shared edit surface.
 - Updating document URLs disables other edits and exposes explicit `Re-parse` and `Cancel` actions.
@@ -605,16 +606,17 @@ API layer tests:
 
 Frontend tests:
 
-1. page-level create and update affordances become enabled only when the complete workflow is available
-2. create mode hides or disables task editing before first parse
-3. stage-one success hydrates the shared edit surface without a second fetch requirement
-4. document change disables metadata and task weighting inputs until re-parse or cancel
-5. cancel restores persisted URLs and re-enables other fields
-6. re-parse refreshes task rows and preserves matching weightings
-7. save remains blocked until a valid year-group selection is present
-8. dirty metadata or weighting edits disable document URL fields until save or discard-by-close
-9. create entry blocks locally when required reference data cannot be loaded
-10. failed post-mutation refresh fails closed on the affected table or modal surface
+1. the page action cluster keeps `Refresh assignments data` plus `Create assignment` only, with no top-level `Update assignment` button
+2. page-level create and update affordances become enabled only when the complete workflow is available
+3. create mode hides or disables task editing before first parse
+4. stage-one success hydrates the shared edit surface without a second fetch requirement
+5. document change disables metadata and task weighting inputs until re-parse or cancel
+6. cancel restores persisted URLs and re-enables other fields
+7. re-parse refreshes task rows and preserves matching weightings
+8. save remains blocked until a valid year-group selection is present
+9. dirty metadata or weighting edits disable document URL fields until save or discard-by-close
+10. create entry blocks locally when required reference data cannot be loaded
+11. failed post-mutation refresh fails closed on the affected table or modal surface
 
 Playwright tests:
 
@@ -628,7 +630,7 @@ Playwright tests:
 
 ### Section checks
 
-- `npm run frontend:test -- src/frontend/src/...assignment-definition...`
+- `npm run frontend:test -- src/...assignment-definition...`
 - `npm run frontend:test:e2e -- <target>`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
@@ -721,7 +723,7 @@ Code Reviewer mandatory docs:
 3. Run `npm run lint`.
 4. Run `npm run frontend:lint`.
 5. Run `npm run frontend:test:e2e`.
-6. Verify mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
+6. Verify mandatory-read evidence (`Files read` and `External docs consulted`, where required) is complete for every delegated regression handoff.
 
 ### Section checks
 
@@ -805,7 +807,7 @@ Code Reviewer mandatory docs:
 1. Verify docs mention stage-one create persistence, final-save persistence, and re-parse transport behaviour.
 2. Verify docs mention `yearGroupKey`, `yearGroupLabel`, and startup-owned `assignmentTopics` loading.
 3. Confirm notes/deviations fields are filled during implementation.
-4. Verify mandatory-read evidence (`Files read`) is complete for delegated docs/review handoffs.
+4. Verify mandatory-read evidence (`Files read` and `External docs consulted`, where required) is complete for delegated docs/review handoffs.
 5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
 
 ### Optional `@remarks` JSDoc review
