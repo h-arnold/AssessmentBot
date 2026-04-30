@@ -1,3 +1,6 @@
+const MIN_WEIGHTING = 0;
+const MAX_WEIGHTING = 10;
+
 /**
  * AssignmentDefinitionController
  *
@@ -14,6 +17,7 @@ class AssignmentDefinitionController {
     this.progressTracker = ProgressTracker.getInstance();
     this.registryCollectionName = 'assignment_definitions';
     this.fullCollectionPrefix = 'assdef_full_';
+    this.inMemoryFullDefinitionCache = new Map();
   }
 
   /**
@@ -72,7 +76,8 @@ class AssignmentDefinitionController {
     const referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
     const templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
 
-    let definition = this.getDefinitionByKey(definitionKey, { form: 'full' });
+    const storedDefinition = this._getStoredFullDocument(definitionKey);
+    let definition = storedDefinition ? AssignmentDefinition.fromJSON(storedDefinition) : null;
 
     const needsRefresh = Utils.definitionNeedsRefresh(
       definition,
@@ -125,6 +130,7 @@ class AssignmentDefinitionController {
       primaryTitle: context.primaryTitle,
       primaryTopicKey: context.primaryTopicKey,
       yearGroup: context.yearGroup,
+      yearGroupKey: context.yearGroupKey,
     });
 
     const taskState = this._resolveTaskStateForUpsert({
@@ -145,6 +151,8 @@ class AssignmentDefinitionController {
       primaryTopicKey: context.primaryTopicKey,
       primaryTopic: topicRecord.name,
       yearGroup: context.yearGroup,
+      yearGroupKey: context.yearGroupKey,
+      yearGroupLabel: context.yearGroupLabel,
       alternateTitles: context.alternateTitles,
       alternateTopics: context.isUpdate ? context.existingDefinition.alternateTopics || [] : [],
       documentType: context.documentType,
@@ -159,10 +167,12 @@ class AssignmentDefinitionController {
       definitionKey: context.definitionKey,
     });
 
-    return this._persistDefinitionWithRollback({
+    const persistedDefinition = this._persistDefinitionWithRollback({
       definition,
       previousFullDefinition: context.existingDefinition,
     });
+
+    return this._toCanonicalFullDefinitionResponse(persistedDefinition);
   }
 
   /**
@@ -201,6 +211,12 @@ class AssignmentDefinitionController {
       throw new Error('referenceDocumentId and templateDocumentId must be different.');
     }
 
+    const yearGroupContext = this._resolveYearGroupContextForUpsert({
+      payload,
+      isUpdate,
+      existingDefinition,
+    });
+
     return {
       isUpdate,
       existingDefinition,
@@ -208,10 +224,9 @@ class AssignmentDefinitionController {
       primaryTopicKey,
       referenceDocumentId,
       templateDocumentId,
-      yearGroup:
-        isUpdate && !Object.hasOwn(payload, 'yearGroup')
-          ? existingDefinition.yearGroup
-          : this._normaliseYearGroup(payload.yearGroup),
+      yearGroup: yearGroupContext.yearGroup,
+      yearGroupKey: yearGroupContext.yearGroupKey,
+      yearGroupLabel: yearGroupContext.yearGroupLabel,
       alternateTitles: this._resolveAlternateTitlesForUpsert({
         payload,
         isUpdate,
@@ -271,6 +286,27 @@ class AssignmentDefinitionController {
   }
 
   /**
+   * Resolves year-group context for upsert operations.
+   *
+   * @param {Object} params - Resolution parameters.
+   * @param {Object} params.payload - Upsert payload.
+   * @returns {{yearGroup: number|null, yearGroupKey: string, yearGroupLabel: string|null}} Year-group context.
+   * @private
+   */
+  _resolveYearGroupContextForUpsert({ payload }) {
+    if (!Object.hasOwn(payload, 'yearGroupKey') || payload.yearGroupKey === null) {
+      throw new Error('yearGroupKey must be provided for save writes.');
+    }
+
+    const resolvedYearGroup = this._requireExistingYearGroupRecord(payload.yearGroupKey);
+    return {
+      yearGroup: resolvedYearGroup.yearGroup ?? null,
+      yearGroupKey: resolvedYearGroup.key,
+      yearGroupLabel: resolvedYearGroup.name,
+    };
+  }
+
+  /**
    * Resolves task state and timestamp updates for upsert operations.
    *
    * @param {Object} params - Resolution parameters.
@@ -299,15 +335,17 @@ class AssignmentDefinitionController {
     ) {
       referenceLastModified = DriveManager.getFileModifiedTime(referenceDocumentId);
       templateLastModified = DriveManager.getFileModifiedTime(templateDocumentId);
+      const reparsedTasks = this._applyStoredWeightings(
+        existingTasks,
+        this._parseTasks({
+          documentType,
+          referenceDocumentId,
+          templateDocumentId,
+        })
+      );
+
       return {
-        finalTasks: this._applyStoredWeightings(
-          existingTasks,
-          this._parseTasks({
-            documentType,
-            referenceDocumentId,
-            templateDocumentId,
-          })
-        ),
+        finalTasks: this._defaultTaskWeightings(reparsedTasks),
         referenceLastModified,
         templateLastModified,
       };
@@ -330,13 +368,15 @@ class AssignmentDefinitionController {
     }
 
     return {
-      finalTasks: this._applyStoredWeightings(
-        existingTasks,
-        this._parseTasks({
-          documentType,
-          referenceDocumentId,
-          templateDocumentId,
-        })
+      finalTasks: this._defaultTaskWeightings(
+        this._applyStoredWeightings(
+          existingTasks,
+          this._parseTasks({
+            documentType,
+            referenceDocumentId,
+            templateDocumentId,
+          })
+        )
       ),
       referenceLastModified: latestReferenceModified,
       templateLastModified: latestTemplateModified,
@@ -389,8 +429,9 @@ class AssignmentDefinitionController {
    * @returns {AssignmentDefinition|null} The definition instance, or null if not found.
    */
   getDefinitionByKey(definitionKey, options = {}) {
+    Validate.requireParams({ definitionKey }, 'AssignmentDefinitionController.getDefinitionByKey');
+
     const { form = 'full' } = options;
-    if (!definitionKey) return null;
 
     if (form === 'partial') {
       const registry = this._getRegistryCollection();
@@ -400,9 +441,21 @@ class AssignmentDefinitionController {
     }
 
     const fullCollection = this._getFullCollection(definitionKey);
-    const fullDocument = fullCollection.findOne({ definitionKey }) || null;
+    const fullDocument =
+      fullCollection.findOne({ definitionKey }) ||
+      this.inMemoryFullDefinitionCache.get(definitionKey) ||
+      null;
     if (!fullDocument) return null;
-    return AssignmentDefinition.fromJSON(fullDocument);
+
+    const hydratedDefinition = AssignmentDefinition.fromJSON(fullDocument);
+
+    if (!this._isNonEmptyString(fullDocument.yearGroupKey)) {
+      throw new Error(
+        `Stored definition ${definitionKey} is missing required yearGroupKey for canonical reads.`
+      );
+    }
+
+    return this._toCanonicalFullDefinitionResponse(hydratedDefinition);
   }
 
   /**
@@ -477,6 +530,8 @@ class AssignmentDefinitionController {
 
     registry.deleteOne(filter);
     registry.save();
+
+    this.inMemoryFullDefinitionCache.delete(definitionKey);
 
     try {
       this.dbManager.getDb().dropCollection(fullCollectionName);
@@ -725,6 +780,8 @@ class AssignmentDefinitionController {
       throw wrapped;
     }
 
+    this.inMemoryFullDefinitionCache.set(definitionInstance.definitionKey, fullPayload);
+
     return AssignmentDefinition.fromJSON(fullPayload);
   }
 
@@ -773,6 +830,29 @@ class AssignmentDefinitionController {
       }
 
       parsedTask.taskWeighting = existingTask.taskWeighting;
+    });
+
+    return parsedTasks;
+  }
+
+  /**
+   * Applies default task weightings to parsed tasks when missing.
+   *
+   * @param {Object} parsedTasks - Parsed task map.
+   * @returns {Object} Parsed tasks with defaults applied.
+   * @private
+   */
+  _defaultTaskWeightings(parsedTasks) {
+    const entries = Object.entries(parsedTasks || {});
+
+    entries.forEach(([, task]) => {
+      if (!task || typeof task !== 'object') {
+        return;
+      }
+
+      if (task.taskWeighting === null || task.taskWeighting === undefined) {
+        task.taskWeighting = 1;
+      }
     });
 
     return parsedTasks;
@@ -835,7 +915,8 @@ class AssignmentDefinitionController {
    * @param {string|null} params.definitionKeyToIgnore - Definition key to exclude from duplicate checks.
    * @param {string} params.primaryTitle - Candidate title.
    * @param {string} params.primaryTopicKey - Candidate topic key.
-   * @param {number|null} params.yearGroup - Candidate year group.
+   * @param {number|null} params.yearGroup - Candidate legacy year group.
+   * @param {string|null} params.yearGroupKey - Candidate year-group key.
    * @private
    */
   _assertNoDuplicateBusinessTuple({
@@ -843,6 +924,7 @@ class AssignmentDefinitionController {
     primaryTitle,
     primaryTopicKey,
     yearGroup,
+    yearGroupKey,
   }) {
     const rows = this.dbManager.readAll(this.registryCollectionName) || [];
     const expectedTitle = this._normaliseTitleForDuplicate(primaryTitle);
@@ -859,13 +941,13 @@ class AssignmentDefinitionController {
       return (
         this._normaliseTitleForDuplicate(row.primaryTitle) === expectedTitle &&
         row.primaryTopicKey === primaryTopicKey &&
-        (row.yearGroup ?? null) === yearGroup
+        (row.yearGroupKey ?? row.yearGroup ?? null) === (yearGroupKey ?? yearGroup ?? null)
       );
     });
 
     if (conflict) {
       throw new Error(
-        `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroup})`
+        `Duplicate assignment definition for tuple (${primaryTitle}, ${primaryTopicKey}, ${yearGroupKey ?? yearGroup ?? null})`
       );
     }
   }
@@ -897,6 +979,86 @@ class AssignmentDefinitionController {
   _listAssignmentTopics() {
     const controller = new ReferenceDataController();
     return controller.listAssignmentTopics();
+  }
+
+  /**
+   * Resolves and validates a year-group record by key.
+   *
+   * @param {string} yearGroupKey - Year-group key.
+   * @returns {{key: string, name: string, yearGroup: number|null}} Year-group record.
+   * @private
+   */
+  _requireExistingYearGroupRecord(yearGroupKey) {
+    const normalisedYearGroupKey = this._requireTrimmedString(yearGroupKey, 'yearGroupKey');
+    const yearGroups = this._listYearGroups();
+    const yearGroupRecord =
+      yearGroups.find((yearGroup) => yearGroup?.key === normalisedYearGroupKey) || null;
+
+    if (!yearGroupRecord) {
+      throw new Error(`Unknown yearGroupKey: ${yearGroupKey}`);
+    }
+
+    return yearGroupRecord;
+  }
+
+  /**
+   * Lists year-group reference records.
+   *
+   * @returns {Array<{key: string, name: string, yearGroup?: number}>} Year-group records.
+   * @private
+   */
+  _listYearGroups() {
+    const controller = new ReferenceDataController();
+    return controller.listYearGroups();
+  }
+
+  /**
+   * Maps a full assignment definition to the canonical editable transport shape.
+   *
+   * @param {AssignmentDefinition|Object} definition - Definition source.
+   * @returns {Object} Canonical full-definition payload.
+   * @private
+   */
+  _toCanonicalFullDefinitionResponse(definition) {
+    const source = definition instanceof AssignmentDefinition ? definition.toJSON() : definition;
+
+    const resolvedYearGroup = source.yearGroupKey
+      ? this._listYearGroups().find((yearGroup) => yearGroup?.key === source.yearGroupKey) || null
+      : null;
+
+    const resolvedYearGroupLabel =
+      resolvedYearGroup && typeof resolvedYearGroup.name === 'string'
+        ? resolvedYearGroup.name
+        : null;
+    const canonicalYearGroupLabel = source.yearGroupKey
+      ? resolvedYearGroupLabel
+      : (source.yearGroupLabel ?? resolvedYearGroupLabel);
+
+    const canonicalTasks = Object.entries(source.tasks || {})
+      .filter(([, task]) => task && task.taskWeighting !== null && task.taskWeighting !== undefined)
+      .map(([taskId, task]) => ({
+        taskId,
+        taskTitle: task.taskTitle,
+        taskWeighting: task.taskWeighting,
+      }));
+
+    return {
+      definitionKey: source.definitionKey,
+      primaryTitle: source.primaryTitle,
+      primaryTopicKey: source.primaryTopicKey,
+      primaryTopic: source.primaryTopic,
+      yearGroupKey: source.yearGroupKey ?? null,
+      yearGroupLabel: canonicalYearGroupLabel,
+      alternateTitles: source.alternateTitles || [],
+      alternateTopics: source.alternateTopics || [],
+      documentType: source.documentType,
+      referenceDocumentId: source.referenceDocumentId,
+      templateDocumentId: source.templateDocumentId,
+      assignmentWeighting: source.assignmentWeighting,
+      tasks: canonicalTasks,
+      createdAt: source.createdAt || null,
+      updatedAt: source.updatedAt || null,
+    };
   }
 
   /**
@@ -955,6 +1117,14 @@ class AssignmentDefinitionController {
 
     if (typeof value !== 'number' || !Number.isFinite(value)) {
       throw new TypeError(`${fieldName} must be a number or null.`);
+    }
+
+    if (value < MIN_WEIGHTING) {
+      throw new RangeError(`${fieldName} must be between ${MIN_WEIGHTING} and ${MAX_WEIGHTING}.`);
+    }
+
+    if (value > MAX_WEIGHTING) {
+      throw new RangeError(`${fieldName} must be between ${MIN_WEIGHTING} and ${MAX_WEIGHTING}.`);
     }
 
     return value;

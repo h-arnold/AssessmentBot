@@ -69,6 +69,15 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
     globalThis.ClassroomApiClient = ClassroomApiClient;
     globalThis.SlidesParser = SlidesParser;
     globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ReferenceDataController = class {
+      listYearGroups() {
+        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+      }
+
+      listAssignmentTopics() {
+        return [{ key: 'topic-english', name: 'English' }];
+      }
+    };
 
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
     ClassroomApiClient.fetchTopicName.mockReturnValue('English');
@@ -82,6 +91,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -89,6 +100,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -122,6 +134,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -129,6 +143,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -160,6 +175,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -167,6 +184,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -201,6 +219,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -209,6 +229,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 { taskId: 't1', role: 'reference', content: 'full', contentHash: 'hash' },
@@ -222,8 +243,13 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const result = controller.getDefinitionByKey('Test_Topic_10');
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assdef_full_Test_Topic_10');
-      expect(result).toBeInstanceOf(AssignmentDefinition);
-      expect(result.tasks.t1.artifacts.reference[0].content).toBe('full');
+      expect(result).toMatchObject({
+        definitionKey: 'Test_Topic_10',
+        yearGroupKey: 'year-group-10',
+      });
+      expect(result.tasks).toEqual(
+        expect.arrayContaining([expect.objectContaining({ taskId: 't1', taskTitle: 'Task 1' })])
+      );
     });
 
     it('should return full definition when form: "full" specified', () => {
@@ -231,6 +257,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -239,6 +267,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 { taskId: 't1', role: 'reference', content: 'full', contentHash: 'hash' },
@@ -252,7 +281,13 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const result = controller.getDefinitionByKey('Test_Topic_10', { form: 'full' });
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assdef_full_Test_Topic_10');
-      expect(result.tasks.t1.artifacts.reference[0].content).toBe('full');
+      expect(result).toMatchObject({
+        definitionKey: 'Test_Topic_10',
+        yearGroupKey: 'year-group-10',
+      });
+      expect(result.tasks).toEqual(
+        expect.arrayContaining([expect.objectContaining({ taskId: 't1', taskTitle: 'Task 1' })])
+      );
     });
 
     it('should return partial definition when form: "partial" specified', () => {
@@ -260,6 +295,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -280,6 +317,10 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assignment_definitions');
       expect(result.tasks.t1.artifacts.reference[0].content).toBeNull();
+    });
+
+    it('should fail fast when definitionKey is missing', () => {
+      expect(() => controller.getDefinitionByKey(undefined)).toThrow(/definitionKey is required/i);
     });
 
     it('should return null if definition not found', () => {

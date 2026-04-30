@@ -50,6 +50,15 @@ describe('AssignmentDefinitionController', () => {
     globalThis.ClassroomApiClient = ClassroomApiClient;
     globalThis.SlidesParser = SlidesParser;
     globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ReferenceDataController = class {
+      listYearGroups() {
+        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+      }
+
+      listAssignmentTopics() {
+        return [{ key: 'topic-1', name: 'Enriched Topic' }];
+      }
+    };
 
     // Setup DriveManager mock
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
@@ -68,6 +77,8 @@ describe('AssignmentDefinitionController', () => {
       topicId: 'topic-1',
       courseId: 'course-1',
       yearGroup: 10,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: 'ref-1',
       templateDocumentId: 'tpl-1',
@@ -85,6 +96,8 @@ describe('AssignmentDefinitionController', () => {
       primaryTitle: 'Existing',
       primaryTopic: 'Topic',
       yearGroup: 10,
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       documentType: 'SLIDES',
       referenceDocumentId: 'ref-1',
       templateDocumentId: 'tpl-1',

@@ -13,6 +13,8 @@ class AssignmentDefinition {
    * @param {string} params.primaryTopic - Canonical topic name.
    * @param {string|null} [params.primaryTopicKey=null] - Authoritative keyed topic reference.
    * @param {number|null} [params.yearGroup=null] - Intended year group; may be null until enriched.
+   * @param {string|null} [params.yearGroupKey=null] - Authoritative year-group key when available.
+   * @param {string|null} [params.yearGroupLabel=null] - Resolved year-group display label when available.
    * @param {string[]} [params.alternateTitles=[]] - Known title variants.
    * @param {string[]} [params.alternateTopics=[]] - Known topic variants.
    * @param {string} params.documentType - Document type ('SLIDES' | 'SHEETS').
@@ -31,6 +33,8 @@ class AssignmentDefinition {
     primaryTopic,
     primaryTopicKey = null,
     yearGroup = null,
+    yearGroupKey = null,
+    yearGroupLabel = null,
     alternateTitles = [],
     alternateTopics = [],
     documentType,
@@ -48,6 +52,8 @@ class AssignmentDefinition {
     this.primaryTopic = primaryTopic;
     this.primaryTopicKey = primaryTopicKey ?? null;
     this.yearGroup = yearGroup ?? null;
+    this.yearGroupKey = yearGroupKey ?? null;
+    this.yearGroupLabel = yearGroupLabel ?? null;
     this.alternateTitles = alternateTitles || [];
     this.alternateTopics = alternateTopics || [];
     this.documentType = documentType;
@@ -260,6 +266,8 @@ class AssignmentDefinition {
       primaryTopic: this.primaryTopic,
       primaryTopicKey: this.primaryTopicKey,
       yearGroup: this.yearGroup,
+      yearGroupKey: this.yearGroupKey,
+      yearGroupLabel: this.yearGroupLabel,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
       documentType: this.documentType,
@@ -292,6 +300,8 @@ class AssignmentDefinition {
       primaryTopic: this.primaryTopic,
       primaryTopicKey: this.primaryTopicKey,
       yearGroup: this.yearGroup,
+      yearGroupKey: this.yearGroupKey,
+      yearGroupLabel: this.yearGroupLabel,
       alternateTitles: this.alternateTitles,
       alternateTopics: this.alternateTopics,
       documentType: this.documentType,
@@ -320,6 +330,8 @@ class AssignmentDefinition {
       primaryTopic: json.primaryTopic,
       primaryTopicKey: json.primaryTopicKey ?? null,
       yearGroup: json.yearGroup ?? null,
+      yearGroupKey: json.yearGroupKey ?? null,
+      yearGroupLabel: json.yearGroupLabel ?? null,
       alternateTitles: json.alternateTitles ?? [],
       alternateTopics: json.alternateTopics ?? [],
       documentType: json.documentType ?? null,

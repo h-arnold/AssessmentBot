@@ -47,6 +47,7 @@ function installTransportHelperMocks(
     updateABClass_: globalThis.updateABClass_,
     deleteABClass_: globalThis.deleteABClass_,
     getAssignmentDefinitionPartials_: globalThis.getAssignmentDefinitionPartials_,
+    getAssignmentDefinition_: globalThis.getAssignmentDefinition_,
     deleteAssignmentDefinition_: globalThis.deleteAssignmentDefinition_,
   };
 
@@ -57,6 +58,9 @@ function installTransportHelperMocks(
   const getAssignmentDefinitionPartials_ = vi.fn(
     assignmentDefinitionBehaviour.getAssignmentDefinitionPartials_ || (() => undefined)
   );
+  const getAssignmentDefinition_ = vi.fn(
+    assignmentDefinitionBehaviour.getAssignmentDefinition_ || (() => undefined)
+  );
   const deleteAssignmentDefinition_ = vi.fn(
     assignmentDefinitionBehaviour.deleteAssignmentDefinition_ || (() => undefined)
   );
@@ -66,6 +70,7 @@ function installTransportHelperMocks(
   globalThis.updateABClass_ = updateABClass_;
   globalThis.deleteABClass_ = deleteABClass_;
   globalThis.getAssignmentDefinitionPartials_ = getAssignmentDefinitionPartials_;
+  globalThis.getAssignmentDefinition_ = getAssignmentDefinition_;
   globalThis.deleteAssignmentDefinition_ = deleteAssignmentDefinition_;
 
   return {
@@ -75,6 +80,7 @@ function installTransportHelperMocks(
     updateABClass_,
     deleteABClass_,
     getAssignmentDefinitionPartials_,
+    getAssignmentDefinition_,
     deleteAssignmentDefinition_,
   };
 }
@@ -85,6 +91,7 @@ function restoreTransportHelperMocks(originals) {
   restoreGlobal('updateABClass_', originals.updateABClass_);
   restoreGlobal('deleteABClass_', originals.deleteABClass_);
   restoreGlobal('getAssignmentDefinitionPartials_', originals.getAssignmentDefinitionPartials_);
+  restoreGlobal('getAssignmentDefinition_', originals.getAssignmentDefinition_);
   restoreGlobal('deleteAssignmentDefinition_', originals.deleteAssignmentDefinition_);
 }
 

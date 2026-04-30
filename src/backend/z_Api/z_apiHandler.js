@@ -22,6 +22,7 @@ const ALLOWLISTED_METHOD_HANDLERS = Object.freeze({
   getAuthorisationStatus: () => new ScriptAppManager().isAuthorised(),
   getABClassPartials: () => new ABClassController().getAllClassPartials(),
   getAssignmentDefinitionPartials: (parameters) => getAssignmentDefinitionPartials_(parameters),
+  getAssignmentDefinition: (parameters) => getAssignmentDefinition_(parameters),
   deleteAssignmentDefinition: (parameters) => deleteAssignmentDefinition_(parameters),
   upsertAssignmentDefinition: (parameters) => upsertAssignmentDefinition_(parameters),
   getGoogleClassrooms: (parameters) => getGoogleClassrooms_(parameters),

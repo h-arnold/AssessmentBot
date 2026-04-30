@@ -55,14 +55,53 @@ function createUpsertPayload(overrides = {}) {
     primaryTitle: 'Water cycle explanation',
     primaryTopicKey: 'topic-science',
     yearGroup: 8,
+    yearGroupKey: 'year-group-8',
     alternateTitles: ['The water cycle'],
     referenceDocumentId: 'ref-doc-id',
     templateDocumentId: 'tpl-doc-id',
     documentType: 'SLIDES',
-    assignmentWeighting: 20,
+    assignmentWeighting: 1,
     taskWeightings: [],
     ...overrides,
   };
+}
+
+function createWizardUpsertPayload(overrides = {}) {
+  return {
+    primaryTitle: 'Water cycle explanation',
+    primaryTopicKey: 'topic-science',
+    yearGroupKey: 'year-group-8',
+    referenceDocumentId: 'ref-doc-id',
+    templateDocumentId: 'tpl-doc-id',
+    documentType: 'SLIDES',
+    assignmentWeighting: 1,
+    taskWeightings: [{ taskId: 't_task_1', taskWeighting: 1 }],
+    ...overrides,
+  };
+}
+
+function expectCanonicalFullDefinitionShape(definition) {
+  expect(definition).toMatchObject({
+    definitionKey: expect.any(String),
+    primaryTitle: expect.any(String),
+    primaryTopicKey: expect.any(String),
+    primaryTopic: expect.any(String),
+    yearGroupKey: expect.any(String),
+    yearGroupLabel: expect.any(String),
+    referenceDocumentId: expect.any(String),
+    templateDocumentId: expect.any(String),
+    assignmentWeighting: expect.any(Number),
+    tasks: expect.arrayContaining([
+      expect.objectContaining({
+        taskId: expect.any(String),
+        taskTitle: expect.any(String),
+        taskWeighting: expect.any(Number),
+      }),
+    ]),
+  });
+
+  expect(definition).not.toHaveProperty('referenceDocumentUrl');
+  expect(definition).not.toHaveProperty('templateDocumentUrl');
 }
 
 describe('AssignmentDefinitionController upsert behaviour', () => {
@@ -71,6 +110,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
   let mockFullCollection;
   let mockDbManager;
   let assignmentTopicRecords;
+  let yearGroupRecords;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,6 +133,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       { key: 'topic-science', name: 'Science' },
       { key: 'topic-maths', name: 'Maths' },
     ];
+    yearGroupRecords = [
+      { key: 'year-group-8', name: 'Year 8', yearGroup: 8 },
+      { key: 'year-group-10', name: 'Year 10', yearGroup: 10 },
+    ];
 
     globalThis.DbManager = DbManager;
     globalThis.DriveManager = DriveManager;
@@ -106,6 +150,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     globalThis.ReferenceDataController = class {
       listAssignmentTopics() {
         return assignmentTopicRecords.map((topic) => ({ ...topic }));
+      }
+
+      listYearGroups() {
+        return yearGroupRecords.map((yearGroup) => ({ ...yearGroup }));
       }
     };
 
@@ -257,6 +305,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
         primaryTitle: 'Water cycle explanation',
         primaryTopicKey: 'topic-science',
         yearGroup: 8,
+        yearGroupKey: 'year-group-8',
       },
     ]);
 
@@ -333,14 +382,14 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     mockFullCollection.findOne.mockReturnValue(null);
     mockRegistryCollection.findOne.mockReturnValue(null);
 
-    const saved = controller.upsertDefinition(createUpsertPayload({ assignmentWeighting: 35 }));
+    const saved = controller.upsertDefinition(createUpsertPayload({ assignmentWeighting: 10 }));
 
-    expect(saved.assignmentWeighting).toBe(35);
+    expect(saved.assignmentWeighting).toBe(10);
     expect(mockFullCollection.insertOne).toHaveBeenCalledWith(
-      expect.objectContaining({ assignmentWeighting: 35 })
+      expect.objectContaining({ assignmentWeighting: 10 })
     );
     expect(mockRegistryCollection.insertOne).toHaveBeenCalledWith(
-      expect.objectContaining({ assignmentWeighting: 35 })
+      expect.objectContaining({ assignmentWeighting: 10 })
     );
   });
 
@@ -351,14 +400,18 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     const saved = controller.upsertDefinition(
       createUpsertPayload({
         taskWeightings: [
-          { taskId: 't_task_1', taskWeighting: 55 },
-          { taskId: 't_task_2', taskWeighting: 45 },
+          { taskId: 't_task_1', taskWeighting: 5 },
+          { taskId: 't_task_2', taskWeighting: 4 },
         ],
       })
     );
 
-    expect(saved.tasks.t_task_1.taskWeighting).toBe(55);
-    expect(saved.tasks.t_task_2.taskWeighting).toBe(45);
+    expect(saved.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ taskId: 't_task_1', taskWeighting: 5 }),
+        expect.objectContaining({ taskId: 't_task_2', taskWeighting: 4 }),
+      ])
+    );
   });
 
   it('rejects unknown task IDs in taskWeightings', () => {
@@ -416,7 +469,7 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     expect(saved.alternateTitles).toEqual(['Stored title A', 'Stored title B']);
   });
 
-  it('preserves existing yearGroup when updates omit yearGroup', () => {
+  it('rejects updates when yearGroupKey is omitted from the save payload', () => {
     const existing = {
       ...createUpsertPayload({ definitionKey: 'existing-stable-key', yearGroup: 9 }),
       primaryTopic: 'Science',
@@ -434,10 +487,9 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
 
     const payload = createUpsertPayload({ definitionKey: 'existing-stable-key' });
-    delete payload.yearGroup;
-    const saved = controller.upsertDefinition(payload);
+    delete payload.yearGroupKey;
 
-    expect(saved.yearGroup).toBe(9);
+    expect(() => controller.upsertDefinition(payload)).toThrow(/yearGroupKey/i);
   });
 
   it('attempts rollback and throws when registry write fails after full-store write', () => {
@@ -501,5 +553,296 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
         createUpsertPayload({ definitionKey: 'existing-stable-key', primaryTitle: 'Changed title' })
       )
     ).toThrow(/repair|rollback/i);
+  });
+
+  it('rejects create-stage duplicate tuples before persistence when yearGroupKey collides', () => {
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroup: 7,
+        yearGroupKey: 'year-group-8',
+      },
+    ]);
+
+    expect(() => controller.upsertDefinition(createWizardUpsertPayload())).toThrow(/duplicate/i);
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('enforces 0..10 weighting range for assignmentWeighting and taskWeighting writes', () => {
+    expect(() =>
+      controller.upsertDefinition(createUpsertPayload({ assignmentWeighting: 20 }))
+    ).toThrow(/0.*10/i);
+
+    expect(() =>
+      controller.upsertDefinition(
+        createUpsertPayload({ taskWeightings: [{ taskId: 't_task_1', taskWeighting: 20 }] })
+      )
+    ).toThrow(/0.*10/i);
+
+    expect(() =>
+      controller.upsertDefinition(
+        createUpsertPayload({ taskWeightings: [{ taskId: 't_task_1', taskWeighting: -1 }] })
+      )
+    ).toThrow(/0.*10/i);
+  });
+
+  it('rejects save writes when yearGroupKey is not a valid reference-data selection', () => {
+    expect(() =>
+      controller.upsertDefinition(createWizardUpsertPayload({ yearGroupKey: 'unknown-year-group' }))
+    ).toThrow(/yearGroupKey/i);
+  });
+
+  it('rejects save writes when yearGroupKey is missing or null', () => {
+    const missingYearGroupPayload = createWizardUpsertPayload();
+    delete missingYearGroupPayload.yearGroupKey;
+
+    expect(() => controller.upsertDefinition(missingYearGroupPayload)).toThrow(/yearGroupKey/i);
+    expect(() =>
+      controller.upsertDefinition(createWizardUpsertPayload({ yearGroupKey: null }))
+    ).toThrow(/yearGroupKey/i);
+  });
+
+  it('keeps definitionKey stable when tuple edits change title/topic/yearGroupKey', () => {
+    const existing = {
+      ...createUpsertPayload({
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Old title',
+        primaryTopicKey: 'topic-science',
+        yearGroup: 8,
+        yearGroupKey: 'year-group-8',
+      }),
+      yearGroupKey: 'year-group-8',
+      yearGroupLabel: 'Year 8',
+      primaryTopic: 'Science',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          taskWeighting: 2,
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+    const saved = controller.upsertDefinition(
+      createWizardUpsertPayload({
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      })
+    );
+
+    expect(saved.definitionKey).toBe('existing-stable-key');
+    expect(saved.yearGroupKey).toBe('year-group-10');
+  });
+
+  it('persists yearGroupKey in both full and partial stores', () => {
+    mockFullCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
+
+    controller.upsertDefinition(createWizardUpsertPayload({ yearGroupKey: 'year-group-10' }));
+
+    expect(mockFullCollection.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({ yearGroupKey: 'year-group-10' })
+    );
+    expect(mockRegistryCollection.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({ yearGroupKey: 'year-group-10' })
+    );
+  });
+
+  it('returns the canonical full-definition transport shape for create/write/read flows', () => {
+    mockFullCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
+
+    const saved = controller.upsertDefinition(createWizardUpsertPayload());
+    const readBack = controller.getDefinitionByKey(saved.definitionKey, { form: 'full' });
+
+    expectCanonicalFullDefinitionShape(saved);
+    expectCanonicalFullDefinitionShape(readBack);
+  });
+
+  it('defaults parsed task weightings to 1 for stage-one creates when taskWeightings are omitted', () => {
+    mockFullCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
+
+    const payload = createWizardUpsertPayload();
+    delete payload.taskWeightings;
+
+    const saved = controller.upsertDefinition(payload);
+
+    expect(saved.tasks).toEqual([
+      expect.objectContaining({ taskId: 't_task_1', taskWeighting: 1 }),
+      expect.objectContaining({ taskId: 't_task_2', taskWeighting: 1 }),
+    ]);
+  });
+
+  it('fails full-definition reads when persisted records are missing yearGroupKey', () => {
+    const legacyDefinition = {
+      ...createUpsertPayload({ definitionKey: 'legacy-definition' }),
+      primaryTopic: 'Science',
+      yearGroup: 8,
+      yearGroupKey: null,
+      yearGroupLabel: null,
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          taskWeighting: 2,
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockImplementation((filter) => {
+      if (filter?.definitionKey === 'legacy-definition') {
+        return legacyDefinition;
+      }
+      return null;
+    });
+
+    expect(() => controller.getDefinitionByKey('legacy-definition', { form: 'full' })).toThrow(
+      /yearGroupKey/i
+    );
+  });
+
+  it('resolves yearGroupLabel from yearGroupKey on canonical reads', () => {
+    const staleLabelDefinition = {
+      ...createWizardUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      yearGroup: 8,
+      yearGroupKey: 'year-group-8',
+      yearGroupKey: 'year-group-8',
+      yearGroupLabel: 'Outdated label',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          taskWeighting: 2,
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockImplementation((filter) => {
+      if (filter?.definitionKey === 'existing-stable-key') {
+        return staleLabelDefinition;
+      }
+      return null;
+    });
+
+    const readBack = controller.getDefinitionByKey('existing-stable-key', { form: 'full' });
+
+    expect(readBack.yearGroupLabel).toBe('Year 8');
+  });
+
+  it('re-parse keeps matching task weightings and defaults new tasks to 1', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          taskWeighting: 8,
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+
+    extractSlidesTaskDefinitionsMock.mockReturnValueOnce([
+      createParsedTaskDefinition({ id: 't_task_1', taskTitle: 'Task A', index: 0 }),
+      createParsedTaskDefinition({ id: 't_task_3', taskTitle: 'Task C', index: 2 }),
+    ]);
+
+    const saved = controller.upsertDefinition(
+      createUpsertPayload({
+        definitionKey: 'existing-stable-key',
+        referenceDocumentId: 'new-ref-doc-id',
+        templateDocumentId: 'new-tpl-doc-id',
+      })
+    );
+
+    expect(saved.tasks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ taskId: 't_task_1', taskWeighting: 8 }),
+        expect.objectContaining({ taskId: 't_task_3', taskWeighting: 1 }),
+      ])
+    );
+  });
+
+  it('detects duplicate tuples on final save when title/topic/yearGroupKey changes', () => {
+    const existing = {
+      ...createUpsertPayload({ definitionKey: 'existing-stable-key' }),
+      primaryTopic: 'Science',
+      yearGroupKey: 'year-group-8',
+      tasks: {
+        t_task_1: {
+          id: 't_task_1',
+          taskTitle: 'Task A',
+          artifacts: { reference: [], template: [] },
+        },
+      },
+      referenceLastModified: '2025-04-01T00:00:00.000Z',
+      templateLastModified: '2025-04-01T00:00:00.000Z',
+    };
+
+    mockFullCollection.findOne.mockReturnValue(existing);
+    mockRegistryCollection.findOne.mockReturnValue({ ...existing, tasks: null });
+    mockDbManager.readAll.mockReturnValue([
+      {
+        definitionKey: 'existing-stable-key',
+        primaryTitle: 'Water cycle explanation',
+        primaryTopicKey: 'topic-science',
+        yearGroupKey: 'year-group-8',
+      },
+      {
+        definitionKey: 'other-definition',
+        primaryTitle: 'Updated title',
+        primaryTopicKey: 'topic-maths',
+        yearGroupKey: 'year-group-10',
+      },
+    ]);
+
+    expect(() =>
+      controller.upsertDefinition(
+        createWizardUpsertPayload({
+          definitionKey: 'existing-stable-key',
+          primaryTitle: 'Updated title',
+          primaryTopicKey: 'topic-maths',
+          yearGroupKey: 'year-group-10',
+        })
+      )
+    ).toThrow(/duplicate/i);
+  });
+
+  it('rejects same-document identifier pairs for save writes', () => {
+    const runUpsert = () =>
+      controller.upsertDefinition(
+        createWizardUpsertPayload({
+          referenceDocumentId: 'same-doc',
+          templateDocumentId: 'same-doc',
+        })
+      );
+
+    expect(runUpsert).toThrow();
+    expect(mockFullCollection.insertOne).not.toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).not.toHaveBeenCalled();
   });
 });

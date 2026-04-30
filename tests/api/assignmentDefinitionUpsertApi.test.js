@@ -59,7 +59,7 @@ function buildValidUpsertPayload(overrides = {}) {
   return {
     primaryTitle: 'Algebra Baseline',
     primaryTopicKey: 'topic-algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
     alternateTitles: ['Algebra Starter'],
     referenceDocumentId: 'ref-doc-001',
     templateDocumentId: 'tpl-doc-001',
@@ -69,35 +69,34 @@ function buildValidUpsertPayload(overrides = {}) {
   };
 }
 
-function buildFullDefinition(overrides = {}) {
+function buildWizardUpsertPayload(overrides = {}) {
   return {
     primaryTitle: 'Algebra Baseline',
     primaryTopicKey: 'topic-algebra',
+    yearGroupKey: 'year-group-10',
+    referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-001/edit',
+    templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-001/edit',
+    assignmentWeighting: 1,
+    taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
+    ...overrides,
+  };
+}
+
+function buildFullDefinition(overrides = {}) {
+  return {
+    definitionKey: 'definition-001',
+    primaryTitle: 'Algebra Baseline',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: ['Algebra Starter'],
+    alternateTopics: ['Linear Equations'],
     documentType: 'SLIDES',
     referenceDocumentId: 'ref-doc-001',
     templateDocumentId: 'tpl-doc-001',
-    referenceLastModified: '2026-01-05T10:00:00.000Z',
-    templateLastModified: '2026-01-05T10:00:00.000Z',
-    assignmentWeighting: null,
-    definitionKey: 'definition-001',
-    tasks: {
-      'task-1': {
-        id: 'task-1',
-        taskTitle: 'Task 1',
-        pageId: null,
-        taskNotes: null,
-        taskMetadata: {},
-        taskWeighting: 25,
-        index: 0,
-        artifacts: {
-          reference: [],
-          template: [],
-        },
-      },
-    },
+    assignmentWeighting: 1,
+    tasks: [{ taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 }],
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-06T12:30:00.000Z',
     ...overrides,
@@ -184,6 +183,14 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
       params: (() => {
         const payload = buildValidUpsertPayload();
         delete payload.referenceDocumentId;
+        return payload;
+      })(),
+    },
+    {
+      caseName: 'missing yearGroupKey',
+      params: (() => {
+        const payload = buildValidUpsertPayload();
+        delete payload.yearGroupKey;
         return payload;
       })(),
     },
@@ -322,5 +329,59 @@ describe('Api/upsertAssignmentDefinition transport contract', () => {
       expect(error.fieldName).toBe('taskWeightings[0].taskId');
       expect(upsertDefinition).not.toHaveBeenCalled();
     }
+  });
+  it('maps wizard URL transport payloads to a controller-facing domain payload with document IDs', () => {
+    const { upsertDefinition } = installAssignmentDefinitionControllerStub();
+    const payload = buildWizardUpsertPayload();
+
+    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionUpsertTransportModule();
+    upsertAssignmentDefinition_(payload);
+
+    expect(upsertDefinition).toHaveBeenCalledTimes(1);
+    const [controllerPayload] = upsertDefinition.mock.calls[0];
+
+    expect(controllerPayload).toMatchObject({
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      yearGroupKey: 'year-group-10',
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      documentType: 'SLIDES',
+      assignmentWeighting: 1,
+      taskWeightings: [{ taskId: 'task-1', taskWeighting: 1 }],
+    });
+    expect(controllerPayload).not.toHaveProperty('referenceDocumentUrl');
+    expect(controllerPayload).not.toHaveProperty('templateDocumentUrl');
+  });
+
+  it('rejects invalid referenceDocumentUrl values at the transport boundary', () => {
+    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionUpsertTransportModule();
+
+    expect(() =>
+      upsertAssignmentDefinition_(
+        buildWizardUpsertPayload({ referenceDocumentUrl: 'https://example.com/not-google-doc' })
+      )
+    ).toThrow(/referenceDocumentUrl/i);
+  });
+
+  it('rejects mixed supported Google document types at the transport boundary', () => {
+    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionUpsertTransportModule();
+
+    expect(() =>
+      upsertAssignmentDefinition_(
+        buildWizardUpsertPayload({
+          referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-001/edit',
+          templateDocumentUrl: 'https://docs.google.com/spreadsheets/d/tpl-doc-001/edit',
+        })
+      )
+    ).toThrow(/documentType|referenceDocumentUrl|templateDocumentUrl/i);
+  });
+
+  it('rejects unsafe yearGroupKey values at the transport boundary', () => {
+    const { upsertAssignmentDefinition_ } = loadAssignmentDefinitionUpsertTransportModule();
+
+    expect(() =>
+      upsertAssignmentDefinition_(buildWizardUpsertPayload({ yearGroupKey: 'year/group-10' }))
+    ).toThrow(/yearGroupKey/i);
   });
 });

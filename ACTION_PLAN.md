@@ -251,9 +251,27 @@ Frontend tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** pending.
-- **Deviations from plan:** pending.
-- **Follow-up implications for later sections:** frontend service schemas and modal state should consume the canonical full-definition response directly.
+- **Implementation notes:** Green phase complete:
+  - `getAssignmentDefinition` transport was added behind `apiHandler`.
+  - URL-based upsert transport validation now rejects invalid URLs and mixed/same-document pairs while deriving `documentType` server-side.
+  - Assignment/task weighting validation now enforces strict `0..10` bounds.
+  - Save-compatible writes now require a non-null `yearGroupKey`.
+  - Upsert and read now return the canonical full-definition response shape.
+  - Stage-one re-parse task weighting defaults missing weights to `1`.
+  - Section 1 DTO freeze was respected; partial DTO migration remains deferred to Section 3.
+- **Deviations from plan:** None.
+- **Follow-up implications for later sections:** Section 2 should consume the canonical full-definition response directly, and Section 3 should land the deferred partial DTO migration.
+
+Checklist:
+
+- [x] red tests added (complete)
+- [x] red review clean (complete)
+- [x] green implementation complete (complete)
+- [x] green review clean (complete)
+- [x] checks passed (complete)
+- [x] action plan updated (complete)
+- [ ] commit created (⏳ pending)
+- [ ] push completed (⏳ pending)
 
 ---
 
