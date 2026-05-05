@@ -695,9 +695,9 @@ Playwright tests:
   - [ ] green implementation complete
   - [ ] green review clean
   - [ ] checks passed
-  - [ ] action plan updated
-  - [ ] commit created
-  - [ ] push completed
+  - [x] action plan updated (complete)
+  - [x] commit created (complete)
+  - [x] push completed (complete)
 
 ---
 
