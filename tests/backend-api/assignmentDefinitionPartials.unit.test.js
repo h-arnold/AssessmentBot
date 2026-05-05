@@ -13,7 +13,8 @@ function buildValidPartial(overrides = {}) {
     primaryTitle: 'Algebra Baseline',
     primaryTopic: 'Algebra',
     primaryTopicKey: 'topic-algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: ['Algebra Starter'],
     alternateTopics: ['Linear Equations'],
     documentType: 'SLIDES',
@@ -178,6 +179,24 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
 
   it.each([
     {
+      caseName: 'yearGroupKey is missing',
+      mutateRow: (row) => {
+        delete row.yearGroupKey;
+      },
+    },
+    {
+      caseName: 'yearGroupLabel is missing',
+      mutateRow: (row) => {
+        delete row.yearGroupLabel;
+      },
+    },
+    {
+      caseName: 'yearGroupLabel is blank',
+      mutateRow: (row) => {
+        row.yearGroupLabel = '   ';
+      },
+    },
+    {
       caseName: 'primaryTopicKey is null',
       mutateRow: (row) => {
         row.primaryTopicKey = null;
@@ -195,7 +214,7 @@ describe('Api/assignmentDefinitionPartials transport contract', () => {
         row.primaryTopicKey = ' topic-algebra ';
       },
     },
-  ])('fails when primaryTopicKey contract is invalid: $caseName', ({ mutateRow }) => {
+  ])('fails when year-group/topic keyed-field contract is invalid: $caseName', ({ mutateRow }) => {
     const validRow = buildValidPartial({ definitionKey: 'geometry-baseline' });
     const malformedRow = buildValidPartial();
     mutateRow(malformedRow);

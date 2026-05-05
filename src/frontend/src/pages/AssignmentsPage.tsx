@@ -96,9 +96,9 @@ const ASSIGNMENTS_FILTER_DESCRIPTORS: ReadonlyArray<AssignmentsFilterDescriptor>
   },
   {
     filterLabel: 'Filter by year group',
-    getFilterValue: (row) => formatYearGroupLabel(row.yearGroup),
+    getFilterValue: (row) => formatYearGroupLabel(row.yearGroupLabel),
     key: 'yearGroup',
-    renderCell: (row) => formatYearGroupLabel(row.yearGroup),
+    renderCell: (row) => formatYearGroupLabel(row.yearGroupLabel),
     title: 'Year group',
   },
   {
@@ -129,11 +129,11 @@ function isSafeDefinitionKey(definitionKey: string): boolean {
 /**
  * Formats a year-group value for table display and filtering.
  *
- * @param {number | null} yearGroup Year group value.
+ * @param {string} yearGroupLabel Year-group label value.
  * @returns {string} Display label.
  */
-function formatYearGroupLabel(yearGroup: number | null): string {
-  return yearGroup === null ? UNAVAILABLE_VALUE : String(yearGroup);
+function formatYearGroupLabel(yearGroupLabel: string): string {
+  return yearGroupLabel.trim().length === 0 ? UNAVAILABLE_VALUE : yearGroupLabel;
 }
 
 /**

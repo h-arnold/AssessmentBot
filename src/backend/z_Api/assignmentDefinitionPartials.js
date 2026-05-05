@@ -4,7 +4,8 @@ const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
   'primaryTopic',
   'primaryTopicKey',
-  'yearGroup',
+  'yearGroupKey',
+  'yearGroupLabel',
   'alternateTitles',
   'alternateTopics',
   'documentType',
@@ -637,6 +638,42 @@ function validatePrimaryTopicKey_(primaryTopicKey, rowIndex) {
 }
 
 /**
+ * Validates the strict year-group keyed transport contract.
+ *
+ * @param {*} yearGroupKey - Candidate year-group key.
+ * @param {*} yearGroupLabel - Candidate year-group label.
+ * @param {number} rowIndex - Row index.
+ * @throws {ApiValidationError} If year-group fields are missing, blank, or untrimmed.
+ */
+function validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex) {
+  if (typeof yearGroupKey !== 'string') {
+    throwValidationError_('yearGroupKey must be a string.', 'yearGroupKey', rowIndex);
+  }
+
+  const trimmedYearGroupKey = yearGroupKey.trim();
+  if (trimmedYearGroupKey.length === 0) {
+    throwValidationError_('yearGroupKey must be a non-empty string.', 'yearGroupKey', rowIndex);
+  }
+
+  if (trimmedYearGroupKey !== yearGroupKey) {
+    throwValidationError_('yearGroupKey must already be trimmed.', 'yearGroupKey', rowIndex);
+  }
+
+  if (typeof yearGroupLabel !== 'string') {
+    throwValidationError_('yearGroupLabel must be a string.', 'yearGroupLabel', rowIndex);
+  }
+
+  const trimmedYearGroupLabel = yearGroupLabel.trim();
+  if (trimmedYearGroupLabel.length === 0) {
+    throwValidationError_('yearGroupLabel must be a non-empty string.', 'yearGroupLabel', rowIndex);
+  }
+
+  if (trimmedYearGroupLabel !== yearGroupLabel) {
+    throwValidationError_('yearGroupLabel must already be trimmed.', 'yearGroupLabel', rowIndex);
+  }
+}
+
+/**
  * Checks whether a value is an ISO datetime string with timezone info.
  *
  * @param {*} value - Candidate timestamp value.
@@ -729,6 +766,7 @@ function validatePartialRow_(row, rowIndex) {
   validateRequiredFields_(row, rowIndex);
   validateDefinitionKey_(row.definitionKey, rowIndex);
   validatePrimaryTopicKey_(row.primaryTopicKey, rowIndex);
+  validateYearGroupKeyedFields_(row.yearGroupKey, row.yearGroupLabel, rowIndex);
   validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
   validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
@@ -748,7 +786,8 @@ function toPlainPartialRow_(row) {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
     primaryTopicKey: row.primaryTopicKey,
-    yearGroup: row.yearGroup,
+    yearGroupKey: row.yearGroupKey,
+    yearGroupLabel: row.yearGroupLabel,
     alternateTitles: row.alternateTitles,
     alternateTopics: row.alternateTopics,
     documentType: row.documentType,

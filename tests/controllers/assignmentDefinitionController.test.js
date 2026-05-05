@@ -250,6 +250,47 @@ describe('AssignmentDefinitionController', () => {
     expect(topicKeys).toEqual(sampleDocs.map((d) => d.primaryTopicKey));
   });
 
+  it('getAllPartialDefinitions preserves yearGroupKey/yearGroupLabel in list-surface partial payloads', () => {
+    const sampleDocs = [
+      {
+        _id: 'assignment-row-1',
+        primaryTitle: 'Algebra foundations',
+        primaryTopic: 'Algebra',
+        primaryTopicKey: 'topic-algebra',
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
+        alternateTitles: [],
+        alternateTopics: [],
+        documentType: 'SLIDES',
+        referenceDocumentId: 'ref-1',
+        templateDocumentId: 'tpl-1',
+        assignmentWeighting: 1,
+        definitionKey: 'alg-10',
+        tasks: null,
+        createdAt: '2026-01-05T10:00:00.000Z',
+        updatedAt: null,
+      },
+    ];
+
+    DbManager.getInstance.mockReturnValue({
+      getCollection: vi.fn().mockReturnValue(mockCollection),
+      readAll: vi.fn().mockReturnValue(sampleDocs),
+    });
+
+    controller = new AssignmentDefinitionController();
+
+    const [partialDefinition] = controller.getAllPartialDefinitions();
+
+    expect(partialDefinition).toBeInstanceOf(AssignmentDefinition);
+
+    const partialPayload = partialDefinition.toPartialJSON();
+    expect(partialPayload.primaryTopicKey).toBe('topic-algebra');
+    expect(partialPayload.yearGroupKey).toBe('year-group-10');
+    expect(partialPayload.yearGroupLabel).toBe('Year 10');
+    expect(partialPayload.definitionKey).toBe('alg-10');
+    expect(partialPayload.tasks).toBeNull();
+  });
+
   it('getAllPartialDefinitions returns empty array when registry empty', () => {
     DbManager.getInstance.mockReturnValue({
       getCollection: vi.fn().mockReturnValue(mockCollection),

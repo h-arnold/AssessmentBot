@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { AssignmentDefinitionPartialSchema } from './assignmentDefinitionPartials.zod';
 
 describe('assignmentDefinitionPartials contract guard', () => {
-  it('keeps the live partial DTO keyed by yearGroup during full-definition wiring', () => {
+  it('keeps list-surface DTO keyed by yearGroupKey/yearGroupLabel', () => {
     const validRow = {
       definitionKey: 'algebra-baseline',
       primaryTitle: 'Algebra Baseline',
       primaryTopic: 'Algebra',
-      yearGroup: 10,
+      primaryTopicKey: 'topic-algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
       alternateTitles: ['Algebra Starter'],
       alternateTopics: ['Linear Equations'],
       documentType: 'SLIDES',
@@ -23,7 +25,7 @@ describe('assignmentDefinitionPartials contract guard', () => {
     expect(() =>
       AssignmentDefinitionPartialSchema.parse({
         ...validRow,
-        yearGroupKey: 'year-10',
+        yearGroup: 10,
       })
     ).toThrow();
   });

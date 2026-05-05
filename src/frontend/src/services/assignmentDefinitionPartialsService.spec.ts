@@ -10,8 +10,10 @@ vi.mock('./apiService', () => ({
 const validAssignmentDefinitionPartialsResponse = [
   {
     primaryTitle: 'Algebra Baseline',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: ['Algebra Starter'],
     alternateTopics: ['Linear Equations'],
     documentType: 'SLIDES',

@@ -48,7 +48,7 @@ const filterAssertions = [
   },
   {
     filterButtonName: 'Filter by year group',
-    optionLabel: '10',
+    optionLabel: 'Year 10',
     expectedVisibleRow: 'Algebra foundations archive',
     expectedHiddenRow: 'Unsafe legacy row',
   },
@@ -86,8 +86,10 @@ function noop() {
 const readyRows = [
   {
     primaryTitle: 'Algebra foundations',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -101,8 +103,10 @@ const readyRows = [
   },
   {
     primaryTitle: 'Unsafe legacy row',
+    primaryTopicKey: 'topic-legacy',
     primaryTopic: 'Legacy',
-    yearGroup: null,
+    yearGroupKey: 'year-group-unknown',
+    yearGroupLabel: '—',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -120,7 +124,8 @@ const filterRows = [
   {
     ...readyRows[0],
     primaryTitle: 'Newest algebra recap',
-    yearGroup: 11,
+    yearGroupKey: 'year-group-11',
+    yearGroupLabel: 'Year 11',
     definitionKey: 'newest-safe',
     updatedAt: '2025-02-01T08:00:00.000Z',
   },
@@ -141,6 +146,8 @@ const filterRows = [
     definitionKey: 'unsafe/legacy-key',
   },
 ] as const;
+
+const migratedContractRows = [...readyRows] as const;
 
 type DatasetStatus = 'loading' | 'ready' | 'failed';
 
@@ -268,6 +275,22 @@ describe('AssignmentsPage', () => {
     expect(within(table).getByRole('columnheader', { name: 'Document type' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Last updated' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+  });
+
+  it('renders year-group labels from the migrated list-surface contract', async () => {
+    const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+    queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...migratedContractRows]);
+
+    const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+
+    expect(within(table).getByRole('cell', { name: 'Year 10' })).toBeInTheDocument();
+
+    const unsafeLegacyRow = screen.getByRole('row', { name: /unsafe legacy row/i });
+    expect(within(unsafeLegacyRow).getAllByRole('cell', { name: '—' }).length).toBeGreaterThan(0);
+
+    const safeRow = screen.getByRole('row', { name: /algebra foundations/i });
+    expect(within(safeRow).getByRole('button', { name: /delete/i })).toBeEnabled();
+    expect(within(safeRow).queryByRole('button', { name: /update/i })).not.toBeInTheDocument();
   });
 
   it('renders ready-empty state with table shell and explicit empty copy', async () => {

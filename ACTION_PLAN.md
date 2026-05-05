@@ -521,9 +521,18 @@ Playwright tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** pending.
-- **Deviations from plan:** pending.
+- **Implementation notes:** Red-phase tests now cleanly target backend partial DTO migration, frontend partial schema/service migration, Assignments page label/filter migration, and the missing modal shell component; previous red test hygiene issues (fixture completeness and targeting) are resolved. Green-phase implementation complete: backend partial-transport exposes yearGroupKey/yearGroupLabel, Assignments table renders yearGroupLabel, year-group filtering works against visible label contract, modal shell component owns all required states, create/update affordances remain unavailable, delete row action remains present.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** Section 4 enables the page-level create and update affordances on top of this migrated list surface and modal shell.
+- **Checklist:**
+  - [x] red tests added (complete)
+  - [x] red review clean (complete)
+  - [x] green implementation complete
+  - [x] green review clean
+  - [x] checks passed
+  - [x] action plan updated (complete)
+  - [ ] commit created (pending)
+  - [ ] push completed (pending)
 
 ---
 

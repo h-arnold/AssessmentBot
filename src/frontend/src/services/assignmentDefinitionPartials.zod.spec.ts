@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 type AssignmentDefinitionPartialFixture = {
   primaryTitle: string;
+  primaryTopicKey: string;
   primaryTopic: string;
-  yearGroup: number | null;
+  yearGroupKey: string;
+  yearGroupLabel: string;
   alternateTitles: string[];
   alternateTopics: string[];
   documentType: string;
@@ -20,8 +22,10 @@ const omittedBackendSuccessPayload = new Map<string, never>().get('missing');
 
 const validAssignmentDefinitionPartialRow: AssignmentDefinitionPartialFixture = {
   primaryTitle: 'Algebra Baseline',
+  primaryTopicKey: 'topic-algebra',
   primaryTopic: 'Algebra',
-  yearGroup: 10,
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
   alternateTitles: ['Algebra Starter'],
   alternateTopics: ['Linear Equations'],
   documentType: 'SLIDES',
@@ -63,7 +67,7 @@ function asParserSchema(schemaExport: unknown): { parse: (input: unknown) => unk
 }
 
 describe('assignmentDefinitionPartials.zod schemas', () => {
-  it('accepts valid assignment-definition partial rows', async () => {
+  it('accepts assignment-definition partial rows keyed by yearGroupKey/yearGroupLabel', async () => {
     const schemas = await loadAssignmentDefinitionPartialsSchemas();
     const assignmentDefinitionPartialSchema = asParserSchema(schemas.AssignmentDefinitionPartialSchema);
 
@@ -72,19 +76,16 @@ describe('assignmentDefinitionPartials.zod schemas', () => {
     );
   });
 
-  it('accepts yearGroup when explicitly null', async () => {
+  it('rejects legacy yearGroup list rows once the migrated contract is active', async () => {
     const schemas = await loadAssignmentDefinitionPartialsSchemas();
     const assignmentDefinitionPartialSchema = asParserSchema(schemas.AssignmentDefinitionPartialSchema);
 
-    expect(
+    expect(() =>
       assignmentDefinitionPartialSchema.parse({
         ...validAssignmentDefinitionPartialRow,
-        yearGroup: null,
+        yearGroup: 10,
       })
-    ).toEqual({
-      ...validAssignmentDefinitionPartialRow,
-      yearGroup: null,
-    });
+    ).toThrow();
   });
 
   it.each([
