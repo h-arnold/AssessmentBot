@@ -689,6 +689,15 @@ Playwright tests:
 - **Implementation notes:** pending.
 - **Deviations from plan:** pending.
 - **Follow-up implications for later sections:** refresh and regression work must verify both the table and modal caches update coherently.
+- **Checklist:**
+  - [x] red tests added (complete)
+  - [x] red review clean (complete)
+  - [ ] green implementation complete
+  - [ ] green review clean
+  - [ ] checks passed
+  - [ ] action plan updated
+  - [ ] commit created
+  - [ ] push completed
 
 ---
 

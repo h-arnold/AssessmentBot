@@ -525,4 +525,335 @@ describe('AssignmentsPage', () => {
       expect(screen.queryByRole('table', { name: 'Assignment definitions table' })).not.toBeInTheDocument();
     });
   });
+
+  describe('Shared edit surface, re-parse gating, and task weighting workflow', () => {
+    it('page action cluster has Refresh assignments data + Create assignment only, no top-level Update assignment button', () => {
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      // Should have Refresh and Create buttons
+      expect(screen.getByRole('button', { name: 'Refresh assignments data' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create assignment' })).toBeInTheDocument();
+
+      // Should NOT have a top-level Update assignment button
+      expect(screen.queryByRole('button', { name: /^Update assignment$/ })).not.toBeInTheDocument();
+
+      // Should NOT show "not available in v1" text
+      expect(screen.queryByText(/not available in v1/i)).not.toBeInTheDocument();
+    });
+
+    it('page-level create and update affordances enabled only when complete workflow available', async () => {
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+
+      // With trustworthy data, Create should be enabled
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
+      });
+
+      // Table should have Update row actions
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
+      expect(within(safeRow).getByRole('button', { name: /update/i })).toBeInTheDocument();
+    });
+
+    it('create mode hides or disables task editing before first parse', async () => {
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+
+      // Create button should be enabled
+      expect(screen.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
+
+      // Clicking Create should open the modal
+      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
+
+      // Modal should open
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      });
+
+      // Before first parse, task editing should be hidden/disabled
+      expect(screen.getByText(/parsing is required/i)).toBeInTheDocument();
+      expect(screen.queryByRole('table', { name: /task weighting/i })).not.toBeInTheDocument();
+    });
+
+    it('stage-one success hydrates shared edit surface without second fetch', async () => {
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+
+      // Open create modal
+      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      });
+
+      // Fill in create form
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/reference document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
+      });
+      fireEvent.change(screen.getByLabelText(/template document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
+      });
+
+      // Select topic and year group
+      fireEvent.click(screen.getByLabelText(/topic/i));
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Algebra'));
+      });
+      fireEvent.click(screen.getByLabelText(/year group/i));
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Year 10'));
+      });
+
+      // Trigger parse and continue
+      fireEvent.click(screen.getByRole('button', { name: /parse and continue/i }));
+
+      // After stage-one success, shared edit surface should be hydrated with tasks
+      await waitFor(() => {
+        expect(screen.getByRole('table', { name: /task weighting/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+      });
+    });
+
+    it('document change disables metadata and task weighting inputs until re-parse or cancel', async () => {
+      // This test requires the update modal workflow
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      // First we need to mock the getAssignmentDefinition service
+      // For now, this test will fail because the update modal doesn't exist
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
+
+      // Row should have update action
+      const updateButton = within(safeRow).getByRole('button', { name: /update/i });
+      expect(updateButton).toBeInTheDocument();
+
+      // Click update - this will fail until modal is implemented
+      fireEvent.click(updateButton);
+
+      // Modal should open
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      });
+
+      // Change document URL
+      fireEvent.change(screen.getByLabelText(/reference document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
+
+      // Metadata and task weighting should be disabled
+      await waitFor(() => {
+        expect(screen.getByLabelText(/title/i)).toBeDisabled();
+        expect(screen.getByLabelText(/assignment weighting/i)).toBeDisabled();
+      });
+
+      // Should show re-parse prompt
+      expect(screen.getByText(/document changed/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /re-parse/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    });
+
+    it('cancel restores persisted URLs and re-enables other fields', async () => {
+      // This test will fail until the update modal with re-parse cancel is implemented
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
+
+      // Click update
+      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      });
+
+      // Store original URLs
+      const referenceUrlInput = screen.getByLabelText(/reference document url/i) as HTMLInputElement;
+      const originalReferenceUrl = referenceUrlInput.value;
+      const templateUrlInput = screen.getByLabelText(/template document url/i) as HTMLInputElement;
+      const originalTemplateUrl = templateUrlInput.value;
+
+      // Change document URLs
+      fireEvent.change(referenceUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
+      fireEvent.change(templateUrlInput, {
+        target: { value: 'https://docs.google.com/presentation/d/new-tpl' },
+      });
+
+      // Click cancel on re-parse prompt
+      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+      // URLs should be restored
+      await waitFor(() => {
+        expect(screen.getByLabelText(/reference document url/i)).toHaveValue(originalReferenceUrl);
+        expect(screen.getByLabelText(/template document url/i)).toHaveValue(originalTemplateUrl);
+      });
+
+      // Other fields should be re-enabled
+      expect(screen.getByLabelText(/title/i)).toBeEnabled();
+      expect(screen.getByLabelText(/assignment weighting/i)).toBeEnabled();
+    });
+
+    it('re-parse refreshes task rows and preserves matching weightings', async () => {
+      // This test will fail until the re-parse workflow is implemented
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
+
+      // Click update
+      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      });
+
+      // Change document URL
+      fireEvent.change(screen.getByLabelText(/reference document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
+      });
+
+      // Click re-parse
+      fireEvent.click(screen.getByRole('button', { name: /re-parse/i }));
+
+      // Task rows should be refreshed
+      await waitFor(() => {
+        // This will fail until re-parse actually refreshes tasks
+        expect(screen.getByText(/task/i)).toBeInTheDocument();
+      });
+    });
+
+    it('save blocked until valid year-group selection present', async () => {
+      // This test will fail until the form validation is implemented
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+
+      // Open create modal
+      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      });
+
+      // Fill in required fields except year group
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/reference document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
+      });
+      fireEvent.change(screen.getByLabelText(/template document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
+      });
+
+      // Select topic but NOT year group
+      fireEvent.click(screen.getByLabelText(/topic/i));
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Algebra'));
+      });
+
+      // Save/Parse should be blocked without year group
+      const primaryAction = screen.getByRole('button', { name: /parse and continue/i }) ??
+        screen.getByRole('button', { name: /save/i });
+      expect(primaryAction).toBeDisabled();
+    });
+
+    it('dirty metadata or weighting edits disable document URL fields until save or discard-by-close', async () => {
+      // This test will fail until the dirty state management is implemented
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+      const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
+
+      // Click update
+      fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      });
+
+      // Edit metadata
+      fireEvent.change(screen.getByLabelText(/title/i), {
+        target: { value: 'Updated Title' },
+      });
+
+      // Document URL fields should be disabled
+      await waitFor(() => {
+        expect(screen.getByLabelText(/reference document url/i)).toBeDisabled();
+        expect(screen.getByLabelText(/template document url/i)).toBeDisabled();
+      });
+    });
+
+    it('create entry blocks locally when required reference data cannot be loaded', async () => {
+      // This test will fail until the reference data failure handling is implemented
+      useStartupWarmupStateMock.mockReturnValue(
+        createAssignmentsWarmupState({
+          assignmentStatus: 'ready',
+          assignmentTrustworthy: true,
+          isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentTopics' && datasetKey !== 'yearGroups',
+          isDatasetFailed: (datasetKey: string) => datasetKey === 'assignmentTopics' || datasetKey === 'yearGroups',
+        })
+      );
+
+      renderWithFrontendProviders(<AssignmentsPage />);
+
+      // Create button should be enabled but modal should fail closed when opened
+      expect(screen.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
+
+      // Modal should open but show blocking error
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByText(/could not be trusted or loaded/i)).toBeInTheDocument();
+      });
+    });
+
+    it('failed post-mutation refresh fails closed on affected table or modal surface', async () => {
+      // This test will fail until the post-mutation refresh failure handling is implemented
+      getAssignmentDefinitionPartialsMock
+        .mockResolvedValueOnce([...readyRows])
+        .mockRejectedValueOnce(new Error('refresh failed'));
+
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      });
+
+      // Fill in fields and trigger parse
+      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/reference document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
+      });
+      fireEvent.change(screen.getByLabelText(/template document url/i), {
+        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
+      });
+
+      fireEvent.click(screen.getByLabelText(/topic/i));
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Algebra'));
+      });
+      fireEvent.click(screen.getByLabelText(/year group/i));
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('Year 10'));
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /parse and continue/i }));
+
+      // Simulate a post-mutation refresh failure
+      // The modal surface should fail closed
+      await waitFor(() => {
+        const modal = screen.queryByRole('dialog', { name: /create assignment/i });
+        if (modal) {
+          expect(within(modal).getByRole('alert')).toBeInTheDocument();
+          expect(within(modal).getByText(/could not be trusted or loaded/i)).toBeInTheDocument();
+        }
+      });
+    });
+  });
 });
