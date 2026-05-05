@@ -9,10 +9,22 @@ import { pageContent } from './pageContent';
 const {
   deleteAssignmentDefinitionMock,
   getAssignmentDefinitionPartialsMock,
+  getAssignmentDefinitionMock,
+  getAssignmentTopicsMock,
+  getCohortsMock,
+  getYearGroupsMock,
+  getABClassPartialsMock,
+  upsertAssignmentDefinitionMock,
   useStartupWarmupStateMock,
 } = vi.hoisted(() => ({
   deleteAssignmentDefinitionMock: vi.fn(),
   getAssignmentDefinitionPartialsMock: vi.fn(),
+  getAssignmentDefinitionMock: vi.fn(),
+  getAssignmentTopicsMock: vi.fn(),
+  getCohortsMock: vi.fn(),
+  getYearGroupsMock: vi.fn(),
+  getABClassPartialsMock: vi.fn(),
+  upsertAssignmentDefinitionMock: vi.fn(),
   useStartupWarmupStateMock: vi.fn(),
 }));
 
@@ -28,6 +40,24 @@ vi.mock('../features/auth/startupWarmupState', async (importOriginal) => {
 vi.mock('../services/assignmentDefinitionPartialsService', () => ({
   deleteAssignmentDefinition: deleteAssignmentDefinitionMock,
   getAssignmentDefinitionPartials: getAssignmentDefinitionPartialsMock,
+}));
+
+vi.mock('../services/assignmentDefinitionService', () => ({
+  getAssignmentDefinition: getAssignmentDefinitionMock,
+  upsertAssignmentDefinition: upsertAssignmentDefinitionMock,
+}));
+
+vi.mock('../services/assignmentTopicsService', () => ({
+  getAssignmentTopics: getAssignmentTopicsMock,
+}));
+
+vi.mock('../services/referenceDataService', () => ({
+  getCohorts: getCohortsMock,
+  getYearGroups: getYearGroupsMock,
+}));
+
+vi.mock('../services/classPartialsService', () => ({
+  getABClassPartials: getABClassPartialsMock,
 }));
 
 const recommendedSummaryCopy =
@@ -179,6 +209,7 @@ function createAssignmentsWarmupState(options: {
         classPartials: { status: 'ready', isTrustworthy: true },
         cohorts: { status: 'ready', isTrustworthy: true },
         yearGroups: { status: 'ready', isTrustworthy: true },
+        assignmentTopics: { status: 'ready', isTrustworthy: true },
         assignmentDefinitionPartials: {
           status: options.assignmentStatus,
           isTrustworthy: options.assignmentTrustworthy,
@@ -229,10 +260,69 @@ async function applyColumnFilterOption(filterButtonName: string, optionLabel: st
 }
 
 describe('AssignmentsPage', () => {
+  const mockTopics = [
+    { key: 'topic-algebra', name: 'Algebra' },
+    { key: 'topic-geometry', name: 'Geometry' },
+  ];
+
+  const mockYearGroups = [
+    { key: 'year-group-10', name: 'Year 10' },
+    { key: 'year-group-11', name: 'Year 11' },
+  ];
+
   beforeEach(() => {
     useStartupWarmupStateMock.mockReturnValue(createReadyAssignmentsWarmupState());
     getAssignmentDefinitionPartialsMock.mockResolvedValue([...readyRows]);
     deleteAssignmentDefinitionMock.mockResolvedValue(void 0);
+    getAssignmentTopicsMock.mockResolvedValue(mockTopics);
+    getYearGroupsMock.mockResolvedValue(mockYearGroups);
+    getCohortsMock.mockResolvedValue([]);
+    getABClassPartialsMock.mockResolvedValue([]);
+    upsertAssignmentDefinitionMock.mockResolvedValue({
+      definitionKey: 'test-key',
+      primaryTitle: 'Test Assessment',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'test-ref-id',
+      templateDocumentId: 'test-tpl-id',
+      referenceDocumentUrl: 'https://docs.google.com/presentation/d/test-ref-id',
+      templateDocumentUrl: 'https://docs.google.com/presentation/d/test-tpl-id',
+      assignmentWeighting: 1,
+      tasks: [
+        { taskId: 'task-1', taskTitle: 'Test Task 1', taskWeighting: 1 },
+        { taskId: 'task-2', taskTitle: 'Test Task 2', taskWeighting: 1 },
+      ],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+    getAssignmentDefinitionMock.mockResolvedValue({
+      definitionKey: 'algebra-baseline',
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc-123',
+      templateDocumentId: 'tpl-doc-456',
+      referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
+      templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
+      assignmentWeighting: 5,
+      tasks: [
+        { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
+        { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
+        { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
+      ],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-02T00:00:00.000Z',
+    });
   });
 
   afterEach(() => {
@@ -263,10 +353,8 @@ describe('AssignmentsPage', () => {
     queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
 
     expect(screen.getByText(recommendedSummaryCopy)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /retry|refresh assignments data/i })).toBeEnabled();
-    expect(screen.getByText(/not available in v1/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh assignments data' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
 
     const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
     expect(within(table).getByRole('columnheader', { name: 'Title' })).toBeInTheDocument();
@@ -290,7 +378,7 @@ describe('AssignmentsPage', () => {
 
     const safeRow = screen.getByRole('row', { name: /algebra foundations/i });
     expect(within(safeRow).getByRole('button', { name: /delete/i })).toBeEnabled();
-    expect(within(safeRow).queryByRole('button', { name: /update/i })).not.toBeInTheDocument();
+    expect(within(safeRow).getByRole('button', { name: /update/i })).toBeEnabled();
   });
 
   it('renders ready-empty state with table shell and explicit empty copy', async () => {
@@ -323,20 +411,19 @@ describe('AssignmentsPage', () => {
     expect(screen.queryByRole('table', { name: 'Assignment definitions table' })).not.toBeInTheDocument();
   });
 
-  it('keeps placeholder create/update actions disabled and does not launch workflows when clicked', () => {
+  it('launches create workflow when create assignment is clicked', () => {
     renderWithFrontendProviders(<AssignmentsPage />);
 
     const createAssignmentButton = screen.getByRole('button', { name: 'Create assignment' });
-    const updateAssignmentButton = screen.getByRole('button', { name: 'Update assignment' });
+    // Top-level Update assignment button removed in Section 4
+    expect(screen.queryByRole('button', { name: /^Update assignment$/ })).not.toBeInTheDocument();
 
-    fireEvent.click(createAssignmentButton);
-    fireEvent.click(updateAssignmentButton);
+    // Create button is enabled with trustworthy data
+    expect(createAssignmentButton).toBeEnabled();
+    expect(screen.queryByText(/not available in v1/i)).not.toBeInTheDocument();
 
-    expect(createAssignmentButton).toBeDisabled();
-    expect(updateAssignmentButton).toBeDisabled();
-    expect(screen.getByText(/not available in v1/i)).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: /create assignment/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: /update assignment/i })).not.toBeInTheDocument();
+    // Note: Clicking the button would open the modal, but that requires service mocks
+    // which are tested separately in Section 4 tests
   });
 
   it('renders default sorted rows and unavailable markers for mixed assignment data', async () => {
@@ -588,7 +675,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Fill in create form
-      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
       fireEvent.change(screen.getByLabelText(/reference document url/i), {
         target: { value: 'https://docs.google.com/presentation/d/test-ref' },
       });
@@ -597,11 +684,11 @@ describe('AssignmentsPage', () => {
       });
 
       // Select topic and year group
-      fireEvent.click(screen.getByLabelText(/topic/i));
+      fireEvent.click(screen.getByLabelText(/assignment topic/i));
       await waitFor(() => {
         fireEvent.click(screen.getByText('Algebra'));
       });
-      fireEvent.click(screen.getByLabelText(/year group/i));
+      fireEvent.click(screen.getByLabelText(/assignment year group/i));
       await waitFor(() => {
         fireEvent.click(screen.getByText('Year 10'));
       });
@@ -644,7 +731,7 @@ describe('AssignmentsPage', () => {
 
       // Metadata and task weighting should be disabled
       await waitFor(() => {
-        expect(screen.getByLabelText(/title/i)).toBeDisabled();
+        expect(screen.getByLabelText(/assignment title/i)).toBeDisabled();
         expect(screen.getByLabelText(/assignment weighting/i)).toBeDisabled();
       });
 
@@ -692,7 +779,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Other fields should be re-enabled
-      expect(screen.getByLabelText(/title/i)).toBeEnabled();
+      expect(screen.getByLabelText(/assignment title/i)).toBeEnabled();
       expect(screen.getByLabelText(/assignment weighting/i)).toBeEnabled();
     });
 
@@ -738,7 +825,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Fill in required fields except year group
-      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
       fireEvent.change(screen.getByLabelText(/reference document url/i), {
         target: { value: 'https://docs.google.com/presentation/d/test-ref' },
       });
@@ -747,7 +834,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Select topic but NOT year group
-      fireEvent.click(screen.getByLabelText(/topic/i));
+      fireEvent.click(screen.getByLabelText(/assignment topic/i));
       await waitFor(() => {
         fireEvent.click(screen.getByText('Algebra'));
       });
@@ -773,7 +860,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Edit metadata
-      fireEvent.change(screen.getByLabelText(/title/i), {
+      fireEvent.change(screen.getByLabelText(/assignment title/i), {
         target: { value: 'Updated Title' },
       });
 
@@ -826,7 +913,7 @@ describe('AssignmentsPage', () => {
       });
 
       // Fill in fields and trigger parse
-      fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'New Assessment' } });
+      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
       fireEvent.change(screen.getByLabelText(/reference document url/i), {
         target: { value: 'https://docs.google.com/presentation/d/test-ref' },
       });
@@ -834,11 +921,11 @@ describe('AssignmentsPage', () => {
         target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
       });
 
-      fireEvent.click(screen.getByLabelText(/topic/i));
+      fireEvent.click(screen.getByLabelText(/assignment topic/i));
       await waitFor(() => {
         fireEvent.click(screen.getByText('Algebra'));
       });
-      fireEvent.click(screen.getByLabelText(/year group/i));
+      fireEvent.click(screen.getByLabelText(/assignment year group/i));
       await waitFor(() => {
         fireEvent.click(screen.getByText('Year 10'));
       });

@@ -29,6 +29,7 @@ import {
   type AssignmentDefinitionPartial,
 } from '../services/assignmentDefinitionPartialsService';
 import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinitionPartials.zod';
+import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -412,7 +413,7 @@ function createFilterDropdownRenderer(
 /**
  * Renders the status and action card for assignments management.
  *
- * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; }>} properties Card properties.
+ * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; onCreateAssignment: () => void; hasTrustworthyData: boolean; }>} properties Card properties.
  * @returns {JSX.Element} Card content.
  */
 function AssignmentsStatusAndActionsCard(
@@ -421,6 +422,8 @@ function AssignmentsStatusAndActionsCard(
     deleteOutcome: DeleteOutcome | null;
     shouldRenderActionLoadingState: boolean;
     onRefreshAssignmentsData: () => void;
+    onCreateAssignment: () => void;
+    hasTrustworthyData: boolean;
   }>
 ) {
   return (
@@ -448,11 +451,11 @@ function AssignmentsStatusAndActionsCard(
           </div>
         ) : (
           <Flex gap={8} justify="space-between" wrap>
-            <Text type="secondary">Create and update workflows are not available in v1.</Text>
             <Space wrap>
               <Button onClick={properties.onRefreshAssignmentsData}>Refresh assignments data</Button>
-              <Button disabled>Create assignment</Button>
-              <Button disabled>Update assignment</Button>
+              <Button disabled={!properties.hasTrustworthyData} onClick={properties.onCreateAssignment}>
+                Create assignment
+              </Button>
             </Space>
           </Flex>
         )}
@@ -590,6 +593,9 @@ export function AssignmentsPage() {
   const [deleteTarget, setDeleteTarget] = useState<AssignmentDefinitionPartial | null>(null);
   const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
   const [deleteOutcome, setDeleteOutcome] = useState<DeleteOutcome | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardMode, setWizardMode] = useState<'create' | 'update'>('create');
+  const [wizardDefinitionKey, setWizardDefinitionKey] = useState<string | null>(null);
 
   const sortedRows = useMemo(() => getDefaultSortedRows(assignmentsQuery.data ?? []), [assignmentsQuery.data]);
 
@@ -653,16 +659,28 @@ export function AssignmentsPage() {
         key: 'actions',
         onHeaderCell: () => ({ 'aria-label': 'Actions' }),
         render: (_, row) => (
-          <Button
-            danger
-            disabled={isDeleteSubmitting || deleteMutation.isPending || !isSafeDefinitionKey(row.definitionKey)}
-            onClick={() => {
-              setDeleteOutcome(null);
-              setDeleteTarget(row);
-            }}
-          >
-            Delete
-          </Button>
+          <Space wrap>
+            <Button
+              disabled={isDeleteSubmitting || deleteMutation.isPending || !hasTrustworthyAssignmentsDataset}
+              onClick={() => {
+                setWizardMode('update');
+                setWizardDefinitionKey(row.definitionKey);
+                setWizardOpen(true);
+              }}
+            >
+              Update
+            </Button>
+            <Button
+              danger
+              disabled={isDeleteSubmitting || deleteMutation.isPending || !isSafeDefinitionKey(row.definitionKey)}
+              onClick={() => {
+                setDeleteOutcome(null);
+                setDeleteTarget(row);
+              }}
+            >
+              Delete
+            </Button>
+          </Space>
         ),
       },
     ],
@@ -705,6 +723,27 @@ export function AssignmentsPage() {
     visibleRows,
   });
 
+
+  /**
+   * Opens the create assignment definition modal.
+   *
+   * @returns {void} No return value.
+   */
+  function handleCreateAssignment() {
+    setWizardMode('create');
+    setWizardDefinitionKey(null);
+    setWizardOpen(true);
+  }
+
+  /**
+   * Handles closing the wizard modal.
+   *
+   * @returns {void} No return value.
+   */
+  function handleWizardClose() {
+    setWizardOpen(false);
+    setWizardDefinitionKey(null);
+  }
 
   /**
    * Refetches assignment definitions using the scoped query key only.
@@ -774,6 +813,8 @@ export function AssignmentsPage() {
         <Flex vertical gap={16}>
           <AssignmentsStatusAndActionsCard
             deleteOutcome={deleteOutcome}
+            hasTrustworthyData={hasTrustworthyAssignmentsDataset}
+            onCreateAssignment={handleCreateAssignment}
             onRefreshAssignmentsData={handleRetryAssignmentsData}
             shouldRenderActionLoadingState={assignmentsSurfaceState.shouldRenderActionLoadingState}
             shouldRenderBlockingState={assignmentsSurfaceState.shouldRenderBlockingState}
@@ -781,6 +822,13 @@ export function AssignmentsPage() {
           {assignmentsDefinitionsCard}
         </Flex>
       </section>
+
+      <AssignmentDefinitionWizardModal
+        definitionKey={wizardDefinitionKey}
+        mode={wizardMode}
+        onClose={handleWizardClose}
+        open={wizardOpen}
+      />
 
       <AssignmentsDeleteModal
         deleteTarget={deleteTarget}
