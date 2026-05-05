@@ -531,8 +531,8 @@ Playwright tests:
   - [x] green review clean
   - [x] checks passed
   - [x] action plan updated (complete)
-  - [ ] commit created (pending)
-  - [ ] push completed (pending)
+  - [x] commit created (complete)
+  - [x] push completed (complete)
 
 ---
 
