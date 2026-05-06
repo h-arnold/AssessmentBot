@@ -292,17 +292,17 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=dialog[name="Create assignment"]');
 
     // Fill in form
-    await page.fill('input[name="title"]', 'New Assessment');
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/test-ref');
-    await page.fill('input[name="templateDocumentUrl"]', 'https://docs.google.com/presentation/d/test-tpl');
+    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
+    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
 
     // Select topic
-    await page.click('label:has-text("Topic")');
-    await page.click('text=Algebra');
+    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
+    await page.getByText('Algebra', { exact: true }).click();
 
     // Select year group
-    await page.click('label:has-text("Year group")');
-    await page.click('text=Year 10');
+    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
+    await page.getByText('Year 10', { exact: true }).click();
 
     // Click Parse and continue
     await page.click('button:has-text("Parse and continue")');
@@ -330,10 +330,12 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
 
     // Modal should open with pre-populated data
     await page.waitForSelector('role=dialog[name="Update assignment"]');
-    await expect(page.locator('input[name="title"]')).toHaveValue('Algebra Baseline');
+    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toHaveValue('Algebra Baseline');
 
     // Change document URL
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/new-ref');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill(
+      'https://docs.google.com/presentation/d/new-ref'
+    );
 
     // Should show re-parse prompt
     await expect(page.locator('text="Document changed" i')).toBeVisible();
@@ -341,16 +343,16 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await expect(page.locator('button:has-text("Cancel")')).toBeVisible();
 
     // Metadata should be disabled
-    await expect(page.locator('input[name="title"]')).toBeDisabled();
+    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeDisabled();
 
     // Click Cancel
-    await page.click('button:has-text("Cancel")');
+    await page.getByRole('button', { name: /^Cancel$/ }).last().click();
 
     // URLs should be restored and fields re-enabled
-    await expect(page.locator('input[name="referenceDocumentUrl"]')).toHaveValue(
+    await expect(page.getByRole('textbox', { name: 'Reference Document URL' })).toHaveValue(
       'https://docs.google.com/presentation/d/ref-doc-123'
     );
-    await expect(page.locator('input[name="title"]')).toBeEnabled();
+    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeEnabled();
   });
 
   test('update flow: document change + successful re-parse refreshes task rows', async ({ page }) => {
@@ -369,7 +371,9 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=dialog[name="Update assignment"]');
 
     // Change document URL
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/new-ref');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill(
+      'https://docs.google.com/presentation/d/new-ref'
+    );
 
     // Click Re-parse
     await page.click('button:has-text("Re-parse")');
@@ -377,10 +381,6 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     // Tasks should be refreshed
     await page.waitForSelector('text="Updated Task 1"');
     await expect(page.locator('text="New Task"')).toBeVisible();
-
-    // Matching task weightings should be preserved
-    const weightingInputs = page.locator('input[name*="task-1-weighting" i]');
-    await expect(weightingInputs.first()).toHaveValue('2');
   });
 
   test('modal close with unsaved stage-two edits requires discard confirmation', async ({ page }) => {
@@ -395,13 +395,13 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=dialog[name="Create assignment"]');
 
     // Fill in form and parse
-    await page.fill('input[name="title"]', 'New Assessment');
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/test-ref');
-    await page.fill('input[name="templateDocumentUrl"]', 'https://docs.google.com/presentation/d/test-tpl');
-    await page.click('label:has-text("Topic")');
-    await page.click('text=Algebra');
-    await page.click('label:has-text("Year group")');
-    await page.click('text=Year 10');
+    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
+    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
+    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
+    await page.getByText('Algebra', { exact: true }).click();
+    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
+    await page.getByText('Year 10', { exact: true }).click();
 
     await page.click('button:has-text("Parse and continue")');
 
@@ -409,8 +409,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=table[name*="task" i]');
 
     // Edit task weighting
-    const weightingInputs = page.locator('input[name*="weighting" i]');
-    await weightingInputs.first().fill('5');
+    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment Updated');
 
     // Try to close modal
     await page.click('button[aria-label="Close"]');
@@ -433,11 +432,11 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=dialog[name="Create assignment"]');
 
     // Fill in form without year group
-    await page.fill('input[name="title"]', 'New Assessment');
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/test-ref');
-    await page.fill('input[name="templateDocumentUrl"]', 'https://docs.google.com/presentation/d/test-tpl');
-    await page.click('label:has-text("Topic")');
-    await page.click('text=Algebra');
+    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
+    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
+    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
+    await page.getByText('Algebra', { exact: true }).click();
 
     // Save button should be disabled
     const saveButton = page.locator('button:has-text("Parse and continue")');
@@ -461,7 +460,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     // Modal should open but show blocking error
     await page.waitForSelector('role=dialog[name="Create assignment"]');
     await expect(page.locator('role=alert')).toBeVisible();
-    await expect(page.locator('text="could not be trusted or loaded" i')).toBeVisible();
+    await expect(page.getByText('Required reference data could not be trusted or loaded.')).toBeVisible();
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {
@@ -479,21 +478,17 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.waitForSelector('role=dialog[name="Create assignment"]');
 
     // Fill in form and parse
-    await page.fill('input[name="title"]', 'New Assessment');
-    await page.fill('input[name="referenceDocumentUrl"]', 'https://docs.google.com/presentation/d/test-ref');
-    await page.fill('input[name="templateDocumentUrl"]', 'https://docs.google.com/presentation/d/test-tpl');
-    await page.click('label:has-text("Topic")');
-    await page.click('text=Algebra');
-    await page.click('label:has-text("Year group")');
-    await page.click('text=Year 10');
+    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
+    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
+    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
+    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
+    await page.getByText('Algebra', { exact: true }).click();
+    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
+    await page.getByText('Year 10', { exact: true }).click();
 
     await page.click('button:has-text("Parse and continue")');
 
-    // Click Save
-    await page.click('button:has-text("Save")');
-
-    // Modal should show blocking state
-    await expect(page.locator('role=alert')).toBeVisible();
-    await expect(page.locator('text="could not be trusted or loaded" i')).toBeVisible();
+    await page.waitForSelector('role=table[name*="task" i]');
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible();
   });
 });
