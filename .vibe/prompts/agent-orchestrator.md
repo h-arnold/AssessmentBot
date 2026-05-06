@@ -25,7 +25,7 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 
 ## 2. Mandatory Section Loop
 
-Each section must go through the same strict loop of red-phase testing, red review, green-phase implementation, and green review before it can be marked complete and the next section started.
+Each section must go through the same strict loop of red-phase testing, red review, green-phase implementation, and green review. You cannot proceed to the next phase until the code review from the current phase is completely clean. This includes nitpicks and style issues. Return all issues to testing/implementation agent to fix and re-run the checks and review until clean. Do not mark a section complete until all phases are clean, the action plan is updated, and the commits are created and pushed with SHA(s) recorded.
 
 Process sections one at a time. Do not overlap sections. Do not skip phases.
 You must not start the next phase until the current phase's required evidence is captured.
