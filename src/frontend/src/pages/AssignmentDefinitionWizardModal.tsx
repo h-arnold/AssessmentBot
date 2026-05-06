@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Form, Input, InputNumber, Modal, Select, Skeleton, Space, Table, Typography } from 'antd';
 import type { FormProps } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { logFrontendError } from '../logging/frontendLogger';
 import { queryKeys } from '../query/queryKeys';
@@ -95,6 +95,7 @@ export function AssignmentDefinitionWizardModal(
   const queryClient = useQueryClient();
   const startupWarmupState = useStartupWarmupState();
   const [form] = Form.useForm();
+  const isHydratingDefinitionRef = useRef(false);
 
   const { data: topics, isLoading: isTopicsLoading } = useQuery({
     ...getAssignmentTopicsQueryOptions(),
@@ -159,7 +160,10 @@ export function AssignmentDefinitionWizardModal(
 
   // Initialize modal
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      isHydratingDefinitionRef.current = false;
+      return;
+    }
 
     setHasParsedTasks(false);
     setTaskRows([]);
@@ -168,6 +172,7 @@ export function AssignmentDefinitionWizardModal(
     setBlockingError(null);
 
     if (!isCreateMode && definition) {
+      isHydratingDefinitionRef.current = true;
       const documentType = definition.documentType;
       form.setFieldsValue({
         title: definition.primaryTitle,
@@ -193,13 +198,22 @@ export function AssignmentDefinitionWizardModal(
         previousReferenceUrl: buildCanonicalUrl(definition.referenceDocumentId, documentType),
         previousTemplateUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
       });
+      queueMicrotask(() => {
+        isHydratingDefinitionRef.current = false;
+      });
     } else if (isCreateMode) {
+      isHydratingDefinitionRef.current = false;
       form.resetFields();
     }
   }, [open, mode, definition, form, isCreateMode]);
 
   // Track dirty state
   useEffect(() => {
+    if (isHydratingDefinitionRef.current) {
+      setHasDirtyEdits(false);
+      return;
+    }
+
     if (isCreateMode && !hasParsedTasks) {
       setHasDirtyEdits(false);
       return;
