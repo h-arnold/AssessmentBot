@@ -92,6 +92,17 @@ function hasYearGroupSelected(values: Record<string, unknown>): boolean {
 /**
  * Renders the assignment-definition wizard modal for create and update workflows.
  *
+ * @remarks
+ * The modal implements a two-stage workflow:
+ * - Stage one (create mode): parse document URLs first, then proceed to edit metadata and task weightings.
+ * - Stage two (shared edit surface): edit metadata, year group, assignment weighting, and task weightings.
+ *
+ * Document change re-parse gating: when document URLs change after initial parse, other edits are disabled
+ * until the user either re-parses (refreshes tasks from new URLs) or cancels (restores persisted URLs).
+ *
+ * Dirty state tracking: unsaved metadata or weighting edits disable document URL fields. Closing the modal
+ * with dirty edits requires explicit discard confirmation.
+ *
  * @param {AssignmentDefinitionWizardModalProperties} properties Modal properties.
  * @returns {JSX.Element} The wizard modal component.
  */
@@ -340,6 +351,7 @@ export function AssignmentDefinitionWizardModal(
       setHasDirtyEdits(false);
     } catch (error) {
       logFrontendError('AssignmentDefinitionWizardModal.handleParseAndContinue', error, { mode: 'create' });
+      setBlockingError(BLOCKING_ERROR_MESSAGE);
     } finally {
       setIsSubmitting(false);
     }
@@ -376,6 +388,7 @@ export function AssignmentDefinitionWizardModal(
       onClose();
     } catch (error) {
       logFrontendError('AssignmentDefinitionWizardModal.handleSave', error, { mode, definitionKey });
+      setBlockingError(BLOCKING_ERROR_MESSAGE);
     } finally {
       setIsSubmitting(false);
     }
@@ -422,6 +435,7 @@ export function AssignmentDefinitionWizardModal(
       setHasDirtyEdits(false);
     } catch (error) {
       logFrontendError('AssignmentDefinitionWizardModal.handleReparse', error, { definitionKey });
+      setBlockingError(BLOCKING_ERROR_MESSAGE);
     } finally {
       setIsSubmitting(false);
     }
