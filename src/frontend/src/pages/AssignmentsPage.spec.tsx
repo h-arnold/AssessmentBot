@@ -898,11 +898,11 @@ describe('AssignmentsPage', () => {
 
       // Fill in required fields except year group using userEvent
       const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
-      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
       const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
 
       setTextboxValue(titleInput, 'New Assessment');
-      setTextboxValue(refUrlInput, 'https://docs.google.com/presentation/d/test-ref');
+      setTextboxValue(referenceUrlInput, 'https://docs.google.com/presentation/d/test-ref');
       setTextboxValue(templateUrlInput, 'https://docs.google.com/presentation/d/test-tpl');
 
       // Save/Parse should be blocked without year group

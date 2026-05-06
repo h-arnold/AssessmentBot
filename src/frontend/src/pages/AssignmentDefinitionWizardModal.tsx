@@ -31,6 +31,16 @@ type TaskRow = { key: string; taskId: string; taskTitle: string; taskWeighting: 
 
 type DocumentChangeState = { hasPendingChange: boolean; previousReferenceUrl: string; previousTemplateUrl: string };
 
+type ParsedCreateBaseline = Readonly<{
+  title: string;
+  topic: string;
+  yearGroup: string;
+  referenceDocumentUrl: string;
+  templateDocumentUrl: string;
+  assignmentWeighting: number;
+  taskWeightings: ReadonlyMap<string, number>;
+}>;
+
 export type AssignmentDefinitionWizardModalProperties = Readonly<{
   open: boolean;
   mode: ModalMode;
@@ -96,6 +106,7 @@ export function AssignmentDefinitionWizardModal(
   const startupWarmupState = useStartupWarmupState();
   const [form] = Form.useForm();
   const isHydratingDefinitionReference = useRef(false);
+  const parsedCreateBaselineReference = useRef<ParsedCreateBaseline | null>(null);
 
   const { data: topics, isLoading: isTopicsLoading } = useQuery({
     ...getAssignmentTopicsQueryOptions(),
@@ -162,6 +173,7 @@ export function AssignmentDefinitionWizardModal(
   useEffect(() => {
     if (!open) {
       isHydratingDefinitionReference.current = false;
+      parsedCreateBaselineReference.current = null;
       return;
     }
 
@@ -172,6 +184,7 @@ export function AssignmentDefinitionWizardModal(
     setBlockingError(null);
 
     if (!isCreateMode && definition) {
+      parsedCreateBaselineReference.current = null;
       isHydratingDefinitionReference.current = true;
       const documentType = definition.documentType;
       form.setFieldsValue({
@@ -203,6 +216,7 @@ export function AssignmentDefinitionWizardModal(
       });
     } else if (isCreateMode) {
       isHydratingDefinitionReference.current = false;
+      parsedCreateBaselineReference.current = null;
       form.resetFields();
     }
   }, [open, mode, definition, form, isCreateMode]);
@@ -218,6 +232,33 @@ export function AssignmentDefinitionWizardModal(
       setHasDirtyEdits(false);
       return;
     }
+
+    if (isCreateMode) {
+      const parsedCreateBaseline = parsedCreateBaselineReference.current;
+
+      if (parsedCreateBaseline === null) {
+        setHasDirtyEdits(false);
+        return;
+      }
+
+      const values = form.getFieldsValue();
+      const currentAssignmentWeighting =
+        typeof values.assignmentWeighting === 'number' ? values.assignmentWeighting : DEFAULT_WEIGHTING;
+      const isDirty =
+        values.title !== parsedCreateBaseline.title ||
+        values.topic !== parsedCreateBaseline.topic ||
+        values.yearGroup !== parsedCreateBaseline.yearGroup ||
+        values.referenceDocumentUrl !== parsedCreateBaseline.referenceDocumentUrl ||
+        values.templateDocumentUrl !== parsedCreateBaseline.templateDocumentUrl ||
+        currentAssignmentWeighting !== parsedCreateBaseline.assignmentWeighting ||
+        taskRows.some(
+          (row) => parsedCreateBaseline.taskWeightings.get(row.taskId) !== row.taskWeighting
+        );
+
+      setHasDirtyEdits(isDirty);
+      return;
+    }
+
     if (!isCreateMode && definition) {
       const values = form.getFieldsValue();
       const isDirty =
@@ -282,6 +323,15 @@ export function AssignmentDefinitionWizardModal(
         previousReferenceUrl: buildCanonicalUrl(response.referenceDocumentId, documentType),
         previousTemplateUrl: buildCanonicalUrl(response.templateDocumentId, documentType),
       });
+      parsedCreateBaselineReference.current = {
+        title: request.primaryTitle,
+        topic: request.primaryTopicKey,
+        yearGroup: request.yearGroupKey,
+        referenceDocumentUrl: request.referenceDocumentUrl,
+        templateDocumentUrl: request.templateDocumentUrl,
+        assignmentWeighting: DEFAULT_WEIGHTING,
+        taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
+      };
       await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
       // Fire-and-forget list refresh: failures only affect the AssignmentsPage table,
       // not the modal's own data. The modal continues to function with parsed tasks.

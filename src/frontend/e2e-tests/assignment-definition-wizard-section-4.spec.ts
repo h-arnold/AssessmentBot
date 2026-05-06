@@ -36,8 +36,8 @@ const mockAssignmentTopics = [
 ] as const;
 
 const mockYearGroups = [
-  { key: 'year-group-10', label: 'Year 10' },
-  { key: 'year-group-11', label: 'Year 11' },
+  { key: 'year-group-10', name: 'Year 10' },
+  { key: 'year-group-11', name: 'Year 11' },
 ] as const;
 
 const mockFullDefinition = {
@@ -52,8 +52,6 @@ const mockFullDefinition = {
   documentType: 'SLIDES',
   referenceDocumentId: 'ref-doc-123',
   templateDocumentId: 'tpl-doc-456',
-  referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
-  templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
   assignmentWeighting: 5,
   tasks: [
     { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
@@ -83,6 +81,24 @@ const mockPartialRows = [
     updatedAt: '2025-01-02T00:00:00.000Z',
   },
 ] as const;
+
+const mockCreatedPartialRow = {
+  primaryTitle: 'New Assessment',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: [],
+  alternateTopics: [],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'test-ref',
+  templateDocumentId: 'test-tpl',
+  assignmentWeighting: 5,
+  definitionKey: 'new-assessment',
+  tasks: null,
+  createdAt: '2025-01-03T00:00:00.000Z',
+  updatedAt: '2025-01-03T00:00:00.000Z',
+} as const;
 
 /**
  * Installs a browser-side `google.script.run` mock for assignment-definition wizard journeys.
@@ -185,6 +201,20 @@ async function mockWizardRuntime(page: Page, scenario: WizardRuntimeScenario) {
 }
 
 /**
+ * Selects one visible Ant Design select option from the active dropdown overlay.
+ *
+ * @param {Page} page The Playwright page under test.
+ * @param {string} optionName The visible option label to choose.
+ * @returns {Promise<void>} Resolves once the option is selected.
+ */
+async function selectVisibleOption(page: Page, optionName: string) {
+  await page
+    .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
+    .getByText(optionName, { exact: true })
+    .click();
+}
+
+/**
  * Creates a standard success scenario for the wizard runtime.
  *
  * @returns {WizardRuntimeScenario} Runtime scenario with all required datasets.
@@ -196,9 +226,16 @@ function createStandardWizardScenario() {
     getCohorts: [{ kind: 'success', data: [] }],
     getYearGroups: [{ kind: 'success', data: mockYearGroups }],
     getAssignmentTopics: [{ kind: 'success', data: mockAssignmentTopics }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: mockPartialRows }],
+    getAssignmentDefinitionPartials: [
+      { kind: 'success', data: mockPartialRows },
+      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
+      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
+      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
+      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
+    ],
     getAssignmentDefinition: [{ kind: 'success', data: mockFullDefinition }],
     upsertAssignmentDefinition: [
+      { kind: 'success', data: mockFullDefinition },
       { kind: 'success', data: mockFullDefinition },
     ],
   } as const;
@@ -235,6 +272,7 @@ function createFailedRefreshScenario() {
     getAssignmentDefinitionPartials: [
       { kind: 'success', data: mockPartialRows },
       { kind: 'failureEnvelope', code: 'REFRESH_FAILED', message: 'Could not refresh after mutation' },
+      { kind: 'failureEnvelope', code: 'REFRESH_FAILED', message: 'Could not refresh after mutation' },
     ],
     upsertAssignmentDefinition: [
       { kind: 'success', data: mockFullDefinition },
@@ -250,8 +288,8 @@ function createFailedRefreshScenario() {
 function createReparseScenario() {
   const reParsedDefinition = {
     ...mockFullDefinition,
-    referenceDocumentUrl: 'https://docs.google.com/presentation/d/new-ref',
-    templateDocumentUrl: 'https://docs.google.com/presentation/d/new-tpl',
+    referenceDocumentId: 'new-ref',
+    templateDocumentId: 'new-tpl',
     tasks: [
       { taskId: 'task-1', taskTitle: 'Updated Task 1', taskWeighting: 2 },
       { taskId: 'task-2', taskTitle: 'Updated Task 2', taskWeighting: 1 },
@@ -265,8 +303,17 @@ function createReparseScenario() {
     getCohorts: [{ kind: 'success', data: [] }],
     getYearGroups: [{ kind: 'success', data: mockYearGroups }],
     getAssignmentTopics: [{ kind: 'success', data: mockAssignmentTopics }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: mockPartialRows }],
-    getAssignmentDefinition: [{ kind: 'success', data: mockFullDefinition }],
+    getAssignmentDefinitionPartials: [
+      { kind: 'success', data: mockPartialRows },
+      { kind: 'success', data: mockPartialRows },
+      { kind: 'success', data: mockPartialRows },
+      { kind: 'success', data: mockPartialRows },
+    ],
+    getAssignmentDefinition: [
+      { kind: 'success', data: mockFullDefinition },
+      { kind: 'success', data: reParsedDefinition },
+      { kind: 'success', data: reParsedDefinition },
+    ],
     upsertAssignmentDefinition: [
       { kind: 'success', data: reParsedDefinition },
     ],
@@ -298,11 +345,11 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
 
     // Select topic
     await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await page.getByText('Algebra', { exact: true }).click();
+    await selectVisibleOption(page, 'Algebra');
 
     // Select year group
     await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await page.getByText('Year 10', { exact: true }).click();
+    await selectVisibleOption(page, 'Year 10');
 
     // Click Parse and continue
     await page.click('button:has-text("Parse and continue")');
@@ -338,19 +385,19 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     );
 
     // Should show re-parse prompt
-    await expect(page.locator('text="Document changed" i')).toBeVisible();
+    await expect(page.getByText('Document changed. Re-parse to continue editing.')).toBeVisible();
     await expect(page.locator('button:has-text("Re-parse")')).toBeVisible();
-    await expect(page.locator('button:has-text("Cancel")')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Cancel$/ }).last()).toBeVisible();
 
     // Metadata should be disabled
     await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeDisabled();
 
     // Click Cancel
-    await page.getByRole('button', { name: /^Cancel$/ }).last().click();
+    await page.getByRole('button', { name: /^Cancel$/ }).first().click();
 
     // URLs should be restored and fields re-enabled
     await expect(page.getByRole('textbox', { name: 'Reference Document URL' })).toHaveValue(
-      'https://docs.google.com/presentation/d/ref-doc-123'
+      'https://docs.google.com/presentation/d/ref-doc-123/edit'
     );
     await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeEnabled();
   });
@@ -399,9 +446,9 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
     await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
     await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await page.getByText('Algebra', { exact: true }).click();
+    await selectVisibleOption(page, 'Algebra');
     await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await page.getByText('Year 10', { exact: true }).click();
+    await selectVisibleOption(page, 'Year 10');
 
     await page.click('button:has-text("Parse and continue")');
 
@@ -415,9 +462,9 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.click('button[aria-label="Close"]');
 
     // Should show discard confirmation
-    await expect(page.locator('role=dialog[name*="discard" i]')).toBeVisible();
-    await expect(page.locator('text="Discard changes" i')).toBeVisible();
-    await expect(page.locator('text="Keep editing" i')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Discard changes' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Discard changes' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible();
   });
 
   test('save blocked until valid year-group selection present', async ({ page }) => {
@@ -436,7 +483,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
     await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
     await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await page.getByText('Algebra', { exact: true }).click();
+    await selectVisibleOption(page, 'Algebra');
 
     // Save button should be disabled
     const saveButton = page.locator('button:has-text("Parse and continue")');
@@ -482,9 +529,9 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
     await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
     await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await page.getByText('Algebra', { exact: true }).click();
+    await selectVisibleOption(page, 'Algebra');
     await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await page.getByText('Year 10', { exact: true }).click();
+    await selectVisibleOption(page, 'Year 10');
 
     await page.click('button:has-text("Parse and continue")');
 
