@@ -20,7 +20,7 @@ enable_update_checks = true
 enable_auto_update = true
 enable_notifications = true
 api_timeout = 720.0
-auto_compact_threshold = 200000
+auto_compact_threshold = 180000
 tool_paths = []
 mcp_servers = []
 enabled_tools = []
@@ -68,7 +68,7 @@ alias = "mistral-medium-3.5"
 temperature = 1.0
 input_price = 1.5
 output_price = 7.5
-thinking = "max"
+thinking = "medium"
 auto_compact_threshold = 200000
 
 [[models]]
@@ -160,6 +160,7 @@ allowlist = [
     "sed *",
     "stat",
     "tail",
+    "touch *",
     "tree",
     "uname",
     "wc",

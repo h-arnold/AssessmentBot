@@ -3,7 +3,7 @@ description = "Finds and removes AI-slop, duplication, and unnecessary complexit
 sandbox_mode = "workspace-write"
 auto_approve = false
 safety = "neutral"
-agent_type = "subagent"
+agent_type = "agent"
 nickname_candidates = ["De-Sloppification", "Slop Cleaner"]
 system_prompt_id = "de-sloppification"
 

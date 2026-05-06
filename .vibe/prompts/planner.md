@@ -79,7 +79,7 @@ Use a tight questioning loop.
 
 When the clarification loop is complete:
 
-- Use docs/developer/SPEC_TEMPLATE.md.
+- Use `docs/developer/SPEC_TEMPLATE.md`.
 - Keep purpose, decisions, constraints, contracts, state rules, and scope boundaries separate from implementation sequencing.
 - Record explicit non-goals and open questions.
 - Write to repository-root `SPEC.md` unless the user explicitly asks for a different path.
@@ -127,7 +127,7 @@ If you skip the layout spec, state explicitly why it was not required.
 
 When a layout spec is required:
 
-1. Read docs/developer/LAYOUT_SPEC_TEMPLATE.md.
+1. Read `docs/developer/LAYOUT_SPEC_TEMPLATE.md`.
 2. Inspect the existing frontend surface and any similar root layout docs already in the repo.
 3. Consult the **official Ant Design docs only** for the components that seem suitable.
 4. Turn what you learn into targeted follow-up questions.
@@ -174,7 +174,7 @@ After drafting a layout spec:
 
 After the spec and any required layout spec are complete:
 
-- Use docs/developer/ACTION_PLAN_TEMPLATE.md.
+- Use `docs/developer/ACTION_PLAN_TEMPLATE.md`.
 - Write repository-root `ACTION_PLAN.md` unless the user explicitly asks for another path.
 - Split the work into small sections that can be validated independently.
 - Each section must include:

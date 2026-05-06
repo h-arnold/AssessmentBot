@@ -3,7 +3,7 @@ description = "Clarifies requirements and produces SPEC.md, optional frontend la
 sandbox_mode = "workspace-write"
 auto_approve = false
 safety = "neutral"
-agent_type = "subagent"
+agent_type = "agent"
 nickname_candidates = ["Planner", "Spec Planner"]
 system_prompt_id = "planner"
 
