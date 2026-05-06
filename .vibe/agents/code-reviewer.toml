@@ -1,11 +1,12 @@
-name = "Code Reviewer"
+name = "code-reviewer"
 description = "Reviews code for quality, standards adherence, and bugs"
 sandbox_mode = "read-only"
 auto_approve = true
 safety = "safe"
-type = "subagent"
-nickname_candidates = ["Code Reviewer", "Reviewer"]
+agent_type = "subagent"
+nickname_candidates = ["code-reviewer", "Code Reviewer", "Reviewer"]
 system_prompt_id = "code-reviewer"
+thinking = "max"
 
 [tools]
 allowlist = ["ask_user_question", "bash", "grep", "read_file", "task", "todo", "web_search"]
@@ -13,8 +14,6 @@ allowlist = ["ask_user_question", "bash", "grep", "read_file", "task", "todo", "
 [tools.bash]
 permission = "always"
 
-[tools.write_file]
-permission = "always"
 
 [tools.web_fetch]
 permission = "always"

@@ -1,10 +1,10 @@
-name = "Implementation"
+name = "implementation"
 description = "Implements code for the orchestrator"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "destructive"
-type = "subagent"
-nickname_candidates = ["Implementation", "Impl"]
+agent_type = "subagent"
+nickname_candidates = ["implementation", "Implementation", "Impl"]
 system_prompt_id = "implementation"
 
 [tools]

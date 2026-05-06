@@ -1,10 +1,10 @@
-name = "Docs"
+name = "docs"
 description = "Reviews changed code and updates developer documentation, AGENTS guidance, and JSDoc accuracy"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "neutral"
-type = "subagent"
-nickname_candidates = ["Docs", "Documentation"]
+agent_type = "subagent"
+nickname_candidates = ["docs", "Docs", "Documentation"]
 system_prompt_id = "docs"
 
 [tools]

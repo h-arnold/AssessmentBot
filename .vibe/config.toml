@@ -1,4 +1,4 @@
-active_model = "mistral-medium-3.5"
+active_model = "devstral-small"
 vim_keybindings = false
 disable_welcome_banner_animation = false
 autocopy_to_clipboard = true
@@ -68,7 +68,7 @@ alias = "mistral-medium-3.5"
 temperature = 1.0
 input_price = 1.5
 output_price = 7.5
-thinking = "medium"
+thinking = "high"
 auto_compact_threshold = 200000
 
 [[models]]
@@ -144,22 +144,30 @@ sensitive_patterns = []
 [tools.bash]
 permission = "ask"
 allowlist = [
+    "basename *",
     "cat",
     "cd",
     "echo",
     "file",
     "find",
+    "git add *",
+    "git checkout *",
+    "git commit *",
     "git diff",
     "git log",
+    "git push *",
     "git status",
     "grep *",
     "head",
     "ls",
+    "npm run lint *",
     "npm test *",
     "pwd",
+    "python3 *",
     "sed *",
     "stat",
     "tail",
+    "task *",
     "touch *",
     "tree",
     "uname",
@@ -219,7 +227,9 @@ sensitive_patterns = []
 
 [tools.web_fetch]
 permission = "ask"
-allowlist = []
+allowlist = [
+    "docs.mistral.ai",
+]
 denylist = []
 sensitive_patterns = []
 default_timeout = 30
@@ -239,7 +249,7 @@ max_write_bytes = 64000
 create_parent_dirs = true
 
 [tools.search_replace]
-permission = "ask"
+permission = "always"
 allowlist = []
 denylist = []
 sensitive_patterns = [

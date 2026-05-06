@@ -1,10 +1,10 @@
-name = "Testing Specialist"
+name = "Testing"
 description = "Creates, runs and debugs tests"
 sandbox_mode = "workspace-write"
 auto_approve = true
-safety = "neutral"
-type = "subagent"
-nickname_candidates = ["Testing Specialist", "Tester"]
+safety = "destructive"
+agent_type = "subagent"
+nickname_candidates = ["Testing", "Testing Specialist", "Tester"]
 system_prompt_id = "Testing"
 
 [tools]

@@ -1,11 +1,12 @@
-name = "De-Sloppification"
+name = "de-sloppification"
 description = "Finds and removes AI-slop, duplication, and unnecessary complexity"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "neutral"
-type = "subagent"
-nickname_candidates = ["De-Sloppification", "Slop Cleaner"]
+agent_type = "subagent"
+nickname_candidates = ["de-sloppification", "De-Sloppification", "Slop Cleaner"]
 system_prompt_id = "de-sloppification"
+thinking = "max"
 
 [tools]
 allowlist = ["bash", "grep", "read_file", "search_replace", "todo", "web_search", "write_file"]

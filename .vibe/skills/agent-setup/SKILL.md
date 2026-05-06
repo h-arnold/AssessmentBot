@@ -24,18 +24,104 @@ tools:
 
 > **⚠️ RESTART MISTRAL VIBE** after any changes to `config.toml`, agent TOML files, or prompt files. Changes are not applied until the CLI is restarted.
 
-This skill automates the setup, configuration, and verification of Mistral Vibe subagents with custom system instructions.
+## CRITICAL: Task Tool Agent Limitations
+
+**Only agents with `agent_type = "subagent"` in their TOML file can be spawned via the `task` tool.**
+
+Mistral Vibe enforces a security constraint: the `task` tool can only spawn agents explicitly configured with `agent_type = "subagent"`. Agents with `agent_type = "agent"` or without this field specified cannot be used with `task`.
+
+Additionally, the `task` tool uses the **TOML filename stem** (not the `name` field) as the agent identifier:
+
+- `implementation.toml` → use `agent=implementation`
+- `Testing.toml` → use `agent=Testing`
+- `code-reviewer.toml` → use `agent=code-reviewer`
+
+**Symptom: "Agent 'X' is a agent agent. Only subagents can be used with the task tool"**
+
+This error occurs when:
+
+1. The agent TOML has `agent_type = "agent"` instead of `agent_type = "subagent"`
+2. The agent TOML is missing the `agent_type` field entirely (defaults to "agent")
+3. Vibe has not been restarted after changing the TOML file (cached configuration)
+4. The `VIBE_HOME` environment variable is not set to an **absolute path** when using repository-scoped agent configurations
+
+**Fix:**
+
+1. Ensure every agent TOML has `agent_type = "subagent"`
+2. Use the filename stem (not the `name` field) when calling via `task`
+3. Restart Mistral Vibe CLI to reload agent configurations
+4. For repository-scoped configs, set `VIBE_HOME` to an absolute path (e.g., `export VIBE_HOME="/home/developer/AssessmentBot/.vibe/"`)
+
+## Example Agent Configurations
+
+### Subagent Example (spawnable via `task` tool)
+
+```toml
+# ~/.vibe/agents/code-reviewer.toml or ./.vibe/agents/code-reviewer.toml
+name = "code-reviewer"
+description = "Reviews code for quality, standards adherence, and bugs"
+sandbox_mode = "read-only"
+auto_approve = true
+safety = "safe"
+agent_type = "subagent"
+nickname_candidates = ["code-reviewer", "Code Reviewer", "Reviewer"]
+system_prompt_id = "code-reviewer"
+
+[tools]
+allowlist = ["ask_user_question", "bash", "grep", "read_file", "task", "todo", "web_search"]
+
+[tools.bash]
+permission = "always"
+```
+
+### Main Agent Example (NOT spawnable via `task` tool)
+
+```toml
+# ~/.vibe/agents/planner.toml or ./.vibe/agents/planner.toml
+name = "planner"
+description = "Clarifies requirements and produces SPEC.md, optional frontend layout specs, and ACTION_PLAN.md before implementation starts"
+sandbox_mode = "workspace-write"
+auto_approve = true
+safety = "neutral"
+agent_type = "agent"
+nickname_candidates = ["planner", "Planner", "Spec Planner"]
+system_prompt_id = "planner"
+
+[tools]
+allowlist = ["ask_user_question", "bash", "grep", "read_file", "search_replace", "task", "todo", "web_search"]
+
+[tools.bash]
+permission = "always"
+```
+
+## Agent Name Mapping: Copilot vs Vibe CLI
+
+**Important:** Project AGENTS.md files may reference agents by their Copilot names (e.g., `Implementation`, `Testing Specialist`, `Code Reviewer`), but the Vibe CLI `task` tool uses filename stems.
+
+| Copilot Name       | Vibe TOML Filename        | Vibe `task` agent= value |
+| ------------------ | ------------------------- | ------------------------ |
+| Implementation     | `implementation.toml`     | `implementation`         |
+| Testing Specialist | `Testing.toml`            | `Testing`                |
+| Code Reviewer      | `code-reviewer.toml`      | `code-reviewer`          |
+| Planner            | `planner.toml`            | `planner`                |
+| Planner Reviewer   | `planner-reviewer.toml`   | `planner-reviewer`       |
+| Docs               | `docs.toml`               | `docs`                   |
+| De-Sloppification  | `de-sloppification.toml`  | `de-sloppification`      |
+| Agent Orchestrator | `agent-orchestrator.toml` | `agent-orchestrator`     |
+
+**Recommendation:** When AGENTS.md references Copilot-style agents, create symlink TOML files or update the AGENTS.md to use Vibe-compatible names, or maintain a mapping table in project documentation.
 
 ## Key Lessons Applied
 
 ### 1. Agent Discovery
 
-- Mistral Vibe discovers agents from `~/.vibe/agents/` directory
+- Mistral Vibe discovers agents from `~/.vibe/agents/` directory (or from a custom path set via `VIBE_HOME`)
 - Agent names derive from TOML **filename stems** (e.g., `planner.toml` → `planner`)
 - Filenames use hyphens/snake_case, NOT Title Case with spaces
-- Use `type = "subagent"` for agents callable via `task` tool
+- Use `agent_type = "subagent"` for agents callable via `task` tool
+- Use `agent_type = "agent"` for main agents that should NOT be spawnable via `task`
 
-### 2. Configuration (`~/.vibe/config.toml`)
+### 2. Configuration (`~/.vibe/config.toml` or `${VIBE_HOME}/config.toml`)
 
 ```toml
 [agent]
@@ -45,6 +131,14 @@ enabled_agents = ["*"]  # Use glob pattern for all agents
 allowlist = ["*"]  # Allow all subagents to be called
 ```
 
+> **Note:** When using repository-scoped agent configurations, set `VIBE_HOME` to an **absolute path** pointing to your `.vibe` directory:
+>
+> ```bash
+> export VIBE_HOME="/home/developer/AssessmentBot/.vibe/"
+> ```
+>
+> Relative paths or tilde expansion (e.g., `~/path`) may not resolve correctly.
+
 ### 3. Agent Definition TOML Structure
 
 **DO NOT use `developer_instructions`** — Mistral Vibe ignores this Codex-specific field.
@@ -53,7 +147,7 @@ allowlist = ["*"]  # Allow all subagents to be called
 
 ```toml
 name = "planner"
-type = "subagent"
+agent_type = "subagent"
 system_prompt_id = "planner"  # Must be BEFORE [tools] section
 
 [tools]
@@ -85,7 +179,7 @@ system_prompt_id = "planner"  # Must be BEFORE [tools] section
    # ~/.vibe/agents/my-agent.toml
    cat > ~/.vibe/agents/my-agent.toml << 'EOF'
    name = "my-agent"
-   type = "subagent"
+   agent_type = "subagent"
    system_prompt_id = "my-agent"
    ```
 
@@ -116,12 +210,14 @@ allowlist = ["*"]
 # List all agent TOML files
 ls ~/.vibe/agents/*.toml
 
-# Test each subagent
-for agent in planner code-reviewer Testing docs implementation de-sloppification; do
+# Test each subagent (using filename stems, not name fields)
+for agent in agent-orchestrator code-reviewer Testing de-sloppification docs implementation planner planner-reviewer; do
   echo "Testing $agent:"
   task agent=$agent task="Return the first 80 chars of your system prompt exactly."
 done
 ```
+
+**Note:** Use the TOML filename without `.toml` extension, not the `name` field from inside the TOML.
 
 ### Fix Common Issues
 
@@ -133,9 +229,16 @@ done
 
 **Symptom: Agent not found**
 
-- Verify TOML filename matches agent name (hyphens vs spaces)
-- Check `type = "subagent"` is set
-- Confirm agent name is in `enabled_agents` list or glob pattern is used
+- Verify TOML filename matches the agent identifier used with `task` (hyphens vs spaces)
+- Check `agent_type = "subagent"` is set (not "agent" or missing)
+- Confirm agent name is in `enabled_agents` list or glob pattern `"*"` is used
+- Restart Vibe CLI after changes to reload agent cache
+
+**Symptom: "Agent 'X' is a agent agent. Only subagents can be used with the task tool"**
+
+- The agent exists but has wrong type or Vibe hasn't reloaded config
+- Verify `agent_type = "subagent"` in the agent's TOML file
+- Restart Mistral Vibe CLI to clear cached agent configurations
 
 **Symptom: TOML syntax error**
 
@@ -173,7 +276,7 @@ allowlist = ["*"]
 
 ```toml
 name = "<name>"
-type = "subagent"
+agent_type = "subagent"
 system_prompt_id = "<name>"
 
 [tools]
