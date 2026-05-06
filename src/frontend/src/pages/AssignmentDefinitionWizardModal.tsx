@@ -63,6 +63,14 @@ function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'
   return `${base}/${documentId}/edit`;
 }
 
+const REQUIRED_PARSE_FIELDS = [
+  'title',
+  'topic',
+  'yearGroup',
+  'referenceDocumentUrl',
+  'templateDocumentUrl',
+] as const;
+
 /**
  * Checks if all required fields for parsing are present and non-empty.
  *
@@ -70,13 +78,7 @@ function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'
  * @returns {boolean} True if all parse fields are present and non-empty.
  */
 function hasAllParseFields(values: Record<string, unknown>): boolean {
-  return (
-    String(values.title ?? '').trim() !== '' &&
-    String(values.topic ?? '').trim() !== '' &&
-    String(values.yearGroup ?? '').trim() !== '' &&
-    String(values.referenceDocumentUrl ?? '').trim() !== '' &&
-    String(values.templateDocumentUrl ?? '').trim() !== ''
-  );
+  return REQUIRED_PARSE_FIELDS.every((field) => String(values[field as keyof typeof values] ?? '').trim() !== '');
 }
 
 /**
