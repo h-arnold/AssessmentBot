@@ -14,6 +14,8 @@ test-results/
 nohup.out
 
 # Vibe configs - sensitive files
+.env
+.env.*
 .vibe/.env
 .vibe/logs/
 .vibe/vibehistory
