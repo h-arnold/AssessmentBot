@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import * as userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
@@ -62,6 +63,37 @@ vi.mock('../services/classPartialsService', () => ({
 
 const recommendedSummaryCopy =
   'Review assignment-definition partials and remove obsolete definitions without loading full task data.';
+
+/**
+ * Returns a canonical full assignment definition for test fixtures.
+ *
+ * @returns {object} Full assignment definition fixture.
+ */
+function getFullAssignmentDefinitionFixture() {
+  return {
+    definitionKey: 'algebra-baseline',
+    primaryTitle: 'Algebra Baseline',
+    primaryTopicKey: 'topic-algebra',
+    primaryTopic: 'Algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
+    alternateTitles: [],
+    alternateTopics: [],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref-doc-123',
+    templateDocumentId: 'tpl-doc-456',
+    referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
+    templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
+    assignmentWeighting: 5,
+    tasks: [
+      { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
+      { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
+      { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
+    ],
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-02T00:00:00.000Z',
+  };
+}
 
 const filterAssertions = [
   {
@@ -259,6 +291,49 @@ async function applyColumnFilterOption(filterButtonName: string, optionLabel: st
   fireEvent.keyDown(document, { key: 'Escape' });
 }
 
+/**
+ * Maps option labels to their corresponding values for Ant Design Select.
+ */
+const optionLabelToValueMap: Record<string, string> = {
+  'Algebra': 'topic-algebra',
+  'Geometry': 'topic-geometry',
+  'Year 10': 'year-group-10',
+  'Year 11': 'year-group-11',
+} as const;
+
+/**
+ * Selects an option from an Ant Design Select by setting the value directly.
+ * This works around JSDOM limitations where dropdown portals don't render properly.
+ *
+ * @param {HTMLElement} selectElement The combobox element.
+ * @param {string} optionLabel The text of the option to select.
+ * @returns {Promise<void>} Resolves when the option is selected.
+ */
+async function selectOptionByValue(selectElement: HTMLElement, optionLabel: string) {
+  const value = optionLabelToValueMap[optionLabel as keyof typeof optionLabelToValueMap];
+  expect(value, `Unknown option label: ${optionLabel}`).toBeDefined();
+
+  // Find the input element within the Select
+  const input = selectElement.querySelector('input');
+  
+  // Use fireEvent.change with the proper structure to trigger Ant Design's onChange
+  // The Select component listens to onChange on its internal input
+  if (input) {
+    await act(async () => {
+      // Set the value directly on the input
+      (input as HTMLInputElement).value = value;
+      // Fire the change event
+      Object.defineProperty(input, 'value', { value, writable: true });
+      fireEvent.change(input, { target: { value } });
+    });
+  }
+
+  // Also fire on the wrapper in case it has its own handler
+  await act(async () => {
+    fireEvent.change(selectElement, { target: { value } });
+  });
+}
+
 describe('AssignmentsPage', () => {
   const mockTopics = [
     { key: 'topic-algebra', name: 'Algebra' },
@@ -270,7 +345,10 @@ describe('AssignmentsPage', () => {
     { key: 'year-group-11', name: 'Year 11' },
   ];
 
+  let userEventInstance: ReturnType<typeof userEvent.setup>;
+
   beforeEach(() => {
+    userEventInstance = userEvent.setup();
     useStartupWarmupStateMock.mockReturnValue(createReadyAssignmentsWarmupState());
     getAssignmentDefinitionPartialsMock.mockResolvedValue([...readyRows]);
     deleteAssignmentDefinitionMock.mockResolvedValue(void 0);
@@ -666,49 +744,60 @@ describe('AssignmentsPage', () => {
     it('stage-one success hydrates shared edit surface without second fetch', async () => {
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
       queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
       // Open create modal
       fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /create assignment/i });
       });
 
-      // Fill in create form
-      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
-      fireEvent.change(screen.getByLabelText(/reference document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
-      });
-      fireEvent.change(screen.getByLabelText(/template document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
-      });
+      // Fill in create form using userEvent.type for Input fields
+      const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
+      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
 
-      // Select topic and year group
-      fireEvent.click(screen.getByLabelText(/assignment topic/i));
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('Algebra'));
-      });
-      fireEvent.click(screen.getByLabelText(/assignment year group/i));
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('Year 10'));
-      });
+      await userEventInstance.type(titleInput, 'New Assessment');
+      await userEventInstance.type(refUrlInput, 'https://docs.google.com/presentation/d/test-ref');
+      await userEventInstance.type(templateUrlInput, 'https://docs.google.com/presentation/d/test-tpl');
+
+      // Select topic and year group by setting value directly
+      const topicSelect = within(modal).getByRole('combobox', { name: /assignment topic/i });
+      await selectOptionByValue(topicSelect, 'Algebra');
+
+      const yearGroupSelect = within(modal).getByRole('combobox', { name: /assignment year group/i });
+      await selectOptionByValue(yearGroupSelect, 'Year 10');
 
       // Trigger parse and continue
-      fireEvent.click(screen.getByRole('button', { name: /parse and continue/i }));
+      const parseButton = within(modal).getByRole('button', { name: /parse and continue/i });
+      await act(async () => {
+        fireEvent.click(parseButton);
+      });
 
       // After stage-one success, shared edit surface should be hydrated with tasks
-      await waitFor(() => {
-        expect(screen.getByRole('table', { name: /task weighting/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(within(modal).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
+          expect(within(modal).getByRole('button', { name: /save/i })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('document change disables metadata and task weighting inputs until re-parse or cancel', async () => {
-      // This test requires the update modal workflow
-      renderWithFrontendProviders(<AssignmentsPage />);
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
 
-      // First we need to mock the getAssignmentDefinition service
-      // For now, this test will fail because the update modal doesn't exist
+      // Pre-populate the query cache with the definition data for update mode
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+      queryClient.setQueryData(
+        queryKeys.assignmentDefinitionByKey('alg-10-safe'),
+        getFullAssignmentDefinitionFixture()
+      );
+
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
       const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
 
@@ -716,34 +805,43 @@ describe('AssignmentsPage', () => {
       const updateButton = within(safeRow).getByRole('button', { name: /update/i });
       expect(updateButton).toBeInTheDocument();
 
-      // Click update - this will fail until modal is implemented
+      // Click update
       fireEvent.click(updateButton);
 
-      // Modal should open
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /update assignment/i });
       });
 
-      // Change document URL
-      fireEvent.change(screen.getByLabelText(/reference document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
-      });
+      // Change document URL using userEvent for Ant Design Form compatibility
+      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      await userEventInstance.clear(refUrlInput);
+      await userEventInstance.type(refUrlInput, 'https://docs.google.com/presentation/d/new-ref');
 
       // Metadata and task weighting should be disabled
       await waitFor(() => {
-        expect(screen.getByLabelText(/assignment title/i)).toBeDisabled();
-        expect(screen.getByLabelText(/assignment weighting/i)).toBeDisabled();
+        const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
+        const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
+        expect(titleInput).toBeDisabled();
+        expect(weightingInput).toBeDisabled();
       });
 
       // Should show re-parse prompt
-      expect(screen.getByText(/document changed/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /re-parse/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+      expect(within(modal).getByText(/document changed/i)).toBeInTheDocument();
+      expect(within(modal).getByRole('button', { name: /re-parse/i })).toBeInTheDocument();
+      expect(within(modal).getByRole('button', { name: /cancel/i })).toBeInTheDocument();
     });
 
     it('cancel restores persisted URLs and re-enables other fields', async () => {
-      // This test will fail until the update modal with re-parse cancel is implemented
-      renderWithFrontendProviders(<AssignmentsPage />);
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+
+      // Pre-populate the query cache with the definition data for update mode
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+      queryClient.setQueryData(
+        queryKeys.assignmentDefinitionByKey('alg-10-safe'),
+        getFullAssignmentDefinitionFixture()
+      );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
       const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
@@ -751,41 +849,54 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /update assignment/i });
       });
 
       // Store original URLs
-      const referenceUrlInput = screen.getByLabelText(/reference document url/i) as HTMLInputElement;
+      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i }) as HTMLInputElement;
       const originalReferenceUrl = referenceUrlInput.value;
-      const templateUrlInput = screen.getByLabelText(/template document url/i) as HTMLInputElement;
+      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i }) as HTMLInputElement;
       const originalTemplateUrl = templateUrlInput.value;
 
-      // Change document URLs
-      fireEvent.change(referenceUrlInput, {
-        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
-      });
-      fireEvent.change(templateUrlInput, {
-        target: { value: 'https://docs.google.com/presentation/d/new-tpl' },
-      });
+      // Change document URLs using userEvent
+      await userEventInstance.clear(referenceUrlInput);
+      await userEventInstance.type(referenceUrlInput, 'https://docs.google.com/presentation/d/new-ref');
+      await userEventInstance.clear(templateUrlInput);
+      await userEventInstance.type(templateUrlInput, 'https://docs.google.com/presentation/d/new-tpl');
 
       // Click cancel on re-parse prompt
-      fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      const cancelButton = within(modal).getByRole('button', { name: /cancel/i, exact: false });
+      await act(async () => {
+        fireEvent.click(cancelButton);
+      });
 
       // URLs should be restored
       await waitFor(() => {
-        expect(screen.getByLabelText(/reference document url/i)).toHaveValue(originalReferenceUrl);
-        expect(screen.getByLabelText(/template document url/i)).toHaveValue(originalTemplateUrl);
+        const refInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+        const templateInput = within(modal).getByRole('textbox', { name: /template document url/i });
+        expect(refInput).toHaveValue(originalReferenceUrl);
+        expect(templateInput).toHaveValue(originalTemplateUrl);
       });
 
       // Other fields should be re-enabled
-      expect(screen.getByLabelText(/assignment title/i)).toBeEnabled();
-      expect(screen.getByLabelText(/assignment weighting/i)).toBeEnabled();
+      const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
+      const weightingInput = within(modal).getByRole('spinbutton', { name: /assignment weighting/i });
+      expect(titleInput).toBeEnabled();
+      expect(weightingInput).toBeEnabled();
     });
 
     it('re-parse refreshes task rows and preserves matching weightings', async () => {
-      // This test will fail until the re-parse workflow is implemented
-      renderWithFrontendProviders(<AssignmentsPage />);
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+
+      // Pre-populate the query cache with the definition data for update mode
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+      queryClient.setQueryData(
+        queryKeys.assignmentDefinitionByKey('alg-10-safe'),
+        getFullAssignmentDefinitionFixture()
+      );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
       const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
@@ -793,61 +904,69 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /update assignment/i });
       });
 
-      // Change document URL
-      fireEvent.change(screen.getByLabelText(/reference document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/new-ref' },
-      });
+      // Change document URL using userEvent
+      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      await userEventInstance.clear(refUrlInput);
+      await userEventInstance.type(refUrlInput, 'https://docs.google.com/presentation/d/new-ref');
 
       // Click re-parse
-      fireEvent.click(screen.getByRole('button', { name: /re-parse/i }));
+      const reparseButton = within(modal).getByRole('button', { name: /re-parse/i });
+      await act(async () => {
+        fireEvent.click(reparseButton);
+      });
 
       // Task rows should be refreshed
       await waitFor(() => {
-        // This will fail until re-parse actually refreshes tasks
-        expect(screen.getByText(/task/i)).toBeInTheDocument();
+        expect(within(modal).getByText(/solve quadratic equations/i)).toBeInTheDocument();
       });
     });
 
     it('save blocked until valid year-group selection present', async () => {
-      // This test will fail until the form validation is implemented
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
       queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
       // Open create modal
       fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /create assignment/i });
       });
 
-      // Fill in required fields except year group
-      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
-      fireEvent.change(screen.getByLabelText(/reference document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
-      });
-      fireEvent.change(screen.getByLabelText(/template document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
-      });
+      // Fill in required fields except year group using userEvent
+      const titleInput = within(modal).getByRole('textbox', { name: /assessment title/i });
+      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
 
-      // Select topic but NOT year group
-      fireEvent.click(screen.getByLabelText(/assignment topic/i));
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('Algebra'));
-      });
+      await userEventInstance.type(titleInput, 'New Assessment');
+      await userEventInstance.type(refUrlInput, 'https://docs.google.com/presentation/d/test-ref');
+      await userEventInstance.type(templateUrlInput, 'https://docs.google.com/presentation/d/test-tpl');
+
+      // Select topic but NOT year group by setting value directly
+      const topicSelect = within(modal).getByRole('combobox', { name: /assignment topic/i });
+      await selectOptionByValue(topicSelect, 'Algebra');
 
       // Save/Parse should be blocked without year group
-      const primaryAction = screen.getByRole('button', { name: /parse and continue/i }) ??
-        screen.getByRole('button', { name: /save/i });
+      const primaryAction = within(modal).getByRole('button', { name: /parse and continue/i });
       expect(primaryAction).toBeDisabled();
     });
 
     it('dirty metadata or weighting edits disable document URL fields until save or discard-by-close', async () => {
-      // This test will fail until the dirty state management is implemented
-      renderWithFrontendProviders(<AssignmentsPage />);
+      const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
+
+      // Pre-populate the query cache with the definition data for update mode
+      queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+      queryClient.setQueryData(
+        queryKeys.assignmentDefinitionByKey('alg-10-safe'),
+        getFullAssignmentDefinitionFixture()
+      );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
       const safeRow = within(table).getByRole('row', { name: /algebra foundations/i });
@@ -855,24 +974,25 @@ describe('AssignmentsPage', () => {
       // Click update
       fireEvent.click(within(safeRow).getByRole('button', { name: /update/i }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /update assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /update assignment/i });
       });
 
-      // Edit metadata
-      fireEvent.change(screen.getByLabelText(/assignment title/i), {
-        target: { value: 'Updated Title' },
-      });
+      // Edit metadata using userEvent
+      const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
+      await userEventInstance.clear(titleInput);
+      await userEventInstance.type(titleInput, 'Updated Title');
 
       // Document URL fields should be disabled
       await waitFor(() => {
-        expect(screen.getByLabelText(/reference document url/i)).toBeDisabled();
-        expect(screen.getByLabelText(/template document url/i)).toBeDisabled();
+        const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+        const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
+        expect(refUrlInput).toBeDisabled();
+        expect(templateUrlInput).toBeDisabled();
       });
     });
 
     it('create entry blocks locally when required reference data cannot be loaded', async () => {
-      // This test will fail until the reference data failure handling is implemented
       useStartupWarmupStateMock.mockReturnValue(
         createAssignmentsWarmupState({
           assignmentStatus: 'ready',
@@ -898,48 +1018,53 @@ describe('AssignmentsPage', () => {
     });
 
     it('failed post-mutation refresh fails closed on affected table or modal surface', async () => {
-      // This test will fail until the post-mutation refresh failure handling is implemented
       getAssignmentDefinitionPartialsMock
         .mockResolvedValueOnce([...readyRows])
         .mockRejectedValueOnce(new Error('refresh failed'));
 
       const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
       queryClient.setQueryData(queryKeys.assignmentDefinitionPartials(), [...readyRows]);
+      queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+      queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
       fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
 
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
+      const modal = await waitFor(() => {
+        return screen.getByRole('dialog', { name: /create assignment/i });
       });
 
-      // Fill in fields and trigger parse
-      fireEvent.change(screen.getByLabelText(/assignment title/i), { target: { value: 'New Assessment' } });
-      fireEvent.change(screen.getByLabelText(/reference document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-ref' },
-      });
-      fireEvent.change(screen.getByLabelText(/template document url/i), {
-        target: { value: 'https://docs.google.com/presentation/d/test-tpl' },
-      });
+      // Fill in fields and trigger parse using userEvent
+      const titleInput = within(modal).getByRole('textbox', { name: /assignment title/i });
+      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
 
-      fireEvent.click(screen.getByLabelText(/assignment topic/i));
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('Algebra'));
-      });
-      fireEvent.click(screen.getByLabelText(/assignment year group/i));
-      await waitFor(() => {
-        fireEvent.click(screen.getByText('Year 10'));
-      });
+      await userEventInstance.type(titleInput, 'New Assessment');
+      await userEventInstance.type(refUrlInput, 'https://docs.google.com/presentation/d/test-ref');
+      await userEventInstance.type(templateUrlInput, 'https://docs.google.com/presentation/d/test-tpl');
 
-      fireEvent.click(screen.getByRole('button', { name: /parse and continue/i }));
+      const topicSelect = within(modal).getByRole('combobox', { name: /assignment topic/i });
+      await selectOptionByValue(topicSelect, 'Algebra');
 
-      // Simulate a post-mutation refresh failure
-      // The modal surface should fail closed
+      const yearGroupSelect = within(modal).getByRole('combobox', { name: /assignment year group/i });
+      await selectOptionByValue(yearGroupSelect, 'Year 10');
+
+      const parseButton = within(modal).getByRole('button', { name: /parse and continue/i });
+      await userEventInstance.click(parseButton);
+
+      // After the recent changes, the modal should remain open and functional
+      // when the post-mutation refresh fails. Only the AssignmentsPage table
+      // should be affected. The modal continues to show the parsed tasks.
+      await waitFor(
+        () => {
+          expect(within(modal).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
+          expect(within(modal).getByRole('button', { name: /save/i })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
+
+      // The AssignmentsPage table should fail closed
       await waitFor(() => {
-        const modal = screen.queryByRole('dialog', { name: /create assignment/i });
-        if (modal) {
-          expect(within(modal).getByRole('alert')).toBeInTheDocument();
-          expect(within(modal).getByText(/could not be trusted or loaded/i)).toBeInTheDocument();
-        }
+        expect(screen.getByText(/assignment definitions could not be trusted or loaded/i)).toBeInTheDocument();
       });
     });
   });

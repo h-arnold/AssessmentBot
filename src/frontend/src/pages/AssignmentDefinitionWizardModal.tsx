@@ -269,11 +269,9 @@ export function AssignmentDefinitionWizardModal(
         previousTemplateUrl: buildCanonicalUrl(response.templateDocumentId, documentType),
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      try {
-        await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      } catch {
-        setBlockingError(BLOCKING_ERROR_MESSAGE);
-      }
+      // Fire-and-forget list refresh: failures only affect the AssignmentsPage table,
+      // not the modal's own data. The modal continues to function with parsed tasks.
+      void queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
       setHasDirtyEdits(false);
     } catch (error) {
       logFrontendError('AssignmentDefinitionWizardModal.handleParseAndContinue', error, { mode: 'create' });
@@ -353,11 +351,9 @@ export function AssignmentDefinitionWizardModal(
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(definitionKey) });
-      try {
-        await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      } catch {
-        setBlockingError(BLOCKING_ERROR_MESSAGE);
-      }
+      // Fire-and-forget list refresh: failures only affect the AssignmentsPage table,
+      // not the modal's own data. The modal continues to function with re-parsed tasks.
+      void queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
       setHasDirtyEdits(false);
     } catch (error) {
       logFrontendError('AssignmentDefinitionWizardModal.handleReparse', error, { definitionKey });

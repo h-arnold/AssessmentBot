@@ -686,8 +686,8 @@ Playwright tests:
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** pending.
-- **Deviations from plan:** pending.
+- **Implementation notes:** List refresh in handleParseAndContinue and handleReparse changed from blocking to fire-and-forget. The modal continues to function with parsed tasks even if the AssignmentsPage table refresh fails. handleSave retains blocking behaviour to prevent closing with stale data.
+- **Deviations from plan:** None.
 - **Follow-up implications for later sections:** refresh and regression work must verify both the table and modal caches update coherently.
 - **Checklist:**
   - [x] red tests added (complete)
@@ -696,8 +696,13 @@ Playwright tests:
   - [ ] green review clean
   - [ ] checks passed
   - [x] action plan updated (complete)
-  - [x] commit created (complete)
-  - [x] push completed (complete)
+  - [ ] commit created
+  - [ ] push completed
+
+### Blockers
+
+- **BLOCKER: Test form interaction patterns** — Ant Design Form + Testing Library `fireEvent.change` does not properly commit form values. Tests need migration to `@testing-library/user-event` for reliable form interactions. Current status: @testing-library/user-event installed, test file partially updated by explore agent. 5/11 Section 4 tests passing after partial fix, 5 still failing.
+- **BLOCKER: Query cache setup for update mode** — Update workflow tests need query cache pre-population with definition data via `queryClient.setQueryData(queryKeys.assignmentDefinitionByKey(...))` before opening modal.
 
 ---
 
