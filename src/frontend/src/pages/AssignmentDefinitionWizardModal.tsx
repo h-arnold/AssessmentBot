@@ -164,7 +164,8 @@ export function AssignmentDefinitionWizardModal(
 
   const primaryActionLabel = isCreateMode && !hasParsedTasks ? 'Parse and continue' : 'Save';
 
-  const formValues = Form.useWatch([], form) ?? {};
+  const watchedFormValues = Form.useWatch([], form);
+  const formValues = useMemo(() => watchedFormValues ?? {}, [watchedFormValues]);
   const isPrimaryActionDisabled = isCreateMode && !hasParsedTasks
     ? !hasAllParseFields(formValues)
     : !hasYearGroupSelected(formValues);
@@ -276,7 +277,7 @@ export function AssignmentDefinitionWizardModal(
 
   // Handle document change detection
   const handleFormValuesChange: FormProps['onValuesChange'] = useCallback(
-    (_, allValues) => {
+    (_changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => {
       if ((!isCreateMode || hasParsedTasks) && definition) {
         const documentType = definition.documentType;
         const previousReferenceUrl = buildCanonicalUrl(definition.referenceDocumentId, documentType);
@@ -461,7 +462,9 @@ export function AssignmentDefinitionWizardModal(
   const handleTaskWeightingChange = useCallback(
     (taskId: string, value: number | null) => {
       setTaskRows((previous) =>
-        previous.map((row) => (row.taskId !== taskId ? row : { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE }))
+        previous.map((row) =>
+          row.taskId === taskId ? { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE } : row
+        )
       );
     },
     []

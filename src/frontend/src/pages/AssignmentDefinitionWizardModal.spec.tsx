@@ -126,10 +126,9 @@ function createStartupWarmupState(options: {
     (datasetKey === 'yearGroups' && options.yearGroupsStatus === 'ready') ||
     datasetKey === 'assignmentDefinitionPartials';
 
-  const isDatasetFailed = (datasetKey: string) =>
+  const isDatasetFailed = (datasetKey: string): boolean =>
     (datasetKey === 'assignmentTopics' && options.assignmentTopicsStatus === 'failed') ||
     (datasetKey === 'yearGroups' && options.yearGroupsStatus === 'failed');
-    false;
 
   return {
     isFailed: false,
@@ -181,7 +180,7 @@ describe('AssignmentDefinitionWizardModal', () => {
   });
 
   // Mock fetchQuery to handle fire-and-forget calls gracefully
-  const mockFetchQuery = vi.fn().mockResolvedValue(undefined);
+  const mockFetchQuery = vi.fn().mockImplementation(() => Promise.resolve());
 
   // ============================================================================
   // Batch D: Direct Unit Tests for AssignmentDefinitionWizardModal
