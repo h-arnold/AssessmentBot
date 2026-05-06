@@ -1,0 +1,11 @@
+name = "Code Reviewer"
+description = "Reviews code for quality, standards adherence, and bugs"
+sandbox_mode = "read-only"
+auto_approve = false
+safety = "safe"
+agent_type = "subagent"
+nickname_candidates = ["Code Reviewer", "Reviewer"]
+system_prompt_id = "code-reviewer"
+
+[tools]
+allowlist = ["ask_user_question", "bash", "grep", "read_file", "task", "todo", "web_search"]

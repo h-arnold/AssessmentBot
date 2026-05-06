@@ -1,0 +1,11 @@
+name = "Testing Specialist"
+description = "Creates, runs and debugs tests"
+sandbox_mode = "workspace-write"
+auto_approve = false
+safety = "neutral"
+agent_type = "subagent"
+nickname_candidates = ["Testing Specialist", "Tester"]
+system_prompt_id = "Testing"
+
+[tools]
+allowlist = ["ask_user_question", "bash", "grep", "read_file", "search_replace", "todo", "web_search", "write_file"]

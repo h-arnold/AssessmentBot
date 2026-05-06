@@ -1,0 +1,11 @@
+name = "Implementation"
+description = "Implements code for the orchestrator"
+sandbox_mode = "workspace-write"
+auto_approve = false
+safety = "destructive"
+agent_type = "subagent"
+nickname_candidates = ["Implementation", "Impl"]
+system_prompt_id = "implementation"
+
+[tools]
+allowlist = ["bash", "grep", "read_file", "search_replace", "todo", "write_file"]
