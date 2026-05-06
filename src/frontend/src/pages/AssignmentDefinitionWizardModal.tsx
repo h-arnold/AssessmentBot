@@ -95,7 +95,7 @@ export function AssignmentDefinitionWizardModal(
   const queryClient = useQueryClient();
   const startupWarmupState = useStartupWarmupState();
   const [form] = Form.useForm();
-  const isHydratingDefinitionRef = useRef(false);
+  const isHydratingDefinitionReference = useRef(false);
 
   const { data: topics, isLoading: isTopicsLoading } = useQuery({
     ...getAssignmentTopicsQueryOptions(),
@@ -161,7 +161,7 @@ export function AssignmentDefinitionWizardModal(
   // Initialize modal
   useEffect(() => {
     if (!open) {
-      isHydratingDefinitionRef.current = false;
+      isHydratingDefinitionReference.current = false;
       return;
     }
 
@@ -172,7 +172,7 @@ export function AssignmentDefinitionWizardModal(
     setBlockingError(null);
 
     if (!isCreateMode && definition) {
-      isHydratingDefinitionRef.current = true;
+      isHydratingDefinitionReference.current = true;
       const documentType = definition.documentType;
       form.setFieldsValue({
         title: definition.primaryTitle,
@@ -199,17 +199,17 @@ export function AssignmentDefinitionWizardModal(
         previousTemplateUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
       });
       queueMicrotask(() => {
-        isHydratingDefinitionRef.current = false;
+        isHydratingDefinitionReference.current = false;
       });
     } else if (isCreateMode) {
-      isHydratingDefinitionRef.current = false;
+      isHydratingDefinitionReference.current = false;
       form.resetFields();
     }
   }, [open, mode, definition, form, isCreateMode]);
 
   // Track dirty state
   useEffect(() => {
-    if (isHydratingDefinitionRef.current) {
+    if (isHydratingDefinitionReference.current) {
       setHasDirtyEdits(false);
       return;
     }
@@ -231,7 +231,7 @@ export function AssignmentDefinitionWizardModal(
         });
       setHasDirtyEdits(isDirty);
     }
-  }, [formValues, definition, hasParsedTasks, isCreateMode, taskRows]);
+  }, [form, formValues, definition, hasParsedTasks, isCreateMode, taskRows]);
 
   // Handle document change detection
   const handleFormValuesChange: FormProps['onValuesChange'] = useCallback(

@@ -292,26 +292,6 @@ async function applyColumnFilterOption(filterButtonName: string, optionLabel: st
 }
 
 /**
- * Selects a visible option from an Ant Design Select.
- *
- * @param {HTMLElement} selectElement The combobox element.
- * @param {string} optionLabel The text of the option to select.
- * @returns {Promise<void>} Resolves when the option is selected.
- */
-async function selectOption(selectElement: HTMLElement, optionLabel: string) {
-  const trigger =
-    selectElement.closest('.ant-select')?.querySelector('.ant-select-selector') ?? selectElement;
-
-  await act(async () => {
-    fireEvent.mouseDown(trigger);
-  });
-  const option = await screen.findByRole('option', { name: optionLabel });
-  await act(async () => {
-    fireEvent.click(option);
-  });
-}
-
-/**
  * Sets a text input value in one form change event.
  *
  * @param {HTMLElement} inputElement The textbox to update.
@@ -773,11 +753,11 @@ describe('AssignmentsPage', () => {
       });
 
       // Change document URL using userEvent for Ant Design Form compatibility
-      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
       await waitFor(() => {
-        expect(refUrlInput).toBeEnabled();
+        expect(referenceUrlInput).toBeEnabled();
       });
-      fireEvent.change(refUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
+      fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
 
       // Metadata and task weighting should be disabled
       await waitFor(() => {
@@ -840,9 +820,9 @@ describe('AssignmentsPage', () => {
       // URLs should be restored
       await waitFor(() => {
         const restoredModal = screen.getByRole('dialog', { name: /update assignment/i });
-        const refInput = within(restoredModal).getByRole('textbox', { name: /reference document url/i });
+        const referenceInput = within(restoredModal).getByRole('textbox', { name: /reference document url/i });
         const templateInput = within(restoredModal).getByRole('textbox', { name: /template document url/i });
-        expect(refInput).toHaveValue(originalReferenceUrl);
+        expect(referenceInput).toHaveValue(originalReferenceUrl);
         expect(templateInput).toHaveValue(originalTemplateUrl);
       });
 
@@ -876,11 +856,11 @@ describe('AssignmentsPage', () => {
       });
 
       // Change document URL using userEvent
-      const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+      const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
       await waitFor(() => {
-        expect(refUrlInput).toBeEnabled();
+        expect(referenceUrlInput).toBeEnabled();
       });
-      fireEvent.change(refUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
+      fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
 
       upsertAssignmentDefinitionMock.mockResolvedValueOnce({
         ...getFullAssignmentDefinitionFixture(),
@@ -959,9 +939,9 @@ describe('AssignmentsPage', () => {
 
       // Document URL fields should be disabled
       await waitFor(() => {
-        const refUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
+        const referenceUrlInput = within(modal).getByRole('textbox', { name: /reference document url/i });
         const templateUrlInput = within(modal).getByRole('textbox', { name: /template document url/i });
-        expect(refUrlInput).toBeDisabled();
+        expect(referenceUrlInput).toBeDisabled();
         expect(templateUrlInput).toBeDisabled();
       });
     });
