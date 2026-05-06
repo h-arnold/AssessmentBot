@@ -1,64 +1,62 @@
-# AssignmentDefinitionWizardModal Refactor Plan (TDD-First)
+# Assignment Definition Wizard Refactor Action Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md` for product behaviour and contracts.
-2. Read `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` for layout and UI specifications.
-3. Read `ACTION_PLAN.md` Section 4 for existing implementation context.
-4. Read `docs/developer/frontend/frontend-modal-patterns.md` for modal-specific standards.
-5. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md` for extraction rules.
-6. Read `config/eslint/ts-base-rules.cjs` for lint complexity threshold (max: 7).
-7. Treat the existing Section 4 implementation as the baseline; this refactor plan addresses **known technical debt** documented in `ACTION_PLAN.md` Section 4.
+1. Read `SPEC.md` for the accepted wizard behaviour and contracts.
+2. Read `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` for the agreed modal workflow and visible states.
+3. Read `ACTION_PLAN.md` for the broader assignment-definition delivery context.
+4. Read `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`.
+5. Read `docs/developer/frontend/frontend-modal-patterns.md`.
+6. Read `docs/developer/frontend/frontend-testing.md`.
+7. Read `docs/developer/frontend/frontend-loading-and-width-standards.md`.
+8. Read `docs/developer/frontend/frontend-logging-and-error-handling.md`.
+9. Read `config/eslint/ts-base-rules.cjs`.
+10. Read the current wizard implementation:
+
+- `src/frontend/src/pages/AssignmentDefinitionWizardModal.tsx`
+- `src/frontend/src/pages/useAssignmentDefinitionWizard.ts`
+- `src/frontend/src/pages/AssignmentDefinitionWizardModalShell.tsx`
 
 ## Scope and assumptions
 
 ### Scope
 
-- Refactor `AssignmentDefinitionWizardModal.tsx` to reduce cyclomatic complexity from 37 to <=7.
-- Extract state management and side effects into a feature-local custom hook following `src/frontend/AGENTS.md` Section 2.2.
-- Preserve **all** existing behaviour verified by the 10 unit tests in `AssignmentDefinitionWizardModal.spec.tsx`.
-- Maintain compliance with `docs/developer/frontend/frontend-modal-patterns.md` Section 3.4 (keep local to assignment-definition workflow).
+- Refine the existing split wizard structure in place.
+- Reduce `AssignmentDefinitionWizardModal` and `useAssignmentDefinitionWizard` to satisfy the hard ESLint complexity limit of `<=7`.
+- Remove duplicated wizard-specific orchestration and state-shaping logic where a coherent local contract exists.
+- Simplify modal render branching through an existing shell or narrow view-state seam.
+- Align the refactor to the accepted `SPEC.md` and `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` contract, even where the current implementation appears to diverge.
+- Fix the known create-session post-parse contract gap inside this refactor if it is confirmed in implementation: after stage-one create, the same session must transition to the shared edit surface and use the same explicit document-change re-parse-or-cancel flow as update mode.
 
 ### Out of scope
 
-- Adding new features or changing existing behaviour.
-- Modifying `AssignmentsPage.tsx` (parent component) beyond import path updates.
-- Changing backend contracts or services.
-- Addressing complexity violations in other files (e.g., `AssignmentsPage.tsx`).
+- Relaxing or bypassing the ESLint complexity rule.
+- Introducing speculative cross-feature helpers or a generic app-wide wizard abstraction.
+- Moving the wizard to a new feature folder as part of this refactor.
+- Reworking `AssignmentsPage.tsx` beyond any import or contract updates that become strictly necessary.
+- Changing backend contracts, persistence, or product behaviour beyond bringing the wizard back into alignment with the accepted spec/layout contract.
 
 ### Assumptions
 
-1. The refactor must pass all 10 existing unit tests without modification.
-2. The extracted hook will be **feature-local** (co-located in `pages/assignmentDefinitionWizard/`).
-3. TDD workflow applies: red tests first, green implementation, refactor verification.
-4. Each phase produces independently verifiable changes.
-5. The existing `pages/assignmentDefinitionWizard/` directory is the intended location for refactored files.
+1. The validated lint baseline is the current source of truth: both `AssignmentDefinitionWizardModal` and `useAssignmentDefinitionWizard` currently fail ESLint complexity at `17`.
+2. Existing split files already represent the accepted structure boundary; the remaining work is structural refinement inside that boundary, not first-time hook extraction.
+3. When current implementation and accepted spec/layout conflict, the implementation must move towards the accepted spec/layout rather than the refactor preserving the divergence.
 
-### Justification for Hook Extraction
+---
 
-**Addressing planner-reviewer concern about single-caller anti-pattern:**
+## Current validated baseline
 
-The repo's `frontend-shared-helpers-and-abstraction-standards.md` Section 5 rejects "single-caller wrapper extraction that does not own an independent contract." However, the codebase contains **precedent for single-caller hooks that own coherent contracts**:
-
-- `useClassesManagement.ts` — Used by `ClassesManagementPanel.tsx` (1 production caller) + tests. Owns contract: Classes management state.
-- `useBackendSettings.ts` — Used by `BackendSettingsPanel.tsx` (1 production caller) + tests. Owns contract: Backend settings state.
-
-**This refactor follows the same pattern:**
-
-- `useAssignmentDefinitionWizard.ts` — Will be used by `AssignmentDefinitionWizardModal.tsx` (1 production caller) + tests. Will own contract: Assignment definition wizard state and lifecycle management.
-
-This is **not** a violation of the anti-pattern because:
-
-1. The hook owns a **coherent, independent contract** (wizard state/lifecycle), not just arbitrary code
-2. It is **feature-scoped** (co-located with its single caller)
-3. It is **not shared abstraction** (won't be imported by other features)
-
-This approach satisfies both:
-
-- `src/frontend/AGENTS.md` Section 2.2: "Place async orchestration and side effects in feature hooks"
-- `frontend-modal-patterns.md` Section 3.4: "keep local to the assignment-definition workflow"
+- `AssignmentDefinitionWizardModal.tsx` already delegates to `useAssignmentDefinitionWizard.ts`, but the component still fails complexity because it owns multiple top-level modal return branches and a large render path.
+- `useAssignmentDefinitionWizard.ts` already owns the wizard state machine, but still fails complexity because it contains:
+  - duplicated async orchestration skeletons across `handleParseAndContinue`, `handleSave`, and `handleReparse`
+  - repeated state-shaping work around task rows, canonical document URLs, parsed baselines, document-change state, and definition hydration
+- `AssignmentDefinitionWizardModalShell.tsx` already exists, which means a shell/view-state seam is available and should be evaluated before escalating to a reducer or discriminated UI-state rewrite.
+- The accepted spec/layout contract requires create-after-parse sessions to move onto the same main edit surface and the same document-change re-parse/cancel flow as update mode.
+- The current create-session flow appears likely to diverge from that contract because the post-parse document-change path is not evidently shared with update mode. Treat this as a pre-existing spec-alignment bug to fix inside this refactor, not a behaviour to preserve.
+- Repo policy explicitly rejects duplicated orchestration skeletons where descriptor-driven derivation is feasible.
+- Repo policy does not reject a single-caller feature-local hook when it owns a real contract; the wizard hook remains the correct top-level ownership boundary.
 
 ---
 
@@ -66,580 +64,402 @@ This approach satisfies both:
 
 ### Engineering constraints
 
-- Keep the modal as a **feature-local workflow surface** per `frontend-modal-patterns.md` Section 3.4.
-- Do **not** extract multiple single-caller hooks (anti-pattern per `frontend-shared-helpers-and-abstraction-standards.md` Section 5).
-- Extract **one** co-located hook containing all state/logic to satisfy `src/frontend/AGENTS.md` Section 2.2 (side effects in hooks).
-- Preserve all existing Ant Design component usage and patterns.
-- Maintain React Query cache invalidation and query key contracts.
-- Use British English in comments and documentation.
+- Keep one feature-local wizard hook as the primary state/orchestration surface.
+- Do not split the workflow into multiple speculative hooks purely to appease lint.
+- Extract only helpers that own a coherent contract; otherwise keep logic local.
+- Prefer descriptor/config-driven orchestration over near-identical async handlers.
+- Prefer one narrow modal shell or view-state path over multiple top-level early-return branches.
+- Treat a reducer or discriminated UI-state model as a fallback option only if the simpler refactor still leaves either file above complexity `7`.
+- Preserve modal loading, blocking-error, confirm-loading, and accessible busy-state semantics according to the canonical frontend docs.
+- Preserve and, where needed, restore the accepted wizard contract from `SPEC.md` and `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`.
+- Use British English in code comments and docs.
 
-### TDD workflow (mandatory per phase)
+### TDD workflow (mandatory per section)
 
-For each phase below:
+For each section below:
 
-1. **Red**: Write failing tests for the phase's acceptance criteria (if new test coverage needed).
-2. **Green**: Implement the smallest change needed to pass all tests (existing + new).
-3. **Refactor**: Tidy implementation with all tests still green.
-4. Run phase-level verification commands.
+1. **Red**: add or tighten tests to protect the accepted contract before structural changes begin.
+2. **Green**: implement the smallest structural change that makes the section pass.
+3. **Refactor**: tidy names, contracts, and local extraction boundaries with tests still green.
+4. Run the section-level verification commands.
 
-### Phase check tracking
+### Delegation mandatory-read gate
 
-**Note:** Phase check checkboxes (`[ ]`, `[x]`) track **execution progress** during implementation, not planning readiness. Empty checkboxes indicate the phase has not yet been executed, not that the plan is incomplete. The plan status at the document footer indicates planning readiness.
+For any delegated implementation, testing, or review handoff in this plan, require:
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+- `AGENTS.md`
+- `src/frontend/AGENTS.md`
+- `WIZARD_REFACTOR_ACTION_PLAN.md`
+- `SPEC.md`
+- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+- `docs/developer/frontend/frontend-testing.md`
+- `docs/developer/frontend/frontend-loading-and-width-standards.md`
+- `docs/developer/frontend/frontend-logging-and-error-handling.md`
+- `config/eslint/ts-base-rules.cjs`
+- the touched wizard source files and touched tests
 
-When a phase is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+Every delegated handoff must include an explicit `Files read` section. Reject the handoff if any mandatory file is missing.
 
-For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`):
+### Validation commands
 
-1. List required workspace documentation file paths and any required external documentation URLs under that phase before delegation.
-2. Require the sub-agent handoff to include `Files read` with explicit workspace file paths and `External docs consulted` with explicit URLs whenever external references are mandatory.
-3. Verify every mandatory file path and mandatory URL is listed before accepting the handoff.
-4. If any mandatory item is missing, return the work to the same sub-agent and block progression to the next phase.
-
-### Validation commands hierarchy
-
-- Backend lint: `npm run lint`
-- Frontend lint: `npm run frontend:lint`
-- Frontend unit tests: `npm run frontend:test -- <target>`
-- Frontend type check: `npm run frontend:type-check`
+- Wizard-only lint from `src/frontend/`: `npx eslint src/pages/AssignmentDefinitionWizardModal.tsx src/pages/useAssignmentDefinitionWizard.ts src/pages/AssignmentDefinitionWizardModalShell.tsx`
+- Focused frontend tests from repo root: `npm run frontend:test -- AssignmentDefinitionWizardModal AssignmentDefinitionWizardModalShell`
+- Full frontend lint from repo root: `npm run frontend:lint`
+- Frontend build/type validation from repo root: `npm run frontend:build`
 
 ### Shared-helper planning gate
 
+These helper decision entries must align with `docs/developer/ACTION_PLAN_TEMPLATE.md`. Do not treat `src/frontend/AGENTS.md` as a destination for wizard helper-outcome records. Because this refactor expects helper and modal-seam decisions, planned helper entries must be added to the relevant canonical docs with status `Not implemented` before or as part of implementation planning. The likely canonical targets for this wizard refactor are:
+
+- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `docs/developer/frontend/frontend-modal-patterns.md`
+
 Helper decision entries for this refactor:
 
-1. Helper: `useAssignmentDefinitionWizard` (new feature-local hook)
+1. Helper or contract: `useAssignmentDefinitionWizard`
+   - Decision: `keep local`
+   - Owning path: `src/frontend/src/pages/useAssignmentDefinitionWizard.ts`
+   - Call-site rationale: the hook already owns the coherent assignment-definition wizard contract and remains the right feature-local orchestration boundary
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
+   - Planned doc status: `Not implemented`
+
+2. Helper or contract: wizard async mutation flow runner
    - Decision: `new`
-   - Owning module/path: `src/frontend/src/pages/assignmentDefinitionWizard/useAssignmentDefinitionWizard.ts`
-   - Call-site rationale: consolidates side effects and state management for the single-caller modal component; owns coherent contract for wizard state/lifecycle; keeps abstraction feature-local per `frontend-modal-patterns.md` Section 3.4; follows precedent of `useClassesManagement.ts` and `useBackendSettings.ts`
-   - Relevant canonical doc target: `src/frontend/AGENTS.md` Section 2.2, `frontend-modal-patterns.md` Section 3.4, `frontend-shared-helpers-and-abstraction-standards.md` Section 4.3
+   - Owning path: feature-local to the wizard, either inside `useAssignmentDefinitionWizard.ts` or a co-located helper file if needed
+   - Call-site rationale: parse, save, and re-parse currently repeat the same async control skeleton and need one real orchestration contract rather than three near-copies
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
    - Planned doc status: `Not implemented`
 
-2. Helper: `AssignmentDefinitionWizardModal` (existing component)
-   - Decision: `refactor in place`
-   - Owning module/path: `src/frontend/src/pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModal.tsx`
-   - Call-site rationale: move from root `pages/` to feature-local directory; split into presenter-only component consuming hook
-   - Relevant canonical doc target: `frontend-modal-patterns.md` Section 4
-   - Planned doc status: `Not applicable`
-
-3. Helper: `AssignmentDefinitionWizardModalShell` (existing presenter component)
-   - Decision: `refactor in place`
-   - Owning module/path: `src/frontend/src/pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModalShell.tsx`
-   - Call-site rationale: part of assignment-definition workflow shell; moved to feature-local directory alongside main modal
-   - Relevant canonical doc target: `frontend-modal-patterns.md` Section 4
+3. Helper or contract: wizard state-shaping helpers
+   - Decision: `keep local`
+   - Owning path: `src/frontend/src/pages/useAssignmentDefinitionWizard.ts` or a co-located wizard helper module if lint/readability still requires it
+   - Call-site rationale: canonical document URL derivation, task-row mapping, document-change shaping, parsed baseline construction, and definition hydration are coherent wizard-local transforms but are not yet justified as shared cross-feature helpers
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
    - Planned doc status: `Not implemented`
 
-### Complexity Reduction Analysis
-
-**Baseline (from ACTION_PLAN.md Section 4):**
-
-| File                                  | Line | Function                          | Current Complexity | Target |
-| ------------------------------------- | ---- | --------------------------------- | ------------------ | ------ |
-| `AssignmentDefinitionWizardModal.tsx` | 72   | `hasAllParseFields`               | 10                 | <=7    |
-| `AssignmentDefinitionWizardModal.tsx` | 109  | `AssignmentDefinitionWizardModal` | 37                 | <=7    |
-| `AssignmentDefinitionWizardModal.tsx` | 109  | Cognitive Complexity              | 17                 | <=15   |
-| `AssignmentDefinitionWizardModal.tsx` | 237  | Dirty state `useEffect`           | 19                 | <=7    |
-| `AssignmentDefinitionWizardModal.tsx` | 361  | `handleSave`                      | 8                  | <=7    |
-
-**How extraction achieves targets:**
-
-1. **`hasAllParseFields` (10 -> <=3):** Replace chained boolean conditions with `Array.every()` pattern.
-2. **`handleSave` (8 -> <=7):** Extract request-building logic to helper function (deferred to Phase 2).
-3. **Dirty state `useEffect` (19 -> N/A):** This complexity moves to the hook. The **hook** must delegate to helper functions to achieve <=7 complexity, following the precedent of `useClassesManagement.ts`.
-4. **Main component (37 -> <=7):** After extracting all state, queries, mutations, and handlers to the hook, the component retains only:
-   - Hook invocation (1)
-   - JSX rendering with conditional branches (2-3)
-   - Form field definitions (1-2)
-   - Event wiring (1)
-   - **Total: ~5-6**
-5. **Hook complexity (<=7):** The hook itself must be decomposed into helper functions. Complex logic (e.g., dirty state calculation, request building) must live in separate helpers called by the hook.
-
-**Complexity threshold source:** `config/eslint/ts-base-rules.cjs` line 14: `'complexity': ['error', 7]` (applies to ALL files, including hooks)
-
-### Complexity Budget
-
-| File                                  | Current | Target | Owner                      |
-| ------------------------------------- | ------- | ------ | -------------------------- |
-| `AssignmentDefinitionWizardModal.tsx` | 37      | <=7    | Component (presenter only) |
-| `useAssignmentDefinitionWizard.ts`    | N/A     | <=7    | Hook (orchestrator only)   |
-| `hasAllParseFields`                   | 10      | <=3    | Helper function            |
-| `handleSave`                          | 8       | <=7    | Helper function            |
-| Dirty state `useEffect`               | 19      | <=7    | Helper function(s)         |
+4. Helper or contract: wizard shell/view-state seam
+   - Decision: `extend`
+   - Owning path: `src/frontend/src/pages/AssignmentDefinitionWizardModalShell.tsx` or a narrow local view-state helper consumed by `AssignmentDefinitionWizardModal.tsx`
+   - Call-site rationale: the component already has an available shell seam and should use one render path for blocked/loading/error/ready states before escalating to a heavier state-model rewrite
+   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
+   - Planned doc status: `Not implemented`
 
 ---
 
-## Phase 1 — Quick wins: Helper function simplification
+## Section 1 — Lock the accepted contract baseline and missing regression coverage
 
 ### Objective
 
-- Reduce complexity in standalone helper functions that can be simplified without structural changes.
-- Fix low-hanging fruit to demonstrate progress and reduce risk.
-- Validate that existing tests continue to pass.
+- Confirm the current lint baseline.
+- Lock in regression coverage for the accepted wizard contract before structural changes begin.
 
 ### Constraints
 
-- Only modify pure utility functions (no React hooks, no state changes).
-- Do not change component behaviour or structure.
-- All existing tests must continue to pass.
-- No new files created.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `config/eslint/ts-base-rules.cjs`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- No production behaviour changes in this section.
+- The contract baseline for later sections is `SPEC.md` plus `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`, not merely the current implementation.
+- Do not add tests for private implementation details.
 
 ### Acceptance criteria
 
-- `hasAllParseFields` complexity reduced from 10 to <=3.
-- All 10 existing unit tests pass without modification.
-- No new files created.
+- The section records the real starting point:
+  - `AssignmentDefinitionWizardModal` complexity `17`
+  - `useAssignmentDefinitionWizard` complexity `17`
+  - existing hook and shell already present
+  - create-after-parse contract alignment still needs explicit protection
+- Regression coverage explicitly protects these accepted behaviours before Section 2 starts:
+  - stage-one create success transitions the same session into the shared edit surface
+  - final save success from the shared edit surface
+  - create-session post-parse document edits trigger the same re-parse-or-cancel flow as update mode
+  - create-session post-parse re-parse success preserves/reset task-row state according to the accepted contract
+  - loading, blocking-error, and guarded-close states remain explicit at the modal surface
 
-### Required test cases/checks
+### Required test cases (Red first)
 
-1. `hasAllParseFields` uses `Array.every()` pattern.
-2. Run `npm run frontend:test -- AssignmentDefinitionWizardModal.spec.tsx` — all 10 tests pass.
-3. Run `npm run frontend:lint -- src/frontend/src/pages/AssignmentDefinitionWizardModal.tsx` — complexity errors reduced from 5 to 4 (was: 37, 19, 17, 10, 8; now: 37, 19, 17, 8).
+1. Run `npm run frontend:test -- AssignmentDefinitionWizardModal AssignmentDefinitionWizardModalShell`.
+2. From `src/frontend/`, run `npx eslint src/pages/AssignmentDefinitionWizardModal.tsx src/pages/useAssignmentDefinitionWizard.ts src/pages/AssignmentDefinitionWizardModalShell.tsx`.
+3. Add or tighten behaviour-level coverage for:
+   - successful stage-one create populating tasks and entering the shared edit surface
+   - successful final save from that shared edit surface
+   - successful post-parse create-session re-parse after document changes
+   - create-session re-parse cancel restoring previous document URLs
+   - blocked/loading/error state rendering through the modal surface
 
-### Implementation notes
+### Section checks
 
-- Extract `REQUIRED_PARSE_FIELDS` constant: `['title', 'topic', 'yearGroup', 'referenceDocumentUrl', 'templateDocumentUrl'] as const`
-- Rewrite `hasAllParseFields`: `return REQUIRED_PARSE_FIELDS.every(field => String(values[field] ?? '').trim() !== '');`
-- **Deferred:** `handleSave` simplification moved to Phase 2 as part of hook extraction
+- Baseline lint failures are captured accurately.
+- Existing and newly added regression tests are green before refactor implementation begins.
+- Planned helper entries were added to the relevant canonical docs with status `Not implemented` before implementation starts.
+- No stale plan language remains about preserving a spec-divergent create-session flow, first-time hook extraction, file relocation, or threshold relaxation.
 
-### Phase checks
+### Optional `@remarks` JSDoc follow-through
 
-- [ ] green implementation complete
-- [ ] green review clean
-- [ ] checks passed (tests + lint)
-- [ ] action plan updated
-- [ ] commit created
-- [ ] push completed
+- None.
 
 ---
 
-## Phase 2 — Extract useAssignmentDefinitionWizard hook
+## Section 2 — Replace duplicated async handlers with one wizard-local orchestration contract
 
 ### Objective
 
-- Create the new hook file containing all state, queries, mutations, and handlers.
-- Component becomes thin presenter with JSX only.
-- Hook owns the coherent contract for wizard state and lifecycle management.
+- Reduce hook complexity by collapsing the repeated async mutation skeletons into one real wizard-local flow contract.
+- Bring create-session post-parse orchestration into line with the accepted shared edit-surface contract if the current handlers still diverge.
 
 ### Constraints
 
-- **Do not** change any test files.
-- **Do not** modify `AssignmentsPage.tsx` (parent will be updated in Phase 3).
-- Hook must be co-located: `src/frontend/src/pages/assignmentDefinitionWizard/useAssignmentDefinitionWizard.ts`.
-- Component remains in current location until hook is verified.
-- **Note:** `AssignmentDefinitionWizardModalShell.tsx` remains unchanged in this phase; it will be relocated in Phase 3 without code modification.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-modal-patterns.md` (Section 3.4)
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `config/eslint/ts-base-rules.cjs`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-modal-patterns.md` (Section 3.4)
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- Keep a single top-level wizard hook.
+- Do not introduce multiple micro-hooks for parse/save/re-parse.
+- Keep the orchestration contract feature-local and descriptor-driven.
+- Preserve current mutation side effects, cache invalidation, and blocking-error treatment where they are already consistent with the accepted spec/layout contract.
+- Where current create-session behaviour conflicts with `SPEC.md` or `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`, prefer spec/layout alignment over behaviour preservation.
 
 ### Acceptance criteria
 
-- `useAssignmentDefinitionWizard.ts` exists with:
-  - All `useQuery` calls (topics, yearGroups, definition)
-  - `useMutation` for upsert
-  - Core state: `form`, `hasParsedTasks`, `taskRows`, `isSubmitting`, `blockingError`
-  - Simple handlers that **delegate to helper functions** (not complex logic directly in hook body)
-  - Helper functions: `buildCanonicalUrl`, `hasAllParseFields`, `hasYearGroupSelected`, `buildSaveRequest`, `calculateDirtyState`, `buildReparseRequest`
-  - Return object with all state and handlers needed by component
-  - **Hook main function complexity <=7** (via helper decomposition)
-  - **All helper functions complexity <=7**
-- Component imports hook and delegates all logic to it
-- All 10 existing unit tests pass without modification
-- Hook file passes type check and lint
-- Component complexity reduced to <=7
+- `handleParseAndContinue`, `handleSave`, and `handleReparse` become thin wrappers over a shared orchestration path.
+- The shared orchestration path owns at least these reusable concerns:
+  - early exit for busy-state preconditions
+  - request acquisition or derivation
+  - `mutateAsync` invocation
+  - shared error logging and user-safe blocking-error mapping
+  - common submission-state lifecycle
+- Mode-specific behaviour is expressed through descriptor/config inputs rather than copied control flow.
+- Post-parse create sessions and update sessions use the same re-parse-or-cancel orchestration contract for document changes.
+- Hook complexity drops materially and no new helper introduced in this section exceeds complexity `7`.
 
-### Required test cases/checks
+### Required test cases (Red first)
 
-1. Run `npm run frontend:test -- AssignmentDefinitionWizardModal.spec.tsx` — all 10 tests pass.
-2. Run `npm run frontend:type-check` — no errors.
-3. Run `npm run frontend:lint -- AssignmentDefinitionWizardModal.tsx` — component complexity <=7 (passes).
-4. Run `npm run frontend:lint -- useAssignmentDefinitionWizard.ts` — hook complexity <=7 (passes); helper functions each <=7.
-5. Component file size reduced from ~628 lines to ~150-200 lines.
-6. Hook file size <=400 lines.
+1. Keep the Section 1 regression coverage green for:
+   - parse success into the shared edit surface
+   - final save success
+   - create-session post-parse re-parse success/cancel
+2. Add any missing regression coverage needed to prove that the unified async path does not change accepted query invalidation or close behaviour.
+3. Run `npm run frontend:test -- AssignmentDefinitionWizardModal`.
+4. From `src/frontend/`, run `npx eslint src/pages/useAssignmentDefinitionWizard.ts`.
 
-### Implementation notes
+### Section checks
 
-- Hook signature: `useAssignmentDefinitionWizard(properties: { mode: ModalMode; definitionKey: string | null; open: boolean; onClose: () => void }): UseAssignmentDefinitionWizardResult`
-- Use `useCallback` for all handlers to maintain referential stability.
-- Keep all existing dependency arrays identical to prevent unnecessary re-renders.
-- Return memoized derived state (e.g., `topicOptions`, `yearGroupOptions`, `isPrimaryActionDisabled`) from hook.
-- **Follow precedent pattern:** Hook orchestrates; complex logic lives in separate helper functions (matching `useClassesManagement.ts` structure).
-- `handleSave` complexity reduced via `buildSaveRequest()` helper extraction.
-- **Hook test strategy:** Hook behaviour is covered by existing component integration tests through the presenter layer; no new dedicated hook test file is created in this refactor.
+- No three-way duplicated async orchestration skeleton remains across the hook handlers.
+- Shared orchestration is descriptor-driven, not a pass-through wrapper.
+- `useAssignmentDefinitionWizard` is trending towards or already below complexity `7`.
+- The accepted create-after-parse contract is enforced in the orchestration boundary rather than left as a follow-up ambiguity.
 
-### Complexity justification
+### Optional `@remarks` JSDoc follow-through
 
-After extraction, the component contains only:
-
-- Hook invocation (1 path)
-- Conditional rendering for loading/error states (2 paths: if loading, if error)
-- Conditional rendering for main content (2 paths: if parsed, if not parsed)
-- Form field definitions (no conditionals)
-- Event wiring (no conditionals)
-- **Total cyclomatic complexity: ~5-6** (well under 7 threshold)
-
-The hook achieves <=7 complexity by delegating to helper functions:
-
-- `hasAllParseFields`: <=3 (Array.every() pattern)
-- `buildSaveRequest`: <=5 (extracted from handleSave)
-- `calculateDirtyState`: <=7 (extracted from useEffect)
-- `buildReparseRequest`: <=7 (extracted from handler)
-
-### Phase checks
-
-- [ ] green implementation complete
-- [ ] green review clean
-- [ ] checks passed (tests + lint + type-check)
-- [ ] action plan updated
-- [ ] commit created
-- [ ] push completed
+- Add `@remarks` only if the final orchestration contract would be non-obvious without explaining why parse/save/re-parse intentionally share one flow boundary.
 
 ---
 
-## Phase 3 — File relocation and import updates
+## Section 3 — Extract wizard-local state-shaping helpers with real contracts
 
 ### Objective
 
-- Move files to feature-local directory structure.
-- Update import paths in `AssignmentsPage.tsx`.
-- Ensure all imports continue to resolve correctly.
+- Move repeated pure transformations out of the hook body so the hook coordinates state rather than constructing every derived object inline.
 
 ### Constraints
 
-- Maintain all existing imports from `AssignmentsPage.tsx`.
-- Update import paths in `AssignmentsPage.tsx` to point to new location.
-- Do not modify any code logic, only file paths and imports.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-modal-patterns.md` (Section 3.4)
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-modal-patterns.md` (Section 4)
+- Prefer pure local helpers first.
+- Keep helpers wizard-local unless a real second caller enters accepted scope.
+- Do not create helper files only to move code out of the hook; each helper must own a clear transform contract.
+- Keep loading/error-state shaping aligned with `docs/developer/frontend/frontend-loading-and-width-standards.md` and `docs/developer/frontend/frontend-logging-and-error-handling.md`.
 
 ### Acceptance criteria
 
-- `AssignmentDefinitionWizardModal.tsx` moved to `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModal.tsx`
-- `AssignmentDefinitionWizardModal.spec.tsx` moved to `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModal.spec.tsx`
-- `AssignmentDefinitionWizardModalShell.tsx` moved to `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModalShell.tsx`
-- `AssignmentDefinitionWizardModalShell.spec.tsx` moved to `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModalShell.spec.tsx`
-- `AssignmentsPage.tsx` imports updated to use new paths
-- All tests pass from new locations
+- Repeated shaping logic is reduced through coherent local helpers for patterns such as:
+  - task-row mapping from definition or mutation responses
+  - canonical document URL derivation
+  - document-change state shaping
+  - parsed create-baseline construction
+  - definition hydration payload shaping for form/task state
+- Dirty-state and hydration logic read as composition of named transforms rather than one long inline path.
+- The hook remains the owner of side effects, but helper extraction removes avoidable branching from its body.
+- No extracted helper is introduced as a speculative cross-feature abstraction.
+- Any create-session post-parse state shaping now matches the accepted shared edit-surface contract.
 
-**Note:** `useAssignmentDefinitionWizard.ts` is created in Phase 2 and remains in place; no relocation needed.
+### Required test cases (Red first)
 
-### Required test cases/checks
+1. Keep testing at the modal/hook behaviour level unless a new pure helper becomes complex enough to justify direct unit coverage.
+2. Verify update-mode hydration still produces the same visible form values and task rows.
+3. Verify create-session post-parse document-change detection and cancel/reset behaviour matches update mode.
+4. Run `npm run frontend:test -- AssignmentDefinitionWizardModal`.
+5. From `src/frontend/`, run `npx eslint src/pages/useAssignmentDefinitionWizard.ts`.
 
-1. Run `npm run frontend:test -- assignmentDefinitionWizard` — all 10 tests pass.
-2. Run `npm run frontend:lint` — no new errors, complexity errors now reference new paths.
-3. Run `npm run frontend:type-check` — no errors.
-4. Run `npm run frontend:test:e2e` — assignment-definition wizard tests pass.
-5. Verify all relative imports between moved files resolve correctly from new locations.
+### Section checks
 
-### Implementation notes
+- Repeated pure transforms no longer obscure the hook body.
+- Dirty-state calculation and definition hydration are structurally simpler than the current inline implementation.
+- The hook either passes complexity `<=7` here or is close enough that the remaining work is clearly in the component render path.
 
-- Move all files in a single commit to avoid broken intermediate states.
-- Update all import statements in `AssignmentsPage.tsx` and any other consumers.
-- Verify no circular dependencies are introduced.
+### Optional `@remarks` JSDoc follow-through
 
-### Phase checks
-
-- [ ] green implementation complete
-- [ ] checks passed (tests + lint + type-check)
-- [ ] action plan updated
-- [ ] commit created
-- [ ] push completed
+- Consider `@remarks` on any non-obvious baseline or document-change helper if the reasoning would otherwise be lost after the action plan is removed.
 
 ---
 
-## Phase 4 — Final verification and cleanup
+## Section 4 — Collapse modal render branching through a shell or narrow view-state seam
 
 ### Objective
 
-- Full regression test of the refactored code.
-- Verify all behavioural contracts from SPEC.md are preserved.
-- Clean up any temporary code or comments.
-- Document the refactor in ACTION_PLAN.md.
+- Reduce component complexity by replacing multiple top-level early-return modal branches with one modal render path.
 
 ### Constraints
 
-- Run complete test suite for assignment-definition workflow.
-- Verify against SPEC.md behavioural requirements.
-- Do not introduce new features or behavioural changes.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md` (Section 4)
-- `WIZARD_REFACTOR_ACTION_PLAN.md`
+- Reuse the existing `AssignmentDefinitionWizardModalShell.tsx` seam if it can own a narrow contract cleanly.
+- Do not introduce a generic app-wide modal wrapper.
+- Preserve current blocking, loading, ready, discard-confirm, and primary-action semantics where they align with the accepted spec/layout contract.
+- Keep modal loading and blocking treatments aligned with `docs/developer/frontend/frontend-loading-and-width-standards.md` and `docs/developer/frontend/frontend-modal-patterns.md`.
 
 ### Acceptance criteria
 
-- All 10 unit tests pass.
-- All Playwright E2E tests for assignment-definition wizard pass.
-- Frontend lint passes clean (no complexity violations <=7 in component file).
-- Frontend type check passes clean.
-- Manual verification of key workflows (smoke tests):
-  - Create mode: parse and continue, then save
-  - Update mode: document change + cancel restores URLs
-  - Update mode: document change + re-parse refreshes tasks
-  - Close with unsaved edits triggers discard confirmation
-- ACTION_PLAN.md updated with refactor completion notes
+- `AssignmentDefinitionWizardModal` no longer has three separate top-level modal early returns for blocked/loading/error states.
+- One of these outcomes is used:
+  - extend `AssignmentDefinitionWizardModalShell.tsx` to own the shell/view-state contract, or
+  - introduce a narrow local `viewState`/render helper consumed by the modal
+- The main modal component becomes a thin presenter that wires:
+  - modal title and footer actions
+  - form/body rendering
+  - discard-confirm modal
+  - one shell/view-state decision path
+- The chosen shell/view-state path preserves explicit status semantics for loading and blocking states.
+- `AssignmentDefinitionWizardModal` reaches complexity `<=7`.
+
+### Required test cases (Red first)
+
+1. Keep or extend shell-level tests so loading and blocking-error states remain explicit and testable.
+2. Keep modal integration coverage for ready-state interactions, create-session post-parse re-parse prompts, and discard-confirm behaviour.
+3. Run `npm run frontend:test -- AssignmentDefinitionWizardModal AssignmentDefinitionWizardModalShell`.
+4. From `src/frontend/`, run `npx eslint src/pages/AssignmentDefinitionWizardModal.tsx src/pages/AssignmentDefinitionWizardModalShell.tsx`.
+
+### Section checks
+
+- No duplicated modal shell structure remains across blocked/loading/error branches.
+- The shell/view-state seam owns a narrow contract rather than becoming a prop tunnel.
+- `AssignmentDefinitionWizardModal` passes the complexity rule.
+
+### Optional `@remarks` JSDoc follow-through
+
+- None unless the final shell contract carries non-obvious accessibility or busy-state reasoning.
+
+---
+
+## Section 5 — Fallback only: reducer or discriminated UI-state pass
+
+### Objective
+
+- Provide a bounded fallback if Sections 2 to 4 still leave either wizard file above complexity `7`.
+
+### Constraints
+
+- Do not start with this section.
+- Execute it only if simpler helper/view-state refactors prove insufficient.
+- Keep the fallback narrow and local to the wizard feature.
+- Do not use this section to avoid fixing the create-session spec-alignment gap if it still remains.
+
+### Acceptance criteria
+
+- A reducer or discriminated UI-state model is introduced only when there is a demonstrated remaining complexity problem after the simpler passes.
+- The fallback specifically targets the unresolved branching, rather than rewriting the whole wizard architecture.
+- Behaviour and tests remain stable.
+
+### Required test cases (Red first)
+
+1. Add only the minimum regression coverage needed for the specific fallback change.
+2. Re-run `npm run frontend:test -- AssignmentDefinitionWizardModal AssignmentDefinitionWizardModalShell`.
+3. From `src/frontend/`, re-run `npx eslint src/pages/AssignmentDefinitionWizardModal.tsx src/pages/useAssignmentDefinitionWizard.ts src/pages/AssignmentDefinitionWizardModalShell.tsx`.
+
+### Section checks
+
+- This section is skipped entirely if Sections 2 to 4 already satisfy the lint target.
+- Any reducer or state-model addition is justified by remaining measured complexity, not preference.
+
+### Optional `@remarks` JSDoc follow-through
+
+- Required if a reducer or discriminated state model is introduced and its transition logic would otherwise be hard to reconstruct.
+
+---
+
+## Regression and contract hardening
+
+### Objective
+
+- Prove the wizard satisfies the accepted contract while both complexity violations are resolved.
+
+### Constraints
+
+- Prefer focused validation first, then broader frontend checks.
+- Do not treat “lint passes” as sufficient without behaviour verification.
+- The regression gate is the accepted spec/layout contract, not merely parity with the previous implementation.
+
+### Acceptance criteria
+
+- `AssignmentDefinitionWizardModal` complexity is `<=7`.
+- `useAssignmentDefinitionWizard` complexity is `<=7`.
+- No touched helper in the wizard path exceeds complexity `7`.
+- Wizard unit tests remain green.
+- Frontend lint passes clean.
+- Frontend build/type validation passes.
+- The final implementation preserves or restores these accepted behaviours:
+  - create parse-and-continue flow
+  - same-session transition to the shared edit surface after stage-one create
+  - final save flow from the shared edit surface
+  - create-session and update-session document-change re-parse/cancel paths
+  - discard-confirm gating for dirty edits
 
 ### Required test cases/checks
 
-1. Run `npm run frontend:test -- assignmentDefinitionWizard` — all 10 tests pass.
-2. Run `npm run frontend:test:e2e` — all assignment-definition tests pass.
-3. Run `npm run frontend:lint` — no complexity errors in `AssignmentDefinitionWizardModal.tsx` or `useAssignmentDefinitionWizard.ts` (all <=7).
-4. Run `npm run frontend:type-check` — no errors.
-5. Manual smoke test of create and update flows in development environment.
+1. Run `npm run frontend:test -- AssignmentDefinitionWizardModal AssignmentDefinitionWizardModalShell`.
+2. From `src/frontend/`, run `npx eslint src/pages/AssignmentDefinitionWizardModal.tsx src/pages/useAssignmentDefinitionWizard.ts src/pages/AssignmentDefinitionWizardModalShell.tsx`.
+3. Run `npm run frontend:lint`.
+4. Run `npm run frontend:build`.
+5. Verify the final implementation still preserves or restores the accepted behaviours listed above.
 
-### Phase checks
+### Section checks
 
-- [ ] green implementation complete (cleanup)
-- [ ] checks passed (full test suite + lint)
-- [ ] manual smoke tests passed
-- [ ] action plan updated (documentation)
-- [ ] commit created
-- [ ] push completed
+- All required checks above are green.
+- The final state does not depend on relaxing lint rules or adding speculative abstractions.
+- The create-session post-parse contract gap is closed or explicitly blocked before implementation sign-off.
 
 ---
 
-## Rollback plan
+## Documentation and rollout notes
 
-If any phase fails and cannot be resolved within reasonable time:
+### Objective
 
-1. Revert all changes from the failed phase.
-2. Document the failure and blockers in this action plan.
-3. Escalate to user for decision on alternative approach.
+- Keep the wizard refactor notes aligned with the actual delivered structure and helper decisions.
 
-Each phase is designed to be independently revertible without affecting subsequent phases.
+### Constraints
 
----
+- Update only the documents touched by the refactor.
+- Do not preserve stale “planned extraction” language once implementation is done.
+- Reconcile the planned `Not implemented` helper entries in the relevant canonical docs against the delivered implementation outcome.
 
-## File ownership summary
+### Acceptance criteria
 
-| File                                                                        | Purpose                       | Phase Introduced | Lines (est.) | Complexity Target |
-| --------------------------------------------------------------------------- | ----------------------------- | ---------------- | ------------ | ----------------- |
-| `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModal.tsx`      | Presenter component (UI only) | Phase 3          | ~150-200     | <=7               |
-| `pages/assignmentDefinitionWizard/useAssignmentDefinitionWizard.ts`         | State, logic, handlers        | Phase 2          | ~300-350     | N/A (hook)        |
-| `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModal.spec.tsx` | Unit tests (existing)         | Phase 3          | ~700         | N/A               |
-| `pages/assignmentDefinitionWizard/AssignmentDefinitionWizardModalShell.tsx` | Shell component (existing)    | Phase 3          | ~80          | N/A               |
+- `WIZARD_REFACTOR_ACTION_PLAN.md` notes are reconciled with the implemented outcome before the plan is retired.
+- Planned helper entries exist in the relevant canonical docs with status `Not implemented` before implementation starts, then are reconciled during the documentation pass.
+- Any helper or modal decisions that become implemented outcomes are reflected accurately in the relevant canonical frontend docs.
+- If the shell seam is extended, modal-family documentation remains consistent with that narrow local contract.
 
----
+### Required checks
 
-## Behavioural context reference
-
-All refactoring must preserve the behavioural contracts defined in:
-
-- `SPEC.md` — Product behaviour and data contracts
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` — UI layout and workflow states
-- `ACTION_PLAN.md` Section 4 — Existing implementation and acceptance criteria
-
-**Key behaviours to preserve:**
-
-1. **Two-stage workflow:** Create mode requires parse-and-persist before task editing is available; update mode starts directly in edit surface
-2. **Document change gating:** Changing document URLs after parse disables metadata/task editing until user resolves via re-parse or cancel
-3. **Dirty state tracking:** Unsaved metadata/weighting edits disable document URL fields; closing with dirty edits requires discard confirmation
-4. **Re-parse preservation:** Re-parsing after document change preserves matching task weightings and defaults new tasks to 1
-5. **Loading states:** Shape-matched skeletons rendered during data loading; blocking errors fail closed with Alert
-6. **Validation:** Parse requires title, topic, yearGroup, both URLs; save requires yearGroup selection
-7. **Query cache:** Invalidate partials after parse/save; fetch refresh for AssignmentsPage table
+1. Reconcile the helper decision entries in this plan against the final implementation.
+2. Verify the planned `Not implemented` helper entries were added to the relevant canonical docs:
+   - `docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+   - `docs/developer/frontend/frontend-modal-patterns.md`
+3. Update those canonical docs to reflect the delivered helper/modal outcome where implementation completed the planned work, or keep `Not implemented` where work remains pending.
+4. Confirm no document still claims:
+   - the hook does not yet exist
+   - file relocation is pending
+   - accepting complexity `17` is an acceptable endpoint
+   - current implementation divergence was intentionally preserved over the accepted spec/layout contract
 
 ---
 
-## Resolution of planner-reviewer findings
+## Suggested implementation order
 
-The planner-reviewer identified several critical issues with the initial plan. This revised plan addresses all findings:
-
-### 1. Missing mandatory documentation
-
-**Finding:** `frontend-shared-helpers-and-abstraction-standards.md` was missing from Phases 3-5 mandatory reads.
-**Resolution:** Added to all relevant phases (1-4). Also added `config/eslint/ts-base-rules.cjs` for complexity threshold reference.
-
-### 2. Anti-pattern violation concern
-
-**Finding:** Single-caller hook extraction may violate Section 5 anti-pattern.
-**Resolution:** Added "Justification for Hook Extraction" section demonstrating precedent in codebase (`useClassesManagement.ts`, `useBackendSettings.ts`) and clarifying that the hook owns a coherent contract, not just renaming code.
-
-### 3. Premature file relocation
-
-**Finding:** Phase 2 (file relocation) was premature and added unnecessary risk.
-**Resolution:** File relocation remains as Phase 3, occurring **after** complexity reduction and hook extraction are verified.
-
-### 4. Unvalidated complexity target
-
-**Finding:** No analysis showing component complexity can reach <=7.
-**Resolution:** Added "Complexity Reduction Analysis" section with complexity budget table. Added explicit hook complexity target (<=7) via helper decomposition, following precedent pattern.
-
-### 5. Inconsistent phase numbering
-
-**Finding:** Phase 0 vs 1-based inconsistency with template.
-**Resolution:** Simplified to Phase 1-4 (1-based) to match ACTION_PLAN.md convention.
-
-### 6. Unnecessary helper extraction
-
-**Finding:** Phase 5 (separate helpers file) may create unnecessary indirection for single-caller.
-**Resolution:** Removed Phase 5. Helper functions remain in the hook file, following `useClassesManagement.ts` pattern of hook + internal helpers.
-
-### 7. Missing lint config reference
-
-**Finding:** No reference to source of <=7 threshold.
-**Resolution:** Added explicit reference to `config/eslint/ts-base-rules.cjs` line 14: `'complexity': ['error', 7]`.
-
-### 8. Ambiguous baseline complexity count
-
-**Finding:** "5 complexity violations" was ambiguous.
-**Resolution:** Clarified baseline as 5 lint errors across 4 functions (main component at line 109 contributes multiple errors). Added detailed table.
-
----
-
-## Resolution of slop review findings
-
-The slop review (SLOP_REVIEW.md) identified additional architectural gaps that have been incorporated:
-
-### CF-001: False assumption about ESLint hook complexity checking
-
-**Resolution:** Corrected analysis to acknowledge hooks are linted. Added explicit hook complexity target (<=7) and helper decomposition requirement.
-
-### CF-002: God hook anti-pattern
-
-**Resolution:** Updated Phase 2 to require hook + helper decomposition pattern (matching `useClassesManagement.ts` precedent). Added complexity budget for both component and hook.
-
-### CF-003: Unnecessary file relocation
-
-**Resolution:** File relocation retained per user request, but kept as separate Phase 3 after core refactor is verified.
-
-### MF-004: Premature optimization in Phase 1
-
-**Resolution:** Refocused Phase 1 on `hasAllParseFields` (10->3). Deferred `handleSave` simplification to Phase 2.
-
----
-
-## Open questions for user
-
-None. All findings have been addressed with concrete resolutions.
-
----
-
-_Plan status: Ready for implementation_
-_Last reviewed: By planner-reviewer subagent and slop review (SLOP_REVIEW.md)_
-_All critical issues: Resolved (planner-reviewer findings 1-8 + slop review CF-001, CF-002, CF-003, MF-004)_
+1. Section 1 — lock the accepted contract baseline and missing seam coverage
+2. Section 2 — unify duplicated async orchestration in the existing hook and fix the create-session post-parse contract gap
+3. Section 3 — extract wizard-local state-shaping helpers
+4. Section 4 — simplify the component through one shell/view-state path
+5. Section 5 — only if still needed after the simpler passes
+6. Regression and documentation cleanup

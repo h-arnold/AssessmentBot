@@ -14,15 +14,16 @@ Before asking questions or drafting anything, you must:
 
 1. **Read core instructions**:
    - Read AGENTS.md.
-2. **Read component instructions when the request already implicates them**:
+2. **Use `Kif` for simple codebase exploration**: When gathering context, delegate straightforward codebase exploration tasks (such as finding file snippets, searching for patterns, or locating relevant code sections) to the `Kif` subagent. Kif is optimised for menial, low-judgement exploration tasks.
+3. **Read component instructions when the request already implicates them**:
    - Backend: src/backend/AGENTS.md
    - Frontend: src/frontend/AGENTS.md
    - Builder: scripts/builder/AGENTS.md
-3. **Read the planning templates**:
+4. **Read the planning templates**:
    - docs/developer/SPEC_TEMPLATE.md
    - docs/developer/LAYOUT_SPEC_TEMPLATE.md
    - docs/developer/ACTION_PLAN_TEMPLATE.md
-4. **Read existing planning docs and nearby source context**:
+5. **Read existing planning docs and nearby source context**:
    - inspect any current `SPEC.md`, `ACTION_PLAN.md`, and root layout docs relevant to the request
    - inspect enough code, routes, pages, services, or models to ground your questions in the actual architecture
 

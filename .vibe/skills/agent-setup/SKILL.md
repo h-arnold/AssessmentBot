@@ -12,9 +12,9 @@ tools:
 
 # Agent Setup and Configuration Skill
 
-## IMPORTANT: Consult Official Docs First
+## MANDATORY: Consult Official Docs First
 
-**The Mistral Vibe agent and skill system is actively evolving.** Before using this skill, always consult the latest official documentation:
+Before using this skill, **always** use your web search tool to consult the latest official documentation:
 
 - **[Agents & Skills | Mistral Docs](https://docs.mistral.ai/mistral-vibe/agents-skills)** — Primary reference for agent configuration, discovery, and skills
 - **[GitHub: mistral-vibe](https://github.com/mistralai/mistral-vibe)** — Source repository with examples and issue tracker
@@ -158,9 +158,9 @@ system_prompt_id = "planner"  # Must be BEFORE [tools] section
 
 ### 4. Custom Prompts
 
-- Store in `~/.vibe/prompts/` as markdown files
+- Store in `.vibe/prompts/` as markdown files
 - Filename matches the `system_prompt_id` value
-- Example: `system_prompt_id = "planner"` → `~/.vibe/prompts/planner.md`
+- Example: `system_prompt_id = "planner"` → `.vibe/prompts/planner.md`
 - Content is the full system prompt/instructions for the agent
 
 ## Usage
@@ -170,14 +170,14 @@ system_prompt_id = "planner"  # Must be BEFORE [tools] section
 1. **Create prompt file:**
 
    ```bash
-   # ~/.vibe/prompts/my-agent.md
+   # .vibe/prompts/my-agent.md
    echo "You are a My Agent for AssessmentBot..." > ~/.vibe/prompts/my-agent.md
    ```
 
 2. **Create agent TOML:**
    ```bash
-   # ~/.vibe/agents/my-agent.toml
-   cat > ~/.vibe/agents/my-agent.toml << 'EOF'
+   # .vibe/agents/my-agent.toml
+   cat > .vibe/agents/my-agent.toml << 'EOF'
    name = "my-agent"
    agent_type = "subagent"
    system_prompt_id = "my-agent"
@@ -208,7 +208,7 @@ allowlist = ["*"]
 
 ```bash
 # List all agent TOML files
-ls ~/.vibe/agents/*.toml
+ls .vibe/agents/*.toml
 
 # Test each subagent (using filename stems, not name fields)
 for agent in agent-orchestrator code-reviewer Testing de-sloppification docs implementation planner planner-reviewer; do
@@ -224,7 +224,7 @@ done
 **Symptom: Agent returns generic Mistral Vibe instructions**
 
 - Check `system_prompt_id` exists in agent TOML
-- Verify corresponding `.md` file exists in `~/.vibe/prompts/`
+- Verify corresponding `.md` file exists in `.vibe/prompts/`
 - Ensure `system_prompt_id` is BEFORE `[tools]` section in TOML
 
 **Symptom: Agent not found**
@@ -248,7 +248,7 @@ done
 ## Directory Structure
 
 ```
-~/.vibe/
+.vibe/
 ├── config.toml          # Main configuration with glob patterns
 ├── agents/              # Agent definition files
 │   ├── planner.toml
@@ -305,14 +305,14 @@ Constraints:
 
 ```bash
 # Validate TOML syntax for all agent files
-find ~/.vibe/agents/ -name "*.toml" -exec python3 -c "import tomllib; tomllib.load(open('{}', 'rb'))" \;
+find .vibe/agents/ -name "*.toml" -exec python3 -c "import tomllib; tomllib.load(open('{}', 'rb'))" \;
 
 # Check config.toml syntax
 python3 -c "import tomllib; tomllib.load(open('~/.vibe/config.toml', 'rb'))"
 
 # List all prompts
-ls -la ~/.vibe/prompts/
+ls -la .vibe/prompts/
 
 # Count agents
-ls ~/.vibe/agents/*.toml | wc -l
+ls .vibe/agents/*.toml | wc -l
 ```

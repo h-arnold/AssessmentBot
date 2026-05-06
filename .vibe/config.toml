@@ -1,4 +1,4 @@
-active_model = "devstral-small"
+active_model = "mistral-medium-3.5"
 vim_keybindings = false
 disable_welcome_banner_animation = false
 autocopy_to_clipboard = true
@@ -32,9 +32,7 @@ enabled_agents = [
     "*",
 ]
 disabled_agents = []
-installed_agents = [
-    "lean",
-]
+installed_agents = []
 skill_paths = []
 enabled_skills = []
 disabled_skills = []
