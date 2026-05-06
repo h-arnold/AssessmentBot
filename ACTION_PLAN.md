@@ -696,8 +696,8 @@ Playwright tests:
   - [ ] green review clean
   - [x] checks passed (targeted Section 4 frontend unit + Playwright suites complete)
   - [x] action plan updated (complete)
-  - [ ] commit created
-  - [ ] push completed
+  - [x] commit created (complete)
+  - [x] push completed (complete)
 
 ### Blockers
 
