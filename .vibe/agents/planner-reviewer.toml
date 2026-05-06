@@ -1,9 +1,9 @@
 name = "Planner Reviewer"
 description = "Reviews planning documents against the codebase to find gaps, inconsistencies, and implementation risks before they compound"
 sandbox_mode = "read-only"
-auto_approve = false
+auto_approve = true
 safety = "safe"
-agent_type = "subagent"
+type = "subagent"
 nickname_candidates = ["Planner Reviewer", "Plan Reviewer"]
 system_prompt_id = "planner-reviewer"
 

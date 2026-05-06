@@ -1,9 +1,9 @@
 name = "Testing Specialist"
 description = "Creates, runs and debugs tests"
 sandbox_mode = "workspace-write"
-auto_approve = false
+auto_approve = true
 safety = "neutral"
-agent_type = "subagent"
+type = "subagent"
 nickname_candidates = ["Testing Specialist", "Tester"]
 system_prompt_id = "Testing"
 

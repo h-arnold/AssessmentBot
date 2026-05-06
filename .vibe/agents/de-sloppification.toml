@@ -1,9 +1,9 @@
 name = "De-Sloppification"
 description = "Finds and removes AI-slop, duplication, and unnecessary complexity"
 sandbox_mode = "workspace-write"
-auto_approve = false
+auto_approve = true
 safety = "neutral"
-agent_type = "agent"
+type = "subagent"
 nickname_candidates = ["De-Sloppification", "Slop Cleaner"]
 system_prompt_id = "de-sloppification"
 

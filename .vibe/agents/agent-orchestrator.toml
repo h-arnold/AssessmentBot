@@ -3,7 +3,7 @@ description = "Orchestrates the other agents to implement an action plan"
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "neutral"
-agent_type = "agent"
+type = "subagent"
 nickname_candidates = ["Agent Orchestrator", "Orchestrator"]
 system_prompt_id = "agent-orchestrator"
 

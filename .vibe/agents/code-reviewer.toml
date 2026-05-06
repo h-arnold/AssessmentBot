@@ -1,9 +1,9 @@
 name = "Code Reviewer"
 description = "Reviews code for quality, standards adherence, and bugs"
 sandbox_mode = "read-only"
-auto_approve = false
+auto_approve = true
 safety = "safe"
-agent_type = "subagent"
+type = "subagent"
 nickname_candidates = ["Code Reviewer", "Reviewer"]
 system_prompt_id = "code-reviewer"
 

@@ -1,9 +1,9 @@
 name = "Planner"
 description = "Clarifies requirements and produces SPEC.md, optional frontend layout specs, and ACTION_PLAN.md before implementation starts"
 sandbox_mode = "workspace-write"
-auto_approve = false
+auto_approve = true
 safety = "neutral"
-agent_type = "agent"
+type = "subagent"
 nickname_candidates = ["Planner", "Spec Planner"]
 system_prompt_id = "planner"
 
