@@ -10,9 +10,12 @@ import {
   getAssignmentTopicsQueryOptions,
   getYearGroupsQueryOptions,
 } from '../query/sharedQueries';
+import {
+  DEFAULT_WEIGHTING_VALUE,
+  MAX_WEIGHTING_VALUE,
+  MIN_WEIGHTING_VALUE,
+} from '../services/assignmentDefinition.zod';
 import { upsertAssignmentDefinition, type UpsertAssignmentDefinitionRequest } from '../services/assignmentDefinitionService';
-import type { AssignmentTopic } from '../services/assignmentTopicsService';
-import type { YearGroup } from '../services/referenceDataService';
 
 const { Text } = Typography;
 
@@ -21,9 +24,6 @@ const UPDATE_TITLE = 'Update assignment';
 const BLOCKING_ERROR_MESSAGE = 'Required reference data could not be trusted or loaded.';
 const PARSE_REQUIRED_MESSAGE = 'Parsing is required before task weightings can be edited.';
 const DOCUMENT_CHANGED_MESSAGE = 'Document changed. Re-parse to continue editing.';
-const MIN_WEIGHTING = 0;
-const MAX_WEIGHTING = 10;
-const DEFAULT_WEIGHTING = 1;
 
 type ModalMode = 'create' | 'update';
 
@@ -51,8 +51,8 @@ export type AssignmentDefinitionWizardModalProperties = Readonly<{
 /**
  * Builds a canonical Google Docs/Sheets URL from a document ID and type.
  *
- * @param {string} documentId The Google document ID.
- * @param {'SLIDES' | 'SHEETS'} documentType The type of Google document.
+ * @param {string} documentId - The Google document ID.
+ * @param {'SLIDES' | 'SHEETS'} documentType - The type of Google document.
  * @returns {string} The canonical URL.
  */
 function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'): string {
@@ -66,7 +66,7 @@ function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'
 /**
  * Checks if all required fields for parsing are present and non-empty.
  *
- * @param {Record<string, unknown>} values Form values to check.
+ * @param {Record<string, unknown>} values - Form values to check.
  * @returns {boolean} True if all parse fields are present and non-empty.
  */
 function hasAllParseFields(values: Record<string, unknown>): boolean {
@@ -82,7 +82,7 @@ function hasAllParseFields(values: Record<string, unknown>): boolean {
 /**
  * Checks if a year group has been selected.
  *
- * @param {Record<string, unknown>} values Form values to check.
+ * @param {Record<string, unknown>} values - Form values to check.
  * @returns {boolean} True if year group is selected (non-empty).
  */
 function hasYearGroupSelected(values: Record<string, unknown>): boolean {
@@ -153,13 +153,13 @@ export function AssignmentDefinitionWizardModal(
   const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
 
   const topicOptions = useMemo(() => {
-    if (!topics) return [];
-    return (topics as AssignmentTopic[]).map((t) => ({ value: t.key, label: t.name }));
+    if (!Array.isArray(topics)) return [];
+    return topics.map((t) => ({ value: t.key, label: t.name }));
   }, [topics]);
 
   const yearGroupOptions = useMemo(() => {
-    if (!yearGroups) return [];
-    return (yearGroups as YearGroup[]).map((yg) => ({ value: yg.key, label: yg.name }));
+    if (!Array.isArray(yearGroups)) return [];
+    return yearGroups.map((yg) => ({ value: yg.key, label: yg.name }));
   }, [yearGroups]);
 
   const primaryActionLabel = isCreateMode && !hasParsedTasks ? 'Parse and continue' : 'Save';
@@ -243,7 +243,7 @@ export function AssignmentDefinitionWizardModal(
 
       const values = form.getFieldsValue();
       const currentAssignmentWeighting =
-        typeof values.assignmentWeighting === 'number' ? values.assignmentWeighting : DEFAULT_WEIGHTING;
+        typeof values.assignmentWeighting === 'number' ? values.assignmentWeighting : DEFAULT_WEIGHTING_VALUE;
       const isDirty =
         values.title !== parsedCreateBaseline.title ||
         values.topic !== parsedCreateBaseline.topic ||
@@ -329,7 +329,7 @@ export function AssignmentDefinitionWizardModal(
         yearGroup: request.yearGroupKey,
         referenceDocumentUrl: request.referenceDocumentUrl,
         templateDocumentUrl: request.templateDocumentUrl,
-        assignmentWeighting: DEFAULT_WEIGHTING,
+        assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
         taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
       };
       await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
@@ -358,7 +358,7 @@ export function AssignmentDefinitionWizardModal(
         yearGroupKey: values.yearGroup as string,
         referenceDocumentUrl: values.referenceDocumentUrl as string,
         templateDocumentUrl: values.templateDocumentUrl as string,
-        assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING,
+        assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
         taskWeightings,
       };
       await upsertMutation.mutateAsync(request);
@@ -393,7 +393,7 @@ export function AssignmentDefinitionWizardModal(
         yearGroupKey: values.yearGroup as string,
         referenceDocumentUrl: values.referenceDocumentUrl as string,
         templateDocumentUrl: values.templateDocumentUrl as string,
-        assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING,
+        assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
         taskWeightings: [],
       };
       const response = await upsertMutation.mutateAsync(request);
@@ -403,7 +403,7 @@ export function AssignmentDefinitionWizardModal(
           key: t.taskId,
           taskId: t.taskId,
           taskTitle: t.taskTitle,
-          taskWeighting: existingWeightings.get(t.taskId) ?? DEFAULT_WEIGHTING,
+          taskWeighting: existingWeightings.get(t.taskId) ?? DEFAULT_WEIGHTING_VALUE,
         }))
       );
       setHasParsedTasks(true);
@@ -461,7 +461,7 @@ export function AssignmentDefinitionWizardModal(
   const handleTaskWeightingChange = useCallback(
     (taskId: string, value: number | null) => {
       setTaskRows((previous) =>
-        previous.map((row) => (row.taskId !== taskId ? row : { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING }))
+        previous.map((row) => (row.taskId !== taskId ? row : { ...row, taskWeighting: value ?? DEFAULT_WEIGHTING_VALUE }))
       );
     },
     []
@@ -556,8 +556,8 @@ export function AssignmentDefinitionWizardModal(
             )}
 
             {hasParsedTasks && (
-              <Form.Item label="Assignment Weighting" name="assignmentWeighting" initialValue={DEFAULT_WEIGHTING} rules={[{ required: true, message: 'Assignment weighting is required' }, { type: 'number', min: MIN_WEIGHTING, max: MAX_WEIGHTING, message: `Weighting must be between ${MIN_WEIGHTING} and ${MAX_WEIGHTING}` }]}>
-                <InputNumber min={MIN_WEIGHTING} max={MAX_WEIGHTING} style={{ width: '100%' }} />
+              <Form.Item label="Assignment Weighting" name="assignmentWeighting" initialValue={DEFAULT_WEIGHTING_VALUE} rules={[{ required: true, message: 'Assignment weighting is required' }, { type: 'number', min: MIN_WEIGHTING_VALUE, max: MAX_WEIGHTING_VALUE, message: `Weighting must be between ${MIN_WEIGHTING_VALUE} and ${MAX_WEIGHTING_VALUE}` }]}>
+                <InputNumber min={MIN_WEIGHTING_VALUE} max={MAX_WEIGHTING_VALUE} style={{ width: '100%' }} />
               </Form.Item>
             )}
 
@@ -575,8 +575,8 @@ export function AssignmentDefinitionWizardModal(
                       render: (_: unknown, record: TaskRow) => (
                         <InputNumber
                           disabled={documentChange.hasPendingChange}
-                          min={MIN_WEIGHTING}
-                          max={MAX_WEIGHTING}
+                          min={MIN_WEIGHTING_VALUE}
+                          max={MAX_WEIGHTING_VALUE}
                           value={record.taskWeighting}
                           onChange={(value) => handleTaskWeightingChange(record.taskId, value)}
                         />

@@ -230,6 +230,107 @@ For Settings-page Classes CRUD browser tests, extend the existing scenario harne
 - Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
 - New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
 
+### React Query Testing Patterns
+
+When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
+
+```typescript
+const upsertMutation = useMutation({
+  mutationFn: upsertAssignmentDefinition,
+});
+// When called: await upsertMutation.mutateAsync(request)
+// The service receives: upsertAssignmentDefinition(request, context)
+// Where context = { client: QueryClient, meta: undefined, mutationKey: undefined }
+```
+
+**Testing patterns:**
+
+**✅ Correct**: Check the first argument directly to avoid matching against the extra context object:
+
+```typescript
+// Check the first argument of the first call
+expect(upsertAssignmentDefinitionMock.mock.calls[0][0]).toMatchObject({
+  definitionKey: 'algebra-baseline',
+  referenceDocumentUrl: expect.stringContaining('new-ref'),
+});
+```
+
+**✅ Correct**: If you need to verify the call structure with multiple arguments:
+
+```typescript
+// Verify call count and specific argument
+expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(1);
+expect(upsertAssignmentDefinitionMock.mock.calls[0][0]).toEqual(expectedRequest);
+expect(upsertAssignmentDefinitionMock.mock.calls[0][1]).toHaveProperty('client');
+```
+
+**❌ Avoid**: Using `toHaveBeenCalledWith` with asymmetric matchers fails when extra positional arguments are passed:
+
+```typescript
+// This fails because mock receives 2 arguments, not 1
+expect(upsertAssignmentDefinitionMock).toHaveBeenCalledWith(
+  expect.objectContaining({ definitionKey: 'algebra-baseline' })
+);
+```
+
+**Debugging tip**: When matchers fail unexpectedly, inspect the actual calls:
+
+```typescript
+// Add this before your assertion
+console.log('Actual mock calls:', JSON.stringify(mockFn.mock.calls, null, 2));
+// Or use Vitest's built-in error output which shows mock.calls
+```
+
+### Query Client and Startup Warmup Mocking
+
+When testing components that depend on React Query and startup warmup state, use the `renderWithFrontendProviders` helper and set query data before or during tests:
+
+```typescript
+const { queryClient } = renderWithFrontendProviders(<MyComponent />);
+
+// Mock fetchQuery for fire-and-forget calls
+vi.spyOn(queryClient, 'fetchQuery').mockImplementation(() => Promise.resolve());
+
+// Set query data for existing queries
+queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+```
+
+**Mock helper pattern for startup warmup state:**
+
+Create a factory function to standardize startup warmup state mocking across tests:
+
+```typescript
+/**
+ * Creates a mock startup warmup state for testing.
+ *
+ * @param options - Override options for dataset readiness/failure states
+ * @returns Mock startup warmup state object
+ */
+function createStartupWarmupState(
+  options: {
+    assignmentTopicsStatus?: 'loading' | 'ready' | 'failed';
+    yearGroupsStatus?: 'loading' | 'ready' | 'failed';
+  } = {}
+) {
+  const { assignmentTopicsStatus = 'ready', yearGroupsStatus = 'ready' } = options;
+
+  return {
+    isDatasetReady: (datasetKey: string) =>
+      (datasetKey === 'assignmentTopics' && assignmentTopicsStatus === 'ready') ||
+      (datasetKey === 'yearGroups' && yearGroupsStatus === 'ready') ||
+      datasetKey === 'assignmentDefinitionPartials',
+    isDatasetFailed: (datasetKey: string) =>
+      (datasetKey === 'assignmentTopics' && assignmentTopicsStatus === 'failed') ||
+      (datasetKey === 'yearGroups' && yearGroupsStatus === 'failed'),
+    isFailed: false,
+    isLoading: false,
+    isReady: true,
+    warmupState: 'ready' as const,
+  };
+}
+```
+
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
