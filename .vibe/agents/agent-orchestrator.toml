@@ -1,11 +1,11 @@
 name = "Agent Orchestrator"
 description = "Orchestrates the other agents to implement an action plan"
 sandbox_mode = "workspace-write"
-auto_approve = false
+auto_approve = true
 safety = "neutral"
 agent_type = "agent"
 nickname_candidates = ["Agent Orchestrator", "Orchestrator"]
 system_prompt_id = "agent-orchestrator"
 
 [tools]
-allowlist = ["bash", "grep", "read_file", "search_replace", "task", "todo", "write_file"]
+allowlist = ["*"]
