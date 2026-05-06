@@ -9,3 +9,12 @@ system_prompt_id = "de-sloppification"
 
 [tools]
 allowlist = ["bash", "grep", "read_file", "search_replace", "todo", "web_search", "write_file"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"

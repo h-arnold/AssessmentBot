@@ -9,3 +9,12 @@ system_prompt_id = "agent-orchestrator"
 
 [tools]
 allowlist = ["*"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"

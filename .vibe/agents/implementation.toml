@@ -9,3 +9,12 @@ system_prompt_id = "implementation"
 
 [tools]
 allowlist = ["bash", "grep", "read_file", "search_replace", "todo", "write_file"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"

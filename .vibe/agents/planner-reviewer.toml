@@ -9,3 +9,12 @@ system_prompt_id = "planner-reviewer"
 
 [tools]
 allowlist = ["grep", "read_file", "task", "todo", "web_search"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
