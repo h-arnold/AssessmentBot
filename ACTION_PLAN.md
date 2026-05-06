@@ -712,6 +712,28 @@ Playwright tests:
 - Resolved: React Query mutateAsync context argument issue in test assertions - documented pattern in frontend-testing.md to prevent recurrence.
 - Remaining non-blocker note: `npm run frontend:lint` still reports pre-existing complexity/hook-dependency issues in `AssignmentDefinitionWizardModal.tsx` and `AssignmentsPage.tsx`; those lint failures are outside the specific Section 4 blocker scope validated here.
 
+### Known Technical Debt (Complexity Lint Violations - Pre-existing)
+
+The following lint violations exist in Section 4 files but are **pre-existing and out of scope** for this section's acceptance criteria. They are documented here as known technical debt for future refactoring work:
+
+| File                                  | Line | Rule                         | Current Value | Maximum Allowed | Refactor Priority |
+| ------------------------------------- | ---- | ---------------------------- | ------------- | --------------- | ----------------- |
+| `AssignmentDefinitionWizardModal.tsx` | 72   | complexity                   | 10            | 7               | Low               |
+| `AssignmentDefinitionWizardModal.tsx` | 109  | complexity                   | 37            | 7               | Medium            |
+| `AssignmentDefinitionWizardModal.tsx` | 109  | sonarjs/cognitive-complexity | 17            | 15              | Medium            |
+| `AssignmentDefinitionWizardModal.tsx` | 237  | complexity                   | 19            | 7               | Medium            |
+| `AssignmentDefinitionWizardModal.tsx` | 361  | complexity                   | 8             | 7               | Low               |
+
+**Note:** These violations were present before Section 4 implementation and are acknowledged in the action plan as outside the section's acceptance scope. Addressing these requires structural refactoring of the component state machine, which should be treated as separate work. Section 4 acceptance criteria remain met with these known issues documented.
+
+### Code Review Batches (Post-Section 4 Initial Implementation)
+
+Following the comprehensive code review of all Section 4 changes, the following batches were processed:
+
+- **Batch E (Critical TypeScript/Lint):** Fixed orphaned statement, mock implementation, type annotations, memoization, negated condition. **Code review: PASS** (commit f640c05)
+- **Batch F (Documentation):** Documented pre-existing complexity violations as known technical debt. **Status: Complete**
+- **Batch G (Improvements):** Added consistent error handling (setBlockingError) and @remarks JSDoc. **Code review: PASS** (commit 12d7ea7)
+
 ---
 
 ## Regression and contract hardening
