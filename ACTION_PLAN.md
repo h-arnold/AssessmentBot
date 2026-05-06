@@ -734,6 +734,51 @@ Following the comprehensive code review of all Section 4 changes, the following 
 - **Batch F (Documentation):** Documented pre-existing complexity violations as known technical debt. **Status: Complete**
 - **Batch G (Improvements):** Added consistent error handling (setBlockingError) and @remarks JSDoc. **Code review: PASS** (commit 12d7ea7)
 
+### Complexity Analysis and Refactoring Exploration (Post-Batch G)
+
+**Status: Exploration Complete, Refactoring Attempted but Reverted**
+
+Following the user's request to resolve all lint issues in Section 4 files, a comprehensive exploration was conducted to identify feasible refactoring approaches.
+
+**Exploration Report Location:** `/tmp/vibe-scratchpad-b6ff12bd-qnnc4k37/EXPLORE_ComplexityReport.md` (28KB)
+
+**Key Findings:**
+
+- **12+ complexity violations** identified across 8 files in the frontend codebase
+- **40+ existing utility functions** found in `src/frontend/src/features/classes/` that provide patterns for reuse
+- **Helper gaps identified:** No centralized `utils/` directory; helpers are feature-scoped
+- **Assessment:** Suitable helpers PARTIALLY exist but are not centralized or fully generalized
+
+**Specific Violations in AssignmentDefinitionWizardModal.tsx:**
+| Line | Function | Current Complexity | Target | Refactor Feasibility |
+|------|----------|-------------------|--------|---------------------|
+| 72 | `hasAllParseFields` | 10 | ≤7 | High - can use array.every pattern |
+| 109 | `AssignmentDefinitionWizardModal` | 37 | ≤7 | Medium - requires component decomposition |
+| 109 | Cognitive Complexity | 17 | ≤15 | Medium - close to threshold |
+| 237 | Dirty state useEffect | 19 | ≤7 | Medium - requires logic extraction |
+| 361 | `handleSave` | 8 | ≤7 | High - extract helper functions |
+
+**Refactoring Attempts:**
+
+1. **`hasAllParseFields` simplification:** Changed from 5 chained conditions to array.every pattern. **Status: Implemented but reverted during cleanup attempts**
+2. **Component decomposition:** Attempted to extract utility functions and break down complex handlers. **Status: Partially implemented, file became corrupted, restored to baseline**
+3. **Hook extraction:** Created separate hook files (`useAssignmentDefinitionWizardState.ts`, `useAssignmentDefinitionForm.ts`, `useAssignmentDefinitionSubmission.ts`). **Status: Created but deleted due to type complexity and import issues**
+
+**Blockers Encountered:**
+
+- Complexity of 37 in main component cannot be reduced to ≤7 without decomposing into multiple files or sub-components
+- Dirty state tracking (complexity 19) has deeply nested conditionals that are difficult to extract without changing test behavior
+- Test suite (10 tests) verifies specific DOM structure and behavior, limiting refactoring options
+- Time constraints and file size (628 lines) make comprehensive refactoring risky without extensive test coverage
+
+**Recommended Next Steps:**
+
+1. **Option A (Pragmatic):** Accept complexity violations as documented technical debt, add file-level eslint-disable comments
+2. **Option B (Incremental):** Fix low-hanging fruit (hasAllParseFields, handleSave) first, accept remaining as tech debt
+3. **Option C (Comprehensive):** Decompose component into custom hooks in separate files, requires full test regression
+
+**Decision:** Refactoring work paused pending user direction on approach. All Section 4 acceptance criteria remain met. Complexity violations documented as known technical debt.
+
 ---
 
 ## Regression and contract hardening
