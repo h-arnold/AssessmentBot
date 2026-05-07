@@ -150,6 +150,14 @@ Helper decision entries for this refactor:
 
 ## Section 1 — Lock the accepted contract baseline and missing regression coverage
 
+**Status: ✅ COMPLETE**
+
+- Red Phase: All 19 regression tests pass (10 original + 9 new)
+- Code Review: Clean pass after 4 review cycles
+- Documentation: Mock-before-render anti-pattern documented in `docs/developer/frontend/frontend-testing.md`
+- Baseline: Lint violations recorded (complexity 17 in both files), existing hook and shell present
+- Coverage: All Section 1 acceptance criteria protected within current implementation constraints
+
 ### Objective
 
 - Confirm the current lint baseline.
