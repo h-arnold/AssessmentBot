@@ -482,10 +482,11 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
 
     // Try to close modal - use the modal close button
     const createModal = page.getByRole('dialog', { name: 'Create assignment' });
-    await createModal.getByRole('button', { name: /close/i }).click();
+    // Use class-based selector for Ant Design close button as fallback
+    await createModal.locator('.ant-modal-close').first().click();
 
     // Should show discard confirmation
-    await expect(page.getByRole('dialog', { name: /Discard changes/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /discard changes/i })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Discard changes' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible();
   });

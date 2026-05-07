@@ -241,6 +241,22 @@ async function releaseNextDeferredAssignmentsSuccess(page: Page) {
 }
 
 /**
+ * Waits for the assignments table to be ready and have data.
+ *
+ * @param {Page} page Playwright page instance.
+ * @returns {Promise<void>} Resolves when the table is ready and has at least one row.
+ */
+async function waitForAssignmentsTableData(page: Page): Promise<void> {
+  // Wait for loading state to disappear
+  await expect(page.locator('[aria-label="Assignments table loading"]')).toHaveCount(0);
+  // Wait for blocking state to disappear
+  await expect(page.getByText(/assignment definitions could not be trusted or loaded/i)).toHaveCount(0);
+  // Wait for table to be visible and have data
+  const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
+  await expect(assignmentsTable.locator('tbody tr')).toHaveCountGreaterThanOrEqual(1);
+}
+
+/**
  * Locates one assignments table row by exact title cell text.
  *
  * @param {Page} page Playwright page instance.
@@ -270,8 +286,8 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for table to be visible
-    await page.waitForSelector('[aria-label="Assignment definitions table"]');
+    // Wait for table and data to be visible
+    await waitForAssignmentsTableData(page);
     
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -291,6 +307,9 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
+
     await expect(
       page.getByRole('row', { name: /unsafe legacy row/i }).getByRole('button', { name: /delete/i })
     ).toBeDisabled();
@@ -306,7 +325,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    await expect(page.getByText(/Assignment definitions could not be trusted or loaded/i)).toBeVisible();
+    await expect(page.getByText(/assignment definitions could not be trusted or loaded/i)).toBeVisible();
   });
 
 
@@ -318,6 +337,9 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -340,6 +362,9 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -373,6 +398,9 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
+
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -393,6 +421,9 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -439,6 +470,9 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for table data
+    await waitForAssignmentsTableData(page);
 
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
     await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(expectedNullTokenCellCount);

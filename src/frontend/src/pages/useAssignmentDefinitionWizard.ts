@@ -256,16 +256,18 @@ function useFormInitialization(
       const templateUrl = buildCanonicalUrl(response.templateDocumentId, response.documentType);
 
       parsedCreateBaselineReference.current = {
-        title: request.primaryTitle,
-        topic: request.primaryTopicKey,
-        yearGroup: request.yearGroupKey,
+        // Use response values for metadata to capture any server-side normalisation
+        title: response.primaryTitle,
+        topic: response.primaryTopicKey,
+        yearGroup: response.yearGroupKey,
         // Build canonical URLs from response IDs for consistent baseline
         referenceDocumentUrl: referenceUrl,
         templateDocumentUrl: templateUrl,
         referenceDocumentId: response.referenceDocumentId,
         templateDocumentId: response.templateDocumentId,
         documentType: response.documentType,
-        assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
+        // Use the actual assignmentWeighting from the response, not the default
+        assignmentWeighting: response.assignmentWeighting,
         taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
       };
     },
@@ -291,7 +293,8 @@ function useFormInitialization(
           referenceDocumentId: cachedDefinition.referenceDocumentId,
           templateDocumentId: cachedDefinition.templateDocumentId,
           documentType: cachedDefinition.documentType,
-          assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
+          // Use the actual assignmentWeighting from the cached definition
+          assignmentWeighting: cachedDefinition.assignmentWeighting,
           taskWeightings: new Map(cachedDefinition.tasks.map((task) => [task.taskId, task.taskWeighting])),
         };
       }
@@ -797,8 +800,35 @@ export function useAssignmentDefinitionWizard(
       if (actionType === 'parse') {
         storeParseBaseline(request, response);
       }
+
+      // Update form with response data after parse/re-parse to reflect persisted state
+      // In create mode: this ensures the form shows the server-defaulted assignmentWeighting
+      // In update mode with re-parse: this ensures document URLs are updated while preserving metadata
+      if (actionType === 'parse' || actionType === 'reparse') {
+        const referenceUrl = buildCanonicalUrl(response.referenceDocumentId, documentType);
+        const templateUrl = buildCanonicalUrl(response.templateDocumentId, documentType);
+
+        // For parse: update all metadata fields to reflect persisted state
+        // For reparse: update document URLs while preserving other metadata
+        if (actionType === 'parse') {
+          form.setFieldsValue({
+            title: response.primaryTitle,
+            topic: response.primaryTopicKey,
+            yearGroup: response.yearGroupKey,
+            referenceDocumentUrl: referenceUrl,
+            templateDocumentUrl: templateUrl,
+            assignmentWeighting: response.assignmentWeighting,
+          });
+        } else {
+          // Reparse: only update document URLs
+          form.setFieldsValue({
+            referenceDocumentUrl: referenceUrl,
+            templateDocumentUrl: templateUrl,
+          });
+        }
+      }
     },
-    [buildTaskRowsFromResponse, storeParseBaseline]
+    [buildTaskRowsFromResponse, storeParseBaseline, form]
   );
 
   /**
