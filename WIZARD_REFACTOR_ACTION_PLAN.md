@@ -324,6 +324,15 @@ Helper decision entries for this refactor:
 
 ## Section 4 — Collapse modal render branching through a shell or narrow view-state seam
 
+**Status: ✅ COMPLETE**
+
+- Component complexity reduced from 17 to 5 (well below ≤7 threshold)
+- Shell complexity maintained at ≤7
+- All 3 early returns collapsed into single shell path
+- Main modal reduced from 215 lines to 108 lines
+- Shell extended from 83 lines to ~491 lines with full view-state handling
+- All 20 tests pass, lint clean
+
 ### Objective
 
 - Reduce component complexity by replacing multiple top-level early-return modal branches with one modal render path.
