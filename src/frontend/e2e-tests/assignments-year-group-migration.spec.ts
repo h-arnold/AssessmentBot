@@ -150,7 +150,6 @@ test('assignments year-group label migration keeps delete available while create
   await expect(getAssignmentsRowByTitle(page, 'Unsafe legacy row')).toHaveCount(0);
 
   await expect(row.getByRole('button', { name: /delete/i })).toBeEnabled();
-  await expect(row.getByRole('button', { name: /update/i })).toHaveCount(0);
+  await expect(row.getByRole('button', { name: /update/i })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
 });

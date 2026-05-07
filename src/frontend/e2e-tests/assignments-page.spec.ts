@@ -294,8 +294,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
-    await expect(page.getByText(/not available in v1/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh assignments data' })).toBeEnabled();
   });
 
 
