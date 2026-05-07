@@ -10,23 +10,19 @@ import {
   getAssignmentTopicsQueryOptions,
   getYearGroupsQueryOptions,
 } from '../query/sharedQueries';
+import { DEFAULT_WEIGHTING_VALUE } from '../services/assignmentDefinition.zod';
 import {
-  DEFAULT_WEIGHTING_VALUE,
   type AssignmentDefinition,
-} from '../services/assignmentDefinition.zod';
-import { upsertAssignmentDefinition, type UpsertAssignmentDefinitionRequest } from '../services/assignmentDefinitionService';
+  type UpsertAssignmentDefinitionResponse,
+  type UpsertAssignmentDefinitionRequest,
+  upsertAssignmentDefinition,
+} from '../services/assignmentDefinitionService';
 
-// Type for the upsert mutation response
-interface UpsertMutationResponse extends Awaited<ReturnType<typeof upsertAssignmentDefinition>> {
-  referenceDocumentUrl: string;
-  templateDocumentUrl: string;
-}
+export type ModalMode = 'create' | 'update';
 
-type ModalMode = 'create' | 'update';
+export type TaskRow = Readonly<{ key: string; taskId: string; taskTitle: string; taskWeighting: number }>;
 
-type TaskRow = { key: string; taskId: string; taskTitle: string; taskWeighting: number };
-
-type DocumentChangeState = { hasPendingChange: boolean; previousReferenceUrl: string; previousTemplateUrl: string };
+export type DocumentChangeState = Readonly<{ hasPendingChange: boolean; previousReferenceUrl: string; previousTemplateUrl: string }>;
 
 type ParsedCreateBaseline = Readonly<{
   title: string;
@@ -176,7 +172,7 @@ function derivePrimaryActionState(
  * @param {function} setLocalDefinitionKey - State setter for local definition key.
  * @param {string | null} localDefinitionKey - The local definition key from parse response in create mode.
  * @param {QueryClient} queryClient - The React Query client for accessing cached data.
- * @returns {{ storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
+ * @returns {{ storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
  */
 function useFormInitialization(
   open: boolean,
@@ -195,7 +191,7 @@ function useFormInitialization(
   localDefinitionKey: string | null,
   queryClient: QueryClient
 ): {
-  storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => void;
+  storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => void;
   getParsedCreateBaseline: () => ParsedCreateBaseline | null;
 } {
   const isHydratingDefinitionReference = useRef(false);
@@ -255,14 +251,17 @@ function useFormInitialization(
 
   // Function to store parse baseline after successful stage-one create
   const storeParseBaseline = useCallback(
-    (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => {
+    (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => {
+      const referenceUrl = buildCanonicalUrl(response.referenceDocumentId, response.documentType);
+      const templateUrl = buildCanonicalUrl(response.templateDocumentId, response.documentType);
+
       parsedCreateBaselineReference.current = {
         title: request.primaryTitle,
         topic: request.primaryTopicKey,
         yearGroup: request.yearGroupKey,
-        // Use canonical URLs from response for consistent baseline
-        referenceDocumentUrl: response.referenceDocumentUrl,
-        templateDocumentUrl: response.templateDocumentUrl,
+        // Build canonical URLs from response IDs for consistent baseline
+        referenceDocumentUrl: referenceUrl,
+        templateDocumentUrl: templateUrl,
         referenceDocumentId: response.referenceDocumentId,
         templateDocumentId: response.templateDocumentId,
         documentType: response.documentType,
@@ -279,18 +278,21 @@ function useFormInitialization(
     if (localDefinitionKey) {
       const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(localDefinitionKey));
       if (cached) {
-        const cachedDefinition = cached as Record<string, unknown>;
+        const cachedDefinition = cached as UpsertAssignmentDefinitionResponse;
+        const referenceUrl = buildCanonicalUrl(cachedDefinition.referenceDocumentId, cachedDefinition.documentType);
+        const templateUrl = buildCanonicalUrl(cachedDefinition.templateDocumentId, cachedDefinition.documentType);
+
         return {
-          title: cachedDefinition.primaryTitle as string,
-          topic: cachedDefinition.primaryTopicKey as string,
-          yearGroup: cachedDefinition.yearGroupKey as string,
-          referenceDocumentUrl: cachedDefinition.referenceDocumentUrl as string,
-          templateDocumentUrl: cachedDefinition.templateDocumentUrl as string,
-          referenceDocumentId: cachedDefinition.referenceDocumentId as string,
-          templateDocumentId: cachedDefinition.templateDocumentId as string,
-          documentType: cachedDefinition.documentType as 'SLIDES' | 'SHEETS',
+          title: cachedDefinition.primaryTitle,
+          topic: cachedDefinition.primaryTopicKey,
+          yearGroup: cachedDefinition.yearGroupKey,
+          referenceDocumentUrl: referenceUrl,
+          templateDocumentUrl: templateUrl,
+          referenceDocumentId: cachedDefinition.referenceDocumentId,
+          templateDocumentId: cachedDefinition.templateDocumentId,
+          documentType: cachedDefinition.documentType,
           assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
-          taskWeightings: new Map((cachedDefinition.tasks as Array<Record<string, unknown>>).map((task) => [task.taskId as string, task.taskWeighting as number])),
+          taskWeightings: new Map(cachedDefinition.tasks.map((task) => [task.taskId, task.taskWeighting])),
         };
       }
     }
@@ -753,19 +755,14 @@ export function useAssignmentDefinitionWizard(
    */
   const buildTaskRowsFromResponse = useCallback(
     (responseTasks: Array<{ taskId: string; taskTitle: string; taskWeighting: number }>, actionType: 'parse' | 'reparse') => {
+      const existingWeightings = actionType === 'reparse' ? new Map(taskRows.map((row) => [row.taskId, row.taskWeighting])) : null;
+
       const newTaskRows: TaskRow[] = responseTasks.map((t) => ({
         key: t.taskId,
         taskId: t.taskId,
         taskTitle: t.taskTitle,
-        taskWeighting: t.taskWeighting,
+        taskWeighting: existingWeightings?.get(t.taskId) ?? t.taskWeighting,
       }));
-
-      if (actionType === 'reparse') {
-        const existingWeightings = new Map(taskRows.map((row) => [row.taskId, row.taskWeighting]));
-        newTaskRows.forEach((row) => {
-          row.taskWeighting = existingWeightings.get(row.taskId) ?? DEFAULT_WEIGHTING_VALUE;
-        });
-      }
 
       return newTaskRows;
     },
@@ -775,13 +772,13 @@ export function useAssignmentDefinitionWizard(
   /**
    * Handles the response from a parse or re-parse mutation by updating task rows and document state.
    *
-   * @param {UpsertMutationResponse} response - The mutation response containing tasks and document info.
+   * @param {UpsertAssignmentDefinitionResponse} response - The mutation response containing tasks and document info.
    * @param {'parse' | 'reparse'} actionType - The type of action that produced the response.
    * @param {UpsertAssignmentDefinitionRequest} request - The original request for baseline storage.
    * @returns {void}
    */
   const handleParseResponse = useCallback(
-    (response: UpsertMutationResponse, actionType: 'parse' | 'reparse', request: UpsertAssignmentDefinitionRequest) => {
+    (response: UpsertAssignmentDefinitionResponse, actionType: 'parse' | 'reparse', request: UpsertAssignmentDefinitionRequest) => {
       const documentType = response.documentType;
       const newTaskRows = buildTaskRowsFromResponse(response.tasks, actionType);
 
@@ -829,11 +826,11 @@ export function useAssignmentDefinitionWizard(
    * Handles post-mutation actions based on action type.
    *
    * @param {'parse' | 'save' | 'reparse'} actionType - The action type.
-   * @param {UpsertMutationResponse | undefined} response - The mutation response for parse/reparse.
-   * @returns {UpsertMutationResponse | undefined} The response to return.
+   * @param {UpsertAssignmentDefinitionResponse | undefined} response - The mutation response for parse/reparse.
+   * @returns {UpsertAssignmentDefinitionResponse | undefined} The response to return.
    */
   const handlePostMutation = useCallback(
-    (actionType: 'parse' | 'save' | 'reparse', response: UpsertMutationResponse | undefined): UpsertMutationResponse | undefined => {
+    (actionType: 'parse' | 'save' | 'reparse', response: UpsertAssignmentDefinitionResponse | undefined): UpsertAssignmentDefinitionResponse | undefined => {
       if (actionType === 'save') {
         onClose();
         return undefined;
@@ -856,20 +853,20 @@ export function useAssignmentDefinitionWizard(
    * @param {'parse' | 'save' | 'reparse'} options.actionType - Type of mutation action.
    * @param {UpsertAssignmentDefinitionRequest} options.request - Pre-built request object.
    * @param {string | null} options.definitionKey - Definition key for update/reparse, or null for create parse.
-   * @returns {Promise<UpsertMutationResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise.
+   * @returns {Promise<UpsertAssignmentDefinitionResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise.
    */
   const runWizardMutation = useCallback(
     async (options: {
       actionType: 'parse' | 'save' | 'reparse';
       request: UpsertAssignmentDefinitionRequest;
       definitionKey: string | null;
-    }): Promise<UpsertMutationResponse | undefined> => {
+    }): Promise<UpsertAssignmentDefinitionResponse | undefined> => {
       if (isSubmitting) {
         return undefined;
       }
       setIsSubmitting(true);
       try {
-        const response = (await upsertMutation.mutateAsync(options.request)) as UpsertMutationResponse;
+        const response = await upsertMutation.mutateAsync(options.request);
 
         if (options.actionType === 'parse' || options.actionType === 'reparse') {
           handleParseResponse(response, options.actionType, options.request);

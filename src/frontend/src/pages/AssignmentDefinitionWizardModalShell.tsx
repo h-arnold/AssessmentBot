@@ -6,25 +6,13 @@ import {
   MAX_WEIGHTING_VALUE,
   MIN_WEIGHTING_VALUE,
 } from '../services/assignmentDefinition.zod';
+import { type DocumentChangeState, type TaskRow } from './useAssignmentDefinitionWizard';
 
 const CREATE_TITLE = 'Create assignment';
 const UPDATE_TITLE = 'Update assignment';
 const BLOCKING_ERROR_MESSAGE = 'Required reference data could not be trusted or loaded.';
 const PARSE_REQUIRED_MESSAGE = 'Parsing is required before task weightings can be edited.';
 const DOCUMENT_CHANGED_MESSAGE = 'Document changed. Re-parse to continue editing.';
-
-export type TaskRow = Readonly<{
-  key: string;
-  taskId: string;
-  taskTitle: string;
-  taskWeighting: number;
-}>;
-
-export type DocumentChangeState = Readonly<{
-  hasPendingChange: boolean;
-  previousReferenceUrl: string;
-  previousTemplateUrl: string;
-}>;
 
 export type AssignmentDefinitionWizardModalShellProperties = Readonly<{
   open: boolean;

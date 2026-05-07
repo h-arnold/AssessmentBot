@@ -2,17 +2,9 @@ import { Modal, Space, Button, Typography } from 'antd';
 import { type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
+import { type AssignmentDefinitionWizardModalProperties } from './useAssignmentDefinitionWizard';
 
 const { Text } = Typography;
-
-type ModalMode = 'create' | 'update';
-
-export type AssignmentDefinitionWizardModalProperties = Readonly<{
-  open: boolean;
-  mode: ModalMode;
-  definitionKey: string | null;
-  onClose: () => void;
-}>;
 
 /**
  * Renders the assignment-definition wizard modal for create and update workflows.
