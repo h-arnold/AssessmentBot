@@ -472,9 +472,21 @@ Helper decision entries for this refactor:
 - All helper decisions reconciled with delivered implementation
 - No stale planning language remains
 
+## De-Sloppification Pass
+
+**Status: ✅ COMPLETE**
+
+- Verified no slop remains in production files
+- All complexity constraints met (<=7 for all files)
+- All tests pass (20 tests)
+- All lint checks pass
+- Cleanup applied: removed duplicated types, removed unnecessary interface, fixed schema usage
+
 ## Final Summary
 
-**All Sections Complete!**
+**ALL WORK COMPLETE - Action Plan Fully Implemented!**
+
+### Sections Completed:
 
 - ✅ Section 1: Locked accepted contract baseline (19 tests, complexity 17 baseline recorded)
 - ✅ Section 2: Unified duplicated async handlers (runWizardMutation, 7 helpers extracted, complexity 17→7)
@@ -483,14 +495,32 @@ Helper decision entries for this refactor:
 - ✅ Section 5: Skipped (not needed - all files at complexity ≤7)
 - ✅ Regression and contract hardening: All checks pass
 - ✅ Documentation: Canonical docs updated
+- ✅ De-Sloppification: All AI-slop cleaned up
 
-**Final State:**
+### Final State:
 
-- useAssignmentDefinitionWizard.ts: complexity 7 ✅
-- AssignmentDefinitionWizardModal.tsx: complexity 5 ✅
-- AssignmentDefinitionWizardModalShell.tsx: complexity ≤7 ✅
-- All 20 tests pass ✅
-- # All lint checks pass ✅
+- **useAssignmentDefinitionWizard.ts**: complexity 7 ✅ (from 17)
+- **AssignmentDefinitionWizardModal.tsx**: complexity 5 ✅ (from 17)
+- **AssignmentDefinitionWizardModalShell.tsx**: complexity ≤7 ✅ (extended from 83 to ~450 lines)
+- **All 20 tests pass** ✅
+- **All lint checks pass** ✅
+- **Type check passes** ✅
+- **De-Sloppification clean** ✅
+
+### Commits Created:
+
+1. `3bb25ea` - Fix critical blocking issues in test file (Section 1 prep)
+2. `b9aab7a` - Complete Section 1 red phase
+3. `aa025e1` - Document mock-before-render anti-pattern
+4. `3e1e8ec` - Implement Section 2 shared orchestration contract
+5. `f3acd89` - Complete Section 3 of wizard refactor action plan
+6. `24615c2` - Complete Section 4 of wizard refactor
+7. `90a5ffc` - Fix missing JSX namespace imports
+8. `6f295b6` - Update Section 4 and helper-change status to Implemented
+9. `47933f2` - Add final summary to action plan
+10. `0ff00da` - Clean up AI-slop from De-Sloppification pass
+
+All commits pushed to `origin/feat/CreateAssessmentModal` ✅
 
 ### Objective
 
