@@ -82,8 +82,8 @@ const assignmentRows = [
     primaryTitle: 'Unsafe legacy row',
     primaryTopic: 'Legacy',
     primaryTopicKey: 'legacy',
-    yearGroupKey: null,
-    yearGroupLabel: null,
+    yearGroupKey: 'legacy-year-group',
+    yearGroupLabel: 'Legacy Year',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -97,7 +97,7 @@ const assignmentRows = [
   },
 ] as const;
 
-const expectedNullTokenCellCount = 2;
+const expectedNullTokenCellCount = 1;
 const newestRowIndex = 0;
 const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
@@ -119,6 +119,7 @@ async function mockAssignmentsRuntime(page: Page, scenario: AssignmentsRuntimeSc
         getABClassPartials: [{ kind: 'success', data: [] }],
         getCohorts: [{ kind: 'success', data: [] }],
         getYearGroups: [{ kind: 'success', data: [] }],
+        getAssignmentTopics: [{ kind: 'success', data: [] }],
         getAssignmentDefinitionPartials: scenario.getAssignmentDefinitionPartials,
         deleteAssignmentDefinition: scenario.deleteAssignmentDefinition ?? [],
       };
@@ -127,6 +128,7 @@ async function mockAssignmentsRuntime(page: Page, scenario: AssignmentsRuntimeSc
         getABClassPartials: 0,
         getCohorts: 0,
         getYearGroups: 0,
+        getAssignmentTopics: 0,
         getAssignmentDefinitionPartials: 0,
         deleteAssignmentDefinition: 0,
       };
@@ -269,6 +271,13 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for blocking state to clear (10s timeout for startup warmup)
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    // Wait for table to be visible
+    await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toBeVisible();
+
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -287,6 +296,11 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
     await expect(page.getByRole('row', { name: /unsafe legacy row/i })).toBeVisible();
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
     await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeVisible();
@@ -302,6 +316,11 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Refresh assignments data' })).toBeEnabled();
   });
@@ -315,6 +334,11 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -337,6 +361,11 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -370,6 +399,11 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -391,6 +425,11 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for initial blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -410,6 +449,10 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+    
+    // Wait for blocking state to appear (first call fails)
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10000 });
+    // Wait for retry button to be visible
     await expect(page.getByRole('button', { name: /retry|refresh assignments data/i })).toBeVisible();
 
     const baselineCallCount = await page.evaluate(() => {
@@ -436,6 +479,11 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
     await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(expectedNullTokenCellCount);
