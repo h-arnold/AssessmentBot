@@ -30,7 +30,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Newest algebra recap',
     primaryTopic: 'Algebra',
-    yearGroup: 11,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-11',
+    yearGroupLabel: 'Year 11',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -45,7 +47,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -60,7 +64,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations archive',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -75,7 +81,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Unsafe legacy row',
     primaryTopic: 'Legacy',
-    yearGroup: null,
+    primaryTopicKey: 'legacy',
+    yearGroupKey: null,
+    yearGroupLabel: null,
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -279,9 +287,10 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    await expect(
-      page.getByRole('row', { name: /unsafe legacy row/i }).getByRole('button', { name: /delete/i })
-    ).toBeDisabled();
+    await expect(page.getByRole('row', { name: /unsafe legacy row/i })).toBeVisible();
+    const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
+    await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeVisible();
+    await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeDisabled();
   });
 
 

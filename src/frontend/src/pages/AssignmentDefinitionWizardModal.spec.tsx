@@ -183,8 +183,10 @@ describe('AssignmentDefinitionWizardModal', () => {
     vi.resetAllMocks();
   });
 
-  // Mock fetchQuery to handle fire-and-forget calls gracefully
-  const mockFetchQuery = vi.fn().mockImplementation(() => Promise.resolve());
+  // Mock invalidateQueries to handle cache invalidation calls
+  // Per frontend-react-query-and-prefetch.md §7, fetchQuery after invalidation is anti-pattern
+  // Tests should expect invalidateQueries only, letting React Query handle refetch
+  const mockInvalidateQueries = vi.fn().mockImplementation(() => Promise.resolve());
 
   // ============================================================================
   // Batch D: Direct Unit Tests for AssignmentDefinitionWizardModal
@@ -197,7 +199,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
@@ -219,7 +221,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
@@ -269,7 +271,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -306,7 +308,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -360,7 +362,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -416,7 +418,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
@@ -445,7 +447,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -476,7 +478,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
@@ -517,7 +519,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -559,7 +561,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
 
       // Modal should show blocking error
       await waitFor(() => {
@@ -575,7 +577,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => Promise.resolve());
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
@@ -747,7 +749,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="test-update-key" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('test-update-key'), updateDefinition);
@@ -834,7 +836,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="test-update-key" onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('test-update-key'), initialDefinition);
@@ -939,7 +941,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 
@@ -1032,7 +1034,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => Promise.resolve());
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
@@ -1110,9 +1112,11 @@ describe('AssignmentDefinitionWizardModal', () => {
       });
 
       // Verify initial tasks are present
+      // Note: Mock provides 'Original Task 1' and 'Original Task 2' as task titles
+      // Per SPEC.md, the wizard renders persisted task titles from parsed task set unchanged
       const taskTable = within(modal).getByRole('table', { name: /task weightings/i });
-      expect(within(taskTable).getByText('Task 1')).toBeInTheDocument();
-      expect(within(taskTable).getByText('Task 2')).toBeInTheDocument();
+      expect(within(taskTable).getByText('Original Task 1')).toBeInTheDocument();
+      expect(within(taskTable).getByText('Original Task 2')).toBeInTheDocument();
 
       // Note: Document change detection and re-parse in create mode is implemented via localDefinitionKey/parsedCreateBaselineReference
       // per SPEC.md #20 and #21. This test verifies that the modal reaches the shared edit surface after parse.
@@ -1143,7 +1147,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={noop} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
 
       // Should show loading skeleton with accessible loading semantics
       const skeleton = await waitFor(() => {
@@ -1169,7 +1173,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -1234,7 +1238,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="update" definitionKey="algebra-baseline" onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(queryKeys.assignmentDefinitionByKey('algebra-baseline'), mockFullAssignmentDefinition);
@@ -1300,7 +1304,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { queryClient } = renderWithFrontendProviders(
         <AssignmentDefinitionWizardModal mode="create" definitionKey={null} onClose={onCloseSpy} open={true} />
       );
-      vi.spyOn(queryClient, 'fetchQuery').mockImplementation(mockFetchQuery);
+      vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidateQueries);
       queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
 

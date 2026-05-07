@@ -835,6 +835,10 @@ export function useAssignmentDefinitionWizard(
    * Performs query invalidation after a mutation.
    * Invalidate both assignmentDefinitionPartials and assignmentDefinitionByKey (for create-mode localDefinitionKey).
    *
+   * Per frontend-react-query-and-prefetch.md §7, we use invalidateQueries only.
+   * Active useQuery observers will automatically refetch in the background,
+   * and any errors will properly propagate to their isError state.
+   *
    * @param {string | null} explicitKey - Explicit definition key if provided.
    * @returns {Promise<void>} Resolves when invalidation is complete.
    */
@@ -847,7 +851,10 @@ export function useAssignmentDefinitionWizard(
       if (effectiveKey) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(effectiveKey) });
       }
-      await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
+      // Removed fetchQuery call as per frontend-react-query-and-prefetch.md §7:
+      // fetchQuery after invalidation is anti-pattern. Let React Query's background
+      // refetch handle cache updates. Errors will properly propagate to page-level
+      // useQuery.isError state, allowing blocking UI to render correctly.
     },
     [queryClient, localDefinitionKey]
   );

@@ -2,7 +2,9 @@ import type { QueryClient } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const invalidateQueriesMock = vi.fn(async () => {});
-const fetchQueryMock = vi.fn(async () => ({ definitionKey: 'algebra-baseline' }));
+// Removed fetchQueryMock as per frontend-react-query-and-prefetch.md §7:
+// fetchQuery after invalidation is anti-pattern. invalidateQueries triggers background
+// refetch for active useQuery observers, which properly propagates errors to isError state.
 
 /**
  * Loads the upsert-assignment-definition mutation cache helper module under test.
@@ -16,12 +18,9 @@ async function loadUpsertMutationCacheModule(): Promise<Record<string, unknown>>
 describe('upsertAssignmentDefinition mutation cache orchestration', () => {
   type UpsertMutationFlow = 'stage-one-create' | 'final-save' | 'document-reparse';
 
-  const fetchCallCount = 2;
   const invalidateCallCount = 2;
   const assignmentDefinitionPartialsInvalidateCallIndex = 1;
   const selectedDefinitionInvalidateCallIndex = 2;
-  const assignmentDefinitionPartialsFetchCallIndex = 1;
-  const selectedDefinitionFetchCallIndex = 2;
 
   const upsertMutationFlows = [
     { flow: 'stage-one-create' },
@@ -31,19 +30,18 @@ describe('upsertAssignmentDefinition mutation cache orchestration', () => {
 
   afterEach(() => {
     invalidateQueriesMock.mockClear();
-    fetchQueryMock.mockClear();
     vi.resetModules();
   });
 
   it.each(upsertMutationFlows)(
-    'invalidates then refreshes assignmentDefinitionPartials and the selected full-definition query after %s',
+    'invalidates assignmentDefinitionPartials and the selected full-definition query after %s',
     async ({ flow }) => {
       const module = await loadUpsertMutationCacheModule();
       const runUpsertMutationCacheRefresh = module.runUpsertMutationCacheRefresh as
         | ((options: {
             flow: UpsertMutationFlow;
             definitionKey: string;
-            queryClient: Pick<QueryClient, 'invalidateQueries' | 'fetchQuery'>;
+            queryClient: Pick<QueryClient, 'invalidateQueries'>;
           }) => Promise<void>)
         | undefined;
 
@@ -54,8 +52,7 @@ describe('upsertAssignmentDefinition mutation cache orchestration', () => {
         definitionKey: 'algebra-baseline',
         queryClient: {
           invalidateQueries: invalidateQueriesMock,
-          fetchQuery: fetchQueryMock,
-        } as Pick<QueryClient, 'invalidateQueries' | 'fetchQuery'>,
+        } as Pick<QueryClient, 'invalidateQueries'>,
       });
 
       expect(invalidateQueriesMock).toHaveBeenCalledTimes(invalidateCallCount);
@@ -78,23 +75,9 @@ describe('upsertAssignmentDefinition mutation cache orchestration', () => {
         })
       );
 
-      expect(fetchQueryMock).toHaveBeenCalledTimes(fetchCallCount);
-      expect(fetchQueryMock).toHaveBeenNthCalledWith(
-        assignmentDefinitionPartialsFetchCallIndex,
-        expect.objectContaining({
-          queryKey: ['assignmentDefinitionPartials'],
-        })
-      );
-      expect(fetchQueryMock).toHaveBeenNthCalledWith(
-        selectedDefinitionFetchCallIndex,
-        expect.objectContaining({
-          queryKey: ['assignmentDefinitionByKey', 'algebra-baseline'],
-        })
-      );
-
-      expect(
-        Math.max(...invalidateQueriesMock.mock.invocationCallOrder)
-      ).toBeLessThan(Math.min(...fetchQueryMock.mock.invocationCallOrder));
+      // Removed fetchQuery assertions as per frontend-react-query-and-prefetch.md §7:
+      // invalidateQueries alone triggers background refetch for active useQuery observers.
+      // No explicit fetchQuery needed - React Query handles it automatically.
     }
   );
 });

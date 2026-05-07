@@ -295,21 +295,19 @@ function getAssignmentsSurfaceState(
 /**
  * Returns whether the assignments panel should expose busy state.
  *
- * @param {Readonly<{ surfaceState: AssignmentsSurfaceState; isQueryFetching: boolean; isDeleteSubmitting: boolean; isDeletePending: boolean; }>} input Busy-state inputs.
+ * @param {Readonly<{ surfaceState: AssignmentsSurfaceState; isQueryFetching: boolean; isDeletePending: boolean; }>} input Busy-state inputs.
  * @returns {boolean} `true` when the panel is busy.
  */
 function isAssignmentsSurfaceBusyState(
   input: Readonly<{
     surfaceState: AssignmentsSurfaceState;
     isQueryFetching: boolean;
-    isDeleteSubmitting: boolean;
     isDeletePending: boolean;
   }>
 ): boolean {
   return (
     input.surfaceState.shouldRenderTableLoadingState
     || input.isQueryFetching
-    || input.isDeleteSubmitting
     || input.isDeletePending
   );
 }
@@ -516,19 +514,19 @@ function renderAssignmentsDefinitionsCard(
 /**
  * Renders the delete-confirmation modal.
  *
- * @param {Readonly<{ deleteTarget: AssignmentDefinitionPartial | null; isDeleteSubmitting: boolean; isDeleteMutationPending: boolean; onCancel: () => void; onConfirm: () => void; }>} properties Modal properties.
+ * @param {Readonly<{ deleteTarget: AssignmentDefinitionPartial | null; isDeleteMutationPending: boolean; onCancel: () => void; onConfirm: () => void; error: string | null; }>} properties Modal properties.
  * @returns {JSX.Element} Delete modal.
  */
 function AssignmentsDeleteModal(
   properties: Readonly<{
     deleteTarget: AssignmentDefinitionPartial | null;
-    isDeleteSubmitting: boolean;
     isDeleteMutationPending: boolean;
     onCancel: () => void;
     onConfirm: () => void;
+    error: string | null;
   }>
 ) {
-  const isDeleteBusy = properties.isDeleteSubmitting || properties.isDeleteMutationPending;
+  const isDeleteBusy = properties.isDeleteMutationPending;
 
   return (
     <Modal
@@ -556,6 +554,14 @@ function AssignmentsDeleteModal(
       transitionName=""
     >
       <Space orientation="vertical" size="small">
+        {properties.error && (
+          <Alert
+            description={properties.error}
+            showIcon
+            type="error"
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Text>You are deleting this assignment definition.</Text>
         {properties.deleteTarget === null ? null : <Text strong>{properties.deleteTarget.primaryTitle}</Text>}
         <Text>This delete is permanent and cannot be undone.</Text>
@@ -578,10 +584,11 @@ export function AssignmentsPage() {
   const isAssignmentsDatasetFailed = startupWarmupState.isDatasetFailed('assignmentDefinitionPartials');
   const isAssignmentsDatasetTrustworthy = assignmentDatasetSnapshot.isTrustworthy;
   const hasTrustworthyAssignmentsDataset = isAssignmentsDatasetReady && isAssignmentsDatasetTrustworthy;
+  const hasTrustworthyReferenceData = startupWarmupState.isDatasetReady('assignmentTopics') && startupWarmupState.isDatasetReady('yearGroups');
 
   const assignmentsQuery = useQuery({
     ...getAssignmentDefinitionPartialsQueryOptions(),
-    enabled: hasTrustworthyAssignmentsDataset,
+    enabled: isAssignmentsDatasetReady,
     refetchOnMount: false,
   });
 
@@ -591,7 +598,7 @@ export function AssignmentsPage() {
 
   const [filters, setFilters] = useState<AssignmentsFilterState>(EMPTY_FILTER_STATE);
   const [deleteTarget, setDeleteTarget] = useState<AssignmentDefinitionPartial | null>(null);
-  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteOutcome, setDeleteOutcome] = useState<DeleteOutcome | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardMode, setWizardMode] = useState<'create' | 'update'>('create');
@@ -661,7 +668,7 @@ export function AssignmentsPage() {
         render: (_, row) => (
           <Space wrap>
             <Button
-              disabled={isDeleteSubmitting || deleteMutation.isPending || !hasTrustworthyAssignmentsDataset}
+              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !hasTrustworthyReferenceData}
               onClick={() => {
                 setWizardMode('update');
                 setWizardDefinitionKey(row.definitionKey);
@@ -672,8 +679,9 @@ export function AssignmentsPage() {
             </Button>
             <Button
               danger
-              disabled={isDeleteSubmitting || deleteMutation.isPending || !isSafeDefinitionKey(row.definitionKey)}
+              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !isSafeDefinitionKey(row.definitionKey)}
               onClick={() => {
+                setDeleteError(null);
                 setDeleteOutcome(null);
                 setDeleteTarget(row);
               }}
@@ -684,7 +692,7 @@ export function AssignmentsPage() {
         ),
       },
     ],
-    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, isDeleteSubmitting]
+    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, hasTrustworthyReferenceData]
   );
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState({
@@ -699,7 +707,6 @@ export function AssignmentsPage() {
 
   const isAssignmentsSurfaceBusy = isAssignmentsSurfaceBusyState({
     isDeletePending: deleteMutation.isPending,
-    isDeleteSubmitting,
     isQueryFetching: assignmentsQuery.isFetching,
     surfaceState: assignmentsSurfaceState,
   });
@@ -710,7 +717,7 @@ export function AssignmentsPage() {
       refetchType: 'none',
     });
 
-    return queryClient.fetchQuery(getAssignmentDefinitionPartialsQueryOptions());
+    return queryClient.refetchQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
   }, [queryClient]);
 
   const assignmentsDefinitionsCard = renderAssignmentsDefinitionsCard({
@@ -761,12 +768,12 @@ export function AssignmentsPage() {
    * @returns {Promise<void>} Promise resolving once delete flow settles.
    */
   async function handleConfirmDelete(): Promise<void> {
-    if (deleteTarget === null || isDeleteSubmitting || deleteMutation.isPending) {
+    if (deleteTarget === null || deleteMutation.isPending) {
       return;
     }
 
+    setDeleteError(null);
     setDeleteOutcome(null);
-    setIsDeleteSubmitting(true);
 
     let deleteCompleted = false;
 
@@ -784,11 +791,8 @@ export function AssignmentsPage() {
       });
 
       if (!deleteCompleted) {
-        setDeleteTarget(null);
-        setDeleteOutcome({ type: 'error', message: DELETE_FAILURE_MESSAGE });
+        setDeleteError(DELETE_FAILURE_MESSAGE);
       }
-    } finally {
-      setIsDeleteSubmitting(false);
     }
   }
 
@@ -798,10 +802,11 @@ export function AssignmentsPage() {
    * @returns {void} No return value.
    */
   function handleDeleteModalClose() {
-    if (isDeleteSubmitting || deleteMutation.isPending) {
+    if (deleteMutation.isPending) {
       return;
     }
 
+    setDeleteError(null);
     setDeleteTarget(null);
   }
   return (
@@ -813,7 +818,7 @@ export function AssignmentsPage() {
         <Flex vertical gap={16}>
           <AssignmentsStatusAndActionsCard
             deleteOutcome={deleteOutcome}
-            hasTrustworthyData={hasTrustworthyAssignmentsDataset}
+            hasTrustworthyData={hasTrustworthyAssignmentsDataset && hasTrustworthyReferenceData}
             onCreateAssignment={handleCreateAssignment}
             onRefreshAssignmentsData={handleRetryAssignmentsData}
             shouldRenderActionLoadingState={assignmentsSurfaceState.shouldRenderActionLoadingState}
@@ -832,8 +837,8 @@ export function AssignmentsPage() {
 
       <AssignmentsDeleteModal
         deleteTarget={deleteTarget}
+        error={deleteError}
         isDeleteMutationPending={deleteMutation.isPending}
-        isDeleteSubmitting={isDeleteSubmitting}
         onCancel={handleDeleteModalClose}
         onConfirm={() => {
           void handleConfirmDelete();

@@ -530,17 +530,17 @@ describe('AssignmentsPage', () => {
 
   it('scopes retry/refetch to assignmentDefinitionPartials dataset only and disallows unscoped calls', async () => {
     const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-    const fetchQuerySpy = vi.spyOn(queryClient, 'fetchQuery');
+    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
 
     fireEvent.click(screen.getByRole('button', { name: /retry|refresh assignments data/i }));
 
     await waitFor(() => {
-      expect(fetchQuerySpy).toHaveBeenCalled();
+      expect(refetchQueriesSpy).toHaveBeenCalled();
     });
 
-    for (const [queryOptions] of fetchQuerySpy.mock.calls) {
-      expect(queryOptions).toBeDefined();
-      expect(queryOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+    for (const [refetchOptions] of refetchQueriesSpy.mock.calls) {
+      expect(refetchOptions).toBeDefined();
+      expect(refetchOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
     }
   });
 
@@ -591,7 +591,7 @@ describe('AssignmentsPage', () => {
       .mockResolvedValueOnce([readyRows[1]]);
 
     const { queryClient } = renderWithFrontendProviders(<AssignmentsPage />);
-    const fetchQuerySpy = vi.spyOn(queryClient, 'fetchQuery');
+    const refetchQueriesSpy = vi.spyOn(queryClient, 'refetchQueries');
 
     const safeRow = await screen.findByRole('row', { name: /algebra foundations/i });
     fireEvent.click(within(safeRow).getByRole('button', { name: /delete/i }));
@@ -602,11 +602,11 @@ describe('AssignmentsPage', () => {
     });
 
     await waitFor(() => {
-      expect(fetchQuerySpy).toHaveBeenCalled();
+      expect(refetchQueriesSpy).toHaveBeenCalled();
 
-      for (const [queryOptions] of fetchQuerySpy.mock.calls) {
-        expect(queryOptions).toBeDefined();
-        expect(queryOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+      for (const [refetchOptions] of refetchQueriesSpy.mock.calls) {
+        expect(refetchOptions).toBeDefined();
+        expect(refetchOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
       }
     });
 

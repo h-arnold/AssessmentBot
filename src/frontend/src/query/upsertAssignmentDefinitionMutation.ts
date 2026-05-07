@@ -1,8 +1,4 @@
 import type { QueryClient } from '@tanstack/react-query';
-import {
-  getAssignmentDefinitionPartialsQueryOptions,
-  getAssignmentDefinitionQueryOptions,
-} from './sharedQueries';
 import { queryKeys } from './queryKeys';
 
 export type UpsertAssignmentDefinitionMutationFlow =
@@ -13,14 +9,18 @@ export type UpsertAssignmentDefinitionMutationFlow =
 export type RunUpsertMutationCacheRefreshOptions = Readonly<{
   flow: UpsertAssignmentDefinitionMutationFlow;
   definitionKey: string;
-  queryClient: Pick<QueryClient, 'fetchQuery' | 'invalidateQueries'>;
+  queryClient: Pick<QueryClient, 'invalidateQueries'>;
 }>;
 
 /**
  * Refreshes assignment-definition cache entries after a successful upsert.
  *
+ * Per frontend-react-query-and-prefetch.md §7, we use invalidateQueries only.
+ * Active useQuery observers will automatically refetch in the background,
+ * and any errors will properly propagate to their isError state.
+ *
  * @param {RunUpsertMutationCacheRefreshOptions} options Mutation refresh options.
- * @returns {Promise<void>} Resolves when required cache refresh work completes.
+ * @returns {Promise<void>} Resolves when required cache invalidation work completes.
  */
 export async function runUpsertMutationCacheRefresh(
   options: RunUpsertMutationCacheRefreshOptions
@@ -32,6 +32,7 @@ export async function runUpsertMutationCacheRefresh(
     queryKey: queryKeys.assignmentDefinitionByKey(definitionKey),
   });
 
-  await queryClient.fetchQuery(getAssignmentDefinitionPartialsQueryOptions());
-  await queryClient.fetchQuery(getAssignmentDefinitionQueryOptions(definitionKey));
+  // Removed fetchQuery calls as per frontend-react-query-and-prefetch.md §7:
+  // fetchQuery after invalidation is anti-pattern. Let React Query's background
+  // refetch handle cache updates for active useQuery observers.
 }
