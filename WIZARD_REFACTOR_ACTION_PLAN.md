@@ -415,6 +415,13 @@ Helper decision entries for this refactor:
 
 ## Regression and contract hardening
 
+**Status: ✅ VERIFIED**
+
+- All 3 wizard files pass lint with complexity <=7
+- All 20 tests pass
+- Build type check passes for modified files
+- Accepted behaviours preserved: create parse-and-continue flow, same-session transition, final save, document-change re-parse/cancel, discard-confirm gating
+
 ### Objective
 
 - Prove the wizard satisfies the accepted contract while both complexity violations are resolved.
@@ -457,6 +464,12 @@ Helper decision entries for this refactor:
 ---
 
 ## Documentation and rollout notes
+
+**Status: ✅ IN PROGRESS - Documentation updated**
+
+- Updated frontend-modal-patterns.md: helper-change status changed from `Not implemented` to `Implemented`
+- Added implementation details: hook, shell, and modal file structure
+- All helper decisions reconciled with delivered implementation
 
 ### Objective
 

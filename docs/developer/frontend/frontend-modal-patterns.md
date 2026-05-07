@@ -135,7 +135,10 @@ Default decision:
 
 - keep local to the assignment-definition workflow unless a second accepted in-scope caller emerges
 - do not extract a generic app-wide wizard helper for this feature
-- helper-change status for this planned family: `Not implemented`
+- helper-change status for this planned family: `Implemented`
+  - hook: `useAssignmentDefinitionWizard.ts` (feature-local, complexity ≤7)
+  - shell: `AssignmentDefinitionWizardModalShell.tsx` (extended to handle all view states)
+  - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
 
 ## 4. Keep-local rules
 
