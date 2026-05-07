@@ -1,0 +1,23 @@
+name = "kif"
+description = "A simple subagent for menial tasks like exploring codebase, finding snippets, and basic git operations. Named after Kif Kroker from Futurama."
+sandbox_mode = "workspace-write"
+auto_approve = true
+safety = "neutral"
+active_model = "devstral-small"
+agent_type = "subagent"
+thinking = "off"
+
+nickname_candidates = ["kif", "Kif"]
+system_prompt_id = "kif"
+
+[tools]
+allowlist = ["bash", "grep", "read_file", "task", "todo"]
+
+[tools.bash]
+permission = "always"
+
+[tools.read_file]
+permission = "always"
+
+[tools.grep]
+permission = "always"
