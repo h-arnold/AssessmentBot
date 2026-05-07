@@ -1,6 +1,6 @@
 import { Alert, Button, Form, Input, InputNumber, Modal, Select, Skeleton, Space, Table } from 'antd';
 import { type FormInstance } from 'antd';
-import type { ReactNode } from 'react';
+import type { JSX, ReactNode } from 'react';
 import {
   DEFAULT_WEIGHTING_VALUE,
   MAX_WEIGHTING_VALUE,
@@ -93,10 +93,7 @@ export function AssignmentDefinitionWizardModalShell(
     );
   }
 
-  return renderReadyState(
-    { ...properties, modalTitle },
-    modalTitle
-  );
+  return renderReadyState(properties, modalTitle);
 }
 
 /**
@@ -136,12 +133,12 @@ function renderReadyState(
 /**
  * Renders the alert messages for document change and parse required states.
  *
- * @param {AssignmentDefinitionWizardModalShellProperties} properties Shell properties.
+ * @param {AssignmentDefinitionWizardModalShellProperties} _properties Shell properties (unused but required for interface consistency).
  * @param {DocumentChangeState} documentChange Resolved document change state.
  * @param {boolean} hasParsedTasks Whether tasks have been parsed.
  * @returns {JSX.Element} The alert elements.
  */
-function renderAlerts(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, hasParsedTasks: boolean): JSX.Element {
+function renderAlerts(_properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, hasParsedTasks: boolean): JSX.Element {
   const showDocumentChangeAlert = documentChange.hasPendingChange;
   const showParseRequiredAlert = !hasParsedTasks;
 
@@ -357,7 +354,7 @@ function renderAssignmentWeightingInput(): JSX.Element {
  * @param {TaskRow[]} taskRows Task rows.
  * @returns {JSX.Element} The task weightings table form item.
  */
-function renderTaskWeightingsTable(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, taskRows: TaskRow[]): JSX.Element {
+function renderTaskWeightingsTable(properties: AssignmentDefinitionWizardModalShellProperties, documentChange: DocumentChangeState, taskRows: TaskRow[]): JSX.Element | null {
   if (properties.onTaskWeightingChange === undefined) {
     return null;
   }
@@ -403,7 +400,7 @@ function renderTaskWeightingInputCell(documentChange: DocumentChangeState, prope
       min={MIN_WEIGHTING_VALUE}
       max={MAX_WEIGHTING_VALUE}
       value={record.taskWeighting}
-      onChange={(value) => properties.onTaskWeightingChange(record.taskId, value)}
+      onChange={(value) => properties.onTaskWeightingChange!(record.taskId, value)}
     />
   );
 }

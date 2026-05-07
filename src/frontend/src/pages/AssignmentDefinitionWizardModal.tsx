@@ -1,4 +1,5 @@
 import { Modal, Space, Button, Typography } from 'antd';
+import { type JSX } from 'react';
 import { useAssignmentDefinitionWizard } from './useAssignmentDefinitionWizard';
 import { AssignmentDefinitionWizardModalShell } from './AssignmentDefinitionWizardModalShell';
 
