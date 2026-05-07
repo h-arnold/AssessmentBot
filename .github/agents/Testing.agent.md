@@ -77,6 +77,7 @@ If you add or modify tests, run the smallest targeted command first, then the re
 - For frontend tests, use Testing Library queries and assert user-visible behaviour.
 - For builder tests, assert deterministic and stage-specific outcomes rather than incidental implementation details.
 - Do not add production code solely to satisfy tests.
+- **Critical:** Always configure mocks BEFORE calling `renderWithFrontendProviders()`. Components render immediately, so mocks set after rendering will not affect the initial render. Use `vi.hoisted()` for mock functions and `queryClient.setQueryData()` for React Query initial state.
 
 ## 4. Debugging Workflow
 

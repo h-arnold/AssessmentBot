@@ -230,7 +230,38 @@ For Settings-page Classes CRUD browser tests, extend the existing scenario harne
 - Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
 - New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
 
-### React Query Testing Patterns
+### Mock Setup Order (Critical Anti-Pattern)
+
+**Problem:** Setting mock return values AFTER `renderWithFrontendProviders()` causes components to receive stale default mock data because React renders immediately with whatever mock values are in place at render time.
+
+**Example - WRONG:**
+
+```typescript
+// Component renders with default mock (undefined or stale)
+const { queryClient } = renderWithFrontendProviders(<Component />);
+// Too late - component already rendered with wrong data
+getAssignmentDefinitionMock.mockResolvedValue(initialDefinition);
+```
+
+**Example - CORRECT:**
+
+```typescript
+// Configure mocks BEFORE rendering
+getAssignmentDefinitionMock.mockResolvedValue(initialDefinition);
+const { queryClient } = renderWithFrontendProviders(<Component />);
+// Now component renders with correct mock data
+```
+
+**React Query Specific Guidance:**
+
+- Use `vi.hoisted()` for mock functions defined outside the test
+- Use `queryClient.setQueryData()` to set initial query state BEFORE rendering
+- For mutation-triggered refetches, you can set mocks for subsequent calls after the initial render
+
+**Debugging Tip:**
+If your test is receiving undefined or stale data, add `console.log(getAssignmentDefinitionMock.mock.calls)` to verify when mocks are being called. If calls appear AFTER your mock setup, you've hit this anti-pattern.
+
+## React Query Testing Patterns
 
 When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
 
