@@ -75,6 +75,57 @@ Use it alongside:
 - Treat unrelated write launchers elsewhere on the page as outside the default conflict boundary unless they operate on the same owned dataset workflow.
 - Re-enable controls promptly when the mutation settles.
 
+### 6.3 Button State and Reference Data Availability
+
+**Preferred Pattern:** Disable Create/Update buttons when `hasTrustworthyReferenceData === false`.
+
+Buttons that trigger create or update workflows must be disabled when required reference data (year groups, assignment topics) is not trustworthy or not yet loaded. This prevents users from starting workflows that cannot complete successfully.
+
+**Implementation Pattern:**
+
+```typescript
+// ✅ CORRECT: Button disabled when reference data is unavailable
+const hasTrustworthyReferenceData =
+  isYearGroupsDatasetReady &&
+  isTopicsDatasetReady &&
+  isYearGroupsDatasetTrustworthy &&
+  isTopicsDatasetTrustworthy;
+
+<Button
+  disabled={!hasTrustworthyAssignmentsDataset || !hasTrustworthyReferenceData}
+  onClick={handleCreateAssignment}
+>
+  Create assignment
+</Button>
+```
+
+**Row-level Update Button:** Conditionally render or disable based on reference data availability:
+
+```typescript
+// ✅ CORRECT: Row-level Update button checks reference data
+<Button
+  disabled={isDeleteSubmitting || deleteMutation.isPending || !hasTrustworthyReferenceData}
+  onClick={() => {
+    setWizardMode('update');
+    setWizardDefinitionKey(row.definitionKey);
+    setWizardOpen(true);
+  }}
+>
+  Update
+</Button>
+```
+
+**Anti-Pattern:** Allowing create/update workflows to start without trustworthy reference data leads to errors later in the flow.
+
+```typescript
+// ❌ AVOID: Button enabled without checking reference data
+<Button onClick={handleCreateAssignment}>
+  Create assignment
+</Button>
+```
+
+**Rationale:** The assignment-definition wizard requires `assignmentTopics` and `yearGroups` reference data for dropdown options. Starting the workflow without this data will result in empty dropdowns or validation errors. Disabling the button prevents this user experience issue.
+
 ## 7. Width-token ownership rules
 
 - Shared CSS custom properties in the frontend styling layer are the authoritative source of truth for app-specific page and panel widths.

@@ -261,6 +261,29 @@ const { queryClient } = renderWithFrontendProviders(<Component />);
 **Debugging Tip:**
 If your test is receiving undefined or stale data, add `console.log(getAssignmentDefinitionMock.mock.calls)` to verify when mocks are being called. If calls appear AFTER your mock setup, you've hit this anti-pattern.
 
+## Test Isolation Patterns
+
+### Mock Reset Best Practices
+
+**Preferred Pattern:** Use `vi.resetAllMocks()` in `afterEach` to reset both call history AND mock implementations.
+
+```typescript
+afterEach(() => {
+  vi.resetAllMocks();
+});
+```
+
+**Anti-Pattern:** `vi.clearAllMocks()` only clears call history, not mock implementations. This can cause tests to receive stale mock implementations from previous tests.
+
+```typescript
+// AVOID: Does not reset mock implementations
+afterEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+**Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
+
 ## React Query Testing Patterns
 
 When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
@@ -360,6 +383,78 @@ function createStartupWarmupState(
     warmupState: 'ready' as const,
   };
 }
+```
+
+## Playwright Best Practices
+
+### Web-First Assertions with Auto-Waiting
+
+**Preferred Pattern:** Use Playwright's web-first assertions (`toBeVisible()`, `toBeEnabled()`, `toBeDisabled()`) which automatically wait for the expected state.
+
+```typescript
+// ✅ CORRECT: Auto-waits for element to be visible
+await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
+
+// ✅ CORRECT: Auto-waits for element to be enabled
+await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
+
+// ✅ CORRECT: Auto-waits for element to be disabled
+await expect(page.getByRole('button', { name: 'Delete' })).toBeDisabled();
+```
+
+**Anti-Pattern:** Never use hard-coded timeouts (`page.waitForTimeout(N)`) as they are flaky and always wait the full duration regardless of actual need.
+
+```typescript
+// ❌ AVOID: Hard-coded timeout is an anti-pattern
+await page.waitForTimeout(1000);
+await expect(page.getByText('Loaded')).toBeVisible();
+
+// ✅ CORRECT: Let Playwright auto-wait
+await expect(page.getByText('Loaded')).toBeVisible();
+```
+
+**Anti-Pattern:** Avoid relying on implicit timing. Always use explicit Playwright waits for UI state changes.
+
+```typescript
+// ❌ AVOID: Implicit timing - may fail if render is slow
+const element = page.getByRole('button', { name: 'Save' });
+expect(await element.getAttribute('disabled')).toBeNull();
+
+// ✅ CORRECT: Explicit web-first assertion with auto-waiting
+await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled();
+```
+
+### Network Response Waiting
+
+When testing React Query cache updates, wait for specific UI elements that only appear after the query completes:
+
+```typescript
+// ✅ CORRECT: Wait for element that appears after query completes
+await expect(page.getByText('Data loaded successfully')).toBeVisible();
+
+// ✅ CORRECT: Wait for network response when applicable
+await page.waitForResponse('**/api/assignments');
+await expect(page.getByRole('table')).toBeVisible();
+```
+
+### Assertion Order Matched to Code Execution
+
+Ensure test assertions match the actual order of code execution to avoid timing issues.
+
+**Example:** If code closes a modal before showing a message:
+
+```typescript
+// Code execution order:
+// 1. setDeleteTarget(null) → modal closes
+// 2. refetchAssignmentDefinitions() → query cache updates
+// 3. setDeleteOutcome({type: 'success', message: 'Deleted.'})
+
+// ✅ CORRECT: Match code execution order
+await expect(page.getByRole('dialog')).toHaveCount(0); // Modal closed first
+await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message appears
+
+// ❌ AVOID: Assertion order doesn't match execution
+await expect(page.getByText(/deleted\./i)).toBeVisible(); // Message not yet visible
 ```
 
 ## Current Structure

@@ -180,7 +180,7 @@ describe('AssignmentDefinitionWizardModal', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   // Mock fetchQuery to handle fire-and-forget calls gracefully

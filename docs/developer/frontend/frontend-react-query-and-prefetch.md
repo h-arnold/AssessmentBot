@@ -107,7 +107,83 @@ Current invalidation and required-refresh rules:
 
 Do not add speculative invalidation wiring beyond the feature contracts that exist.
 
-## 7. Sensitive data and cache persistence
+## 7. Mutation and Invalidation Patterns
+
+### Preferred Pattern: Let Invalidation Trigger Background Refetch
+
+**Preferred Pattern:** Use React Query's `invalidateQueries` to trigger background refetch. Do not call `fetchQuery` explicitly in mutation cleanup or after invalidation.
+
+```typescript
+// ✅ CORRECT: Let React Query background refetch handle it
+await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+await queryClient.invalidateQueries({
+  queryKey: queryKeys.assignmentDefinitionByKey(definitionKey),
+});
+```
+
+**Rationale:** React Query's invalidation automatically triggers background refetches for active observers. Explicit `fetchQuery` calls are unnecessary and can cause errors to propagate incorrectly.
+
+### Anti-Pattern: Explicit fetchQuery in Mutation Cleanup
+
+**Anti-Pattern:** Calling `fetchQuery` explicitly after invalidation causes errors to propagate to the wrong scope (e.g., modal instead of page).
+
+```typescript
+// ❌ AVOID: Explicit fetchQuery causes errors to propagate incorrectly
+await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() }); // ← Error propagates here
+```
+
+**Why this fails:** When `fetchQuery` fails, the error is thrown at the call site. In modal contexts, this causes the modal's error handler to catch it instead of the page-level query error handler. Let React Query's automatic background refetch handle cache updates.
+
+### Cache Check Anti-Pattern: Create Mode
+
+**Anti-Pattern:** Query for `assignmentDefinitionByKey` is disabled in create mode — never check it for cached data.
+
+```typescript
+// ❌ AVOID: Query is disabled in create mode, cache is never populated
+const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(localDefinitionKey));
+// In create mode, this will always be undefined
+```
+
+**Context:** In `AssignmentDefinitionWizardModal.tsx`, the `useQuery` for `getAssignmentDefinitionQueryOptions(definitionKey ?? '')` has `enabled: open && !isCreateMode && definitionKey !== null`. In create mode, this query never runs and never populates the cache.
+
+**Correct Approach:** In create mode, always use the parsed baseline reference instead of checking query cache:
+
+```typescript
+// ✅ CORRECT: In create mode, use parse baseline reference
+if (!isCreateMode && localDefinitionKey) {
+  // Only check cache in update mode
+  const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(localDefinitionKey));
+  if (cached) {
+    return buildBaselineFromCached(cached);
+  }
+}
+// In create mode: always use parse baseline reference
+return parsedCreateBaselineReference.current;
+```
+
+## 8. Data Contract Patterns
+
+### Preferred Pattern: yearGroupKey/yearGroupLabel Pair
+
+**Preferred Pattern:** Use `yearGroupKey` (string) and `yearGroupLabel` (string) pair, not numeric `yearGroup`.
+
+```typescript
+// ✅ CORRECT: Use yearGroupKey/yearGroupLabel pair
+interface AssignmentDefinitionPartial {
+  yearGroupKey: string; // Authoritative key for persistence
+  yearGroupLabel: string; // Resolved display label
+  // ... other fields
+}
+```
+
+**Rationale:** Assignment definitions should store the selected year-group reference-data key rather than the numeric `yearGroup` value. This ensures:
+
+- Consistent reference to authoritative year-group records
+- Display labels can be resolved from cached reference-data datasets
+- Persisted records store keys, not display values that may change
+
+## 9. Sensitive data and cache persistence
 
 Frontend cache persistence is intentionally disabled.
 Cached data remains in memory only for the current session because the app handles sensitive student-related data and should not persist shared query payloads in browser storage by default.
