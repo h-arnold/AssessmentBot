@@ -50,7 +50,41 @@ In `useAssignmentDefinitionWizard.ts`, `getParsedCreateBaseline` (lines 257-277)
 
 At what point in the workflow is the query cache supposed to be refreshed? This will help determine whether we should remove the query cache check in create mode or ensure that parse response populates the cache correctly.
 
-**Findings from further investigation**: Pending
+**Findings from further investigation**:
+
+The query cache for `assignmentDefinitionByKey(localDefinitionKey)` is **never populated in create mode** during the normal workflow. Here's why:
+
+1. **Query is disabled**: In `AssignmentDefinitionWizardModal.tsx`, the `useQuery` for `getAssignmentDefinitionQueryOptions(definitionKey ?? '')` has `enabled: open && !isCreateMode && definitionKey !== null`. In create mode, this evaluates to `false`, so the query never runs and never populates the cache.
+
+2. **Mutation doesn't set cache**: The `upsertMutation` (line 677) doesn't have an `onSuccess` handler that manually sets query data via `queryClient.setQueryData()`. It only calls `invalidateMutationQueries` which invalidates the cache.
+
+3. **Invalidation happens after parse**: In `runWizardMutation` (line 899-901), after a successful parse, `invalidateMutationQueries` is called, which invalidates the `assignmentDefinitionByKey` query. Since this query was never populated, invalidating it has no effect.
+
+4. **`storeParseBaseline` populates reference, not cache**: The parse response is stored in `parsedCreateBaselineReference.current` (line 801), not in the React Query cache.
+
+**Conclusion**: The query cache check in `getParsedCreateBaseline` (line 278-280) serves no purpose in create mode because the cache is never populated. The function should **skip the cache check entirely in create mode** and always return `parsedCreateBaselineReference.current`.
+
+**Recommended fix**:
+
+```typescript
+const getParsedCreateBaseline = useCallback((): ParsedCreateBaseline | null => {
+  // In update mode: try cached query data for existing definitions
+  if (!isCreateMode && localDefinitionKey) {
+    const cached = queryClient.getQueryData(
+      queryKeys.assignmentDefinitionByKey(localDefinitionKey)
+    );
+    if (cached) {
+      // ... build from cached
+    }
+  }
+  // In create mode: always use parse baseline reference
+  return parsedCreateBaselineReference.current;
+}, [isCreateMode, localDefinitionKey, queryClient]);
+```
+
+Note: `isCreateMode` would need to be passed to `useFormInitialization` or the hook refactored.
+
+Do not modify anything else in the file.
 
 **Severity:** High  
 **Type:** Code bug (spec non-compliant)
@@ -165,7 +199,44 @@ await expect(
 
 **Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
 
-**Investigation Findings:** Pending
+**Investigation Findings**:
+
+Based on Playwright best practices documentation and community guides:
+
+**Idiomatic Approach**: Use Playwright's **auto-waiting + web-first assertions** pattern, which is the most reliable and minimizes wait times.
+
+**Key Principles:**
+
+1. **Leverage auto-waiting**: Playwright automatically waits for elements to be actionable (visible, enabled, stable) before interacting. No manual waits needed for most DOM operations.
+2. **Use web-first assertions**: `await expect(locator).toBeVisible()` retries until condition is met, adapting to actual page load times.
+3. **Avoid hard-coded timeouts**: `page.waitForTimeout(N)` is an anti-pattern - it always waits N ms regardless of actual need.
+4. **Wait for network responses when applicable**: Use `page.waitForResponse()` to wait for API calls to complete before checking UI updates.
+
+**Recommended Fix Pattern**:
+
+```typescript
+// Instead of checking immediately:
+await element.toBeDisabled();
+
+// Use web-first assertion which auto-waits:
+await expect(element).toBeDisabled();
+
+// Or for complex cases, wait for network response first:
+await page.waitForResponse('**/api/endpoint');
+await expect(element).toBeDisabled();
+```
+
+**For React Query cache updates**: Wait for specific UI elements that only appear after the query completes:
+
+```typescript
+await expect(page.locator('text=Loaded data')).toBeVisible();
+```
+
+**Sources**:
+
+- [Playwright Auto-waiting Docs](https://playwright.dev/docs/actionability)
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [TanStack Query Testing Guide](https://tanstack.com/query/v4/docs/framework/react/guides/testing)
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
@@ -243,7 +314,44 @@ await expect(deleteDialog.getByText(/this delete is permanent/i)).toBeVisible();
 
 **Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
 
-**Investigation Findings:** Pending
+**Investigation Findings**:
+
+Based on Playwright best practices documentation and community guides:
+
+**Idiomatic Approach**: Use Playwright's **auto-waiting + web-first assertions** pattern, which is the most reliable and minimizes wait times.
+
+**Key Principles:**
+
+1. **Leverage auto-waiting**: Playwright automatically waits for elements to be actionable (visible, enabled, stable) before interacting. No manual waits needed for most DOM operations.
+2. **Use web-first assertions**: `await expect(locator).toBeVisible()` retries until condition is met, adapting to actual page load times.
+3. **Avoid hard-coded timeouts**: `page.waitForTimeout(N)` is an anti-pattern - it always waits N ms regardless of actual need.
+4. **Wait for network responses when applicable**: Use `page.waitForResponse()` to wait for API calls to complete before checking UI updates.
+
+**Recommended Fix Pattern**:
+
+```typescript
+// Instead of checking immediately:
+await element.toBeDisabled();
+
+// Use web-first assertion which auto-waits:
+await expect(element).toBeDisabled();
+
+// Or for complex cases, wait for network response first:
+await page.waitForResponse('**/api/endpoint');
+await expect(element).toBeDisabled();
+```
+
+**For React Query cache updates**: Wait for specific UI elements that only appear after the query completes:
+
+```typescript
+await expect(page.locator('text=Loaded data')).toBeVisible();
+```
+
+**Sources**:
+
+- [Playwright Auto-waiting Docs](https://playwright.dev/docs/actionability)
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [TanStack Query Testing Guide](https://tanstack.com/query/v4/docs/framework/react/guides/testing)
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
@@ -281,7 +389,44 @@ await expect(page.getByRole('button', { name: 'Delete definition' }).locator('..
 
 **Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
 
-**Investigation Findings:** Pending
+**Investigation Findings**:
+
+Based on Playwright best practices documentation and community guides:
+
+**Idiomatic Approach**: Use Playwright's **auto-waiting + web-first assertions** pattern, which is the most reliable and minimizes wait times.
+
+**Key Principles:**
+
+1. **Leverage auto-waiting**: Playwright automatically waits for elements to be actionable (visible, enabled, stable) before interacting. No manual waits needed for most DOM operations.
+2. **Use web-first assertions**: `await expect(locator).toBeVisible()` retries until condition is met, adapting to actual page load times.
+3. **Avoid hard-coded timeouts**: `page.waitForTimeout(N)` is an anti-pattern - it always waits N ms regardless of actual need.
+4. **Wait for network responses when applicable**: Use `page.waitForResponse()` to wait for API calls to complete before checking UI updates.
+
+**Recommended Fix Pattern**:
+
+```typescript
+// Instead of checking immediately:
+await element.toBeDisabled();
+
+// Use web-first assertion which auto-waits:
+await expect(element).toBeDisabled();
+
+// Or for complex cases, wait for network response first:
+await page.waitForResponse('**/api/endpoint');
+await expect(element).toBeDisabled();
+```
+
+**For React Query cache updates**: Wait for specific UI elements that only appear after the query completes:
+
+```typescript
+await expect(page.locator('text=Loaded data')).toBeVisible();
+```
+
+**Sources**:
+
+- [Playwright Auto-waiting Docs](https://playwright.dev/docs/actionability)
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [TanStack Query Testing Guide](https://tanstack.com/query/v4/docs/framework/react/guides/testing)
 
 ---
 
@@ -359,7 +504,34 @@ Optional improvement for explicit handling:
 
 **Further Investigation Required**: Use your web search tool to find best practises for resolving React timing issues. Identify the most promising and idiomatic approach that minimises wait times.
 
-**Investigation Findings:** Pending
+**Investigation Findings**:
+
+Based on React and React Query best practices:
+
+**Idiomatic Approach**: Use React Query's built-in query status to determine when data is loaded, combined with Playwright's auto-waiting for assertions.
+
+**Key Principles:**
+
+1. **Wait for query status**: Use assertions that check for UI elements that only appear after query data is loaded.
+2. **Leverage Playwright auto-waiting**: Playwright will retry assertions until they pass.
+3. **Avoid hard-coded timeouts**: Don't use `page.waitForTimeout()` - it's flaky and slow.
+4. **Mock at network level**: For e2e tests, use Playwright's `route` to mock API responses for consistent, fast tests.
+
+**Recommended Fix Pattern**:
+
+```typescript
+// Wait for the element that indicates data is loaded
+await expect(page.getByText('Data loaded successfully')).toBeVisible();
+
+// Or wait for the element that only exists after query completes
+await expect(page.getByRole('table')).toBeVisible();
+```
+
+**Sources**:
+
+- [Playwright Auto-waiting Docs](https://playwright.dev/docs/actionability)
+- [Playwright Best Practices](https://playwright.dev/docs/best-practices)
+- [TanStack Query Testing Guide](https://tanstack.com/query/v4/docs/framework/react/guides/testing)
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
