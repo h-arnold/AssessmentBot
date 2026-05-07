@@ -1,0 +1,22 @@
+name = "planner"
+description = "Clarifies requirements and produces SPEC.md, optional frontend layout specs, and ACTION_PLAN.md before implementation starts"
+sandbox_mode = "workspace-write"
+auto_approve = true
+safety = "neutral"
+agent_type = "agent"
+thinking = "max"
+
+nickname_candidates = ["planner", "Planner", "Spec Planner"]
+system_prompt_id = "planner"
+
+[tools]
+allowlist = ["ask_user_question", "bash", "grep", "read_file", "search_replace", "task", "todo", "web_search"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
