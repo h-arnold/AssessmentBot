@@ -465,11 +465,32 @@ Helper decision entries for this refactor:
 
 ## Documentation and rollout notes
 
-**Status: ✅ IN PROGRESS - Documentation updated**
+**Status: ✅ COMPLETE**
 
 - Updated frontend-modal-patterns.md: helper-change status changed from `Not implemented` to `Implemented`
 - Added implementation details: hook, shell, and modal file structure
 - All helper decisions reconciled with delivered implementation
+- No stale planning language remains
+
+## Final Summary
+
+**All Sections Complete!**
+
+- ✅ Section 1: Locked accepted contract baseline (19 tests, complexity 17 baseline recorded)
+- ✅ Section 2: Unified duplicated async handlers (runWizardMutation, 7 helpers extracted, complexity 17→7)
+- ✅ Section 3: Extracted state-shaping helpers (14 helpers, complexity maintained at 7)
+- ✅ Section 4: Collapsed modal render branching (3 early returns → 1 shell path, complexity 17→5)
+- ✅ Section 5: Skipped (not needed - all files at complexity ≤7)
+- ✅ Regression and contract hardening: All checks pass
+- ✅ Documentation: Canonical docs updated
+
+**Final State:**
+
+- useAssignmentDefinitionWizard.ts: complexity 7 ✅
+- AssignmentDefinitionWizardModal.tsx: complexity 5 ✅
+- AssignmentDefinitionWizardModalShell.tsx: complexity ≤7 ✅
+- All 20 tests pass ✅
+- # All lint checks pass ✅
 
 ### Objective
 
