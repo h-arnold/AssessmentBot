@@ -46,6 +46,12 @@ In `useAssignmentDefinitionWizard.ts`, `getParsedCreateBaseline` (lines 257-277)
 - Ensure parse response populates the cache correctly
 - Function should rely on `parsedCreateBaselineReference.current` which stores stage-one parse result
 
+**FURTHER INVESTIGATION REQUIRED**
+
+At what point in the workflow is the query cache supposed to be refreshed? This will help determine whether we should remove the query cache check in create mode or ensure that parse response populates the cache correctly.
+
+**Findings from further investigation**: Pending
+
 **Severity:** High  
 **Type:** Code bug (spec non-compliant)
 
@@ -123,6 +129,8 @@ await expect(page.getByText(/assignment definition deleted\./i)).toBeVisible();
 await expect(getAssignmentsRowByTitle(page, 'Algebra foundations')).toHaveCount(0);
 ```
 
+**Additional Note**: Be careful with your regex construction. Unsafe regex's will be blocked by the linter.
+
 **Severity:** Medium  
 **Type:** Test bug (timing/assertion order)
 
@@ -154,6 +162,10 @@ await expect(
   page.getByRole('row', { name: /unsafe legacy row/i }).getByRole('button', { name: /delete/i })
 ).toBeDisabled();
 ```
+
+**Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
+
+**Investigation Findings:** Pending
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
@@ -229,6 +241,10 @@ await expect(deleteDialog.getByText('Algebra foundations', { exact: true })).toB
 await expect(deleteDialog.getByText(/this delete is permanent/i)).toBeVisible();
 ```
 
+**Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
+
+**Investigation Findings:** Pending
+
 **Severity:** Medium  
 **Type:** Timing/flakiness
 
@@ -262,6 +278,10 @@ await expect(page.getByRole('button', { name: 'Delete definition' }).locator('..
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
+
+**Further Investigation Required**: Use your web search tool to find best practises for resolving playwright selector timing. Identify the most promising and idiomatic approach that minimises wait times.
+
+**Investigation Findings:** Pending
 
 ---
 
@@ -336,6 +356,10 @@ Optional improvement for explicit handling:
   }
 }
 ```
+
+**Further Investigation Required**: Use your web search tool to find best practises for resolving React timing issues. Identify the most promising and idiomatic approach that minimises wait times.
+
+**Investigation Findings:** Pending
 
 **Severity:** Medium  
 **Type:** Timing/flakiness
