@@ -33,11 +33,15 @@ Current shared keys:
 - `backendConfig`
 - `classPartials`
 - `assignmentDefinitionPartials`
+- `assignmentDefinitionByKey`
+- `assignmentTopics`
 - `cohorts`
 - `yearGroups`
 - `googleClassrooms`
 
 Keep future invalidation and warm-up work aligned to these helpers.
+
+The `assignmentDefinitionByKey` factory creates scoped query keys for full-definition reads by `definitionKey`, used by the assignment-definition wizard modal for update-mode entry.
 
 ## 3. Shared query definitions
 
@@ -58,15 +62,17 @@ Startup warm-up uses the shared lookup datasets needed across the growing interf
 
 Current policy:
 
-- startup-prefetched datasets: `classPartials`, `assignmentDefinitionPartials`, `cohorts`, and `yearGroups`
+- startup-prefetched datasets: `classPartials`, `assignmentDefinitionPartials`, `assignmentTopics`, `cohorts`, and `yearGroups`
 - trigger point: after the shared auth query resolves to authorised
 - ownership: the app-level auth / warm-up boundary owns startup readiness
 - scheduling: fire-and-forget from an app-level boundary outside `App.tsx`
 - query API: `fetchQuery`, so orchestration can observe failures
-- readiness rule: startup is considered warmed only after all four shared datasets succeed
+- readiness rule: startup is considered warmed only after all five shared datasets succeed
 - logging: debug-only orchestration context if warm-up fails
 
 Warm-up must not block initial render, shell paint, or navigation readiness.
+
+`assignmentTopics` is now part of the startup warm-up surface because the same reference-data set supports the assignment-definition wizard modal workflow. The `yearGroupKey` and `yearGroupLabel` contract is used throughout, with resolved labels provided for display while authoritative keys are persisted.
 
 `googleClassrooms` remains a view-entry prefetch for the Classes tab rather than a startup-prefetched dataset.
 `backendConfig` remains an on-demand shared query owned by the Backend settings panel rather than a startup-prefetched dataset.
@@ -95,6 +101,7 @@ Current invalidation and required-refresh rules:
 - use shared `queryKeys` directly for `backendConfig`, `cohorts`, and `yearGroups`; do not reintroduce feature-local invalidation wrapper helpers for those shared datasets
 - `classPartials` refresh remains feature-driven after successful class mutations
 - assignment-definition delete and manual refresh flows should target the shared `assignmentDefinitionPartials` query key only
+- assignment-definition create (stage-one), final save, and document-change re-parse flows should invalidate both `assignmentDefinitionPartials` and the scoped `assignmentDefinitionByKey` query for the affected definition so the Assignments table and open modal remain trustworthy
 - if a required post-mutation refresh fails for a surface that cannot trust its previously cached data, fail closed for that owned surface until a newer successful payload arrives instead of quietly leaving stale data visible
 - if a required post-mutation refresh fails for the Classes table workflow, do not keep stale table data visible; surface user guidance that a page refresh is required to see changes
 

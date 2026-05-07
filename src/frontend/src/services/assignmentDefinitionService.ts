@@ -24,8 +24,14 @@ export type {
 /**
  * Reads one full assignment definition by key.
  *
- * @param {GetAssignmentDefinitionRequest} request Request payload.
- * @returns {Promise<GetAssignmentDefinitionResponse>} Promise resolving to validated full definition.
+ * Returns the canonical full-definition response shape, matching the upsert response contract
+ * so React Query and local form state can use one editable entity model. Resolved labels
+ * (primaryTopic, yearGroupLabel) are provided for display while authoritative keys (primaryTopicKey,
+ * yearGroupKey) are used for persistence.
+ *
+ * @param {GetAssignmentDefinitionRequest} request Request payload containing definitionKey.
+ * @returns {Promise<GetAssignmentDefinitionResponse>} Promise resolving to validated full definition
+ *   with resolved primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, tasks array, and all metadata.
  */
 export async function getAssignmentDefinition(
   request: GetAssignmentDefinitionRequest
@@ -38,10 +44,19 @@ export async function getAssignmentDefinition(
 }
 
 /**
- * Persists assignment-definition changes for create, save, and re-parse flows.
+ * Persists assignment-definition changes through the consolidated write transport.
  *
- * @param {UpsertAssignmentDefinitionRequest} request Upsert payload.
- * @returns {Promise<UpsertAssignmentDefinitionResponse>} Promise resolving to validated full definition.
+ * Handles stage-one create persistence (with parsed tasks), final save (metadata and weightings),
+ * and document-change re-parse. Duplicate detection uses the normalised (primaryTitle,
+ * primaryTopicKey, yearGroupKey) tuple. Re-parse preserves existing task weightings for matching
+ * task IDs and defaults new tasks to 1. Year-group writes use authoritative yearGroupKey with
+ * resolved yearGroupLabel returned in response.
+ *
+ * @param {UpsertAssignmentDefinitionRequest} request Upsert payload with primaryTitle, primaryTopicKey,
+ *   referenceDocumentUrl, templateDocumentUrl (or IDs for non-wizard transport), optional definitionKey,
+ *   yearGroupKey, assignmentWeighting, and taskWeightings.
+ * @returns {Promise<UpsertAssignmentDefinitionResponse>} Promise resolving to validated full definition
+ *   using the canonical response shape shared with getAssignmentDefinition.
  */
 export async function upsertAssignmentDefinition(
   request: UpsertAssignmentDefinitionRequest

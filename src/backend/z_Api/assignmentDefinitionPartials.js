@@ -833,8 +833,17 @@ function deleteAssignmentDefinition_(parameters) {
 /**
  * Creates or updates an assignment definition through strict transport-boundary validation.
  *
- * @param {Object} parameters - Assignment-definition upsert payload.
- * @returns {AssignmentDefinition|Object} Persisted full definition payload.
+ * Stage-one create persists a definition with parsed tasks (tasks: null in partial, full tasks in full store).
+ * Final save persists metadata and weighting edits. Re-parse transport behaviour: when document URLs change,
+ * existing task weightings are preserved for matching task IDs, and new tasks default to 1.
+ * Duplicate detection uses the normalised (primaryTitle, primaryTopicKey, yearGroupKey) tuple.
+ *
+ * @param {Object} parameters - Assignment-definition upsert payload with primaryTitle, primaryTopicKey,
+ *   referenceDocumentId/templateDocumentId (or referenceDocumentUrl/templateDocumentUrl for URL-based transport),
+ *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings.
+ * @returns {AssignmentDefinition|Object} Canonical full-definition response shape including resolved
+ *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
+ *   This same shape is returned for stage-one create, final save, and document-change re-parse.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
@@ -844,10 +853,14 @@ function upsertAssignmentDefinition_(parameters) {
 }
 
 /**
- * Reads an assignment definition by key after strict safety validation.
+ * Reads one full assignment definition by key after strict safety validation.
  *
- * @param {Object} parameters - Request payload containing definitionKey.
- * @returns {AssignmentDefinition|Object|null} Retrieved definition payload.
+ * Returns the canonical full-definition response shape, identical to upsertAssignmentDefinition response,
+ * ensuring both read and write transports share the same editable entity contract.
+ *
+ * @param {Object} parameters - Request payload containing definitionKey (non-empty, already-trimmed string).
+ * @returns {AssignmentDefinition|Object|null} Full definition with resolved primaryTopic, primaryTopicKey,
+ *   yearGroupKey, yearGroupLabel, tasks array, and all metadata; null if not found.
  */
 function getAssignmentDefinition_(parameters) {
   const definitionKey = validateReadParameters_(parameters);
