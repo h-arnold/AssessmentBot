@@ -29,10 +29,8 @@ type AssignmentsRuntimeScenario = Readonly<{
 const assignmentRows = [
   {
     primaryTitle: 'Newest algebra recap',
-    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-11',
-    yearGroupLabel: 'Year 11',
+    yearGroup: 11,
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -46,10 +44,8 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Algebra foundations',
-    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
+    yearGroup: 10,
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -63,10 +59,8 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Algebra foundations archive',
-    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
+    yearGroup: 10,
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -80,10 +74,8 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Unsafe legacy row',
-    primaryTopicKey: 'topic-legacy',
     primaryTopic: 'Legacy',
-    yearGroupKey: '',
-    yearGroupLabel: '',
+    yearGroup: null,
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -241,22 +233,6 @@ async function releaseNextDeferredAssignmentsSuccess(page: Page) {
 }
 
 /**
- * Waits for the assignments table to be ready and have data.
- *
- * @param {Page} page Playwright page instance.
- * @returns {Promise<void>} Resolves when the table is ready and has at least one row.
- */
-async function waitForAssignmentsTableData(page: Page): Promise<void> {
-  // Wait for loading state to disappear
-  await expect(page.locator('[aria-label="Assignments table loading"]')).toHaveCount(0);
-  // Wait for blocking state to disappear
-  await expect(page.getByText(/assignment definitions could not be trusted or loaded/i)).toHaveCount(0);
-  // Wait for table to be visible and have data
-  const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
-  await expect(assignmentsTable.locator('tbody tr')).toHaveCountGreaterThanOrEqual(1);
-}
-
-/**
  * Locates one assignments table row by exact title cell text.
  *
  * @param {Page} page Playwright page instance.
@@ -267,7 +243,6 @@ function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
   const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
   const titleCell = assignmentsTable
     .locator('tbody tr td:first-child')
-    .filter({ hasText: assignmentTitle })
     .getByText(assignmentTitle, { exact: true });
 
   return titleCell.locator('xpath=ancestor::tr');
@@ -286,9 +261,6 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for table and data to be visible
-    await waitForAssignmentsTableData(page);
-    
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -307,25 +279,23 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
-
     await expect(
       page.getByRole('row', { name: /unsafe legacy row/i }).getByRole('button', { name: /delete/i })
     ).toBeDisabled();
   });
 
 
-  test('create action stays disabled when data is not trustworthy', async ({ page }) => {
+  test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
     await mockAssignmentsRuntime(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'failureEnvelope', code: 'LOAD_FAILED', message: 'Could not load' }],
+      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    await expect(page.getByText(/assignment definitions could not be trusted or loaded/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
+    await expect(page.getByText(/not available in v1/i)).toBeVisible();
   });
 
 
@@ -337,9 +307,6 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
-
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -362,9 +329,6 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
-
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -398,9 +362,6 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
-
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -421,9 +382,6 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
-
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -471,9 +429,6 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    // Wait for table data
-    await waitForAssignmentsTableData(page);
-
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
     await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(expectedNullTokenCellCount);
 
@@ -492,7 +447,7 @@ test.describe('assignments page browser journeys', () => {
       },
       {
         columnHeaderName: 'Year group',
-        optionLabel: 'Year 10',
+        optionLabel: '10',
         expectedVisibleRow: 'Algebra foundations archive',
         expectedHiddenRow: 'Unsafe legacy row',
       },
