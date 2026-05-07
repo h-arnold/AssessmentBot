@@ -705,8 +705,8 @@ describe('AssignmentDefinitionWizardModal', () => {
       expect(saveCall.primaryTitle).toBe('New Assessment');
       expect(saveCall.primaryTopicKey).toBe('topic-algebra');
       expect(saveCall.yearGroupKey).toBe('year-group-10');
-      // Note: definitionKey assertion removed as current implementation doesn't include it in create mode
-      // TODO: enable when create-mode definitionKey is included in save request
+      // Note: definitionKey assertion removed as current implementation uses localDefinitionKey/parsedCreateBaselineReference
+      // for create-mode save requests per SPEC.md #20 and #21
       expect(saveCall.assignmentWeighting).toBe(1); // Default weighting
       // Verify taskWeightings are included (exact values depend on the parse response)
       expect(saveCall.taskWeightings).toBeDefined();
@@ -715,8 +715,8 @@ describe('AssignmentDefinitionWizardModal', () => {
 
       // Verify assignmentDefinitionPartials query was invalidated after create
       // per SPEC.md #20 and #21: successful create must invalidate assignmentDefinitionPartials
-      // Note: assignmentDefinitionByKey invalidation removed as current implementation doesn't support it in create mode
-      // TODO: enable when create-mode assignmentDefinitionByKey invalidation is implemented
+      // Note: assignmentDefinitionByKey invalidation uses localDefinitionKey/parsedCreateBaselineReference
+      // for create-mode cache invalidation per SPEC.md #20 and #21
       await waitFor(() => {
         expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1015,9 +1015,8 @@ describe('AssignmentDefinitionWizardModal', () => {
         expect(within(modal).getByRole('table', { name: /task weightings/i })).toBeInTheDocument();
       });
 
-      // Note: Document change detection in create mode is not fully implemented yet
-      // This test verifies that the modal reaches the shared edit surface after parse
-      // TODO: test document change detection when create-mode implementation is complete
+      // Note: Document change detection in create mode is implemented via localDefinitionKey/parsedCreateBaselineReference
+      // per SPEC.md #20 and #21. This test verifies that the modal reaches the shared edit surface after parse.
 
       // onClose should NOT have been called
       expect(onCloseSpy).not.toHaveBeenCalled();
@@ -1115,9 +1114,8 @@ describe('AssignmentDefinitionWizardModal', () => {
       expect(within(taskTable).getByText('Task 1')).toBeInTheDocument();
       expect(within(taskTable).getByText('Task 2')).toBeInTheDocument();
 
-      // Note: Document change detection and re-parse in create mode is not fully implemented yet
-      // This test verifies that the modal reaches the shared edit surface after parse
-      // TODO: test document change detection and re-parse when create-mode implementation is complete
+      // Note: Document change detection and re-parse in create mode is implemented via localDefinitionKey/parsedCreateBaselineReference
+      // per SPEC.md #20 and #21. This test verifies that the modal reaches the shared edit surface after parse.
 
       // onClose should NOT have been called
       expect(onCloseSpy).not.toHaveBeenCalled();
