@@ -227,6 +227,7 @@ sensitive_patterns = []
 permission = "ask"
 allowlist = [
     "docs.mistral.ai",
+    "ant.design",
 ]
 denylist = []
 sensitive_patterns = []
