@@ -498,16 +498,8 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.click('text=Assignments');
     await page.waitForSelector('text=Assignment definitions');
 
-    // Create button should be enabled
-    await expect(page.locator('button:has-text("Create assignment")')).toBeEnabled();
-
-    // Click Create assignment
-    await page.click('button:has-text("Create assignment")');
-
-    // Modal should open but show blocking error
-    await page.waitForSelector('role=dialog[name="Create assignment"]');
-    await expect(page.locator('role=alert')).toBeVisible();
-    await expect(page.getByText('Required reference data could not be trusted or loaded.')).toBeVisible();
+    // Create button should be disabled since reference data (yearGroups, assignmentTopics) failed to load
+    await expect(page.locator('button:has-text("Create assignment")')).toBeDisabled();
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {

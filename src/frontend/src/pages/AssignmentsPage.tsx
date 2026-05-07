@@ -588,7 +588,29 @@ export function AssignmentsPage() {
 
   const assignmentsQuery = useQuery({
     ...getAssignmentDefinitionPartialsQueryOptions(),
-    enabled: isAssignmentsDatasetReady,
+    /*
+     * Enable query when dataset is ready OR has failed.
+     * 
+     * Rationale: The startup warmup prefetches assignmentDefinitionPartials.
+     * - isAssignmentsDatasetReady = true when prefetch succeeds AND data is trustworthy
+     * - isAssignmentsDatasetFailed = true when prefetch fails
+     * 
+     * When the dataset fails (isAssignmentsDatasetFailed=true), isAssignmentsDatasetReady=false.
+     * If we only enable when isAssignmentsDatasetReady, the query is disabled on failure.
+     * This breaks retry: refetchQueries() cannot refetch disabled queries in React Query v5.
+     * 
+     * By enabling when EITHER ready OR failed, we allow:
+     * 1. Normal flow: query runs when dataset is ready
+     * 2. Retry flow: query can be refetched via refetchQueries() after dataset failure
+     * 
+     * The blocking state (shouldRenderBlockingState) still protects the UI:
+     * - Shows blocking Alert when isAssignmentsDatasetFailed=true
+     * - Shows blocking Alert when dataset is ready but untrustworthy
+     * - Only shows table when hasTrustworthyAssignmentsDataset AND query has data
+     * 
+     * This fixes FE-E2E-010: retry action now correctly triggers getAssignmentDefinitionPartials.
+     */
+    enabled: isAssignmentsDatasetReady || isAssignmentsDatasetFailed,
     refetchOnMount: false,
   });
 
@@ -712,6 +734,16 @@ export function AssignmentsPage() {
   });
 
   const refetchAssignmentDefinitions = useCallback(async () => {
+    /*
+     * Invalidate then refetch the assignment-definition cache.
+     * 
+     * This works because the assignmentsQuery is enabled when isAssignmentsDatasetReady
+     * OR isAssignmentsDatasetFailed (see enabled condition above). This ensures refetchQueries
+     * can always refetch, even after a dataset failure.
+     * 
+     * The invalidateQueries(refetchType: 'none') prevents background refetch,
+     * then refetchQueries() explicitly triggers the fetch.
+     */
     await queryClient.invalidateQueries({
       queryKey: queryKeys.assignmentDefinitionPartials(),
       refetchType: 'none',
