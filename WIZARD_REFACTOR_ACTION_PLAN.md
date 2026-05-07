@@ -209,6 +209,17 @@ Helper decision entries for this refactor:
 
 ## Section 2 — Replace duplicated async handlers with one wizard-local orchestration contract
 
+**Status: ✅ COMPLETE**
+
+- Green Phase: Shared orchestration contract implemented
+- Shared orchestration: `runWizardMutation` with descriptor-driven options pattern
+- Handler refactoring: All 3 handlers reduced to thin wrappers
+- Create-mode contract: Fixed via `localDefinitionKey` and `parsedCreateBaselineReference`
+- Complexity: 17 → 7 (material drop of 59%)
+- State-shaping helpers: Extracted 7 helpers (deriveReferenceDataState, derivePrimaryActionState, useFormInitialization, convertBaselineToDefinition, detectDocumentChange, buildWizardErrorContext, hydrateFormFromDefinition)
+- Error handling: Added `map-error-to-ui.ts` for user-safe error mapping
+- All 20 tests green, lint passes, type check passes
+
 ### Objective
 
 - Reduce hook complexity by collapsing the repeated async mutation skeletons into one real wizard-local flow contract.

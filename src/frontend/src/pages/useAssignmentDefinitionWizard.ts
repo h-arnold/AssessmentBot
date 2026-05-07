@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Form } from 'antd';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { Form, type FormInstance } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStartupWarmupState } from '../features/auth/startupWarmupState';
 import { logFrontendError } from '../logging/frontendLogger';
+import { mapErrorToUserMessage, extractErrorCode, extractRequestId } from '../errors/map-error-to-ui';
 import { queryKeys } from '../query/queryKeys';
 import {
   getAssignmentDefinitionQueryOptions,
@@ -11,8 +12,15 @@ import {
 } from '../query/sharedQueries';
 import {
   DEFAULT_WEIGHTING_VALUE,
+  type AssignmentDefinition,
 } from '../services/assignmentDefinition.zod';
 import { upsertAssignmentDefinition, type UpsertAssignmentDefinitionRequest } from '../services/assignmentDefinitionService';
+
+// Type for the upsert mutation response
+interface UpsertMutationResponse extends Awaited<ReturnType<typeof upsertAssignmentDefinition>> {
+  referenceDocumentUrl: string;
+  templateDocumentUrl: string;
+}
 
 type ModalMode = 'create' | 'update';
 
@@ -26,6 +34,9 @@ type ParsedCreateBaseline = Readonly<{
   yearGroup: string;
   referenceDocumentUrl: string;
   templateDocumentUrl: string;
+  referenceDocumentId: string;
+  templateDocumentId: string;
+  documentType: 'SLIDES' | 'SHEETS';
   assignmentWeighting: number;
   taskWeightings: ReadonlyMap<string, number>;
 }>;
@@ -52,6 +63,30 @@ function buildCanonicalUrl(documentId: string, documentType: 'SLIDES' | 'SHEETS'
   return `${base}/${documentId}/edit`;
 }
 
+/**
+ * Builds document URL restoration data from a definition.
+ * Used to restore document URLs when canceling re-parse operations.
+ *
+ * @param {Record<string, unknown>} definition - The definition containing document info.
+ * @returns {{ referenceUrl: string; templateUrl: string } | null} The restored URLs or null if not available.
+ */
+function buildDocumentUrlsFromDefinition(
+  definition: Record<string, unknown>
+): { referenceUrl: string; templateUrl: string } | null {
+  const resolvedDocumentType = definition.documentType as 'SLIDES' | 'SHEETS';
+  const resolvedReferenceDocumentId = definition.referenceDocumentId as string;
+  const resolvedTemplateDocumentId = definition.templateDocumentId as string;
+
+  if (!resolvedDocumentType || !resolvedReferenceDocumentId || !resolvedTemplateDocumentId) {
+    return null;
+  }
+
+  return {
+    referenceUrl: buildCanonicalUrl(resolvedReferenceDocumentId, resolvedDocumentType),
+    templateUrl: buildCanonicalUrl(resolvedTemplateDocumentId, resolvedDocumentType),
+  };
+}
+
 const REQUIRED_PARSE_FIELDS = [
   'title',
   'topic',
@@ -59,6 +94,237 @@ const REQUIRED_PARSE_FIELDS = [
   'referenceDocumentUrl',
   'templateDocumentUrl',
 ] as const;
+
+/**
+ * Derives reference data state from startup warmup state and query loading states.
+ * Determines whether reference data is trustworthy, loading, or blocked.
+ *
+ * @param {ReturnType<typeof useStartupWarmupState>} startupWarmupState - The startup warmup state.
+ * @param {boolean} isTopicsLoading - Whether topics are currently loading.
+ * @param {boolean} isYearGroupsLoading - Whether year groups are currently loading.
+ * @param {boolean} open - Whether the modal is open.
+ * @returns {{ hasTrustworthyReferenceData: boolean; isReferenceDataLoading: boolean; isReferenceDataBlocked: boolean }} Reference data state.
+ */
+function deriveReferenceDataState(
+  startupWarmupState: ReturnType<typeof useStartupWarmupState>,
+  isTopicsLoading: boolean,
+  isYearGroupsLoading: boolean,
+  open: boolean
+): {
+  hasTrustworthyReferenceData: boolean;
+  isReferenceDataLoading: boolean;
+  isReferenceDataBlocked: boolean;
+} {
+  const hasTrustworthyReferenceData =
+    startupWarmupState.isDatasetReady('assignmentTopics') &&
+    startupWarmupState.isDatasetReady('yearGroups') &&
+    !startupWarmupState.isDatasetFailed('assignmentTopics') &&
+    !startupWarmupState.isDatasetFailed('yearGroups');
+
+  const isReferenceDataLoading = isTopicsLoading || isYearGroupsLoading;
+  const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
+
+  return {
+    hasTrustworthyReferenceData,
+    isReferenceDataLoading,
+    isReferenceDataBlocked,
+  };
+}
+
+/**
+ * Derives primary action state based on parse phase and form values.
+ *
+ * @param {boolean} isCreateMode - Whether in create mode.
+ * @param {boolean} hasParsedTasks - Whether tasks have been parsed.
+ * @param {Record<string, unknown>} formValues - Current form values.
+ * @returns {{ primaryActionLabel: string; isPrimaryActionDisabled: boolean }} Primary action state.
+ */
+function derivePrimaryActionState(
+  isCreateMode: boolean,
+  hasParsedTasks: boolean,
+  formValues: Record<string, unknown>
+): { primaryActionLabel: string; isPrimaryActionDisabled: boolean } {
+  const isParsePhase = isCreateMode && !hasParsedTasks;
+  const primaryActionLabel = isParsePhase ? 'Parse and continue' : 'Save';
+
+  const isPrimaryActionDisabled = isParsePhase
+    ? !hasAllParseFields(formValues)
+    : !hasYearGroupSelected(formValues);
+
+  return {
+    primaryActionLabel,
+    isPrimaryActionDisabled,
+  };
+}
+
+/**
+ * Custom hook to handle form initialization for the assignment definition wizard.
+ * Manages modal open/close state, form reset, definition hydration, and dirty state tracking.
+ *
+ * @param {boolean} open - Whether the modal is open.
+ * @param {boolean} isCreateMode - Whether in create mode.
+ * @param {FormInstance} form - The Ant Design form instance.
+ * @param {AssignmentDefinition | null | undefined} definition - The definition to hydrate from in update mode.
+ * @param {Record<string, unknown>} formValues - Current form values for dirty state calculation.
+ * @param {TaskRow[]} taskRows - Current task rows for dirty state calculation.
+ * @param {boolean} hasParsedTasks - Whether tasks have been parsed.
+ * @param {function} setHasParsedTasks - State setter for parsed tasks flag.
+ * @param {function} setTaskRows - State setter for task rows.
+ * @param {function} setDocumentChange - State setter for document change state.
+ * @param {function} setHasDirtyEdits - State setter for dirty edits flag.
+ * @param {function} setBlockingError - State setter for blocking error.
+ * @param {function} setLocalDefinitionKey - State setter for local definition key.
+ * @param {string | null} localDefinitionKey - The local definition key from parse response in create mode.
+ * @param {QueryClient} queryClient - The React Query client for accessing cached data.
+ * @returns {{ storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
+ */
+function useFormInitialization(
+  open: boolean,
+  isCreateMode: boolean,
+  form: FormInstance,
+  definition: AssignmentDefinition | null | undefined,
+  formValues: Record<string, unknown>,
+  taskRows: TaskRow[],
+  hasParsedTasks: boolean,
+  setHasParsedTasks: (value: boolean) => void,
+  setTaskRows: (rows: TaskRow[]) => void,
+  setDocumentChange: (state: DocumentChangeState) => void,
+  setHasDirtyEdits: (value: boolean) => void,
+  setBlockingError: (error: string | null) => void,
+  setLocalDefinitionKey: (key: string | null) => void,
+  localDefinitionKey: string | null,
+  queryClient: QueryClient
+): {
+  storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => void;
+  getParsedCreateBaseline: () => ParsedCreateBaseline | null;
+} {
+  const isHydratingDefinitionReference = useRef(false);
+  const parsedCreateBaselineReference = useRef<ParsedCreateBaseline | null>(null);
+
+  // Initialize modal and track hydration state
+  useEffect(() => {
+    if (!open) {
+      isHydratingDefinitionReference.current = false;
+      parsedCreateBaselineReference.current = null;
+      setLocalDefinitionKey(null);
+      return;
+    }
+
+    setHasParsedTasks(false);
+    setTaskRows([]);
+    setDocumentChange({ hasPendingChange: false, previousReferenceUrl: '', previousTemplateUrl: '' });
+    setHasDirtyEdits(false);
+    setBlockingError(null);
+    setLocalDefinitionKey(null);
+
+    if (isCreateMode) {
+      isHydratingDefinitionReference.current = false;
+      parsedCreateBaselineReference.current = null;
+      form.resetFields();
+    } else if (definition) {
+      parsedCreateBaselineReference.current = null;
+      isHydratingDefinitionReference.current = true;
+
+      hydrateFormFromDefinition(form, definition as AssignmentDefinition, setTaskRows, setHasParsedTasks, setDocumentChange);
+      queueMicrotask(() => { isHydratingDefinitionReference.current = false; });
+    }
+  }, [open, isCreateMode, definition, form, setTaskRows, setHasParsedTasks, setDocumentChange, setHasDirtyEdits, setBlockingError, setLocalDefinitionKey]);
+
+  // Track dirty state
+  useEffect(() => {
+    if (isHydratingDefinitionReference.current) {
+      setHasDirtyEdits(false);
+      return;
+    }
+
+    if (isCreateMode && !hasParsedTasks) {
+      setHasDirtyEdits(false);
+      return;
+    }
+
+    const isDirty = calculateDirtyState(
+      formValues,
+      parsedCreateBaselineReference.current,
+      definition,
+      taskRows,
+      isCreateMode,
+      hasParsedTasks
+    );
+    setHasDirtyEdits(isDirty);
+  }, [formValues, definition, taskRows, isCreateMode, hasParsedTasks, setHasDirtyEdits]);
+
+  // Function to store parse baseline after successful stage-one create
+  const storeParseBaseline = useCallback(
+    (request: UpsertAssignmentDefinitionRequest, response: UpsertMutationResponse) => {
+      parsedCreateBaselineReference.current = {
+        title: request.primaryTitle,
+        topic: request.primaryTopicKey,
+        yearGroup: request.yearGroupKey,
+        // Use canonical URLs from response for consistent baseline
+        referenceDocumentUrl: response.referenceDocumentUrl,
+        templateDocumentUrl: response.templateDocumentUrl,
+        referenceDocumentId: response.referenceDocumentId,
+        templateDocumentId: response.templateDocumentId,
+        documentType: response.documentType,
+        assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
+        taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
+      };
+    },
+    []
+  );
+
+  // Function to get parsed create baseline for document URL restoration
+  const getParsedCreateBaseline = useCallback((): ParsedCreateBaseline | null => {
+    // In create mode: try cached query data first
+    if (localDefinitionKey) {
+      const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(localDefinitionKey));
+      if (cached) {
+        const cachedDefinition = cached as Record<string, unknown>;
+        return {
+          title: cachedDefinition.primaryTitle as string,
+          topic: cachedDefinition.primaryTopicKey as string,
+          yearGroup: cachedDefinition.yearGroupKey as string,
+          referenceDocumentUrl: cachedDefinition.referenceDocumentUrl as string,
+          templateDocumentUrl: cachedDefinition.templateDocumentUrl as string,
+          referenceDocumentId: cachedDefinition.referenceDocumentId as string,
+          templateDocumentId: cachedDefinition.templateDocumentId as string,
+          documentType: cachedDefinition.documentType as 'SLIDES' | 'SHEETS',
+          assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
+          taskWeightings: new Map((cachedDefinition.tasks as Array<Record<string, unknown>>).map((task) => [task.taskId as string, task.taskWeighting as number])),
+        };
+      }
+    }
+    return parsedCreateBaselineReference.current;
+  }, [localDefinitionKey, queryClient]);
+
+  return { storeParseBaseline, getParsedCreateBaseline };
+}
+
+/**
+ * Builds topic options from topics array.
+ *
+ * @param {Array<{ key: string; name: string }> | null | undefined} topics - Topics array.
+ * @returns {Array<{ value: string; label: string }>} Topic options for Select component.
+ */
+function buildTopicOptions(
+  topics: Array<{ key: string; name: string }> | null | undefined
+): Array<{ value: string; label: string }> {
+  if (!Array.isArray(topics)) return [];
+  return topics.map((t) => ({ value: t.key, label: t.name }));
+}
+
+/**
+ * Builds year group options from year groups array.
+ *
+ * @param {Array<{ key: string; name: string }> | null | undefined} yearGroups - Year groups array.
+ * @returns {Array<{ value: string; label: string }>} Year group options for Select component.
+ */
+function buildYearGroupOptions(
+  yearGroups: Array<{ key: string; name: string }> | null | undefined
+): Array<{ value: string; label: string }> {
+  if (!Array.isArray(yearGroups)) return [];
+  return yearGroups.map((yg) => ({ value: yg.key, label: yg.name }));
+}
 
 /**
  * Checks if all required fields for parsing are present and non-empty.
@@ -78,54 +344,6 @@ function hasAllParseFields(values: Record<string, unknown>): boolean {
  */
 function hasYearGroupSelected(values: Record<string, unknown>): boolean {
   return String(values.yearGroup ?? '').trim() !== '';
-}
-
-/**
- * Builds the save request object from form values and task rows.
- *
- * @param {Record<string, unknown>} values - Form values.
- * @param {TaskRow[]} taskRows - Current task rows.
- * @param {string | null} definitionKey - Definition key for updates.
- * @returns {UpsertAssignmentDefinitionRequest} The save request object.
- */
-function buildSaveRequest(
-  values: Record<string, unknown>,
-  taskRows: TaskRow[],
-  definitionKey: string | null
-): UpsertAssignmentDefinitionRequest {
-  return {
-    ...(definitionKey && { definitionKey }),
-    primaryTitle: (values.title as string) || '',
-    primaryTopicKey: values.topic as string,
-    yearGroupKey: values.yearGroup as string,
-    referenceDocumentUrl: values.referenceDocumentUrl as string,
-    templateDocumentUrl: values.templateDocumentUrl as string,
-    assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
-    taskWeightings: taskRows.map((row) => ({ taskId: row.taskId, taskWeighting: row.taskWeighting })),
-  };
-}
-
-/**
- * Builds the re-parse request object from form values.
- *
- * @param {Record<string, unknown>} values - Form values.
- * @param {string} definitionKey - Definition key.
- * @returns {UpsertAssignmentDefinitionRequest} The re-parse request object.
- */
-function buildReparseRequest(
-  values: Record<string, unknown>,
-  definitionKey: string
-): UpsertAssignmentDefinitionRequest {
-  return {
-    definitionKey,
-    primaryTitle: (values.title as string) || '',
-    primaryTopicKey: values.topic as string,
-    yearGroupKey: values.yearGroup as string,
-    referenceDocumentUrl: values.referenceDocumentUrl as string,
-    templateDocumentUrl: values.templateDocumentUrl as string,
-    assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
-    taskWeightings: [],
-  };
 }
 
 /**
@@ -166,6 +384,139 @@ function hasCreateModeTaskWeightingChanges(
   return taskRows.some(
     (row) => parsedCreateBaseline.taskWeightings.get(row.taskId) !== row.taskWeighting
   );
+}
+
+/**
+ * Hydrates form and state from a definition record.
+ * Extracts document URLs and populates form fields, task rows, and document change state.
+ *
+ * @param {FormInstance} form - The Ant Design form instance.
+ * @param {AssignmentDefinition} definition - The definition to hydrate from.
+ * @param {function} setTaskRows - State setter for task rows.
+ * @param {function} setHasParsedTasks - State setter for parsed tasks flag.
+ * @param {function} setDocumentChange - State setter for document change state.
+ * @returns {void}
+ */
+function hydrateFormFromDefinition(
+  form: FormInstance,
+  definition: AssignmentDefinition,
+  setTaskRows: (rows: TaskRow[]) => void,
+  setHasParsedTasks: (value: boolean) => void,
+  setDocumentChange: (state: DocumentChangeState) => void
+): void {
+  const urls = buildDocumentUrlsFromDefinition(definition);
+  const referenceUrl = urls?.referenceUrl ?? '';
+  const templateUrl = urls?.templateUrl ?? '';
+
+  form.setFieldsValue({
+    title: definition.primaryTitle,
+    topic: definition.primaryTopicKey,
+    yearGroup: definition.yearGroupKey,
+    referenceDocumentUrl: referenceUrl,
+    templateDocumentUrl: templateUrl,
+    assignmentWeighting: definition.assignmentWeighting,
+  });
+
+  setTaskRows(
+    definition.tasks.map((t) => ({
+      key: t.taskId,
+      taskId: t.taskId,
+      taskTitle: t.taskTitle,
+      taskWeighting: t.taskWeighting,
+    }))
+  );
+
+  setHasParsedTasks(true);
+  setDocumentChange({ hasPendingChange: false, previousReferenceUrl: referenceUrl, previousTemplateUrl: templateUrl });
+}
+
+/**
+ * Converts a parsed create baseline to a definition record for consistent handling.
+ * Provides a fallback definition shape when query cache lookup fails in create mode.
+ *
+ * @param {ParsedCreateBaseline} baseline - The parsed baseline from stage-one create.
+ * @returns {Record<string, unknown>} The converted definition record.
+ */
+function convertBaselineToDefinition(baseline: ParsedCreateBaseline): Record<string, unknown> {
+  return {
+    primaryTitle: baseline.title,
+    primaryTopicKey: baseline.topic,
+    yearGroupKey: baseline.yearGroup,
+    referenceDocumentUrl: baseline.referenceDocumentUrl,
+    templateDocumentUrl: baseline.templateDocumentUrl,
+    referenceDocumentId: baseline.referenceDocumentId,
+    templateDocumentId: baseline.templateDocumentId,
+    documentType: baseline.documentType,
+  };
+}
+
+/**
+ * Detects document change state based on form values and current URLs.
+ * Determines if document URLs have changed and returns appropriate change state.
+ *
+ * @param {Record<string, unknown>} allValues - All form values.
+ * @param {{ referenceUrl: string; templateUrl: string }} urls - Current effective URLs.
+ * @param {string} urls.referenceUrl - Current reference document URL.
+ * @param {string} urls.templateUrl - Current template document URL.
+ * @param {boolean} hasPendingChange - Current pending change flag.
+ * @returns {DocumentChangeState} The detected document change state.
+ */
+function detectDocumentChange(
+  allValues: Record<string, unknown>,
+  urls: { referenceUrl: string; templateUrl: string },
+  hasPendingChange: boolean
+): DocumentChangeState {
+  const referenceChanged = allValues.referenceDocumentUrl !== urls.referenceUrl;
+  const templateChanged = allValues.templateDocumentUrl !== urls.templateUrl;
+
+  if (referenceChanged || templateChanged) {
+    return { hasPendingChange: true, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+  } else if (hasPendingChange) {
+    return { hasPendingChange: false, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+  }
+  return { hasPendingChange: false, previousReferenceUrl: urls.referenceUrl, previousTemplateUrl: urls.templateUrl };
+}
+
+/**
+ * Builds structured error context for wizard mutation errors.
+ * Creates a consistent error logging object with correlation IDs and request metadata.
+ *
+ * @param {ModalMode} mode - The current modal mode (create or update).
+ * @param {{ definitionKey: string | null; actionType: string; request: UpsertAssignmentDefinitionRequest }} options - Mutation options.
+ * @param {string | null} options.definitionKey - Definition key for update/reparse, or null for create parse.
+ * @param {'parse' | 'save' | 'reparse'} options.actionType - Type of mutation action.
+ * @param {UpsertAssignmentDefinitionRequest} options.request - Pre-built request object.
+ * @param {string | null} errorCode - Extracted error code.
+ * @param {string | null} requestId - Extracted request ID.
+ * @returns {object} The structured error context for logging.
+ */
+function buildWizardErrorContext(
+  mode: ModalMode,
+  options: { definitionKey: string | null; actionType: string; request: UpsertAssignmentDefinitionRequest },
+  errorCode: string | null,
+  requestId: string | null
+): {
+  mode: ModalMode;
+  definitionKey: string | null;
+  actionType: string;
+  requestId: string | undefined;
+  errorCode: string | undefined;
+  requestPayload: { primaryTitle: string; primaryTopicKey: string; yearGroupKey: string };
+  stack: string | undefined;
+} {
+  return {
+    mode,
+    definitionKey: options.definitionKey,
+    actionType: options.actionType,
+    requestId: requestId ?? undefined,
+    errorCode: errorCode ?? undefined,
+    requestPayload: {
+      primaryTitle: options.request.primaryTitle,
+      primaryTopicKey: options.request.primaryTopicKey,
+      yearGroupKey: options.request.yearGroupKey,
+    },
+    stack: undefined,
+  };
 }
 
 /**
@@ -210,8 +561,9 @@ function hasUpdateModeDirtyEdits(
     currentAssignmentWeighting !== definition.assignmentWeighting;
   
   const hasTaskWeightingChanges = taskRows.some((row) => {
-    const task = definition.tasks.find((t: Record<string, unknown>) => t.taskId === row.taskId);
-    return task === undefined ? false : task.taskWeighting !== row.taskWeighting;
+    const tasks = definition.tasks as Array<Record<string, unknown>>;
+    const task = tasks.find((t) => (t as Record<string, unknown>).taskId === row.taskId);
+    return task === undefined ? false : (task as Record<string, unknown>).taskWeighting !== row.taskWeighting;
   });
   
   return hasMetadataChanges || hasTaskWeightingChanges;
@@ -222,7 +574,7 @@ function hasUpdateModeDirtyEdits(
  *
  * @param {Record<string, unknown>} values - Form values.
  * @param {ParsedCreateBaseline | null} parsedCreateBaseline - Parsed baseline for create mode.
- * @param {import('../services/assignmentDefinitionService').AssignmentDefinition | null} definition - Definition for update mode.
+ * @param {Record<string, unknown> | null | undefined} definition - Definition for update mode.
  * @param {TaskRow[]} taskRows - Current task rows.
  * @param {boolean} isCreateMode - Whether in create mode.
  * @param {boolean} hasParsedTasks - Whether tasks have been parsed.
@@ -231,27 +583,22 @@ function hasUpdateModeDirtyEdits(
 function calculateDirtyState(
   values: Record<string, unknown>,
   parsedCreateBaseline: ParsedCreateBaseline | null,
-  definition: Record<string, unknown> | null,
+  definition: Record<string, unknown> | null | undefined,
   taskRows: TaskRow[],
   isCreateMode: boolean,
   hasParsedTasks: boolean
 ): boolean {
   if (isCreateMode) {
-    if (!hasParsedTasks || parsedCreateBaseline === null) {
-      return false;
-    }
-    return hasCreateModeDirtyEdits(values, parsedCreateBaseline, taskRows);
+    return hasParsedTasks && parsedCreateBaseline !== null
+      ? hasCreateModeDirtyEdits(values, parsedCreateBaseline, taskRows)
+      : false;
   }
 
-  if (!isCreateMode && definition) {
-    return hasUpdateModeDirtyEdits(values, definition, taskRows);
-  }
-
-  return false;
+  return definition ? hasUpdateModeDirtyEdits(values, definition, taskRows) : false;
 }
 
 export type UseAssignmentDefinitionWizardReturn = Readonly<{
-  form: Record<string, unknown>;
+  form: FormInstance<Record<string, unknown>>;
   hasParsedTasks: boolean;
   taskRows: TaskRow[];
   documentChange: DocumentChangeState;
@@ -290,8 +637,6 @@ export function useAssignmentDefinitionWizard(
   const queryClient = useQueryClient();
   const startupWarmupState = useStartupWarmupState();
   const [form] = Form.useForm();
-  const isHydratingDefinitionReference = useRef(false);
-  const parsedCreateBaselineReference = useRef<ParsedCreateBaseline | null>(null);
 
   const { data: topics, isLoading: isTopicsLoading } = useQuery({
     ...getAssignmentTopicsQueryOptions(),
@@ -328,254 +673,314 @@ export function useAssignmentDefinitionWizard(
     mutationFn: upsertAssignmentDefinition,
   });
 
-  const hasTrustworthyReferenceData =
-    startupWarmupState.isDatasetReady('assignmentTopics') &&
-    startupWarmupState.isDatasetReady('yearGroups') &&
-    !startupWarmupState.isDatasetFailed('assignmentTopics') &&
-    !startupWarmupState.isDatasetFailed('yearGroups');
+  // Use extracted helper for reference data state derivation
+  const { isReferenceDataLoading, isReferenceDataBlocked } =
+    deriveReferenceDataState(startupWarmupState, isTopicsLoading, isYearGroupsLoading, open);
 
-  const isReferenceDataLoading = isTopicsLoading || isYearGroupsLoading;
-  const isReferenceDataBlocked = open && !hasTrustworthyReferenceData && !isReferenceDataLoading;
-
-  const topicOptions = useMemo(() => {
-    if (!Array.isArray(topics)) return [];
-    return topics.map((t) => ({ value: t.key, label: t.name }));
-  }, [topics]);
-
-  const yearGroupOptions = useMemo(() => {
-    if (!Array.isArray(yearGroups)) return [];
-    return yearGroups.map((yg) => ({ value: yg.key, label: yg.name }));
-  }, [yearGroups]);
-
-  const primaryActionLabel = isCreateMode && !hasParsedTasks ? 'Parse and continue' : 'Save';
+  const topicOptions = useMemo(() => buildTopicOptions(topics), [topics]);
+  const yearGroupOptions = useMemo(() => buildYearGroupOptions(yearGroups), [yearGroups]);
 
   const watchedFormValues = Form.useWatch([], form);
   const formValues = useMemo(() => watchedFormValues ?? {}, [watchedFormValues]);
-  const isPrimaryActionDisabled = isCreateMode && !hasParsedTasks
-    ? !hasAllParseFields(formValues)
-    : !hasYearGroupSelected(formValues);
 
-  // Initialize modal
-  useEffect(() => {
-    if (!open) {
-      isHydratingDefinitionReference.current = false;
-      parsedCreateBaselineReference.current = null;
-      return;
-    }
+  // Use extracted helper for primary action state derivation
+  const { primaryActionLabel, isPrimaryActionDisabled } = derivePrimaryActionState(
+    isCreateMode,
+    hasParsedTasks,
+    formValues
+  );
 
-    setHasParsedTasks(false);
-    setTaskRows([]);
-    setDocumentChange({ hasPendingChange: false, previousReferenceUrl: '', previousTemplateUrl: '' });
-    setHasDirtyEdits(false);
-    setBlockingError(null);
+  // Track definitionKey from parse response in create mode for subsequent operations
+  const [localDefinitionKey, setLocalDefinitionKey] = useState<string | null>(null);
 
+  // Use extracted custom hook for form initialization and dirty state tracking
+  const { storeParseBaseline, getParsedCreateBaseline } = useFormInitialization(
+    open,
+    isCreateMode,
+    form,
+    definition,
+    formValues,
+    taskRows,
+    hasParsedTasks,
+    setHasParsedTasks,
+    setTaskRows,
+    setDocumentChange,
+    setHasDirtyEdits,
+    setBlockingError,
+    setLocalDefinitionKey,
+    localDefinitionKey,
+    queryClient
+  );
+
+  // Get the effective definition for document URL restoration (handles both update and post-parse create modes)
+  const getEffectiveDefinition = useCallback(() => {
     if (!isCreateMode && definition) {
-      parsedCreateBaselineReference.current = null;
-      isHydratingDefinitionReference.current = true;
-      const documentType = definition.documentType;
-      form.setFieldsValue({
-        title: definition.primaryTitle,
-        topic: definition.primaryTopicKey,
-        yearGroup: definition.yearGroupKey,
-        referenceDocumentUrl: buildCanonicalUrl(definition.referenceDocumentId, documentType),
-        templateDocumentUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
-        assignmentWeighting: definition.assignmentWeighting,
-      });
-
-      setTaskRows(
-        definition.tasks.map((t) => ({
-          key: t.taskId,
-          taskId: t.taskId,
-          taskTitle: t.taskTitle,
-          taskWeighting: t.taskWeighting,
-        }))
-      );
-      setHasParsedTasks(true);
-
-      setDocumentChange({
-        hasPendingChange: false,
-        previousReferenceUrl: buildCanonicalUrl(definition.referenceDocumentId, documentType),
-        previousTemplateUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
-      });
-      queueMicrotask(() => {
-        isHydratingDefinitionReference.current = false;
-      });
-    } else if (isCreateMode) {
-      isHydratingDefinitionReference.current = false;
-      parsedCreateBaselineReference.current = null;
-      form.resetFields();
+      return definition;
     }
-  }, [open, mode, definition, form, isCreateMode]);
-
-  // Track dirty state
-  useEffect(() => {
-    if (isHydratingDefinitionReference.current) {
-      setHasDirtyEdits(false);
-      return;
+    // In create mode: try cached query data first, then parsed baseline
+    const baseline = getParsedCreateBaseline();
+    if (baseline) {
+      return convertBaselineToDefinition(baseline);
     }
-
-    if (isCreateMode && !hasParsedTasks) {
-      setHasDirtyEdits(false);
-      return;
-    }
-
-    const isDirty = calculateDirtyState(
-      formValues,
-      parsedCreateBaselineReference.current,
-      definition,
-      taskRows,
-      isCreateMode,
-      hasParsedTasks
-    );
-    setHasDirtyEdits(isDirty);
-  }, [formValues, definition, hasParsedTasks, isCreateMode, taskRows]);
+    return definition;
+  }, [isCreateMode, definition, getParsedCreateBaseline]);
 
   // Handle document change detection
   const handleFormValuesChange = useCallback(
-    (changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => {
-      if ((!isCreateMode || hasParsedTasks) && definition) {
-        const documentType = definition.documentType;
-        const previousReferenceUrl = buildCanonicalUrl(definition.referenceDocumentId, documentType);
-        const previousTemplateUrl = buildCanonicalUrl(definition.templateDocumentId, documentType);
-        const referenceChanged = allValues.referenceDocumentUrl !== previousReferenceUrl;
-        const templateChanged = allValues.templateDocumentUrl !== previousTemplateUrl;
+    (_changedValues: Record<string, unknown>, allValues: Record<string, unknown>) => {
+      const effectiveDefinition = getEffectiveDefinition();
+      if (!effectiveDefinition) {
+        return;
+      }
+      if (!isCreateMode || hasParsedTasks) {
+        const urls = buildDocumentUrlsFromDefinition(effectiveDefinition as Record<string, unknown>);
+        if (!urls) return;
 
-        if (referenceChanged || templateChanged) {
-          setDocumentChange({ hasPendingChange: true, previousReferenceUrl, previousTemplateUrl });
-        } else if (documentChange.hasPendingChange) {
-          setDocumentChange({ hasPendingChange: false, previousReferenceUrl, previousTemplateUrl });
-        }
+        const newDocumentChange = detectDocumentChange(allValues, urls, documentChange.hasPendingChange);
+        setDocumentChange(newDocumentChange);
       }
     },
-    [hasParsedTasks, isCreateMode, definition, documentChange.hasPendingChange]
+    [hasParsedTasks, isCreateMode, documentChange.hasPendingChange, getEffectiveDefinition]
+  );
+
+  /**
+   * Builds task rows from response tasks, optionally preserving existing weightings for re-parse.
+   *
+   * @param {Array<{ taskId: string; taskTitle: string; taskWeighting: number }>} responseTasks - Tasks from the response.
+   * @param {TaskRow[]} existingTaskRows - Current task rows for weighting preservation.
+   * @param {'parse' | 'reparse'} actionType - Whether this is a parse or re-parse action.
+   * @returns {TaskRow[]} New task rows.
+   */
+  const buildTaskRowsFromResponse = useCallback(
+    (responseTasks: Array<{ taskId: string; taskTitle: string; taskWeighting: number }>, actionType: 'parse' | 'reparse') => {
+      const newTaskRows: TaskRow[] = responseTasks.map((t) => ({
+        key: t.taskId,
+        taskId: t.taskId,
+        taskTitle: t.taskTitle,
+        taskWeighting: t.taskWeighting,
+      }));
+
+      if (actionType === 'reparse') {
+        const existingWeightings = new Map(taskRows.map((row) => [row.taskId, row.taskWeighting]));
+        newTaskRows.forEach((row) => {
+          row.taskWeighting = existingWeightings.get(row.taskId) ?? DEFAULT_WEIGHTING_VALUE;
+        });
+      }
+
+      return newTaskRows;
+    },
+    [taskRows]
+  );
+
+  /**
+   * Handles the response from a parse or re-parse mutation by updating task rows and document state.
+   *
+   * @param {UpsertMutationResponse} response - The mutation response containing tasks and document info.
+   * @param {'parse' | 'reparse'} actionType - The type of action that produced the response.
+   * @param {UpsertAssignmentDefinitionRequest} request - The original request for baseline storage.
+   * @returns {void}
+   */
+  const handleParseResponse = useCallback(
+    (response: UpsertMutationResponse, actionType: 'parse' | 'reparse', request: UpsertAssignmentDefinitionRequest) => {
+      const documentType = response.documentType;
+      const newTaskRows = buildTaskRowsFromResponse(response.tasks, actionType);
+
+      setTaskRows(newTaskRows);
+      setHasParsedTasks(true);
+      setDocumentChange({
+        hasPendingChange: false,
+        previousReferenceUrl: buildCanonicalUrl(response.referenceDocumentId, documentType),
+        previousTemplateUrl: buildCanonicalUrl(response.templateDocumentId, documentType),
+      });
+
+      if (actionType === 'parse' && response.definitionKey) {
+        setLocalDefinitionKey(response.definitionKey);
+      }
+
+      if (actionType === 'parse') {
+        storeParseBaseline(request, response);
+      }
+    },
+    [buildTaskRowsFromResponse, storeParseBaseline]
+  );
+
+  /**
+   * Performs query invalidation after a mutation.
+   * Invalidate both assignmentDefinitionPartials and assignmentDefinitionByKey (for create-mode localDefinitionKey).
+   *
+   * @param {string | null} explicitKey - Explicit definition key if provided.
+   * @returns {Promise<void>} Resolves when invalidation is complete.
+   */
+  const invalidateMutationQueries = useCallback(
+    async (explicitKey: string | null) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
+      // Invalidate the specific definition query for both explicit key and local definition key
+      // This handles both update mode (explicitKey) and create mode (localDefinitionKey)
+      const effectiveKey = explicitKey ?? localDefinitionKey;
+      if (effectiveKey) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(effectiveKey) });
+      }
+      await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
+    },
+    [queryClient, localDefinitionKey]
+  );
+
+  /**
+   * Handles post-mutation actions based on action type.
+   *
+   * @param {'parse' | 'save' | 'reparse'} actionType - The action type.
+   * @param {UpsertMutationResponse | undefined} response - The mutation response for parse/reparse.
+   * @returns {UpsertMutationResponse | undefined} The response to return.
+   */
+  const handlePostMutation = useCallback(
+    (actionType: 'parse' | 'save' | 'reparse', response: UpsertMutationResponse | undefined): UpsertMutationResponse | undefined => {
+      if (actionType === 'save') {
+        onClose();
+        return undefined;
+      }
+      setHasDirtyEdits(false);
+      return response;
+    },
+    [onClose]
+  );
+
+  /**
+   * Shared orchestration function for all wizard mutations (parse, save, re-parse).
+   *
+   * @remarks
+   * This function consolidates the duplicated async mutation skeleton from handleParseAndContinue,
+   * handleSave, and handleReparse into a single descriptor-driven orchestration path.
+   * Mode-specific behaviour is expressed through the options parameter rather than copied control flow.
+   *
+   * @param {object} options - Mutation configuration.
+   * @param {'parse' | 'save' | 'reparse'} options.actionType - Type of mutation action.
+   * @param {UpsertAssignmentDefinitionRequest} options.request - Pre-built request object.
+   * @param {string | null} options.definitionKey - Definition key for update/reparse, or null for create parse.
+   * @returns {Promise<UpsertMutationResponse | undefined>} Resolves with response for parse/reparse, undefined otherwise.
+   */
+  const runWizardMutation = useCallback(
+    async (options: {
+      actionType: 'parse' | 'save' | 'reparse';
+      request: UpsertAssignmentDefinitionRequest;
+      definitionKey: string | null;
+    }): Promise<UpsertMutationResponse | undefined> => {
+      if (isSubmitting) {
+        return undefined;
+      }
+      setIsSubmitting(true);
+      try {
+        const response = (await upsertMutation.mutateAsync(options.request)) as UpsertMutationResponse;
+
+        if (options.actionType === 'parse' || options.actionType === 'reparse') {
+          handleParseResponse(response, options.actionType, options.request);
+        }
+
+        await invalidateMutationQueries(options.definitionKey);
+        return handlePostMutation(options.actionType, response);
+      } catch (caughtError) {
+        // Extract error details for structured logging per frontend-logging-and-error-handling.md
+        const errorCode = extractErrorCode(caughtError);
+        const requestId = extractRequestId(caughtError);
+
+        // Build structured error context using helper
+        const errorContext = buildWizardErrorContext(mode, options, errorCode, requestId);
+        // Add stack trace to error context
+        if (caughtError instanceof Error) {
+          errorContext.stack = caughtError.stack;
+        }
+
+        logFrontendError(
+          'AssignmentDefinitionWizardModal.runWizardMutation',
+          caughtError,
+          errorContext
+        );
+
+        // Map to user-safe message using error code per frontend-logging-and-error-handling.md
+        const userSafeMessage = mapErrorToUserMessage(caughtError);
+        setBlockingError(userSafeMessage);
+        return undefined;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      isSubmitting,
+      upsertMutation,
+      handleParseResponse,
+      invalidateMutationQueries,
+      handlePostMutation,
+      mode,
+    ]
   );
 
   // Handle parse and continue
   const handleParseAndContinue = useCallback(async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const values = await form.validateFields();
-      const request: UpsertAssignmentDefinitionRequest = {
-        primaryTitle: (values.title as string) || '',
-        primaryTopicKey: values.topic as string,
-        yearGroupKey: values.yearGroup as string,
-        referenceDocumentUrl: values.referenceDocumentUrl as string,
-        templateDocumentUrl: values.templateDocumentUrl as string,
-      };
-      const response = await upsertMutation.mutateAsync(request);
-      setTaskRows(
-        response.tasks.map((t) => ({
-          key: t.taskId,
-          taskId: t.taskId,
-          taskTitle: t.taskTitle,
-          taskWeighting: t.taskWeighting,
-        }))
-      );
-      setHasParsedTasks(true);
-      const documentType = response.documentType;
-      setDocumentChange({
-        hasPendingChange: false,
-        previousReferenceUrl: buildCanonicalUrl(response.referenceDocumentId, documentType),
-        previousTemplateUrl: buildCanonicalUrl(response.templateDocumentId, documentType),
-      });
-      parsedCreateBaselineReference.current = {
-        title: request.primaryTitle,
-        topic: request.primaryTopicKey,
-        yearGroup: request.yearGroupKey,
-        referenceDocumentUrl: request.referenceDocumentUrl,
-        templateDocumentUrl: request.templateDocumentUrl,
-        assignmentWeighting: DEFAULT_WEIGHTING_VALUE,
-        taskWeightings: new Map(response.tasks.map((task) => [task.taskId, task.taskWeighting])),
-      };
-      await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      void queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      setHasDirtyEdits(false);
-    } catch (error) {
-      logFrontendError('AssignmentDefinitionWizardModal.handleParseAndContinue', error, { mode: 'create' });
-      setBlockingError('Required reference data could not be trusted or loaded.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [form, isSubmitting, upsertMutation, queryClient]);
+    const values = await form.validateFields();
+    const request: UpsertAssignmentDefinitionRequest = {
+      primaryTitle: (values.title as string) || '',
+      primaryTopicKey: values.topic as string,
+      yearGroupKey: values.yearGroup as string,
+      referenceDocumentUrl: values.referenceDocumentUrl as string,
+      templateDocumentUrl: values.templateDocumentUrl as string,
+    };
+    await runWizardMutation({ actionType: 'parse', request, definitionKey: null });
+  }, [form, runWizardMutation]);
 
   // Handle save
   const handleSave = useCallback(async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const values = await form.validateFields();
-      const request = buildSaveRequest(values, taskRows, definitionKey);
-      await upsertMutation.mutateAsync(request);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      if (definitionKey) {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(definitionKey) });
-      }
-      try {
-        await queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      } catch {
-        setBlockingError('Required reference data could not be trusted or loaded.');
-        return;
-      }
-      onClose();
-    } catch (error) {
-      logFrontendError('AssignmentDefinitionWizardModal.handleSave', error, { mode, definitionKey });
-      setBlockingError('Required reference data could not be trusted or loaded.');
-    } finally {
-      setIsSubmitting(false);
+    const values = await form.validateFields();
+    const effectiveKey = localDefinitionKey ?? definitionKey;
+    const request: UpsertAssignmentDefinitionRequest = {
+      primaryTitle: (values.title as string) || '',
+      primaryTopicKey: values.topic as string,
+      yearGroupKey: values.yearGroup as string,
+      referenceDocumentUrl: values.referenceDocumentUrl as string,
+      templateDocumentUrl: values.templateDocumentUrl as string,
+      assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
+      taskWeightings: taskRows.map((row) => ({ taskId: row.taskId, taskWeighting: row.taskWeighting })),
+    };
+    if (effectiveKey) {
+      request.definitionKey = effectiveKey;
     }
-  }, [form, isSubmitting, taskRows, definitionKey, mode, upsertMutation, queryClient, onClose]);
+    await runWizardMutation({ actionType: 'save', request, definitionKey: effectiveKey });
+  }, [form, taskRows, definitionKey, localDefinitionKey, runWizardMutation]);
 
   // Handle re-parse
   const handleReparse = useCallback(async () => {
-    if (isSubmitting || !definitionKey) return;
-    setIsSubmitting(true);
-    try {
-      const values = form.getFieldsValue();
-      const request = buildReparseRequest(values, definitionKey);
-      const response = await upsertMutation.mutateAsync(request);
-      const existingWeightings = new Map(taskRows.map((row) => [row.taskId, row.taskWeighting]));
-      setTaskRows(
-        response.tasks.map((t) => ({
-          key: t.taskId,
-          taskId: t.taskId,
-          taskTitle: t.taskTitle,
-          taskWeighting: existingWeightings.get(t.taskId) ?? DEFAULT_WEIGHTING_VALUE,
-        }))
-      );
-      setHasParsedTasks(true);
-      const documentType = response.documentType;
-      setDocumentChange({
-        hasPendingChange: false,
-        previousReferenceUrl: buildCanonicalUrl(response.referenceDocumentId, documentType),
-        previousTemplateUrl: buildCanonicalUrl(response.templateDocumentId, documentType),
-      });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.assignmentDefinitionByKey(definitionKey) });
-      void queryClient.fetchQuery({ queryKey: queryKeys.assignmentDefinitionPartials() });
-      setHasDirtyEdits(false);
-    } catch (error) {
-      logFrontendError('AssignmentDefinitionWizardModal.handleReparse', error, { definitionKey });
-      setBlockingError('Required reference data could not be trusted or loaded.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [form, isSubmitting, definitionKey, taskRows, upsertMutation, queryClient]);
+    const values = form.getFieldsValue();
+    const effectiveKey = localDefinitionKey ?? definitionKey;
+    if (!effectiveKey) return;
+    const request: UpsertAssignmentDefinitionRequest = {
+      definitionKey: effectiveKey,
+      primaryTitle: (values.title as string) || '',
+      primaryTopicKey: values.topic as string,
+      yearGroupKey: values.yearGroup as string,
+      referenceDocumentUrl: values.referenceDocumentUrl as string,
+      templateDocumentUrl: values.templateDocumentUrl as string,
+      assignmentWeighting: (values.assignmentWeighting as number) ?? DEFAULT_WEIGHTING_VALUE,
+      taskWeightings: [],
+    };
+    await runWizardMutation({ actionType: 'reparse', request, definitionKey: effectiveKey });
+  }, [form, definitionKey, localDefinitionKey, runWizardMutation]);
 
   // Handle re-parse cancel
   const handleReparseCancel = useCallback(() => {
-    if (!definition) return;
-    const documentType = definition.documentType;
+    const effectiveDefinition = getEffectiveDefinition();
+    if (!effectiveDefinition) return;
+
+    const urls = buildDocumentUrlsFromDefinition(effectiveDefinition as Record<string, unknown>);
+    if (!urls) return;
+
     form.setFieldsValue({
-      referenceDocumentUrl: buildCanonicalUrl(definition.referenceDocumentId, documentType),
-      templateDocumentUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
+      referenceDocumentUrl: urls.referenceUrl,
+      templateDocumentUrl: urls.templateUrl,
     });
     setDocumentChange({
       hasPendingChange: false,
-      previousReferenceUrl: buildCanonicalUrl(definition.referenceDocumentId, documentType),
-      previousTemplateUrl: buildCanonicalUrl(definition.templateDocumentId, documentType),
+      previousReferenceUrl: urls.referenceUrl,
+      previousTemplateUrl: urls.templateUrl,
     });
-  }, [form, definition]);
+  }, [form, getEffectiveDefinition]);
 
   // Handle close
   const handleClose = useCallback(() => {
