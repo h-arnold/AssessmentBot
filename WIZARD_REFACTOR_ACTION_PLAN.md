@@ -271,6 +271,13 @@ Helper decision entries for this refactor:
 
 ## Section 3 — Extract wizard-local state-shaping helpers with real contracts
 
+**Status: ✅ COMPLETE**
+
+- All state-shaping helpers extracted and verified (14 pure transformation helpers)
+- Hook complexity maintained at 7 (from Section 2)
+- All 20 tests pass
+- Section checks verified: repeated pure transforms extracted, dirty-state calculation simplified, hook coordinates state
+
 ### Objective
 
 - Move repeated pure transformations out of the hook body so the hook coordinates state rather than constructing every derived object inline.
