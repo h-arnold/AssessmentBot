@@ -29,8 +29,10 @@ type AssignmentsRuntimeScenario = Readonly<{
 const assignmentRows = [
   {
     primaryTitle: 'Newest algebra recap',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 11,
+    yearGroupKey: 'year-group-11',
+    yearGroupLabel: 'Year 11',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -44,8 +46,10 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Algebra foundations',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -59,8 +63,10 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Algebra foundations archive',
+    primaryTopicKey: 'topic-algebra',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -74,8 +80,10 @@ const assignmentRows = [
   },
   {
     primaryTitle: 'Unsafe legacy row',
+    primaryTopicKey: 'topic-legacy',
     primaryTopic: 'Legacy',
-    yearGroup: null,
+    yearGroupKey: '',
+    yearGroupLabel: '',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -243,6 +251,7 @@ function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
   const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
   const titleCell = assignmentsTable
     .locator('tbody tr td:first-child')
+    .filter({ hasText: assignmentTitle })
     .getByText(assignmentTitle, { exact: true });
 
   return titleCell.locator('xpath=ancestor::tr');
@@ -261,6 +270,9 @@ test.describe('assignments page browser journeys', () => {
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
+    // Wait for table to be visible
+    await page.waitForSelector('[aria-label="Assignment definitions table"]');
+    
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
     await exactMatchRow.getByRole('button', { name: /delete/i }).click();
@@ -285,17 +297,16 @@ test.describe('assignments page browser journeys', () => {
   });
 
 
-  test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
+  test('create action stays disabled when data is not trustworthy', async ({ page }) => {
     await mockAssignmentsRuntime(page, {
-      getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
+      getAssignmentDefinitionPartials: [{ kind: 'failureEnvelope', code: 'LOAD_FAILED', message: 'Could not load' }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
-    await expect(page.getByText(/not available in v1/i)).toBeVisible();
+    await expect(page.getByText(/Assignment definitions could not be trusted or loaded/i)).toBeVisible();
   });
 
 
@@ -447,7 +458,7 @@ test.describe('assignments page browser journeys', () => {
       },
       {
         columnHeaderName: 'Year group',
-        optionLabel: '10',
+        optionLabel: 'Year 10',
         expectedVisibleRow: 'Algebra foundations archive',
         expectedHiddenRow: 'Unsafe legacy row',
       },

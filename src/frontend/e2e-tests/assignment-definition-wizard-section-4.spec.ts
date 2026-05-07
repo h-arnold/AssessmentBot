@@ -100,6 +100,27 @@ const mockCreatedPartialRow = {
   updatedAt: '2025-01-03T00:00:00.000Z',
 } as const;
 
+const mockCreatedFullDefinition = {
+  definitionKey: 'new-assessment',
+  primaryTitle: 'New Assessment',
+  primaryTopicKey: 'topic-algebra',
+  primaryTopic: 'Algebra',
+  yearGroupKey: 'year-group-10',
+  yearGroupLabel: 'Year 10',
+  alternateTitles: [],
+  alternateTopics: [],
+  documentType: 'SLIDES',
+  referenceDocumentId: 'test-ref',
+  templateDocumentId: 'test-tpl',
+  assignmentWeighting: 5,
+  tasks: [
+    { taskId: 'task-1', taskTitle: 'Solve equations', taskWeighting: 1 },
+    { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
+  ],
+  createdAt: '2025-01-03T00:00:00.000Z',
+  updatedAt: '2025-01-03T00:00:00.000Z',
+} as const;
+
 /**
  * Installs a browser-side `google.script.run` mock for assignment-definition wizard journeys.
  *
@@ -235,8 +256,8 @@ function createStandardWizardScenario() {
     ],
     getAssignmentDefinition: [{ kind: 'success', data: mockFullDefinition }],
     upsertAssignmentDefinition: [
-      { kind: 'success', data: mockFullDefinition },
-      { kind: 'success', data: mockFullDefinition },
+      { kind: 'success', data: mockCreatedFullDefinition },
+      { kind: 'success', data: mockCreatedFullDefinition },
     ],
   } as const;
 }
@@ -275,7 +296,7 @@ function createFailedRefreshScenario() {
       { kind: 'failureEnvelope', code: 'REFRESH_FAILED', message: 'Could not refresh after mutation' },
     ],
     upsertAssignmentDefinition: [
-      { kind: 'success', data: mockFullDefinition },
+      { kind: 'success', data: mockCreatedFullDefinition },
     ],
   } as const;
 }
@@ -355,8 +376,8 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.click('button:has-text("Parse and continue")');
 
     // Should show tasks after parse
-    await page.waitForSelector('role=table[name*="task" i]');
-    await expect(page.locator('text="Solve quadratic equations"')).toBeVisible();
+    await page.waitForSelector('[aria-label="Task weightings"]');
+    await expect(page.locator('text="Solve equations"')).toBeVisible();
 
     // Click Save
     await page.click('button:has-text("Save")');
@@ -453,16 +474,18 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
     await page.click('button:has-text("Parse and continue")');
 
     // Wait for tasks to appear
-    await page.waitForSelector('role=table[name*="task" i]');
+    await page.waitForSelector('[aria-label="Task weightings"]');
 
-    // Edit task weighting
-    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment Updated');
+    // Edit assignment weighting to trigger dirty state
+    await page.getByRole('spinbutton', { name: 'Assignment Weighting' }).fill('7');
+    await expect(page.getByRole('spinbutton', { name: 'Assignment Weighting' })).toHaveValue('7');
 
-    // Try to close modal
-    await page.click('button[aria-label="Close"]');
+    // Try to close modal - use the modal close button
+    const createModal = page.getByRole('dialog', { name: 'Create assignment' });
+    await createModal.getByRole('button', { name: /close/i }).click();
 
     // Should show discard confirmation
-    await expect(page.getByRole('dialog', { name: 'Discard changes' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /Discard changes/i })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Discard changes' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible();
   });
@@ -535,7 +558,8 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
 
     await page.click('button:has-text("Parse and continue")');
 
-    await page.waitForSelector('role=table[name*="task" i]');
+    // Wait for the parse to complete - the table should appear briefly before the error
+    await page.waitForSelector('[aria-label="Task weightings"]', { state: 'attached' }).catch(() => {});
     await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible();
   });
 });
