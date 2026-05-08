@@ -30,5 +30,7 @@ export default defineConfig({
         height: 1080,
       },
     },
+    // Enable CSS processing for ?inline imports
+    css: true,
   },
 });
