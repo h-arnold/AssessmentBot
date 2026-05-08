@@ -3,6 +3,7 @@
 /* global Validate */
 
 const ACADEMIC_YEAR_START_MONTH = 9;
+const MONTHS_IN_YEAR = 12;
 
 /**
  * Resolves the academic-year start for a given date.
@@ -136,8 +137,8 @@ class Cohort {
   setStartMonth(startMonth) {
     Validate.requireParams({ startMonth }, 'Cohort.setStartMonth');
 
-    if (!Number.isInteger(startMonth) || startMonth < 1 || startMonth > 12) {
-      throw new TypeError('startMonth must be an integer between 1 and 12.');
+    if (!Number.isInteger(startMonth) || startMonth < 1 || startMonth > MONTHS_IN_YEAR) {
+      throw new TypeError(`startMonth must be an integer between 1 and ${MONTHS_IN_YEAR}.`);
     }
 
     this.startMonth = startMonth;
