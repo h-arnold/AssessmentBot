@@ -5,12 +5,12 @@ export default defineConfig({
   plugins: [react()],
   test: {
     css: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     include: ['src/**/*.spec.{ts,tsx}'],
     setupFiles: './src/test/setup.ts',
-    // Keep jsdom + Ant Design suites below the default worker fan-out to avoid
-    // intermittent App.spec.tsx timeouts caused by worker contention.
+    // Keep test suites below the default worker fan-out to avoid
+    // intermittent timeouts caused by worker contention.
     maxWorkers: 2,
     testTimeout: 15_000,
     coverage: {
