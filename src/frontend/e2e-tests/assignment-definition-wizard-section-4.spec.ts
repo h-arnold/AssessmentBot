@@ -1,92 +1,70 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   installRuntimeMock,
   createWizardScenario,
   createFailedReferenceDataScenario,
   createFailedRefreshScenario,
   selectVisibleOption,
-  type RuntimeScenario,
   mockFullDefinition,
   mockPartialRows,
   mockCreatedPartialRow,
 } from './shared/endToEndRuntimeMocks';
 
-// Re-export for backward compatibility
-// Note: These types are now defined in the shared module
-type WizardRuntimeScenario = RuntimeScenario;
+/**
+ * Standard re-parsed definition for re-parse workflow tests.
+ */
+const reParsedDefinition = {
+  ...mockFullDefinition,
+  referenceDocumentId: 'new-ref',
+  templateDocumentId: 'new-tpl',
+  tasks: [
+    { taskId: 'task-1', taskTitle: 'Updated Task 1', taskWeighting: 2 },
+    { taskId: 'task-2', taskTitle: 'Updated Task 2', taskWeighting: 1 },
+    { taskId: 'task-3', taskTitle: 'New Task', taskWeighting: 1 },
+  ],
+} as const;
 
 /**
- * Installs a browser-side `google.script.run` mock for assignment-definition wizard journeys.
- *
- * @param {Page} page The Playwright page under test.
- * @param {WizardRuntimeScenario} scenario The per-method response queue scenario.
- * @returns {Promise<void>} Resolves once the init script is installed.
+ * Standard success scenario for wizard tests with full mutation sequence.
  */
-async function mockWizardRuntime(page: Page, scenario: WizardRuntimeScenario) {
-  await installRuntimeMock(page, scenario);
-}
+const standardWizardScenario = createWizardScenario({
+  initialPartials: mockPartialRows,
+  postMutationPartials: [
+    [...mockPartialRows, mockCreatedPartialRow],
+    [...mockPartialRows, mockCreatedPartialRow],
+    [...mockPartialRows, mockCreatedPartialRow],
+    [...mockPartialRows, mockCreatedPartialRow],
+  ],
+  assignmentDefinitions: [{ kind: 'success', data: mockFullDefinition }],
+  upsertResponses: [
+    { kind: 'success', data: mockFullDefinition },
+    { kind: 'success', data: mockFullDefinition },
+  ],
+});
 
 /**
- * Creates a standard success scenario for the wizard runtime.
- *
- * @returns {WizardRuntimeScenario} Runtime scenario with all required datasets.
+ * Scenario for re-parse workflow with updated definition.
  */
-function createStandardWizardScenario() {
-  return createWizardScenario({
-    initialPartials: mockPartialRows,
-    postMutationPartials: [
-      [...mockPartialRows, mockCreatedPartialRow],
-      [...mockPartialRows, mockCreatedPartialRow],
-      [...mockPartialRows, mockCreatedPartialRow],
-      [...mockPartialRows, mockCreatedPartialRow],
-    ],
-    assignmentDefinitions: [{ kind: 'success', data: mockFullDefinition }],
-    upsertResponses: [
-      { kind: 'success', data: mockFullDefinition },
-      { kind: 'success', data: mockFullDefinition },
-    ],
-  });
-}
-
-/**
- * Creates a scenario for re-parse workflow.
- *
- * @returns {WizardRuntimeScenario} Runtime scenario with re-parse.
- */
-function createReparseScenario() {
-  const reParsedDefinition = {
-    ...mockFullDefinition,
-    referenceDocumentId: 'new-ref',
-    templateDocumentId: 'new-tpl',
-    tasks: [
-      { taskId: 'task-1', taskTitle: 'Updated Task 1', taskWeighting: 2 },
-      { taskId: 'task-2', taskTitle: 'Updated Task 2', taskWeighting: 1 },
-      { taskId: 'task-3', taskTitle: 'New Task', taskWeighting: 1 },
-    ],
-  };
-
-  return createWizardScenario({
-    postMutationPartials: [
-      mockPartialRows,
-      mockPartialRows,
-      mockPartialRows,
-      mockPartialRows,
-    ],
-    assignmentDefinitions: [
-      { kind: 'success', data: mockFullDefinition },
-      { kind: 'success', data: reParsedDefinition },
-      { kind: 'success', data: reParsedDefinition },
-    ],
-    upsertResponses: [
-      { kind: 'success', data: reParsedDefinition },
-    ],
-  });
-}
-
+const reparseScenario = createWizardScenario({
+  postMutationPartials: [
+    mockPartialRows,
+    mockPartialRows,
+    mockPartialRows,
+    mockPartialRows,
+  ],
+  assignmentDefinitions: [
+    { kind: 'success', data: mockFullDefinition },
+    { kind: 'success', data: reParsedDefinition },
+    { kind: 'success', data: reParsedDefinition },
+  ],
+  upsertResponses: [
+    { kind: 'success', data: reParsedDefinition },
+  ],
+});
 
 test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gating, and task weighting workflow', () => {
   test.beforeEach(async ({ page }) => {
-    await mockWizardRuntime(page, createStandardWizardScenario());
+    await installRuntimeMock(page, standardWizardScenario);
     await page.goto('/');
   });
 
@@ -166,7 +144,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
   });
 
   test('update flow: document change + successful re-parse refreshes task rows', async ({ page }) => {
-    await mockWizardRuntime(page, createReparseScenario());
+    await installRuntimeMock(page, reparseScenario);
     await page.goto('/');
 
     // Navigate to Assignments page
@@ -254,7 +232,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
   });
 
   test('create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded', async ({ page }) => {
-    await mockWizardRuntime(page, createFailedReferenceDataScenario());
+    await installRuntimeMock(page, createFailedReferenceDataScenario());
     await page.goto('/');
 
     // Navigate to Assignments page
@@ -266,7 +244,7 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {
-    await mockWizardRuntime(page, createFailedRefreshScenario());
+    await installRuntimeMock(page, createFailedRefreshScenario());
     await page.goto('/');
 
     // Navigate to Assignments page

@@ -1,15 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   installRuntimeMock,
   releaseNextDeferredSuccess,
   getAssignmentsRowByTitle,
-  type RuntimeScenario,
+  applyColumnFilterOption,
 } from './shared/endToEndRuntimeMocks';
-
-// Re-export for backward compatibility with existing tests that might reference these types
-// Note: These types are now defined in the shared module but we keep them here
-// for any tests that might import them directly.
-type AssignmentsRuntimeScenario = RuntimeScenario;
 
 const assignmentRows = [
   {
@@ -87,33 +82,11 @@ const newestRowIndex = 0;
 const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
 
-/**
- * Installs a browser-side `google.script.run` mock for assignments journeys.
- * Uses the shared installRuntimeMock function.
- *
- * @param {Page} page The Playwright page under test.
- * @param {AssignmentsRuntimeScenario} scenario The per-method response queue scenario.
- * @returns {Promise<void>} Resolves once the init script is installed.
- */
-async function mockAssignmentsRuntime(page: Page, scenario: AssignmentsRuntimeScenario) {
-  await installRuntimeMock(page, scenario);
-}
 
-
-/**
- * Releases the next deferred assignments API success response.
- * Uses the shared releaseNextDeferredSuccess function.
- *
- * @param {Page} page Playwright page instance.
- * @returns {Promise<void>} Resolves once the deferred response has been released.
- */
-async function releaseNextDeferredAssignmentsSuccess(page: Page) {
-  await releaseNextDeferredSuccess(page, '__releaseNextAssignmentsDeferredSuccess');
-}
 
 test.describe('assignments page browser journeys', () => {
   test('delete flow removes the row after confirmation and shows success feedback', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
@@ -142,7 +115,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('unsafe-key rows keep delete disabled', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
@@ -162,7 +135,7 @@ test.describe('assignments page browser journeys', () => {
 
 
   test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
@@ -182,7 +155,7 @@ test.describe('assignments page browser journeys', () => {
 
 
   test('delete action opens confirmation modal with permanent-delete copy', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
       deleteAssignmentDefinition: [{ kind: 'success', data: undefined }],
     });
@@ -206,7 +179,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('delete mutation keeps confirm loading and disables conflicting delete actions until settle', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
@@ -239,14 +212,14 @@ test.describe('assignments page browser journeys', () => {
       await expect(rowDeleteButtons.nth(index)).toBeDisabled();
     }
 
-    await releaseNextDeferredAssignmentsSuccess(page);
+    await releaseNextDeferredSuccess(page, '__releaseNextAssignmentsDeferredSuccess');
 
     await expect(page.getByText(/assignment definition deleted/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Delete assignment definition' })).toHaveCount(0);
   });
 
   test('delete failure keeps row visible and shows local error feedback', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
       deleteAssignmentDefinition: [{ kind: 'transportFailure', message: 'delete failed' }],
     });
@@ -269,7 +242,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('post-delete refresh failure returns to blocking state', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'transportFailure', message: 'refresh failed after delete' },
@@ -295,7 +268,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('retry action performs scoped assignment-definition refetch only', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'success', data: assignmentRows },
@@ -330,7 +303,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('filter and reset interactions cover every displayed data column', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
@@ -385,7 +358,7 @@ test.describe('assignments page browser journeys', () => {
     ] as const;
 
     for (const filterAssertion of filterAssertions) {
-      await applyAssignmentsFilterOption(page, filterAssertion.columnHeaderName, filterAssertion.optionLabel);
+      await applyColumnFilterOption(page, filterAssertion.columnHeaderName, filterAssertion.optionLabel);
       await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedVisibleRow)).toHaveCount(1);
       await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(0);
 
