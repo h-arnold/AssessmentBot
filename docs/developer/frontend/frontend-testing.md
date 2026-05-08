@@ -472,6 +472,157 @@ await expect(page.getByText(/deleted\./i)).toBeVisible(); // Message not yet vis
 - Keep tests decoupled from implementation details.
 - Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
 
+## CSS and Style Testing
+
+### Vitest CSS ?inline Import Handling
+
+**Problem:** By default, Vitest does NOT automatically process CSS files with `?inline` queries during tests. When tests import CSS like `import rawStyles from '../index.css?inline'`, the import returns `undefined` without proper configuration.
+
+**Solution:** Enable CSS processing in the Vite test configuration by setting `css: true` in `vite.config.ts`:
+
+```typescript
+export default defineConfig({
+  test: {
+    // Enable CSS processing for ?inline imports
+    css: true,
+    // ... other test config
+  },
+});
+```
+
+This allows Vite's CSS plugin to transform `?inline` imports so they return the raw CSS string content during tests.
+
+**Impact:** Without this setting, patterns like `appStylesRaw.ts` that import and parse CSS selectors will fail because the import resolves to `undefined`.
+
+**Reference:**
+
+- [Vitest Configuration - css option](https://vitest.dev/config/#css)
+
+### getComputedStyle Mocking (HappyDOM Limitation)
+
+**Problem:** HappyDOM has incomplete `getComputedStyle` support:
+
+- Missing the `pseudoElement` parameter in the function signature
+- Unreliable or missing values for CSS custom properties
+- Returns empty strings for common Ant Design properties (width, height, display, position, etc.)
+
+Ant Design components use `getComputedStyle` internally for layout calculations, so incomplete mocks cause rendering issues and test failures.
+
+**Solution:** Provide a global mock that:
+
+- Matches the real signature: `(element: Element, pseudoElement?: string | null) => CSSStyleDeclaration`
+- Returns realistic values for properties Ant Design commonly checks
+
+**Minimal recommended mock implementation:**
+
+```typescript
+function getComputedStyleMock(
+  element?: Element,
+  pseudoElement?: string | null
+): CSSStyleDeclaration {
+  const essentialProperties: Record<string, string> = {
+    // Layout
+    display: 'block',
+    width: '100px',
+    height: 'auto',
+    'box-sizing': 'border-box',
+    position: 'static',
+    overflow: 'visible',
+
+    // Spacing
+    padding: '0px',
+    margin: '0px',
+
+    // Borders
+    'border-width': '0px',
+    'border-style': 'solid',
+
+    // Colors
+    'background-color': 'rgb(255, 255, 255)',
+    color: 'rgb(0, 0, 0)',
+
+    // Text
+    'font-size': '14px',
+    'line-height': '1.5',
+
+    // Positioning (Modal/Dropdown/Tooltip)
+    'z-index': 'auto',
+    left: '0px',
+    top: '0px',
+  };
+
+  const propertyNames = Object.keys(essentialProperties);
+
+  return {
+    getPropertyValue: (property: string) => essentialProperties[property] || '',
+    setProperty: () => {},
+    removeProperty: () => {},
+    cssText: '',
+    length: propertyNames.length,
+    parentRule: null,
+    item: (index: number) => propertyNames[index] || '',
+  } as CSSStyleDeclaration;
+}
+
+// Define on both globalThis and window for compatibility
+Object.defineProperty(globalThis, 'getComputedStyle', {
+  configurable: true,
+  value: getComputedStyleMock,
+  writable: true,
+});
+
+Object.defineProperty(globalThis.window, 'getComputedStyle', {
+  configurable: true,
+  value: getComputedStyleMock,
+  writable: true,
+});
+```
+
+**Properties to include:** Focus on what Ant Design components check internally:
+
+- Modal: `position`, `z-index`, `left`, `top`, `width`, `height`, `display`
+- Table: `width`, `height`, `overflow`, `display`
+- Menu/Dropdown/Tooltip: `width`, `height`, `transform`, `display`, `z-index`
+- Select: `width`, `position`, `z-index`, `display`
+- Background checks: `background-color`
+
+**Reference:**
+
+- [HappyDOM getComputedStyle limitations](https://github.com/capricorn86/happy-dom/issues)
+- [MDN getComputedStyle](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
+
+### Vitest vi.mock Gotchas
+
+**Problem:** Vitest's `vi.mock` accepts only **2 arguments** (importPath, factoryFunction). The Jest pattern of adding `{ virtual: true }` as a third argument does **not** work in Vitest.
+
+```typescript
+// ❌ AVOID: Jest-style third argument not supported in Vitest
+vi.mock('./some-module', () => ({ ... }), { virtual: true });
+
+// ✅ CORRECT: Use only 2 arguments for Vitest
+vi.mock('./some-module', () => ({ ... }));
+```
+
+**For virtual modules in Vitest**, use the `vi.hoisted` pattern or configure via `vite.config.ts` mocks instead.
+
+**Reference:**
+
+- [Vitest vi.mock documentation](https://vitest.dev/api/vi.html#vi-mock)
+
+### Ant Design CSS Dependencies
+
+Ant Design components rely on `getComputedStyle` for layout calculations. When mocking this API, ensure your mock returns **non-empty values** for these commonly checked properties:
+
+| Component     | Properties Checked                                                                      |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Modal         | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
+| Table         | `width`, `height`, `overflow`, `display`                                                |
+| Menu/Dropdown | `width`, `height`, `transform`, `display`, `z-index`                                    |
+| Select        | `width`, `position`, `z-index`, `display`                                               |
+| General       | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
+
+**Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
+
 ## Notes
 
 - Frontend tests run in the frontend package (`src/frontend`) through root scripts.
