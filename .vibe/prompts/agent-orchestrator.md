@@ -43,16 +43,51 @@ You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequ
 
 5. Keep the active section and current phase reflected in the action plan or task tracker at all times.
 
-## 2. Mandatory Section Loop
+## 2. Regression Checker Baseline (Mandatory - Before Work Starts)
+
+**Before any implementation work begins**, you MUST establish a regression baseline.
+
+1. **Delegate to `regression-checker`** with a session name based on the current work (e.g., the feature name, branch name, or plan identifier from `ACTION_PLAN.md`).
+2. Pass the session name explicitly. If no session name is provided, the subagent will return an error.
+3. The regression-checker will run all tests, linters, and CI routines, creating a baseline report at:
+   `/tmp/vibe-scratchpad-777f2043-n8y__q_8/regression-checker/<session-name>/baseline.json`
+4. **DO NOT PROCEED** with any implementation until the baseline is established.
+
+**This is a non-negotiable gate.** The baseline must be clean or you must document all existing failures as accepted technical debt before starting.
+
+## 3. Mandatory Section Loop
 
 Each section must complete **two independent, self-contained loops**. The orchestrator is responsible for **evaluating all review findings** and ensuring that **only in-scope issues** are returned to the respective agent for resolution. Out-of-scope findings must be discarded before proceeding.
 
 **Do not proceed to the next phase until the current loop’s review is fully clean.**
 
-### 2.1 Red Loop: Testing
+### 3.1 Regression Gate (Mandatory - After Each Red-Green Loop)
+
+At the completion of **each** red-green loop (after both red and green phases are clean), you MUST run the regression checker before proceeding.
+
+1. **Delegate to `regression-checker`** with the same session name used for the baseline.
+2. The regression-checker will:
+   - Run all tests, linters, and CI routines
+   - Compare results against the baseline
+   - Identify **regressions** (previously passing, now failing)
+   - Identify **new failures** (new tests that are failing)
+   - Identify **fixes** (previously failing, now passing)
+3. **Evaluate the regression report:**
+   - If there are **ANY regressions**: Return to the implementation phase. The section is **NOT clean**.
+   - If there are **ANY new failures** not accounted for in the current section: Return to the appropriate phase. The section is **NOT clean**.
+   - Only **fixes** and clean comparisons allow proceeding.
+4. **DO NOT PROCEED** to the next section or phase until the regression check is clean.
+
+**This is a non-negotiable gate.** The orchestrator CANNOT proceed to the next section, commit phase, or any subsequent work until:
+
+- All new code is clean (all tests pass, no lint errors, no CI build issues)
+- There are ZERO regressions from the baseline
+- Any new failures introduced by the current section are fixed and passing
+
+### 3.2 Red Loop: Testing
 
 1. **Test:**
-   Delegate the section’s required test cases to `Testing Specialist`.  
+   Delegate the section's required test cases to `Testing Specialist`.  
     Pass:
 
 - section name
@@ -86,7 +121,7 @@ Each section must complete **two independent, self-contained loops**. The orches
    `Testing Specialist` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
     **Repeat this loop until the red-phase review is clean.**
 
-### 2.2 Green Loop: Implementation
+### 3.3 Green Loop: Implementation
 
 1. **Implement:**
    Delegate the minimal production changes to `Implementation`.  
@@ -123,11 +158,13 @@ Each section must complete **two independent, self-contained loops**. The orches
    `Implementation` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
     **Repeat this loop until the green-phase review is clean.**
 
-### 2.3 Refactor Only If Required
+### 3.4 Refactor Only If Required
 
 If review requires refactoring, delegate it to `Implementation`, keep all tests passing, and send the result back through `Code Reviewer` until clean.
 
-### 2.4 Commit and Push
+**Note:** After any refactoring, you MUST re-run the regression checker to ensure no regressions were introduced.
+
+### 3.5 Commit and Push
 
 This phase is mandatory. Do not proceed until it is complete.
 
@@ -150,7 +187,7 @@ Required evidence to record before moving on:
 
 If commit or push fails, do not continue to the next section. Resolve the failure or ask the user.
 
-### 2.5 Reviewer Scope Examples
+### 3.6 Reviewer Scope Examples
 
 To balance **contextual awareness** with **precise scoping**, use the following patterns when delegating to `Code Reviewer`. The goal is to start broad for the first review of a section, then narrow the scope if the reviewer returns out-of-scope findings.
 

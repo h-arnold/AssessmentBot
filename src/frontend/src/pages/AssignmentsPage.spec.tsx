@@ -640,8 +640,10 @@ describe('AssignmentsPage', () => {
       expect(deleteAssignmentDefinition).toHaveBeenCalledWith({ definitionKey: 'alg-10-safe' });
     });
 
+    const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
+
     await waitFor(() => {
-      expect(screen.getByText('Algebra foundations')).toBeInTheDocument();
+      expect(within(table).getByText('Algebra foundations')).toBeInTheDocument();
       expect(screen.getByText(/could not delete assignment definition/i)).toBeInTheDocument();
     });
   });
@@ -966,17 +968,8 @@ describe('AssignmentsPage', () => {
 
       renderWithFrontendProviders(<AssignmentsPage />);
 
-      // Create button should be enabled but modal should fail closed when opened
-      expect(screen.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Create assignment' }));
-
-      // Modal should open but show blocking error
-      await waitFor(() => {
-        expect(screen.getByRole('dialog', { name: /create assignment/i })).toBeInTheDocument();
-        expect(screen.getByRole('alert')).toBeInTheDocument();
-        expect(screen.getByText(/could not be trusted or loaded/i)).toBeInTheDocument();
-      });
+      // Create button should be disabled when reference data is not trustworthy
+      expect(screen.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
     });
 
   });
