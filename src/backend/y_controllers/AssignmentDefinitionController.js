@@ -475,6 +475,7 @@ class AssignmentDefinitionController {
    * @returns {AssignmentDefinition} The saved definition deserialised from persisted JSON.
    */
   saveDefinition(definition) {
+    Validate.requireParams({ definition }, 'AssignmentDefinitionController.saveDefinition');
     const definitionInstance =
       definition instanceof AssignmentDefinition
         ? definition

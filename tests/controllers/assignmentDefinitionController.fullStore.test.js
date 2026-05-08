@@ -86,6 +86,18 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
   });
 
   describe('saveDefinition - dual-store writes', () => {
+    it('should throw Error when called with null definition', () => {
+      expect(() => controller.saveDefinition(null)).toThrow(
+        /definition is required for AssignmentDefinitionController.saveDefinition/
+      );
+    });
+
+    it('should throw Error when called with undefined definition', () => {
+      expect(() => controller.saveDefinition(undefined)).toThrow(
+        /definition is required for AssignmentDefinitionController.saveDefinition/
+      );
+    });
+
     it('should write full definition to dedicated collection and partial to registry', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',

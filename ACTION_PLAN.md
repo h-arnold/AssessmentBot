@@ -1,96 +1,56 @@
-# Feature Delivery Plan (TDD-First)
+# Code Quality Remediation Plan (TDD-First)
 
 ## Read-First Context
 
 Before writing or executing this plan:
 
-1. Read the current `SPEC.md`.
-2. Read `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`.
-3. Treat those documents as the source of truth for product behaviour, contracts, and layout rules.
-4. Use this action plan to sequence delivery and testing; do not restate or redefine material already settled in the spec or layout doc.
+1. Read the current `SPEC.md` — behaviour and contracts remain unchanged.
+2. Read the current `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` — layout and workflow remain unchanged.
+3. This plan addresses **only** the non-helper-extraction issues identified in CODE_REVIEW.md and SLOP_REVIEW.md for the `feat/CreateAssessmentModal` branch.
 
 ## Scope and assumptions
 
 ### Scope
 
-- Deliver the assignment definition create/update modal wizard on the active Assignments page.
-- Add the required backend API transport and frontend service/query contracts for `upsertAssignmentDefinition`, `getAssignmentDefinition`, and the supporting reference-data/list surfaces.
-- Migrate the active frontend assignment-definition contracts to `yearGroupKey`-based reads and writes.
+This action plan addresses two critical issues that require remediation without behaviour change:
+
+1. **Dead code removal**: Delete unused query mutation files that duplicate cache invalidation logic already present in `useAssignmentDefinitionWizard.ts`.
+2. **Validation compliance**: Add missing `Validate.requireParams` call to `AssignmentDefinitionController.saveDefinition` to satisfy mandatory backend validation contract.
+
+### Finding mapping
+
+| Review Doc     | Finding ID | Plan Section           | Status                                           |
+| -------------- | ---------- | ---------------------- | ------------------------------------------------ |
+| CODE_REVIEW.md | CR-001     | Section 1              | ✅ Complete                                      |
+| CODE_REVIEW.md | CR-NEW-001 | Section 2              | ✅ Complete                                      |
+| CODE_REVIEW.md | CR-004     | Section 1 (incidental) | ✅ Complete                                      |
+| SLOP_REVIEW.md | SLOP-001   | Section 1              | ✅ Complete                                      |
+| SLOP_REVIEW.md | SLOP-004   | Section 1 (incidental) | ✅ Complete                                      |
+| CODE_REVIEW.md | CR-002     | N/A                    | Out of scope (user directive: needed for CC < 7) |
+| CODE_REVIEW.md | CR-003     | N/A                    | Out of scope (user directive: needed for CC < 7) |
+| SLOP_REVIEW.md | SLOP-002   | N/A                    | Out of scope (user directive: needed for CC < 7) |
+| SLOP_REVIEW.md | SLOP-003   | N/A                    | Out of scope (user directive: needed for CC < 7) |
 
 ### Out of scope
 
-- Assessment-launch wizard work.
-- Weighted score-calculation algorithm design beyond persisting raw weights.
-- Task-content editing beyond task weighting values.
+The following issues are **explicitly excluded** per user directive (needed to keep cyclomatic complexity below 7):
+
+- Single-caller helper functions in `AssignmentsPage.tsx` (CR-002 / SLOP-002)
+- Single-caller helper functions in `useAssignmentDefinitionWizard.ts` (CR-003 / SLOP-003)
+- Over-extraction concerns related to the above
+
+Cargo-cult comment pattern (CR-004 / SLOP-004) is addressed incidentally by Section 1 (deleting dead code files removes the duplicate comments; the canonical comment in `useAssignmentDefinitionWizard.ts` line 837 is retained as intended).
 
 ### Assumptions
 
-1. Stage-one create persists a legitimate assignment definition and must obey duplicate business-tuple validation before persistence.
-2. `upsertAssignmentDefinition` is the single write transport for stage-one create, final save, and document-change re-parse.
-3. Relevant official Ant Design documentation was consulted during this planning update; frontend implementation and review must still use the linked official docs below as the source of truth for component behaviour before merge.
-4. `assignmentTopics` joins startup warm-up in this phase because the same reference-data set is expected to support additional modal workflows.
-5. No existing persisted assignment-definition data needs compatibility handling or migration in this feature; implementation may replace the old persistence contract directly.
+1. No behaviour change is required or desired for this remediation.
+2. Existing tests for `AssignmentDefinitionController` that call `saveDefinition` use valid definition objects and will continue to pass after adding parameter validation. New tests for null/undefined parameter validation will be added in the Red phase.
+3. Deleting `upsertAssignmentDefinitionMutation.ts` and its test file will not break any production code, as verified by exhaustive import search in CODE_REVIEW.md.
+4. The `Validate` utility is already available in `src/backend/Utils/Validate.js` and is loaded before `AssignmentDefinitionController` in the GAS concatenation order (Utils/ files load before y_controllers/ files).
 
----
+### Shared-helper planning gate
 
-## Section 0 — Shared modal width standard
-
-### Objective
-
-- Add the shared wide-data modal-width exception required by the wizard before user-facing modal implementation begins.
-
-### Constraints
-
-- Keep width ownership centralised in the canonical frontend width standards.
-- Do not introduce feature-local modal width literals.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-
-### Acceptance criteria
-
-- The canonical frontend width standards define one approved wide-data modal-width exception for this wizard family.
-- Sections 3 and 4 consume that shared width contract rather than introducing a feature-local literal.
-
-### Required test cases/checks
-
-1. Verify the shared standard and any consumed token names are documented before modal implementation begins.
-
-### Section checks
-
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** red tests added in `src/frontend/src/index.css.spec.ts`; red review finding about over-specified wording/token naming resolved; shared token `--app-modal-width-wide-data` added to canonical width standards and shared stylesheet.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Sections 3/4 must consume `--app-modal-width-wide-data` and avoid feature-local width literals.
-- **Checklist:**
-  - [x] red tests added
-  - [x] red review clean
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated
-  - [x] commit created
-  - [x] push completed
+No new shared helpers are being introduced by this plan. The existing `Validate.requireParams` utility in `src/backend/Utils/Validate.js` is reused. No planned helper entries are required in canonical docs.
 
 ---
 
@@ -98,686 +58,212 @@ Code Reviewer mandatory docs:
 
 ### Engineering constraints
 
-- Keep API entry points thin and delegate behaviour to the existing assignment-definition controller layer.
-- Keep frontend transport behind `callApi(...)` and adjacent Zod validation.
-- Fail fast on invalid URLs, invalid reference-data keys, duplicate tuples, and persistence failures.
-- Keep the modal as a feature-local workflow surface; do not introduce a generic app-wide wizard abstraction for this feature.
+- Keep changes minimal, localised, and consistent with repository conventions.
+- Preserve existing file/load ordering conventions (numeric prefixes where present).
+- Do not introduce new dependencies or runtime assumptions.
 - Use British English in comments and documentation.
+- Backend changes must remain GAS V8 compatible.
 
 ### TDD workflow (mandatory per section)
 
 For each section below:
 
-1. **Red**: write failing tests for the section’s acceptance criteria.
+1. **Red**: write failing tests for the section's acceptance criteria (where applicable).
 2. **Green**: implement the smallest change needed to pass.
 3. **Refactor**: tidy implementation with all tests still green.
 4. Run section-level verification commands.
 
-### Delegation mandatory-read gate (mandatory for sub-agent execution)
+### Delegation mandatory-read gate
 
-When a section is delegated to sub-agents, the plan must define and enforce mandatory documentation reads.
+When a section is delegated to sub-agents, the following documentation must be read and included in the handoff `Files read` section:
 
-For each delegated phase (`Testing Specialist`, `Implementation`, `Code Reviewer`, `Docs`, or `De-Sloppification`):
-
-1. list required workspace documentation file paths and any required external documentation URLs under that phase before delegation
-2. require the sub-agent handoff to include `Files read` with explicit workspace file paths and `External docs consulted` with explicit URLs whenever external references are mandatory
-3. verify every mandatory file path and mandatory URL is listed before accepting the handoff
-4. if any mandatory item is missing, return the work to the same sub-agent and block progression to the next phase
-
-### Shared-helper planning gate (mandatory when helper changes are expected)
-
-Helper decision entries:
-
-1. Helper: `AssignmentDefinitionWizardModal`
-   - Decision: `keep local`
-   - Owning module/path: `src/frontend/src/pages` or a feature-local assignments workflow module under `src/frontend/src/**`
-   - Call-site rationale: the feature currently has one active caller family on the Assignments page, and the modal’s state machine is specific to assignment-definition parsing, re-parse gating, and task-weight editing
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-2. Helper: `assignment-definition full-response mapper`
-   - Decision: `keep local`
-   - Owning module/path: frontend service or schema-adjacent mapping layer for assignment-definition full responses
-   - Call-site rationale: one canonical editable entity shape should be normalised once at the transport boundary rather than re-mapped in page or modal code
-   - Relevant canonical doc target: none in this phase; keep feature-local unless a second consumer appears
-   - Planned doc status: `Not applicable`
-3. Helper: `assignment-definition document URL translation`
-   - Decision: `keep local`
-   - Owning module/path: assignment-definition frontend service layer plus the matching backend transport boundary
-   - Call-site rationale: pasted-URL parsing, canonical URL reconstruction, and ID handoff are specific to this workflow and should not leak into page or modal components
-   - Relevant canonical doc target: none in this phase; keep feature-local unless broader reuse appears
-   - Planned doc status: `Not applicable`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/backend/AGENTS.md`
+- `/home/developer/AssessmentBot/src/frontend/AGENTS.md`
+- This `ACTION_PLAN.md`
+- Relevant companion docs: `SPEC.md`, `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
 
 ### Validation commands hierarchy
 
 - Backend lint: `npm run lint`
 - Frontend lint: `npm run frontend:lint`
-- Backend tests: `npm test -- <target>`
-- Frontend unit tests: `npm run frontend:test -- <target>`
+- TypeScript compilation: `npm exec tsc -- -b src/frontend/tsconfig.json`
+- Backend tests: `npm test`
+- Frontend unit tests: `npm run frontend:test`
 
 ---
 
-## Section 1 — Backend transport contracts and persistence rules
+## Section 1 — Remove dead code query mutation files
 
 ### Objective
 
-- Extend the backend write and read contracts so `upsertAssignmentDefinition` handles create-stage parse/persist, final save, and document-change re-parse, while `getAssignmentDefinition` handles edit-mode reads.
+Delete unused frontend query mutation files that violate frontend abstraction standards (§4.1, §5.1) and duplicate logic already implemented in `useAssignmentDefinitionWizard.ts`.
 
 ### Constraints
 
-- Keep `apiHandler` as the only frontend transport entry point.
-- Keep transport validation in `z_Api` helpers and domain validation in the controller layer.
-- Preserve existing persistence behaviour where possible while enforcing the new duplicate-tuple and weighting rules.
-- Freeze the active `getAssignmentDefinitionPartials` DTO in this section unless the matching frontend schema, startup query wiring, and Assignments page consumer changes land in the same implementation slice.
+- Must not break any production imports (verified: zero production imports exist).
+- Must not break any tests that depend on these files (only their own test file references them).
+- Deletion must be atomic (both files together).
+- Preserve git history via `git rm` rather than manual deletion.
 
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/backend/backend-testing.md`
+### Delegation mandatory reads
 
 Implementation mandatory docs:
 
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `SPEC.md`
-- `docs/developer/backend/api-layer.md`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/frontend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- `/home/developer/AssessmentBot/ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
+- This `ACTION_PLAN.md`
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/frontend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/frontend/frontend-testing.md`
+- This `ACTION_PLAN.md`
 
 Code Reviewer mandatory docs:
 
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `SPEC.md`
-- `docs/developer/backend/api-layer.md`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/frontend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/frontend/frontend-shared-helpers-and-abstraction-standards.md`
+- This `ACTION_PLAN.md`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-1. Helper: `assignment-definition API handlers`
-   - Decision: `extend`
-   - Owning module/path: `src/backend/z_Api/assignmentDefinitionPartials.js` and `src/backend/z_Api/z_apiHandler.js`
-   - Call-site rationale: the updated write behaviour belongs in the existing assignment-definition transport family
-   - Relevant canonical doc target: backend API-layer docs if new patterns emerge
-   - Planned doc status: `Not implemented`
+No shared helper changes are expected in this section. The logic being removed is dead code that was never integrated; the canonical implementation exists in `useAssignmentDefinitionWizard.ts`.
+
+Helper decision entries:
+
+1. Helper: Cache invalidation logic
+   - Decision: `keep local`
+   - Owning module/path: `src/frontend/src/pages/useAssignmentDefinitionWizard.ts`
+   - Call-site rationale: Canonical implementation already exists and is used; dead code duplicate is being removed
+   - Relevant canonical doc target: N/A
+   - Planned doc status: N/A
 
 ### Acceptance criteria
 
-- `upsertAssignmentDefinition` and `getAssignmentDefinition` exist behind `apiHandler` as the active wizard transports.
-- `upsertAssignmentDefinition` accepts document URLs, validates supported Google document URLs, rejects same-document pairs, rejects mixed supported document types, derives `documentType` server-side, and persists only after those checks pass.
-- `upsertAssignmentDefinition` accepts `yearGroupKey`, enforces the `0` to `10` weighting range, applies duplicate detection on tuple-changing saves, and returns the canonical full-definition response shape.
-- Persisted full and partial assignment-definition records store authoritative `yearGroupKey` values, and read contracts resolve `yearGroupLabel` from that stored key.
-- Stage-one create rejects duplicate tuples before persistence.
-- `upsertAssignmentDefinition` and `getAssignmentDefinition` return the canonical full-definition response shape.
+- `src/frontend/src/query/upsertAssignmentDefinitionMutation.ts` is deleted from the repository.
+- `src/frontend/src/query/upsertAssignmentDefinitionMutation.query.spec.ts` is deleted from the repository.
+- No other production files reference the deleted files (verified via `grep -r "upsertAssignmentDefinitionMutation" src/frontend/src --include="*.ts" --include="*.tsx"` returns no results excluding test files).
+- Frontend TypeScript compilation passes.
+- Frontend lint passes.
 
 ### Required test cases (Red first)
 
-Backend controller/domain tests:
-
-1. create-stage duplicate tuple rejection
-2. weighting range validation for assignment and task weightings
-3. valid year-group selection enforcement for save-compatible writes
-4. stable definition-key handling across tuple edits
-5. persistence round-trips store `yearGroupKey` authoritatively in full and partial records
-
-Additional backend controller tests:
-
-1. canonical full-definition response mapping for create, read, save, and re-parse
-2. document-change re-parse preserves matching task weightings and defaults new tasks to `1`
-3. final-save duplicate detection when title, topic, or year group changes
-4. same-document pair rejection and mixed supported-type rejection
-
-API layer tests:
-
-1. new handler allowlisting and transport-shape validation
-2. invalid URL and invalid identifier rejection at the transport boundary
-3. full-definition read request-shape and identifier-safety validation
-
 Frontend tests:
 
-1. None in this section
+1. Verify that no production code imports the deleted module by running TypeScript compilation — should pass without errors related to missing imports.
 
 ### Section checks
 
-- `npm test -- tests/api/...`
-- `npm test -- tests/...assignment-definition...`
+- `git rm src/frontend/src/query/upsertAssignmentDefinitionMutation.ts`
+- `git rm src/frontend/src/query/upsertAssignmentDefinitionMutation.query.spec.ts`
+- `npm exec tsc -- -b src/frontend/tsconfig.json`
+- `npm run frontend:lint`
+- Verify no references remain: `grep -r "upsertAssignmentDefinitionMutation" src/frontend/src --include="*.ts" --include="*.tsx"`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` only if the response-shape mapping or single-write-transport behaviour would otherwise be non-obvious.
+None — no new code is being added, only dead code removed.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Green phase complete:
-  - `getAssignmentDefinition` transport was added behind `apiHandler`.
-  - URL-based upsert transport validation now rejects invalid URLs and mixed/same-document pairs while deriving `documentType` server-side.
-  - Assignment/task weighting validation now enforces strict `0..10` bounds.
-  - Save-compatible writes now require a non-null `yearGroupKey`.
-  - Upsert and read now return the canonical full-definition response shape.
-  - Stage-one re-parse task weighting defaults missing weights to `1`.
-  - Section 1 DTO freeze was respected; partial DTO migration remains deferred to Section 3.
+- **Implementation notes:** Files deleted using `git rm` to preserve history. TypeScript compilation and frontend lint confirmed passing. No production files referenced the deleted modules.
 - **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 2 should consume the canonical full-definition response directly, and Section 3 should land the deferred partial DTO migration.
-
-Checklist:
-
-- [x] red tests added (complete)
-- [x] red review clean (complete)
-- [x] green implementation complete (complete)
-- [x] green review clean (complete)
-- [x] checks passed (complete)
-- [x] action plan updated (complete)
-- [x] commit created (complete)
-- [x] push completed (complete)
+- **Follow-up implications:** Removing these files also eliminates the cargo-cult comment duplicates identified in CR-004 / SLOP-004. The canonical comment instance in `useAssignmentDefinitionWizard.ts` line 837 remains.
 
 ---
 
-## Section 2 — Frontend service, schema, and query wiring
+## Section 2 — Add parameter validation to AssignmentDefinitionController.saveDefinition
 
 ### Objective
 
-- Add the frontend service wrappers, Zod contracts, and React Query entries needed for `upsertAssignmentDefinition`, `getAssignmentDefinition`, and the required reference-data dependencies.
-- Defer the shared `assignmentDefinitionPartials` contract migration until the visible Assignments list-surface slice lands.
+Add mandatory `Validate.requireParams` call at the entry point of `AssignmentDefinitionController.saveDefinition` to satisfy backend validation contract per `src/backend/AGENTS.md §2`.
 
 ### Constraints
 
-- All frontend-to-backend transport must remain behind `callApi(...)`.
-- Query keys should be defined through shared query-key helpers rather than ad hoc arrays.
-- Keep normalisation at the transport/schema boundary, not in page components.
-- `assignmentTopics` joins startup warm-up in this phase, so the section must update the shared query and startup trust contract accordingly.
-- This section must not change the live `assignmentDefinitionPartials` DTO or its existing Assignments page consumer yet.
+- Must follow the pattern: `Validate.requireParams({ definition }, 'AssignmentDefinitionController.saveDefinition')` at the start of the method.
+- Must not change method signature or behaviour for valid inputs.
+- Must not break existing tests (validation should pass with valid input; existing tests use valid definitions).
+- Must preserve existing JSDoc comment.
+- Must maintain GAS V8 compatibility.
+- Must verify that `Validate` utility is loaded before `AssignmentDefinitionController` in GAS concatenation order.
 
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-testing.md`
+### Delegation mandatory reads
 
 Implementation mandatory docs:
 
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/backend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/backend/backend-logging-and-error-handling.md`
+- `/home/developer/AssessmentBot/SPEC.md`
+- This `ACTION_PLAN.md`
+
+Testing Specialist mandatory docs:
+
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/backend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/backend/backend-testing.md`
+- This `ACTION_PLAN.md`
 
 Code Reviewer mandatory docs:
 
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
+- `/home/developer/AssessmentBot/AGENTS.md`
+- `/home/developer/AssessmentBot/src/backend/AGENTS.md`
+- `/home/developer/AssessmentBot/docs/developer/backend/backend-logging-and-error-handling.md`
+- This `ACTION_PLAN.md`
 
-### Shared helper plan (when helper changes are expected)
+### Shared helper plan
 
-1. Helper: `assignment-definition full-response mapper`
-   - Decision: `keep local`
-   - Owning module/path: schema-adjacent frontend service layer
-   - Call-site rationale: one mapper keeps React Query caches and form state aligned
-   - Relevant canonical doc target: none in this phase; keep feature-local unless a second consumer appears
-   - Planned doc status: `Not applicable`
+The existing `Validate.requireParams` utility is reused.
+
+Helper decision entries:
+
+1. Helper: `Validate.requireParams`
+   - Decision: `reuse`
+   - Owning module/path: `src/backend/Utils/Validate.js`
+   - Call-site rationale: Mandatory backend validation contract per src/backend/AGENTS.md §2
+   - Relevant canonical doc target: N/A (backend utility)
+   - Planned doc status: N/A
 
 ### Acceptance criteria
 
-- Frontend service wrappers exist for `upsertAssignmentDefinition` and full-definition reads.
-- A dedicated frontend transport wrapper and adjacent Zod schema exist for `assignmentTopics`.
-- Shared query keys/options exist for assignment topics and full definitions by key.
-- `assignmentTopics` participates in startup warm-up and shared trust handling in this phase.
-- Mutation flows invalidate or refresh both the partial-definition list query and the selected full-definition query where the spec requires it.
-- The live `assignmentDefinitionPartials` DTO and Assignments page consumer remain unchanged in this section.
+- `AssignmentDefinitionController.saveDefinition` starts with `Validate.requireParams({ definition }, 'AssignmentDefinitionController.saveDefinition');`
+- All existing tests for `AssignmentDefinitionController` continue to pass.
+- New tests for null/undefined parameter validation are added and pass.
+- Backend lint passes.
+- No behaviour change: valid definitions still save correctly; invalid (null/undefined) definitions now throw with a clear error message.
 
 ### Required test cases (Red first)
-
-Backend model tests:
-
-1. None in this section
 
 Backend controller tests:
 
-1. None in this section
-
-API layer tests:
-
-1. None in this section
-
-Frontend tests:
-
-1. service/schema validation for `upsertAssignmentDefinition` and `getAssignmentDefinition`
-2. service/schema validation for `assignmentTopics`
-3. query-key and query-option coverage for full-definition and assignment-topic reads
-4. startup warm-up wiring and trust handling for `assignmentTopics`
-5. mutation cache invalidation or rebase coverage for stage-one create, final save, and re-parse through `upsertAssignmentDefinition`
+1. Add test case in `AssignmentDefinitionController` test suite: calling `saveDefinition(null)` throws Error with message containing **"definition is required for AssignmentDefinitionController.saveDefinition"**.
+2. Add test case: calling `saveDefinition(undefined)` throws Error with message containing **"definition is required for AssignmentDefinitionController.saveDefinition"**.
+3. Existing test cases using valid definition objects continue to pass.
 
 ### Section checks
 
-- `npm run frontend:test -- src/services/...`
-- `npm run frontend:test -- src/query/...`
+- Verify `Validate.requireParams` is called at the start of `saveDefinition`
+- Verify file load order: `ls src/backend/Utils/Validate.js` and `ls src/backend/y_controllers/AssignmentDefinitionController.js` confirm Utils/ loads before y_controllers/
+- `npm test -- tests/controllers/assignmentDefinitionController.test.js`
+- `npm run lint`
 - Mandatory-read evidence gate passed for all delegated handoffs in this section.
 
 ### Optional `@remarks` JSDoc follow-through
 
-- Add `@remarks` only if the response-mapping boundary or startup trust integration would otherwise be surprising.
+None — the validation is self-explanatory and follows the established pattern documented in `src/backend/AGENTS.md §2`.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Green-phase work is complete: added assignment definition services and Zod schemas; added the `assignmentTopics` service and schema; added query keys/options for `assignmentTopics` and `assignmentDefinitionByKey`; integrated `assignmentTopics` into startup warm-up and trust handling; added the upsert-mutation cache refresh helper for the partial list and selected full-definition query; and confirmed the Section 2 guard remains unchanged by keeping the live partial DTO/page consumer contract untouched.
+- **Implementation notes:** Added `Validate.requireParams({ definition }, 'AssignmentDefinitionController.saveDefinition');` as the first line of the `saveDefinition` method. Two new test cases added to verify null and undefined parameter validation. All 953 backend tests pass, including the 2 new validation tests.
 - **Deviations from plan:** None.
-- **Follow-up implications for later sections:** the modal shell should treat the service contracts as canonical and avoid custom data reshaping; the shared partial-definition DTO migration is intentionally deferred to Section 3; and the frontend React Query policy doc may need syncing during the docs phase.
-- **Checklist:**
-  - [x] red tests added (complete)
-  - [x] red review clean (complete)
-  - [x] green implementation complete (complete)
-  - [x] green review clean (complete)
-  - [x] checks passed (complete)
-  - [x] action plan updated (complete)
-  - [x] commit created (complete)
-  - [x] push completed (complete)
-
----
-
-## Section 3 — Assignments page entry points and modal shell
-
-### Objective
-
-- Migrate the full-stack Assignments list surface to the `yearGroupKey`/`yearGroupLabel` contract and add the modal shell plumbing needed for the later workflow slice.
-
-### Constraints
-
-- Keep the Assignments page as the single owning surface.
-- Keep create and update affordances unavailable to end users until Section 4 lands the first complete modal workflow.
-- Keep the modal local to the assignments workflow; do not introduce a generic wizard abstraction.
-- Treat the partial-definition DTO migration, the page-level year-group rendering/filtering updates, and the modal-launch affordances as one visible list-surface slice.
-- Include the required backend partial-transport and controller updates in the same slice as the frontend list-surface consumer changes.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/backend/backend-testing.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/table`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/table`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/table`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-### Shared helper plan (when helper changes are expected)
-
-1. Helper: `AssignmentDefinitionWizardModal`
-   - Decision: `keep local`
-   - Owning module/path: Assignments page workflow surface
-   - Call-site rationale: only one active caller family exists and the state machine is feature-specific
-   - Relevant canonical doc target: `docs/developer/frontend/frontend-modal-patterns.md`
-   - Planned doc status: `Not implemented`
-
-### Acceptance criteria
-
-- The backend partial-definition transport exposes `yearGroupKey` and `yearGroupLabel` as the active list-surface contract.
-- The Assignments table renders `yearGroupLabel` from the active contract.
-- Year-group filtering continues to work against the visible label contract after the migration.
-- The modal shell component owns create/update title text, loading skeletons, blocking errors, and local mutation busy states when exercised directly in component tests.
-- The page-level create and update affordances remain unavailable until Section 4 enables the first complete workflow.
-- The existing delete row action remains present.
-
-### Required test cases (Red first)
-
-Backend controller/domain tests:
-
-1. partial-definition list responses expose the active `yearGroupKey`/`yearGroupLabel` contract
-
-API layer tests:
-
-1. partial-definition transport request/response wiring remains valid after the contract migration
-
-Frontend tests:
-
-1. Assignments page renders year-group labels from the active contract correctly
-2. year-group filtering continues to work against the visible label contract
-3. modal shell component shows update-mode loading skeleton then hydrated form when exercised directly
-4. modal shell component fails closed inside the owned surface on blocking-load errors
-
-Playwright tests:
-
-1. the migrated Assignments table remains usable while delete remains available
-
-### Section checks
-
-- `npm run frontend:test -- src/pages/...Assignments...`
-- `npm test -- tests/...assignment-definition...`
-- `npm run frontend:test:e2e -- <target>`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-
-### Optional `@remarks` JSDoc follow-through
-
-- None.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** Red-phase tests now cleanly target backend partial DTO migration, frontend partial schema/service migration, Assignments page label/filter migration, and the missing modal shell component; previous red test hygiene issues (fixture completeness and targeting) are resolved. Green-phase implementation complete: backend partial-transport exposes yearGroupKey/yearGroupLabel, Assignments table renders yearGroupLabel, year-group filtering works against visible label contract, modal shell component owns all required states, create/update affordances remain unavailable, delete row action remains present.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** Section 4 enables the page-level create and update affordances on top of this migrated list surface and modal shell.
-- **Checklist:**
-  - [x] red tests added (complete)
-  - [x] red review clean (complete)
-  - [x] green implementation complete
-  - [x] green review clean
-  - [x] checks passed
-  - [x] action plan updated (complete)
-  - [x] commit created (complete)
-  - [x] push completed (complete)
-
----
-
-## Section 4 — Shared edit surface, re-parse gating, and task weighting workflow
-
-### Objective
-
-- Implement the create stage-one parse flow, the shared edit surface used by both modes, the explicit document-change re-parse gating, and task-weight editing.
-- Enable the page-level create and update affordances as the first complete user-facing workflow slice.
-
-### Constraints
-
-- Unsaved document edits and unsaved metadata/weighting edits are mutually exclusive local states.
-- Re-parse state must remain inside the modal and must not use nested confirmation modals.
-- Task weighting remains unavailable until parsed tasks exist.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Implementation mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-### Shared helper plan (when helper changes are expected)
-
-1. Helper: `task-weighting table input cell`
-   - Decision: `keep local`
-   - Owning module/path: assignment-definition wizard modal surface
-   - Call-site rationale: the editing rules are specific to parsed task rows in this feature
-   - Relevant canonical doc target: none in this phase; keep feature-local unless reuse emerges later
-   - Planned doc status: `Not applicable`
-
-### Acceptance criteria
-
-- The page action area exposes a working create action, and each table row exposes a working update action.
-- The page action area keeps `Refresh assignments data` plus `Create assignment` only; the obsolete top-level `Update assignment` button is removed.
-- Create mode performs parse-and-persist before task editing is available.
-- After stage-one create, the same modal session exposes document URLs, metadata, and task weightings through the shared edit surface.
-- Updating document URLs disables other edits and exposes explicit `Re-parse` and `Cancel` actions.
-- Cancel restores persisted URLs; re-parse refreshes tasks, preserves compatible weights, and defaults new tasks to `1`.
-- If metadata or weighting edits are dirty, document URL fields remain unavailable until the user saves or closes the modal and confirms discard.
-- Required topic/year-group reference data failures block the create modal surface locally.
-- If post-mutation refresh leaves the Assignments list or open modal surface untrustworthy, the affected surface fails closed rather than continuing to show stale ready-state content.
-
-### Required test cases (Red first)
-
-Backend model tests:
-
-1. None in this section
-
-Backend controller tests:
-
-1. None in this section
-
-API layer tests:
-
-1. None in this section
-
-Frontend tests:
-
-1. the page action cluster keeps `Refresh assignments data` plus `Create assignment` only, with no top-level `Update assignment` button
-2. page-level create and update affordances become enabled only when the complete workflow is available
-3. create mode hides or disables task editing before first parse
-4. stage-one success hydrates the shared edit surface without a second fetch requirement
-5. document change disables metadata and task weighting inputs until re-parse or cancel
-6. cancel restores persisted URLs and re-enables other fields
-7. re-parse refreshes task rows and preserves matching weightings
-8. save remains blocked until a valid year-group selection is present
-9. dirty metadata or weighting edits disable document URL fields until save or discard-by-close
-10. create entry blocks locally when required reference data cannot be loaded
-11. failed post-mutation refresh fails closed on the affected table or modal surface
-
-Playwright tests:
-
-1. create flow: parse and continue, then save
-2. update flow: document change plus cancel restores URLs and fields
-3. update flow: document change plus successful re-parse refreshes task rows
-4. modal close with unsaved stage-two edits requires discard confirmation
-5. save remains blocked until a valid year-group selection is present
-6. create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded
-7. failed post-mutation refresh fails closed on the affected surface instead of leaving stale ready-state content visible
-
-### Section checks
-
-- `npm run frontend:test -- src/...assignment-definition...`
-- `npm run frontend:test:e2e -- <target>`
-- Mandatory-read evidence gate passed for all delegated handoffs in this section.
-
-### Optional `@remarks` JSDoc follow-through
-
-- Add `@remarks` if the modal state machine or re-parse gating logic would otherwise be difficult to understand from code alone.
-
-### Implementation notes / deviations / follow-up
-
-- **Implementation notes:** List refresh in handleParseAndContinue and handleReparse changed from blocking to fire-and-forget. The modal continues to function with parsed tasks even if the AssignmentsPage table refresh fails. handleSave retains blocking behaviour to prevent closing with stale data. Follow-up green-phase work also fixed create-mode dirty-state tracking after stage-one parse so post-parse metadata edits correctly disable document URLs and trigger discard confirmation on close. Section 4 browser fixtures were updated to match the live startup warm-up/query contracts and current Ant Design selectors.
-- **Deviations from plan:** None.
-- **Follow-up implications for later sections:** refresh and regression work must verify both the table and modal caches update coherently. Frontend lint remains blocked by pre-existing complexity and hook-dependency issues in the wizard/page files, so any broader clean-up should be treated as separate refactor work rather than part of this section's acceptance scope.
-- **Code review and cleanup work (post-Snection 4):**
-  - **Batch A (Error Handling & Logging):** Added logging for blocking error states and surfaced mutation failures to users. All Critical issues resolved. Code review passed clean.
-  - **Batch B (React Hook Fixes):** Memoized formValues to prevent unnecessary re-renders; fixed hook dependency arrays for dirty state tracking and form value change handler. Code review passed clean.
-  - **Batch C (Type Safety):** Replaced type assertions with Array.isArray() type guards for topics/yearGroups; centralized weighting constants (MIN_WEIGHTING_VALUE, MAX_WEIGHTING_VALUE, DEFAULT_WEIGHTING_VALUE) in assignmentDefinition.zod.ts; fixed JSDoc parameter syntax. Code review passed clean.
-  - **Batch D (Testing):** Created direct unit tests for AssignmentDefinitionWizardModal (10 test cases covering state machine, re-parse gating, task weighting workflow). All tests passing after fixing React Query mutateAsync context argument issue. Code review passed clean.
-  - **Documentation:** Added React Query testing patterns and Query Client mocking patterns to docs/developer/frontend/frontend-testing.md.
-- **Checklist:**
-  - [x] red tests added (complete)
-  - [x] red review clean (complete)
-  - [x] green implementation complete (complete)
-  - [x] green review clean (complete - all batches A-D passed code review)
-  - [x] checks passed (targeted Section 4 frontend unit + Playwright suites complete, plus all Batch A-D fixes verified)
-  - [x] action plan updated (complete)
-  - [x] commit created (9e9b0cd)
-  - [x] push completed (feat/CreateAssessmentModal -> origin/feat/CreateAssessmentModal)
-
-### Blockers
-
-- Resolved: Testing Library form interactions were stabilised by moving the brittle Section 4 unit coverage away from unreliable Ant Design Select driving patterns and by using current-query cache setup for update-mode tests.
-- Resolved: Browser coverage was updated to the current startup warm-up/query contract, live Ant Design modal/select semantics, and the current fail-closed behaviour after post-mutation refresh problems.
-- Resolved: React Query mutateAsync context argument issue in test assertions - documented pattern in frontend-testing.md to prevent recurrence.
-- Remaining non-blocker note: `npm run frontend:lint` still reports pre-existing complexity/hook-dependency issues in `AssignmentDefinitionWizardModal.tsx` and `AssignmentsPage.tsx`; those lint failures are outside the specific Section 4 blocker scope validated here.
-
-### Known Technical Debt (Complexity Lint Violations - Pre-existing)
-
-The following lint violations exist in Section 4 files but are **pre-existing and out of scope** for this section's acceptance criteria. They are documented here as known technical debt for future refactoring work:
-
-| File                                  | Line | Rule                         | Current Value | Maximum Allowed | Refactor Priority |
-| ------------------------------------- | ---- | ---------------------------- | ------------- | --------------- | ----------------- |
-| `AssignmentDefinitionWizardModal.tsx` | 72   | complexity                   | 10            | 7               | Low               |
-| `AssignmentDefinitionWizardModal.tsx` | 109  | complexity                   | 37            | 7               | Medium            |
-| `AssignmentDefinitionWizardModal.tsx` | 109  | sonarjs/cognitive-complexity | 17            | 15              | Medium            |
-| `AssignmentDefinitionWizardModal.tsx` | 237  | complexity                   | 19            | 7               | Medium            |
-| `AssignmentDefinitionWizardModal.tsx` | 361  | complexity                   | 8             | 7               | Low               |
-
-**Note:** These violations were present before Section 4 implementation and are acknowledged in the action plan as outside the section's acceptance scope. Addressing these requires structural refactoring of the component state machine, which should be treated as separate work. Section 4 acceptance criteria remain met with these known issues documented.
-
-### Code Review Batches (Post-Section 4 Initial Implementation)
-
-Following the comprehensive code review of all Section 4 changes, the following batches were processed:
-
-- **Batch E (Critical TypeScript/Lint):** Fixed orphaned statement, mock implementation, type annotations, memoization, negated condition. **Code review: PASS** (commit f640c05)
-- **Batch F (Documentation):** Documented pre-existing complexity violations as known technical debt. **Status: Complete**
-- **Batch G (Improvements):** Added consistent error handling (setBlockingError) and @remarks JSDoc. **Code review: PASS** (commit 12d7ea7)
-
-### Complexity Analysis and Refactoring Exploration (Post-Batch G)
-
-**Status: Exploration Complete, Refactoring Attempted but Reverted**
-
-Following the user's request to resolve all lint issues in Section 4 files, a comprehensive exploration was conducted to identify feasible refactoring approaches.
-
-**Exploration Report Location:** `/tmp/vibe-scratchpad-b6ff12bd-qnnc4k37/EXPLORE_ComplexityReport.md` (28KB)
-
-**Key Findings:**
-
-- **12+ complexity violations** identified across 8 files in the frontend codebase
-- **40+ existing utility functions** found in `src/frontend/src/features/classes/` that provide patterns for reuse
-- **Helper gaps identified:** No centralized `utils/` directory; helpers are feature-scoped
-- **Assessment:** Suitable helpers PARTIALLY exist but are not centralized or fully generalized
-
-**Specific Violations in AssignmentDefinitionWizardModal.tsx:**
-| Line | Function | Current Complexity | Target | Refactor Feasibility |
-|------|----------|-------------------|--------|---------------------|
-| 72 | `hasAllParseFields` | 10 | ≤7 | High - can use array.every pattern |
-| 109 | `AssignmentDefinitionWizardModal` | 37 | ≤7 | Medium - requires component decomposition |
-| 109 | Cognitive Complexity | 17 | ≤15 | Medium - close to threshold |
-| 237 | Dirty state useEffect | 19 | ≤7 | Medium - requires logic extraction |
-| 361 | `handleSave` | 8 | ≤7 | High - extract helper functions |
-
-**Refactoring Attempts:**
-
-1. **`hasAllParseFields` simplification:** Changed from 5 chained conditions to array.every pattern. **Status: Implemented but reverted during cleanup attempts**
-2. **Component decomposition:** Attempted to extract utility functions and break down complex handlers. **Status: Partially implemented, file became corrupted, restored to baseline**
-3. **Hook extraction:** Created separate hook files (`useAssignmentDefinitionWizardState.ts`, `useAssignmentDefinitionForm.ts`, `useAssignmentDefinitionSubmission.ts`). **Status: Created but deleted due to type complexity and import issues**
-
-**Blockers Encountered:**
-
-- Complexity of 37 in main component cannot be reduced to ≤7 without decomposing into multiple files or sub-components
-- Dirty state tracking (complexity 19) has deeply nested conditionals that are difficult to extract without changing test behavior
-- Test suite (10 tests) verifies specific DOM structure and behavior, limiting refactoring options
-- Time constraints and file size (628 lines) make comprehensive refactoring risky without extensive test coverage
-
-**Recommended Next Steps:**
-
-1. **Option A (Pragmatic):** Accept complexity violations as documented technical debt, add file-level eslint-disable comments
-2. **Option B (Incremental):** Fix low-hanging fruit (hasAllParseFields, handleSave) first, accept remaining as tech debt
-3. **Option C (Comprehensive):** Decompose component into custom hooks in separate files, requires full test regression
-
-**Decision:** Refactoring work paused pending user direction on approach. All Section 4 acceptance criteria remain met. Complexity violations documented as known technical debt.
+- **Follow-up implications:** This change hardens the contract without changing visible behaviour for valid inputs. All existing tests using valid definition objects continue to pass.
 
 ---
 
@@ -785,97 +271,39 @@ Following the user's request to resolve all lint issues in Section 4 files, a co
 
 ### Objective
 
-- Verify that backend, frontend, and list-surface contracts remain coherent after the wizard lands.
+Verify that all remediation changes pass existing validation gates and do not introduce regressions.
 
 ### Constraints
 
-- Prefer focused suites before broader validation.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Testing Specialist mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/backend/backend-testing.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `docs/developer/frontend/frontend-testing.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
+- Run validation in the order specified to catch failures early.
+- Do not proceed to broader tests if lint or compilation fails.
 
 ### Acceptance criteria
 
-- Touched backend transport tests pass.
-- Touched frontend service and UI tests pass.
-- Backend and frontend lint pass.
-- Create, update, delete, and re-parse flows leave the Assignments table trustworthy.
+- All lint checks pass.
+- TypeScript compilation passes.
+- All backend unit tests pass.
+- All frontend unit tests pass.
+- Dead code files are fully removed with no residual references.
 
 ### Required test cases/checks
 
-1. Run touched backend API and controller suites.
-2. Run touched frontend service, query, and modal/page suites.
-3. Run `npm run lint`.
-4. Run `npm run frontend:lint`.
-5. Run `npm run frontend:test:e2e`.
-6. Verify mandatory-read evidence (`Files read` and `External docs consulted`, where required) is complete for every delegated regression handoff.
+1. Run backend lint: `npm run lint`
+2. Run frontend lint: `npm run frontend:lint`
+3. Run TypeScript compilation: `npm exec tsc -- -b src/frontend/tsconfig.json`
+4. Run backend tests: `npm test`
+5. Run frontend tests: `npm run frontend:test`
+6. Verify no residual references to deleted files: `grep -r "upsertAssignmentDefinitionMutation" src/frontend/src --include="*.ts" --include="*.tsx"`
 
 ### Section checks
 
-- Run the commands listed above and ensure green results.
+- All commands listed above return green results.
+- Mandatory-read evidence (`Files read`) is complete for every delegated regression handoff.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** All touched backend and frontend suites pass. Backend API tests: 250 passed. Frontend service tests: 141 passed. Frontend page tests: 65 passed. Frontend modal tests: 20 passed. Backend lint: 0 errors, 3 pre-existing magic-number warnings. Frontend lint: clean (0 errors, 0 warnings after fixing TODO comments and hook dependency). e2e tests: 10 failures identified as pre-existing test implementation issues (2 in assignment-definition-wizard-section-4.spec.ts due to wrong selectors/timing, 8 in assignments-page.spec.ts due to outdated mock data using old yearGroup: number contract instead of yearGroupKey/yearGroupLabel). These e2e failures are not regressions from Section 4 changes and do not block acceptance.
-- **Deviations from plan:** None. All acceptance criteria met.
-- **Follow-up implications for later sections:** Update e2e test mock data in assignments-page.spec.ts to use yearGroupKey/yearGroupLabel contract. Fix selectors in assignment-definition-wizard-section-4.spec.ts. These are test debt items, not implementation issues.
-- **Checklist:**
-  - [x] Touched backend API and controller suites pass (250 tests)
-  - [x] Touched frontend service, query, and modal/page suites pass (326 tests)
-  - [x] Backend lint pass (0 errors, 3 pre-existing warnings)
-  - [x] Frontend lint pass (0 errors, 0 warnings)
-  - [x] e2e tests run (10 pre-existing failures identified, not blocking)
-  - [x] Mandatory-read evidence verified
+- **Implementation notes:** TBD during execution.
+- **Deviations from plan:** TBD during execution.
 
 ---
 
@@ -883,110 +311,51 @@ Code Reviewer mandatory docs:
 
 ### Objective
 
-- Keep the planning and developer docs aligned with the implemented feature and its compatibility rules.
+No documentation changes are required. The changes are internal quality improvements that do not alter API contracts, data shapes, or user-visible behaviour. Existing `SPEC.md` and `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` remain valid.
 
 ### Constraints
 
-- Only update documents relevant to assignment-definition contracts, frontend modal guidance, and reference-data compatibility.
-
-### Delegation mandatory reads (when sub-agents are used)
-
-Docs mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
-
-Code Reviewer mandatory docs:
-
-- `AGENTS.md`
-- `src/backend/AGENTS.md`
-- `src/frontend/AGENTS.md`
-- `SPEC.md`
-- `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md`
-- `ACTION_PLAN.md`
-- `docs/developer/backend/api-layer.md`
-- `docs/developer/frontend/frontend-react-query-and-prefetch.md`
-- `docs/developer/frontend/frontend-modal-patterns.md`
-- `docs/developer/frontend/frontend-loading-and-width-standards.md`
-- `https://ant.design/llms.txt`
-- `https://ant.design/components/modal`
-- `https://ant.design/components/form`
-- `https://ant.design/components/input`
-- `https://ant.design/components/select`
-- `https://ant.design/components/input-number`
-- `https://ant.design/components/table`
-- `https://ant.design/components/alert`
-- `https://ant.design/components/skeleton`
-- `https://ant.design/components/empty`
-- `https://ant.design/components/flex`
-- `https://ant.design/components/space`
+- Do not modify `SPEC.md` or `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` as behaviour is unchanged.
+- Do not add new documentation for this remediation work.
 
 ### Acceptance criteria
 
-- Docs accurately describe the consolidated `upsertAssignmentDefinition` write behaviour, canonical full-definition response shape, and `yearGroupKey`/`yearGroupLabel` contract.
-- Any helper decisions that remained local or became shared are reconciled in canonical docs.
+- No documentation files are modified as part of this remediation.
+- All planning artefacts accurately reflect what was implemented.
 
 ### Required checks
 
-1. Verify docs mention stage-one create persistence, final-save persistence, and re-parse transport behaviour.
-2. Verify docs mention `yearGroupKey`, `yearGroupLabel`, and startup-owned `assignmentTopics` loading.
-3. Confirm notes/deviations fields are filled during implementation.
-4. Verify mandatory-read evidence (`Files read` and `External docs consulted`, where required) is complete for delegated docs/review handoffs.
-5. Reconcile planned shared-helper entries in canonical docs: keep `Not implemented` where still pending, and update implemented entries where delivered.
+1. Verify `SPEC.md` remains unchanged.
+2. Verify `ASSIGNMENT_DEFINITION_WIZARD_LAYOUT.md` remains unchanged.
+3. Confirm no new docs were created for this remediation.
 
 ### Optional `@remarks` JSDoc review
 
-- Confirm whether response-shape mapping, year-group compatibility, or re-parse state-machine choices should be preserved in `@remarks`.
+None — no non-obvious design decisions require preservation in JSDoc.
 
 ### Implementation notes / deviations / follow-up
 
-- **Implementation notes:** Documentation updated to reflect implemented contracts:
-  - Added `getAssignmentDefinition` transport method documentation in `docs/developer/backend/api-layer.md` including full-definition read behaviour and canonical response shape.
-  - Updated `upsertAssignmentDefinition` documentation in `docs/developer/backend/api-layer.md` to describe stage-one create persistence, final-save persistence, re-parse transport behaviour, and consolidated write behaviour with the canonical full-definition response shape.
-  - Added assignment-definition read request validator to shared helper status.
-  - Updated `docs/developer/frontend/frontend-react-query-and-prefetch.md` to include `assignmentTopics` in startup warm-up datasets (now five datasets: classPartials, assignmentDefinitionPartials, assignmentTopics, cohorts, yearGroups) and added `assignmentDefinitionByKey` to shared query keys with invalidation rules for create/save/re-parse flows.
-  - Documented `yearGroupKey`/`yearGroupLabel` contract usage in startup warm-up notes.
-- **Deviations from plan:** None.
-- **Helper decisions reconciled:**
-  - Assignment-definition upsert request validator: `Implemented` in `validateUpsertParameters_()`
-  - Assignment-definition read request validator: `Implemented` in `validateReadParameters_()`
-  - Assignment-definition full-definition response mapper: `Not applicable` (direct controller output)
-  - Modal helper decisions from `WIZARD_REFACTOR_ACTION_PLAN.md`: updated to `Implemented` status in `docs/developer/frontend/frontend-modal-patterns.md`
-- **Checklist:**
-  - [x] Docs accurately describe consolidated `upsertAssignmentDefinition` write behaviour
-  - [x] Docs describe canonical full-definition response shape
-  - [x] Docs mention `yearGroupKey`, `yearGroupLabel`, and startup-owned `assignmentTopics` loading
-  - [x] Docs mention stage-one create persistence, final-save persistence, and re-parse transport behaviour
-  - [x] Helper decisions reconciled in canonical docs
-  - [x] acceptance criteria met
+- **Implementation notes:** TBD during execution.
+- **Deviations from plan:** TBD during execution.
 
 ---
 
 ## Suggested implementation order
 
-1. Section 0 — Shared modal width standard
-2. Section 1 — Backend transport contracts and persistence rules
-3. Section 2 — Frontend service, schema, and query wiring
-4. Section 3 — Assignments page entry points and modal shell
-5. Section 4 — Shared edit surface, re-parse gating, and task weighting workflow
-6. Regression and contract hardening
-7. Documentation and rollout notes
+1. **Section 1** — Remove dead code query mutation files (no behaviour change, cleans codebase)
+2. **Section 2** — Add parameter validation to `AssignmentDefinitionController.saveDefinition` (contract hardening)
+3. **Regression and contract hardening** — Validate all changes pass existing gates
+4. **Documentation and rollout notes** — Confirm no doc changes needed
+
+---
+
+## Summary
+
+This action plan addresses the two critical blocking issues identified in CODE_REVIEW.md and SLOP_REVIEW.md that are **not** related to single-caller helper extraction (which the user explicitly wants to retain for CC < 7 compliance):
+
+- **Section 1**: Removes dead code files violating frontend abstraction standards
+- **Section 2**: Adds missing parameter validation per backend validation contract
+
+All other findings (CR-002, CR-003, SLOP-002, SLOP-003) are explicitly out of scope. Cargo-cult comments (CR-004, SLOP-004) are resolved incidentally by Section 1.
+
+**Readiness for implementation orchestration**: Pending Planner Reviewer re-validation after addressing reviewer findings.
