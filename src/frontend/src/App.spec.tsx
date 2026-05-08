@@ -46,6 +46,11 @@ type ApiMethodResponseMap = Partial<Record<string, ApiMethodResponse>>;
 
 const authStatusMethodName = 'getAuthorisationStatus';
 const classPartialsMethodName = 'getABClassPartials';
+const assignmentTopicsMethodName = 'getAssignmentTopics';
+const assignmentDefinitionPartialsMethodName = 'getAssignmentDefinitionPartials';
+const cohortsMethodName = 'getCohorts';
+const yearGroupsMethodName = 'getYearGroups';
+const googleClassroomsMethodName = 'getGoogleClassrooms';
 
 /**
  * Dispatches a configured mock transport response asynchronously.
@@ -125,14 +130,13 @@ function installApiHandlerMock(responsesByMethod: ApiMethodResponseMap) {
 }
 
 /**
- * Installs a `google.script.run.apiHandler` mock that leaves auth status and
- * class-partials queries both pending.
+ * Installs a `google.script.run.apiHandler` mock that leaves all startup warmup
+ * queries pending, including auth status, class partials, assignment topics,
+ * assignment definition partials, cohorts, year groups, and Google Classrooms.
  *
- * Mocking class-partials as pending suppresses noisy transport errors that
- * would otherwise fire when tests navigate to the Classes page while auth is
- * still unresolved (ClassesPanel calls useQuery for class partials regardless
- * of auth state).  The class-partials call count remains 0 in tests that do
- * not navigate to the Classes page.
+ * Mocking these as pending suppresses noisy transport errors that would otherwise
+ * fire when the app loads and triggers the startup warmup through AppAuthGate.
+ * The call counts for non-navigated features remain 0 in tests that do not access them.
  *
  * @returns {{ getCallCount(method: string): number }} A transport harness that exposes per-method call counts.
  */
@@ -140,6 +144,11 @@ function installPendingApiHandlerMock() {
   return installApiHandlerMock({
     [authStatusMethodName]: 'pending',
     [classPartialsMethodName]: 'pending',
+    [assignmentTopicsMethodName]: 'pending',
+    [assignmentDefinitionPartialsMethodName]: 'pending',
+    [cohortsMethodName]: 'pending',
+    [yearGroupsMethodName]: 'pending',
+    [googleClassroomsMethodName]: 'pending',
   });
 }
 
@@ -612,6 +621,11 @@ describe('App', () => {
         requestId: 'req-class-partials-1',
         data: [],
       },
+      [assignmentTopicsMethodName]: 'pending',
+      [assignmentDefinitionPartialsMethodName]: 'pending',
+      [cohortsMethodName]: 'pending',
+      [yearGroupsMethodName]: 'pending',
+      [googleClassroomsMethodName]: 'pending',
     });
 
     renderApp();
@@ -718,6 +732,11 @@ describe('App', () => {
         data: true,
       },
       [classPartialsMethodName]: 'pending',
+      [assignmentTopicsMethodName]: 'pending',
+      [assignmentDefinitionPartialsMethodName]: 'pending',
+      [cohortsMethodName]: 'pending',
+      [yearGroupsMethodName]: 'pending',
+      [googleClassroomsMethodName]: 'pending',
     });
 
     renderApp();
@@ -736,6 +755,11 @@ describe('App', () => {
         data: true,
       },
       [classPartialsMethodName]: 'pending',
+      [assignmentTopicsMethodName]: 'pending',
+      [assignmentDefinitionPartialsMethodName]: 'pending',
+      [cohortsMethodName]: 'pending',
+      [yearGroupsMethodName]: 'pending',
+      [googleClassroomsMethodName]: 'pending',
     });
     const queryClient = createAppQueryClient();
 
@@ -759,6 +783,11 @@ describe('App', () => {
         data: true,
       },
       [classPartialsMethodName]: 'pending',
+      [assignmentTopicsMethodName]: 'pending',
+      [assignmentDefinitionPartialsMethodName]: 'pending',
+      [cohortsMethodName]: 'pending',
+      [yearGroupsMethodName]: 'pending',
+      [googleClassroomsMethodName]: 'pending',
     });
 
     renderApp();
@@ -793,6 +822,31 @@ describe('App', () => {
       },
       [classPartialsMethodName]: {
         transportFailure: new Error('Class partial warm-up failed.'),
+      },
+      [assignmentTopicsMethodName]: {
+        ok: true,
+        requestId: 'req-topics-1',
+        data: [],
+      },
+      [assignmentDefinitionPartialsMethodName]: {
+        ok: true,
+        requestId: 'req-def-partials-1',
+        data: [],
+      },
+      [cohortsMethodName]: {
+        ok: true,
+        requestId: 'req-cohorts-1',
+        data: [],
+      },
+      [yearGroupsMethodName]: {
+        ok: true,
+        requestId: 'req-yeargroups-1',
+        data: [],
+      },
+      [googleClassroomsMethodName]: {
+        ok: true,
+        requestId: 'req-classrooms-1',
+        data: [],
       },
     });
 
