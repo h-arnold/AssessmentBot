@@ -108,7 +108,7 @@ At the completion of **each** red-green loop (after both red and green phases ar
 - `SPEC.md` (full)
 - layout spec (if applicable)
   **Review Scope:**  
-  Follow the scoping principles outlined in **[Section 2.5: Reviewer Scope Examples](#25-reviewer-scope-examples)**.  
+  Follow the scoping principles outlined in **[Section 3.6: Reviewer Scope Examples](#36-reviewer-scope-examples)**.  
   For this review, use the **First Review (Broad Scope)** template unless this is a subsequent review with prior out-of-scope findings.
 
 3. **Orchestrator Action:**
@@ -120,6 +120,8 @@ At the completion of **each** red-green loop (after both red and green phases ar
 4. **Repeat:**
    `Testing Specialist` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
     **Repeat this loop until the red-phase review is clean.**
+
+**After red loop completes:** You may proceed to the green loop (implementation) since red-phase only adds tests. However, after the green loop completes, you MUST run the regression checker (Section 3.1) before proceeding further.
 
 ### 3.3 Green Loop: Implementation
 
@@ -145,7 +147,7 @@ At the completion of **each** red-green loop (after both red and green phases ar
 - `SPEC.md` (full)
 - layout spec (if applicable)
   **Review Scope:**  
-  Follow the scoping principles outlined in **[Section 2.5: Reviewer Scope Examples](#25-reviewer-scope-examples)**.  
+  Follow the scoping principles outlined in **[Section 3.6: Reviewer Scope Examples](#36-reviewer-scope-examples)**.  
   For this review, use the **First Review (Broad Scope)** template unless this is a subsequent review with prior out-of-scope findings.
 
 3. **Orchestrator Action:**
@@ -157,6 +159,8 @@ At the completion of **each** red-green loop (after both red and green phases ar
 4. **Repeat:**
    `Implementation` fixes issues, re-runs checks, and re-submits to `Code Reviewer`.  
     **Repeat this loop until the green-phase review is clean.**
+
+**After green loop completes:** Run the regression checker (Section 3.1) immediately. This is a **non-negotiable gate** - you CANNOT proceed to refactor, commit, or any subsequent phase until the regression check passes with ZERO regressions and ZERO new failures.
 
 ### 3.4 Refactor Only If Required
 
@@ -245,10 +249,12 @@ Use this if the first review returned out-of-scope findings. Explicitly restrict
 2. **Avoid duplication:** Reference the section’s details in `ACTION_PLAN.md` instead of repeating them in the handoff.
 3. **Adjust dynamically:** Start broad, then narrow the scope if the reviewer overreaches.
 
-## 3. Section Exit Criteria
+## 4. Section Exit Criteria
 
 Do not leave a section until all of the following are true:
 
+- regression baseline established (Section 2)
+- regression gate passed after red-green loop (Section 3.1)
 - red-phase tests were implemented and reviewed clean
 - green-phase implementation was reviewed clean
 - section checks pass
@@ -257,7 +263,7 @@ Do not leave a section until all of the following are true:
 - the branch is pushed
 - commit SHA(s), commit message(s), branch name, and push confirmation are recorded
 
-## 4. Action Plan Updates
+## 5. Action Plan Updates
 
 After each meaningful phase and at section completion, update the action plan or tracker so progress is visible.
 
@@ -270,10 +276,12 @@ Minimum required updates:
 
 For every section, maintain a visible checklist with these statuses:
 
+- regression baseline established
 - red tests added
 - red review clean
 - green implementation complete
 - green review clean
+- regression gate passed (ZERO regressions, ZERO new failures)
 - checks passed
 - action plan updated
 - commit created
@@ -285,7 +293,7 @@ At section completion, update the section's implementation notes with:
 - any deviation from plan
 - follow-up implications for later sections
 
-## 5. Commit and Push Rules
+## 6. Commit and Push Rules
 
 Commit and push are mandatory delivery steps, not optional wrap-up.
 
@@ -304,7 +312,7 @@ At the end of each completed section:
 Do not start the next section until the current section's code, plan updates, commit artefacts, and push are complete.  
 Do not treat commit and push as implied. They are incomplete until explicitly recorded.
 
-## 6. Mandatory De-Sloppification Pass
+## 7. Mandatory De-Sloppification Pass
 
 After all sections are complete and before any final documentation work, run a compulsory clean-up phase with `De-Sloppification`.
 
@@ -315,16 +323,18 @@ Required actions:
 3. Pass the agent the final diff context, the active section summaries, known constraints, and any review findings or residual risks so it can make good choices about what is genuinely slop versus intentional structure.
 4. If the de-sloppifier identifies concrete cleanup work, delegate the minimal fix set to `Implementation`, keep the changes local, and re-run `Code Reviewer` until the cleanup is clean.
 5. Update `ACTION_PLAN.md` with the clean-up outcome before proceeding.
+6. **Run regression checker**: After any cleanup changes, you MUST run the regression checker to ensure no regressions were introduced during cleanup.
 
 Required evidence to record before moving on:
 
 - de-sloppification findings or confirmation that no slop remains
 - any cleanup commit SHA(s) if cleanup changed files
 - confirmation that the branch state is ready for documentation sync
+- regression check confirmation (ZERO regressions, ZERO new failures)
 
-Do not start the final documentation pass until this phase is complete.
+Do not start the final documentation pass until this phase is complete and the regression gate passes.
 
-## 7. Final Documentation Pass
+## 8. Final Documentation Pass
 
 After all sections are complete and the mandatory De-Sloppification pass is complete:
 
@@ -342,7 +352,7 @@ Prioritise:
 - public API documentation
 - testing documentation if test behaviour changed
 
-## 8. Guardrails
+## 9. Guardrails
 
 - No speculative scope expansion.
 - One section at a time.
@@ -354,8 +364,10 @@ Prioritise:
 - If delegation fails or the state is unclear, stop and ask the user.
 - Do not mark work complete before a clean review pass.
 - Do not mark a section complete before commit SHA(s) and successful push confirmation are recorded.
+- **Regression checker is a non-negotiable gate**: You CANNOT proceed past any phase boundary (section start, after red-green loop, before commit) until the regression checker confirms ZERO regressions and ZERO new failures from the baseline. This applies to ALL work, including refactoring and cleanup phases.
+- **Baseline first**: No implementation work may begin until a regression baseline is established via the regression-checker subagent.
 
-## 9. Final Output
+## 10. Final Output
 
 When the full plan is complete, provide:
 
