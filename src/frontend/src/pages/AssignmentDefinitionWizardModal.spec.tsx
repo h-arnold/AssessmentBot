@@ -2,6 +2,17 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
+import {
+  createStartupWarmupState,
+  setTextboxValue,
+  noop,
+} from '../test/assignmentDefinition/wizardTestHelpers';
+import {
+  mockTopics,
+  mockYearGroups,
+  mockFullAssignmentDefinition,
+  mockUpsertResponse,
+} from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
 
 const {
@@ -43,125 +54,8 @@ vi.mock('../services/referenceDataService', () => ({
   getYearGroups: getYearGroupsMock,
 }));
 
-const mockTopics = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
-];
-
-const mockYearGroups = [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-];
-
-const mockFullAssignmentDefinition = {
-  definitionKey: 'algebra-baseline',
-  primaryTitle: 'Algebra Baseline',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-doc-123',
-  templateDocumentId: 'tpl-doc-456',
-  referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
-  templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
-  assignmentWeighting: 5,
-  tasks: [
-    { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-    { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-    { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-  ],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-01-02T00:00:00.000Z',
-};
-
-const mockUpsertResponse = {
-  definitionKey: 'test-key',
-  primaryTitle: 'Test Assessment',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'test-ref-id',
-  templateDocumentId: 'test-tpl-id',
-  referenceDocumentUrl: 'https://docs.google.com/presentation/d/test-ref-id',
-  templateDocumentUrl: 'https://docs.google.com/presentation/d/test-tpl-id',
-  assignmentWeighting: 1,
-  tasks: [
-    { taskId: 'task-1', taskTitle: 'Test Task 1', taskWeighting: 1 },
-    { taskId: 'task-2', taskTitle: 'Test Task 2', taskWeighting: 1 },
-  ],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-01-01T00:00:00.000Z',
-};
-
 // Test constants to avoid magic numbers
 const EXPECTED_STAGE_ONE_AND_FINAL_SAVE_CALL_COUNT = 2;
-
-/**
- * No-op function for deferred promise initialisation in tests.
- *
- * @returns {void} No return value.
- */
-function noop() {
-  return;
-}
-
-/**
- * Creates startup warm-up state with configurable dataset readiness.
- *
- * @param {object} options Warm-up override options.
- * @param {'loading' | 'ready' | 'failed'} options.assignmentTopicsStatus Assignment topics dataset status.
- * @param {'loading' | 'ready' | 'failed'} options.yearGroupsStatus Year groups dataset status.
- * @returns {object} Warm-up state consumed by the component.
- */
-function createStartupWarmupState(options: {
-  assignmentTopicsStatus: 'loading' | 'ready' | 'failed';
-  yearGroupsStatus: 'loading' | 'ready' | 'failed';
-}) {
-  const isDatasetReady = (datasetKey: string) =>
-    (datasetKey === 'assignmentTopics' && options.assignmentTopicsStatus === 'ready') ||
-    (datasetKey === 'yearGroups' && options.yearGroupsStatus === 'ready') ||
-    datasetKey === 'assignmentDefinitionPartials';
-
-  const isDatasetFailed = (datasetKey: string): boolean =>
-    (datasetKey === 'assignmentTopics' && options.assignmentTopicsStatus === 'failed') ||
-    (datasetKey === 'yearGroups' && options.yearGroupsStatus === 'failed');
-
-  return {
-    isFailed: false,
-    isLoading: false,
-    isReady: true,
-    warmupState: 'ready' as const,
-    snapshot: {
-      datasets: {
-        classPartials: { status: 'ready' as const, isTrustworthy: true },
-        cohorts: { status: 'ready' as const, isTrustworthy: true },
-        yearGroups: { status: options.yearGroupsStatus, isTrustworthy: options.yearGroupsStatus === 'ready' },
-        assignmentTopics: { status: options.assignmentTopicsStatus, isTrustworthy: options.assignmentTopicsStatus === 'ready' },
-        assignmentDefinitionPartials: { status: 'ready' as const, isTrustworthy: true },
-      },
-    },
-    isDatasetReady,
-    isDatasetFailed,
-  };
-}
-
-/**
- * Sets a textbox value in one form change event.
- *
- * @param {HTMLElement} inputElement The textbox to update.
- * @param {string} value The value to set.
- * @returns {void}
- */
-function setTextboxValue(inputElement: HTMLElement, value: string) {
-  fireEvent.change(inputElement, { target: { value } });
-}
 
 describe('AssignmentDefinitionWizardModal', () => {
   beforeEach(() => {

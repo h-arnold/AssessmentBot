@@ -1,104 +1,19 @@
 import { expect, test, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import {
+  installRuntimeMock,
+  createWizardScenario,
+  createFailedReferenceDataScenario,
+  createFailedRefreshScenario,
+  selectVisibleOption,
+  type RuntimeScenario,
+  mockFullDefinition,
+  mockPartialRows,
+  mockCreatedPartialRow,
+} from './shared/endToEndRuntimeMocks';
 
-type ResponseItem = Readonly<{
-  kind: 'success';
-  data: unknown;
-}> | Readonly<{
-  kind: 'failureEnvelope';
-  data?: unknown;
-  message?: string;
-  code?: string;
-}> | Readonly<{
-  kind: 'transportFailure';
-  data?: unknown;
-  message?: string;
-  code?: string;
-}> | Readonly<{
-  kind: 'deferredSuccess';
-  data: unknown;
-}>;
-
-type WizardRuntimeScenario = Readonly<{
-  getAuthorisationStatus: ReadonlyArray<ResponseItem>;
-  getABClassPartials: ReadonlyArray<ResponseItem>;
-  getCohorts: ReadonlyArray<ResponseItem>;
-  getYearGroups: ReadonlyArray<ResponseItem>;
-  getAssignmentTopics: ReadonlyArray<ResponseItem>;
-  getAssignmentDefinitionPartials: ReadonlyArray<ResponseItem>;
-  getAssignmentDefinition?: ReadonlyArray<ResponseItem>;
-  upsertAssignmentDefinition?: ReadonlyArray<ResponseItem>;
-}>;
-
-const mockAssignmentTopics = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
-] as const;
-
-const mockYearGroups = [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-] as const;
-
-const mockFullDefinition = {
-  definitionKey: 'algebra-baseline',
-  primaryTitle: 'Algebra Baseline',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-doc-123',
-  templateDocumentId: 'tpl-doc-456',
-  assignmentWeighting: 5,
-  tasks: [
-    { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-    { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-    { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-  ],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-01-02T00:00:00.000Z',
-} as const;
-
-const mockPartialRows = [
-  {
-    primaryTitle: 'Algebra Baseline',
-    primaryTopicKey: 'topic-algebra',
-    primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-doc-123',
-    templateDocumentId: 'tpl-doc-456',
-    assignmentWeighting: 5,
-    definitionKey: 'algebra-baseline',
-    tasks: null,
-    createdAt: '2025-01-01T00:00:00.000Z',
-    updatedAt: '2025-01-02T00:00:00.000Z',
-  },
-] as const;
-
-const mockCreatedPartialRow = {
-  primaryTitle: 'New Assessment',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'test-ref',
-  templateDocumentId: 'test-tpl',
-  assignmentWeighting: 5,
-  definitionKey: 'new-assessment',
-  tasks: null,
-  createdAt: '2025-01-03T00:00:00.000Z',
-  updatedAt: '2025-01-03T00:00:00.000Z',
-} as const;
+// Re-export for backward compatibility
+// Note: These types are now defined in the shared module
+type WizardRuntimeScenario = RuntimeScenario;
 
 /**
  * Installs a browser-side `google.script.run` mock for assignment-definition wizard journeys.
@@ -108,110 +23,7 @@ const mockCreatedPartialRow = {
  * @returns {Promise<void>} Resolves once the init script is installed.
  */
 async function mockWizardRuntime(page: Page, scenario: WizardRuntimeScenario) {
-  await page.addInitScript(`
-    (() => {
-      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const scenario = ${JSON.stringify(scenario)};
-      const responseQueues = {
-        getAuthorisationStatus: scenario.getAuthorisationStatus ?? [{ kind: 'success', data: true }],
-        getABClassPartials: scenario.getABClassPartials ?? [{ kind: 'success', data: [] }],
-        getCohorts: scenario.getCohorts ?? [{ kind: 'success', data: [] }],
-        getYearGroups: scenario.getYearGroups ?? [{ kind: 'success', data: [] }],
-        getAssignmentTopics: scenario.getAssignmentTopics ?? [{ kind: 'success', data: [] }],
-        getAssignmentDefinitionPartials: scenario.getAssignmentDefinitionPartials,
-        getAssignmentDefinition: scenario.getAssignmentDefinition ?? [],
-        upsertAssignmentDefinition: scenario.upsertAssignmentDefinition ?? [],
-      };
-      const callCounts = {
-        getAuthorisationStatus: 0,
-        getABClassPartials: 0,
-        getCohorts: 0,
-        getYearGroups: 0,
-        getAssignmentTopics: 0,
-        getAssignmentDefinitionPartials: 0,
-        getAssignmentDefinition: 0,
-        upsertAssignmentDefinition: 0,
-      };
-      globalThis.__wizardMethodCalls = [];
-
-      function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
-      }
-
-      function sendFailureEnvelope(callbacks, method, responseIndex, response) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'req-' + method + '-' + responseIndex,
-          error: {
-            code: response.code ?? 'INTERNAL_ERROR',
-            message: response.message,
-            retriable: false,
-          },
-        });
-      }
-
-      globalThis.google = {
-        script: {
-          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-            const method = request?.method;
-            globalThis.__wizardMethodCalls.push(String(method));
-
-            if (!(method in responseQueues)) {
-              callbacks.failureHandler?.(new Error('Unexpected call to method: ' + String(method)));
-              return;
-            }
-
-            const responseIndex = callCounts[method];
-            const response = responseQueues[method][responseIndex];
-            callCounts[method] += 1;
-
-            if (response === undefined) {
-              callbacks.failureHandler?.(
-                new Error('Unexpected call index for method ' + method + ': ' + String(responseIndex))
-              );
-              return;
-            }
-
-            if (response.kind === 'transportFailure') {
-              callbacks.failureHandler?.(new Error(response.message));
-              return;
-            }
-
-            if (response.kind === 'failureEnvelope') {
-              sendFailureEnvelope(callbacks, method, responseIndex, response);
-              return;
-            }
-
-            if (response.kind === 'deferredSuccess') {
-              // For deferred success, we'll handle it synchronously for now
-              sendSuccess(callbacks, method, responseIndex, response.data);
-              return;
-            }
-
-            sendSuccess(callbacks, method, responseIndex, response.data);
-          }),
-        },
-      };
-    })();
-  `);
-}
-
-/**
- * Selects one visible Ant Design select option from the active dropdown overlay.
- *
- * @param {Page} page The Playwright page under test.
- * @param {string} optionName The visible option label to choose.
- * @returns {Promise<void>} Resolves once the option is selected.
- */
-async function selectVisibleOption(page: Page, optionName: string) {
-  await page
-    .locator('.ant-select-dropdown:not(.ant-select-dropdown-hidden)')
-    .getByText(optionName, { exact: true })
-    .click();
+  await installRuntimeMock(page, scenario);
 }
 
 /**
@@ -220,64 +32,20 @@ async function selectVisibleOption(page: Page, optionName: string) {
  * @returns {WizardRuntimeScenario} Runtime scenario with all required datasets.
  */
 function createStandardWizardScenario() {
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [] }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'success', data: mockYearGroups }],
-    getAssignmentTopics: [{ kind: 'success', data: mockAssignmentTopics }],
-    getAssignmentDefinitionPartials: [
-      { kind: 'success', data: mockPartialRows },
-      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
-      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
-      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
-      { kind: 'success', data: [...mockPartialRows, mockCreatedPartialRow] },
+  return createWizardScenario({
+    initialPartials: mockPartialRows,
+    postMutationPartials: [
+      [...mockPartialRows, mockCreatedPartialRow],
+      [...mockPartialRows, mockCreatedPartialRow],
+      [...mockPartialRows, mockCreatedPartialRow],
+      [...mockPartialRows, mockCreatedPartialRow],
     ],
-    getAssignmentDefinition: [{ kind: 'success', data: mockFullDefinition }],
-    upsertAssignmentDefinition: [
+    assignmentDefinitions: [{ kind: 'success', data: mockFullDefinition }],
+    upsertResponses: [
       { kind: 'success', data: mockFullDefinition },
       { kind: 'success', data: mockFullDefinition },
     ],
-  } as const;
-}
-
-/**
- * Creates a scenario where reference data loading fails.
- *
- * @returns {WizardRuntimeScenario} Runtime scenario with failed reference data.
- */
-function createFailedReferenceDataScenario() {
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [] }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'failureEnvelope', code: 'LOAD_FAILED', message: 'Could not load year groups' }],
-    getAssignmentTopics: [{ kind: 'failureEnvelope', code: 'LOAD_FAILED', message: 'Could not load topics' }],
-    getAssignmentDefinitionPartials: [{ kind: 'success', data: mockPartialRows }],
-  } as const;
-}
-
-/**
- * Creates a scenario where post-mutation refresh fails.
- *
- * @returns {WizardRuntimeScenario} Runtime scenario with failed refresh.
- */
-function createFailedRefreshScenario() {
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [] }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'success', data: mockYearGroups }],
-    getAssignmentTopics: [{ kind: 'success', data: mockAssignmentTopics }],
-    getAssignmentDefinitionPartials: [
-      { kind: 'success', data: mockPartialRows },
-      { kind: 'failureEnvelope', code: 'REFRESH_FAILED', message: 'Could not refresh after mutation' },
-      { kind: 'failureEnvelope', code: 'REFRESH_FAILED', message: 'Could not refresh after mutation' },
-    ],
-    upsertAssignmentDefinition: [
-      { kind: 'success', data: mockFullDefinition },
-    ],
-  } as const;
+  });
 }
 
 /**
@@ -297,27 +65,22 @@ function createReparseScenario() {
     ],
   };
 
-  return {
-    getAuthorisationStatus: [{ kind: 'success', data: true }],
-    getABClassPartials: [{ kind: 'success', data: [] }],
-    getCohorts: [{ kind: 'success', data: [] }],
-    getYearGroups: [{ kind: 'success', data: mockYearGroups }],
-    getAssignmentTopics: [{ kind: 'success', data: mockAssignmentTopics }],
-    getAssignmentDefinitionPartials: [
-      { kind: 'success', data: mockPartialRows },
-      { kind: 'success', data: mockPartialRows },
-      { kind: 'success', data: mockPartialRows },
-      { kind: 'success', data: mockPartialRows },
+  return createWizardScenario({
+    postMutationPartials: [
+      mockPartialRows,
+      mockPartialRows,
+      mockPartialRows,
+      mockPartialRows,
     ],
-    getAssignmentDefinition: [
+    assignmentDefinitions: [
       { kind: 'success', data: mockFullDefinition },
       { kind: 'success', data: reParsedDefinition },
       { kind: 'success', data: reParsedDefinition },
     ],
-    upsertAssignmentDefinition: [
+    upsertResponses: [
       { kind: 'success', data: reParsedDefinition },
     ],
-  } as const;
+  });
 }
 
 

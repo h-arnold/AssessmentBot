@@ -4,6 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
+import { setTextboxValue } from '../test/assignmentDefinition/wizardTestHelpers';
+import {
+  mockTopics,
+  mockYearGroups,
+  mockFullAssignmentDefinition,
+  mockUpsertResponse,
+  readyAssignmentPartialRows,
+} from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import { AssignmentsPage } from './AssignmentsPage';
 import { pageContent } from './pageContent';
 
@@ -66,33 +74,12 @@ const recommendedSummaryCopy =
 
 /**
  * Returns a canonical full assignment definition for test fixtures.
+ * Use shared mockFullAssignmentDefinition for consistency.
  *
  * @returns {object} Full assignment definition fixture.
  */
 function getFullAssignmentDefinitionFixture() {
-  return {
-    definitionKey: 'algebra-baseline',
-    primaryTitle: 'Algebra Baseline',
-    primaryTopicKey: 'topic-algebra',
-    primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-doc-123',
-    templateDocumentId: 'tpl-doc-456',
-    referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
-    templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
-    assignmentWeighting: 5,
-    tasks: [
-      { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-      { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-      { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-    ],
-    createdAt: '2025-01-01T00:00:00.000Z',
-    updatedAt: '2025-01-02T00:00:00.000Z',
-  };
+  return { ...mockFullAssignmentDefinition };
 }
 
 const filterAssertions = [
@@ -291,84 +278,20 @@ async function applyColumnFilterOption(filterButtonName: string, optionLabel: st
   fireEvent.keyDown(document, { key: 'Escape' });
 }
 
-/**
- * Sets a text input value in one form change event.
- *
- * @param {HTMLElement} inputElement The textbox to update.
- * @param {string} value The value to set.
- * @returns {void}
- */
-function setTextboxValue(inputElement: HTMLElement, value: string) {
-  fireEvent.change(inputElement, { target: { value } });
-}
-
 describe('AssignmentsPage', () => {
-  const mockTopics = [
-    { key: 'topic-algebra', name: 'Algebra' },
-    { key: 'topic-geometry', name: 'Geometry' },
-  ];
-
-  const mockYearGroups = [
-    { key: 'year-group-10', name: 'Year 10' },
-    { key: 'year-group-11', name: 'Year 11' },
-  ];
-
   let userEventInstance: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
     userEventInstance = userEvent.setup();
     useStartupWarmupStateMock.mockReturnValue(createReadyAssignmentsWarmupState());
-    getAssignmentDefinitionPartialsMock.mockResolvedValue([...readyRows]);
+    getAssignmentDefinitionPartialsMock.mockResolvedValue([...readyAssignmentPartialRows]);
     deleteAssignmentDefinitionMock.mockResolvedValue(void 0);
     getAssignmentTopicsMock.mockResolvedValue(mockTopics);
     getYearGroupsMock.mockResolvedValue(mockYearGroups);
     getCohortsMock.mockResolvedValue([]);
     getABClassPartialsMock.mockResolvedValue([]);
-    upsertAssignmentDefinitionMock.mockResolvedValue({
-      definitionKey: 'test-key',
-      primaryTitle: 'Test Assessment',
-      primaryTopicKey: 'topic-algebra',
-      primaryTopic: 'Algebra',
-      yearGroupKey: 'year-group-10',
-      yearGroupLabel: 'Year 10',
-      alternateTitles: [],
-      alternateTopics: [],
-      documentType: 'SLIDES',
-      referenceDocumentId: 'test-ref-id',
-      templateDocumentId: 'test-tpl-id',
-      referenceDocumentUrl: 'https://docs.google.com/presentation/d/test-ref-id',
-      templateDocumentUrl: 'https://docs.google.com/presentation/d/test-tpl-id',
-      assignmentWeighting: 1,
-      tasks: [
-        { taskId: 'task-1', taskTitle: 'Test Task 1', taskWeighting: 1 },
-        { taskId: 'task-2', taskTitle: 'Test Task 2', taskWeighting: 1 },
-      ],
-      createdAt: '2025-01-01T00:00:00.000Z',
-      updatedAt: '2025-01-01T00:00:00.000Z',
-    });
-    getAssignmentDefinitionMock.mockResolvedValue({
-      definitionKey: 'algebra-baseline',
-      primaryTitle: 'Algebra Baseline',
-      primaryTopicKey: 'topic-algebra',
-      primaryTopic: 'Algebra',
-      yearGroupKey: 'year-group-10',
-      yearGroupLabel: 'Year 10',
-      alternateTitles: [],
-      alternateTopics: [],
-      documentType: 'SLIDES',
-      referenceDocumentId: 'ref-doc-123',
-      templateDocumentId: 'tpl-doc-456',
-      referenceDocumentUrl: 'https://docs.google.com/presentation/d/ref-doc-123',
-      templateDocumentUrl: 'https://docs.google.com/presentation/d/tpl-doc-456',
-      assignmentWeighting: 5,
-      tasks: [
-        { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-        { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-        { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-      ],
-      createdAt: '2025-01-01T00:00:00.000Z',
-      updatedAt: '2025-01-02T00:00:00.000Z',
-    });
+    upsertAssignmentDefinitionMock.mockResolvedValue(mockUpsertResponse);
+    getAssignmentDefinitionMock.mockResolvedValue(mockFullAssignmentDefinition);
   });
 
   afterEach(() => {

@@ -1,76 +1,108 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
-import { createMockCollection } from '../helpers/mockFactories.js';
+import {
+  createReferenceDataControllerMock,
+  setupAssignmentDefinitionMocks,
+  createSamplePartialDefinitionDocs,
+  cleanupAssignmentDefinitionTest,
+} from '../helpers/assignmentDefinitionTestHelpers.js';
 
-// Mocks
+// Mock the modules
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
 vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
-  return {
-    default: class {
+
+describe('AssignmentDefinitionController', () => {
+  let controller;
+  let mockRegistryCollection;
+  let mockFullCollection;
+  let mockDbManager;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Setup mocks using shared helper
+    const {
+      mockDbManager: setupDbManager,
+      mockRegistryCollection: setupRegistryCollection,
+      mockFullCollection: setupFullCollection,
+    } = setupAssignmentDefinitionMocks(vi, {
+      driveModifiedTime: '2025-01-01T12:00:00Z',
+      topicName: 'Enriched Topic',
+      topics: [
+        { key: 'topic-1', name: 'Enriched Topic' },
+        { key: 'topic-english', name: 'English' },
+      ],
+    });
+
+    mockDbManager = setupDbManager;
+    mockRegistryCollection = setupRegistryCollection;
+    mockFullCollection = setupFullCollection;
+
+    // Configure the vi.mock'd modules to return our mock objects
+    DbManager.getInstance.mockReturnValue(mockDbManager);
+    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
+    ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
+
+    // Create ReferenceDataController mock class
+    const MockReferenceDataController = class {
+      listYearGroups() {
+        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+      }
+      listAssignmentTopics() {
+        return [
+          { key: 'topic-1', name: 'Enriched Topic' },
+          { key: 'topic-english', name: 'English' },
+        ];
+      }
+      fetchTopicName(topicId) {
+        const topics = [
+          { key: 'topic-1', name: 'Enriched Topic' },
+          { key: 'topic-english', name: 'English' },
+        ];
+        const topic = topics.find((t) => t.key === topicId);
+        return topic ? topic.name : 'Enriched Topic';
+      }
+    };
+
+    // Expose to globals to match production usage
+    globalThis.DbManager = DbManager;
+    globalThis.DriveManager = DriveManager;
+    globalThis.ClassroomApiClient = ClassroomApiClient;
+    globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ReferenceDataController = MockReferenceDataController;
+    globalThis.SlidesParser = class MockSlidesParser {
       extractTaskDefinitions() {
         return [
           {
             getId: () => 't1',
-            validate: () => ({ ok: true }),
+            taskTitle: 'Parsed Task',
+            validate: () => ({ ok: true, errors: [] }),
             toJSON: () => ({
               id: 't1',
               taskTitle: 'Parsed Task',
+              taskWeighting: null,
+              index: 0,
               artifacts: { reference: [], template: [] },
             }),
           },
         ];
       }
-    },
-  };
-});
-
-describe('AssignmentDefinitionController', () => {
-  let controller;
-  let mockCollection;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Setup DbManager mock using helper
-    mockCollection = createMockCollection(vi);
-    DbManager.getInstance.mockReturnValue({
-      getCollection: vi.fn().mockReturnValue(mockCollection),
-    });
-
-    // Expose mocks to globals to match production usage
-    globalThis.DbManager = DbManager;
-    globalThis.DriveManager = DriveManager;
-    globalThis.ClassroomApiClient = ClassroomApiClient;
-    globalThis.SlidesParser = SlidesParser;
-    globalThis.AssignmentDefinition = AssignmentDefinition;
-    globalThis.ReferenceDataController = class {
-      listYearGroups() {
-        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
-      }
-
-      listAssignmentTopics() {
-        return [{ key: 'topic-1', name: 'Enriched Topic' }];
-      }
     };
-
-    // Setup DriveManager mock
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
-
-    // Setup ClassroomApiClient mock
-    ClassroomApiClient.fetchTopicName.mockReturnValue('Enriched Topic');
 
     controller = new AssignmentDefinitionController();
   });
 
+  afterEach(() => {
+    cleanupAssignmentDefinitionTest();
+  });
+
   it('should ensureDefinition creates new definition when not found', () => {
-    mockCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
 
     const def = controller.ensureDefinition({
       primaryTitle: 'New Assignment',
@@ -87,8 +119,8 @@ describe('AssignmentDefinitionController', () => {
     expect(def).toBeInstanceOf(AssignmentDefinition);
     expect(def.primaryTopic).toBe('Enriched Topic');
     expect(def.definitionKey).toBe('New Assignment_Enriched Topic_10');
-    expect(mockCollection.insertOne).toHaveBeenCalled();
-    expect(mockCollection.save).toHaveBeenCalled();
+    expect(mockRegistryCollection.insertOne).toHaveBeenCalled();
+    expect(mockRegistryCollection.save).toHaveBeenCalled();
   });
 
   it('should ensureDefinition returns existing definition if fresh', () => {
@@ -106,7 +138,8 @@ describe('AssignmentDefinitionController', () => {
       tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
     });
 
-    mockCollection.findOne.mockReturnValue(existingDef.toJSON());
+    // Mock the full collection to return the existing definition
+    mockFullCollection.findOne.mockReturnValue(existingDef.toJSON());
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z'); // Same time
 
     const def = controller.ensureDefinition({
@@ -119,7 +152,7 @@ describe('AssignmentDefinitionController', () => {
     });
 
     expect(def.definitionKey).toBe(existingDef.definitionKey);
-    expect(mockCollection.replaceOne).not.toHaveBeenCalled(); // No update needed
+    expect(mockFullCollection.replaceOne).not.toHaveBeenCalled(); // No update needed
   });
 
   it('should refresh definition if Drive files are newer', () => {
@@ -130,29 +163,28 @@ describe('AssignmentDefinitionController', () => {
       documentType: 'SLIDES',
       referenceDocumentId: 'ref-1',
       templateDocumentId: 'tpl-1',
-      referenceLastModified: '2024-01-01T12:00:00Z', // Old
+      referenceLastModified: '2024-01-01T12:00:00Z',
       templateLastModified: '2024-01-01T12:00:00Z',
       tasks: { t1: { taskTitle: 'Task 1', artifacts: { reference: [], template: [] } } },
     });
 
-    mockCollection.findOne.mockReturnValue(existingDef.toJSON());
+    mockRegistryCollection.findOne.mockReturnValue(existingDef.toJSON());
     DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z'); // Newer
 
     const def = controller.ensureDefinition({
       primaryTitle: 'Stale',
       primaryTopic: 'Topic',
-      yearGroup: 10,
       documentType: 'SLIDES',
       referenceDocumentId: 'ref-1',
       templateDocumentId: 'tpl-1',
     });
 
     expect(def.referenceLastModified).toBe('2025-01-01T12:00:00Z');
-    expect(mockCollection.replaceOne).toHaveBeenCalled();
+    expect(mockRegistryCollection.replaceOne).toHaveBeenCalled();
   });
 
   it('should resolve topic name using ClassroomApiClient', () => {
-    mockCollection.findOne.mockReturnValue(null);
+    mockRegistryCollection.findOne.mockReturnValue(null);
 
     controller.ensureDefinition({
       primaryTitle: 'Title',
@@ -167,82 +199,17 @@ describe('AssignmentDefinitionController', () => {
   });
 
   it('getAllPartialDefinitions returns all partial definitions from registry', () => {
-    // Sample registry payload (partial documents) from production-like data
-    const sampleDocs = [
-      {
-        _id: '585c9ad9-2993-4a0d-b3a4-f513133da1a0',
-        primaryTitle: '1.1 Learning to Research',
-        primaryTopic: 'Space',
-        primaryTopicKey: 'topic-space',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId: '1fuOQ8ZFoB1Kdk9_rgEErRs4jrphRkB6zJYYLjEbVoII',
-        templateDocumentId: '1blHtdE5Ieyr7F_XYuAta1O4PlVhDcmJJw0OJd0BakKY',
-        definitionKey: '1.1 Learning to Research_Space_null',
-        tasks: null,
-      },
-      {
-        _id: '9387cd91-c034-4e0a-a896-f25a7bcfca4a',
-        primaryTitle: '8. Secondary Storage - Cloud',
-        primaryTopic: '1.1 Computer Architecture',
-        primaryTopicKey: 'topic-computer-architecture',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId: '1Qa3SXcZfFPtKVU0mZbbIyq3kksXOVMK12IvrLgnmwmk',
-        templateDocumentId: '1kfWiX2QfzK39q98r_RxPqEvteShuUMfCdOg2wtJgCfg',
-        definitionKey: '8. Secondary Storage - Cloud_1.1 Computer Architecture_null',
-        tasks: null,
-      },
-      {
-        _id: 'cb412c10-a619-4e3c-bba2-821b0ce33a08',
-        primaryTitle: '1. DigiTech Pathways',
-        primaryTopic: 'Pathways',
-        primaryTopicKey: 'topic-pathways',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId: '1fXe7mD6YgBixNcLpRl-6NTSTayraVCDvGTIjLQ_vh24',
-        templateDocumentId: '1nguALHo-wXxxMlml49_7JoQ8sFt0-0_eF9ec4_pX6JQ',
-        definitionKey: '1. DigiTech Pathways_Pathways_null',
-        tasks: null,
-      },
-      {
-        _id: '7fc01a34-4301-4b69-941d-eb629c126b8f',
-        primaryTitle: '7. Social Engineering',
-        primaryTopic: 'Starters',
-        primaryTopicKey: 'topic-starters',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId: '13UhXRtuJf8uqwH5wYJkjVTBQhqpniZwPBhpMjT7KQxc',
-        templateDocumentId: '1jKuG_CK2Z31rUs_5W8WDWl5WRjU0d1udq5eVGCki2-Y',
-        definitionKey: '7. Social Engineering_Starters_null',
-        tasks: null,
-      },
-      {
-        _id: 'c130e72f-ed48-4045-917e-688244da35c7',
-        primaryTitle: '7. Survival Challenges Reflect and Review',
-        primaryTopic: 'Survival',
-        primaryTopicKey: 'topic-survival',
-        yearGroup: null,
-        documentType: 'SLIDES',
-        referenceDocumentId: '1MXnBAxkTLcg8CIPxVWa0wEc9CgIz3DPfjqXMv3LPmNw',
-        templateDocumentId: '12HMxnplFzBKpq1FknTRBirhtltWnuRoseQVUUoum5S8',
-        definitionKey: '7. Survival Challenges Reflect and Review_Survival_null',
-        tasks: null,
-      },
-    ];
+    const sampleDocs = createSamplePartialDefinitionDocs();
 
     // Configure DbManager mock to return these docs via readAll
-    DbManager.getInstance.mockReturnValue({
-      getCollection: vi.fn().mockReturnValue(mockCollection),
-      readAll: vi.fn().mockReturnValue(sampleDocs),
-    });
+    mockDbManager.readAll.mockReturnValue(sampleDocs);
 
-    // Recreate controller to pick up new DbManager.mock behaviour
+    // Recreate controller to pick up new DbManager mock behaviour
     controller = new AssignmentDefinitionController();
 
     const defs = controller.getAllPartialDefinitions();
     expect(Array.isArray(defs)).toBe(true);
-    expect(defs.length).toBe(5);
+    expect(defs.length).toBe(3);
     expect(defs[0]).toBeInstanceOf(AssignmentDefinition);
     const keys = defs.map((d) => d.definitionKey);
     expect(keys).toEqual(sampleDocs.map((d) => d.definitionKey));
@@ -272,10 +239,7 @@ describe('AssignmentDefinitionController', () => {
       },
     ];
 
-    DbManager.getInstance.mockReturnValue({
-      getCollection: vi.fn().mockReturnValue(mockCollection),
-      readAll: vi.fn().mockReturnValue(sampleDocs),
-    });
+    mockDbManager.readAll.mockReturnValue(sampleDocs);
 
     controller = new AssignmentDefinitionController();
 
@@ -292,10 +256,7 @@ describe('AssignmentDefinitionController', () => {
   });
 
   it('getAllPartialDefinitions returns empty array when registry empty', () => {
-    DbManager.getInstance.mockReturnValue({
-      getCollection: vi.fn().mockReturnValue(mockCollection),
-      readAll: vi.fn().mockReturnValue([]),
-    });
+    mockDbManager.readAll.mockReturnValue([]);
 
     controller = new AssignmentDefinitionController();
     const defs = controller.getAllPartialDefinitions();

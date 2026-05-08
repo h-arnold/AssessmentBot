@@ -1,30 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
+import {
+  installRuntimeMock,
+  releaseNextDeferredSuccess,
+  getAssignmentsRowByTitle,
+  type RuntimeScenario,
+} from './shared/endToEndRuntimeMocks';
 
-type AssignmentsResponseScenario = Readonly<
-  | {
-      kind: 'success';
-      data: unknown;
-    }
-  | {
-      kind: 'transportFailure';
-      message: string;
-    }
-  | {
-      kind: 'failureEnvelope';
-      code?: string;
-      message: string;
-    }
-  | {
-      kind: 'deferredSuccess';
-      data: unknown;
-    }
->;
-
-type AssignmentsRuntimeScenario = Readonly<{
-  getAssignmentDefinitionPartials: ReadonlyArray<AssignmentsResponseScenario>;
-  deleteAssignmentDefinition?: ReadonlyArray<AssignmentsResponseScenario>;
-}>;
+// Re-export for backward compatibility with existing tests that might reference these types
+// Note: These types are now defined in the shared module but we keep them here
+// for any tests that might import them directly.
+type AssignmentsRuntimeScenario = RuntimeScenario;
 
 const assignmentRows = [
   {
@@ -104,158 +89,26 @@ const exactMatchRowIndex = 2;
 
 /**
  * Installs a browser-side `google.script.run` mock for assignments journeys.
+ * Uses the shared installRuntimeMock function.
  *
  * @param {Page} page The Playwright page under test.
  * @param {AssignmentsRuntimeScenario} scenario The per-method response queue scenario.
  * @returns {Promise<void>} Resolves once the init script is installed.
  */
 async function mockAssignmentsRuntime(page: Page, scenario: AssignmentsRuntimeScenario) {
-  await page.addInitScript(`
-    (() => {
-      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const scenario = ${JSON.stringify(scenario)};
-      const responseQueues = {
-        getAuthorisationStatus: [{ kind: 'success', data: true }],
-        getABClassPartials: [{ kind: 'success', data: [] }],
-        getCohorts: [{ kind: 'success', data: [] }],
-        getYearGroups: [{ kind: 'success', data: [] }],
-        getAssignmentTopics: [{ kind: 'success', data: [] }],
-        getAssignmentDefinitionPartials: scenario.getAssignmentDefinitionPartials,
-        deleteAssignmentDefinition: scenario.deleteAssignmentDefinition ?? [],
-      };
-      const callCounts = {
-        getAuthorisationStatus: 0,
-        getABClassPartials: 0,
-        getCohorts: 0,
-        getYearGroups: 0,
-        getAssignmentTopics: 0,
-        getAssignmentDefinitionPartials: 0,
-        deleteAssignmentDefinition: 0,
-      };
-      globalThis.__assignmentsMethodCalls = [];
-      globalThis.__assignmentDeferredSuccessQueue = [];
-      globalThis.__releaseNextAssignmentsDeferredSuccess = () => {
-        const nextDeferredSuccess = globalThis.__assignmentDeferredSuccessQueue.shift();
-
-        if (!nextDeferredSuccess) {
-          throw new Error('No deferred success response available to release.');
-        }
-
-        nextDeferredSuccess();
-      };
-
-      function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
-      }
-
-      function sendFailureEnvelope(callbacks, method, responseIndex, response) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'req-' + method + '-' + responseIndex,
-          error: {
-            code: response.code ?? 'INTERNAL_ERROR',
-            message: response.message,
-            retriable: false,
-          },
-        });
-      }
-
-      globalThis.google = {
-        script: {
-          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-            const method = request?.method;
-            globalThis.__assignmentsMethodCalls.push(String(method));
-
-            if (!(method in responseQueues)) {
-              callbacks.failureHandler?.(new Error('Unexpected call to method: ' + String(method)));
-              return;
-            }
-
-            const responseIndex = callCounts[method];
-            const response = responseQueues[method][responseIndex];
-            callCounts[method] += 1;
-
-            if (response === undefined) {
-              callbacks.failureHandler?.(
-                new Error('Unexpected call index for method ' + method + ': ' + String(responseIndex))
-              );
-              return;
-            }
-
-            if (response.kind === 'transportFailure') {
-              callbacks.failureHandler?.(new Error(response.message));
-              return;
-            }
-
-            if (response.kind === 'failureEnvelope') {
-              sendFailureEnvelope(callbacks, method, responseIndex, response);
-              return;
-            }
-
-            if (response.kind === 'deferredSuccess') {
-              globalThis.__assignmentDeferredSuccessQueue.push(() => {
-                sendSuccess(callbacks, method, responseIndex, response.data);
-              });
-              return;
-            }
-
-            sendSuccess(callbacks, method, responseIndex, response.data);
-          }),
-        },
-      };
-    })();
-  `);
+  await installRuntimeMock(page, scenario);
 }
 
-
-/**
- * Applies one assignments table filter option using visible controls only.
- *
- * @param {Page} page Playwright page instance.
- * @param {string} columnHeaderName Column header label.
- * @param {string} optionLabel Visible filter option label.
- * @returns {Promise<void>} Resolves when the option is selected.
- */
-async function applyAssignmentsFilterOption(page: Page, columnHeaderName: string, optionLabel: string) {
-  await page.getByRole('columnheader', { name: columnHeaderName }).getByRole('button').click();
-
-  const activeFilterPopup = page.locator('.ant-dropdown:visible').last();
-  await expect(activeFilterPopup).toBeVisible();
-  await activeFilterPopup.getByText(optionLabel, { exact: true }).click();
-
-  await page.keyboard.press('Escape');
-}
 
 /**
  * Releases the next deferred assignments API success response.
+ * Uses the shared releaseNextDeferredSuccess function.
  *
  * @param {Page} page Playwright page instance.
  * @returns {Promise<void>} Resolves once the deferred response has been released.
  */
 async function releaseNextDeferredAssignmentsSuccess(page: Page) {
-  await page.evaluate(() => {
-    (globalThis as { __releaseNextAssignmentsDeferredSuccess: () => void }).__releaseNextAssignmentsDeferredSuccess();
-  });
-}
-
-/**
- * Locates one assignments table row by exact title cell text.
- *
- * @param {Page} page Playwright page instance.
- * @param {string} assignmentTitle Exact assignment title shown in the first column.
- * @returns {import('@playwright/test').Locator} Row locator scoped to the assignments table.
- */
-function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
-  const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
-  const titleCell = assignmentsTable
-    .locator('tbody tr td:first-child')
-    .getByText(assignmentTitle, { exact: true });
-
-  return titleCell.locator('xpath=ancestor::tr');
+  await releaseNextDeferredSuccess(page, '__releaseNextAssignmentsDeferredSuccess');
 }
 
 test.describe('assignments page browser journeys', () => {

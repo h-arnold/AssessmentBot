@@ -2,6 +2,10 @@ import { ZodError } from 'zod';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAppQueryClient } from './queryClient';
 import { queryKeys } from './queryKeys';
+import {
+  createDeferredPromise,
+  configureDeferredWarmupDatasets,
+} from '../test/shared/testDeferredPromise';
 
 const getAuthorisationStatusMock = vi.fn();
 const getABClassPartialsMock = vi.fn();
@@ -36,68 +40,7 @@ vi.mock('../services/referenceDataService', () => ({
   getYearGroups: getYearGroupsMock,
 }));
 
-/**
- * Creates a deferred promise for async test control.
- *
- * @template T
- * @returns {{ promise: Promise<T>; resolvePromise: (value: T) => void; rejectPromise: (error: unknown) => void }} Deferred promise helpers.
- */
-function createDeferredPromise<T>() {
-  let resolvePromise!: (value: T) => void;
-  let rejectPromise!: (error: unknown) => void;
-  const promise = new Promise<T>((resolve, reject) => {
-    resolvePromise = resolve;
-    rejectPromise = reject;
-  });
-
-  return {
-    promise,
-    resolvePromise,
-    rejectPromise,
-  };
-}
-
-type StartupWarmupDeferreds = Readonly<{
-  classPartialsDeferred: ReturnType<typeof createDeferredPromise<Array<{ classId: string }>>>;
-  assignmentDefinitionPartialsDeferred: ReturnType<
-    typeof createDeferredPromise<Array<{ definitionKey: string }>>
-  >;
-  cohortsDeferred: ReturnType<
-    typeof createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>
-  >;
-  assignmentTopicsDeferred: ReturnType<
-    typeof createDeferredPromise<Array<{ key: string; name: string }>>
-  >;
-  yearGroupsDeferred: ReturnType<
-    typeof createDeferredPromise<Array<{ key: string; name: string }>>
-  >;
-}>;
-
-/**
- * Creates deferred startup datasets and wires shared query mocks to them.
- *
- * @returns {StartupWarmupDeferreds} Deferred datasets bound to startup query mocks.
- */
-function configureDeferredWarmupDatasets(): StartupWarmupDeferreds {
-  const classPartialsDeferred = createDeferredPromise<Array<{ classId: string }>>();
-  const assignmentDefinitionPartialsDeferred = createDeferredPromise<Array<{ definitionKey: string }>>();
-  const cohortsDeferred = createDeferredPromise<Array<{ key: string; name: string; active: boolean }>>();
-  const assignmentTopicsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
-  const yearGroupsDeferred = createDeferredPromise<Array<{ key: string; name: string }>>();
-  getABClassPartialsMock.mockImplementation(() => classPartialsDeferred.promise);
-  getAssignmentDefinitionPartialsMock.mockImplementation(() => assignmentDefinitionPartialsDeferred.promise);
-  getCohortsMock.mockImplementation(() => cohortsDeferred.promise);
-  getAssignmentTopicsMock.mockImplementation(() => assignmentTopicsDeferred.promise);
-  getYearGroupsMock.mockImplementation(() => yearGroupsDeferred.promise);
-
-  return {
-    classPartialsDeferred,
-    assignmentDefinitionPartialsDeferred,
-    cohortsDeferred,
-    assignmentTopicsDeferred,
-    yearGroupsDeferred,
-  };
-}
+// The configureDeferredWarmupDatasets function is imported from the shared module
 
 describe('shared query definitions', () => {
   afterEach(() => {
@@ -187,7 +130,13 @@ describe('shared query definitions', () => {
       cohortsDeferred,
       assignmentTopicsDeferred,
       yearGroupsDeferred,
-    } = configureDeferredWarmupDatasets();
+    } = configureDeferredWarmupDatasets({
+      getABClassPartialsMock,
+      getAssignmentDefinitionPartialsMock,
+      getCohortsMock,
+      getAssignmentTopicsMock,
+      getYearGroupsMock,
+    });
 
     const { warmStartupQueries } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
@@ -254,7 +203,13 @@ describe('shared query definitions', () => {
       cohortsDeferred,
       assignmentTopicsDeferred,
       yearGroupsDeferred,
-    } = configureDeferredWarmupDatasets();
+    } = configureDeferredWarmupDatasets({
+      getABClassPartialsMock,
+      getAssignmentDefinitionPartialsMock,
+      getCohortsMock,
+      getAssignmentTopicsMock,
+      getYearGroupsMock,
+    });
 
     const { warmStartupQueries } = await import('./sharedQueries');
     const queryClient = createAppQueryClient();
