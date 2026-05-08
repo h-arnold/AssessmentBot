@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import * as userEvent from '@testing-library/user-event';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
@@ -540,7 +540,7 @@ describe('AssignmentsPage', () => {
 
     for (const [refetchOptions] of refetchQueriesSpy.mock.calls) {
       expect(refetchOptions).toBeDefined();
-      expect(refetchOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+      expect(refetchOptions?.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
     }
   });
 
@@ -606,7 +606,7 @@ describe('AssignmentsPage', () => {
 
       for (const [refetchOptions] of refetchQueriesSpy.mock.calls) {
         expect(refetchOptions).toBeDefined();
-        expect(refetchOptions.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
+        expect(refetchOptions?.queryKey).toEqual(queryKeys.assignmentDefinitionPartials());
       }
     });
 

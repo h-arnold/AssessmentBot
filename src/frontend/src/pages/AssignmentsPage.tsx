@@ -714,7 +714,7 @@ export function AssignmentsPage() {
         ),
       },
     ],
-    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, hasTrustworthyReferenceData]
+    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, hasTrustworthyReferenceData, setDeleteError, setDeleteOutcome, setDeleteTarget, setWizardDefinitionKey, setWizardMode, setWizardOpen]
   );
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState({

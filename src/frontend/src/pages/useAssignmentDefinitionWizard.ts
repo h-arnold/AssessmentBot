@@ -172,7 +172,7 @@ function derivePrimaryActionState(
  * @param {function} setLocalDefinitionKey - State setter for local definition key.
  * @param {string | null} localDefinitionKey - The local definition key from parse response in create mode.
  * @param {QueryClient} queryClient - The React Query client for accessing cached data.
- * @returns {{ storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
+ * @returns {{ storeParseBaseline: (response: UpsertAssignmentDefinitionResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
  */
 function useFormInitialization(
   open: boolean,
@@ -191,7 +191,7 @@ function useFormInitialization(
   localDefinitionKey: string | null,
   queryClient: QueryClient
 ): {
-  storeParseBaseline: (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => void;
+  storeParseBaseline: (response: UpsertAssignmentDefinitionResponse) => void;
   getParsedCreateBaseline: () => ParsedCreateBaseline | null;
 } {
   const isHydratingDefinitionReference = useRef(false);
@@ -251,7 +251,7 @@ function useFormInitialization(
 
   // Function to store parse baseline after successful stage-one create
   const storeParseBaseline = useCallback(
-    (request: UpsertAssignmentDefinitionRequest, response: UpsertAssignmentDefinitionResponse) => {
+    (response: UpsertAssignmentDefinitionResponse) => {
       const referenceUrl = buildCanonicalUrl(response.referenceDocumentId, response.documentType);
       const templateUrl = buildCanonicalUrl(response.templateDocumentId, response.documentType);
 
@@ -777,11 +777,10 @@ export function useAssignmentDefinitionWizard(
    *
    * @param {UpsertAssignmentDefinitionResponse} response - The mutation response containing tasks and document info.
    * @param {'parse' | 'reparse'} actionType - The type of action that produced the response.
-   * @param {UpsertAssignmentDefinitionRequest} request - The original request for baseline storage.
    * @returns {void}
    */
   const handleParseResponse = useCallback(
-    (response: UpsertAssignmentDefinitionResponse, actionType: 'parse' | 'reparse', request: UpsertAssignmentDefinitionRequest) => {
+    (response: UpsertAssignmentDefinitionResponse, actionType: 'parse' | 'reparse') => {
       const documentType = response.documentType;
       const newTaskRows = buildTaskRowsFromResponse(response.tasks, actionType);
 
@@ -798,7 +797,7 @@ export function useAssignmentDefinitionWizard(
       }
 
       if (actionType === 'parse') {
-        storeParseBaseline(request, response);
+        storeParseBaseline(response);
       }
 
       // Update form with response data after parse/re-parse to reflect persisted state
@@ -906,7 +905,7 @@ export function useAssignmentDefinitionWizard(
         const response = await upsertMutation.mutateAsync(options.request);
 
         if (options.actionType === 'parse' || options.actionType === 'reparse') {
-          handleParseResponse(response, options.actionType, options.request);
+          handleParseResponse(response, options.actionType);
         }
 
         await invalidateMutationQueries(options.definitionKey);

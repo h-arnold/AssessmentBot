@@ -272,7 +272,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear (10s timeout for startup warmup)
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
     // Wait for table to be visible
@@ -297,7 +297,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -317,7 +317,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -338,7 +338,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -365,7 +365,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -402,7 +402,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -428,7 +428,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for initial blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
@@ -453,7 +453,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
     
     // Wait for blocking state to appear (first call fails)
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10_000 });
     // Wait for retry button to be visible
     await expect(page.getByRole('button', { name: /retry|refresh assignments data/i })).toBeVisible();
 
@@ -472,7 +472,7 @@ test.describe('assignments page browser journeys', () => {
           const methodCalls = (globalThis as { __assignmentsMethodCalls: string[] }).__assignmentsMethodCalls;
           return methodCalls.slice(startIndex);
         }, baselineCallCount);
-      }, { timeout: 10000 })
+      }, { timeout: 10_000 })
       .toEqual(['getAssignmentDefinitionPartials']);
   });
 
@@ -485,7 +485,7 @@ test.describe('assignments page browser journeys', () => {
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
     // Wait for blocking state to clear
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10000 });
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
     // Wait for loading skeleton to disappear
     await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
@@ -491,8 +490,8 @@ describe('AssignmentDefinitionWizardModal', () => {
       expect(parseButton).toBeDisabled();
 
       // Form has required field indicators
-      const requiredLabels = within(modal).getAllByText((content, element) => {
-        return element.classList.contains('ant-form-item-required');
+      const requiredLabels = within(modal).getAllByText((_, element) => {
+        return element?.classList.contains('ant-form-item-required') ?? false;
       });
       expect(requiredLabels.length).toBeGreaterThan(0);
 
