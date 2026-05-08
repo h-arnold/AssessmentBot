@@ -4,7 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
 import { deleteAssignmentDefinition } from '../services/assignmentDefinitionPartialsService';
 import { renderWithFrontendProviders } from '../test/renderWithFrontendProviders';
-import { setTextboxValue } from '../test/assignmentDefinition/wizardTestHelpers';
+import {
+  setTextboxValue,
+  createStartupWarmupState,
+  createReadyStartupWarmupState,
+  noop,
+} from '../test/assignmentDefinition/wizardTestHelpers';
 import {
   mockTopics,
   mockYearGroups,
@@ -72,16 +77,6 @@ vi.mock('../services/classPartialsService', () => ({
 const recommendedSummaryCopy =
   'Review assignment-definition partials and remove obsolete definitions without loading full task data.';
 
-/**
- * Returns a canonical full assignment definition for test fixtures.
- * Use shared mockFullAssignmentDefinition for consistency.
- *
- * @returns {object} Full assignment definition fixture.
- */
-function getFullAssignmentDefinitionFixture() {
-  return { ...mockFullAssignmentDefinition };
-}
-
 const filterAssertions = [
   {
     filterButtonName: 'Filter by title',
@@ -122,15 +117,6 @@ const expectedFilterNamesByColumn = [
   { columnHeaderName: 'Document type', filterButtonName: 'Filter by document type' },
   { columnHeaderName: 'Last updated', filterButtonName: 'Filter by last updated' },
 ] as const;
-
-/**
- * No-op function for deferred promise initialisation in tests.
- *
- * @returns {void} No return value.
- */
-function noop() {
-  return;
-}
 
 const readyRows = [
   {
@@ -198,60 +184,6 @@ const filterRows = [
 
 const migratedContractRows = [...readyRows] as const;
 
-type DatasetStatus = 'loading' | 'ready' | 'failed';
-
-/**
- * Creates startup warm-up state with assignment dataset overrides.
- *
- * @param {object} options Warm-up override options.
- * @param {DatasetStatus} options.assignmentStatus Assignment dataset status.
- * @param {boolean} options.assignmentTrustworthy Assignment dataset trust flag.
- * @param {(datasetKey: string) => boolean} options.isDatasetReady Dataset-ready selector.
- * @param {(datasetKey: string) => boolean} options.isDatasetFailed Dataset-failed selector.
- * @returns {object} Warm-up state consumed by the page.
- */
-function createAssignmentsWarmupState(options: {
-  assignmentStatus: DatasetStatus;
-  assignmentTrustworthy: boolean;
-  isDatasetReady: (datasetKey: string) => boolean;
-  isDatasetFailed: (datasetKey: string) => boolean;
-}) {
-  return {
-    isFailed: options.assignmentStatus === 'failed',
-    isLoading: options.assignmentStatus === 'loading',
-    isReady: options.assignmentStatus === 'ready',
-    warmupState: options.assignmentStatus,
-    isDatasetReady: options.isDatasetReady,
-    isDatasetFailed: options.isDatasetFailed,
-    snapshot: {
-      datasets: {
-        classPartials: { status: 'ready', isTrustworthy: true },
-        cohorts: { status: 'ready', isTrustworthy: true },
-        yearGroups: { status: 'ready', isTrustworthy: true },
-        assignmentTopics: { status: 'ready', isTrustworthy: true },
-        assignmentDefinitionPartials: {
-          status: options.assignmentStatus,
-          isTrustworthy: options.assignmentTrustworthy,
-        },
-      },
-    },
-  };
-}
-
-/**
- * Creates a trusted ready-state warm-up snapshot.
- *
- * @returns {object} Ready startup warm-up state.
- */
-function createReadyAssignmentsWarmupState() {
-  return createAssignmentsWarmupState({
-    assignmentStatus: 'ready',
-    assignmentTrustworthy: true,
-    isDatasetReady: () => true,
-    isDatasetFailed: () => false,
-  });
-}
-
 /**
  * Applies one column filter option using visible controls only.
  *
@@ -283,7 +215,7 @@ describe('AssignmentsPage', () => {
 
   beforeEach(() => {
     userEventInstance = userEvent.setup();
-    useStartupWarmupStateMock.mockReturnValue(createReadyAssignmentsWarmupState());
+    useStartupWarmupStateMock.mockReturnValue(createReadyStartupWarmupState());
     getAssignmentDefinitionPartialsMock.mockResolvedValue([...readyAssignmentPartialRows]);
     deleteAssignmentDefinitionMock.mockResolvedValue(void 0);
     getAssignmentTopicsMock.mockResolvedValue(mockTopics);
@@ -300,9 +232,8 @@ describe('AssignmentsPage', () => {
 
   it('renders loading state treatment while keeping heading and summary copy visible', () => {
     useStartupWarmupStateMock.mockReturnValue(
-      createAssignmentsWarmupState({
-        assignmentStatus: 'loading',
-        assignmentTrustworthy: false,
+      createStartupWarmupState({
+        assignmentDefinitionPartialsStatus: 'loading',
         isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentDefinitionPartials',
         isDatasetFailed: () => false,
       })
@@ -365,9 +296,8 @@ describe('AssignmentsPage', () => {
 
   it('renders blocking state with retry and suppresses table region when assignment data is failed/untrustworthy', () => {
     useStartupWarmupStateMock.mockReturnValue(
-      createAssignmentsWarmupState({
-        assignmentStatus: 'failed',
-        assignmentTrustworthy: false,
+      createStartupWarmupState({
+        assignmentDefinitionPartialsStatus: 'failed',
         isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentDefinitionPartials',
         isDatasetFailed: (datasetKey: string) => datasetKey === 'assignmentDefinitionPartials',
       })
@@ -668,7 +598,7 @@ describe('AssignmentsPage', () => {
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(
         queryKeys.assignmentDefinitionByKey('alg-10-safe'),
-        getFullAssignmentDefinitionFixture()
+        mockFullAssignmentDefinition
       );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
@@ -716,7 +646,7 @@ describe('AssignmentsPage', () => {
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(
         queryKeys.assignmentDefinitionByKey('alg-10-safe'),
-        getFullAssignmentDefinitionFixture()
+        mockFullAssignmentDefinition
       );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
@@ -775,7 +705,7 @@ describe('AssignmentsPage', () => {
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(
         queryKeys.assignmentDefinitionByKey('alg-10-safe'),
-        getFullAssignmentDefinitionFixture()
+        mockFullAssignmentDefinition
       );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
@@ -796,7 +726,7 @@ describe('AssignmentsPage', () => {
       fireEvent.change(referenceUrlInput, { target: { value: 'https://docs.google.com/presentation/d/new-ref' } });
 
       upsertAssignmentDefinitionMock.mockResolvedValueOnce({
-        ...getFullAssignmentDefinitionFixture(),
+        ...mockFullAssignmentDefinition,
         tasks: [
           { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 1 },
           { taskId: 'task-4', taskTitle: 'Complete revision quiz', taskWeighting: 1 },
@@ -852,7 +782,7 @@ describe('AssignmentsPage', () => {
       queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
       queryClient.setQueryData(
         queryKeys.assignmentDefinitionByKey('alg-10-safe'),
-        getFullAssignmentDefinitionFixture()
+        mockFullAssignmentDefinition
       );
 
       const table = await screen.findByRole('table', { name: 'Assignment definitions table' });
@@ -881,9 +811,8 @@ describe('AssignmentsPage', () => {
 
     it('create entry blocks locally when required reference data cannot be loaded', async () => {
       useStartupWarmupStateMock.mockReturnValue(
-        createAssignmentsWarmupState({
-          assignmentStatus: 'ready',
-          assignmentTrustworthy: true,
+        createStartupWarmupState({
+          assignmentDefinitionPartialsStatus: 'ready',
           isDatasetReady: (datasetKey: string) => datasetKey !== 'assignmentTopics' && datasetKey !== 'yearGroups',
           isDatasetFailed: (datasetKey: string) => datasetKey === 'assignmentTopics' || datasetKey === 'yearGroups',
         })
