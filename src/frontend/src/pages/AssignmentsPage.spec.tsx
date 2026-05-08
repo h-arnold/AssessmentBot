@@ -575,14 +575,22 @@ describe('AssignmentsPage', () => {
     renderWithFrontendProviders(<AssignmentsPage />);
 
     const safeRow = await screen.findByRole('row', { name: /algebra foundations/i });
-    fireEvent.click(within(safeRow).getByRole('button', { name: /delete/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete definition' }));
+    await act(async () => {
+      fireEvent.click(within(safeRow).getByRole('button', { name: /delete/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Delete definition' }));
+    });
 
-    const deleteDialog = screen.getByRole('dialog', { name: 'Delete assignment definition' });
-    expect(within(deleteDialog).getByRole('button', { name: /delete definition/i })).toBeDisabled();
-    expect(screen.getAllByRole('button', { name: /delete/i }).every((button) => button.hasAttribute('disabled'))).toBe(true);
+    await waitFor(() => {
+      const deleteDialog = screen.getByRole('dialog', { name: 'Delete assignment definition' });
+      expect(within(deleteDialog).getByRole('button', { name: /delete definition/i })).toBeDisabled();
+      expect(screen.getAllByRole('button', { name: /delete/i }).every((button) => button.hasAttribute('disabled'))).toBe(true);
+    });
 
-    resolveDeleteRequest();
+    await act(async () => {
+      resolveDeleteRequest();
+    });
   });
 
   it('handles delete success by refetching, removing the row, and showing success feedback', async () => {

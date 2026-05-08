@@ -561,7 +561,7 @@ function getComputedStyleMock(
     length: propertyNames.length,
     parentRule: null,
     item: (index: number) => propertyNames[index] || '',
-  } as CSSStyleDeclaration;
+  } as unknown as CSSStyleDeclaration; // Double assertion required: mock implements only the ~20 properties Ant Design reads, not all 500+ of CSSStyleDeclaration. `unknown` is the type-safe way to assert intentional type override for test doubles.
 }
 
 // Define on both globalThis and window for compatibility
