@@ -70,7 +70,15 @@ Every subagent handoff **must** include:
 
 **Blocking rule**: If a handoff omits mandatory `Files read` evidence, return the work immediately to the same subagent with a correction request. Do not proceed.
 
-### 3.3 Reading Guidance: Task-Specific Reads Only
+### 3.3 Sub-Agent Delegation Constraints
+
+**Critical:** Sub-agents cannot spawn their own sub-agents via the `task` tool. The orchestrator **must** handle all agent coordination. When delegating to a sub-agent:
+
+- Specify only the immediate, single task for that sub-agent
+- Do not instruct the sub-agent to call, delegate to, or spawn other agents
+- The orchestrator retains responsibility for any multi-agent workflow
+
+### 3.4 Reading Guidance: Task-Specific Reads Only
 
 **Principle:** Only prompt subagents to read documentation directly related to the task at hand. Do **not** include documentation that the subagent is already required to read per its own instructions.
 
@@ -357,6 +365,7 @@ When returning work to the user, always provide:
 
 ## 11. Guardrails
 
+- **Never instruct sub-agents to spawn other agents** — Sub-agents cannot use the `task` tool to delegate to other agents. The orchestrator must handle all agent coordination. When delegating, specify only the immediate task for that sub-agent.
 - **Never bypass review for non-trivial changes** — clean review is mandatory
 - **Never introduce regressions** — baseline must be maintained for code/test changes
 - **Select the right agent for the job** — Testing Specialist for tests, Implementation for code, Docs for documentation, Kif for menial tasks
