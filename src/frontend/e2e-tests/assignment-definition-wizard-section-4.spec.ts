@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import {
   installRuntimeMock,
   createWizardScenario,
@@ -10,9 +10,157 @@ import {
   mockCreatedPartialRow,
 } from './shared/endToEndRuntimeMocks';
 
+// Local helpers to reduce duplication
+const defaultTitle = 'New Assessment';
+const defaultReferenceUrl = 'https://docs.google.com/presentation/d/test-ref';
+const defaultTemplateUrl = 'https://docs.google.com/presentation/d/test-tpl';
+const defaultTopic = 'Algebra';
+const defaultYearGroup = 'Year 10';
+
 /**
- * Standard re-parsed definition for re-parse workflow tests.
+ * Fills the assignment create/update form with default or provided values.
+ * @param {Page} page - Playwright page instance
+ * @param {Object} options - Form fill options
+ * @param {boolean} options.noYearGroup - Whether to skip filling the year group
  */
+async function fillForm(page: Page, options: { noYearGroup?: boolean } = {}) {
+  await page.getByRole('textbox', { name: 'Assignment Title' }).fill(defaultTitle);
+  await page
+    .getByRole('textbox', { name: 'Reference Document URL' })
+    .fill(defaultReferenceUrl);
+  await page
+    .getByRole('textbox', { name: 'Template Document URL' })
+    .fill(defaultTemplateUrl);
+  await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
+  await selectVisibleOption(page, defaultTopic);
+  if (!options.noYearGroup) {
+    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
+    await selectVisibleOption(page, defaultYearGroup);
+  }
+}
+
+/**
+ * Opens the Create assignment modal.
+ * @param {Page} page - Playwright page instance
+ */
+async function openCreateModal(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.click('text=Assignments');
+  await page.waitForSelector('text=Assignment definitions');
+  await page.click('button:has-text("Create assignment")');
+  await page.waitForSelector('role=dialog[name="Create assignment"]');
+}
+
+/**
+ * Opens the Update modal for a specific assignment.
+ * @param {Page} page - Playwright page instance
+ * @param {string} title - Assignment title to update
+ */
+async function openUpdateModal(page: Page, title: string): Promise<void> {
+  await page.goto('/');
+  await page.click('text=Assignments');
+  await page.waitForSelector('text=Assignment definitions');
+  const table = page.getByRole('table', { name: 'Assignment definitions table' });
+  const row = table
+    .locator('tbody tr td:first-child')
+    .getByText(title, { exact: true })
+    .locator('xpath=ancestor::tr');
+  await row.locator('button:has-text("Update")').click();
+  await page.waitForSelector('role=dialog[name="Update assignment"]');
+}
+
+/**
+ * Clicks Parse and continue, waits for tasks table.
+ * @param {Page} page - Playwright page instance
+ */
+async function parseAndContinue(page: Page): Promise<void> {
+  await page.click('button:has-text("Parse and continue")');
+  await page.waitForSelector('role=table[name*="task" i]');
+}
+
+/**
+ * Saves and waits for modal to close.
+ * @param {Page} page - Playwright page instance
+ */
+async function saveAndClose(page: Page): Promise<void> {
+  await page.click('button:has-text("Save")');
+  await expect(page.locator('role=dialog[name="Create assignment"]')).not.toBeVisible();
+}
+
+/**
+ * Clicks Re-parse button.
+ * @param {Page} page - Playwright page instance
+ */
+async function clickReparse(page: Page): Promise<void> {
+  await page.click('button:has-text("Re-parse")');
+}
+
+/**
+ * Opens update modal and modifies reference document URL to trigger re-parse state.
+ * @param {Page} page - Playwright page instance
+ * @param {string} [title='Algebra Baseline'] - Assignment title to update
+ */
+async function triggerUpdateDocumentChange(
+  page: Page,
+  title = 'Algebra Baseline'
+): Promise<void> {
+  await openUpdateModal(page, title);
+  await page
+    .getByRole('textbox', { name: 'Reference Document URL' })
+    .fill('https://docs.google.com/presentation/d/new-ref');
+}
+
+/**
+ * Verifies the re-parse prompt is visible.
+ * @param {Page} page - Playwright page instance
+ */
+async function verifyReparsePrompt(page: Page): Promise<void> {
+  await expect(page.getByText('Document changed. Re-parse to continue editing.')).toBeVisible();
+  await expect(page.locator('button:has-text("Re-parse")')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Cancel$/ }).last()).toBeVisible();
+}
+
+/**
+ * Verifies discard confirmation dialog is visible.
+ * @param {Page} page - Playwright page instance
+ */
+async function verifyDiscardConfirmation(page: Page): Promise<void> {
+  await expect(page.getByRole('dialog', { name: 'Discard changes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Discard changes' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible();
+}
+
+/**
+ * Asserts a control is disabled.
+ * @param {Page} page - Playwright page instance
+ * @param {string} role - Role of the control
+ * @param {string | RegExp} name - Name of the control
+ */
+async function assertDisabled(page: Page, role: string, name: string | RegExp): Promise<void> {
+  await expect(page.getByRole(role as keyof HTMLElementTagNameMap, { name })).toBeDisabled();
+}
+
+/**
+ * Asserts a control is enabled.
+ * @param {Page} page - Playwright page instance
+ * @param {string} role - Role of the control
+ * @param {string | RegExp} name - Name of the control
+ */
+async function assertEnabled(page: Page, role: string, name: string | RegExp): Promise<void> {
+  await expect(page.getByRole(role as keyof HTMLElementTagNameMap, { name })).toBeEnabled();
+}
+
+/**
+ * Navigates to Assignments page.
+ * @param {Page} page - Playwright page instance
+ */
+async function navigateToAssignments(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.click('text=Assignments');
+  await page.waitForSelector('text=Assignment definitions');
+}
+
+// Test data
 const reParsedDefinition = {
   ...mockFullDefinition,
   referenceDocumentId: 'new-ref',
@@ -24,9 +172,6 @@ const reParsedDefinition = {
   ],
 } as const;
 
-/**
- * Standard success scenario for wizard tests with full mutation sequence.
- */
 const standardWizardScenario = createWizardScenario({
   initialPartials: mockPartialRows,
   postMutationPartials: [
@@ -42,24 +187,14 @@ const standardWizardScenario = createWizardScenario({
   ],
 });
 
-/**
- * Scenario for re-parse workflow with updated definition.
- */
 const reparseScenario = createWizardScenario({
-  postMutationPartials: [
-    mockPartialRows,
-    mockPartialRows,
-    mockPartialRows,
-    mockPartialRows,
-  ],
+  postMutationPartials: [mockPartialRows, mockPartialRows, mockPartialRows, mockPartialRows],
   assignmentDefinitions: [
     { kind: 'success', data: mockFullDefinition },
     { kind: 'success', data: reParsedDefinition },
     { kind: 'success', data: reParsedDefinition },
   ],
-  upsertResponses: [
-    { kind: 'success', data: reParsedDefinition },
-  ],
+  upsertResponses: [{ kind: 'success', data: reParsedDefinition }],
 });
 
 test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gating, and task weighting workflow', () => {
@@ -69,206 +204,67 @@ test.describe('Assignment Definition Wizard - Shared edit surface, re-parse gati
   });
 
   test('create flow: parse and continue, then save', async ({ page }) => {
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Create assignment
-    await page.click('button:has-text("Create assignment")');
-
-    // Modal should open
-    await page.waitForSelector('role=dialog[name="Create assignment"]');
-
-    // Fill in form
-    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
-    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
-
-    // Select topic
-    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await selectVisibleOption(page, 'Algebra');
-
-    // Select year group
-    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await selectVisibleOption(page, 'Year 10');
-
-    // Click Parse and continue
-    await page.click('button:has-text("Parse and continue")');
-
-    // Should show tasks after parse
-    await page.waitForSelector('role=table[name*="task" i]');
+    await openCreateModal(page);
+    await fillForm(page);
+    await parseAndContinue(page);
     await expect(page.locator('text="Solve quadratic equations"')).toBeVisible();
-
-    // Click Save
-    await page.click('button:has-text("Save")');
-
-    // Modal should close and table should refresh
-    await expect(page.locator('role=dialog[name="Create assignment"]')).not.toBeVisible();
+    await saveAndClose(page);
     await expect(page.locator('text="New Assessment"')).toBeVisible();
   });
 
   test('update flow: document change + cancel restores URLs and fields', async ({ page }) => {
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Update on the Algebra Baseline row
-    const row = page.locator('role=row[name*="Algebra Baseline" i]');
-    await row.locator('button:has-text("Update")').click();
-
-    // Modal should open with pre-populated data
-    await page.waitForSelector('role=dialog[name="Update assignment"]');
-    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toHaveValue('Algebra Baseline');
-
-    // Change document URL
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill(
-      'https://docs.google.com/presentation/d/new-ref'
+    await triggerUpdateDocumentChange(page);
+    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toHaveValue(
+      'Algebra Baseline'
     );
-
-    // Should show re-parse prompt
-    await expect(page.getByText('Document changed. Re-parse to continue editing.')).toBeVisible();
-    await expect(page.locator('button:has-text("Re-parse")')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Cancel$/ }).last()).toBeVisible();
-
-    // Metadata should be disabled
-    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeDisabled();
-
-    // Click Cancel
+    await verifyReparsePrompt(page);
+    await assertDisabled(page, 'textbox', 'Assignment Title');
     await page.getByRole('button', { name: /^Cancel$/ }).first().click();
-
-    // URLs should be restored and fields re-enabled
     await expect(page.getByRole('textbox', { name: 'Reference Document URL' })).toHaveValue(
       'https://docs.google.com/presentation/d/ref-doc-123/edit'
     );
-    await expect(page.getByRole('textbox', { name: 'Assignment Title' })).toBeEnabled();
+    await assertEnabled(page, 'textbox', 'Assignment Title');
   });
 
   test('update flow: document change + successful re-parse refreshes task rows', async ({ page }) => {
     await installRuntimeMock(page, reparseScenario);
     await page.goto('/');
-
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Update on the Algebra Baseline row
-    const row = page.locator('role=row[name*="Algebra Baseline" i]');
-    await row.locator('button:has-text("Update")').click();
-
-    // Modal should open
-    await page.waitForSelector('role=dialog[name="Update assignment"]');
-
-    // Change document URL
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill(
-      'https://docs.google.com/presentation/d/new-ref'
-    );
-
-    // Click Re-parse
-    await page.click('button:has-text("Re-parse")');
-
-    // Tasks should be refreshed
-    await page.waitForSelector('text="Updated Task 1"');
+    await triggerUpdateDocumentChange(page);
+    await clickReparse(page);
+    await expect(page.locator('text="Updated Task 1"')).toBeVisible();
     await expect(page.locator('text="New Task"')).toBeVisible();
   });
 
   test('modal close with unsaved stage-two edits requires discard confirmation', async ({ page }) => {
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Create assignment
-    await page.click('button:has-text("Create assignment")');
-
-    // Modal should open
-    await page.waitForSelector('role=dialog[name="Create assignment"]');
-
-    // Fill in form and parse
-    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
-    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
-    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await selectVisibleOption(page, 'Algebra');
-    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await selectVisibleOption(page, 'Year 10');
-
-    await page.click('button:has-text("Parse and continue")');
-
-    // Wait for tasks to appear
-    await page.waitForSelector('role=table[name*="task" i]');
-
-    // Edit task weighting
+    await openCreateModal(page);
+    await fillForm(page);
+    await parseAndContinue(page);
     await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment Updated');
-
-    // Try to close modal
     await page.click('button[aria-label="Close"]');
-
-    // Should show discard confirmation
-    await expect(page.getByRole('dialog', { name: 'Discard changes' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Discard changes' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible();
+    await verifyDiscardConfirmation(page);
   });
 
   test('save blocked until valid year-group selection present', async ({ page }) => {
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Create assignment
-    await page.click('button:has-text("Create assignment")');
-
-    // Modal should open
-    await page.waitForSelector('role=dialog[name="Create assignment"]');
-
-    // Fill in form without year group
-    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
-    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
-    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await selectVisibleOption(page, 'Algebra');
-
-    // Save button should be disabled
-    const saveButton = page.locator('button:has-text("Parse and continue")');
-    await expect(saveButton).toBeDisabled();
+    await openCreateModal(page);
+    await fillForm(page, { noYearGroup: true });
+    await assertDisabled(page, 'button', 'Parse and continue');
   });
 
   test('create mode fails closed locally when required topic or year-group reference data cannot be trusted or loaded', async ({ page }) => {
     await installRuntimeMock(page, createFailedReferenceDataScenario());
     await page.goto('/');
-
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Create button should be disabled since reference data (yearGroups, assignmentTopics) failed to load
+    await navigateToAssignments(page);
     await expect(page.locator('button:has-text("Create assignment")')).toBeDisabled();
   });
 
   test('failed post-mutation refresh fails closed on affected surface', async ({ page }) => {
     await installRuntimeMock(page, createFailedRefreshScenario());
     await page.goto('/');
-
-    // Navigate to Assignments page
-    await page.click('text=Assignments');
-    await page.waitForSelector('text=Assignment definitions');
-
-    // Click Create assignment
-    await page.click('button:has-text("Create assignment")');
-
-    // Modal should open
-    await page.waitForSelector('role=dialog[name="Create assignment"]');
-
-    // Fill in form and parse
-    await page.getByRole('textbox', { name: 'Assignment Title' }).fill('New Assessment');
-    await page.getByRole('textbox', { name: 'Reference Document URL' }).fill('https://docs.google.com/presentation/d/test-ref');
-    await page.getByRole('textbox', { name: 'Template Document URL' }).fill('https://docs.google.com/presentation/d/test-tpl');
-    await page.getByRole('combobox', { name: 'Assignment Topic' }).click();
-    await selectVisibleOption(page, 'Algebra');
-    await page.getByRole('combobox', { name: 'Assignment Year Group' }).click();
-    await selectVisibleOption(page, 'Year 10');
-
-    await page.click('button:has-text("Parse and continue")');
-
-    await page.waitForSelector('role=table[name*="task" i]');
-    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible();
+    await openCreateModal(page);
+    await fillForm(page);
+    await parseAndContinue(page);
+    await expect(
+      page.getByText('Assignment definitions could not be trusted or loaded.')
+    ).toBeVisible();
   });
 });

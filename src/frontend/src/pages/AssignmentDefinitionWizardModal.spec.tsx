@@ -1,14 +1,20 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { queryKeys } from '../query/queryKeys';
-import { createStartupWarmupState, setTextboxValue } from '../test/assignmentDefinition/wizardTestHelpers';
+import type { AssignmentDefinition } from '../services/assignmentDefinition.zod';
+import {
+  createStartupWarmupState,
+  setTextboxValue,
+} from '../test/assignmentDefinition/wizardTestHelpers';
 import {
   mockTopics,
   mockYearGroups,
-  mockFullAssignmentDefinition,
-  mockUpsertResponse,
   mockCohorts,
 } from '../test/assignmentDefinition/sharedTestFixtures';
+import {
+  mockFullAssignmentDefinition,
+  mockUpsertResponse,
+} from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   renderWizardModal,
   getFormElements,
@@ -108,9 +114,9 @@ function createBaseCreateOptions(
     definitionKey: null,
     onClose,
     open: true,
-    topics: mockTopics,
-    yearGroups: mockYearGroups,
-    cohorts: mockCohorts,
+    topics: [...mockTopics],
+    yearGroups: [...mockYearGroups],
+    cohorts: [...mockCohorts],
     mockInvalidateQueries: true,
   };
 }
@@ -125,7 +131,7 @@ function createBaseCreateOptions(
  */
 function createBaseUpdateOptions(
   definitionKey = 'algebra-baseline',
-  definition = mockFullAssignmentDefinition,
+  definition: AssignmentDefinition = mockFullAssignmentDefinition,
   onClose?: () => void
 ): RenderWizardModalOptions {
   useStartupWarmupStateMock.mockReturnValue(
@@ -138,12 +144,12 @@ function createBaseUpdateOptions(
   return {
     mode: 'update',
     definitionKey,
-    assignmentDefinition: definition as Parameters<typeof RenderWizardModalOptions>['assignmentDefinition'],
+    assignmentDefinition: definition,
     onClose,
     open: true,
-    topics: mockTopics,
-    yearGroups: mockYearGroups,
-    cohorts: mockCohorts,
+    topics: [...mockTopics],
+    yearGroups: [...mockYearGroups],
+    cohorts: [...mockCohorts],
     mockInvalidateQueries: true,
   };
 }
@@ -422,6 +428,7 @@ describe('AssignmentDefinitionWizardModal', () => {
         definitionKey: null,
         open: true,
         mockInvalidateQueries: true,
+        waitForFormFields: false,
       };
       await renderWizardModal(renderOptions);
 
@@ -440,7 +447,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { modal, queryClient } = await renderWizardModal(renderOptions);
 
       // Fill in all required fields for stage-one parse
-      await fillRequiredFields({ modal });
+      await fillRequiredFields({ modal }, { title: 'New Assessment', yearGroup: 'Year 10' });
 
       // Wait for form validation to pass and Parse button to become enabled
       await waitFor(() => {
@@ -705,7 +712,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { modal, mockInvalidateQueries } = await renderWizardModal(renderOptions);
 
       // Fill in all required fields for stage-one parse
-      await fillRequiredFields({ modal });
+      await fillRequiredFields({ modal }, { yearGroup: 'Year 10' });
 
       // Mock the parse response with definitionKey from backend
       const parseResponse = {
@@ -760,7 +767,7 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { modal, mockInvalidateQueries } = await renderWizardModal(renderOptions);
 
       // Fill in all required fields for stage-one parse
-      await fillRequiredFields({ modal });
+      await fillRequiredFields({ modal }, { yearGroup: 'Year 10' });
 
       // Mock the parse response with initial tasks
       const parseResponse = {
@@ -833,6 +840,7 @@ describe('AssignmentDefinitionWizardModal', () => {
         definitionKey: null,
         open: true,
         mockInvalidateQueries: true,
+        waitForFormFields: false,
       };
       await renderWizardModal(renderOptions);
 
@@ -935,14 +943,14 @@ describe('AssignmentDefinitionWizardModal', () => {
       const { modal } = await renderWizardModal(renderOptions);
 
       // Fill in all required fields
-      await fillRequiredFields({ modal });
+      await fillRequiredFields({ modal }, { yearGroup: 'Year 10' });
 
       // Mock a slow parse response to keep isSubmitting true
       let resolveParse: (value: unknown) => void;
       const parsePromise = new Promise((resolve) => {
         resolveParse = resolve;
       });
-      upsertAssignmentDefinitionMock.mockReturnValueOnce(parsePromise as Promise<unknown>);
+      upsertAssignmentDefinitionMock.mockReturnValueOnce(parsePromise);
 
       // Click Parse and continue
       const parseButton = getParseButton({ modal });

@@ -1,5 +1,11 @@
 import { googleScriptRunApiHandlerFactorySource } from '../../src/test/googleScriptRunHarness';
 import type { Page } from '@playwright/test';
+import {
+  mockTopics,
+  mockYearGroups,
+  mockCohorts,
+  mockFullDefinition,
+} from '../../src/test/assignmentDefinition/sharedTestFixtures';
 
 /**
  * Shared Playwright E2E runtime mocks for AssignmentBot.
@@ -56,15 +62,20 @@ export type RuntimeScenario = Readonly<{
 
 // ============================================================================
 // Mock Data Fixtures
-// Re-export from shared module for consistency
 // ============================================================================
 
+// eslint-disable unicorn/prefer-export-from -- Re-export causes runtime issues with Playwright
 export {
+  // eslint-disable-next-line unicorn/prefer-export-from
   mockTopics,
+  // eslint-disable-next-line unicorn/prefer-export-from
   mockYearGroups,
+  // eslint-disable-next-line unicorn/prefer-export-from
   mockCohorts,
+  // eslint-disable-next-line unicorn/prefer-export-from
   mockFullDefinition,
-} from '../../src/test/assignmentDefinition/sharedTestFixtures';
+};
+// eslint-enable unicorn/prefer-export-from
 
 
 /**

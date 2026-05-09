@@ -2,6 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { queryKeys } from '../../query/queryKeys';
 import { renderWithFrontendProviders } from '../renderWithFrontendProviders';
+import type { FrontendProvidersOptions } from '../renderWithFrontendProviders';
+import type { QueryClient } from '@tanstack/react-query';
 import {
   chooseSelectOption,
   setTextboxValue,
@@ -10,7 +12,6 @@ import {
 } from './wizardTestHelpers';
 import { mockTopics, mockYearGroups } from './sharedTestFixtures';
 import type { AssignmentDefinition } from '../../services/assignmentDefinition.zod';
-import type React from 'react';
 
 /**
  * Assignment Definition Wizard Modal test helpers module.
@@ -51,7 +52,9 @@ export interface RenderWizardModalOptions {
   /** Optional flag to mock invalidateQueries (default: true). */
   mockInvalidateQueries?: boolean;
   /** Optional warmup state override. */
-  warmupState?: Parameters<typeof renderWithFrontendProviders>[1]['warmupState'];
+  warmupState?: FrontendProvidersOptions['warmupState'];
+  /** Whether to wait for the interactive form fields (default: true). */
+  waitForFormFields?: boolean;
 }
 
 /**
@@ -60,38 +63,6 @@ export interface RenderWizardModalOptions {
 export interface WizardModalRenderResult extends TestRenderResult {
   /** The rendered modal element. */
   modal: HTMLElement;
-}
-
-/**
- * Sets up query client with provided data.
- *
- * @param {object} queryClient The query client to set up.
- * @param {Function} queryClient.setQueryData Method to set query data.
- * @param {unknown[]} topics Topics data.
- * @param {unknown[]} yearGroups Year groups data.
- * @param {unknown[]} cohorts Cohorts data.
- * @param {AssignmentDefinition | undefined} assignmentDefinition Assignment definition.
- * @param {string | null} definitionKey Definition key.
- * @returns {void}
- */
-function setupQueryClientData(
-  queryClient: { setQueryData: (key: unknown, data: unknown) => void },
-  topics: unknown[],
-  yearGroups: unknown[],
-  cohorts: unknown[],
-  assignmentDefinition: AssignmentDefinition | undefined,
-  definitionKey: string | null
-): void {
-  queryClient.setQueryData(queryKeys.assignmentTopics(), topics);
-  queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
-  queryClient.setQueryData(queryKeys.cohorts(), cohorts);
-
-  if (assignmentDefinition && definitionKey) {
-    queryClient.setQueryData(
-      queryKeys.assignmentDefinitionByKey(definitionKey),
-      assignmentDefinition
-    );
-  }
 }
 
 /**
@@ -111,16 +82,16 @@ function getModalNamePattern(mode: WizardModalMode): RegExp {
  * @param {string | null} definitionKey The definition key.
  * @param {() => void} onClose The onClose handler.
  * @param {boolean} open Whether the modal is open.
- * @param {Parameters<typeof renderWithFrontendProviders>[1]['warmupState']} warmupState Warmup state.
- * @returns {ReturnType<typeof renderWithFrontendProviders>} Render result.
+ * @param {FrontendProvidersOptions['warmupState']} warmupState Warmup state.
+ * @returns {Promise<ReturnType<typeof renderWithFrontendProviders>>} Render result.
  */
 async function renderModalComponent(
   mode: WizardModalMode,
   definitionKey: string | null,
   onClose: () => void,
   open: boolean,
-  warmupState: Parameters<typeof renderWithFrontendProviders>[1]['warmupState']
-): ReturnType<typeof renderWithFrontendProviders> {
+  warmupState: FrontendProvidersOptions['warmupState']
+): Promise<ReturnType<typeof renderWithFrontendProviders>> {
   const { AssignmentDefinitionWizardModal } = await import('../../pages/AssignmentDefinitionWizardModal');
 
   return renderWithFrontendProviders(
@@ -137,13 +108,12 @@ async function renderModalComponent(
 /**
  * Sets up invalidateQueries mock on the query client.
  *
- * @param {object} queryClient The query client.
- * @param {Function} queryClient.invalidateQueries Method to mock.
+ * @param {QueryClient} queryClient The query client.
  * @param {boolean} shouldMock Whether to mock invalidateQueries.
  * @returns {ReturnType<typeof createMockInvalidateQueries>} The mock function.
  */
 function setupInvalidateQueriesMock(
-  queryClient: { invalidateQueries: unknown },
+  queryClient: QueryClient,
   shouldMock: boolean
 ): ReturnType<typeof createMockInvalidateQueries> {
   const mockInvalidate = createMockInvalidateQueries();
@@ -151,6 +121,47 @@ function setupInvalidateQueriesMock(
     vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(mockInvalidate);
   }
   return mockInvalidate;
+}
+
+/**
+ * Gets the onClose handler from options.
+ *
+ * @param {() => void | undefined} onClose Optional onClose handler.
+ * @returns {() => void} The onClose handler.
+ */
+function getOnCloseHandler(onClose: (() => void) | undefined): () => void {
+  return onClose ?? (() => {});
+}
+
+/**
+ * Sets up query client with provided data.
+ *
+ * @param {QueryClient} queryClient The query client to set up.
+ * @param {unknown[]} topics Topics data.
+ * @param {unknown[]} yearGroups Year groups data.
+ * @param {unknown[]} cohorts Cohorts data.
+ * @param {AssignmentDefinition | undefined} assignmentDefinition Assignment definition.
+ * @param {string | null} definitionKey Definition key.
+ * @returns {void}
+ */
+function setupQueryClientData(
+  queryClient: QueryClient,
+  topics: unknown[],
+  yearGroups: unknown[],
+  cohorts: unknown[],
+  assignmentDefinition: AssignmentDefinition | undefined,
+  definitionKey: string | null
+): void {
+  queryClient.setQueryData(queryKeys.assignmentTopics(), topics);
+  queryClient.setQueryData(queryKeys.yearGroups(), yearGroups);
+  queryClient.setQueryData(queryKeys.cohorts(), cohorts);
+
+  if (assignmentDefinition && definitionKey) {
+    queryClient.setQueryData(
+      queryKeys.assignmentDefinitionByKey(definitionKey),
+      assignmentDefinition
+    );
+  }
 }
 
 /**
@@ -168,6 +179,22 @@ async function waitForFormFields(modal: HTMLElement): Promise<void> {
     expect(within(modal).getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
     expect(within(modal).getByRole('textbox', { name: /template document url/i })).toBeInTheDocument();
   });
+}
+
+/**
+ * Waits for interactive form fields when required by a test.
+ *
+ * @param {HTMLElement} modal The modal element.
+ * @param {boolean} shouldWaitForFormFields Whether to wait for interactive fields.
+ * @returns {Promise<void>} Completion signal.
+ */
+async function waitForInteractiveFieldsIfNeeded(
+  modal: HTMLElement,
+  shouldWaitForFormFields: boolean
+): Promise<void> {
+  if (shouldWaitForFormFields) {
+    await waitForFormFields(modal);
+  }
 }
 
 /**
@@ -192,19 +219,28 @@ export async function renderWizardModal(
     assignmentDefinition,
     mockInvalidateQueries = true,
     warmupState,
+    waitForFormFields: shouldWaitForFormFields = true,
   } = options;
 
-  const renderResult = await renderModalComponent(mode, definitionKey, onClose ?? (() => {}), open, warmupState);
-  const { queryClient } = renderResult;
+  const renderResult = await renderModalComponent(
+    mode,
+    definitionKey,
+    getOnCloseHandler(onClose),
+    open,
+    warmupState
+  );
 
+  const { queryClient } = renderResult;
   const mockInvalidate = setupInvalidateQueriesMock(queryClient, mockInvalidateQueries);
-  setupQueryClientData(queryClient, topics, yearGroups, cohorts, assignmentDefinition, definitionKey);
 
   const modalName = getModalNamePattern(mode);
   const modal = await waitFor(() => screen.getByRole('dialog', { name: modalName }));
 
-  // Wait for form fields to be present
-  await waitForFormFields(modal);
+  // Wait for all form fields to be present
+  await waitForInteractiveFieldsIfNeeded(modal, shouldWaitForFormFields);
+
+  // Set query data after modal appears (matches original test pattern)
+  setupQueryClientData(queryClient, topics, yearGroups, cohorts, assignmentDefinition, definitionKey);
 
   return {
     ...renderResult,
@@ -408,6 +444,7 @@ function extractModal(container: HTMLElement | ModalElementQueries): HTMLElement
 
 /**
  * Fills all required fields in the wizard form.
+ * Uses direct setTextboxValue for all fields wrapped in act() for reliability.
  *
  * @param {HTMLElement | ModalElementQueries} container The modal or container object.
  * @param {FillRequiredFieldsOptions} options Field value options.
@@ -434,9 +471,9 @@ export async function fillRequiredFields(
   setTextboxValue(templateUrlInput, templateUrl);
 
   // Select topic and year group
-  await chooseSelectOption('assignment topic', topic, modal);
+  await chooseSelectOption('Assignment Topic', topic, modal);
   if (yearGroup !== undefined) {
-    await chooseSelectOption('assignment year group', yearGroup, modal);
+    await chooseSelectOption('Assignment Year Group', yearGroup, modal);
   }
 }
 
@@ -452,7 +489,7 @@ export async function selectTopic(
   topicLabel: string | RegExp
 ): Promise<void> {
   const modal = 'modal' in container ? container.modal : container;
-  await chooseSelectOption('assignment topic', topicLabel, modal);
+  await chooseSelectOption('Assignment Topic', topicLabel, modal);
 }
 
 /**
@@ -467,7 +504,7 @@ export async function selectYearGroup(
   yearGroupLabel: string | RegExp
 ): Promise<void> {
   const modal = 'modal' in container ? container.modal : container;
-  await chooseSelectOption('assignment year group', yearGroupLabel, modal);
+  await chooseSelectOption('Assignment Year Group', yearGroupLabel, modal);
 }
 
 // ============================================================================

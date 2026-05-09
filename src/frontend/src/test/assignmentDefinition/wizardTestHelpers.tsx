@@ -43,7 +43,10 @@ export async function chooseSelectOption(
   container: HTMLElement = document.body
 ): Promise<void> {
   // Open the dropdown by clicking on the combobox
-  const combobox = within(container).getByRole('combobox', { name: fieldLabel });
+  const normalisedFieldLabel = fieldLabel.trim().toLowerCase();
+  const combobox = within(container).getByRole('combobox', {
+    name: (accessibleName) => accessibleName.trim().toLowerCase() === normalisedFieldLabel,
+  });
   fireEvent.mouseDown(combobox);
 
   // Find and click the option by its visible text

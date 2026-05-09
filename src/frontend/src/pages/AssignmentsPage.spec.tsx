@@ -10,6 +10,7 @@ import {
   createReadyStartupWarmupState,
   noop,
 } from '../test/assignmentDefinition/wizardTestHelpers';
+import type { AssignmentDefinitionPartialRow } from '../test/assignmentDefinition/assignmentDefinitionTestFixtures';
 import {
   mockTopics,
   mockYearGroups,
@@ -118,7 +119,7 @@ const expectedFilterNamesByColumn = [
   { columnHeaderName: 'Last updated', filterButtonName: 'Filter by last updated' },
 ] as const;
 
-const readyRows = [
+const readyRows: AssignmentDefinitionPartialRow[] = [
   {
     primaryTitle: 'Algebra foundations',
     primaryTopicKey: 'topic-algebra',
@@ -132,7 +133,7 @@ const readyRows = [
     templateDocumentId: 'tpl-1',
     assignmentWeighting: 20,
     definitionKey: 'alg-10-safe',
-    tasks: null,
+    tasks: [],
     createdAt: '2025-01-15T08:00:00.000Z',
     updatedAt: '2025-01-16T08:00:00.000Z',
   },
@@ -147,15 +148,15 @@ const readyRows = [
     documentType: 'SHEETS',
     referenceDocumentId: 'ref-2',
     templateDocumentId: 'tpl-2',
-    assignmentWeighting: null,
+    assignmentWeighting: 1,
     definitionKey: 'legacy/unsafe-key',
-    tasks: null,
+    tasks: [],
     createdAt: '2025-01-16T08:00:00.000Z',
     updatedAt: null,
   },
-] as const;
+];
 
-const filterRows = [
+const filterRows: AssignmentDefinitionPartialRow[] = [
   {
     ...readyRows[0],
     primaryTitle: 'Newest algebra recap',
@@ -180,9 +181,9 @@ const filterRows = [
     ...readyRows[1],
     definitionKey: 'unsafe/legacy-key',
   },
-] as const;
+];
 
-const migratedContractRows = [...readyRows] as const;
+const migratedContractRows: AssignmentDefinitionPartialRow[] = [...readyRows];
 
 /**
  * Applies one column filter option using visible controls only.

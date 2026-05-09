@@ -174,26 +174,58 @@ function derivePrimaryActionState(
  * @param {QueryClient} queryClient - The React Query client for accessing cached data.
  * @returns {{ storeParseBaseline: (response: UpsertAssignmentDefinitionResponse) => void; getParsedCreateBaseline: () => ParsedCreateBaseline | null }} Initialization state and baseline setter.
  */
+/**
+ * Options for the useFormInitialization hook.
+ * Contains all state values and setters needed for form initialization.
+ */
+export interface FormInitializationOptions {
+  definition: AssignmentDefinition | null | undefined;
+  formValues: Record<string, unknown>;
+  taskRows: TaskRow[];
+  hasParsedTasks: boolean;
+  localDefinitionKey: string | null;
+  setHasParsedTasks: (value: boolean) => void;
+  setTaskRows: (rows: TaskRow[]) => void;
+  setDocumentChange: (state: DocumentChangeState) => void;
+  setHasDirtyEdits: (value: boolean) => void;
+  setBlockingError: (error: string | null) => void;
+  setLocalDefinitionKey: (key: string | null) => void;
+}
+
+/**
+ * Hook for form initialization and baseline management.
+ * Manages parse baseline storage and retrieval for the assignment definition wizard.
+ *
+ * @param {boolean} open - Whether the modal is open.
+ * @param {boolean} isCreateMode - Whether in create mode.
+ * @param {FormInstance} form - The Ant Design form instance.
+ * @param {FormInitializationOptions} options - Form initialization options containing state and setters.
+ * @param {QueryClient} queryClient - The React Query client for accessing cached data.
+ * @returns {object} Object containing storeParseBaseline and getParsedCreateBaseline functions.
+ */
 function useFormInitialization(
   open: boolean,
   isCreateMode: boolean,
   form: FormInstance,
-  definition: AssignmentDefinition | null | undefined,
-  formValues: Record<string, unknown>,
-  taskRows: TaskRow[],
-  hasParsedTasks: boolean,
-  setHasParsedTasks: (value: boolean) => void,
-  setTaskRows: (rows: TaskRow[]) => void,
-  setDocumentChange: (state: DocumentChangeState) => void,
-  setHasDirtyEdits: (value: boolean) => void,
-  setBlockingError: (error: string | null) => void,
-  setLocalDefinitionKey: (key: string | null) => void,
-  localDefinitionKey: string | null,
+  options: FormInitializationOptions,
   queryClient: QueryClient
 ): {
   storeParseBaseline: (response: UpsertAssignmentDefinitionResponse) => void;
   getParsedCreateBaseline: () => ParsedCreateBaseline | null;
 } {
+  const {
+    definition,
+    formValues,
+    taskRows,
+    hasParsedTasks,
+    localDefinitionKey,
+    setHasParsedTasks,
+    setTaskRows,
+    setDocumentChange,
+    setHasDirtyEdits,
+    setBlockingError,
+    setLocalDefinitionKey,
+  } = options;
   const isHydratingDefinitionReference = useRef(false);
   const parsedCreateBaselineReference = useRef<ParsedCreateBaseline | null>(null);
 
@@ -221,7 +253,7 @@ function useFormInitialization(
       parsedCreateBaselineReference.current = null;
       isHydratingDefinitionReference.current = true;
 
-      hydrateFormFromDefinition(form, definition as AssignmentDefinition, setTaskRows, setHasParsedTasks, setDocumentChange);
+      hydrateFormFromDefinition(form, definition, setTaskRows, setHasParsedTasks, setDocumentChange);
       queueMicrotask(() => { isHydratingDefinitionReference.current = false; });
     }
   }, [open, isCreateMode, definition, form, setTaskRows, setHasParsedTasks, setDocumentChange, setHasDirtyEdits, setBlockingError, setLocalDefinitionKey]);
@@ -278,9 +310,11 @@ function useFormInitialization(
   const getParsedCreateBaseline = useCallback((): ParsedCreateBaseline | null => {
     // In create mode: try cached query data first
     if (localDefinitionKey) {
-      const cached = queryClient.getQueryData(queryKeys.assignmentDefinitionByKey(localDefinitionKey));
+      const cached = queryClient.getQueryData<UpsertAssignmentDefinitionResponse>(
+        queryKeys.assignmentDefinitionByKey(localDefinitionKey)
+      );
       if (cached) {
-        const cachedDefinition = cached as UpsertAssignmentDefinitionResponse;
+        const cachedDefinition = cached;
         const referenceUrl = buildCanonicalUrl(cachedDefinition.referenceDocumentId, cachedDefinition.documentType);
         const templateUrl = buildCanonicalUrl(cachedDefinition.templateDocumentId, cachedDefinition.documentType);
 
@@ -338,7 +372,12 @@ function buildYearGroupOptions(
  * @returns {boolean} True if all parse fields are present and non-empty.
  */
 function hasAllParseFields(values: Record<string, unknown>): boolean {
-  return REQUIRED_PARSE_FIELDS.every((field) => String(values[field as keyof typeof values] ?? '').trim() !== '');
+  // REQUIRED_PARSE_FIELDS contains known field names that are safe to access on values
+  return REQUIRED_PARSE_FIELDS.every((field) => {
+    // eslint-disable-next-line security/detect-object-injection
+    const value = values[field];
+    return typeof value === 'string' ? value.trim() !== '' : false;
+  });
 }
 
 /**
@@ -348,7 +387,8 @@ function hasAllParseFields(values: Record<string, unknown>): boolean {
  * @returns {boolean} True if year group is selected (non-empty).
  */
 function hasYearGroupSelected(values: Record<string, unknown>): boolean {
-  return String(values.yearGroup ?? '').trim() !== '';
+  const yearGroup = values.yearGroup;
+  return typeof yearGroup === 'string' ? yearGroup.trim() !== '' : false;
 }
 
 /**
@@ -566,9 +606,19 @@ function hasUpdateModeDirtyEdits(
     currentAssignmentWeighting !== definition.assignmentWeighting;
   
   const hasTaskWeightingChanges = taskRows.some((row) => {
-    const tasks = definition.tasks as Array<Record<string, unknown>>;
-    const task = tasks.find((t) => (t as Record<string, unknown>).taskId === row.taskId);
-    return task === undefined ? false : (task as Record<string, unknown>).taskWeighting !== row.taskWeighting;
+    const tasks = definition.tasks;
+    if (!Array.isArray(tasks)) return false;
+    const task = tasks.find(
+      (candidate): candidate is { taskId: string; taskWeighting: number } =>
+        typeof candidate === 'object' &&
+        candidate !== null &&
+        'taskId' in candidate &&
+        'taskWeighting' in candidate &&
+        typeof candidate.taskId === 'string' &&
+        typeof candidate.taskWeighting === 'number' &&
+        candidate.taskId === row.taskId
+    );
+    return task === undefined ? false : task.taskWeighting !== row.taskWeighting;
   });
   
   return hasMetadataChanges || hasTaskWeightingChanges;
@@ -703,17 +753,19 @@ export function useAssignmentDefinitionWizard(
     open,
     isCreateMode,
     form,
-    definition,
-    formValues,
-    taskRows,
-    hasParsedTasks,
-    setHasParsedTasks,
-    setTaskRows,
-    setDocumentChange,
-    setHasDirtyEdits,
-    setBlockingError,
-    setLocalDefinitionKey,
-    localDefinitionKey,
+    {
+      definition,
+      formValues,
+      taskRows,
+      hasParsedTasks,
+      localDefinitionKey,
+      setHasParsedTasks,
+      setTaskRows,
+      setDocumentChange,
+      setHasDirtyEdits,
+      setBlockingError,
+      setLocalDefinitionKey,
+    },
     queryClient
   );
 
