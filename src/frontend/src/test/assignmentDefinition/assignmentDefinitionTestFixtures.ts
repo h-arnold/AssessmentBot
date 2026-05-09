@@ -9,6 +9,13 @@ import type { YearGroup } from '../../services/referenceData.zod';
  * Use these helpers to reduce duplication across test files.
  */
 
+// Import and re-export shared fixtures from central module
+import {
+  mockTopics,
+  mockYearGroups,
+  mockFullAssignmentDefinition,
+} from './sharedTestFixtures';
+
 // ============================================================================
 // Topic Fixtures
 // ============================================================================
@@ -16,10 +23,6 @@ import type { YearGroup } from '../../services/referenceData.zod';
 /**
  * Standard mock topics for testing.
  */
-export const mockTopics: AssignmentTopic[] = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
-] as const;
 
 /**
  * Creates mock topics with optional overrides.
@@ -47,10 +50,6 @@ export function createMockTopics(
 /**
  * Standard mock year groups for testing.
  */
-export const mockYearGroups: YearGroup[] = [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-] as const;
 
 /**
  * Creates mock year groups with optional overrides.
@@ -79,27 +78,6 @@ export function createMockYearGroups(
  * Standard full assignment definition fixture for testing.
  * Represents a complete, persisted assignment definition with all required fields.
  */
-export const mockFullAssignmentDefinition: AssignmentDefinition = {
-  definitionKey: 'algebra-baseline',
-  primaryTitle: 'Algebra Baseline',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-doc-123',
-  templateDocumentId: 'tpl-doc-456',
-  assignmentWeighting: 5,
-  tasks: [
-    { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-    { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-    { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-  ],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-01-02T00:00:00.000Z',
-} as const;
 
 /**
  * Standard upsert response fixture for testing.
@@ -258,12 +236,10 @@ export function createMockAssignmentPartialRow(
 /**
  * Standard mock cohorts for testing.
  */
-export const mockCohorts = [
-  { key: 'cohort-2026', name: 'Cohort 2026', active: true },
-  { key: 'cohort-2025', name: 'Cohort 2025', active: false },
-] as const;
 
 /**
  * Empty cohorts array for testing empty state.
  */
 export const emptyCohorts: Array<{ key: string; name: string; active: boolean }> = [];
+
+export {mockCohorts, mockTopics, mockYearGroups, mockFullAssignmentDefinition} from './sharedTestFixtures';

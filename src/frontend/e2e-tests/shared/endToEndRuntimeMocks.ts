@@ -56,56 +56,16 @@ export type RuntimeScenario = Readonly<{
 
 // ============================================================================
 // Mock Data Fixtures
+// Re-export from shared module for consistency
 // ============================================================================
 
-/**
- * Standard mock topics for E2E tests.
- */
-export const mockTopics = [
-  { key: 'topic-algebra', name: 'Algebra' },
-  { key: 'topic-geometry', name: 'Geometry' },
-] as const;
+export {
+  mockTopics,
+  mockYearGroups,
+  mockCohorts,
+  mockFullDefinition,
+} from '../../src/test/assignmentDefinition/sharedTestFixtures';
 
-/**
- * Standard mock year groups for E2E tests.
- */
-export const mockYearGroups = [
-  { key: 'year-group-10', name: 'Year 10' },
-  { key: 'year-group-11', name: 'Year 11' },
-] as const;
-
-/**
- * Standard mock cohorts for E2E tests.
- */
-export const mockCohorts = [
-  { key: 'cohort-2026', name: 'Cohort 2026', active: true },
-  { key: 'cohort-2025', name: 'Cohort 2025', active: false },
-] as const;
-
-/**
- * Standard mock full assignment definition for E2E tests.
- */
-export const mockFullDefinition = {
-  definitionKey: 'algebra-baseline',
-  primaryTitle: 'Algebra Baseline',
-  primaryTopicKey: 'topic-algebra',
-  primaryTopic: 'Algebra',
-  yearGroupKey: 'year-group-10',
-  yearGroupLabel: 'Year 10',
-  alternateTitles: [],
-  alternateTopics: [],
-  documentType: 'SLIDES',
-  referenceDocumentId: 'ref-doc-123',
-  templateDocumentId: 'tpl-doc-456',
-  assignmentWeighting: 5,
-  tasks: [
-    { taskId: 'task-1', taskTitle: 'Solve quadratic equations', taskWeighting: 2 },
-    { taskId: 'task-2', taskTitle: 'Simplify expressions', taskWeighting: 1 },
-    { taskId: 'task-3', taskTitle: 'Factor polynomials', taskWeighting: 3 },
-  ],
-  createdAt: '2025-01-01T00:00:00.000Z',
-  updatedAt: '2025-01-02T00:00:00.000Z',
-} as const;
 
 /**
  * Standard mock partial rows for E2E tests.
