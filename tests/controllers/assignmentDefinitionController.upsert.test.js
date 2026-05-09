@@ -729,7 +729,6 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       primaryTopic: 'Science',
       yearGroup: 8,
       yearGroupKey: 'year-group-8',
-      yearGroupKey: 'year-group-8',
       yearGroupLabel: 'Outdated label',
       tasks: {
         t_task_1: {

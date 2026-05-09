@@ -28,7 +28,7 @@ describe('AssignmentDefinitionWizardModalShell', () => {
 
     const { rerender } = render(<AssignmentDefinitionWizardModalShell {...baseProperties} mode="create" />);
 
-    expect(screen.getByRole('form')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /reference document url/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /parse and continue/i })).toBeEnabled();
 
     rerender(
@@ -40,7 +40,7 @@ describe('AssignmentDefinitionWizardModalShell', () => {
     );
 
     expect(screen.getByLabelText(/assignment wizard loading/i)).toBeInTheDocument();
-    expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /reference document url/i })).not.toBeInTheDocument();
 
     rerender(
       <AssignmentDefinitionWizardModalShell
@@ -51,6 +51,6 @@ describe('AssignmentDefinitionWizardModalShell', () => {
     );
 
     expect(screen.getByRole('alert')).toHaveTextContent(/could not be loaded/i);
-    expect(screen.queryByRole('form')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /reference document url/i })).not.toBeInTheDocument();
   });
 });

@@ -1099,7 +1099,9 @@ export function useAssignmentDefinitionWizard(
 
   const handlePrimaryAction = useCallback(() => {
     const action = isCreateMode && !hasParsedTasks ? handleParseAndContinue : handleSave;
-    void action();
+    action().catch((error) => {
+      throw error;
+    });
   }, [isCreateMode, hasParsedTasks, handleParseAndContinue, handleSave]);
 
   return {

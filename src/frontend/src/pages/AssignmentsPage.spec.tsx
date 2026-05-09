@@ -119,42 +119,7 @@ const expectedFilterNamesByColumn = [
   { columnHeaderName: 'Last updated', filterButtonName: 'Filter by last updated' },
 ] as const;
 
-const readyRows: AssignmentDefinitionPartialRow[] = [
-  {
-    primaryTitle: 'Algebra foundations',
-    primaryTopicKey: 'topic-algebra',
-    primaryTopic: 'Algebra',
-    yearGroupKey: 'year-group-10',
-    yearGroupLabel: 'Year 10',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SLIDES',
-    referenceDocumentId: 'ref-1',
-    templateDocumentId: 'tpl-1',
-    assignmentWeighting: 20,
-    definitionKey: 'alg-10-safe',
-    tasks: [],
-    createdAt: '2025-01-15T08:00:00.000Z',
-    updatedAt: '2025-01-16T08:00:00.000Z',
-  },
-  {
-    primaryTitle: 'Unsafe legacy row',
-    primaryTopicKey: 'topic-legacy',
-    primaryTopic: 'Legacy',
-    yearGroupKey: 'year-group-unknown',
-    yearGroupLabel: '—',
-    alternateTitles: [],
-    alternateTopics: [],
-    documentType: 'SHEETS',
-    referenceDocumentId: 'ref-2',
-    templateDocumentId: 'tpl-2',
-    assignmentWeighting: 1,
-    definitionKey: 'legacy/unsafe-key',
-    tasks: [],
-    createdAt: '2025-01-16T08:00:00.000Z',
-    updatedAt: null,
-  },
-];
+const readyRows: AssignmentDefinitionPartialRow[] = [...readyAssignmentPartialRows];
 
 const filterRows: AssignmentDefinitionPartialRow[] = [
   {

@@ -1046,7 +1046,7 @@ class AssignmentDefinitionController {
     const canonicalYearGroupLabel = resolvedYearGroup.name.trim();
 
     const canonicalTasks = Object.entries(source.tasks || {})
-      .filter(([, task]) => task && task.taskWeighting !== null && task.taskWeighting !== undefined)
+      .filter(([, task]) => task?.taskWeighting !== null && task?.taskWeighting !== undefined)
       .map(([taskId, task]) => ({
         taskId,
         taskTitle: task.taskTitle,

@@ -187,7 +187,7 @@ function renderForm(properties: AssignmentDefinitionWizardModalShellProperties, 
     // Fallback for tests that don't provide form props - render old shell contract
     return (
       <Form component={false} disabled={properties.isMutationBusy} layout="vertical">
-        <form role="form">
+        <form>
           <Form.Item label="Reference document URL" name="referenceDocumentUrl">
             <Input placeholder="https://docs.google.com/..." />
           </Form.Item>

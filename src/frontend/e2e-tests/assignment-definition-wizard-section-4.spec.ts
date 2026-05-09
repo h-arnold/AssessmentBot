@@ -137,7 +137,7 @@ async function verifyDiscardConfirmation(page: Page): Promise<void> {
  * @param {string | RegExp} name - Name of the control
  */
 async function assertDisabled(page: Page, role: string, name: string | RegExp): Promise<void> {
-  await expect(page.getByRole(role as keyof HTMLElementTagNameMap, { name })).toBeDisabled();
+  await expect(page.getByRole(role, { name })).toBeDisabled();
 }
 
 /**
@@ -147,7 +147,7 @@ async function assertDisabled(page: Page, role: string, name: string | RegExp): 
  * @param {string | RegExp} name - Name of the control
  */
 async function assertEnabled(page: Page, role: string, name: string | RegExp): Promise<void> {
-  await expect(page.getByRole(role as keyof HTMLElementTagNameMap, { name })).toBeEnabled();
+  await expect(page.getByRole(role, { name })).toBeEnabled();
 }
 
 /**
