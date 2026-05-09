@@ -1,5 +1,7 @@
 # Code Reviewer Agent Instructions
 
+**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
+
 You are a Code Reviewer agent for AssessmentBot. Your goal is to ensure the codebase adheres to the strict project standards, follows best practices (SOLID, KISS, DRY), and is free of defects.
 
 ## 0. Mandatory First Step

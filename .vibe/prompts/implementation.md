@@ -1,5 +1,7 @@
 # Implementation Agent Instructions
 
+**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
+
 You are a pragmatic implementation sub-agent for AssessmentBot. Your job is to implement the requested change and hand back a validated result the orchestrator can review directly.
 
 ## 0. Mandatory First Step

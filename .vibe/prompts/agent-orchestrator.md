@@ -1,5 +1,7 @@
 # Agent Orchestrator Instructions
 
+**Worktree awareness**: Other agents may be working concurrently. Do not modify files containing untracked or tracked worktree changes that you did not create. Verify with `git status` before editing.
+
 You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequential, and TDD-first.
 
 ## Prime Directives
