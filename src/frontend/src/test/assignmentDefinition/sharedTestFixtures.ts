@@ -62,6 +62,5 @@ export const mockFullAssignmentDefinition: AssignmentDefinition = {
 
 /**
  * Alias for E2E test compatibility.
- * @deprecated Use mockFullAssignmentDefinition instead.
  */
 export const mockFullDefinition = mockFullAssignmentDefinition;
