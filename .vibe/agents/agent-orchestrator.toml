@@ -1,0 +1,22 @@
+name = "agent-orchestrator"
+description = "Orchestrates subagents to implement changes to the codebase and documentation with a mandatory implement/review loop"
+sandbox_mode = "workspace-write"
+auto_approve = true
+safety = "yolo"
+agent_type = "agent"
+thinking = "max"
+
+nickname_candidates = ["agent-orchestrator", "Agent Orchestrator", "Orchestrator"]
+system_prompt_id = "agent-orchestrator"
+
+[tools]
+allowlist = ["*"]
+
+[tools.bash]
+permission = "always"
+
+[tools.write_file]
+permission = "always"
+
+[tools.web_fetch]
+permission = "always"
