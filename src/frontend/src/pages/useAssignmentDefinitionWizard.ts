@@ -960,7 +960,9 @@ export function useAssignmentDefinitionWizard(
           handleParseResponse(response, options.actionType);
         }
 
-        await invalidateMutationQueries(options.definitionKey);
+        const definitionKeyForInvalidation =
+          options.actionType === 'parse' ? response.definitionKey : options.definitionKey;
+        await invalidateMutationQueries(definitionKeyForInvalidation);
         return handlePostMutation(options.actionType, response);
       } catch (caughtError) {
         // Extract error details for structured logging per frontend-logging-and-error-handling.md

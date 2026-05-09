@@ -269,9 +269,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         definitionKey: 'Test_Topic_10',
         yearGroupKey: 'year-group-10',
       });
-      expect(result.tasks).toEqual(
-        expect.arrayContaining([expect.objectContaining({ taskId: 't1', taskTitle: 'Task 1' })])
-      );
+      expect(result.tasks.t1).toMatchObject({ id: 't1', taskTitle: 'Task 1' });
     });
 
     it('should return full definition when form: "full" specified', () => {
@@ -307,9 +305,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         definitionKey: 'Test_Topic_10',
         yearGroupKey: 'year-group-10',
       });
-      expect(result.tasks).toEqual(
-        expect.arrayContaining([expect.objectContaining({ taskId: 't1', taskTitle: 'Task 1' })])
-      );
+      expect(result.tasks.t1).toMatchObject({ id: 't1', taskTitle: 'Task 1' });
     });
 
     it('should return partial definition when form: "partial" specified', () => {

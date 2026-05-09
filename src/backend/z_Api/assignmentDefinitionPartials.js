@@ -38,6 +38,21 @@ function getAssignmentDefinitionController_() {
 }
 
 /**
+ * Maps a controller definition result to canonical transport when supported.
+ *
+ * @param {AssignmentDefinitionController} controller - Controller instance.
+ * @param {Object} definition - Definition returned from the controller.
+ * @returns {Object} Canonical full-definition payload.
+ */
+function toCanonicalTransportDefinition_(controller, definition) {
+  if (typeof controller.toCanonicalFullDefinitionResponse === 'function') {
+    return controller.toCanonicalFullDefinitionResponse(definition);
+  }
+
+  return definition;
+}
+
+/**
  * Throws a transport validation error for assignment-definition partials.
  *
  * @param {string} message - Validation failure message.
@@ -841,15 +856,15 @@ function deleteAssignmentDefinition_(parameters) {
  * @param {Object} parameters - Assignment-definition upsert payload with primaryTitle, primaryTopicKey,
  *   referenceDocumentId/templateDocumentId (or referenceDocumentUrl/templateDocumentUrl for URL-based transport),
  *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings.
- * @returns {AssignmentDefinition|Object} Canonical full-definition response shape including resolved
+ * @returns {Object} Canonical full-definition response shape including resolved
  *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
  *   This same shape is returned for stage-one create, final save, and document-change re-parse.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
-  return getAssignmentDefinitionController_().upsertDefinition(
-    buildControllerUpsertPayload_(parameters)
-  );
+  const controller = getAssignmentDefinitionController_();
+  const definition = controller.upsertDefinition(buildControllerUpsertPayload_(parameters));
+  return toCanonicalTransportDefinition_(controller, definition);
 }
 
 /**
@@ -859,12 +874,18 @@ function upsertAssignmentDefinition_(parameters) {
  * ensuring both read and write transports share the same editable entity contract.
  *
  * @param {Object} parameters - Request payload containing definitionKey (non-empty, already-trimmed string).
- * @returns {AssignmentDefinition|Object|null} Full definition with resolved primaryTopic, primaryTopicKey,
+ * @returns {Object|null} Full definition with resolved primaryTopic, primaryTopicKey,
  *   yearGroupKey, yearGroupLabel, tasks array, and all metadata; null if not found.
  */
 function getAssignmentDefinition_(parameters) {
   const definitionKey = validateReadParameters_(parameters);
-  return getAssignmentDefinitionController_().getDefinitionByKey(definitionKey);
+  const controller = getAssignmentDefinitionController_();
+  const definition = controller.getDefinitionByKey(definitionKey);
+  if (!definition) {
+    return null;
+  }
+
+  return toCanonicalTransportDefinition_(controller, definition);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

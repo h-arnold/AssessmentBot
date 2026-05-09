@@ -104,6 +104,13 @@ function expectCanonicalFullDefinitionShape(definition) {
   expect(definition).not.toHaveProperty('templateDocumentUrl');
 }
 
+function expectTaskWeightingMapEntries(taskMap, expectedEntries) {
+  for (const [taskId, expectedWeighting] of expectedEntries) {
+    expect(taskMap[taskId]).toBeDefined();
+    expect(taskMap[taskId].taskWeighting).toBe(expectedWeighting);
+  }
+}
+
 describe('AssignmentDefinitionController upsert behaviour', () => {
   let controller;
   let mockRegistryCollection;
@@ -406,12 +413,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       })
     );
 
-    expect(saved.tasks).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ taskId: 't_task_1', taskWeighting: 5 }),
-        expect.objectContaining({ taskId: 't_task_2', taskWeighting: 4 }),
-      ])
-    );
+    expectTaskWeightingMapEntries(saved.tasks, [
+      ['t_task_1', 5],
+      ['t_task_2', 4],
+    ]);
   });
 
   it('rejects unknown task IDs in taskWeightings', () => {
@@ -666,8 +671,11 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     const saved = controller.upsertDefinition(createWizardUpsertPayload());
     const readBack = controller.getDefinitionByKey(saved.definitionKey, { form: 'full' });
 
-    expectCanonicalFullDefinitionShape(saved);
-    expectCanonicalFullDefinitionShape(readBack);
+    expect(saved).toBeInstanceOf(AssignmentDefinition);
+    expect(readBack).toBeInstanceOf(AssignmentDefinition);
+
+    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(saved));
+    expectCanonicalFullDefinitionShape(controller.toCanonicalFullDefinitionResponse(readBack));
   });
 
   it('defaults parsed task weightings to 1 for stage-one creates when taskWeightings are omitted', () => {
@@ -679,9 +687,9 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
 
     const saved = controller.upsertDefinition(payload);
 
-    expect(saved.tasks).toEqual([
-      expect.objectContaining({ taskId: 't_task_1', taskWeighting: 1 }),
-      expect.objectContaining({ taskId: 't_task_2', taskWeighting: 1 }),
+    expectTaskWeightingMapEntries(saved.tasks, [
+      ['t_task_1', 1],
+      ['t_task_2', 1],
     ]);
   });
 
@@ -711,9 +719,8 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       return null;
     });
 
-    expect(() => controller.getDefinitionByKey('legacy-definition', { form: 'full' })).toThrow(
-      /yearGroupKey/i
-    );
+    const readBack = controller.getDefinitionByKey('legacy-definition', { form: 'full' });
+    expect(() => controller.toCanonicalFullDefinitionResponse(readBack)).toThrow(/yearGroupKey/i);
   });
 
   it('resolves yearGroupLabel from yearGroupKey on canonical reads', () => {
@@ -744,8 +751,9 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
     });
 
     const readBack = controller.getDefinitionByKey('existing-stable-key', { form: 'full' });
+    const canonicalReadBack = controller.toCanonicalFullDefinitionResponse(readBack);
 
-    expect(readBack.yearGroupLabel).toBe('Year 8');
+    expect(canonicalReadBack.yearGroupLabel).toBe('Year 8');
   });
 
   it('re-parse keeps matching task weightings and defaults new tasks to 1', () => {
@@ -779,12 +787,10 @@ describe('AssignmentDefinitionController upsert behaviour', () => {
       })
     );
 
-    expect(saved.tasks).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ taskId: 't_task_1', taskWeighting: 8 }),
-        expect.objectContaining({ taskId: 't_task_3', taskWeighting: 1 }),
-      ])
-    );
+    expectTaskWeightingMapEntries(saved.tasks, [
+      ['t_task_1', 8],
+      ['t_task_3', 1],
+    ]);
   });
 
   it('detects duplicate tuples on final save when title/topic/yearGroupKey changes', () => {

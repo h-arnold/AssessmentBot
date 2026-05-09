@@ -172,7 +172,7 @@ class AssignmentDefinitionController {
       previousFullDefinition: context.existingDefinition,
     });
 
-    return this._toCanonicalFullDefinitionResponse(persistedDefinition);
+    return persistedDefinition;
   }
 
   /**
@@ -447,15 +447,17 @@ class AssignmentDefinitionController {
       null;
     if (!fullDocument) return null;
 
-    const hydratedDefinition = AssignmentDefinition.fromJSON(fullDocument);
+    return AssignmentDefinition.fromJSON(fullDocument);
+  }
 
-    if (!this._isNonEmptyString(fullDocument.yearGroupKey)) {
-      throw new Error(
-        `Stored definition ${definitionKey} is missing required yearGroupKey for canonical reads.`
-      );
-    }
-
-    return this._toCanonicalFullDefinitionResponse(hydratedDefinition);
+  /**
+   * Maps a full assignment definition to the canonical editable transport shape.
+   *
+   * @param {AssignmentDefinition|Object} definition - Definition source.
+   * @returns {Object} Canonical full-definition payload.
+   */
+  toCanonicalFullDefinitionResponse(definition) {
+    return this._toCanonicalFullDefinitionResponse(definition);
   }
 
   /**
@@ -1023,17 +1025,25 @@ class AssignmentDefinitionController {
   _toCanonicalFullDefinitionResponse(definition) {
     const source = definition instanceof AssignmentDefinition ? definition.toJSON() : definition;
 
-    const resolvedYearGroup = source.yearGroupKey
-      ? this._listYearGroups().find((yearGroup) => yearGroup?.key === source.yearGroupKey) || null
-      : null;
+    if (!this._isNonEmptyString(source.yearGroupKey)) {
+      throw new Error(
+        `Stored definition ${source.definitionKey} is missing required yearGroupKey for canonical reads.`
+      );
+    }
 
-    const resolvedYearGroupLabel =
-      resolvedYearGroup && typeof resolvedYearGroup.name === 'string'
-        ? resolvedYearGroup.name
-        : null;
-    const canonicalYearGroupLabel = source.yearGroupKey
-      ? resolvedYearGroupLabel
-      : (source.yearGroupLabel ?? resolvedYearGroupLabel);
+    const canonicalYearGroupKey = source.yearGroupKey.trim();
+    const resolvedYearGroup =
+      this._listYearGroups().find((yearGroup) => yearGroup?.key === canonicalYearGroupKey) || null;
+    if (
+      !resolvedYearGroup ||
+      typeof resolvedYearGroup.name !== 'string' ||
+      resolvedYearGroup.name.trim().length === 0
+    ) {
+      throw new Error(
+        `Stored definition ${source.definitionKey} has unresolved yearGroupKey: ${canonicalYearGroupKey}.`
+      );
+    }
+    const canonicalYearGroupLabel = resolvedYearGroup.name.trim();
 
     const canonicalTasks = Object.entries(source.tasks || {})
       .filter(([, task]) => task && task.taskWeighting !== null && task.taskWeighting !== undefined)
@@ -1048,7 +1058,7 @@ class AssignmentDefinitionController {
       primaryTitle: source.primaryTitle,
       primaryTopicKey: source.primaryTopicKey,
       primaryTopic: source.primaryTopic,
-      yearGroupKey: source.yearGroupKey ?? null,
+      yearGroupKey: canonicalYearGroupKey,
       yearGroupLabel: canonicalYearGroupLabel,
       alternateTitles: source.alternateTitles || [],
       alternateTopics: source.alternateTopics || [],
@@ -1120,11 +1130,7 @@ class AssignmentDefinitionController {
       throw new TypeError(`${fieldName} must be a number or null.`);
     }
 
-    if (value < MIN_WEIGHTING) {
-      throw new RangeError(`${fieldName} must be between ${MIN_WEIGHTING} and ${MAX_WEIGHTING}.`);
-    }
-
-    if (value > MAX_WEIGHTING) {
+    if (value < MIN_WEIGHTING || value > MAX_WEIGHTING) {
       throw new RangeError(`${fieldName} must be between ${MIN_WEIGHTING} and ${MAX_WEIGHTING}.`);
     }
 
