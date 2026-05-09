@@ -1,9 +1,9 @@
-name = "Agent Orchestrator"
+name = "Action Plan Implementer"
 description = "Coordinator agent that sequences testing, implementation, review, and documentation work against ACTION_PLAN.md."
 sandbox_mode = "workspace-write"
 model = "gpt-5.4"
 model_reasoning_effort = "low"
-nickname_candidates = ["Agent Orchestrator", "Orchestrator"]
+nickname_candidates = ["Action Plan Implementer", "Implementer"]
 developer_instructions = """
 You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequential, and TDD-first.
 

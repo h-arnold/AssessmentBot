@@ -12,3 +12,14 @@ build
 coverage
 test-results/
 nohup.out
+
+# Vibe configs - sensitive files
+.env
+.env.*
+.vibe/.env
+.vibe/cache.toml
+.vibe/logs/
+.vibe/plans/
+.vibe/trusted_folders.toml
+.vibe/update_cache.json
+.vibe/vibehistory

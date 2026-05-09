@@ -1,12 +1,12 @@
 ---
-name: 'Agent Orchestrator'
+name: 'Action Plan Implementer'
 description: 'Orchestrates the other agents to implement an action plan'
 model: gpt-5.3-codex
 
 tools: ['read/readFile', 'read/file_search', 'read/list_dir', 'execute/run_in_terminal', 'search/search', 'vscode/get_changed_files', 'edit/editFiles', 'edit/createFile', 'todo', 'agent']
 ---
 
-# Agent Orchestrator Instructions
+# Action Plan Implementer Instructions
 
 You coordinate delivery against `ACTION_PLAN.md`. Keep the workflow strict, sequential, and TDD-first.
 

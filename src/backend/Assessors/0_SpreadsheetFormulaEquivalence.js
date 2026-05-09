@@ -1,5 +1,7 @@
 const ALPHABET_LENGTH = 26;
 const ASCII_UPPERCASE_OFFSET = 64;
+const ASCII_A = 65;
+const ASCII_Z = 90;
 const NOT_FOUND_INDEX = -1;
 
 /**
@@ -137,7 +139,7 @@ const SpreadsheetFormulaEquivalence = {
     let columnLetters = '';
     while (index < cellReference.length) {
       const codePoint = cellReference.codePointAt(index);
-      if (codePoint < 65 || codePoint > 90) {
+      if (codePoint < ASCII_A || codePoint > ASCII_Z) {
         break;
       }
       columnLetters += cellReference.charAt(index);

@@ -230,6 +230,233 @@ For Settings-page Classes CRUD browser tests, extend the existing scenario harne
 - Keep new Classes CRUD journeys aligned with the shared harness fixtures so load-state, failure-state, and ordering semantics stay consistent across workstreams.
 - New Classes CRUD Playwright specs may be added for focused journeys, but they should consume the same shared harness primitives rather than reimplementing them.
 
+### Mock Setup Order (Critical Anti-Pattern)
+
+**Problem:** Setting mock return values AFTER `renderWithFrontendProviders()` causes components to receive stale default mock data because React renders immediately with whatever mock values are in place at render time.
+
+**Example - WRONG:**
+
+```typescript
+// Component renders with default mock (undefined or stale)
+const { queryClient } = renderWithFrontendProviders(<Component />);
+// Too late - component already rendered with wrong data
+getAssignmentDefinitionMock.mockResolvedValue(initialDefinition);
+```
+
+**Example - CORRECT:**
+
+```typescript
+// Configure mocks BEFORE rendering
+getAssignmentDefinitionMock.mockResolvedValue(initialDefinition);
+const { queryClient } = renderWithFrontendProviders(<Component />);
+// Now component renders with correct mock data
+```
+
+**React Query Specific Guidance:**
+
+- Use `vi.hoisted()` for mock functions defined outside the test
+- Use `queryClient.setQueryData()` to set initial query state BEFORE rendering
+- For mutation-triggered refetches, you can set mocks for subsequent calls after the initial render
+
+**Debugging Tip:**
+If your test is receiving undefined or stale data, add `console.log(getAssignmentDefinitionMock.mock.calls)` to verify when mocks are being called. If calls appear AFTER your mock setup, you've hit this anti-pattern.
+
+## Test Isolation Patterns
+
+### Mock Reset Best Practices
+
+**Preferred Pattern:** Use `vi.resetAllMocks()` in `afterEach` to reset both call history AND mock implementations.
+
+```typescript
+afterEach(() => {
+  vi.resetAllMocks();
+});
+```
+
+**Anti-Pattern:** `vi.clearAllMocks()` only clears call history, not mock implementations. This can cause tests to receive stale mock implementations from previous tests.
+
+```typescript
+// AVOID: Does not reset mock implementations
+afterEach(() => {
+  vi.clearAllMocks();
+});
+```
+
+**Rationale:** `vi.resetAllMocks()` ensures complete isolation between tests by resetting both the call history and any mock implementations. This prevents test pollution where one test's mock setup affects subsequent tests.
+
+## React Query Testing Patterns
+
+When testing components that use `@tanstack/react-query`'s `useMutation`, be aware that the mutation function receives **additional arguments** beyond the request data. The `mutateAsync` method passes mutation context as a second argument:
+
+```typescript
+const upsertMutation = useMutation({
+  mutationFn: upsertAssignmentDefinition,
+});
+// When called: await upsertMutation.mutateAsync(request)
+// The service receives: upsertAssignmentDefinition(request, context)
+// Where context = { client: QueryClient, meta: undefined, mutationKey: undefined }
+```
+
+**Testing patterns:**
+
+**✅ Correct**: Check the first argument directly to avoid matching against the extra context object:
+
+```typescript
+// Check the first argument of the first call
+expect(upsertAssignmentDefinitionMock.mock.calls[0][0]).toMatchObject({
+  definitionKey: 'algebra-baseline',
+  referenceDocumentUrl: expect.stringContaining('new-ref'),
+});
+```
+
+**✅ Correct**: If you need to verify the call structure with multiple arguments:
+
+```typescript
+// Verify call count and specific argument
+expect(upsertAssignmentDefinitionMock).toHaveBeenCalledTimes(1);
+expect(upsertAssignmentDefinitionMock.mock.calls[0][0]).toEqual(expectedRequest);
+expect(upsertAssignmentDefinitionMock.mock.calls[0][1]).toHaveProperty('client');
+```
+
+**❌ Avoid**: Using `toHaveBeenCalledWith` with asymmetric matchers fails when extra positional arguments are passed:
+
+```typescript
+// This fails because mock receives 2 arguments, not 1
+expect(upsertAssignmentDefinitionMock).toHaveBeenCalledWith(
+  expect.objectContaining({ definitionKey: 'algebra-baseline' })
+);
+```
+
+**Debugging tip**: When matchers fail unexpectedly, inspect the actual calls:
+
+```typescript
+// Add this before your assertion
+console.log('Actual mock calls:', JSON.stringify(mockFn.mock.calls, null, 2));
+// Or use Vitest's built-in error output which shows mock.calls
+```
+
+### Query Client and Startup Warmup Mocking
+
+When testing components that depend on React Query and startup warmup state, use the `renderWithFrontendProviders` helper and set query data before or during tests:
+
+```typescript
+const { queryClient } = renderWithFrontendProviders(<MyComponent />);
+
+// Mock fetchQuery for fire-and-forget calls
+vi.spyOn(queryClient, 'fetchQuery').mockImplementation(() => Promise.resolve());
+
+// Set query data for existing queries
+queryClient.setQueryData(queryKeys.assignmentTopics(), mockTopics);
+queryClient.setQueryData(queryKeys.yearGroups(), mockYearGroups);
+```
+
+**Mock helper pattern for startup warmup state:**
+
+Create a factory function to standardize startup warmup state mocking across tests:
+
+```typescript
+/**
+ * Creates a mock startup warmup state for testing.
+ *
+ * @param options - Override options for dataset readiness/failure states
+ * @returns Mock startup warmup state object
+ */
+function createStartupWarmupState(
+  options: {
+    assignmentTopicsStatus?: 'loading' | 'ready' | 'failed';
+    yearGroupsStatus?: 'loading' | 'ready' | 'failed';
+  } = {}
+) {
+  const { assignmentTopicsStatus = 'ready', yearGroupsStatus = 'ready' } = options;
+
+  return {
+    isDatasetReady: (datasetKey: string) =>
+      (datasetKey === 'assignmentTopics' && assignmentTopicsStatus === 'ready') ||
+      (datasetKey === 'yearGroups' && yearGroupsStatus === 'ready') ||
+      datasetKey === 'assignmentDefinitionPartials',
+    isDatasetFailed: (datasetKey: string) =>
+      (datasetKey === 'assignmentTopics' && assignmentTopicsStatus === 'failed') ||
+      (datasetKey === 'yearGroups' && yearGroupsStatus === 'failed'),
+    isFailed: false,
+    isLoading: false,
+    isReady: true,
+    warmupState: 'ready' as const,
+  };
+}
+```
+
+## Playwright Best Practices
+
+### Web-First Assertions with Auto-Waiting
+
+**Preferred Pattern:** Use Playwright's web-first assertions (`toBeVisible()`, `toBeEnabled()`, `toBeDisabled()`) which automatically wait for the expected state.
+
+```typescript
+// ✅ CORRECT: Auto-waits for element to be visible
+await expect(page.getByRole('button', { name: 'Save' })).toBeVisible();
+
+// ✅ CORRECT: Auto-waits for element to be enabled
+await expect(page.getByRole('button', { name: 'Submit' })).toBeEnabled();
+
+// ✅ CORRECT: Auto-waits for element to be disabled
+await expect(page.getByRole('button', { name: 'Delete' })).toBeDisabled();
+```
+
+**Anti-Pattern:** Never use hard-coded timeouts (`page.waitForTimeout(N)`) as they are flaky and always wait the full duration regardless of actual need.
+
+```typescript
+// ❌ AVOID: Hard-coded timeout is an anti-pattern
+await page.waitForTimeout(1000);
+await expect(page.getByText('Loaded')).toBeVisible();
+
+// ✅ CORRECT: Let Playwright auto-wait
+await expect(page.getByText('Loaded')).toBeVisible();
+```
+
+**Anti-Pattern:** Avoid relying on implicit timing. Always use explicit Playwright waits for UI state changes.
+
+```typescript
+// ❌ AVOID: Implicit timing - may fail if render is slow
+const element = page.getByRole('button', { name: 'Save' });
+expect(await element.getAttribute('disabled')).toBeNull();
+
+// ✅ CORRECT: Explicit web-first assertion with auto-waiting
+await expect(page.getByRole('button', { name: 'Save' })).toBeEnabled();
+```
+
+### Network Response Waiting
+
+When testing React Query cache updates, wait for specific UI elements that only appear after the query completes:
+
+```typescript
+// ✅ CORRECT: Wait for element that appears after query completes
+await expect(page.getByText('Data loaded successfully')).toBeVisible();
+
+// ✅ CORRECT: Wait for network response when applicable
+await page.waitForResponse('**/api/assignments');
+await expect(page.getByRole('table')).toBeVisible();
+```
+
+### Assertion Order Matched to Code Execution
+
+Ensure test assertions match the actual order of code execution to avoid timing issues.
+
+**Example:** If code closes a modal before showing a message:
+
+```typescript
+// Code execution order:
+// 1. setDeleteTarget(null) → modal closes
+// 2. refetchAssignmentDefinitions() → query cache updates
+// 3. setDeleteOutcome({type: 'success', message: 'Deleted.'})
+
+// ✅ CORRECT: Match code execution order
+await expect(page.getByRole('dialog')).toHaveCount(0); // Modal closed first
+await expect(page.getByText(/deleted\./i)).toBeVisible(); // Then message appears
+
+// ❌ AVOID: Assertion order doesn't match execution
+await expect(page.getByText(/deleted\./i)).toBeVisible(); // Message not yet visible
+```
+
 ## Current Structure
 
 - Unit/component tests: `src/frontend/src/**/*.spec.{ts,tsx}`
@@ -244,6 +471,157 @@ For Settings-page Classes CRUD browser tests, extend the existing scenario harne
 - Use Playwright for visible, user-observable behaviour in a real browser.
 - Keep tests decoupled from implementation details.
 - Maintain a balanced pyramid: broad Vitest coverage, targeted Playwright journeys.
+
+## CSS and Style Testing
+
+### Vitest CSS ?inline Import Handling
+
+**Problem:** By default, Vitest does NOT automatically process CSS files with `?inline` queries during tests. When tests import CSS like `import rawStyles from '../index.css?inline'`, the import returns `undefined` without proper configuration.
+
+**Solution:** Enable CSS processing in the Vite test configuration by setting `css: true` in `vite.config.ts`:
+
+```typescript
+export default defineConfig({
+  test: {
+    // Enable CSS processing for ?inline imports
+    css: true,
+    // ... other test config
+  },
+});
+```
+
+This allows Vite's CSS plugin to transform `?inline` imports so they return the raw CSS string content during tests.
+
+**Impact:** Without this setting, patterns like `appStylesRaw.ts` that import and parse CSS selectors will fail because the import resolves to `undefined`.
+
+**Reference:**
+
+- [Vitest Configuration - css option](https://vitest.dev/config/#css)
+
+### getComputedStyle Mocking (HappyDOM Limitation)
+
+**Problem:** HappyDOM has incomplete `getComputedStyle` support:
+
+- Missing the `pseudoElement` parameter in the function signature
+- Unreliable or missing values for CSS custom properties
+- Returns empty strings for common Ant Design properties (width, height, display, position, etc.)
+
+Ant Design components use `getComputedStyle` internally for layout calculations, so incomplete mocks cause rendering issues and test failures.
+
+**Solution:** Provide a global mock that:
+
+- Matches the real signature: `(element: Element, pseudoElement?: string | null) => CSSStyleDeclaration`
+- Returns realistic values for properties Ant Design commonly checks
+
+**Minimal recommended mock implementation:**
+
+```typescript
+function getComputedStyleMock(
+  element?: Element,
+  pseudoElement?: string | null
+): CSSStyleDeclaration {
+  const essentialProperties: Record<string, string> = {
+    // Layout
+    display: 'block',
+    width: '100px',
+    height: 'auto',
+    'box-sizing': 'border-box',
+    position: 'static',
+    overflow: 'visible',
+
+    // Spacing
+    padding: '0px',
+    margin: '0px',
+
+    // Borders
+    'border-width': '0px',
+    'border-style': 'solid',
+
+    // Colors
+    'background-color': 'rgb(255, 255, 255)',
+    color: 'rgb(0, 0, 0)',
+
+    // Text
+    'font-size': '14px',
+    'line-height': '1.5',
+
+    // Positioning (Modal/Dropdown/Tooltip)
+    'z-index': 'auto',
+    left: '0px',
+    top: '0px',
+  };
+
+  const propertyNames = Object.keys(essentialProperties);
+
+  return {
+    getPropertyValue: (property: string) => essentialProperties[property] || '',
+    setProperty: () => {},
+    removeProperty: () => {},
+    cssText: '',
+    length: propertyNames.length,
+    parentRule: null,
+    item: (index: number) => propertyNames[index] || '',
+  } as unknown as CSSStyleDeclaration; // Double assertion required: mock implements only the ~20 properties Ant Design reads, not all 500+ of CSSStyleDeclaration. `unknown` is the type-safe way to assert intentional type override for test doubles.
+}
+
+// Define on both globalThis and window for compatibility
+Object.defineProperty(globalThis, 'getComputedStyle', {
+  configurable: true,
+  value: getComputedStyleMock,
+  writable: true,
+});
+
+Object.defineProperty(globalThis.window, 'getComputedStyle', {
+  configurable: true,
+  value: getComputedStyleMock,
+  writable: true,
+});
+```
+
+**Properties to include:** Focus on what Ant Design components check internally:
+
+- Modal: `position`, `z-index`, `left`, `top`, `width`, `height`, `display`
+- Table: `width`, `height`, `overflow`, `display`
+- Menu/Dropdown/Tooltip: `width`, `height`, `transform`, `display`, `z-index`
+- Select: `width`, `position`, `z-index`, `display`
+- Background checks: `background-color`
+
+**Reference:**
+
+- [HappyDOM getComputedStyle limitations](https://github.com/capricorn86/happy-dom/issues)
+- [MDN getComputedStyle](https://developer.mozilla.org/en-US/docs/Web/API/Window/getComputedStyle)
+
+### Vitest vi.mock Gotchas
+
+**Problem:** Vitest's `vi.mock` accepts only **2 arguments** (importPath, factoryFunction). The Jest pattern of adding `{ virtual: true }` as a third argument does **not** work in Vitest.
+
+```typescript
+// ❌ AVOID: Jest-style third argument not supported in Vitest
+vi.mock('./some-module', () => ({ ... }), { virtual: true });
+
+// ✅ CORRECT: Use only 2 arguments for Vitest
+vi.mock('./some-module', () => ({ ... }));
+```
+
+**For virtual modules in Vitest**, use the `vi.hoisted` pattern or configure via `vite.config.ts` mocks instead.
+
+**Reference:**
+
+- [Vitest vi.mock documentation](https://vitest.dev/api/vi.html#vi-mock)
+
+### Ant Design CSS Dependencies
+
+Ant Design components rely on `getComputedStyle` for layout calculations. When mocking this API, ensure your mock returns **non-empty values** for these commonly checked properties:
+
+| Component     | Properties Checked                                                                      |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Modal         | `position`, `z-index`, `left`, `top`, `width`, `height`, `display`                      |
+| Table         | `width`, `height`, `overflow`, `display`                                                |
+| Menu/Dropdown | `width`, `height`, `transform`, `display`, `z-index`                                    |
+| Select        | `width`, `position`, `z-index`, `display`                                               |
+| General       | `box-sizing`, `padding`, `margin`, `border-*`, `background-color`, `color`, `font-size` |
+
+**Common failure pattern:** A mock that returns empty strings for all properties causes Ant Design components to miscalculate dimensions, leading to hidden elements, incorrect positioning, or rendering failures.
 
 ## Notes
 

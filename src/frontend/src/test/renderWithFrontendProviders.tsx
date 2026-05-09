@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 import { StartupWarmupStateProvider, type StartupWarmupStatus } from '../features/auth/startupWarmupState';
 import { createAppQueryClient } from '../query/queryClient';
 
-type FrontendProvidersOptions = Readonly<{
+export type FrontendProvidersOptions = Readonly<{
   queryClient?: QueryClient;
   renderOptions?: Omit<RenderOptions, 'wrapper'>;
   warmupState?: StartupWarmupStatus;

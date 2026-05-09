@@ -4,7 +4,8 @@ const PARTIAL_REQUIRED_FIELDS = Object.freeze([
   'primaryTitle',
   'primaryTopic',
   'primaryTopicKey',
-  'yearGroup',
+  'yearGroupKey',
+  'yearGroupLabel',
   'alternateTitles',
   'alternateTopics',
   'documentType',
@@ -34,6 +35,21 @@ const NEGATIVE_TIMEZONE_MULTIPLIER = -1;
  */
 function getAssignmentDefinitionController_() {
   return new AssignmentDefinitionController();
+}
+
+/**
+ * Maps a controller definition result to canonical transport when supported.
+ *
+ * @param {AssignmentDefinitionController} controller - Controller instance.
+ * @param {Object} definition - Definition returned from the controller.
+ * @returns {Object} Canonical full-definition payload.
+ */
+function toCanonicalTransportDefinition_(controller, definition) {
+  if (typeof controller.toCanonicalFullDefinitionResponse === 'function') {
+    return controller.toCanonicalFullDefinitionResponse(definition);
+  }
+
+  return definition;
 }
 
 /**
@@ -74,6 +90,17 @@ const UPSERT_REQUIRED_FIELDS = Object.freeze([
   'referenceDocumentId',
   'templateDocumentId',
 ]);
+const WIZARD_UPSERT_REQUIRED_FIELDS = Object.freeze([
+  'primaryTitle',
+  'primaryTopicKey',
+  'referenceDocumentUrl',
+  'templateDocumentUrl',
+]);
+const DOCS_URL_HOST = 'docs.google.com';
+const DOCUMENT_TYPE_BY_PATH_PREFIX = Object.freeze({
+  '/presentation/d/': 'SLIDES',
+  '/spreadsheets/d/': 'SHEETS',
+});
 
 /**
  * Returns whether the provided key contains control characters.
@@ -201,6 +228,15 @@ function validateUpsertParameters_(parameters) {
     throwUpsertValidationError_('params must be an object.', 'params');
   }
 
+  const shouldTranslateDocumentUrls =
+    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
+    Object.hasOwn(parameters, 'templateDocumentUrl');
+
+  if (shouldTranslateDocumentUrls) {
+    validateWizardUpsertParameters_(parameters);
+    return;
+  }
+
   UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
     if (!Object.hasOwn(parameters, fieldName)) {
       throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);
@@ -249,15 +285,99 @@ function validateUpsertParameters_(parameters) {
     });
   }
 
-  if (!Object.hasOwn(parameters, 'taskWeightings')) {
+  validateTaskWeightingsShape_(parameters.taskWeightings);
+  validateRequiredYearGroupKey_(parameters);
+}
+
+/**
+ * Validates the wizard URL-style upsert transport payload.
+ *
+ * @param {Object} parameters - Candidate upsert payload.
+ * @throws {ApiValidationError} If the payload violates transport contract rules.
+ */
+function validateWizardUpsertParameters_(parameters) {
+  WIZARD_UPSERT_REQUIRED_FIELDS.forEach((fieldName) => {
+    if (!Object.hasOwn(parameters, fieldName)) {
+      throwUpsertValidationError_(`Missing required field: ${fieldName}.`, fieldName);
+    }
+  });
+
+  if (typeof parameters.primaryTitle !== 'string') {
+    throwUpsertValidationError_('primaryTitle must be a string.', 'primaryTitle');
+  }
+
+  validateSafeTrimmedIdentifier_(parameters.primaryTopicKey, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'primaryTopicKey must be a string.',
+    nonEmptyErrorMessage: 'primaryTopicKey must be a non-empty string.',
+    trimmedErrorMessage: 'primaryTopicKey must already be trimmed.',
+    unsafeErrorMessage: 'primaryTopicKey contains unsafe characters.',
+    fieldNames: {
+      type: 'primaryTopicKey',
+      nonEmpty: 'primaryTopicKey',
+      trimmed: 'primaryTopicKey',
+      unsafe: 'primaryTopicKey',
+    },
+  });
+
+  if (Object.hasOwn(parameters, 'definitionKey') && parameters.definitionKey !== null) {
+    validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+      throwValidationError: throwUpsertValidationError_,
+      typeErrorMessage: 'definitionKey must be a string when provided.',
+      nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+      trimmedErrorMessage: 'definitionKey must already be trimmed.',
+      unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+      fieldNames: {
+        type: 'definitionKey',
+        nonEmpty: 'definitionKey',
+        trimmed: 'definitionKey',
+        unsafe: 'definitionKey',
+      },
+    });
+  }
+
+  validateRequiredYearGroupKey_(parameters);
+  validateTaskWeightingsShape_(parameters.taskWeightings);
+
+  const referenceDescriptor = extractSupportedDocumentDescriptor_(
+    parameters.referenceDocumentUrl,
+    'referenceDocumentUrl'
+  );
+  const templateDescriptor = extractSupportedDocumentDescriptor_(
+    parameters.templateDocumentUrl,
+    'templateDocumentUrl'
+  );
+
+  if (referenceDescriptor.documentId === templateDescriptor.documentId) {
+    throwUpsertValidationError_(
+      'referenceDocumentUrl and templateDocumentUrl must point to different documents.',
+      'referenceDocumentUrl'
+    );
+  }
+
+  if (referenceDescriptor.documentType !== templateDescriptor.documentType) {
+    throwUpsertValidationError_(
+      'referenceDocumentUrl and templateDocumentUrl must use the same supported document type.',
+      'documentType'
+    );
+  }
+}
+
+/**
+ * Validates taskWeightings transport shape when supplied.
+ *
+ * @param {*} taskWeightings - Candidate taskWeightings payload.
+ */
+function validateTaskWeightingsShape_(taskWeightings) {
+  if (taskWeightings === undefined) {
     return;
   }
 
-  if (!Array.isArray(parameters.taskWeightings)) {
+  if (!Array.isArray(taskWeightings)) {
     throwUpsertValidationError_('taskWeightings must be an array when provided.', 'taskWeightings');
   }
 
-  parameters.taskWeightings.forEach((taskWeighting, index) => {
+  taskWeightings.forEach((taskWeighting, index) => {
     if (!taskWeighting || typeof taskWeighting !== 'object' || Array.isArray(taskWeighting)) {
       throwUpsertValidationError_('taskWeightings entries must be objects.', 'taskWeightings');
     }
@@ -290,6 +410,175 @@ function validateUpsertParameters_(parameters) {
       );
     }
   });
+}
+
+/**
+ * Validates required yearGroupKey shape for save-compatible upsert writes.
+ *
+ * @param {Object} parameters - Candidate payload.
+ */
+function validateRequiredYearGroupKey_(parameters) {
+  if (!Object.hasOwn(parameters, 'yearGroupKey')) {
+    throwUpsertValidationError_('Missing required field: yearGroupKey.', 'yearGroupKey');
+  }
+
+  if (parameters.yearGroupKey === null) {
+    throwUpsertValidationError_(
+      'yearGroupKey must be a non-null selected reference-data key.',
+      'yearGroupKey'
+    );
+  }
+
+  validateSafeTrimmedIdentifier_(parameters.yearGroupKey, {
+    throwValidationError: throwUpsertValidationError_,
+    typeErrorMessage: 'yearGroupKey must be a string when provided.',
+    nonEmptyErrorMessage: 'yearGroupKey must be a non-empty string.',
+    trimmedErrorMessage: 'yearGroupKey must already be trimmed.',
+    unsafeErrorMessage: 'yearGroupKey contains unsafe characters.',
+    fieldNames: {
+      type: 'yearGroupKey',
+      nonEmpty: 'yearGroupKey',
+      trimmed: 'yearGroupKey',
+      unsafe: 'yearGroupKey',
+    },
+  });
+}
+
+/**
+ * Extracts a supported Google document descriptor from a URL.
+ *
+ * @param {*} urlValue - Candidate URL string.
+ * @param {string} fieldName - Source field name for diagnostics.
+ * @returns {{documentId: string, documentType: string}} Parsed descriptor.
+ */
+function extractSupportedDocumentDescriptor_(urlValue, fieldName) {
+  if (typeof urlValue !== 'string' || urlValue.trim().length === 0) {
+    throwUpsertValidationError_(`${fieldName} must be a non-empty string URL.`, fieldName);
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(urlValue);
+  } catch {
+    throwUpsertValidationError_(`${fieldName} must be a valid URL.`, fieldName);
+  }
+
+  if (parsedUrl.hostname !== DOCS_URL_HOST) {
+    throwUpsertValidationError_(`${fieldName} must target docs.google.com.`, fieldName);
+  }
+
+  const matchingPrefix = Object.keys(DOCUMENT_TYPE_BY_PATH_PREFIX).find((pathPrefix) =>
+    parsedUrl.pathname.startsWith(pathPrefix)
+  );
+
+  if (!matchingPrefix) {
+    throwUpsertValidationError_(
+      `${fieldName} must reference a supported Google doc URL.`,
+      fieldName
+    );
+  }
+
+  const trailingPath = parsedUrl.pathname.slice(matchingPrefix.length);
+  const documentId = trailingPath.split('/')[0];
+
+  if (!documentId) {
+    throwUpsertValidationError_(`${fieldName} must include a document id segment.`, fieldName);
+  }
+
+  let documentType = null;
+  if (matchingPrefix === '/presentation/d/') {
+    documentType = 'SLIDES';
+  } else if (matchingPrefix === '/spreadsheets/d/') {
+    documentType = 'SHEETS';
+  }
+
+  return {
+    documentId,
+    documentType,
+  };
+}
+
+/**
+ * Builds the controller upsert payload from transport parameters.
+ *
+ * @param {Object} parameters - Validated transport parameters.
+ * @returns {Object} Controller payload.
+ */
+function buildControllerUpsertPayload_(parameters) {
+  const shouldTranslateDocumentUrls =
+    Object.hasOwn(parameters, 'referenceDocumentUrl') ||
+    Object.hasOwn(parameters, 'templateDocumentUrl');
+
+  if (!shouldTranslateDocumentUrls) {
+    return parameters;
+  }
+
+  const referenceDescriptor = extractSupportedDocumentDescriptor_(
+    parameters.referenceDocumentUrl,
+    'referenceDocumentUrl'
+  );
+  const templateDescriptor = extractSupportedDocumentDescriptor_(
+    parameters.templateDocumentUrl,
+    'templateDocumentUrl'
+  );
+
+  const translatedPayload = {
+    ...parameters,
+    referenceDocumentId: referenceDescriptor.documentId,
+    templateDocumentId: templateDescriptor.documentId,
+    documentType: referenceDescriptor.documentType,
+  };
+
+  delete translatedPayload.referenceDocumentUrl;
+  delete translatedPayload.templateDocumentUrl;
+
+  return translatedPayload;
+}
+
+/**
+ * Throws a transport validation error for assignment-definition read operations.
+ *
+ * @param {string} message - Validation failure message.
+ * @param {string} fieldName - Related field name.
+ * @throws {ApiValidationError} Always throws.
+ */
+function throwReadValidationError_(message, fieldName) {
+  throw new ApiValidationError(message, {
+    method: 'getAssignmentDefinition',
+    fieldName,
+  });
+}
+
+/**
+ * Validates read parameters with strict safe-key requirements.
+ *
+ * @param {*} parameters - Candidate request parameters.
+ * @returns {string} The validated definition key.
+ */
+function validateReadParameters_(parameters) {
+  if (!parameters || typeof parameters !== 'object' || Array.isArray(parameters)) {
+    throwReadValidationError_('params must be an object.', 'params');
+  }
+
+  if (!Object.hasOwn(parameters, 'definitionKey')) {
+    throwReadValidationError_('Missing required field: definitionKey.', 'definitionKey');
+  }
+
+  validateSafeTrimmedIdentifier_(parameters.definitionKey, {
+    throwValidationError: throwReadValidationError_,
+    typeErrorMessage: 'definitionKey must be a string.',
+    nonEmptyErrorMessage: 'definitionKey must be a non-empty string.',
+    trimmedErrorMessage: 'definitionKey must already be trimmed.',
+    unsafeErrorMessage: 'definitionKey contains unsafe characters.',
+    fieldNames: {
+      type: 'definitionKey',
+      nonEmpty: 'definitionKey',
+      trimmed: 'definitionKey',
+      unsafe: 'definitionKey',
+    },
+  });
+
+  return parameters.definitionKey;
 }
 
 /**
@@ -360,6 +649,42 @@ function validatePrimaryTopicKey_(primaryTopicKey, rowIndex) {
 
   if (trimmedPrimaryTopicKey !== primaryTopicKey) {
     throwValidationError_('primaryTopicKey must already be trimmed.', 'primaryTopicKey', rowIndex);
+  }
+}
+
+/**
+ * Validates the strict year-group keyed transport contract.
+ *
+ * @param {*} yearGroupKey - Candidate year-group key.
+ * @param {*} yearGroupLabel - Candidate year-group label.
+ * @param {number} rowIndex - Row index.
+ * @throws {ApiValidationError} If year-group fields are missing, blank, or untrimmed.
+ */
+function validateYearGroupKeyedFields_(yearGroupKey, yearGroupLabel, rowIndex) {
+  if (typeof yearGroupKey !== 'string') {
+    throwValidationError_('yearGroupKey must be a string.', 'yearGroupKey', rowIndex);
+  }
+
+  const trimmedYearGroupKey = yearGroupKey.trim();
+  if (trimmedYearGroupKey.length === 0) {
+    throwValidationError_('yearGroupKey must be a non-empty string.', 'yearGroupKey', rowIndex);
+  }
+
+  if (trimmedYearGroupKey !== yearGroupKey) {
+    throwValidationError_('yearGroupKey must already be trimmed.', 'yearGroupKey', rowIndex);
+  }
+
+  if (typeof yearGroupLabel !== 'string') {
+    throwValidationError_('yearGroupLabel must be a string.', 'yearGroupLabel', rowIndex);
+  }
+
+  const trimmedYearGroupLabel = yearGroupLabel.trim();
+  if (trimmedYearGroupLabel.length === 0) {
+    throwValidationError_('yearGroupLabel must be a non-empty string.', 'yearGroupLabel', rowIndex);
+  }
+
+  if (trimmedYearGroupLabel !== yearGroupLabel) {
+    throwValidationError_('yearGroupLabel must already be trimmed.', 'yearGroupLabel', rowIndex);
   }
 }
 
@@ -456,6 +781,7 @@ function validatePartialRow_(row, rowIndex) {
   validateRequiredFields_(row, rowIndex);
   validateDefinitionKey_(row.definitionKey, rowIndex);
   validatePrimaryTopicKey_(row.primaryTopicKey, rowIndex);
+  validateYearGroupKeyedFields_(row.yearGroupKey, row.yearGroupLabel, rowIndex);
   validateTimestamp_(row.createdAt, 'createdAt', rowIndex);
   validateTimestamp_(row.updatedAt, 'updatedAt', rowIndex);
 
@@ -475,7 +801,8 @@ function toPlainPartialRow_(row) {
     primaryTitle: row.primaryTitle,
     primaryTopic: row.primaryTopic,
     primaryTopicKey: row.primaryTopicKey,
-    yearGroup: row.yearGroup,
+    yearGroupKey: row.yearGroupKey,
+    yearGroupLabel: row.yearGroupLabel,
     alternateTitles: row.alternateTitles,
     alternateTopics: row.alternateTopics,
     documentType: row.documentType,
@@ -521,17 +848,50 @@ function deleteAssignmentDefinition_(parameters) {
 /**
  * Creates or updates an assignment definition through strict transport-boundary validation.
  *
- * @param {Object} parameters - Assignment-definition upsert payload.
- * @returns {AssignmentDefinition|Object} Persisted full definition payload.
+ * Stage-one create persists a definition with parsed tasks (tasks: null in partial, full tasks in full store).
+ * Final save persists metadata and weighting edits. Re-parse transport behaviour: when document URLs change,
+ * existing task weightings are preserved for matching task IDs, and new tasks default to 1.
+ * Duplicate detection uses the normalised (primaryTitle, primaryTopicKey, yearGroupKey) tuple.
+ *
+ * @param {Object} parameters - Assignment-definition upsert payload with primaryTitle, primaryTopicKey,
+ *   referenceDocumentId/templateDocumentId (or referenceDocumentUrl/templateDocumentUrl for URL-based transport),
+ *   optional definitionKey, yearGroupKey, assignmentWeighting, and taskWeightings.
+ * @returns {Object} Canonical full-definition response shape including resolved
+ *   primaryTopic, primaryTopicKey, yearGroupKey, yearGroupLabel, full tasks array, and all metadata.
+ *   This same shape is returned for stage-one create, final save, and document-change re-parse.
  */
 function upsertAssignmentDefinition_(parameters) {
   validateUpsertParameters_(parameters);
-  return getAssignmentDefinitionController_().upsertDefinition(parameters);
+  const controller = getAssignmentDefinitionController_();
+  const definition = controller.upsertDefinition(buildControllerUpsertPayload_(parameters));
+  return toCanonicalTransportDefinition_(controller, definition);
+}
+
+/**
+ * Reads one full assignment definition by key after strict safety validation.
+ *
+ * Returns the canonical full-definition response shape, identical to upsertAssignmentDefinition response,
+ * ensuring both read and write transports share the same editable entity contract.
+ *
+ * @param {Object} parameters - Request payload containing definitionKey (non-empty, already-trimmed string).
+ * @returns {Object|null} Full definition with resolved primaryTopic, primaryTopicKey,
+ *   yearGroupKey, yearGroupLabel, tasks array, and all metadata; null if not found.
+ */
+function getAssignmentDefinition_(parameters) {
+  const definitionKey = validateReadParameters_(parameters);
+  const controller = getAssignmentDefinitionController_();
+  const definition = controller.getDefinitionByKey(definitionKey);
+  if (!definition) {
+    return null;
+  }
+
+  return toCanonicalTransportDefinition_(controller, definition);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getAssignmentDefinitionPartials_,
+    getAssignmentDefinition_,
     deleteAssignmentDefinition_,
     upsertAssignmentDefinition_,
   };

@@ -116,8 +116,8 @@ This draft establishes:
 Changes were made across:
 
 - `AGENTS.md`
-- `.github/agents/agent-orchestrator.agent.md`
-- `.codex/agents/agent_orchestrator.toml`
+- `.github/agents/action-plan-implementer.agent.md`
+- `.codex/agents/action_plan_implementer.toml`
 
 Enforcement additions:
 

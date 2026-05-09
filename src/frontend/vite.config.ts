@@ -4,12 +4,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   test: {
-    css: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     include: ['src/**/*.spec.{ts,tsx}'],
     setupFiles: './src/test/setup.ts',
-    // Keep jsdom + Ant Design suites below the default worker fan-out to avoid
+    // Keep happy-dom + Ant Design suites below the default worker fan-out to avoid
     // intermittent App.spec.tsx timeouts caused by worker contention.
     maxWorkers: 2,
     testTimeout: 15_000,
@@ -24,5 +23,14 @@ export default defineConfig({
         branches: 85,
       },
     },
+    // HappyDOM environment options
+    environmentOptions: {
+      happyDOM: {
+        width: 1920,
+        height: 1080,
+      },
+    },
+    // Enable CSS processing for ?inline imports
+    css: true,
   },
 });

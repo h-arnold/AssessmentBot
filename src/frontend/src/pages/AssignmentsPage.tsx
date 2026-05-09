@@ -29,6 +29,7 @@ import {
   type AssignmentDefinitionPartial,
 } from '../services/assignmentDefinitionPartialsService';
 import { DeleteAssignmentDefinitionRequestSchema } from '../services/assignmentDefinitionPartials.zod';
+import { AssignmentDefinitionWizardModal } from './AssignmentDefinitionWizardModal';
 import { PageSection } from './PageSection';
 import { pageContent } from './pageContent';
 
@@ -96,9 +97,9 @@ const ASSIGNMENTS_FILTER_DESCRIPTORS: ReadonlyArray<AssignmentsFilterDescriptor>
   },
   {
     filterLabel: 'Filter by year group',
-    getFilterValue: (row) => formatYearGroupLabel(row.yearGroup),
+    getFilterValue: (row) => formatYearGroupLabel(row.yearGroupLabel),
     key: 'yearGroup',
-    renderCell: (row) => formatYearGroupLabel(row.yearGroup),
+    renderCell: (row) => formatYearGroupLabel(row.yearGroupLabel),
     title: 'Year group',
   },
   {
@@ -129,11 +130,11 @@ function isSafeDefinitionKey(definitionKey: string): boolean {
 /**
  * Formats a year-group value for table display and filtering.
  *
- * @param {number | null} yearGroup Year group value.
+ * @param {string} yearGroupLabel Year-group label value.
  * @returns {string} Display label.
  */
-function formatYearGroupLabel(yearGroup: number | null): string {
-  return yearGroup === null ? UNAVAILABLE_VALUE : String(yearGroup);
+function formatYearGroupLabel(yearGroupLabel: string): string {
+  return yearGroupLabel.trim().length === 0 ? UNAVAILABLE_VALUE : yearGroupLabel;
 }
 
 /**
@@ -294,21 +295,19 @@ function getAssignmentsSurfaceState(
 /**
  * Returns whether the assignments panel should expose busy state.
  *
- * @param {Readonly<{ surfaceState: AssignmentsSurfaceState; isQueryFetching: boolean; isDeleteSubmitting: boolean; isDeletePending: boolean; }>} input Busy-state inputs.
+ * @param {Readonly<{ surfaceState: AssignmentsSurfaceState; isQueryFetching: boolean; isDeletePending: boolean; }>} input Busy-state inputs.
  * @returns {boolean} `true` when the panel is busy.
  */
 function isAssignmentsSurfaceBusyState(
   input: Readonly<{
     surfaceState: AssignmentsSurfaceState;
     isQueryFetching: boolean;
-    isDeleteSubmitting: boolean;
     isDeletePending: boolean;
   }>
 ): boolean {
   return (
     input.surfaceState.shouldRenderTableLoadingState
     || input.isQueryFetching
-    || input.isDeleteSubmitting
     || input.isDeletePending
   );
 }
@@ -412,7 +411,7 @@ function createFilterDropdownRenderer(
 /**
  * Renders the status and action card for assignments management.
  *
- * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; }>} properties Card properties.
+ * @param {Readonly<{ shouldRenderBlockingState: boolean; deleteOutcome: DeleteOutcome | null; shouldRenderActionLoadingState: boolean; onRefreshAssignmentsData: () => void; onCreateAssignment: () => void; hasTrustworthyData: boolean; }>} properties Card properties.
  * @returns {JSX.Element} Card content.
  */
 function AssignmentsStatusAndActionsCard(
@@ -421,6 +420,8 @@ function AssignmentsStatusAndActionsCard(
     deleteOutcome: DeleteOutcome | null;
     shouldRenderActionLoadingState: boolean;
     onRefreshAssignmentsData: () => void;
+    onCreateAssignment: () => void;
+    hasTrustworthyData: boolean;
   }>
 ) {
   return (
@@ -448,11 +449,11 @@ function AssignmentsStatusAndActionsCard(
           </div>
         ) : (
           <Flex gap={8} justify="space-between" wrap>
-            <Text type="secondary">Create and update workflows are not available in v1.</Text>
             <Space wrap>
               <Button onClick={properties.onRefreshAssignmentsData}>Refresh assignments data</Button>
-              <Button disabled>Create assignment</Button>
-              <Button disabled>Update assignment</Button>
+              <Button disabled={!properties.hasTrustworthyData} onClick={properties.onCreateAssignment}>
+                Create assignment
+              </Button>
             </Space>
           </Flex>
         )}
@@ -513,19 +514,19 @@ function renderAssignmentsDefinitionsCard(
 /**
  * Renders the delete-confirmation modal.
  *
- * @param {Readonly<{ deleteTarget: AssignmentDefinitionPartial | null; isDeleteSubmitting: boolean; isDeleteMutationPending: boolean; onCancel: () => void; onConfirm: () => void; }>} properties Modal properties.
+ * @param {Readonly<{ deleteTarget: AssignmentDefinitionPartial | null; isDeleteMutationPending: boolean; onCancel: () => void; onConfirm: () => void; error: string | null; }>} properties Modal properties.
  * @returns {JSX.Element} Delete modal.
  */
 function AssignmentsDeleteModal(
   properties: Readonly<{
     deleteTarget: AssignmentDefinitionPartial | null;
-    isDeleteSubmitting: boolean;
     isDeleteMutationPending: boolean;
     onCancel: () => void;
     onConfirm: () => void;
+    error: string | null;
   }>
 ) {
-  const isDeleteBusy = properties.isDeleteSubmitting || properties.isDeleteMutationPending;
+  const isDeleteBusy = properties.isDeleteMutationPending;
 
   return (
     <Modal
@@ -553,6 +554,14 @@ function AssignmentsDeleteModal(
       transitionName=""
     >
       <Space orientation="vertical" size="small">
+        {properties.error && (
+          <Alert
+            description={properties.error}
+            showIcon
+            type="error"
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Text>You are deleting this assignment definition.</Text>
         {properties.deleteTarget === null ? null : <Text strong>{properties.deleteTarget.primaryTitle}</Text>}
         <Text>This delete is permanent and cannot be undone.</Text>
@@ -575,10 +584,33 @@ export function AssignmentsPage() {
   const isAssignmentsDatasetFailed = startupWarmupState.isDatasetFailed('assignmentDefinitionPartials');
   const isAssignmentsDatasetTrustworthy = assignmentDatasetSnapshot.isTrustworthy;
   const hasTrustworthyAssignmentsDataset = isAssignmentsDatasetReady && isAssignmentsDatasetTrustworthy;
+  const hasTrustworthyReferenceData = startupWarmupState.isDatasetReady('assignmentTopics') && startupWarmupState.isDatasetReady('yearGroups');
 
   const assignmentsQuery = useQuery({
     ...getAssignmentDefinitionPartialsQueryOptions(),
-    enabled: hasTrustworthyAssignmentsDataset,
+    /*
+     * Enable query when dataset is ready OR has failed.
+     * 
+     * Rationale: The startup warmup prefetches assignmentDefinitionPartials.
+     * - isAssignmentsDatasetReady = true when prefetch succeeds AND data is trustworthy
+     * - isAssignmentsDatasetFailed = true when prefetch fails
+     * 
+     * When the dataset fails (isAssignmentsDatasetFailed=true), isAssignmentsDatasetReady=false.
+     * If we only enable when isAssignmentsDatasetReady, the query is disabled on failure.
+     * This breaks retry: refetchQueries() cannot refetch disabled queries in React Query v5.
+     * 
+     * By enabling when EITHER ready OR failed, we allow:
+     * 1. Normal flow: query runs when dataset is ready
+     * 2. Retry flow: query can be refetched via refetchQueries() after dataset failure
+     * 
+     * The blocking state (shouldRenderBlockingState) still protects the UI:
+     * - Shows blocking Alert when isAssignmentsDatasetFailed=true
+     * - Shows blocking Alert when dataset is ready but untrustworthy
+     * - Only shows table when hasTrustworthyAssignmentsDataset AND query has data
+     * 
+     * This fixes FE-E2E-010: retry action now correctly triggers getAssignmentDefinitionPartials.
+     */
+    enabled: isAssignmentsDatasetReady || isAssignmentsDatasetFailed,
     refetchOnMount: false,
   });
 
@@ -588,8 +620,11 @@ export function AssignmentsPage() {
 
   const [filters, setFilters] = useState<AssignmentsFilterState>(EMPTY_FILTER_STATE);
   const [deleteTarget, setDeleteTarget] = useState<AssignmentDefinitionPartial | null>(null);
-  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteOutcome, setDeleteOutcome] = useState<DeleteOutcome | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardMode, setWizardMode] = useState<'create' | 'update'>('create');
+  const [wizardDefinitionKey, setWizardDefinitionKey] = useState<string | null>(null);
 
   const sortedRows = useMemo(() => getDefaultSortedRows(assignmentsQuery.data ?? []), [assignmentsQuery.data]);
 
@@ -653,20 +688,33 @@ export function AssignmentsPage() {
         key: 'actions',
         onHeaderCell: () => ({ 'aria-label': 'Actions' }),
         render: (_, row) => (
-          <Button
-            danger
-            disabled={isDeleteSubmitting || deleteMutation.isPending || !isSafeDefinitionKey(row.definitionKey)}
-            onClick={() => {
-              setDeleteOutcome(null);
-              setDeleteTarget(row);
-            }}
-          >
-            Delete
-          </Button>
+          <Space wrap>
+            <Button
+              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !hasTrustworthyReferenceData}
+              onClick={() => {
+                setWizardMode('update');
+                setWizardDefinitionKey(row.definitionKey);
+                setWizardOpen(true);
+              }}
+            >
+              Update
+            </Button>
+            <Button
+              danger
+              disabled={deleteMutation.isPending || !hasTrustworthyAssignmentsDataset || !isSafeDefinitionKey(row.definitionKey)}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOutcome(null);
+                setDeleteTarget(row);
+              }}
+            >
+              Delete
+            </Button>
+          </Space>
         ),
       },
     ],
-    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, isDeleteSubmitting]
+    [deleteMutation.isPending, filterOptions, filters, handleSelectFilter, hasTrustworthyAssignmentsDataset, hasTrustworthyReferenceData, setDeleteError, setDeleteOutcome, setDeleteTarget, setWizardDefinitionKey, setWizardMode, setWizardOpen]
   );
 
   const assignmentsSurfaceState = getAssignmentsSurfaceState({
@@ -681,18 +729,27 @@ export function AssignmentsPage() {
 
   const isAssignmentsSurfaceBusy = isAssignmentsSurfaceBusyState({
     isDeletePending: deleteMutation.isPending,
-    isDeleteSubmitting,
     isQueryFetching: assignmentsQuery.isFetching,
     surfaceState: assignmentsSurfaceState,
   });
 
   const refetchAssignmentDefinitions = useCallback(async () => {
+    /*
+     * Invalidate then refetch the assignment-definition cache.
+     * 
+     * This works because the assignmentsQuery is enabled when isAssignmentsDatasetReady
+     * OR isAssignmentsDatasetFailed (see enabled condition above). This ensures refetchQueries
+     * can always refetch, even after a dataset failure.
+     * 
+     * The invalidateQueries(refetchType: 'none') prevents background refetch,
+     * then refetchQueries() explicitly triggers the fetch.
+     */
     await queryClient.invalidateQueries({
       queryKey: queryKeys.assignmentDefinitionPartials(),
       refetchType: 'none',
     });
 
-    return queryClient.fetchQuery(getAssignmentDefinitionPartialsQueryOptions());
+    return queryClient.refetchQueries({ queryKey: queryKeys.assignmentDefinitionPartials() });
   }, [queryClient]);
 
   const assignmentsDefinitionsCard = renderAssignmentsDefinitionsCard({
@@ -705,6 +762,27 @@ export function AssignmentsPage() {
     visibleRows,
   });
 
+
+  /**
+   * Opens the create assignment definition modal.
+   *
+   * @returns {void} No return value.
+   */
+  function handleCreateAssignment() {
+    setWizardMode('create');
+    setWizardDefinitionKey(null);
+    setWizardOpen(true);
+  }
+
+  /**
+   * Handles closing the wizard modal.
+   *
+   * @returns {void} No return value.
+   */
+  function handleWizardClose() {
+    setWizardOpen(false);
+    setWizardDefinitionKey(null);
+  }
 
   /**
    * Refetches assignment definitions using the scoped query key only.
@@ -722,12 +800,12 @@ export function AssignmentsPage() {
    * @returns {Promise<void>} Promise resolving once delete flow settles.
    */
   async function handleConfirmDelete(): Promise<void> {
-    if (deleteTarget === null || isDeleteSubmitting || deleteMutation.isPending) {
+    if (deleteTarget === null || deleteMutation.isPending) {
       return;
     }
 
+    setDeleteError(null);
     setDeleteOutcome(null);
-    setIsDeleteSubmitting(true);
 
     let deleteCompleted = false;
 
@@ -745,11 +823,8 @@ export function AssignmentsPage() {
       });
 
       if (!deleteCompleted) {
-        setDeleteTarget(null);
-        setDeleteOutcome({ type: 'error', message: DELETE_FAILURE_MESSAGE });
+        setDeleteError(DELETE_FAILURE_MESSAGE);
       }
-    } finally {
-      setIsDeleteSubmitting(false);
     }
   }
 
@@ -759,10 +834,11 @@ export function AssignmentsPage() {
    * @returns {void} No return value.
    */
   function handleDeleteModalClose() {
-    if (isDeleteSubmitting || deleteMutation.isPending) {
+    if (deleteMutation.isPending) {
       return;
     }
 
+    setDeleteError(null);
     setDeleteTarget(null);
   }
   return (
@@ -774,6 +850,8 @@ export function AssignmentsPage() {
         <Flex vertical gap={16}>
           <AssignmentsStatusAndActionsCard
             deleteOutcome={deleteOutcome}
+            hasTrustworthyData={hasTrustworthyAssignmentsDataset && hasTrustworthyReferenceData}
+            onCreateAssignment={handleCreateAssignment}
             onRefreshAssignmentsData={handleRetryAssignmentsData}
             shouldRenderActionLoadingState={assignmentsSurfaceState.shouldRenderActionLoadingState}
             shouldRenderBlockingState={assignmentsSurfaceState.shouldRenderBlockingState}
@@ -782,10 +860,17 @@ export function AssignmentsPage() {
         </Flex>
       </section>
 
+      <AssignmentDefinitionWizardModal
+        definitionKey={wizardDefinitionKey}
+        mode={wizardMode}
+        onClose={handleWizardClose}
+        open={wizardOpen}
+      />
+
       <AssignmentsDeleteModal
         deleteTarget={deleteTarget}
+        error={deleteError}
         isDeleteMutationPending={deleteMutation.isPending}
-        isDeleteSubmitting={isDeleteSubmitting}
         onCancel={handleDeleteModalClose}
         onConfirm={() => {
           void handleConfirmDelete();

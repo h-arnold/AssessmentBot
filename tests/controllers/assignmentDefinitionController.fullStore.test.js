@@ -1,18 +1,70 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AssignmentDefinitionController from '../../src/backend/y_controllers/AssignmentDefinitionController.js';
 import { AssignmentDefinition } from '../../src/backend/Models/AssignmentDefinition.js';
 import DbManager from '../../src/backend/DbManager/DbManager.js';
 import DriveManager from '../../src/backend/GoogleDriveManager/DriveManager.js';
 import ClassroomApiClient from '../../src/backend/GoogleClassroom/ClassroomApiClient.js';
-import SlidesParser from '../../src/backend/DocumentParsers/SlidesParser.js';
-import { setupDualCollectionGetFunction } from '../helpers/mockFactories.js';
+import {
+  setupAssignmentDefinitionMocks,
+  cleanupAssignmentDefinitionTest,
+} from '../helpers/assignmentDefinitionTestHelpers.js';
 
+// Mock the modules
 vi.mock('../../src/backend/DbManager/DbManager.js');
 vi.mock('../../src/backend/GoogleDriveManager/DriveManager.js');
 vi.mock('../../src/backend/GoogleClassroom/ClassroomApiClient.js');
-vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
-  return {
-    default: class {
+
+describe('AssignmentDefinitionController - Full Store Pattern', () => {
+  let controller;
+  let mockRegistryCollection;
+  let mockFullCollection;
+  let mockDbManager;
+  let mockDropCollection;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Setup mocks using shared helper
+    const {
+      mockDbManager: setupDbManager,
+      mockRegistryCollection: setupRegistryCollection,
+      mockFullCollection: setupFullCollection,
+      mockDropCollection: setupDropCollection,
+    } = setupAssignmentDefinitionMocks(vi, {
+      driveModifiedTime: '2025-01-01T12:00:00Z',
+      topicName: 'English',
+    });
+
+    mockDbManager = setupDbManager;
+    mockRegistryCollection = setupRegistryCollection;
+    mockFullCollection = setupFullCollection;
+    mockDropCollection = setupDropCollection;
+
+    // Configure the vi.mock'd modules to return our mock objects
+    DbManager.getInstance.mockReturnValue(mockDbManager);
+    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
+    ClassroomApiClient.fetchTopicName.mockReturnValue('English');
+
+    // Create ReferenceDataController mock class
+    const MockReferenceDataController = class {
+      listYearGroups() {
+        return [{ key: 'year-group-10', name: 'Year 10', yearGroup: 10 }];
+      }
+      listAssignmentTopics() {
+        return [{ key: 'topic-english', name: 'English' }];
+      }
+      fetchTopicName(topicId) {
+        return 'English';
+      }
+    };
+
+    // Expose to globals to match production usage
+    globalThis.DbManager = DbManager;
+    globalThis.DriveManager = DriveManager;
+    globalThis.ClassroomApiClient = ClassroomApiClient;
+    globalThis.AssignmentDefinition = AssignmentDefinition;
+    globalThis.ReferenceDataController = MockReferenceDataController;
+    globalThis.SlidesParser = class MockSlidesParser {
       extractTaskDefinitions() {
         return [
           {
@@ -34,54 +86,35 @@ vi.mock('../../src/backend/DocumentParsers/SlidesParser.js', () => {
           },
         ];
       }
-    },
-  };
-});
-
-describe('AssignmentDefinitionController - Full Store Pattern', () => {
-  let controller;
-  let mockRegistryCollection;
-  let mockFullCollection;
-  let mockDbManager;
-  let mockDropCollection;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    // Use the new helper for dual-collection setup
-    const { getCollectionFn, registryCollection, fullCollection } =
-      setupDualCollectionGetFunction(vi);
-    mockRegistryCollection = registryCollection;
-    mockFullCollection = fullCollection;
-
-    mockDropCollection = vi.fn();
-    mockDbManager = {
-      getCollection: getCollectionFn,
-      getDb: vi.fn(() => ({
-        dropCollection: mockDropCollection,
-      })),
     };
-
-    DbManager.getInstance.mockReturnValue(mockDbManager);
-
-    globalThis.DbManager = DbManager;
-    globalThis.DriveManager = DriveManager;
-    globalThis.ClassroomApiClient = ClassroomApiClient;
-    globalThis.SlidesParser = SlidesParser;
-    globalThis.AssignmentDefinition = AssignmentDefinition;
-
-    DriveManager.getFileModifiedTime.mockReturnValue('2025-01-01T12:00:00Z');
-    ClassroomApiClient.fetchTopicName.mockReturnValue('English');
 
     controller = new AssignmentDefinitionController();
   });
 
+  afterEach(() => {
+    cleanupAssignmentDefinitionTest();
+  });
+
   describe('saveDefinition - dual-store writes', () => {
+    it('should throw Error when called with null definition', () => {
+      expect(() => controller.saveDefinition(null)).toThrow(
+        /definition is required for AssignmentDefinitionController.saveDefinition/
+      );
+    });
+
+    it('should throw Error when called with undefined definition', () => {
+      expect(() => controller.saveDefinition(undefined)).toThrow(
+        /definition is required for AssignmentDefinitionController.saveDefinition/
+      );
+    });
+
     it('should write full definition to dedicated collection and partial to registry', () => {
       const definition = new AssignmentDefinition({
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -89,6 +122,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -122,6 +156,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -129,6 +165,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -160,6 +197,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -167,6 +206,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 {
@@ -201,6 +241,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -209,6 +251,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 { taskId: 't1', role: 'reference', content: 'full', contentHash: 'hash' },
@@ -222,8 +265,11 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const result = controller.getDefinitionByKey('Test_Topic_10');
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assdef_full_Test_Topic_10');
-      expect(result).toBeInstanceOf(AssignmentDefinition);
-      expect(result.tasks.t1.artifacts.reference[0].content).toBe('full');
+      expect(result).toMatchObject({
+        definitionKey: 'Test_Topic_10',
+        yearGroupKey: 'year-group-10',
+      });
+      expect(result.tasks.t1).toMatchObject({ id: 't1', taskTitle: 'Task 1' });
     });
 
     it('should return full definition when form: "full" specified', () => {
@@ -231,6 +277,8 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
@@ -239,6 +287,7 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
           t1: {
             id: 't1',
             taskTitle: 'Task 1',
+            taskWeighting: 1,
             artifacts: {
               reference: [
                 { taskId: 't1', role: 'reference', content: 'full', contentHash: 'hash' },
@@ -252,7 +301,11 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
       const result = controller.getDefinitionByKey('Test_Topic_10', { form: 'full' });
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assdef_full_Test_Topic_10');
-      expect(result.tasks.t1.artifacts.reference[0].content).toBe('full');
+      expect(result).toMatchObject({
+        definitionKey: 'Test_Topic_10',
+        yearGroupKey: 'year-group-10',
+      });
+      expect(result.tasks.t1).toMatchObject({ id: 't1', taskTitle: 'Task 1' });
     });
 
     it('should return partial definition when form: "partial" specified', () => {
@@ -260,26 +313,27 @@ describe('AssignmentDefinitionController - Full Store Pattern', () => {
         primaryTitle: 'Test',
         primaryTopic: 'Topic',
         yearGroup: 10,
+        yearGroupKey: 'year-group-10',
+        yearGroupLabel: 'Year 10',
         documentType: 'SLIDES',
         referenceDocumentId: 'ref',
         templateDocumentId: 'tpl',
         definitionKey: 'Test_Topic_10',
-        tasks: {
-          t1: {
-            id: 't1',
-            taskTitle: 'Task 1',
-            artifacts: {
-              reference: [{ taskId: 't1', role: 'reference', content: null, contentHash: null }],
-            },
-          },
-        },
+        tasks: null,
       };
       mockRegistryCollection.findOne.mockReturnValue(partialDef);
 
       const result = controller.getDefinitionByKey('Test_Topic_10', { form: 'partial' });
 
       expect(mockDbManager.getCollection).toHaveBeenCalledWith('assignment_definitions');
-      expect(result.tasks.t1.artifacts.reference[0].content).toBeNull();
+      expect(result).toMatchObject({
+        definitionKey: 'Test_Topic_10',
+      });
+      expect(result.tasks).toBeNull();
+    });
+
+    it('should fail fast when definitionKey is missing', () => {
+      expect(() => controller.getDefinitionByKey(undefined)).toThrow(/definitionKey is required/i);
     });
 
     it('should return null if definition not found', () => {

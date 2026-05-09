@@ -114,6 +114,32 @@ Default decision:
 - accepted boundary for the classes modal-family compliance refactor: reuse `InlineDialog.tsx`, `manageReferenceDataDialogs.tsx`, and `manageReferenceDataHelpers.ts` as-is
 - helper-change status for that refactor: `Implemented`; the existing feature-local helper family remains the accepted reuse boundary
 
+### 3.4 Assignment definition create/update wizard modal
+
+- Planned surface: assignment-definition create/update workflow launched from the Assignments page
+- Planned owner: `src/frontend/src/pages/**` or a feature-local assignments workflow module under `src/frontend/src/**`
+
+Shared traits:
+
+- one modal surface used for both create and update
+- stage-one parse/persist followed by a shared edit surface
+- explicit in-modal re-parse gating when document URLs change
+- task-weight editing with feature-specific state rules
+
+Use this family when:
+
+- the caller is the Assignments page assignment-definition workflow
+- the modal state machine depends on parsed tasks, re-parse resolution, and year-group compatibility handling
+
+Default decision:
+
+- keep local to the assignment-definition workflow unless a second accepted in-scope caller emerges
+- do not extract a generic app-wide wizard helper for this feature
+- helper-change status for this planned family: `Implemented`
+  - hook: `useAssignmentDefinitionWizard.ts` (feature-local, complexity ≤7)
+  - shell: `AssignmentDefinitionWizardModalShell.tsx` (extended to handle all view states)
+  - modal: `AssignmentDefinitionWizardModal.tsx` (thin presenter delegating to shell)
+
 ## 4. Keep-local rules
 
 Keep a modal implementation local to one file when any of these are true:
@@ -161,6 +187,82 @@ Prefer small composable helpers over one generic modal wrapper with many configu
 - Disable conflicting actions when retrying, double-submitting, or cancelling mid-write would be confusing or unsafe.
 - Keep blocking and submission errors visible inside the owned modal surface unless a stronger documented UX case exists.
 - Expose accessible busy or status semantics whenever modal content is refreshing or blocked.
+
+### Modal Error Handling Pattern (SPEC.md §20)
+
+**Preferred Pattern:** Keep modal open on failure and display error inside modal.
+
+For destructive confirmation modals (e.g., delete confirmation), errors should stay local to the modal and not close it. This follows SPEC.md §20: "Validation failures stay local to the modal and do not close it".
+
+**Implementation Pattern:**
+
+```typescript
+// ✅ CORRECT: Modal stays open, error displayed inside
+function AssignmentsDeleteModal(
+  properties: Readonly<{
+    deleteTarget: AssignmentDefinitionPartial | null;
+    isDeleteSubmitting: boolean;
+    isDeleteMutationPending: boolean;
+    onCancel: () => void;
+    onConfirm: () => void;
+    error: string | null;  // ← Error state passed to modal
+  }>
+) {
+  const isDeleteBusy = properties.isDeleteSubmitting || properties.isDeleteMutationPending;
+
+  return (
+    <Modal ...>
+      <Space orientation="vertical" size="small">
+        {properties.error ? (
+          <Alert description={properties.error} showIcon style={{ marginBottom: 16 }} type="error" />
+        ) : null}
+        {/* ... modal content ... */}
+      </Space>
+    </Modal>
+  );
+}
+```
+
+**Handler Pattern (keep modal open on failure):**
+
+```typescript
+// ✅ CORRECT: Don't close modal on failure
+async function handleConfirmDelete(): Promise<void> {
+  setDeleteOutcome(null);
+  setIsDeleteSubmitting(true);
+
+  try {
+    await deleteMutation.mutateAsync({ definitionKey: deleteTarget.definitionKey });
+    setDeleteTarget(null); // Close modal on success
+    await refetchAssignmentDefinitions();
+    setDeleteOutcome({ type: 'success', message: DELETE_SUCCESS_MESSAGE });
+  } catch (error: unknown) {
+    // Don't close modal - let error display inside
+    setDeleteError(DELETE_FAILURE_MESSAGE);
+    // Modal stays open, user can retry or cancel
+  } finally {
+    setIsDeleteSubmitting(false);
+  }
+}
+```
+
+**Anti-Pattern:** Closing modal on failure prevents user from retrying without re-opening the modal.
+
+```typescript
+// ❌ AVOID: Closes modal on failure
+catch (error: unknown) {
+  setDeleteTarget(null);  // ← Closes modal
+  setDeleteOutcome({ type: 'error', message: DELETE_FAILURE_MESSAGE });
+}
+```
+
+**Modal Error Display Checklist:**
+
+- [ ] Error state is passed to modal component (not just set in parent)
+- [ ] Error Alert/Result is rendered inside modal body
+- [ ] Modal remains open (`deleteTarget` stays set) on failure
+- [ ] Primary action remains available for retry (not disabled on error)
+- [ ] Cancel action still works to dismiss modal
 
 ## 8. Accessibility and testability rules
 

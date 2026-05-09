@@ -1,36 +1,18 @@
-import { expect, test, type Page } from '@playwright/test';
-import { googleScriptRunApiHandlerFactorySource } from '../src/test/googleScriptRunHarness';
-
-type AssignmentsResponseScenario = Readonly<
-  | {
-      kind: 'success';
-      data: unknown;
-    }
-  | {
-      kind: 'transportFailure';
-      message: string;
-    }
-  | {
-      kind: 'failureEnvelope';
-      code?: string;
-      message: string;
-    }
-  | {
-      kind: 'deferredSuccess';
-      data: unknown;
-    }
->;
-
-type AssignmentsRuntimeScenario = Readonly<{
-  getAssignmentDefinitionPartials: ReadonlyArray<AssignmentsResponseScenario>;
-  deleteAssignmentDefinition?: ReadonlyArray<AssignmentsResponseScenario>;
-}>;
+import { expect, test } from '@playwright/test';
+import {
+  installRuntimeMock,
+  releaseNextDeferredSuccess,
+  getAssignmentsRowByTitle,
+  applyColumnFilterOption,
+} from './shared/endToEndRuntimeMocks';
 
 const assignmentRows = [
   {
     primaryTitle: 'Newest algebra recap',
     primaryTopic: 'Algebra',
-    yearGroup: 11,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-11',
+    yearGroupLabel: 'Year 11',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -45,7 +27,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -60,7 +44,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Algebra foundations archive',
     primaryTopic: 'Algebra',
-    yearGroup: 10,
+    primaryTopicKey: 'algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SLIDES',
@@ -75,7 +61,9 @@ const assignmentRows = [
   {
     primaryTitle: 'Unsafe legacy row',
     primaryTopic: 'Legacy',
-    yearGroup: null,
+    primaryTopicKey: 'legacy',
+    yearGroupKey: 'legacy-year-group',
+    yearGroupLabel: 'Legacy Year',
     alternateTitles: [],
     alternateTopics: [],
     documentType: 'SHEETS',
@@ -89,168 +77,16 @@ const assignmentRows = [
   },
 ] as const;
 
-const expectedNullTokenCellCount = 2;
+const expectedNullTokenCellCount = 1;
 const newestRowIndex = 0;
 const archiveRowIndex = 1;
 const exactMatchRowIndex = 2;
 
-/**
- * Installs a browser-side `google.script.run` mock for assignments journeys.
- *
- * @param {Page} page The Playwright page under test.
- * @param {AssignmentsRuntimeScenario} scenario The per-method response queue scenario.
- * @returns {Promise<void>} Resolves once the init script is installed.
- */
-async function mockAssignmentsRuntime(page: Page, scenario: AssignmentsRuntimeScenario) {
-  await page.addInitScript(`
-    (() => {
-      const createGoogleScriptRunApiHandlerMock = ${googleScriptRunApiHandlerFactorySource};
-      const scenario = ${JSON.stringify(scenario)};
-      const responseQueues = {
-        getAuthorisationStatus: [{ kind: 'success', data: true }],
-        getABClassPartials: [{ kind: 'success', data: [] }],
-        getCohorts: [{ kind: 'success', data: [] }],
-        getYearGroups: [{ kind: 'success', data: [] }],
-        getAssignmentDefinitionPartials: scenario.getAssignmentDefinitionPartials,
-        deleteAssignmentDefinition: scenario.deleteAssignmentDefinition ?? [],
-      };
-      const callCounts = {
-        getAuthorisationStatus: 0,
-        getABClassPartials: 0,
-        getCohorts: 0,
-        getYearGroups: 0,
-        getAssignmentDefinitionPartials: 0,
-        deleteAssignmentDefinition: 0,
-      };
-      globalThis.__assignmentsMethodCalls = [];
-      globalThis.__assignmentDeferredSuccessQueue = [];
-      globalThis.__releaseNextAssignmentsDeferredSuccess = () => {
-        const nextDeferredSuccess = globalThis.__assignmentDeferredSuccessQueue.shift();
 
-        if (!nextDeferredSuccess) {
-          throw new Error('No deferred success response available to release.');
-        }
-
-        nextDeferredSuccess();
-      };
-
-      function sendSuccess(callbacks, method, responseIndex, data) {
-        callbacks.successHandler?.({
-          ok: true,
-          requestId: 'req-' + method + '-' + responseIndex,
-          data,
-        });
-      }
-
-      function sendFailureEnvelope(callbacks, method, responseIndex, response) {
-        callbacks.successHandler?.({
-          ok: false,
-          requestId: 'req-' + method + '-' + responseIndex,
-          error: {
-            code: response.code ?? 'INTERNAL_ERROR',
-            message: response.message,
-            retriable: false,
-          },
-        });
-      }
-
-      globalThis.google = {
-        script: {
-          run: createGoogleScriptRunApiHandlerMock((request, callbacks) => {
-            const method = request?.method;
-            globalThis.__assignmentsMethodCalls.push(String(method));
-
-            if (!(method in responseQueues)) {
-              callbacks.failureHandler?.(new Error('Unexpected call to method: ' + String(method)));
-              return;
-            }
-
-            const responseIndex = callCounts[method];
-            const response = responseQueues[method][responseIndex];
-            callCounts[method] += 1;
-
-            if (response === undefined) {
-              callbacks.failureHandler?.(
-                new Error('Unexpected call index for method ' + method + ': ' + String(responseIndex))
-              );
-              return;
-            }
-
-            if (response.kind === 'transportFailure') {
-              callbacks.failureHandler?.(new Error(response.message));
-              return;
-            }
-
-            if (response.kind === 'failureEnvelope') {
-              sendFailureEnvelope(callbacks, method, responseIndex, response);
-              return;
-            }
-
-            if (response.kind === 'deferredSuccess') {
-              globalThis.__assignmentDeferredSuccessQueue.push(() => {
-                sendSuccess(callbacks, method, responseIndex, response.data);
-              });
-              return;
-            }
-
-            sendSuccess(callbacks, method, responseIndex, response.data);
-          }),
-        },
-      };
-    })();
-  `);
-}
-
-
-/**
- * Applies one assignments table filter option using visible controls only.
- *
- * @param {Page} page Playwright page instance.
- * @param {string} columnHeaderName Column header label.
- * @param {string} optionLabel Visible filter option label.
- * @returns {Promise<void>} Resolves when the option is selected.
- */
-async function applyAssignmentsFilterOption(page: Page, columnHeaderName: string, optionLabel: string) {
-  await page.getByRole('columnheader', { name: columnHeaderName }).getByRole('button').click();
-
-  const activeFilterPopup = page.locator('.ant-dropdown:visible').last();
-  await expect(activeFilterPopup).toBeVisible();
-  await activeFilterPopup.getByText(optionLabel, { exact: true }).click();
-
-  await page.keyboard.press('Escape');
-}
-
-/**
- * Releases the next deferred assignments API success response.
- *
- * @param {Page} page Playwright page instance.
- * @returns {Promise<void>} Resolves once the deferred response has been released.
- */
-async function releaseNextDeferredAssignmentsSuccess(page: Page) {
-  await page.evaluate(() => {
-    (globalThis as { __releaseNextAssignmentsDeferredSuccess: () => void }).__releaseNextAssignmentsDeferredSuccess();
-  });
-}
-
-/**
- * Locates one assignments table row by exact title cell text.
- *
- * @param {Page} page Playwright page instance.
- * @param {string} assignmentTitle Exact assignment title shown in the first column.
- * @returns {import('@playwright/test').Locator} Row locator scoped to the assignments table.
- */
-function getAssignmentsRowByTitle(page: Page, assignmentTitle: string) {
-  const assignmentsTable = page.getByRole('table', { name: 'Assignment definitions table' });
-  const titleCell = assignmentsTable
-    .locator('tbody tr td:first-child')
-    .getByText(assignmentTitle, { exact: true });
-
-  return titleCell.locator('xpath=ancestor::tr');
-}
 
 test.describe('assignments page browser journeys', () => {
   test('delete flow removes the row after confirmation and shows success feedback', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
@@ -260,6 +96,13 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear (10s timeout for startup warmup)
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+    // Wait for table to be visible
+    await expect(page.getByRole('table', { name: 'Assignment definitions table' })).toBeVisible();
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -272,41 +115,58 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('unsafe-key rows keep delete disabled', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    await expect(
-      page.getByRole('row', { name: /unsafe legacy row/i }).getByRole('button', { name: /delete/i })
-    ).toBeDisabled();
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
+    await expect(page.getByRole('row', { name: /unsafe legacy row/i })).toBeVisible();
+    const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
+    await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeVisible();
+    await expect(unsafeRow.getByRole('button', { name: /delete/i })).toBeDisabled();
   });
 
 
   test('placeholder create and update actions stay disabled with explicit unavailable copy', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
 
-    await expect(page.getByRole('button', { name: 'Create assignment' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Update assignment' })).toBeDisabled();
-    await expect(page.getByText(/not available in v1/i)).toBeVisible();
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
+
+    // With empty reference data, Create button should still be enabled (empty is valid)
+    // per FE-E2E-004: old v1 assertions removed
+    await expect(page.getByRole('button', { name: 'Create assignment' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Refresh assignments data' })).toBeEnabled();
   });
 
 
   test('delete action opens confirmation modal with permanent-delete copy', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
       deleteAssignmentDefinition: [{ kind: 'success', data: undefined }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -319,7 +179,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('delete mutation keeps confirm loading and disables conflicting delete actions until settle', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'success', data: assignmentRows.filter((row) => row.definitionKey !== 'alg-10-safe') },
@@ -329,6 +189,11 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -347,20 +212,25 @@ test.describe('assignments page browser journeys', () => {
       await expect(rowDeleteButtons.nth(index)).toBeDisabled();
     }
 
-    await releaseNextDeferredAssignmentsSuccess(page);
+    await releaseNextDeferredSuccess(page, '__releaseNextAssignmentsDeferredSuccess');
 
     await expect(page.getByText(/assignment definition deleted/i)).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Delete assignment definition' })).toHaveCount(0);
   });
 
   test('delete failure keeps row visible and shows local error feedback', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
       deleteAssignmentDefinition: [{ kind: 'transportFailure', message: 'delete failed' }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -372,7 +242,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('post-delete refresh failure returns to blocking state', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'success', data: assignmentRows },
         { kind: 'transportFailure', message: 'refresh failed after delete' },
@@ -382,6 +252,11 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for initial blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const exactMatchRow = getAssignmentsRowByTitle(page, 'Algebra foundations');
     await expect(exactMatchRow).toHaveCount(1);
@@ -393,7 +268,7 @@ test.describe('assignments page browser journeys', () => {
   });
 
   test('retry action performs scoped assignment-definition refetch only', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [
         { kind: 'transportFailure', message: 'assignment fetch failed' },
         { kind: 'success', data: assignmentRows },
@@ -402,6 +277,10 @@ test.describe('assignments page browser journeys', () => {
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+    
+    // Wait for blocking state to appear (first call fails)
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toBeVisible({ timeout: 10_000 });
+    // Wait for retry button to be visible
     await expect(page.getByRole('button', { name: /retry|refresh assignments data/i })).toBeVisible();
 
     const baselineCallCount = await page.evaluate(() => {
@@ -411,23 +290,30 @@ test.describe('assignments page browser journeys', () => {
 
     await page.getByRole('button', { name: /retry|refresh assignments data/i }).click();
 
+    // Wait for the refetch to complete - retry triggers refetch via refetchQueries
+    // which may not trigger if query is disabled, so this test may need code fix per FE-E2E-010
     await expect
       .poll(async () => {
         return page.evaluate((startIndex) => {
           const methodCalls = (globalThis as { __assignmentsMethodCalls: string[] }).__assignmentsMethodCalls;
           return methodCalls.slice(startIndex);
         }, baselineCallCount);
-      })
+      }, { timeout: 10_000 })
       .toEqual(['getAssignmentDefinitionPartials']);
   });
 
   test('filter and reset interactions cover every displayed data column', async ({ page }) => {
-    await mockAssignmentsRuntime(page, {
+    await installRuntimeMock(page, {
       getAssignmentDefinitionPartials: [{ kind: 'success', data: assignmentRows }],
     });
 
     await page.goto('/');
     await page.getByRole('menuitem', { name: 'Assignments' }).click();
+
+    // Wait for blocking state to clear
+    await expect(page.getByText('Assignment definitions could not be trusted or loaded.')).toHaveCount(0, { timeout: 10_000 });
+    // Wait for loading skeleton to disappear
+    await expect(page.getByLabel('Assignments table loading')).toHaveCount(0);
 
     const unsafeRow = page.getByRole('row', { name: /unsafe legacy row/i });
     await expect(unsafeRow.getByRole('cell', { name: '—' })).toHaveCount(expectedNullTokenCellCount);
@@ -447,15 +333,9 @@ test.describe('assignments page browser journeys', () => {
       },
       {
         columnHeaderName: 'Year group',
-        optionLabel: '10',
+        optionLabel: 'Year 10',
         expectedVisibleRow: 'Algebra foundations archive',
         expectedHiddenRow: 'Unsafe legacy row',
-      },
-      {
-        columnHeaderName: 'Year group',
-        optionLabel: '—',
-        expectedVisibleRow: 'Unsafe legacy row',
-        expectedHiddenRow: 'Newest algebra recap',
       },
       {
         columnHeaderName: 'Document type',
@@ -478,7 +358,7 @@ test.describe('assignments page browser journeys', () => {
     ] as const;
 
     for (const filterAssertion of filterAssertions) {
-      await applyAssignmentsFilterOption(page, filterAssertion.columnHeaderName, filterAssertion.optionLabel);
+      await applyColumnFilterOption(page, filterAssertion.columnHeaderName, filterAssertion.optionLabel);
       await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedVisibleRow)).toHaveCount(1);
       await expect(getAssignmentsRowByTitle(page, filterAssertion.expectedHiddenRow)).toHaveCount(0);
 

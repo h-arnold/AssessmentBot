@@ -22,6 +22,7 @@ const {
   getABClassPartialsMock,
   getAssignmentDefinitionPartialsMock,
   getCohortsMock,
+  getAssignmentTopicsMock,
   getYearGroupsMock,
 } = vi.hoisted(() => ({
   getAuthorisationStatusMock: vi.fn(),
@@ -29,6 +30,7 @@ const {
   getABClassPartialsMock: vi.fn(),
   getAssignmentDefinitionPartialsMock: vi.fn(),
   getCohortsMock: vi.fn(),
+  getAssignmentTopicsMock: vi.fn(),
   getYearGroupsMock: vi.fn(),
 }));
 
@@ -47,6 +49,10 @@ vi.mock('../../services/assignmentDefinitionPartialsService', () => ({
 vi.mock('../../services/referenceDataService', () => ({
   getCohorts: getCohortsMock,
   getYearGroups: getYearGroupsMock,
+}));
+
+vi.mock('../../services/assignmentTopicsService', () => ({
+  getAssignmentTopics: getAssignmentTopicsMock,
 }));
 
 vi.mock('../../query/sharedQueries', async () => {
@@ -174,6 +180,7 @@ async function configureAssignmentDefinitionWarmupFailure(): Promise<void> {
   getABClassPartialsMock.mockResolvedValueOnce([{ classId: 'class-1', className: 'Class 1' }]);
   getCohortsMock.mockResolvedValueOnce([{ key: 'cohort-2026', name: 'Cohort 2026', active: true }]);
   getYearGroupsMock.mockResolvedValueOnce([{ key: 'year-10', name: 'Year 10' }]);
+  getAssignmentTopicsMock.mockResolvedValueOnce([{ key: 'topic-algebra', name: 'Algebra' }]);
   getAssignmentDefinitionPartialsMock.mockRejectedValueOnce(
     new Error('Assignment definitions warm-up failed.')
   );
@@ -336,6 +343,7 @@ describe('AppAuthGate', () => {
       expect(getABClassPartialsMock).toHaveBeenCalledTimes(1);
       expect(getCohortsMock).toHaveBeenCalledTimes(1);
       expect(getYearGroupsMock).toHaveBeenCalledTimes(1);
+      expect(getAssignmentTopicsMock).toHaveBeenCalledTimes(1);
       expect(getAssignmentDefinitionPartialsMock).toHaveBeenCalledTimes(1);
     });
 
@@ -345,6 +353,7 @@ describe('AppAuthGate', () => {
         datasets: {
           classPartials: { status: 'ready', isTrustworthy: true },
           assignmentDefinitionPartials: { status: 'failed', isTrustworthy: false },
+          assignmentTopics: { status: 'ready', isTrustworthy: true },
           cohorts: { status: 'ready', isTrustworthy: true },
           yearGroups: { status: 'ready', isTrustworthy: true },
         },

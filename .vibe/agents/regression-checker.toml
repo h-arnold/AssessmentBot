@@ -1,0 +1,22 @@
+name = "regression-checker"
+description = "Runs tests, linters, and CI routines to create baseline reports and detect regressions between runs"
+sandbox_mode = "workspace-write"
+auto_approve = true
+safety = "neutral"
+active_model = "mistral-small"
+agent_type = "subagent"
+thinking = "off"
+nickname_candidates = ["regression-checker", "Regression Checker", "Regression"]
+system_prompt_id = "regression-checker"
+
+[tools]
+allowlist = ["bash", "read_file", "write_file"]
+
+[tools.bash]
+permission = "always"
+
+[tools.read_file]
+permission = "always"
+
+[tools.write_file]
+permission = "always"

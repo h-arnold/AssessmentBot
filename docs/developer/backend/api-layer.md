@@ -18,6 +18,13 @@ This layer is deliberately REST-ish in structure:
   - Status: `Implemented`
   - Location: `validateUpsertParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
   - Behaviour: owns request-shape validation, optional update-key safety, and structural `taskWeightings` array validation for `upsertAssignmentDefinition` without duplicating controller business rules.
+- Assignment-definition read request validator
+  - Status: `Implemented`
+  - Location: `validateReadParameters_()` in `src/backend/z_Api/assignmentDefinitionPartials.js`
+  - Behaviour: owns safe-key validation for full-definition reads by `definitionKey`.
+- Assignment-definition full-definition response mapper
+  - Status: `Not applicable`
+  - Note: canonical full-definition response shape is produced directly by `AssignmentDefinitionController.getDefinitionByKey()` and returned unchanged through `getAssignmentDefinition_()` transport helper.
 
 ## Design Rules
 
@@ -272,11 +279,18 @@ Use the allowlisted method names exactly as implemented in `ALLOWLISTED_METHOD_H
 - `upsertAssignmentDefinition` — creates or updates a full assignment definition and synchronised registry partial.
   Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `upsertAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.upsertDefinition()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
   Transport-required request fields: `primaryTitle`, `primaryTopicKey`, `referenceDocumentId`, and `templateDocumentId`.
-  Optional request fields: `definitionKey`, `yearGroup`, `alternateTitles`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
+  Optional request fields: `definitionKey`, `yearGroupKey`, `alternateTitles`, `documentType`, `assignmentWeighting`, and `taskWeightings`.
   Validation split: the transport helper enforces request shape, safe-key rules for `definitionKey` and `taskWeightings[].taskId`, and structural `taskWeightings` shape; the controller owns topic membership, duplicate-tuple rejection, numeric weighting rules, document-type rules, task-ID matching, and persistence semantics.
-  Create behaviour: when `definitionKey` is absent or `null`, the controller requires `documentType`, parses tasks from the source documents, resolves `primaryTopic` from `assignment_topics`, generates a stable UUID-style `definitionKey`, and writes both the full store and the registry partial.
-  Update behaviour: when `definitionKey` is present, the controller preserves the stored key, reuses the stored `documentType` when omitted, reparses only when source document IDs changed or refresh is required, and reapplies stored or supplied task weightings before persistence.
-  Response data: the full persisted `AssignmentDefinition` payload, including resolved `primaryTopic`, stable `definitionKey`, full `tasks`, `referenceLastModified`, `templateLastModified`, `createdAt`, and `updatedAt`.
+  Create behaviour: when `definitionKey` is absent or `null`, the controller requires `yearGroupKey` and `documentType` (or derives it from URLs when URL-based transport is used), parses tasks from the source documents, resolves `primaryTopic` from `assignment_topics`, generates a stable opaque `definitionKey`, and writes both the full store (`assdef_full_<definitionKey>`) and the registry partial (`assignment_definitions`). This is the stage-one create persistence path.
+  Update behaviour: when `definitionKey` is present, the controller preserves the stored key, reuses the stored `documentType` when omitted, reparses only when source document IDs changed or refresh is required, and reapplies stored or supplied task weightings before persistence. Re-parse transport behaviour applies when document URLs change: existing task weightings are preserved for matching task IDs, and new tasks default to `1`.
+  Final-save persistence behaviour: metadata and weighting edits are persisted through the same `upsertAssignmentDefinition` transport, with duplicate detection enforced on tuple-changing saves using the normalised `(primaryTitle, primaryTopicKey, yearGroupKey)` business identity.
+  Response data: the canonical full-definition response shape, including resolved `primaryTopic`, stable `definitionKey`, full `tasks` array, `yearGroupKey`, `yearGroupLabel`, `referenceDocumentId`, `templateDocumentId`, `documentType`, `assignmentWeighting`, `createdAt`, and `updatedAt`. This same response shape is returned for stage-one create, final save, and document-change re-parse so the frontend can keep one editable entity model.
+
+- `getAssignmentDefinition` — reads one full assignment definition by key.
+  Source: `src/backend/z_Api/assignmentDefinitionPartials.js`, via the `getAssignmentDefinition_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`. Delegates to `AssignmentDefinitionController.getDefinitionByKey()` in `src/backend/y_controllers/AssignmentDefinitionController.js`.
+  Required request field: `definitionKey` (non-empty, already-trimmed string with path-character safety enforced at transport boundary).
+  Validation: transport enforces `params` object shape, `definitionKey` presence, and safe-key contract using `validateReadParameters_()`; controller performs lookup and returns the stored full definition.
+  Response data: the canonical full-definition response shape, identical to `upsertAssignmentDefinition` response, including resolved `primaryTopic`, `primaryTopicKey`, `yearGroupKey`, `yearGroupLabel`, full `tasks` array, and all metadata. This ensures `upsertAssignmentDefinition` and `getAssignmentDefinition` share the same canonical editable entity contract.
 
 - `getGoogleClassrooms` — returns active Classroom picker rows for ABClass creation flows.
   Source: `src/backend/z_Api/googleClassrooms.js`, via the `getGoogleClassrooms_()` helper called from `ALLOWLISTED_METHOD_HANDLERS` in `src/backend/z_Api/z_apiHandler.js`.

@@ -31,6 +31,7 @@ const BACKEND_CONFIG_API_METHOD_NAMES = Object.freeze(['getBackendConfig', 'setB
 
 const ASSIGNMENT_DEFINITION_API_METHOD_NAMES = Object.freeze([
   'getAssignmentDefinitionPartials',
+  'getAssignmentDefinition',
   'deleteAssignmentDefinition',
 ]);
 
@@ -107,7 +108,7 @@ const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
       primaryTitle: 'Algebra Baseline',
       primaryTopic: 'Algebra',
       courseId: 'course-001',
-      yearGroup: 10,
+      yearGroupKey: 'year-group-10',
       alternateTitles: ['Algebra Starter'],
       alternateTopics: ['Linear Equations'],
       documentType: 'SLIDES',
@@ -120,10 +121,30 @@ const ASSIGNMENT_DEFINITION_RESULTS = Object.freeze({
       updatedAt: '2026-01-06T12:30:00.000Z',
     },
   ],
+  getAssignmentDefinition: {
+    definitionKey: 'algebra-baseline',
+    primaryTitle: 'Algebra Baseline',
+    primaryTopicKey: 'topic-algebra',
+    primaryTopic: 'Algebra',
+    yearGroupKey: 'year-group-10',
+    yearGroupLabel: 'Year 10',
+    alternateTitles: ['Algebra Starter'],
+    alternateTopics: ['Linear Equations'],
+    documentType: 'SLIDES',
+    referenceDocumentId: 'ref-doc-001',
+    templateDocumentId: 'tpl-doc-001',
+    assignmentWeighting: 1,
+    tasks: [{ taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 }],
+    createdAt: '2026-01-05T10:00:00.000Z',
+    updatedAt: '2026-01-06T12:30:00.000Z',
+  },
   deleteAssignmentDefinition: undefined,
 });
 
 const ASSIGNMENT_DEFINITION_PARAMS = Object.freeze({
+  getAssignmentDefinition: {
+    definitionKey: 'algebra-baseline',
+  },
   deleteAssignmentDefinition: {
     definitionKey: 'algebra-baseline',
   },
@@ -401,7 +422,7 @@ describe('Api/apiHandler allowlisted method handler registry', () => {
     const { ALLOWLISTED_METHOD_HANDLERS } = loadApiHandlerModule();
 
     expect(ALLOWLISTED_METHOD_HANDLERS).toBeTypeOf('object');
-    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(23);
+    expect(Object.keys(ALLOWLISTED_METHOD_HANDLERS)).toHaveLength(24);
     expect(ALLOWLISTED_METHOD_HANDLERS).toEqual(
       expect.objectContaining(
         Object.fromEntries(
@@ -436,10 +457,12 @@ describe('Api/non-trivial transport helper global exposure', () => {
       assignmentDefinitionPartialsPath
     );
     expect(assignmentDefinitionContext.getAssignmentDefinitionPartials).toBeUndefined();
+    expect(assignmentDefinitionContext.getAssignmentDefinition).toBeUndefined();
     expect(assignmentDefinitionContext.deleteAssignmentDefinition).toBeUndefined();
     expect(assignmentDefinitionContext.getAssignmentDefinitionPartials_).toEqual(
       expect.any(Function)
     );
+    expect(assignmentDefinitionContext.getAssignmentDefinition_).toEqual(expect.any(Function));
     expect(assignmentDefinitionContext.deleteAssignmentDefinition_).toEqual(expect.any(Function));
 
     const backendConfigContext = loadModuleGlobalsInVmContext(apiConfigPath);
@@ -465,6 +488,7 @@ describe('Api/apiHandler dispatcher', () => {
       assignmentDefinitionBehaviour: {
         getAssignmentDefinitionPartials_: () =>
           ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinitionPartials,
+        getAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition,
         deleteAssignmentDefinition_: () => ASSIGNMENT_DEFINITION_RESULTS.deleteAssignmentDefinition,
       },
     });
@@ -1008,6 +1032,29 @@ describe('Api/apiHandler dispatcher', () => {
     }
   );
 
+  it('returns canonical full-definition read data for getAssignmentDefinition through apiHandler', () => {
+    const expectedData = ASSIGNMENT_DEFINITION_RESULTS.getAssignmentDefinition;
+    context.getAssignmentDefinition_.mockReturnValue(expectedData);
+
+    const response = handleApiRequest('getAssignmentDefinition', {
+      definitionKey: 'algebra-baseline',
+    });
+
+    expect(response).toEqual({
+      ok: true,
+      requestId: response.requestId,
+      data: expectedData,
+    });
+    expect(response.data).toMatchObject({
+      definitionKey: 'algebra-baseline',
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      tasks: [expect.objectContaining({ taskId: 'task-1', taskWeighting: 1 })],
+    });
+    expect(response.data).not.toHaveProperty('referenceDocumentUrl');
+    expect(response.data).not.toHaveProperty('templateDocumentUrl');
+  });
+
   it('keeps the success envelope unchanged for getGoogleClassrooms when using the real handler', () => {
     globalThis.getGoogleClassrooms_ = loadRealGoogleClassroomsHandlerWithGlobals({
       classroomApiClient: {
@@ -1265,16 +1312,27 @@ describe('Api/apiHandler dispatcher', () => {
     const params = {
       primaryTitle: 'Algebra Baseline',
       primaryTopicKey: 'topic-algebra',
-      yearGroup: 10,
+      yearGroupKey: 'year-group-10',
       referenceDocumentId: 'ref-doc-001',
       templateDocumentId: 'tpl-doc-001',
       taskWeightings: [{ taskId: 'task-1', taskWeighting: 25 }],
     };
     const expectedData = {
       definitionKey: 'definition-001',
-      tasks: {
-        'task-1': { id: 'task-1', taskWeighting: 25 },
-      },
+      primaryTitle: 'Algebra Baseline',
+      primaryTopicKey: 'topic-algebra',
+      primaryTopic: 'Algebra',
+      yearGroupKey: 'year-group-10',
+      yearGroupLabel: 'Year 10',
+      alternateTitles: [],
+      alternateTopics: [],
+      documentType: 'SLIDES',
+      referenceDocumentId: 'ref-doc-001',
+      templateDocumentId: 'tpl-doc-001',
+      assignmentWeighting: 1,
+      tasks: [{ taskId: 'task-1', taskTitle: 'Task 1', taskWeighting: 1 }],
+      createdAt: '2026-01-05T10:00:00.000Z',
+      updatedAt: '2026-01-06T12:30:00.000Z',
     };
     const upsertAssignmentDefinition_ = vi.fn(() => expectedData);
 
@@ -1312,7 +1370,7 @@ describe('Api/apiHandler dispatcher', () => {
       const response = handleApiRequest('upsertAssignmentDefinition', {
         primaryTitle: 'Algebra Baseline',
         primaryTopicKey: 'topic-algebra',
-        yearGroup: 10,
+        yearGroupKey: 'year-group-10',
         referenceDocumentId: 'ref-doc-001',
         templateDocumentId: 'tpl-doc-001',
       });

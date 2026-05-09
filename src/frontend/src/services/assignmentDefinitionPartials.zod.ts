@@ -176,7 +176,9 @@ export const AssignmentDefinitionPartialSchema = z
   .object({
     primaryTitle: z.string(),
     primaryTopic: z.string(),
-    yearGroup: z.number().nullable(),
+    primaryTopicKey: TrimmedNonEmptyStringSchema,
+    yearGroupKey: TrimmedNonEmptyStringSchema,
+    yearGroupLabel: TrimmedNonEmptyStringSchema,
     alternateTitles: z.array(z.string()),
     alternateTopics: z.array(z.string()),
     documentType: z.string(),
