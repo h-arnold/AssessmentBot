@@ -1,9 +1,8 @@
-const ALPHABET_LENGTH = 26;
+/* global ALPHABET_LENGTH */
 const ASCII_UPPERCASE_OFFSET = 64;
 const ASCII_A = 65;
 const ASCII_Z = 90;
 const NOT_FOUND_INDEX = -1;
-
 /**
  * Provides a deliberately narrow equivalence check for spreadsheet formulae.
  */

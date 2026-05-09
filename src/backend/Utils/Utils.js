@@ -3,9 +3,9 @@
  *
  * Provides utility functions for the application.
  */
+/* global ALPHABET_LENGTH */
 const BYTE_NEGATIVE_OFFSET = 256;
 const HEX_RADIX = 16;
-const ALPHABET_LENGTH = 26;
 const UPPERCASE_A_CODE_POINT = 65;
 const DEFAULT_TOAST_TIMEOUT_SECONDS = 3;
 
