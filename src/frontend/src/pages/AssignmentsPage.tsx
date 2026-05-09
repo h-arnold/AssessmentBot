@@ -842,7 +842,10 @@ export function AssignmentsPage() {
     setDeleteTarget(null);
   }
   return (
-    <PageSection heading={pageContent.assignments.heading} summary={pageContent.assignments.summary}>
+    <PageSection
+      heading={pageContent.assignments.heading}
+      summary={pageContent.assignments.summary}
+    >
       <section
         aria-label={ASSIGNMENTS_PANEL_REGION_LABEL}
         aria-busy={isAssignmentsSurfaceBusy ? 'true' : undefined}

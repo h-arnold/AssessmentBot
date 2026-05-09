@@ -136,6 +136,7 @@ const hasTrustworthyReferenceData =
   - `--app-panel-width-wide-data`
 - The approved shared modal-width exception token set is:
   - `--app-modal-width-wide-data`
+- Page frames default to the wide-data width unless a page has an explicit narrow-width requirement.
 - Page and tab containers consume page-width tokens for outer-frame sizing.
 - Inner panels, standalone cards, and comparable owned containers consume panel-width tokens inside that frame.
 - Modal surfaces should keep default component width behaviour unless a workflow has a clear wide-data requirement that uses the approved shared modal-width exception token.
@@ -143,7 +144,7 @@ const hasTrustworthyReferenceData =
 - Prefer the default panel width unless there is a clear data-density or workflow reason to use an approved exception width.
 - Do not duplicate raw width literals across feature code or CSS.
 - Do not move app-specific page or panel widths into `ConfigProvider.theme` unless the width belongs to a documented Ant Design token contract.
-- The Settings page keeps a stable outer width across tabs; narrower inner panels may sit centred inside that stable frame.
+- The Settings page keeps a stable outer width across tabs; the backend settings panel remains a centred narrow-width exception inside that wide frame.
 
 ## 8. Accessibility semantics
 
