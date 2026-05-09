@@ -3,7 +3,7 @@ description = "A simple subagent for menial tasks like exploring codebase, findi
 sandbox_mode = "workspace-write"
 auto_approve = true
 safety = "neutral"
-active_model = "devstral-small"
+active_model = "mistral-small"
 agent_type = "subagent"
 thinking = "off"
 

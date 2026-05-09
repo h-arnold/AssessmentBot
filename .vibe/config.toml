@@ -50,6 +50,16 @@ project_id = ""
 region = ""
 
 [[providers]]
+name = "codestral"
+api_base = "https://codestral.mistral.ai/v1"
+api_key_env_var = "CODESTRAL_API_KEY"
+api_style = "openai"
+backend = "mistral"
+reasoning_field_name = "reasoning_content"
+project_id = ""
+region = ""
+
+[[providers]]
 name = "llamacpp"
 api_base = "http://127.0.0.1:8080/v1"
 api_key_env_var = ""
@@ -67,6 +77,26 @@ temperature = 1.0
 input_price = 1.5
 output_price = 7.5
 thinking = "high"
+auto_compact_threshold = 200000
+
+[[models]]
+name = "mistral-small-latest"
+provider = "mistral"
+alias = "mistral-small"
+temperature = 0.2
+input_price = 0.25
+output_price = 1.0
+thinking = "off"
+auto_compact_threshold = 200000
+
+[[models]]
+name = "codestral-latest"
+provider = "codestral"
+alias = "codestral"
+temperature = 0.2
+input_price = 0.25
+output_price = 1.0
+thinking = "off"
 auto_compact_threshold = 200000
 
 [[models]]
@@ -154,6 +184,7 @@ allowlist = [
     "git diff",
     "git log",
     "git push *",
+    "git show *",
     "git status",
     "grep *",
     "head",
